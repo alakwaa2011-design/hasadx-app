@@ -1,0 +1,258 @@
+import type { CSSProperties } from "react";
+
+export type SlideThemeKey =
+  | "harvest" | "ocean" | "sunset" | "midnight" | "rose"
+  | "royal" | "noor" | "sage" | "sand" | "obsidian";
+
+export type SlidePatternKey =
+  | "solid" | "dots" | "grid" | "lines" | "waves" | "geometric" | "stars" | "glow" | "ai";
+
+export type ThemeTier = "free" | "pro";
+
+export type SlideTheme = {
+  key: SlideThemeKey;
+  labelAr: string;
+  labelEn: string;
+  grad: string;
+  accent: string;
+  tier: ThemeTier;
+  textOnLight?: boolean;
+};
+
+export type SlidePattern = {
+  key: SlidePatternKey;
+  labelAr: string;
+  labelEn: string;
+  tier: ThemeTier;
+  style: CSSProperties;
+};
+
+export const SLIDE_THEMES: SlideTheme[] = [
+  { key: "harvest",  labelAr: "الحصاد",      labelEn: "Harvest",  tier: "free", grad: "from-emerald-500 via-green-700 to-amber-600",        accent: "bg-amber-300" },
+  { key: "ocean",    labelAr: "المحيط",      labelEn: "Ocean",    tier: "free", grad: "from-sky-500 via-blue-700 to-indigo-800",            accent: "bg-cyan-300" },
+  { key: "sunset",   labelAr: "الغروب",      labelEn: "Sunset",   tier: "free", grad: "from-amber-400 via-orange-500 to-rose-600",          accent: "bg-yellow-300" },
+  { key: "midnight", labelAr: "منتصف الليل", labelEn: "Midnight", tier: "free", grad: "from-slate-800 via-indigo-900 to-purple-900",        accent: "bg-violet-300" },
+  { key: "rose",     labelAr: "الوردي",      labelEn: "Rose",     tier: "free", grad: "from-rose-400 via-pink-500 to-fuchsia-600",          accent: "bg-pink-200" },
+  { key: "royal",    labelAr: "ملكي",        labelEn: "Royal",    tier: "pro",  grad: "from-[#0b1d3a] via-[#1e3a8a] to-[#b08d3a]",          accent: "bg-amber-300" },
+  { key: "noor",     labelAr: "نور",         labelEn: "Noor",     tier: "pro",  grad: "from-[#111111] via-[#2a1f0a] to-[#a47e2c]",          accent: "bg-yellow-300" },
+  { key: "sage",     labelAr: "بستان",       labelEn: "Sage",     tier: "pro",  grad: "from-[#3a5a40] via-[#588157] to-[#a3b18a]",          accent: "bg-lime-200" },
+  { key: "sand",     labelAr: "الرمل",       labelEn: "Sand",     tier: "pro",  grad: "from-[#7c5e3c] via-[#b08968] to-[#e6ccb2]",          accent: "bg-amber-200" },
+  { key: "obsidian", labelAr: "الأبنوس",     labelEn: "Obsidian", tier: "pro",  grad: "from-[#0f172a] via-[#1e293b] to-[#334155]",          accent: "bg-slate-300" },
+];
+
+export const SLIDE_PATTERNS: SlidePattern[] = [
+  {
+    key: "solid",
+    labelAr: "ساده",
+    labelEn: "Solid",
+    tier: "free",
+    style: {},
+  },
+  {
+    key: "dots",
+    labelAr: "نقاط",
+    labelEn: "Dots",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><circle cx='12' cy='12' r='1.4' fill='white' fill-opacity='0.22'/></svg>\")",
+      backgroundSize: "24px 24px",
+    },
+  },
+  {
+    key: "grid",
+    labelAr: "شبكة",
+    labelEn: "Grid",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "linear-gradient(rgba(255,255,255,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.10) 1px, transparent 1px)",
+      backgroundSize: "40px 40px",
+    },
+  },
+  {
+    key: "lines",
+    labelAr: "خطوط",
+    labelEn: "Lines",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><path d='M0 20L20 0' stroke='white' stroke-opacity='0.18' stroke-width='1'/></svg>\")",
+      backgroundSize: "20px 20px",
+    },
+  },
+  {
+    key: "waves",
+    labelAr: "أمواج",
+    labelEn: "Waves",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='40' viewBox='0 0 80 40'><path d='M0 20 Q 20 0, 40 20 T 80 20' stroke='white' stroke-opacity='0.20' fill='none' stroke-width='1.5'/></svg>\")",
+      backgroundSize: "80px 40px",
+    },
+  },
+  {
+    key: "geometric",
+    labelAr: "هندسي",
+    labelEn: "Geometric",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'><g fill='none' stroke='white' stroke-opacity='0.16' stroke-width='1'><path d='M30 0 L60 30 L30 60 L0 30 Z'/><path d='M30 15 L45 30 L30 45 L15 30 Z'/></g></svg>\")",
+      backgroundSize: "60px 60px",
+    },
+  },
+  {
+    key: "stars",
+    labelAr: "نجوم",
+    labelEn: "Stars",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><g fill='white'><circle cx='10' cy='15' r='0.9' opacity='0.55'/><circle cx='35' cy='40' r='1.3' opacity='0.7'/><circle cx='65' cy='25' r='0.9' opacity='0.5'/><circle cx='95' cy='55' r='1.1' opacity='0.6'/><circle cx='130' cy='30' r='0.8' opacity='0.5'/><circle cx='25' cy='90' r='1' opacity='0.6'/><circle cx='75' cy='110' r='1.2' opacity='0.65'/><circle cx='140' cy='100' r='0.9' opacity='0.55'/><circle cx='110' cy='140' r='1' opacity='0.6'/><circle cx='40' cy='150' r='0.8' opacity='0.5'/></g></svg>\")",
+      backgroundSize: "160px 160px",
+    },
+  },
+  {
+    key: "glow",
+    labelAr: "إشراق",
+    labelEn: "Glow",
+    tier: "pro",
+    style: {
+      backgroundImage:
+        "radial-gradient(ellipse at top right, rgba(255,255,255,0.22), transparent 55%), radial-gradient(ellipse at bottom left, rgba(0,0,0,0.25), transparent 55%)",
+    },
+  },
+  {
+    /* Special pattern: the AI picks a unique gradient per slide from
+       AI_GRADIENT_FROM / AI_GRADIENT_TO at fill time. The pattern itself has
+       no overlay style — the background swap happens in the slide renderer. */
+    key: "ai",
+    labelAr: "الذكاء الاصطناعي",
+    labelEn: "AI choose",
+    tier: "pro",
+    style: {},
+  },
+];
+
+/* ─────────────────────────────────────────────────────────────
+   AI-picked per-slide gradients
+   ─────────────────────────────────────────────────────────────
+   The "ai" pattern asks Claude to pick a gradient for each slide based on
+   its title and content. To keep Tailwind's JIT happy, the allowed classes
+   are listed literally below (so Tailwind scans and includes them in the
+   final CSS bundle). The server validates AI output against the same list.
+   ───────────────────────────────────────────────────────────── */
+export const AI_GRADIENT_FROM = [
+  "from-rose-400", "from-rose-500", "from-rose-600",
+  "from-pink-400", "from-pink-500", "from-pink-600",
+  "from-fuchsia-500", "from-fuchsia-600", "from-fuchsia-700",
+  "from-purple-500", "from-purple-600", "from-purple-700",
+  "from-violet-500", "from-violet-600", "from-violet-700",
+  "from-indigo-500", "from-indigo-600", "from-indigo-700",
+  "from-blue-400", "from-blue-500", "from-blue-600", "from-blue-700",
+  "from-sky-400", "from-sky-500", "from-sky-600",
+  "from-cyan-400", "from-cyan-500", "from-cyan-600",
+  "from-teal-400", "from-teal-500", "from-teal-600",
+  "from-emerald-400", "from-emerald-500", "from-emerald-600", "from-emerald-700",
+  "from-green-400", "from-green-500", "from-green-600", "from-green-700",
+  "from-lime-400", "from-lime-500",
+  "from-yellow-400", "from-yellow-500",
+  "from-amber-400", "from-amber-500", "from-amber-600",
+  "from-orange-400", "from-orange-500", "from-orange-600",
+  "from-red-500", "from-red-600", "from-red-700",
+  "from-slate-700", "from-slate-800", "from-slate-900",
+  "from-stone-700", "from-stone-800",
+  "from-neutral-800", "from-neutral-900",
+  "from-zinc-700", "from-zinc-800",
+] as const;
+
+export const AI_GRADIENT_TO = [
+  "to-rose-500", "to-rose-600", "to-rose-700", "to-rose-800",
+  "to-pink-500", "to-pink-600", "to-pink-700",
+  "to-fuchsia-600", "to-fuchsia-700", "to-fuchsia-800",
+  "to-purple-600", "to-purple-700", "to-purple-800", "to-purple-900",
+  "to-violet-600", "to-violet-700", "to-violet-800", "to-violet-900",
+  "to-indigo-700", "to-indigo-800", "to-indigo-900",
+  "to-blue-600", "to-blue-700", "to-blue-800", "to-blue-900",
+  "to-sky-600", "to-sky-700", "to-sky-800",
+  "to-cyan-600", "to-cyan-700",
+  "to-teal-600", "to-teal-700", "to-teal-800",
+  "to-emerald-600", "to-emerald-700", "to-emerald-800",
+  "to-green-600", "to-green-700", "to-green-800", "to-green-900",
+  "to-lime-600", "to-lime-700",
+  "to-yellow-600", "to-yellow-700",
+  "to-amber-600", "to-amber-700", "to-amber-800",
+  "to-orange-600", "to-orange-700", "to-orange-800",
+  "to-red-600", "to-red-700", "to-red-800",
+  "to-slate-800", "to-slate-900",
+  "to-stone-800", "to-stone-900",
+  "to-neutral-900",
+  "to-zinc-800", "to-zinc-900",
+  "to-indigo-950", "to-purple-950", "to-rose-950", "to-emerald-950",
+] as const;
+
+export type AiGradientFrom = (typeof AI_GRADIENT_FROM)[number];
+export type AiGradientTo = (typeof AI_GRADIENT_TO)[number];
+
+export type CustomBackground = {
+  gradientFrom: AiGradientFrom;
+  gradientTo: AiGradientTo;
+  textOnLight?: boolean;
+};
+
+const FROM_SET: Set<string> = new Set(AI_GRADIENT_FROM);
+const TO_SET: Set<string> = new Set(AI_GRADIENT_TO);
+
+export function isValidCustomBackground(
+  v: unknown,
+): v is CustomBackground {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.gradientFrom === "string" && FROM_SET.has(o.gradientFrom) &&
+    typeof o.gradientTo === "string" && TO_SET.has(o.gradientTo)
+  );
+}
+
+/* Resolve the gradient classes + text colour for a slide. If the presentation
+   uses the "ai" pattern AND the slide has a valid customBackground, those
+   classes win; otherwise we fall back to the theme. */
+export function resolveSlideGradient(opts: {
+  themeGrad: string;
+  themeTextOnLight?: boolean;
+  pattern: string | null | undefined;
+  customBackground?: CustomBackground | null;
+}): { grad: string; textOnLight: boolean; isCustom: boolean } {
+  if (opts.pattern === "ai" && opts.customBackground && isValidCustomBackground(opts.customBackground)) {
+    return {
+      grad: `${opts.customBackground.gradientFrom} ${opts.customBackground.gradientTo}`,
+      textOnLight: !!opts.customBackground.textOnLight,
+      isCustom: true,
+    };
+  }
+  return {
+    grad: opts.themeGrad,
+    textOnLight: !!opts.themeTextOnLight,
+    isCustom: false,
+  };
+}
+
+export function getTheme(key: string | undefined | null): SlideTheme {
+  return SLIDE_THEMES.find((t) => t.key === key) || SLIDE_THEMES[0];
+}
+
+export function getPattern(key: string | undefined | null): SlidePattern {
+  return SLIDE_PATTERNS.find((p) => p.key === key) || SLIDE_PATTERNS[0];
+}
+
+export function isFreeTheme(key: string | undefined | null): boolean {
+  const t = SLIDE_THEMES.find((x) => x.key === key);
+  return !t || t.tier === "free";
+}
+
+export function isFreePattern(key: string | undefined | null): boolean {
+  const p = SLIDE_PATTERNS.find((x) => x.key === key);
+  return !p || p.tier === "free";
+}

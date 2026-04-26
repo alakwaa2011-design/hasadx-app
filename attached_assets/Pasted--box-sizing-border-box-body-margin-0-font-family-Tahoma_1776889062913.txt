@@ -1,0 +1,569 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Tahoma", "Arial", sans-serif;
+  background: #f3f8f2;
+  color: #143b28;
+}
+
+.landing-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(26, 94, 60, 0.05) 0,
+      rgba(26, 94, 60, 0.05) 1px,
+      transparent 1px,
+      transparent 72px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(26, 94, 60, 0.05) 0,
+      rgba(26, 94, 60, 0.05) 1px,
+      transparent 1px,
+      transparent 72px
+    );
+  padding-bottom: 40px;
+}
+
+/* Header */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 28px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.topbar-right,
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-text {
+  font-size: 32px;
+  font-weight: 800;
+  color: #103d2a;
+}
+
+.brand-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, #295d31, #0f2c1f);
+  color: #d7a51d;
+  font-size: 30px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.btn,
+.menu-btn {
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.btn {
+  padding: 14px 28px;
+  border-radius: 18px;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.btn-primary {
+  background: #1b6b3f;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(27, 107, 63, 0.18);
+}
+
+.btn-primary:hover {
+  background: #145a34;
+}
+
+.btn-outline {
+  background: #fff;
+  color: #1b6b3f;
+  border: 2px solid #76a486;
+}
+
+.btn-outline:hover {
+  background: #f4fbf5;
+}
+
+.menu-btn {
+  background: transparent;
+  color: #163f2b;
+  font-size: 34px;
+}
+
+/* Hero */
+.hero {
+  position: relative;
+  max-width: 1200px;
+  margin: 34px auto 18px;
+  text-align: center;
+  padding: 20px 20px 0;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid #d3e5d6;
+  color: #1f6c42;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+  font-size: 26px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #35b55d;
+}
+
+.hero-title {
+  font-size: 74px;
+  line-height: 1.25;
+  margin: 28px 0 18px;
+  color: #103d2a;
+  font-weight: 900;
+}
+
+.hero-title span {
+  color: #d7a51d;
+  position: relative;
+}
+
+.hero-title span::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  left: 0;
+  bottom: -6px;
+  height: 6px;
+  background: rgba(215, 165, 29, 0.75);
+  border-radius: 999px;
+}
+
+.hero-subtitle {
+  font-size: 36px;
+  color: #6d7480;
+  margin: 0 0 20px;
+  font-weight: 500;
+}
+
+.hero-decor {
+  position: absolute;
+  font-size: 86px;
+  opacity: 0.95;
+}
+
+.hero-gamepad {
+  left: 30px;
+  top: 160px;
+}
+
+.hero-trophy {
+  right: 30px;
+  top: 140px;
+}
+
+/* Join Card */
+.join-card {
+  max-width: 980px;
+  margin: 24px auto;
+  background: #fff;
+  border-radius: 34px;
+  padding: 42px 36px 30px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.09);
+}
+
+.join-title {
+  text-align: center;
+  font-size: 40px;
+  margin: 0;
+  color: #16492f;
+}
+
+.join-subtitle {
+  text-align: center;
+  font-size: 24px;
+  color: #6d7480;
+  margin: 12px 0 28px;
+}
+
+.code-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  direction: ltr;
+}
+
+.code-inputs input {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  border: 2px solid #d7e3d9;
+  background: #fcfdfc;
+  text-align: center;
+  font-size: 42px;
+  font-weight: 800;
+  color: #17442f;
+  outline: none;
+}
+
+.code-inputs input:focus {
+  border-color: #d7a51d;
+  box-shadow: 0 0 0 4px rgba(215, 165, 29, 0.12);
+}
+
+.join-now-btn {
+  width: 100%;
+  border: none;
+  border-radius: 24px;
+  padding: 22px;
+  font-size: 34px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(180deg, #f2bc2d, #d7a51d);
+  color: #143b28;
+  box-shadow: 0 14px 30px rgba(215, 165, 29, 0.26);
+  transition: 0.2s ease;
+}
+
+.join-now-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(215, 165, 29, 0.32);
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 28px 0 22px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 42%;
+  height: 1px;
+  background: #d9d9d9;
+}
+
+.divider::before {
+  right: 0;
+}
+
+.divider::after {
+  left: 0;
+}
+
+.divider span {
+  display: inline-block;
+  background: #fff;
+  padding: 0 18px;
+  color: #7d7d7d;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-btn {
+  width: 100%;
+  border-radius: 20px;
+  padding: 20px;
+  font-size: 30px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.google-btn {
+  background: #fff;
+  color: #273239;
+  border: 2px solid #d9dfe0;
+}
+
+.login-btn {
+  background: #fff;
+  color: #1b6b3f;
+  border: 2px solid #6fa481;
+}
+
+.signup-btn {
+  background: #1b6b3f;
+  color: #fff;
+  border: none;
+}
+
+/* Account Section */
+.account-type-section {
+  max-width: 1200px;
+  margin: 30px auto 20px;
+  padding: 0 20px;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 36px;
+  color: #58626d;
+  margin-bottom: 22px;
+}
+
+.account-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 28px;
+  background: #fff;
+  border: 2px solid #d7e4d9;
+  border-radius: 24px;
+  min-height: 150px;
+}
+
+.account-card.active {
+  background: #f2f8ef;
+  border-color: #92b29b;
+}
+
+.account-card h4 {
+  margin: 0 0 8px;
+  font-size: 34px;
+  color: #153d2a;
+}
+
+.account-card p {
+  margin: 0;
+  font-size: 24px;
+  color: #66707a;
+  line-height: 1.5;
+}
+
+.account-icon {
+  font-size: 46px;
+}
+
+/* Features */
+.features-section {
+  max-width: 1200px;
+  margin: 28px auto 0;
+  padding: 28px 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  background: #eef4ed;
+  border: 1px solid #dbe5db;
+  border-radius: 28px;
+}
+
+.feature-card {
+  text-align: center;
+  padding: 14px 10px;
+}
+
+.feature-icon {
+  font-size: 38px;
+  margin-bottom: 10px;
+}
+
+.feature-card h4 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  color: #183f2d;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.6;
+  color: #67707a;
+}
+
+.more-link {
+  text-align: center;
+  font-size: 26px;
+  color: #6f7580;
+  margin-top: 20px;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .hero-title {
+    font-size: 48px;
+  }
+
+  .hero-subtitle {
+    font-size: 26px;
+  }
+
+  .code-inputs input {
+    width: 60px;
+    height: 60px;
+    font-size: 30px;
+  }
+
+  .features-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .account-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-decor {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .brand-text {
+    font-size: 22px;
+  }
+
+  .brand-logo {
+    width: 42px;
+    height: 42px;
+    font-size: 24px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 16px;
+    border-radius: 14px;
+  }
+
+  .menu-btn {
+    font-size: 28px;
+  }
+
+  .hero {
+    margin-top: 18px;
+  }
+
+  .hero-badge {
+    font-size: 16px;
+    padding: 8px 14px;
+  }
+
+  .hero-title {
+    font-size: 34px;
+    margin-top: 18px;
+  }
+
+  .hero-subtitle {
+    font-size: 20px;
+  }
+
+  .join-card {
+    margin: 18px 12px;
+    padding: 24px 16px 18px;
+    border-radius: 24px;
+  }
+
+  .join-title {
+    font-size: 28px;
+  }
+
+  .join-subtitle {
+    font-size: 18px;
+  }
+
+  .code-inputs {
+    gap: 8px;
+  }
+
+  .code-inputs input {
+    width: 44px;
+    height: 50px;
+    border-radius: 12px;
+    font-size: 24px;
+  }
+
+  .join-now-btn {
+    padding: 16px;
+    font-size: 26px;
+    border-radius: 18px;
+  }
+
+  .divider span {
+    font-size: 20px;
+  }
+
+  .auth-btn {
+    font-size: 22px;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .section-title {
+    font-size: 28px;
+  }
+
+  .account-card {
+    padding: 18px;
+    min-height: auto;
+  }
+
+  .account-card h4 {
+    font-size: 24px;
+  }
+
+  .account-card p {
+    font-size: 16px;
+  }
+
+  .features-section {
+    grid-template-columns: 1fr 1fr;
+    margin: 20px 12px 0;
+    padding: 16px 10px;
+    border-radius: 22px;
+  }
+
+  .feature-card h4 {
+    font-size: 20px;
+  }
+
+  .feature-card p {
+    font-size: 15px;
+  }
+}

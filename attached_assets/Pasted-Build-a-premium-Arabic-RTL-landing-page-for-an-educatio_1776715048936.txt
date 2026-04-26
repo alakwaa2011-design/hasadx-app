@@ -1,0 +1,108 @@
+Build a premium Arabic RTL landing page for an educational platform called "حصاد", but position it clearly as a platform for competitions and activities, not just general education.
+
+Design direction:
+- Use the THIRD design concept as the main visual foundation.
+- Use the SECOND design concept only to soften the experience with better Arabic typography, educational warmth, and a friendlier tone.
+- The result should feel modern, bold, premium, and memorable, while still clearly educational and Arabic.
+
+Brand positioning:
+- Hisad is primarily a competitions and activities platform.
+- The homepage must communicate this immediately.
+- The messaging should focus on creating competitions, publishing activities, student participation by code, and tracking results.
+
+Visual style:
+- Arabic only
+- RTL layout
+- Premium dark or semi-dark hero section
+- Deep charcoal or dark green background tones
+- Green glow or subtle lighting inspired by modern SaaS/product landing pages
+- White or lightly tinted cards for contrast in sections below
+- Elegant Arabic typography
+- Strong visual hierarchy
+- Modern shadows, gradients, and rounded corners
+- Avoid making it look like a finance dashboard or crypto product
+- Avoid making it too playful or childish
+
+Main message direction:
+Use a headline such as:
+"منصة عربية لصناعة المسابقات والأنشطة التعليمية"
+or
+"أنشئ مسابقات تفاعلية وأنشطة تعليمية في دقائق"
+
+Supporting text should explain:
+- teachers can create competitions and activities easily
+- students can join instantly with a code
+- results and submissions can be tracked in one place
+
+Page structure:
+1. Navbar
+   - Arabic logo on the right
+   - minimal menu
+   - login button
+   - clean and premium look
+
+2. Hero section
+   - Strong bold Arabic headline focused on competitions and activities
+   - Short supporting paragraph
+   - Primary CTA: "أنشئ مسابقتك الآن"
+   - Secondary CTA: "استعرض المسابقات الجاهزة"
+   - Optional student CTA: "أدخل كود المسابقة"
+   - Large premium visual area inspired by the third design
+   - Use subtle green glow, layered depth, and polished visual composition
+
+3. Quick participation strip or join card
+   - Make joining by code very obvious
+   - This is important because the platform includes student participation in competitions
+   - Include labeled input, not placeholder only
+   - Button text: "انضم الآن"
+
+4. Competitions and activities highlights
+   - Create a section showing the platform’s core strength:
+     - interactive competitions
+     - educational activities
+     - quick participation
+     - organized submissions
+     - teacher-friendly management
+   - Use premium cards with concise Arabic copy
+
+5. Stats section
+   - Show platform traction with elegant cards
+   - Example Arabic stats:
+     - +61 نشاطًا تعليميًا
+     - +26 معلّمًا مسجلًا
+     - +67 تسليمًا مكتملًا
+     - +737 طالبًا مشاركًا
+
+6. How it works section
+   - Simple 3-step explanation for teachers and students
+   - Example:
+     1. أنشئ المسابقة أو النشاط
+     2. شارك الرابط أو الكود مع الطلاب
+     3. تابع المشاركات والنتائج بسهولة
+
+7. Final CTA section
+   - Strong close focused on action
+   - Example:
+     "ابدأ أول مسابقة لك اليوم"
+
+Typography and Arabic feel:
+- Use a strong Arabic font style or font stack that feels elegant and modern
+- Improve Arabic spacing and heading rhythm
+- Keep the Arabic wording clear, direct, and professional
+- Do not use weak generic educational copy
+
+Experience goals:
+- The first screen should instantly communicate that this is a modern Arabic competitions platform
+- It should feel more distinctive than a standard education website
+- It should balance premium modern design with educational clarity
+- It should be optimized for conversion and trust
+
+Technical requirements:
+- Build a production-quality landing page
+- Use responsive design for mobile, tablet, and desktop
+- Use reusable components
+- Clean code structure
+- HTML/CSS/JS or React is acceptable
+
+Final objective:
+Create a landing page that is visually based mostly on the third concept, emotionally softened by the second concept, and strategically focused on Hisad as a competitions and activities platform.

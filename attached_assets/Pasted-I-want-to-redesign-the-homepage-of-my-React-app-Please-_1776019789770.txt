@@ -1,0 +1,27 @@
+I want to redesign the homepage of my React app. Please find the main homepage component and update it with the following changes:
+
+1. NAVBAR: Remove the pattern/texture from the hero background. Keep logo on right, nav links in center: الرئيسية / الألعاب / مسابقات ثقافية / كيف تعمل؟ — left side: تسجيل الدخول (outline) + ابدأ مجاناً (green). Remove the purple "انضم للعبة" button.
+
+2. HERO SECTION: Change the dark green textured background to clean light green (#F5FAF7). Headline: حصاد — منصتك للمسابقات بثوانٍ. Subtext: هي منصتك لإنشاء مسابقاتك وتحدّي من تريد — سواء كنت في تجمع عائلي، فصل، أو فعالية. تحتوي على مسابقات ثقافية جاهزة فردية وجماعية للجميع. Two buttons only: primary green "أنشئ مسابقتك الآن" and secondary outline "استكشف المسابقات". Audience pills: 👨‍🏫 معلمون / 👨‍👩‍👧 عائلات / 🎉 فعاليات / 🏢 فرق العمل / 👥 تجمعات.
+
+3. Cultural competitions section: dark green card with title "مسابقات ثقافية جاهزة لك", two mode pills: "فردي — العب وحدك" and "جماعي — تنافسوا معاً", stat +500 مسابقة. Below: 4 category cards: 📖 إسلامية ودينية / 🌍 جغرافيا وتاريخ / 🔬 علوم وتقنية / 🎯 ثقافة عامة.
+
+4. "لمن حصاد؟" section with 3 cards:
+- التجمعات والعائلات: نشّط سهرتك أو لقاء العائلة بمسابقة ثقافية أو مخصصة — الكل يلعب من هاتفه بثوانٍ. Tags: ترفيه / أسئلة ثقافية / منافسة جماعية
+- المعلمون والمدرّسون: أرسل الواجبات وصحّحها بالذكاء الاصطناعي، أنشئ أسئلة في ثوانٍ، وتابع أداء طلابك لحظة بلحظة. Tags: واجبات ذكية / تصحيح AI / إنشاء أسئلة / إحصائيات فورية
+- الفعاليات والمناسبات: حفل تخرج، يوم وطني، أو أي تجمع — أضف مسابقة تجعلها لا تُنسى. Tags: باركود للانضمام / شاشة متصدرين
+
+5. Teacher AI tools section titled "للمعلمين — أدوات الذكاء الاصطناعي" with 5 feature cards:
+- 🤖 إنشاء أسئلة بالذكاء الاصطناعي: اكتب الموضوع وحصاد تولّد لك الأسئلة في ثوانٍ
+- 🎬 فيديو تفاعلي بأسئلة مباشرة: أضف أسئلة على أي فيديو وتابع إجابات طلابك لحظة بلحظة أو أرسله لهم ليجيبوا في وقتهم
+- 📷 تصحيح الورق بالكاميرا: صوّر ورقة الطالب وتصحّح تلقائياً بالذكاء الاصطناعي
+- 🧠 ألعاب الذكاء: حوّل أي موضوع إلى لعبة ذكاء تفاعلية تجذب انتباه الطلاب
+- 📊 إحصائيات ومتابعة فورية: تابع أداء كل طالب لحظة بلحظة مع تقارير مفصّلة
+
+6. "كيف تعمل؟" section with 3 steps: ١ اختر أو أنشئ مسابقتك / ٢ شارك الرابط أو الكود / ٣ تنافسوا واعرفوا الفائز.
+
+7. Dark green CTA banner: جرّب — مجانية للجميع with button: ابدأ مجاناً.
+
+Keep all existing functionality and routing intact. Only change the visual design and text of the homepage.
+
+انسخها لـ Replit AI وبعد التطبيق أرسل لي لقطة شاشة.

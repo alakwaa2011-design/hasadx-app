@@ -1,0 +1,1564 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Layout } from "@/components/layout";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  DndContext, DragOverlay, closestCenter, PointerSensor,
+  useSensor, useSensors, type DragStartEvent, type DragOverEvent, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  Users, Plus, ArrowRight, Pencil, Trash2, X, Phone,
+  GripVertical, ChevronDown, ChevronRight,
+  UserPlus, Check, AlertTriangle, Search, ArrowLeft,
+  BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
+  ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
+} from "lucide-react";
+import { Link } from "wouter";
+import { useI18n } from "@/lib/i18n";
+import { toast } from "@/components/ui/sonner";
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+interface Student {
+  id: number;
+  name: string;
+  gradeLevel: string | null;
+  studentClass: string | null;
+  parentPhone: string | null;
+  notes: string | null;
+  accountUsername: string | null;
+  createdAt: string;
+}
+
+const UNGROUPED = "__ungrouped__";
+
+
+const CLASS_COLORS = [
+  { bg: "bg-teal-500", light: "bg-teal-500/10", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-400", ring: "ring-teal-400" },
+  { bg: "bg-indigo-500", light: "bg-indigo-500/10", border: "border-indigo-200 dark:border-indigo-800", text: "text-indigo-700 dark:text-indigo-400", ring: "ring-indigo-400" },
+  { bg: "bg-rose-500", light: "bg-rose-500/10", border: "border-rose-200 dark:border-rose-800", text: "text-rose-700 dark:text-rose-400", ring: "ring-rose-400" },
+  { bg: "bg-amber-500", light: "bg-amber-500/10", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", ring: "ring-amber-400" },
+  { bg: "bg-purple-500", light: "bg-purple-500/10", border: "border-purple-200 dark:border-purple-800", text: "text-purple-700 dark:text-purple-400", ring: "ring-purple-400" },
+  { bg: "bg-cyan-500", light: "bg-cyan-500/10", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-700 dark:text-cyan-400", ring: "ring-cyan-400" },
+  { bg: "bg-orange-500", light: "bg-orange-500/10", border: "border-orange-200 dark:border-orange-800", text: "text-orange-700 dark:text-orange-400", ring: "ring-orange-400" },
+  { bg: "bg-green-500", light: "bg-green-500/10", border: "border-green-200 dark:border-green-800", text: "text-green-700 dark:text-green-400", ring: "ring-green-400" },
+];
+
+function getGroupKey(student: Student) {
+  return student.gradeLevel || UNGROUPED;
+}
+
+/* ─── Draggable Student Row ─────────────────────────────── */
+function StudentRow({
+  student, onEdit, onDelete, onMove, onResetPassword, folders, colorIdx, isOverlay = false,
+}: {
+  student: Student;
+  onEdit: (s: Student) => void;
+  onDelete: (id: number) => void;
+  onMove: (id: number, toFolder: string) => void;
+  onResetPassword: (s: Student) => void;
+  folders: string[];
+  colorIdx: number;
+  isOverlay?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `student-${student.id}` });
+
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  const currentFolder = student.gradeLevel || UNGROUPED;
+  const otherFolders = folders.filter((f) => f !== currentFolder);
+  const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
+
+  return (
+    <div
+      ref={isOverlay ? undefined : setNodeRef}
+      style={isOverlay ? {} : style}
+      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white dark:bg-card border shadow-sm group transition-all
+        ${isDragging ? `border-2 ${color.ring} ring-2 shadow-lg` : "border-border hover:border-primary/30 hover:shadow"}`}
+    >
+      {!isOverlay && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none flex-shrink-0"
+        >
+          <GripVertical size={13} />
+        </button>
+      )}
+
+      <span className="flex-1 text-sm font-medium text-foreground truncate">{student.name}</span>
+
+      {student.parentPhone && (
+        <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
+          <Phone size={11} />{student.parentPhone}
+        </span>
+      )}
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {otherFolders.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setMoveOpen((v) => !v)}
+              title="نقل إلى صف آخر"
+              className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-50 text-xs font-medium flex items-center gap-1"
+            >
+              <ArrowRight size={13} />
+            </button>
+            {moveOpen && (
+              <div className="absolute left-0 top-8 z-50 bg-card border border-border rounded-xl shadow-xl min-w-40 py-1">
+                <p className="px-3 py-1.5 text-xs text-muted-foreground font-medium border-b border-border">نقل إلى صف:</p>
+                {otherFolders.map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => { onMove(student.id, f); setMoveOpen(false); }}
+                    className="w-full text-right px-3 py-2 text-sm text-foreground hover:bg-muted truncate"
+                  >
+                    {f === UNGROUPED ? "بلا صف" : f}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <button
+          onClick={() => onResetPassword(student)}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-500/10"
+          title="إعادة تعيين كلمة المرور"
+        >
+          <KeyRound size={13} />
+        </button>
+        <button
+          onClick={() => onEdit(student)}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-teal-600 hover:bg-teal-500/10"
+          title="تعديل"
+        >
+          <Pencil size={13} />
+        </button>
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+            title="حذف"
+          >
+            <Trash2 size={13} />
+          </button>
+        ) : (
+          <div className="flex items-center gap-1 bg-red-50 rounded-lg px-1.5 py-0.5">
+            <button
+              onClick={() => { onDelete(student.id); setConfirmDelete(false); }}
+              className="p-0.5 rounded bg-red-500 text-white hover:bg-red-600"
+            >
+              <Check size={11} />
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="p-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+            >
+              <X size={11} />
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Class Block ──────────────────────────────────────── */
+function ClassBlock({
+  className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
+  onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
+  onAddStudent, onBulkAdd, onResetPassword,
+}: {
+  className: string;
+  students: Student[];
+  allFolders: string[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  colorIdx: number;
+  onRename: (old: string, newName: string) => void;
+  onDeleteClass: (name: string) => void;
+  onEditStudent: (s: Student) => void;
+  onDeleteStudent: (id: number) => void;
+  onMoveStudent: (id: number, to: string) => void;
+  onAddStudent: (folder: string) => void;
+  onBulkAdd: (folder: string) => void;
+  onResetPassword: (s: Student) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `folder-${folderName}` });
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameVal, setRenameVal] = useState(folderName);
+  const renameRef = useRef<HTMLInputElement>(null);
+
+  const isUngrouped = folderName === UNGROUPED;
+  const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const startRename = () => {
+    setRenameVal(folderName);
+    setIsRenaming(true);
+    setTimeout(() => renameRef.current?.focus(), 50);
+  };
+
+  const submitRename = () => {
+    if (renameVal.trim() && renameVal.trim() !== folderName) {
+      onRename(folderName, renameVal.trim());
+    }
+    setIsRenaming(false);
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="mb-4">
+      {/* Class Card */}
+      <div className={`rounded-2xl border-2 overflow-hidden shadow-sm transition-all
+        ${isDragging ? `border-${color.ring} shadow-lg` : "border-border"}`}>
+
+        {/* Class Header */}
+        <div className={`${color.light} ${color.border} border-b`}>
+          <div className="flex items-center gap-2 px-4 py-3">
+
+            {/* Drag handle */}
+            {!isUngrouped && (
+              <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none flex-shrink-0"
+              >
+                <GripVertical size={16} />
+              </button>
+            )}
+
+            {/* Color dot + class icon */}
+            <div className={`w-8 h-8 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0`}>
+              <BookOpen size={15} className="text-white" />
+            </div>
+
+            {/* Class name (inline editable) */}
+            <div className="flex-1 min-w-0">
+              {isRenaming ? (
+                <input
+                  ref={renameRef}
+                  value={renameVal}
+                  onChange={(e) => setRenameVal(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitRename();
+                    if (e.key === "Escape") setIsRenaming(false);
+                  }}
+                  onBlur={submitRename}
+                  className={`w-full font-bold text-base bg-card text-foreground border-2 ${color.ring} ring-2 rounded-lg px-2 py-0.5 outline-none`}
+                />
+              ) : (
+                <button
+                  onClick={onToggle}
+                  className="flex items-center gap-2 text-right w-full group/name"
+                >
+                  <span className={`font-bold text-base ${color.text} truncate`}>
+                    {isUngrouped ? "بلا صف" : folderName}
+                  </span>
+                  <span className={`text-xs font-semibold ${color.text} bg-background/80 rounded-full px-2 py-0.5 flex-shrink-0`}>
+                    {students.length} طالب
+                  </span>
+                  <span className={`mr-auto ${color.text} opacity-50`}>
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            {!isUngrouped && !isRenaming && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Link
+                  href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium hover:opacity-90 transition-opacity`}
+                  title="كشف الدرجات من الواجبات"
+                >
+                  <ClipboardList size={13} />
+                  <span className="hidden sm:inline">الدرجات</span>
+                </Link>
+
+
+                <button
+                  onClick={() => onAddStudent(folderName)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg ${color.bg} text-white text-xs font-medium hover:opacity-90 transition-opacity`}
+                  title="إضافة طالب"
+                >
+                  <UserPlus size={13} />
+                  <span className="hidden sm:inline">إضافة</span>
+                </button>
+
+                {/* Rename */}
+                <button
+                  onClick={startRename}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-blue-600 transition-colors"
+                  title="تغيير اسم الصف"
+                >
+                  <Pencil size={14} />
+                </button>
+
+                {/* Delete class */}
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-red-600 transition-colors"
+                    title="حذف الصف"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1 bg-card rounded-lg px-2 py-1 border border-red-200 dark:border-red-900 shadow-sm">
+                    <span className="text-xs text-red-500 font-medium">حذف الصف؟</span>
+                    <button
+                      onClick={() => { onDeleteClass(folderName); setShowDeleteConfirm(false); }}
+                      className="p-1 rounded bg-red-500 text-white hover:bg-red-600"
+                    >
+                      <Check size={11} />
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="p-1 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Ungrouped add */}
+            {isUngrouped && (
+              <button
+                onClick={() => onAddStudent(UNGROUPED)}
+                className="p-1.5 rounded-lg text-teal-500 hover:bg-teal-500/10 hover:text-teal-700"
+                title="إضافة طالب"
+              >
+                <UserPlus size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded Content */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden bg-card"
+            >
+              {(() => {
+                const sortedClassStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+                return (
+                <SortableContext
+                  items={sortedClassStudents.map((s) => `student-${s.id}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="p-3 space-y-1.5">
+                    {sortedClassStudents.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground text-sm">
+                        لا يوجد طلاب في هذا الصف بعد
+                      </div>
+                    ) : (
+                      sortedClassStudents.map((s) => (
+                        <StudentRow
+                          key={s.id}
+                          student={s}
+                          onEdit={onEditStudent}
+                          onDelete={onDeleteStudent}
+                          onMove={onMoveStudent}
+                          onResetPassword={onResetPassword}
+                          folders={allFolders}
+                          colorIdx={colorIdx}
+                        />
+                      ))
+                    )}
+
+                    {!isUngrouped && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => onAddStudent(folderName)}
+                          className={`flex-1 py-2 text-xs font-medium ${color.text} hover:bg-muted rounded-xl border border-dashed ${color.border} hover:${color.light} transition-all flex items-center justify-center gap-1`}
+                        >
+                          <UserPlus size={13} />
+                          إضافة طالب
+                        </button>
+                        <button
+                          onClick={() => onBulkAdd(folderName)}
+                          className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl border border-dashed border-border transition-all flex items-center justify-center gap-1"
+                        >
+                          <ListPlus size={13} />
+                          إضافة بالجملة
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </SortableContext>
+                );
+              })()}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Page ─────────────────────────────────────────── */
+export default function StudentsPage() {
+  const [, setLocation] = useLocation();
+  const { lang } = useI18n();
+  const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
+
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const [folderOrder, setFolderOrder] = useState<string[]>([]);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeStudent, setActiveStudent] = useState<Student | null>(null);
+
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
+
+  const [renameLoading, setRenameLoading] = useState(false);
+
+  const [showAddClass, setShowAddClass] = useState(false);
+  const [newClassName, setNewClassName] = useState("");
+
+  const [showStudentForm, setShowStudentForm] = useState(false);
+  const [studentFormFolder, setStudentFormFolder] = useState("");
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [form, setForm] = useState({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+  const [saving, setSaving] = useState(false);
+
+  const [showBulkForm, setShowBulkForm] = useState(false);
+  const [bulkFolder, setBulkFolder] = useState("");
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importedCount, setImportedCount] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [resetPasswordStudent, setResetPasswordStudent] = useState<Student | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetShowPassword, setResetShowPassword] = useState(false);
+  const [resetSaving, setResetSaving] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const fetchStudents = useCallback(async () => {
+    try {
+      const [studentsRes, classesRes] = await Promise.all([
+        fetch(`${API_BASE}/api/students`, { credentials: "include", cache: "no-store" }),
+        fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include", cache: "no-store" }),
+      ]);
+      if (studentsRes.status === 401) { setLocation("/login"); return; }
+      const data: Student[] = await studentsRes.json();
+      setStudents(data);
+      const persistedClasses: string[] = classesRes.ok
+        ? ((await classesRes.json()) as Array<{ name: string }>).map((c) => c.name)
+        : [];
+      const fromStudents = data.map((s) => s.gradeLevel).filter((g): g is string => !!g);
+      const namedSet = new Set<string>([...persistedClasses, ...fromStudents]);
+      setFolderOrder((prev) => {
+        const preserved = prev.filter((f) => f === UNGROUPED || namedSet.has(f));
+        const newOnes = [...namedSet].filter((g) => !prev.includes(g));
+        const all = [...preserved, ...newOnes];
+        const named = all.filter((f) => f !== UNGROUPED).sort((a, b) => a.localeCompare(b, "ar"));
+        const hasUngrouped = data.some((s) => !s.gradeLevel);
+        return hasUngrouped ? [...named, UNGROUPED] : named;
+      });
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  }, [setLocation]);
+
+  useEffect(() => { fetchStudents(); }, [fetchStudents]);
+
+  /* ── Derived data ── */
+  const folders = folderOrder.filter((f) =>
+    f === UNGROUPED
+      ? students.some((s) => !s.gradeLevel)
+      : true
+  );
+
+  const studentsInFolder = (folder: string) => {
+    const list = students
+      .filter((s) => (s.gradeLevel || UNGROUPED) === folder)
+      .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    if (!search) return list;
+    return list.filter((s) => s.name.includes(search));
+  };
+
+  /* ── Drag handlers ── */
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+    const sid = String(event.active.id);
+    if (sid.startsWith("student-")) {
+      const id = parseInt(sid.replace("student-", ""));
+      setActiveStudent(students.find((s) => s.id === id) || null);
+    }
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    const activeStr = String(active.id);
+    const overStr = String(over.id);
+    if (!activeStr.startsWith("student-")) return;
+    const studentId = parseInt(activeStr.replace("student-", ""));
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+    let targetFolder: string | null = null;
+    if (overStr.startsWith("folder-")) {
+      targetFolder = overStr.replace("folder-", "");
+    } else if (overStr.startsWith("student-")) {
+      const overId = parseInt(overStr.replace("student-", ""));
+      const overStudent = students.find((s) => s.id === overId);
+      if (overStudent) targetFolder = overStudent.gradeLevel || UNGROUPED;
+    }
+    if (targetFolder && targetFolder !== (student.gradeLevel || UNGROUPED)) {
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === studentId
+            ? { ...s, gradeLevel: targetFolder === UNGROUPED ? null : targetFolder, studentClass: targetFolder === UNGROUPED ? null : targetFolder }
+            : s
+        )
+      );
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setActiveStudent(null);
+    if (!over) return;
+    const activeStr = String(active.id);
+    const overStr = String(over.id);
+    if (activeStr.startsWith("folder-") && overStr.startsWith("folder-")) {
+      const fromFolder = activeStr.replace("folder-", "");
+      const toFolder = overStr.replace("folder-", "");
+      setFolderOrder((prev) => {
+        const fromIdx = prev.indexOf(fromFolder);
+        const toIdx = prev.indexOf(toFolder);
+        return arrayMove(prev, fromIdx, toIdx);
+      });
+      return;
+    }
+    if (activeStr.startsWith("student-")) {
+      const studentId = parseInt(activeStr.replace("student-", ""));
+      const student = students.find((s) => s.id === studentId);
+      if (!student) return;
+      const newFolder = student.gradeLevel || UNGROUPED;
+      try {
+        await fetch(`${API_BASE}/api/students/${studentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            gradeLevel: newFolder === UNGROUPED ? null : newFolder,
+            studentClass: newFolder === UNGROUPED ? null : newFolder,
+          }),
+        });
+      } catch {
+        toast.error("فشل حفظ التغيير");
+        fetchStudents();
+      }
+    }
+  };
+
+  /* ── Actions ── */
+  const handleDeleteAll = async () => {
+    setDeleteAllLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/students/all`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        setStudents([]);
+        setFolderOrder([]);
+        setExpandedFolders(new Set());
+        toast.success("تم حذف جميع الطلاب");
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    } finally {
+      setDeleteAllLoading(false);
+      setShowDeleteAll(false);
+    }
+  };
+
+  const handleDeleteClass = async (folder: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/students/group/${encodeURIComponent(folder)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        if (folder !== UNGROUPED) {
+          await fetch(`${API_BASE}/api/teacher/classes/${encodeURIComponent(folder)}`, {
+            method: "DELETE",
+            credentials: "include",
+          }).catch(() => {});
+        }
+        setStudents((prev) => prev.filter((s) => (s.gradeLevel || UNGROUPED) !== folder));
+        setFolderOrder((prev) => prev.filter((f) => f !== folder));
+        toast.success("تم حذف الصف");
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+  };
+
+  const handleRenameClass = async (oldName: string, newName: string) => {
+    if (folderOrder.includes(newName) && newName !== oldName) {
+      toast.error("يوجد صف بهذا الاسم");
+      return;
+    }
+    setRenameLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/classes/rename`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ oldName, newName }),
+      });
+      if (res.ok) {
+        setStudents((prev) =>
+          prev.map((s) =>
+            (s.gradeLevel || UNGROUPED) === oldName
+              ? { ...s, gradeLevel: newName, studentClass: newName }
+              : s
+          )
+        );
+        setFolderOrder((prev) => prev.map((f) => (f === oldName ? newName : f)));
+        setExpandedFolders((prev) => {
+          const next = new Set(prev);
+          if (next.has(oldName)) { next.delete(oldName); next.add(newName); }
+          return next;
+        });
+        toast.success("تم تغيير اسم الصف");
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    } finally {
+      setRenameLoading(false);
+    }
+  };
+
+  const handleAddClass = async () => {
+    const name = newClassName.trim();
+    if (!name) return;
+    if (folderOrder.includes(name)) { toast.error("الصف موجود بالفعل"); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/classes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) { toast.error("حدث خطأ"); return; }
+      setFolderOrder((prev) => {
+        const named = prev.filter((f) => f !== UNGROUPED);
+        const hasUngrouped = prev.includes(UNGROUPED);
+        const next = [...named, name].sort((a, b) => a.localeCompare(b, "ar"));
+        return hasUngrouped ? [...next, UNGROUPED] : next;
+      });
+      setExpandedFolders((prev) => new Set([...prev, name]));
+      setShowAddClass(false);
+      setNewClassName("");
+      toast.success(`تم إنشاء صف "${name}"`);
+    } catch {
+      toast.error("حدث خطأ");
+    }
+  };
+
+  const handleSaveStudent = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      const url = editingStudent
+        ? `${API_BASE}/api/students/${editingStudent.id}`
+        : `${API_BASE}/api/students`;
+      const method = editingStudent ? "PUT" : "POST";
+      const folder = studentFormFolder === UNGROUPED ? null : studentFormFolder || null;
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: form.name.trim(),
+          gradeLevel: folder,
+          studentClass: folder,
+          parentPhone: form.parentPhone.trim() || null,
+          notes: form.notes.trim() || null,
+          accountUsername: form.accountUsername.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(editingStudent ? "تم التحديث" : "تمت الإضافة");
+        setShowStudentForm(false);
+        setEditingStudent(null);
+        setForm({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+        fetchStudents();
+      } else {
+        toast.error(data.message || "حدث خطأ");
+      }
+    } catch {
+      toast.error("خطأ في الاتصال");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteStudent = async (id: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/students/${id}`, { method: "DELETE", credentials: "include" });
+      if (res.ok) {
+        setStudents((prev) => prev.filter((s) => s.id !== id));
+        toast.success("تم حذف الطالب");
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+  };
+
+  const handleMoveStudent = async (id: number, toFolder: string) => {
+    const folder = toFolder === UNGROUPED ? null : toFolder;
+    try {
+      const res = await fetch(`${API_BASE}/api/students/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ gradeLevel: folder, studentClass: folder }),
+      });
+      if (res.ok) {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === id ? { ...s, gradeLevel: folder, studentClass: folder } : s
+          )
+        );
+        toast.success("تم النقل");
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+  };
+
+  const openResetPassword = (student: Student) => {
+    setResetPasswordStudent(student);
+    setResetNewPassword("");
+    setResetShowPassword(false);
+    setResetDone(false);
+  };
+
+  const generatePassword = () => {
+    const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+    let pw = "";
+    for (let i = 0; i < 8; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    setResetNewPassword(pw);
+    setResetShowPassword(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordStudent || resetNewPassword.length < 4) return;
+    setResetSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/reset-student-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId: resetPasswordStudent.id,
+          newPassword: resetNewPassword,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResetDone(true);
+        toast.success("تم تغيير كلمة المرور بنجاح");
+      } else {
+        toast.error(data.message || "حدث خطأ");
+      }
+    } catch {
+      toast.error("خطأ في الاتصال");
+    } finally {
+      setResetSaving(false);
+    }
+  };
+
+  const handleBulkAdd = async () => {
+    const names = bulkText
+      .split("\n")
+      .map((n) => n.replace(/^\d+[\.\-\)\s]+/, "").trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    setBulkSaving(true);
+    const folder = bulkFolder === UNGROUPED ? null : bulkFolder || null;
+    try {
+      const res = await fetch(`${API_BASE}/api/students/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          students: names.map((name) => ({ name, gradeLevel: folder, studentClass: folder })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(`تمت إضافة ${data.length} طالب`);
+        setBulkText("");
+        setShowBulkForm(false);
+        fetchStudents();
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const openAddStudent = (folder: string) => {
+    setStudentFormFolder(folder);
+    setEditingStudent(null);
+    setForm({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+    setShowStudentForm(true);
+  };
+
+  const openEditStudent = (s: Student) => {
+    setStudentFormFolder(s.gradeLevel || UNGROUPED);
+    setEditingStudent(s);
+    setForm({ name: s.name, parentPhone: s.parentPhone || "", notes: s.notes || "", accountUsername: s.accountUsername || "" });
+    setShowStudentForm(true);
+  };
+
+  const openBulkAdd = (folder: string) => {
+    setBulkFolder(folder);
+    setBulkText("");
+    setImportedCount(null);
+    setShowBulkForm(true);
+  };
+
+  const handleFileImport = async (file: File) => {
+    setImportLoading(true);
+    setImportedCount(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (bulkFolder && bulkFolder !== UNGROUPED) {
+        formData.append("gradeLevel", bulkFolder);
+        formData.append("studentClass", bulkFolder);
+      }
+      const res = await fetch(`${API_BASE}/api/students/import`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.message || "حدث خطأ أثناء الاستيراد");
+        return;
+      }
+      if (data.saved === 0) {
+        toast.warning(data.message || "لم يتم العثور على أسماء في الملف");
+        return;
+      }
+      setImportedCount(data.saved);
+      toast.success(data.message || `تم استيراد ${data.saved} طالب`);
+      setShowBulkForm(false);
+      fetchStudents();
+    } catch {
+      toast.error("حدث خطأ في الاتصال");
+    } finally {
+      setImportLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const totalCount = students.length;
+  const namedFolders = folders.filter((f) => f !== UNGROUPED);
+  const hasUngrouped = folders.includes(UNGROUPED);
+
+  return (
+    <Layout>
+      <div className="min-h-screen bg-background pb-16" dir="rtl">
+        <div className="max-w-2xl mx-auto px-4 py-6">
+
+          {/* Hero */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-emerald-700 text-white p-6 sm:p-7 shadow-lg mb-6"
+          >
+            <div className="absolute -top-16 -end-16 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-amber-300/15 blur-2xl pointer-events-none" />
+            <div className="relative flex items-start gap-3">
+              <button
+                onClick={() => setLocation("/teacher")}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white backdrop-blur-sm"
+              >
+                <BackArrowIcon size={20} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2 mb-2">
+                  <Users size={22} className="text-amber-200" />
+                  إدارة الصفوف والطلاب
+                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  {namedFolders.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-xs font-bold">
+                      <BookOpen size={12} />
+                      {namedFolders.length} صف
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-xs font-bold">
+                    <Users size={12} />
+                    {totalCount} طالب
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Toolbar */}
+          <div className="flex flex-wrap gap-2 mb-5">
+            <div className="flex-1 min-w-0 relative">
+              <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث عن طالب..."
+                className="w-full pr-9 pl-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowAddClass(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
+            >
+              <Plus size={15} />
+              صف جديد
+            </button>
+
+            {totalCount > 0 && (
+              <button
+                onClick={() => setShowDeleteAll(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-950/30 text-red-500 text-sm rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-900"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Loading */}
+          {loading ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+              جارٍ التحميل...
+            </div>
+          ) : namedFolders.length === 0 && !hasUngrouped ? (
+            /* Empty state */
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative overflow-hidden rounded-2xl border border-amber-200/70 dark:border-amber-900/40 bg-gradient-to-br from-amber-50 via-amber-50/60 to-orange-50/40 dark:from-amber-950/30 dark:via-amber-950/15 dark:to-orange-950/10 p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-gradient-to-br from-amber-100 to-amber-200/60 dark:from-amber-900/40 dark:to-amber-950/40 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <BookOpen size={40} className="text-amber-500" />
+              </div>
+              <p className="text-foreground font-black text-lg mb-1">لا توجد صفوف بعد</p>
+              <p className="text-sm text-muted-foreground mb-5">أنشئ صفاً وابدأ بإضافة الطلاب</p>
+              <button
+                onClick={() => setShowAddClass(true)}
+                className="inline-flex items-center gap-1.5 px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors text-sm font-bold shadow-md shadow-primary/20"
+              >
+                <Plus size={16} />
+                إنشاء صف جديد
+              </button>
+            </motion.div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={folders.map((f) => `folder-${f}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {namedFolders.map((folder, idx) => (
+                  <ClassBlock
+                    key={folder}
+                    className={folder}
+                    students={studentsInFolder(folder)}
+                    allFolders={folders}
+                    isExpanded={expandedFolders.has(folder)}
+                    colorIdx={idx}
+                    onToggle={() => {
+                      setExpandedFolders((prev) => {
+                        const next = new Set(prev);
+                        next.has(folder) ? next.delete(folder) : next.add(folder);
+                        return next;
+                      });
+                    }}
+                    onRename={handleRenameClass}
+                    onDeleteClass={handleDeleteClass}
+                    onEditStudent={openEditStudent}
+                    onDeleteStudent={handleDeleteStudent}
+                    onMoveStudent={handleMoveStudent}
+                    onAddStudent={openAddStudent}
+                    onBulkAdd={openBulkAdd}
+                    onResetPassword={openResetPassword}
+                  />
+                ))}
+
+                {/* Ungrouped section at bottom */}
+                {hasUngrouped && (
+                  <ClassBlock
+                    key={UNGROUPED}
+                    className={UNGROUPED}
+                    students={studentsInFolder(UNGROUPED)}
+                    allFolders={folders}
+                    isExpanded={expandedFolders.has(UNGROUPED)}
+                    colorIdx={namedFolders.length}
+                    onToggle={() => {
+                      setExpandedFolders((prev) => {
+                        const next = new Set(prev);
+                        next.has(UNGROUPED) ? next.delete(UNGROUPED) : next.add(UNGROUPED);
+                        return next;
+                      });
+                    }}
+                    onRename={handleRenameClass}
+                    onDeleteClass={handleDeleteClass}
+                    onEditStudent={openEditStudent}
+                    onDeleteStudent={handleDeleteStudent}
+                    onMoveStudent={handleMoveStudent}
+                    onAddStudent={openAddStudent}
+                    onBulkAdd={openBulkAdd}
+                    onResetPassword={openResetPassword}
+                  />
+                )}
+              </SortableContext>
+
+              <DragOverlay>
+                {activeStudent && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-card border-2 border-teal-400 shadow-xl rotate-1">
+                    <GripVertical size={13} className="text-muted-foreground/50" />
+                    <span className="text-sm font-medium">{activeStudent.name}</span>
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
+          )}
+        </div>
+
+        {/* ── Modals ─────────────────────────────────── */}
+
+        {/* Delete All Confirm */}
+        <AnimatePresence>
+          {showDeleteAll && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowDeleteAll(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-full">
+                    <AlertTriangle size={24} className="text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">حذف جميع الطلاب والصفوف</h3>
+                    <p className="text-sm text-muted-foreground">لا يمكن التراجع عن هذا الإجراء</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-5">
+                  هل أنت متأكد من حذف <strong>{totalCount} طالب</strong> وجميع الصفوف؟
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeleteAll}
+                    disabled={deleteAllLoading}
+                    className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+                  >
+                    {deleteAllLoading ? "جارٍ الحذف..." : "حذف الكل"}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteAll(false)}
+                    className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Add Class Modal */}
+        <AnimatePresence>
+          {showAddClass && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowAddClass(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+                    <BookOpen size={16} className="text-primary-foreground" />
+                  </div>
+                  إضافة صف جديد
+                </h3>
+                <input
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddClass()}
+                  autoFocus
+                  className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 mb-4 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  placeholder="مثال: الصف الأول أ"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleAddClass}
+                    disabled={!newClassName.trim()}
+                    className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
+                  >
+                    إنشاء
+                  </button>
+                  <button
+                    onClick={() => setShowAddClass(false)}
+                    className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Student Form Modal */}
+        <AnimatePresence>
+          {showStudentForm && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowStudentForm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="font-bold text-foreground mb-1 flex items-center gap-2">
+                  {editingStudent ? <Pencil size={18} className="text-primary" /> : <UserPlus size={18} className="text-primary" />}
+                  {editingStudent ? "تعديل بيانات الطالب" : "إضافة طالب"}
+                </h3>
+                {studentFormFolder && studentFormFolder !== UNGROUPED && (
+                  <p className="text-xs text-muted-foreground mb-4">الصف: <span className="font-semibold text-foreground">{studentFormFolder}</span></p>
+                )}
+
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">اسم الطالب *</label>
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      autoFocus
+                      className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      placeholder="الاسم الكامل"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                      <Phone size={12} /> رقم ولي الأمر
+                    </label>
+                    <input
+                      value={form.parentPhone}
+                      onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
+                      className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      placeholder="اختياري"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                      <KeyRound size={12} className="text-violet-500" />
+                      اسم المستخدم في المنصة
+                    </label>
+                    <input
+                      value={form.accountUsername}
+                      onChange={(e) => setForm({ ...form, accountUsername: e.target.value.replace(/\s/g, "") })}
+                      dir="ltr"
+                      className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      placeholder="مثال: ahmed_2024 (اختياري)"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      اسم المستخدم الذي يستخدمه الطالب لتسجيل الدخول — يُستخدم لإعادة تعيين كلمة المرور
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">ملاحظات</label>
+                    <textarea
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                      rows={2}
+                      className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                      placeholder="اختياري"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSaveStudent}
+                    disabled={saving || !form.name.trim()}
+                    className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
+                  >
+                    {saving ? "جارٍ الحفظ..." : editingStudent ? "تحديث" : "إضافة"}
+                  </button>
+                  <button
+                    onClick={() => setShowStudentForm(false)}
+                    className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bulk Add Modal */}
+        <AnimatePresence>
+          {showBulkForm && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowBulkForm(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-md w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="font-bold text-foreground mb-1 flex items-center gap-2">
+                  <ListPlus size={18} className="text-primary" />
+                  إضافة أسماء بالجملة
+                </h3>
+                {bulkFolder && bulkFolder !== UNGROUPED && (
+                  <p className="text-xs text-muted-foreground mb-3">الصف: <span className="font-semibold text-foreground">{bulkFolder}</span></p>
+                )}
+
+                {/* File import buttons */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                    <Upload size={12} />
+                    استيراد من ملف
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = ".xlsx,.xls,.csv";
+                          fileInputRef.current.click();
+                        }
+                      }}
+                      disabled={importLoading}
+                      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-dashed border-green-200 bg-green-50 hover:bg-green-100 hover:border-green-400 transition-all text-green-700 disabled:opacity-50"
+                    >
+                      <FileSpreadsheet size={20} />
+                      <span className="text-xs font-medium">Excel / CSV</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = ".docx,.doc";
+                          fileInputRef.current.click();
+                        }
+                      }}
+                      disabled={importLoading}
+                      className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all text-blue-700 disabled:opacity-50"
+                    >
+                      <FileText size={20} />
+                      <span className="text-xs font-medium">Word</span>
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileImport(file);
+                    }}
+                  />
+                  {importLoading && (
+                    <div className="flex items-center justify-center gap-2 mt-3 py-2 bg-muted rounded-xl text-sm text-muted-foreground">
+                      <Loader2 size={16} className="animate-spin text-primary" />
+                      <span>جارٍ قراءة الملف واستخراج الأسماء...</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                    Excel: يأخذ عمود الأسماء تلقائياً · Word: يقرأ السطور
+                  </p>
+                </div>
+
+                <div className="relative mb-3">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-card px-2 text-xs text-muted-foreground">أو أدخل الأسماء يدوياً</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground mb-2">ضع كل اسم في سطر منفصل</p>
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  rows={6}
+                  className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none mb-4"
+                  placeholder={"أحمد محمد\nسارة علي\nمحمد خالد"}
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleBulkAdd}
+                    disabled={bulkSaving || !bulkText.trim()}
+                    className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm shadow-primary/20"
+                  >
+                    {bulkSaving ? "جارٍ الإضافة..." : "إضافة"}
+                  </button>
+                  <button
+                    onClick={() => setShowBulkForm(false)}
+                    className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Reset Password Modal */}
+        <AnimatePresence>
+          {resetPasswordStudent && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setResetPasswordStudent(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                    <KeyRound size={22} className="text-violet-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">إعادة تعيين كلمة المرور</h3>
+                    <p className="text-sm text-muted-foreground">{resetPasswordStudent.name}</p>
+                  </div>
+                  <button
+                    onClick={() => setResetPasswordStudent(null)}
+                    className="mr-auto p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {!resetPasswordStudent?.accountUsername ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                        لم يُربط حساب منصة بعد
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        لإعادة تعيين كلمة المرور، يجب أولاً ربط حساب الطالب على المنصة. افتح بيانات الطالب وأضف اسم المستخدم في حقل "اسم المستخدم في المنصة".
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          const s = resetPasswordStudent!;
+                          setResetPasswordStudent(null);
+                          openEditStudent(s);
+                        }}
+                        className="flex-1 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Pencil size={15} />
+                        تعديل بيانات الطالب
+                      </button>
+                      <button
+                        onClick={() => setResetPasswordStudent(null)}
+                        className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                      >
+                        إغلاق
+                      </button>
+                    </div>
+                  </div>
+                ) : !resetDone ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                        حساب المنصة المرتبط
+                      </label>
+                      <div
+                        className="w-full border border-border bg-muted/50 text-foreground rounded-xl px-3 py-2.5 text-sm flex items-center gap-2"
+                        dir="ltr"
+                      >
+                        <span className="flex-1 font-mono">{resetPasswordStudent.accountUsername}</span>
+                        <span className="text-[10px] text-violet-500 font-semibold bg-violet-50 dark:bg-violet-900/20 px-1.5 py-0.5 rounded-md">مرتبط</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        لتغيير الحساب المرتبط، عدّل بيانات الطالب
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
+                        كلمة المرور الجديدة
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={resetShowPassword ? "text" : "password"}
+                          value={resetNewPassword}
+                          onChange={(e) => setResetNewPassword(e.target.value)}
+                          placeholder="4 أحرف على الأقل"
+                          dir="ltr"
+                          className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 pr-20 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        />
+                        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setResetShowPassword((v) => !v)}
+                            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {resetShowPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={generatePassword}
+                            title="توليد كلمة مرور"
+                            className="p-1 text-violet-500 hover:text-violet-700 transition-colors"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 pt-1">
+                      <button
+                        onClick={handleResetPassword}
+                        disabled={resetSaving || resetNewPassword.length < 4}
+                        className="flex-1 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {resetSaving ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <KeyRound size={15} />
+                        )}
+                        تغيير كلمة المرور
+                      </button>
+                      <button
+                        onClick={() => setResetPasswordStudent(null)}
+                        className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+                      <Check size={28} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-foreground mb-1">تم تغيير كلمة المرور</p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        أخبر الطالب بكلمة المرور الجديدة
+                      </p>
+                      <div
+                        className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-mono text-lg font-bold tracking-widest select-all"
+                        style={{ background: "hsl(40 20% 94%)", color: "#1a4731" }}
+                        dir="ltr"
+                      >
+                        {resetShowPassword ? resetNewPassword : "••••••••"}
+                        <button
+                          onClick={() => setResetShowPassword((v) => !v)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {resetShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setResetPasswordStudent(null)}
+                      className="w-full py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                    >
+                      إغلاق
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Layout>
+  );
+}

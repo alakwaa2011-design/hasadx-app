@@ -1,0 +1,58 @@
+modules = ["nodejs-24", "postgresql-16"]
+
+[[artifacts]]
+id = "artifacts/api-server"
+
+[[artifacts]]
+id = "artifacts/mockup-sandbox"
+
+[deployment]
+router = "application"
+deploymentTarget = "autoscale"
+
+[deployment.postBuild]
+args = ["pnpm", "store", "prune"]
+env = { "CI" = "true" }
+
+[workflows]
+runButton = "Project"
+
+[agent]
+stack = "PNPM_WORKSPACE"
+expertMode = true
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 3002
+
+[[ports]]
+localPort = 18313
+externalPort = 80
+
+[[ports]]
+localPort = 18314
+externalPort = 3001
+
+[userenv]
+
+[userenv.production]
+ALLOWED_ORIGINS = "https://hasadx.com,https://www.hasadx.com"
+
+[userenv.shared]
+GOOGLE_CLIENT_ID = "281565681069-37f3c0p8lijijjmj3nie7a2hs3iilm7f.apps.googleusercontent.com"
+VITE_GOOGLE_CLIENT_ID = "281565681069-37f3c0p8lijijjmj3nie7a2hs3iilm7f.apps.googleusercontent.com"

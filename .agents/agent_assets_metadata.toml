@@ -1,0 +1,217 @@
+uploads = []
+
+[[generated]]
+id = "6NV_oJGebvYnToFEkXrKS"
+uri = "file://artifacts/homework-app/public/images/tug-kids-blue-red.png"
+type = "image"
+title = "blue-red-kids-tug-of-war"
+
+[[generated]]
+id = "mbuiTMds3lJgABnYf1gN6"
+uri = "file://artifacts/homework-app/public/images/tug-teams.png"
+type = "image"
+title = "four-kids-tug-of-war-teams"
+
+[[generated]]
+id = "PC3fdhdfBaNuL32rOJNqg"
+uri = "file://artifacts/homework-app/public/images/logo-hasadx-full.png"
+type = "image"
+title = "HasadX Arabic 3D premium logo"
+
+[[generated]]
+id = "__XXWn3_s3nMBOwhX2fiK"
+uri = "file://artifacts/homework-app/public/images/logo-hasadx-icon.png"
+type = "image"
+title = "HasadX clean X icon no wheat"
+
+[[generated]]
+id = "5vRH-nKvXc8MchzH8ia8s"
+uri = "file://artifacts/homework-app/public/images/logo-x-white.png"
+type = "image"
+title = "HasadX X logo white background"
+
+[[generated]]
+id = "eYpmPGxCGDKSd92YW69FM"
+uri = "file://artifacts/homework-app/public/images/preview-full.png"
+type = "image"
+title = "Epic gaming style HASAD X logo"
+
+[[generated]]
+id = "wRvdpWa55p6ktxIbljkBA"
+uri = "file://artifacts/homework-app/public/images/preview-icon.png"
+type = "image"
+title = "Epic gaming X icon"
+
+[[generated]]
+id = "CB0GT9qK0IUOL1F2usfdV"
+uri = "file://artifacts/homework-app/public/images/preview-full-white.png"
+type = "image"
+title = "Epic HASAD X logo white bg"
+
+[[generated]]
+id = "fkHSwT87uBsEhEHAsiyWl"
+uri = "file://artifacts/homework-app/public/images/preview-combined-dark.png"
+type = "image"
+title = "HASAD X with Arabic حصاد dark"
+
+[[generated]]
+id = "qZQYWZ8hHKig7jHJMEYnV"
+uri = "file://artifacts/homework-app/public/images/preview-combined-white.png"
+type = "image"
+title = "HASAD X with Arabic حصاد white"
+
+[[generated]]
+id = "8-k8PK8clp6XrDkqQ95x8"
+uri = "file://artifacts/homework-app/public/images/logo-icon.png"
+type = "image"
+title = "hasadx-green-gold-gradient"
+
+[[generated]]
+id = "7UcmuuuhPb3gn7RHJh8fG"
+uri = "file://artifacts/install-tutorial-video/public/images/texture.png"
+type = "image"
+title = "dark green abstract texture"
+
+[[generated]]
+id = "oOL6BwCXFJ18Yl0uKrDiY"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-atelier-hero.png"
+type = "image"
+title = "Premium SaaS dashboard mockup"
+
+[[generated]]
+id = "EIKhTBD5Bu-LfiJ0RIbZ_"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-atelier-ai.png"
+type = "image"
+title = "AI grading UI illustration"
+
+[[generated]]
+id = "mt7GPwap6qWYPJ0kQfZqz"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-atelier-games.png"
+type = "image"
+title = "Gamified learning abstract illustration"
+
+[[generated]]
+id = "woQ3cq7TS-oySCPZhET-1"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-atelier-stats.png"
+type = "image"
+title = "Stats and growth dashboard widget"
+
+[[generated]]
+id = "7QDeIA9G4KIAAGT6ovf4W"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-hero.png"
+type = "image"
+title = "Hero product devices mockup"
+
+[[generated]]
+id = "rLhsvI08cmkU_0Q2PIJLf"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-game-modes.png"
+type = "image"
+title = "Gamified UI mockup"
+
+[[generated]]
+id = "pFKSr3saXSIq6R41eEvC9"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-ai-tutor.png"
+type = "image"
+title = "AI chat interface mockup"
+
+[[generated]]
+id = "0Xh3pmd0yw1zrzzpqFJrC"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-dashboard.png"
+type = "image"
+title = "Teacher dashboard analytics"
+
+[[generated]]
+id = "2T3_VvQlLg0SLeGhB4QQF"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-madrasa-hero.png"
+type = "image"
+title = "Teacher and students with tablet"
+
+[[generated]]
+id = "iKMFQnb4mb7BlXEn8JwUw"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-madrasa-games.png"
+type = "image"
+title = "Students playing digital game"
+
+[[generated]]
+id = "1g44W_nKTLWg7A9wg2F1I"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-madrasa-ai-tutor.png"
+type = "image"
+title = "AI assistant helping teacher"
+
+[[generated]]
+id = "puUgKMMQYwaGUmBuvmnkq"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-madrasa-cultural.png"
+type = "image"
+title = "Arabesque open book tablet"
+
+[[generated]]
+id = "tQNV5CNI9r7JLtBTkVZBo"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-v2-hero.png"
+type = "image"
+title = "Hero product composition"
+
+[[generated]]
+id = "eH9eL5o0iphUDUUmzNjdV"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-v2-tug.png"
+type = "image"
+title = "Tug of War game UI"
+
+[[generated]]
+id = "3T3XaJiHyI0mKEvKBpjNq"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-v2-hack.png"
+type = "image"
+title = "Hacker mode game UI"
+
+[[generated]]
+id = "43gXw0yQhXfHrQ06j03d-"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-v2-ai.png"
+type = "image"
+title = "AI assistant panel UI"
+
+[[generated]]
+id = "dukxo-ZE0qR5HL4sFpZOA"
+uri = "file://artifacts/mockup-sandbox/public/images/homepage-bayan-v2-teacher.png"
+type = "image"
+title = "Saudi teacher portrait"
+
+[[outputs]]
+id = "CATFztHdjjfNNL5tmrFul"
+uri = "file://artifacts/homework-app/public/images/logo-hasadx-icon.png"
+type = "image"
+title = "شعار حصاد - أيقونة (خلفية خضراء)"
+
+[[outputs]]
+id = "Q8C_E0MVi5lWJW8IZUGCb"
+uri = "file://artifacts/homework-app/public/images/logo-hasadx-full.png"
+type = "image"
+title = "شعار حصاد - كامل (عريض)"
+
+[[outputs]]
+id = "Am4SdS_fvGFc5XOTdOQMN"
+uri = "file://artifacts/homework-app/public/images/logo-x-white.png"
+type = "image"
+title = "شعار حصاد - X (خلفية بيضاء)"
+
+[[outputs]]
+id = "qpuu5ByeY_q7tPO1JvS2l"
+uri = "file://artifacts/homework-app/public/images/preview-full.png"
+type = "image"
+title = "HASAD X فقط - خلفية داكنة"
+
+[[outputs]]
+id = "5utsbtwPhuvqcFm7Z-uCz"
+uri = "file://artifacts/homework-app/public/images/preview-icon.png"
+type = "image"
+title = "X أيقونة"
+
+[[outputs]]
+id = "0jxCErIfdsiqtBetyqilh"
+uri = "file://artifacts/homework-app/public/images/preview-combined-dark.png"
+type = "image"
+title = "HASAD X + عربي - خلفية داكنة"
+
+[[outputs]]
+id = "MSbR2_tJpzvnAXl1RHj0W"
+uri = "file://artifacts/homework-app/public/images/preview-combined-white.png"
+type = "image"
+title = "HASAD X + عربي - خلفية بيضاء"

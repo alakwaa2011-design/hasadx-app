@@ -1,0 +1,1175 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Homework auto-grading platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Teacher authentication
+  - name: assignments
+    description: Assignment management
+  - name: submissions
+    description: Student submissions
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: registerTeacher
+      tags: [auth]
+      summary: Register a new teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterTeacherBody"
+      responses:
+        "201":
+          description: Teacher registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginTeacher
+      tags: [auth]
+      summary: Teacher login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginTeacherBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentTeacher
+      tags: [auth]
+      summary: Get current teacher info
+      responses:
+        "200":
+          description: Current teacher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/profile:
+    patch:
+      operationId: updateTeacherProfile
+      tags: [auth]
+      summary: Update teacher profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherProfile"
+        "401":
+          description: Not authenticated
+
+  /auth/logout:
+    post:
+      operationId: logoutTeacher
+      tags: [auth]
+      summary: Logout teacher
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/sessions:
+    get:
+      operationId: listTeacherSessions
+      tags: [auth]
+      summary: List active sessions for the current teacher
+      responses:
+        "200":
+          description: Active sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeacherSession"
+        "401":
+          description: Not authenticated
+    delete:
+      operationId: revokeOtherTeacherSessions
+      tags: [auth]
+      summary: Revoke all sessions for the current teacher except the current one
+      responses:
+        "200":
+          description: Sessions revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeSessionsResponse"
+        "401":
+          description: Not authenticated
+
+  /auth/sessions/{sid}:
+    delete:
+      operationId: revokeTeacherSession
+      tags: [auth]
+      summary: Revoke a specific session for the current teacher
+      parameters:
+        - name: sid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session revoked (also returns whether it was the current session)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeSessionResponse"
+        "401":
+          description: Not authenticated
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/teachers:
+    get:
+      operationId: listAllTeachers
+      tags: [admin]
+      summary: List all registered teachers with stats
+      responses:
+        "200":
+          description: List of teachers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminTeacherSummary"
+        "401":
+          description: Not authenticated
+
+  /assignments:
+    get:
+      operationId: listAssignments
+      tags: [assignments]
+      summary: List all assignments
+      parameters:
+        - name: teacherId
+          in: query
+          schema:
+            type: integer
+        - name: include
+          in: query
+          description: Set to "shared" to include other teachers' admin-approved shared assignments
+          schema:
+            type: string
+            enum: [shared]
+      responses:
+        "200":
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assignment"
+
+    post:
+      operationId: createAssignment
+      tags: [assignments]
+      summary: Create a new assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssignmentBody"
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assignment"
+
+  /assignments/{id}:
+    get:
+      operationId: getAssignment
+      tags: [assignments]
+      summary: Get assignment with questions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssignmentWithQuestions"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      operationId: deleteAssignment
+      tags: [assignments]
+      summary: Delete an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Assignment deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /assignments/{id}/start-exam:
+    post:
+      operationId: startExamSession
+      tags: [submissions]
+      summary: Start an exam session (server-side timing)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartExamBody"
+      responses:
+        "200":
+          description: Exam session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExamSessionResponse"
+
+  /assignments/{id}/submit:
+    post:
+      operationId: submitAssignment
+      tags: [submissions]
+      summary: Submit answers for an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAssignmentBody"
+      responses:
+        "200":
+          description: Submission result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResult"
+
+  /assignments/{id}/submit-image:
+    post:
+      operationId: submitAssignmentImage
+      tags: [submissions]
+      summary: Submit assignment via uploaded image
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitImageBody"
+      responses:
+        "200":
+          description: Submission result from image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResult"
+
+  /assignments/{id}/submissions:
+    get:
+      operationId: listSubmissions
+      tags: [submissions]
+      summary: List submissions for an assignment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Submission"
+
+  /assignments/{id}/export-csv:
+    get:
+      operationId: exportSubmissionsCsv
+      tags: [submissions]
+      summary: Export submissions as CSV
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /submissions/{submissionId}:
+    patch:
+      operationId: updateSubmission
+      tags: [Submissions]
+      summary: Update submission grade (teacher only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSubmissionBody"
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit feedback or suggestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitFeedbackBody"
+      responses:
+        "201":
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    TeacherSession:
+      type: object
+      properties:
+        sid:
+          type: string
+        userAgent:
+          type: string
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSeenAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        isCurrent:
+          type: boolean
+        browser:
+          type: string
+          nullable: true
+        os:
+          type: string
+          nullable: true
+        deviceType:
+          type: string
+          enum: [mobile, tablet, desktop]
+          nullable: true
+        deviceModel:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+      required:
+        - sid
+        - isCurrent
+
+    RevokeSessionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        wasCurrent:
+          type: boolean
+      required:
+        - message
+        - wasCurrent
+
+    RevokeSessionsResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        revoked:
+          type: integer
+      required:
+        - message
+        - revoked
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+
+    SubmitFeedbackBody:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [suggestion, bug, feature]
+        name:
+          type: string
+        email:
+          type: string
+        message:
+          type: string
+      required:
+        - type
+        - name
+        - message
+
+    RegisterTeacherBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          minLength: 6
+      required:
+        - name
+        - password
+
+    LoginTeacherBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+        rememberMe:
+          type: boolean
+      required:
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        teacher:
+          $ref: "#/components/schemas/TeacherProfile"
+      required:
+        - teacher
+
+    TeacherProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        isAdmin:
+          type: boolean
+        isBlocked:
+          type: boolean
+      required:
+        - id
+        - name
+
+    CreateAssignmentBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+        submissionMode:
+          type: string
+          enum: [electronic, paper, both]
+          default: both
+        accessMode:
+          type: string
+          enum: [public, private]
+          default: public
+        accessCode:
+          type: string
+          nullable: true
+        targetClass:
+          type: string
+          nullable: true
+        targetClasses:
+          type: array
+          items:
+            type: string
+          nullable: true
+        showResults:
+          type: boolean
+          default: true
+        modelImageBase64:
+          type: string
+          nullable: true
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        examMode:
+          type: boolean
+          default: false
+        examDurationMinutes:
+          type: integer
+          nullable: true
+        resultsReleaseMode:
+          type: string
+          enum: [immediate, after_deadline, manual]
+          default: immediate
+        aiGradingInstructions:
+          type: string
+          nullable: true
+        isShared:
+          type: boolean
+          default: false
+        categoryId:
+          type: integer
+          nullable: true
+        isAdaptive:
+          type: boolean
+          default: false
+        adaptiveConfig:
+          type: object
+          nullable: true
+          properties:
+            questionsPerSession:
+              type: integer
+              minimum: 1
+              maximum: 50
+            skills:
+              type: array
+              items:
+                type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateQuestionBody"
+      required:
+        - title
+        - questions
+
+    CreateQuestionBody:
+      type: object
+      properties:
+        text:
+          type: string
+        questionType:
+          type: string
+          enum: [mcq, true_false, fill_blank, whiteboard]
+          default: mcq
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        correctAnswer:
+          type: string
+        points:
+          type: number
+          default: 1
+        imageUrl:
+          type: string
+          nullable: true
+        readAloud:
+          type: boolean
+        difficulty:
+          type: integer
+          minimum: 1
+          maximum: 3
+          nullable: true
+        skill:
+          type: string
+          nullable: true
+      required:
+        - text
+
+    Assignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        submissionMode:
+          type: string
+          enum: [electronic, paper, both]
+        accessMode:
+          type: string
+          enum: [public, private]
+        accessCode:
+          type: string
+          nullable: true
+        targetClass:
+          type: string
+          nullable: true
+        targetClasses:
+          type: array
+          items:
+            type: string
+          nullable: true
+        showResults:
+          type: boolean
+        teacherId:
+          type: integer
+        teacherName:
+          type: string
+        questionCount:
+          type: integer
+        submissionCount:
+          type: integer
+        totalPoints:
+          type: number
+        hasModelImage:
+          type: boolean
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        examMode:
+          type: boolean
+        examDurationMinutes:
+          type: integer
+          nullable: true
+        resultsReleaseMode:
+          type: string
+          enum: [immediate, after_deadline, manual]
+        aiGradingInstructions:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        isShared:
+          type: boolean
+        isShareApproved:
+          type: boolean
+        isOwn:
+          type: boolean
+          description: True if this assignment belongs to the authenticated requester. Always present when listing.
+        ownerName:
+          type: string
+          nullable: true
+          description: Display name of the assignment's original teacher.
+      required:
+        - id
+        - title
+        - submissionMode
+        - accessMode
+        - showResults
+        - teacherId
+        - teacherName
+        - questionCount
+        - submissionCount
+        - totalPoints
+        - hasModelImage
+        - createdAt
+
+    AssignmentWithQuestions:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        submissionMode:
+          type: string
+          enum: [electronic, paper, both]
+        accessMode:
+          type: string
+          enum: [public, private]
+        accessCode:
+          type: string
+          nullable: true
+        targetClass:
+          type: string
+          nullable: true
+        targetClasses:
+          type: array
+          items:
+            type: string
+          nullable: true
+        showResults:
+          type: boolean
+        teacherId:
+          type: integer
+        teacherName:
+          type: string
+        totalPoints:
+          type: number
+        hasModelImage:
+          type: boolean
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        examMode:
+          type: boolean
+        examDurationMinutes:
+          type: integer
+          nullable: true
+        resultsReleaseMode:
+          type: string
+          enum: [immediate, after_deadline, manual]
+        aiGradingInstructions:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+      required:
+        - id
+        - title
+        - submissionMode
+        - accessMode
+        - showResults
+        - teacherId
+        - teacherName
+        - totalPoints
+        - hasModelImage
+        - createdAt
+        - questions
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        questionType:
+          type: string
+          enum: [mcq, true_false, fill_blank, whiteboard]
+          default: mcq
+        optionA:
+          type: string
+          nullable: true
+        optionB:
+          type: string
+          nullable: true
+        optionC:
+          type: string
+          nullable: true
+        optionD:
+          type: string
+          nullable: true
+        correctAnswer:
+          type: string
+          nullable: true
+        points:
+          type: number
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - text
+        - points
+
+    SubmitAssignmentBody:
+      type: object
+      properties:
+        studentName:
+          type: string
+        studentClass:
+          type: string
+        deviceFingerprint:
+          type: string
+        accessCode:
+          type: string
+        examSessionId:
+          type: integer
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerBody"
+      required:
+        - studentName
+        - studentClass
+        - deviceFingerprint
+        - answers
+
+    AnswerBody:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        selectedAnswer:
+          type: string
+      required:
+        - questionId
+        - selectedAnswer
+
+    SubmitImageBody:
+      type: object
+      properties:
+        studentName:
+          type: string
+        studentClass:
+          type: string
+        deviceFingerprint:
+          type: string
+        accessCode:
+          type: string
+        imageBase64:
+          type: string
+      required:
+        - studentName
+        - studentClass
+        - deviceFingerprint
+        - imageBase64
+
+    SubmissionResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentName:
+          type: string
+        studentClass:
+          type: string
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: integer
+        score:
+          type: number
+        earnedPoints:
+          type: number
+        totalPoints:
+          type: number
+        showResults:
+          type: boolean
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerResult"
+        aiFeedback:
+          type: string
+          nullable: true
+      required:
+        - id
+        - studentName
+        - studentClass
+        - totalQuestions
+        - correctAnswers
+        - score
+        - earnedPoints
+        - totalPoints
+        - showResults
+        - answers
+
+    AnswerResult:
+      type: object
+      properties:
+        questionId:
+          type: integer
+        questionText:
+          type: string
+        selectedAnswer:
+          type: string
+        correctAnswer:
+          type: string
+          nullable: true
+        isCorrect:
+          type: boolean
+        points:
+          type: number
+        earnedPoints:
+          type: number
+      required:
+        - questionId
+        - questionText
+        - selectedAnswer
+        - isCorrect
+        - points
+        - earnedPoints
+
+    Submission:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentName:
+          type: string
+        studentClass:
+          type: string
+        score:
+          type: number
+        totalQuestions:
+          type: integer
+        correctAnswers:
+          type: integer
+        earnedPoints:
+          type: number
+        totalPoints:
+          type: number
+        teacherAdjustedPoints:
+          type: number
+          nullable: true
+        teacherNote:
+          type: string
+          nullable: true
+        aiFeedback:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - studentName
+        - studentClass
+        - score
+        - totalQuestions
+        - correctAnswers
+        - earnedPoints
+        - totalPoints
+        - submittedAt
+
+    UpdateSubmissionBody:
+      type: object
+      properties:
+        teacherAdjustedPoints:
+          type: number
+          nullable: true
+        teacherNote:
+          type: string
+          nullable: true
+
+    StartExamBody:
+      type: object
+      properties:
+        studentName:
+          type: string
+        studentClass:
+          type: string
+        deviceFingerprint:
+          type: string
+      required:
+        - studentName
+        - studentClass
+        - deviceFingerprint
+
+    ExamSessionResponse:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - sessionId
+        - startedAt
+        - expiresAt
+
+    AdminTeacherSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        assignmentCount:
+          type: integer
+        submissionCount:
+          type: integer
+      required:
+        - id
+        - name
+        - createdAt
+        - assignmentCount
+        - submissionCount

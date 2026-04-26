@@ -1,0 +1,18 @@
+packages:
+  "framer-motion": "For fluid page transitions and interactive element animations"
+  "clsx": "For conditional class merging"
+  "tailwind-merge": "For merging tailwind classes safely"
+  "lucide-react": "For beautiful consistent icons"
+
+images:
+  - path: "artifacts/homework-app/public/images/hero-bg.png"
+    description: "Abstract elegant background with warm teal and gold gradients, subtle geometric shapes, modern professional aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/homework-app/public/images/auth-bg.png"
+    description: "Clean modern abstract pattern in soft teal and cream with gold accents, minimal"
+    aspect_ratio: "3:4"
+
+notes:
+  - Using @workspace/api-client-react for all API interactions as specified.
+  - Assuming image upload expects full base64 data URL (e.g. data:image/jpeg;base64,...).
+  - RTL design implemented natively via CSS direction and logical Tailwind properties.

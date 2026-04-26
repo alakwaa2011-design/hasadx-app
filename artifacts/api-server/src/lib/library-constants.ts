@@ -1,0 +1,1 @@
+export const LIBRARY_PENDING_UPLOAD_TTL_MS = 24 * 60 * 60 * 1000;

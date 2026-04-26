@@ -1,0 +1,122 @@
+import React from "react";
+import "./landing-page.css";
+
+export default function LandingPage() {
+  return (
+    <div className="landing-page" dir="rtl">
+      {/* Header */}
+      <header className="topbar">
+        <div className="topbar-right">
+          <div className="brand">
+            <span className="brand-text">حصاد</span>
+            <div className="brand-logo">X</div>
+          </div>
+        </div>
+
+        <div className="topbar-left">
+          <button className="btn btn-outline">دخول ⟶</button>
+          <button className="btn btn-primary">ابدأ مجاناً ⚡</button>
+          <button className="menu-btn">☰</button>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero-badge">
+          <span className="dot"></span>
+          منصة عربية للتفاعل التعليمي
+        </div>
+
+        <h1 className="hero-title">
+          حوّل لقاءاتك وأنشطتك إلى
+          <br />
+          <span>تجربة تفاعلية</span> لا تُنسى
+        </h1>
+
+        <p className="hero-subtitle">أنشئ، شارك، وتفاعل — في ثوانٍ</p>
+
+        <div className="hero-decor hero-gamepad">🎮</div>
+        <div className="hero-decor hero-trophy">🏆</div>
+      </section>
+
+      {/* Main card */}
+      <section className="join-card">
+        <h2 className="join-title">🎮 ادخل كود المسابقة</h2>
+        <p className="join-subtitle">انضم إلى مسابقة بسرعة وسهولة</p>
+
+        <div className="code-inputs">
+          <input maxLength="1" />
+          <input maxLength="1" />
+          <input maxLength="1" />
+          <input maxLength="1" />
+          <input maxLength="1" />
+          <input maxLength="1" />
+        </div>
+
+        <button className="join-now-btn">انضم الآن ⟶</button>
+
+        <div className="divider">
+          <span>أو</span>
+        </div>
+
+        <div className="auth-buttons">
+          <button className="auth-btn google-btn">المتابعة عبر Google</button>
+          <button className="auth-btn login-btn">تسجيل دخول</button>
+          <button className="auth-btn signup-btn">إنشاء حساب جديد</button>
+        </div>
+      </section>
+
+      {/* Account type */}
+      <section className="account-type-section">
+        <h3 className="section-title">لمن هذه الحساب؟</h3>
+
+        <div className="account-cards">
+          <div className="account-card">
+            <div className="account-icon">🎓</div>
+            <div>
+              <h4>طالب / مشارك</h4>
+              <p>انضم إلى مسابقات وتحديات ممتعة</p>
+            </div>
+          </div>
+
+          <div className="account-card active">
+            <div className="account-icon">🧑‍🏫</div>
+            <div>
+              <h4>معلم / منظم</h4>
+              <p>أنشئ مسابقاتك وأدر صفوفك بسهولة</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="features-section">
+        <div className="feature-card">
+          <div className="feature-icon">👥</div>
+          <h4>تفاعل حي</h4>
+          <p>نتائج فورية وتفاعل مباشر مع الجميع</p>
+        </div>
+
+        <div className="feature-card">
+          <div className="feature-icon">🏆</div>
+          <h4>تعلم ممتع</h4>
+          <p>مسابقات وتحديات تحفّز الجميع</p>
+        </div>
+
+        <div className="feature-card">
+          <div className="feature-icon">📊</div>
+          <h4>تقارير ذكية</h4>
+          <p>تحليلات وتقارير تفصيلية لأداء المشاركين</p>
+        </div>
+
+        <div className="feature-card">
+          <div className="feature-icon">🛡️</div>
+          <h4>آمن وسهل</h4>
+          <p>بيئة آمنة وسهلة الاستخدام لجميع الأعمار</p>
+        </div>
+      </section>
+
+      <div className="more-link">اكتشف المزيد ⌄</div>
+    </div>
+  );
+}

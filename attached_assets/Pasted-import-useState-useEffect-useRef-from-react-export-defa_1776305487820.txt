@@ -1,0 +1,263 @@
+import { useState, useEffect, useRef } from "react";
+
+export default function GameLobby() {
+  const [navMode, setNavMode] = useState<"auto" | "manual">("auto");
+  const [gifts, setGifts] = useState(false);
+  const [hack, setHack] = useState(false);
+  const [voice, setVoice] = useState(true);
+  const [bots, setBots] = useState(4);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [hackText, setHackText] = useState("لعبة الاختراق");
+  const [hackSub, setHackSub] = useState("صناديق وكلمات سرية");
+  const glitchRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const GLITCH = ['#', '@', '!', '%', '&', '*', '0', '1', 'X', '?'];
+
+  function glitchAnimate(target: string) {
+    let i = 0;
+    if (glitchRef.current) clearInterval(glitchRef.current);
+    glitchRef.current = setInterval(() => {
+      const result = target.split("").map((c, idx) =>
+        idx < i ? c : Math.random() > 0.5 ? GLITCH[Math.floor(Math.random() * GLITCH.length)] : c
+      ).join("");
+      setHackText(result);
+      i++;
+      if (i > target.length) {
+        setHackText(target);
+        clearInterval(glitchRef.current!);
+      }
+    }, 40);
+  }
+
+  function toggleHack() {
+    if (!hack) {
+      setHack(true);
+      glitchAnimate("H4CK_M0DE_ON");
+      setHackSub("> SYSTEM BREACH ACTIVATED_");
+    } else {
+      setHack(false);
+      if (glitchRef.current) clearInterval(glitchRef.current);
+      setHackText("لعبة الاختراق");
+      setHackSub("صناديق وكلمات سرية");
+    }
+  }
+
+  useEffect(() => () => { if (glitchRef.current) clearInterval(glitchRef.current); }, []);
+
+  const s = makeStyles(hack);
+
+  return (
+    <div style={s.page}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;800&family=Share+Tech+Mono&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes scan { 0%{top:0} 100%{top:100%} }
+        input[type=range] { accent-color: #5B5EF4; }
+      `}</style>
+
+      {/* ─── Header ─── */}
+      <div style={s.header}>
+        <div style={s.logo}>
+          <div style={s.logoDot}>H</div>
+          <span>حصاد</span>
+        </div>
+        <span style={s.liveTag}>● مباشر</span>
+      </div>
+
+      <div style={s.body}>
+
+        {/* ─── Code Box ─── */}
+        <div style={s.codeBox}>
+          <div style={s.codeRow}>
+            <div style={{ flex: 1 }}>
+              <div style={s.codeLabel}>كود الانضمام للعبة</div>
+              <div style={s.codeNum}>716431</div>
+              <div style={s.codeActions}>
+                <button style={s.codeBtn}
+                  onClick={() => { setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); }}>
+                  {codeCopied ? "✓ تم النسخ" : "نسخ الكود"}
+                </button>
+                <button style={s.codeBtn}
+                  onClick={() => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 1500); }}>
+                  {linkCopied ? "✓ تم!" : "🔗 نسخ الرابط"}
+                </button>
+              </div>
+            </div>
+            <div style={s.qrWrap}>
+              <svg viewBox="0 0 56 56" width="58" height="58">
+                <rect width="56" height="56" fill="white"/>
+                <rect x="3" y="3" width="20" height="20" fill="none" stroke="#1A1F2E" strokeWidth="2"/>
+                <rect x="7" y="7" width="12" height="12" fill="#1A1F2E"/>
+                <rect x="33" y="3" width="20" height="20" fill="none" stroke="#1A1F2E" strokeWidth="2"/>
+                <rect x="37" y="7" width="12" height="12" fill="#1A1F2E"/>
+                <rect x="3" y="33" width="20" height="20" fill="none" stroke="#1A1F2E" strokeWidth="2"/>
+                <rect x="7" y="37" width="12" height="12" fill="#1A1F2E"/>
+                <rect x="33" y="33" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="40" y="33" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="48" y="33" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="33" y="40" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="40" y="48" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="48" y="40" width="5" height="5" fill="#1A1F2E"/>
+                <rect x="48" y="48" width="5" height="5" fill="#1A1F2E"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Mode + Nav ─── */}
+        <div style={s.row2}>
+          <div style={s.miniCard}>
+            <div style={s.mcLabel}>وضع اللعب</div>
+            <div style={s.modeSel}>
+              <span style={{ fontSize: 15 }}>👤</span>
+              <div>
+                <div style={s.modeName}>فردي</div>
+                <div style={s.modeSub}>كل لاعب لوحده</div>
+              </div>
+            </div>
+          </div>
+          <div style={s.miniCard}>
+            <div style={s.mcLabel}>التنقل</div>
+            <div style={s.navBtns}>
+              <button style={{ ...s.navBtn, ...(navMode === "auto" ? s.navBtnOn : {}) }} onClick={() => setNavMode("auto")}>تلقائي</button>
+              <button style={{ ...s.navBtn, ...(navMode === "manual" ? s.navBtnOn : {}) }} onClick={() => setNavMode("manual")}>يدوي</button>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Features ─── */}
+        <div style={s.feats}>
+
+          <div style={s.feat}>
+            <div style={s.featLeft}>
+              <span style={s.featIc}>🎁</span>
+              <div>
+                <div style={s.featName}>الهدايا</div>
+                <div style={s.featSub}>هدية كل 3 إجابات صحيحة</div>
+              </div>
+            </div>
+            <Toggle on={gifts} onToggle={() => setGifts(!gifts)} />
+          </div>
+
+          {/* Hack row */}
+          <div style={s.hackRow}>
+            {hack && <div style={s.scanLine} />}
+            <div style={s.featLeft}>
+              <span style={s.featIc}>{hack ? "💻" : "🔐"}</span>
+              <div>
+                <div style={{ ...s.featName, ...(hack ? s.hackNameStyle : {}) }}>{hackText}</div>
+                <div style={{ ...s.featSub,  ...(hack ? s.hackSubStyle  : {}) }}>{hackSub}</div>
+              </div>
+            </div>
+            <Toggle on={hack} onToggle={toggleHack} hackMode={hack} />
+          </div>
+
+          <div style={s.feat}>
+            <div style={s.featLeft}>
+              <span style={s.featIc}>🔊</span>
+              <div>
+                <div style={s.featName}>قراءة صوتية</div>
+                <div style={s.featSub}>تلاوة الأسئلة للطلاب</div>
+              </div>
+            </div>
+            <Toggle on={voice} onToggle={() => setVoice(!voice)} />
+          </div>
+
+          <div style={{ ...s.feat, borderBottom: "none" }}>
+            <div style={s.featLeft}>
+              <span style={s.featIc}>🤖</span>
+              <div>
+                <div style={s.featName}>لاعبون وهميون</div>
+                <div style={s.featSub}>{bots} لاعبين وهميين</div>
+              </div>
+            </div>
+            <input type="range" min={1} max={10} value={bots} step={1}
+              style={{ width: 70 }} onChange={e => setBots(Number(e.target.value))} />
+          </div>
+
+        </div>
+
+        {/* ─── Players ─── */}
+        <div style={s.playersRow}>
+          <div>
+            <div style={s.plTitle}>👥 اللاعبون المتصلون</div>
+            <div style={s.plSub}>في انتظار الانضمام...</div>
+          </div>
+          <span style={{ fontSize: 22, fontWeight: 800, color: "#DDE1ED" }}>0</span>
+        </div>
+
+        {/* ─── Action Buttons ─── */}
+        <div style={s.btnsRow}>
+          <button style={s.btnCancel}>إلغاء</button>
+          <button style={s.btnStart}>▶ ابدأ اللعبة!</button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ─── Toggle Component ───────────────────────
+function Toggle({ on, onToggle, hackMode = false }: {
+  on: boolean; onToggle: () => void; hackMode?: boolean;
+}) {
+  return (
+    <div onClick={onToggle} style={{
+      width: 36, height: 20, borderRadius: 10, cursor: "pointer",
+      position: "relative", flexShrink: 0, transition: "background .25s",
+      background: hackMode ? "#00FF41" : on ? "#5B5EF4" : "#DDE1ED",
+    }}>
+      <div style={{
+        position: "absolute", top: 2, width: 16, height: 16,
+        background: "#fff", borderRadius: "50%", transition: "right .25s",
+        right: on ? 18 : 2, boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+      }} />
+    </div>
+  );
+}
+
+// ─── Styles ────────────────────────────────
+function makeStyles(hack: boolean) {
+  const border = hack ? "#0D2A0D" : "#F0F2F8";
+  return {
+    page:          { fontFamily: "'Tajawal',sans-serif", direction:"rtl" as const, background:"#F5F6FA", color:"#1A1F2E", borderRadius:20, overflow:"hidden" as const, maxWidth:460, margin:"0 auto" },
+    header:        { background:"#fff", padding:"12px 18px", display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #E8ECF4" },
+    logo:          { display:"flex", alignItems:"center", gap:8, fontSize:16, fontWeight:800 },
+    logoDot:       { width:28, height:28, background:"#5B5EF4", borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:800, color:"#fff" },
+    liveTag:       { fontSize:11, background:"#EDFAF3", color:"#16A34A", border:"1px solid #BBF0D0", padding:"3px 10px", borderRadius:20 },
+    body:          { padding:14 },
+    codeBox:       { background:"#fff", border:"1px solid #E8ECF4", borderRadius:14, padding:"12px 14px", marginBottom:10 },
+    codeRow:       { display:"flex", alignItems:"center", gap:12 },
+    codeLabel:     { fontSize:11, color:"#8892A4", marginBottom:4 },
+    codeNum:       { fontSize:22, fontWeight:800, letterSpacing:4, color:"#5B5EF4" },
+    codeActions:   { display:"flex", gap:6, marginTop:8 },
+    codeBtn:       { flex:1, fontSize:12, background:"#F0F1FF", border:"1px solid #C7C9FA", color:"#5B5EF4", padding:"7px 0", borderRadius:8, cursor:"pointer", fontFamily:"'Tajawal',sans-serif", fontWeight:600 },
+    qrWrap:        { width:72, height:72, background:"#fff", border:"1px solid #E8ECF4", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 },
+    row2:          { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 },
+    miniCard:      { background:"#fff", border:"1px solid #E8ECF4", borderRadius:12, padding:"11px 13px" },
+    mcLabel:       { fontSize:11, color:"#8892A4", marginBottom:7 },
+    modeSel:       { display:"flex", alignItems:"center", gap:8, background:"#F5F6FA", borderRadius:8, padding:"8px 10px" },
+    modeName:      { fontSize:13, fontWeight:600, color:"#1A1F2E" },
+    modeSub:       { fontSize:10, color:"#8892A4", marginTop:1 },
+    navBtns:       { display:"grid", gridTemplateColumns:"1fr 1fr", gap:5 },
+    navBtn:        { padding:7, borderRadius:8, border:"1px solid #E8ECF4", background:"#F5F6FA", color:"#8892A4", fontFamily:"'Tajawal',sans-serif", fontSize:12, fontWeight:600, cursor:"pointer" },
+    navBtnOn:      { borderColor:"#5B5EF4", background:"#F0F1FF", color:"#5B5EF4" },
+    feats:         { background: hack ? "#0A0F0A" : "#fff", border:`1px solid ${hack ? "#00FF41" : "#E8ECF4"}`, borderRadius:12, overflow:"hidden" as const, marginBottom:10, transition:"all .4s" },
+    feat:          { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 13px", borderBottom:`1px solid ${border}` },
+    hackRow:       { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 13px", borderBottom:`1px solid ${border}`, position:"relative" as const, overflow:"hidden" as const, background: hack ? "#0D1A0D" : "transparent", transition:"background .4s" },
+    scanLine:      { position:"absolute" as const, left:0, right:0, height:2, background:"#00FF41", opacity:0.5, animation:"scan 1.5s linear infinite", top:0 },
+    featLeft:      { display:"flex", alignItems:"center", gap:8 },
+    featIc:        { fontSize:15, width:20, textAlign:"center" as const },
+    featName:      { fontSize:13, fontWeight:600, color: hack ? "#E8EDF5" : "#1A1F2E" },
+    featSub:       { fontSize:10, color:"#8892A4", marginTop:1 },
+    hackNameStyle: { color:"#00FF41", fontFamily:"'Share Tech Mono',monospace", fontSize:12 },
+    hackSubStyle:  { color:"#1A6B1A" },
+    playersRow:    { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 13px", background:"#fff", border:"1px solid #E8ECF4", borderRadius:12, marginBottom:10 },
+    plTitle:       { fontSize:13, fontWeight:600 },
+    plSub:         { fontSize:11, color:"#8892A4", marginTop:2 },
+    btnsRow:       { display:"flex", gap:8 },
+    btnCancel:     { flex:1, padding:11, background:"#fff", border:"1px solid #E8ECF4", borderRadius:12, color:"#8892A4", fontFamily:"'Tajawal',sans-serif", fontSize:13, fontWeight:600, cursor:"pointer" },
+    btnStart:      { flex:2, padding:11, background:"#22C55E", border:"none", borderRadius:12, color:"#fff", fontFamily:"'Tajawal',sans-serif", fontSize:15, fontWeight:800, cursor:"pointer" },
+  };
+}

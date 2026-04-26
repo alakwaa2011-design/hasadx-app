@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hasadx — شاشات اللعبة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Almarai:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Cairo', sans-serif; direction: rtl; overflow-x: hidden; }
+
+/* ─── SCREEN SWITCHER ─────────────────────── */
+.screens { position: relative; }
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ─── NAV BAR (switcher) ──────────────────── */
+.dev-bar {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(10,15,10,0.92); backdrop-filter: blur(12px);
+  border-radius: 999px; padding: 6px 8px;
+  display: flex; gap: 4px; z-index: 999;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+.dev-btn {
+  background: rgba(255,255,255,0.08); border: none; border-radius: 999px;
+  padding: 7px 14px; font-family: 'Cairo', sans-serif;
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6);
+  cursor: pointer; transition: all 150ms; white-space: nowrap;
+}
+.dev-btn:hover { background: rgba(255,255,255,0.16); color: white; }
+.dev-btn.active { background: #E8B84B; color: #1A3A28; }
+
+/* ══════════════════════════════════════════════
+   SCREEN 1 — HOST QUESTION VIEW
+══════════════════════════════════════════════ */
+#s1 {
+  background: linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%);
+  min-height: 100vh;
+}
+
+/* Top HUD */
+.hud {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 10px; flex-wrap: wrap; gap: 8px;
+}
+.hud-left { display: flex; align-items: center; gap: 8px; }
+.hud-right { display: flex; align-items: center; gap: 10px; }
+
+.hud-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.1); border-radius: 999px;
+  padding: 5px 12px; font-size: 12px; font-weight: 700;
+  color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.1);
+}
+.hud-chip i { font-size: 14px; }
+.hud-chip.gold { background: rgba(232,184,75,0.2); color: #E8B84B; border-color: rgba(232,184,75,0.3); }
+.hud-chip.red  { background: rgba(232,90,65,0.2);  color: #FF8070; border-color: rgba(232,90,65,0.3); }
+
+.timer-circle {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: linear-gradient(135deg, #E8B84B, #C9960C);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Almarai', sans-serif; font-size: 20px; font-weight: 800;
+  color: #1A3A28; box-shadow: 0 0 20px rgba(232,184,75,0.5);
+}
+
+.q-info { display: flex; align-items: center; gap: 6px; }
+.q-num  { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.5); }
+.q-frac { display: flex; flex-direction: column; align-items: center; line-height: 1; font-size: 11px; font-weight: 800; color: rgba(255,255,255,0.7); }
+
+.code-badge {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 4px 12px;
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.6);
+  direction: ltr;
+}
+.code-badge span { color: #E8B84B; font-family: 'Almarai', sans-serif; font-size: 14px; }
+
+/* Progress bar */
+.progress-wrap { padding: 0 20px; margin-bottom: 16px; }
+.progress-track {
+  height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #E8B84B, #C9960C);
+  box-shadow: 0 0 12px rgba(232,184,75,0.5);
+  transition: width 1s linear;
+}
+
+/* Question card */
+.q-card {
+  margin: 0 20px 20px; padding: 28px 32px;
+  background: rgba(255,255,255,0.06); border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px); text-align: center;
+}
+.q-text { font-size: 22px; font-weight: 800; color: white; line-height: 1.55; margin-bottom: 10px; }
+.q-points {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: #E8B84B; font-size: 13px; font-weight: 700;
+}
+
+/* Answer buttons grid */
+.answers-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; padding: 0 20px 40px;
+  flex: 1;
+}
+.ans-btn {
+  border: none; border-radius: 16px; padding: 0 24px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  cursor: pointer; font-family: 'Cairo', sans-serif;
+  font-size: 17px; font-weight: 800; color: white;
+  transition: all 180ms; min-height: 72px;
+  position: relative; overflow: hidden;
+}
+.ans-btn::before {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(255,255,255,0); transition: background 180ms;
+}
+.ans-btn:hover::before { background: rgba(255,255,255,0.1); }
+.ans-btn:active { transform: scale(0.98); }
+
+.ans-A { background: linear-gradient(135deg, #7A0A0A, #B01414); box-shadow: 0 4px 20px rgba(176,20,20,0.45); }
+.ans-B { background: linear-gradient(135deg, #08386E, #1260A8); box-shadow: 0 4px 20px rgba(18,96,168,0.45); }
+.ans-C { background: linear-gradient(135deg, #B8860B, #DAA520); box-shadow: 0 4px 20px rgba(218,165,32,0.45); }
+.ans-D { background: linear-gradient(135deg, #5A1A8A, #8B35C8); box-shadow: 0 4px 20px rgba(139,53,200,0.45); }
+
+.ans-letter {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 900; flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════
+   SCREEN 2 — PLAYER QUESTION VIEW (fullscreen)
+══════════════════════════════════════════════ */
+#s2 {
+  background: #F0F4F1;
+}
+.player-hud {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: white;
+  border-bottom: 1px solid #E2E8E3;
+}
+.p-score {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 800; color: #1A3A28;
+}
+.p-score i { color: #E8B84B; font-size: 16px; }
+.bonus-pill {
+  background: linear-gradient(135deg, #E8B84B, #C9960C);
+  color: #1A3A28; border-radius: 999px; padding: 4px 14px;
+  font-size: 12px; font-weight: 800;
+  display: flex; align-items: center; gap: 5px;
+  box-shadow: 0 2px 10px rgba(201,150,12,0.4);
+}
+.p-timer-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #6A8A6C; }
+
+.player-progress { height: 5px; background: #E2E8E3; }
+.player-progress-fill { height: 100%; background: linear-gradient(90deg, #E8B84B, #C9960C); transition: width 1s; }
+
+.player-q-wrap {
+  padding: 20px 16px 16px; text-align: center;
+}
+.player-q-text { font-size: 20px; font-weight: 800; color: #1A1A1A; line-height: 1.55; }
+
+.player-answers {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; padding: 8px 12px 48px; flex: 1;
+}
+.p-ans {
+  border: none; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-family: 'Cairo', sans-serif;
+  font-size: 16px; font-weight: 800; color: white;
+  transition: all 180ms; min-height: 120px;
+  padding: 16px; text-align: center;
+  position: relative; overflow: hidden;
+}
+.p-ans::after {
+  content: ''; position: absolute;
+  bottom: 0; left: 0; right: 0; height: 4px;
+  background: rgba(0,0,0,0.2);
+}
+.p-ans:active { transform: scale(0.97); }
+.p-A { background: linear-gradient(160deg, #7A0A0A, #B01414); box-shadow: 0 6px 24px rgba(176,20,20,0.45); }
+.p-B { background: linear-gradient(160deg, #08386E, #1260A8); box-shadow: 0 6px 24px rgba(18,96,168,0.45); }
+.p-C { background: linear-gradient(160deg, #B8860B, #DAA520); box-shadow: 0 6px 24px rgba(218,165,32,0.45); }
+.p-D { background: linear-gradient(160deg, #5A1A8A, #8B35C8); box-shadow: 0 6px 24px rgba(139,53,200,0.45); }
+
+/* ══════════════════════════════════════════════
+   SCREEN 3 — JOIN SCREEN
+══════════════════════════════════════════════ */
+#s3 {
+  background: linear-gradient(160deg, #0D2118 0%, #1A3A28 60%, #0A2010 100%);
+  align-items: center; justify-content: center;
+}
+.join-wrap {
+  width: 100%; max-width: 420px;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  padding: 24px;
+}
+.join-logo-mark {
+  width: 72px; height: 72px; border-radius: 20px;
+  background: rgba(232,184,75,0.15); border: 2px solid rgba(232,184,75,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 32px;
+  box-shadow: 0 0 32px rgba(232,184,75,0.2);
+}
+.join-title { font-family: 'Almarai', sans-serif; font-size: 28px; font-weight: 800; color: white; text-align: center; }
+.join-sub { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: -16px; }
+
+.join-card {
+  background: white; border-radius: 20px; padding: 28px;
+  width: 100%; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+.join-field-label { font-size: 12px; font-weight: 700; color: #7A9A7C; margin-bottom: 4px; }
+.join-input {
+  width: 100%; background: #F0F4F1; border: 1.5px solid #E2E8E3;
+  border-radius: 10px; padding: 12px 16px;
+  font-family: 'Cairo', sans-serif; font-size: 22px;
+  font-weight: 800; color: #1A3A28; outline: none;
+  text-align: center; letter-spacing: 6px; direction: ltr;
+  transition: all 150ms;
+}
+.join-input:focus { border-color: #C9960C; box-shadow: 0 0 0 3px rgba(201,150,12,0.15); }
+.join-input-name {
+  width: 100%; background: #F0F4F1; border: 1.5px solid #E2E8E3;
+  border-radius: 10px; padding: 11px 16px;
+  font-family: 'Cairo', sans-serif; font-size: 15px;
+  font-weight: 600; color: #1A1A1A; outline: none; transition: all 150ms;
+}
+.join-input-name::placeholder { color: #9AB09C; }
+.join-input-name:focus { border-color: #C9960C; box-shadow: 0 0 0 3px rgba(201,150,12,0.15); }
+
+.avatars-label { font-size: 12px; font-weight: 700; color: #7A9A7C; }
+.avatars-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.av {
+  width: 52px; height: 52px; border-radius: 50%; border: 2px solid transparent;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; background: rgba(255,255,255,0.07); transition: all 150ms;
+  overflow: hidden; padding: 2px;
+}
+.av:hover { transform: scale(1.1); }
+.av.selected { border-color: #C9960C; background: rgba(201,150,12,0.15); box-shadow: 0 0 0 3px rgba(201,150,12,0.3); }
+.svg-av svg { display: block; }
+
+.join-cta {
+  width: 100%; background: linear-gradient(135deg, #1A3A28, #2D6A44);
+  color: white; border: none; border-radius: 12px;
+  padding: 14px; font-family: 'Cairo', sans-serif;
+  font-size: 16px; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 200ms; box-shadow: 0 4px 20px rgba(26,58,40,0.4);
+}
+.join-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(26,58,40,0.5); }
+
+/* ══════════════════════════════════════════════
+   SCREEN 5 — FINAL RESULTS
+══════════════════════════════════════════════ */
+#s5 {
+  background: linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0A2010 100%);
+  align-items: center;
+  padding-bottom: 40px;
+}
+
+.results-wrap {
+  width: 100%; max-width: 600px;
+  padding: 24px 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+}
+
+/* Trophy */
+.trophy-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.trophy-icon { font-size: 56px; filter: drop-shadow(0 0 20px rgba(232,184,75,0.6)); }
+.results-title {
+  font-family: 'Almarai', sans-serif;
+  font-size: 32px; font-weight: 800; color: white;
+  display: flex; align-items: center; gap: 8px;
+}
+.results-sub { font-size: 13px; color: rgba(255,255,255,0.45); font-weight: 600; }
+
+/* Podium */
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 10px; width: 100%; }
+
+.podium-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.podium-avatar { font-size: 32px; }
+.podium-name { font-size: 13px; font-weight: 700; color: white; }
+.podium-score { font-family: 'Almarai', sans-serif; font-size: 18px; font-weight: 800; }
+
+.podium-block {
+  width: 100%; border-radius: 12px 12px 0 0;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 10px 6px;
+}
+.podium-rank { font-size: 11px; font-weight: 800; }
+
+/* 1st */
+.pod-1 { width: 130px; }
+.pod-1 .podium-score { color: #E8B84B; }
+.pod-1 .podium-block { height: 100px; background: linear-gradient(180deg, rgba(232,184,75,0.3), rgba(232,184,75,0.1)); border: 1px solid rgba(232,184,75,0.4); box-shadow: 0 0 24px rgba(232,184,75,0.2); }
+.pod-1 .podium-rank { color: #E8B84B; }
+.pod-1 .medal { font-size: 22px; }
+
+/* 2nd */
+.pod-2 { width: 110px; }
+.pod-2 .podium-score { color: #C0C8CC; }
+.pod-2 .podium-block { height: 72px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
+.pod-2 .podium-rank { color: rgba(255,255,255,0.6); }
+.pod-2 .medal { font-size: 18px; }
+
+/* 3rd */
+.pod-3 { width: 100px; }
+.pod-3 .podium-score { color: #C97A40; }
+.pod-3 .podium-block { height: 54px; background: rgba(201,122,64,0.15); border: 1px solid rgba(201,122,64,0.3); }
+.pod-3 .podium-rank { color: #C97A40; }
+.pod-3 .medal { font-size: 16px; }
+
+/* All players list */
+.all-players-card {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.all-players-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.5);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.player-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 18px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background 150ms;
+}
+.player-row:last-child { border-bottom: none; }
+.player-row:hover { background: rgba(255,255,255,0.04); }
+.pr-rank { font-size: 13px; font-weight: 800; width: 22px; text-align: center; flex-shrink: 0; }
+.pr-av   { font-size: 20px; }
+.pr-name { flex: 1; font-size: 14px; font-weight: 700; color: white; }
+.pr-medal { font-size: 16px; }
+.pr-score { font-family: 'Almarai', sans-serif; font-size: 15px; font-weight: 800; }
+
+/* Action buttons */
+.result-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+.btn-save {
+  background: linear-gradient(135deg, #E8B84B, #C9960C);
+  color: #1A3A28; border: none; border-radius: 10px;
+  padding: 11px 22px; font-family: 'Cairo', sans-serif;
+  font-size: 14px; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  box-shadow: 0 4px 16px rgba(232,184,75,0.4);
+  transition: all 180ms;
+}
+.btn-save:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+.btn-replay {
+  background: linear-gradient(135deg, #1A4A30, #2D7A4A);
+  color: white; border: none; border-radius: 10px;
+  padding: 11px 22px; font-family: 'Cairo', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  box-shadow: 0 4px 16px rgba(26,74,48,0.4);
+  transition: all 180ms;
+}
+.btn-replay:hover { transform: translateY(-1px); }
+
+.btn-home {
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px; padding: 11px 22px;
+  font-family: 'Cairo', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
+  transition: all 180ms;
+}
+.btn-home:hover { background: rgba(255,255,255,0.14); color: white; }
+
+/* confetti particles */
+@keyframes fall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: fixed; width: 8px; height: 8px;
+  border-radius: 2px; top: -10px;
+  animation: fall linear infinite;
+  pointer-events: none; z-index: 0;
+}
+
+/* ══════════════════════════════════════════════
+   SCREEN 4 — LEADERBOARD (redesigned)
+══════════════════════════════════════════════ */
+#s4 {
+  background: linear-gradient(170deg, #0A0A18 0%, #12102A 50%, #0A0A18 100%);
+  overflow: hidden;
+}
+
+#s4::before {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,184,75,0.07) 0%, transparent 70%);
+  top: -100px; left: 50%; transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.reveal-banner {
+  background: linear-gradient(135deg, rgba(45,180,90,0.2), rgba(10,20,10,0.6));
+  border-bottom: 1px solid rgba(45,200,100,0.2);
+  padding: 12px 20px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.reveal-icon { font-size: 22px; }
+.reveal-text { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); }
+.reveal-answer {
+  background: rgba(45,200,100,0.15); border: 1px solid rgba(45,200,100,0.35);
+  border-radius: 8px; padding: 3px 14px;
+  font-size: 14px; font-weight: 800; color: #5DE89A;
+}
+
+.round-strip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px;
+}
+.round-label { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); display: flex; align-items: center; gap: 6px; }
+.round-label i { font-size: 14px; color: #E8B84B; }
+.next-q-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(232,184,75,0.15); border: 1px solid rgba(232,184,75,0.3);
+  border-radius: 999px; padding: 4px 14px;
+  font-size: 12px; font-weight: 700; color: #E8B84B;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.blink { animation: blink 1.2s infinite; }
+
+.lb2-body {
+  padding: 0 14px 60px;
+  display: flex; flex-direction: column; gap: 6px;
+  flex: 1;
+}
+
+/* Each player row */
+.lb2-row {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: 12px; padding: 10px 14px;
+  position: relative; overflow: hidden;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.lb2-row > * { position: relative; z-index: 1; }
+
+/* Score bar fill */
+.lb2-row::before {
+  content: ''; position: absolute;
+  top: 0; right: 0; bottom: 0;
+  border-radius: 11px; z-index: 0;
+}
+
+/* Row accent colors per rank */
+.lb2-row.rank-1 { border-color: rgba(255,208,0,0.5);  background: rgba(255,208,0,0.09); }
+.lb2-row.rank-2 { border-color: rgba(100,180,255,0.4); background: rgba(100,180,255,0.07); }
+.lb2-row.rank-3 { border-color: rgba(255,100,80,0.4);  background: rgba(255,100,80,0.07); }
+.lb2-row.rank-4 { border-color: rgba(180,80,255,0.4);  background: rgba(180,80,255,0.07); }
+.lb2-row.rank-5 { border-color: rgba(0,210,140,0.4);   background: rgba(0,210,140,0.07); }
+.lb2-row.rank-6 { border-color: rgba(255,160,30,0.4);  background: rgba(255,160,30,0.07); }
+.lb2-row.rank-7 { border-color: rgba(255,80,160,0.4);  background: rgba(255,80,160,0.07); }
+.lb2-row.rank-8 { border-color: rgba(80,220,255,0.4);  background: rgba(80,220,255,0.07); }
+.lb2-row.rank-9 { border-color: rgba(160,220,0,0.4);   background: rgba(160,220,0,0.07); }
+.lb2-row.rank-10{ border-color: rgba(255,180,200,0.4); background: rgba(255,180,200,0.07); }
+
+/* Rank number colors */
+.lb2-rank-1  { color: #FFD000 !important; }
+.lb2-rank-2  { color: #64B4FF !important; }
+.lb2-rank-3  { color: #FF6450 !important; }
+.lb2-rank-4  { color: #B450FF !important; }
+.lb2-rank-5  { color: #00D28C !important; }
+.lb2-rank-6  { color: #FFA01E !important; }
+.lb2-rank-7  { color: #FF50A0 !important; }
+.lb2-rank-8  { color: #50DCFF !important; }
+.lb2-rank-9  { color: #A0DC00 !important; }
+.lb2-rank-10 { color: #FFB4C8 !important; }
+
+/* Bar colors per rank */
+.lb2-row.rank-1  .lb2-bar-fill { background: linear-gradient(90deg,#B8900A,#FFD000); box-shadow:0 0 8px rgba(255,208,0,0.5); }
+.lb2-row.rank-2  .lb2-bar-fill { background: linear-gradient(90deg,#1A6AB0,#64B4FF); }
+.lb2-row.rank-3  .lb2-bar-fill { background: linear-gradient(90deg,#B02010,#FF6450); }
+.lb2-row.rank-4  .lb2-bar-fill { background: linear-gradient(90deg,#7A10C8,#B450FF); }
+.lb2-row.rank-5  .lb2-bar-fill { background: linear-gradient(90deg,#008A5E,#00D28C); }
+.lb2-row.rank-6  .lb2-bar-fill { background: linear-gradient(90deg,#B05A00,#FFA01E); }
+.lb2-row.rank-7  .lb2-bar-fill { background: linear-gradient(90deg,#A81060,#FF50A0); }
+.lb2-row.rank-8  .lb2-bar-fill { background: linear-gradient(90deg,#0888B0,#50DCFF); }
+.lb2-row.rank-9  .lb2-bar-fill { background: linear-gradient(90deg,#608800,#A0DC00); }
+.lb2-row.rank-10 .lb2-bar-fill { background: linear-gradient(90deg,#B0507A,#FFB4C8); }
+
+.lb2-row.you { border-color: rgba(232,184,75,0.5); background: rgba(232,184,75,0.1); }
+.lb2-row.you .lb2-bar-fill { background: linear-gradient(90deg,#9A6A00,#E8B84B); }
+
+.lb2-rank-wrap { width: 30px; text-align: center; flex-shrink: 0; }
+.lb2-rank { font-size: 14px; font-weight: 900; }
+.lb2-rank.g { color: #FFD000; }
+.lb2-rank.s { color: rgba(255,255,255,0.7); }
+.lb2-rank.b { color: rgba(255,255,255,0.7); }
+.lb2-rank.n { color: rgba(255,255,255,0.4); font-size: 12px; }
+
+.lb2-av {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+  border: 2px solid transparent;
+}
+.lb2-row.r1 .lb2-av { border-color: rgba(255,208,0,0.6); box-shadow: 0 0 14px rgba(255,208,0,0.35); }
+.lb2-row.r2 .lb2-av { border-color: rgba(255,255,255,0.15); }
+.lb2-row.r3 .lb2-av { border-color: rgba(255,255,255,0.15); }
+
+.lb2-name { font-size: 14px; font-weight: 700; color: white; flex: 1; }
+.lb2-row.you .lb2-name { color: #E8B84B; }
+
+/* progress bar inline */
+.lb2-bar-wrap { flex: 2; height: 7px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; }
+.lb2-bar-fill { height: 100%; border-radius: 999px; background: rgba(255,255,255,0.4); }
+.lb2-row.r1 .lb2-bar-fill { background: linear-gradient(90deg,#B8900A,#FFD000); box-shadow: 0 0 8px rgba(255,208,0,0.5); }
+.lb2-row.you .lb2-bar-fill { background: linear-gradient(90deg,#9A6A00,#E8B84B); }
+
+.lb2-delta {
+  font-size: 11px; font-weight: 800; border-radius: 999px;
+  padding: 2px 8px; flex-shrink: 0;
+}
+.delta-up   { background: rgba(45,200,100,0.15); color: #5DE89A; }
+.delta-same { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.35); }
+
+.lb2-gain { font-size: 12px; font-weight: 700; color: #5DE89A; flex-shrink: 0; min-width: 36px; text-align: center; }
+.lb2-gain.zero { color: rgba(255,255,255,0.2); }
+
+.lb2-score {
+  font-family: 'Almarai', sans-serif;
+  font-size: 16px; font-weight: 800; color: white;
+  min-width: 38px; text-align: left; flex-shrink: 0; direction: ltr;
+}
+.lb2-row.r1 .lb2-score { color: #FFD000; }
+.lb2-row.r2 .lb2-score { color: rgba(255,255,255,0.9); }
+.lb2-row.r3 .lb2-score { color: rgba(255,255,255,0.9); }
+.lb2-row.you .lb2-score { color: #E8B84B; }
+
+.lb2-sep {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.2);
+  text-align: center; padding: 2px 0; letter-spacing: 0.05em;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SCREEN 1 — HOST VIEW ═══════════════ -->
+<div class="screen active" id="s1">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-left">
+      <div class="timer-circle">15</div>
+      <div class="hud-chip"><i class="ph ph-pause-circle"></i> إيقاف مؤقت</div>
+      <div class="hud-chip red"><i class="ph ph-microphone"></i> قراءة صوتية</div>
+    </div>
+    <div class="hud-right">
+      <div class="code-badge">كود اللعبة: <span>995148</span></div>
+      <div class="hud-chip"><i class="ph ph-users"></i> ١٣ لاعب</div>
+      <div class="q-info">
+        <div class="hud-chip gold">السؤال ٢ من ٨</div>
+        <div class="hud-chip"><i class="ph ph-check-circle"></i> ٣ أجابوا</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-track">
+      <div class="progress-fill" style="width:25%"></div>
+    </div>
+  </div>
+
+  <!-- Question -->
+  <div class="q-card">
+    <div class="q-text">( إنما يخشى الله من عباده العلماء ) أين الفاعل؟</div>
+    <div class="q-points"><i class="ph ph-lightning"></i> ١ نقطة</div>
+  </div>
+
+  <!-- Answers -->
+  <div class="answers-grid">
+    <div class="ans-btn ans-A"><div class="ans-letter">أ</div> العلماء</div>
+    <div class="ans-btn ans-B"><div class="ans-letter">ب</div> عباده</div>
+    <div class="ans-btn ans-C"><div class="ans-letter">ج</div> يخشى</div>
+    <div class="ans-btn ans-D"><div class="ans-letter">د</div> الله</div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN 2 — PLAYER VIEW ═══════════════ -->
+<div class="screen" id="s2">
+  <!-- Player HUD -->
+  <div class="player-hud">
+    <div class="p-score"><i class="ph ph-star-four"></i> ١٢٤٠ نقطة</div>
+    <div class="bonus-pill"><i class="ph ph-lightning"></i> نقاط مضاعفة! ×٢</div>
+    <div class="p-timer-wrap"><i class="ph ph-timer"></i> <span style="font-family:'Almarai';font-size:16px;font-weight:800;color:#C9960C">9</span></div>
+  </div>
+  <div class="player-progress">
+    <div class="player-progress-fill" style="width:25%"></div>
+  </div>
+
+  <!-- Question -->
+  <div class="player-q-wrap">
+    <div style="font-size:11px;font-weight:700;color:#8A9E8C;margin-bottom:8px">١٣ / ٨</div>
+    <div class="player-q-text">في الجملة: «حضَرَ المعلمونَ مبكِّرًا» ما علامة رفع الفاعل؟</div>
+  </div>
+
+  <!-- Player Answers -->
+  <div class="player-answers">
+    <div class="p-ans p-A">الواو لأنه جمع مذكر سالم</div>
+    <div class="p-ans p-B">الفتحة</div>
+    <div class="p-ans p-C">الألف</div>
+    <div class="p-ans p-D">الضمة الظاهرة</div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN 3 — JOIN ═══════════════ -->
+<div class="screen" id="s3">
+  <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px">
+    <div style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px"><i class="ph ph-sun" style="font-size:15px"></i></div>
+    <div style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:700">حصاد<span style="color:#E8B84B">x</span></div>
+  </div>
+  <div style="position:absolute;top:14px;right:20px;display:flex;align-items:center;gap:8px">
+    <div style="background:rgba(255,255,255,0.1);border-radius:999px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.6);font-weight:700">EN</div>
+  </div>
+
+  <div class="join-wrap">
+    <div class="join-logo-mark">🌾</div>
+    <div class="join-title">انضم للعبة</div>
+    <div class="join-sub">أدخل رمز اللعبة للمشاركة</div>
+
+    <div class="join-card">
+      <div>
+        <div class="join-field-label">رمز اللعبة (٦ أرقام)</div>
+        <input class="join-input" type="text" value="9 9 5 1 4 8" maxlength="6" placeholder="● ● ● ● ● ●">
+      </div>
+      <div>
+        <div class="join-field-label">اسمك</div>
+        <input class="join-input-name" type="text" placeholder="أدخل اسمك هنا...">
+      </div>
+      <div>
+        <div class="avatars-label">اختر شخصيتك</div>
+        <div class="avatars-grid" id="svgAvatarGrid" style="gap:10px; flex-wrap:wrap; display:flex; justify-content:center;">
+
+          <!-- رجل بشماغ -->
+          <div class="av svg-av selected" onclick="pickAv(this)" title="شماغ أحمر">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#1A3A28"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#F5F5F5"/>
+              <rect x="39" y="52" width="12" height="12" rx="2" fill="#C8805A"/>
+              <circle cx="45" cy="42" r="16" fill="#C8805A"/>
+              <path d="M29 38 Q30 20 45 18 Q60 20 61 38 Q55 28 45 28 Q35 28 29 38Z" fill="#CC1A1A"/>
+              <path d="M61 38 Q64 48 62 60 L67 65 Q70 60 68 48 Q67 38 61 38Z" fill="#AA1010"/>
+              <ellipse cx="45" cy="26" rx="17" ry="6" fill="#111"/>
+              <ellipse cx="45" cy="22" rx="14" ry="4" fill="#222"/>
+              <circle cx="39" cy="42" r="2.5" fill="#1A0A00"/>
+              <circle cx="51" cy="42" r="2.5" fill="#1A0A00"/>
+              <path d="M40 49 Q45 53 50 49" stroke="#8A4020" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- رجل بغترة -->
+          <div class="av svg-av" onclick="pickAv(this)" title="غترة بيضاء">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#2D3A4A"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#F8F8F8"/>
+              <rect x="39" y="52" width="12" height="12" rx="2" fill="#BA7040"/>
+              <circle cx="45" cy="42" r="16" fill="#BA7040"/>
+              <path d="M29 38 Q30 20 45 18 Q60 20 61 38 Q55 28 45 28 Q35 28 29 38Z" fill="#EFEFEF"/>
+              <path d="M29 38 Q26 50 28 62 L24 68 Q21 62 23 50 Q22 38 29 38Z" fill="#E0E0E0"/>
+              <ellipse cx="45" cy="26" rx="17" ry="6" fill="#1A1A1A"/>
+              <ellipse cx="45" cy="22" rx="14" ry="4" fill="#2A2A2A"/>
+              <circle cx="39" cy="42" r="2.5" fill="#1A0A00"/>
+              <circle cx="51" cy="42" r="2.5" fill="#1A0A00"/>
+              <path d="M40 49 Q45 53 50 49" stroke="#7A3810" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- شاب -->
+          <div class="av svg-av" onclick="pickAv(this)" title="شاب">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#2A1A3A"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#4A2A8A"/>
+              <path d="M34 56 Q34 64 45 66 Q56 64 56 56 L58 68 Q45 72 32 68Z" fill="#3A1A7A"/>
+              <rect x="40" y="52" width="10" height="10" rx="2" fill="#C07040"/>
+              <circle cx="45" cy="41" r="16" fill="#C07040"/>
+              <path d="M29 37 Q30 22 45 20 Q60 22 61 37 Q57 28 45 28 Q33 28 29 37Z" fill="#1A0800"/>
+              <ellipse cx="45" cy="24" rx="16" ry="7" fill="#1A0800"/>
+              <circle cx="39" cy="41" r="2.5" fill="#1A0800"/>
+              <circle cx="51" cy="41" r="2.5" fill="#1A0800"/>
+              <path d="M40 48 Q45 52 50 48" stroke="#7A3810" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- رياضي -->
+          <div class="av svg-av" onclick="pickAv(this)" title="رياضي">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#0A2A1A"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#CC2020"/>
+              <path d="M34 56 L32 78 Q38 74 45 75 Q52 74 58 78 L56 56 L45 62Z" fill="#AA1010"/>
+              <rect x="40" y="52" width="10" height="10" rx="2" fill="#B87040"/>
+              <circle cx="45" cy="41" r="16" fill="#B87040"/>
+              <ellipse cx="45" cy="28" rx="16" ry="7" fill="#0A0500"/>
+              <path d="M29 37 Q30 24 45 22 Q60 24 61 37" fill="#0A0500"/>
+              <circle cx="39" cy="41" r="2.5" fill="#0A0500"/>
+              <circle cx="51" cy="41" r="2.5" fill="#0A0500"/>
+              <path d="M40 48 Q45 52 50 48" stroke="#6A3010" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- معلم -->
+          <div class="av svg-av" onclick="pickAv(this)" title="معلم">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#1A2A3A"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#EEEEEE"/>
+              <path d="M39 56 L37 78 Q41 76 45 77 Q49 76 53 78 L51 56 L45 62Z" fill="#DDDDDD"/>
+              <path d="M42 56 L45 70 L48 56 L45 59Z" fill="#CC2020"/>
+              <rect x="40" y="52" width="10" height="10" rx="2" fill="#BA7840"/>
+              <circle cx="45" cy="41" r="16" fill="#BA7840"/>
+              <ellipse cx="45" cy="27" rx="16" ry="7" fill="#555"/>
+              <path d="M29 37 Q30 24 45 22 Q60 24 61 37" fill="#555"/>
+              <rect x="33" y="38" width="11" height="8" rx="3" fill="none" stroke="#222" stroke-width="2"/>
+              <rect x="46" y="38" width="11" height="8" rx="3" fill="none" stroke="#222" stroke-width="2"/>
+              <line x1="44" y1="42" x2="46" y2="42" stroke="#222" stroke-width="2"/>
+              <circle cx="38" cy="42" r="2" fill="#1A0800"/>
+              <circle cx="51" cy="42" r="2" fill="#1A0800"/>
+              <path d="M40 49 Q45 53 50 49" stroke="#6A3010" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- بنت وردي -->
+          <div class="av svg-av" onclick="pickAv(this)" title="حجاب وردي">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#3A1020"/>
+              <ellipse cx="45" cy="78" rx="28" ry="22" fill="#E0408A"/>
+              <path d="M22 40 Q22 16 45 14 Q68 16 68 40 Q62 30 45 28 Q28 30 22 40Z" fill="#D03070"/>
+              <path d="M22 40 Q18 55 20 70 L22 90 L68 90 L70 70 Q72 55 68 40 Q62 55 45 58 Q28 55 22 40Z" fill="#D03070"/>
+              <ellipse cx="45" cy="40" rx="16" ry="17" fill="#C8885A"/>
+              <circle cx="39" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="51" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="40" cy="37" r="1" fill="white" opacity="0.7"/>
+              <circle cx="52" cy="37" r="1" fill="white" opacity="0.7"/>
+              <path d="M36 35 Q39 32 42 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M48 35 Q51 32 54 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="33" cy="43" rx="4" ry="2.5" fill="#FF8090" opacity="0.35"/>
+              <ellipse cx="57" cy="43" rx="4" ry="2.5" fill="#FF8090" opacity="0.35"/>
+              <path d="M40 48 Q45 53 50 48" stroke="#7A3020" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- بنت أخضر -->
+          <div class="av svg-av" onclick="pickAv(this)" title="حجاب أخضر">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#0A1A10"/>
+              <ellipse cx="45" cy="78" rx="28" ry="22" fill="#1A7A40"/>
+              <path d="M22 40 Q22 16 45 14 Q68 16 68 40 Q62 30 45 28 Q28 30 22 40Z" fill="#156030"/>
+              <path d="M22 40 Q18 55 20 70 L22 90 L68 90 L70 70 Q72 55 68 40 Q62 55 45 58 Q28 55 22 40Z" fill="#156030"/>
+              <ellipse cx="45" cy="40" rx="16" ry="17" fill="#C87850"/>
+              <circle cx="39" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="51" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="40" cy="37" r="1" fill="white" opacity="0.7"/>
+              <circle cx="52" cy="37" r="1" fill="white" opacity="0.7"/>
+              <path d="M36 35 Q39 32 42 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M48 35 Q51 32 54 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="33" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <ellipse cx="57" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <path d="M40 48 Q45 53 50 48" stroke="#6A2810" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- بنت أزرق -->
+          <div class="av svg-av" onclick="pickAv(this)" title="حجاب أزرق">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#0A1030"/>
+              <ellipse cx="45" cy="78" rx="28" ry="22" fill="#2850C8"/>
+              <path d="M22 40 Q22 16 45 14 Q68 16 68 40 Q62 30 45 28 Q28 30 22 40Z" fill="#1A3A9A"/>
+              <path d="M22 40 Q18 55 20 70 L22 90 L68 90 L70 70 Q72 55 68 40 Q62 55 45 58 Q28 55 22 40Z" fill="#1A3A9A"/>
+              <ellipse cx="45" cy="40" rx="16" ry="17" fill="#C88A60"/>
+              <circle cx="39" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="51" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="40" cy="37" r="1" fill="white" opacity="0.7"/>
+              <circle cx="52" cy="37" r="1" fill="white" opacity="0.7"/>
+              <path d="M36 35 Q39 32 42 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M48 35 Q51 32 54 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="33" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <ellipse cx="57" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <path d="M40 48 Q45 53 50 48" stroke="#6A2810" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- بنت ذهبي -->
+          <div class="av svg-av" onclick="pickAv(this)" title="حجاب ذهبي">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#1A1000"/>
+              <ellipse cx="45" cy="78" rx="28" ry="22" fill="#C9960C"/>
+              <path d="M22 40 Q22 16 45 14 Q68 16 68 40 Q62 30 45 28 Q28 30 22 40Z" fill="#A87808"/>
+              <path d="M22 40 Q18 55 20 70 L22 90 L68 90 L70 70 Q72 55 68 40 Q62 55 45 58 Q28 55 22 40Z" fill="#A87808"/>
+              <ellipse cx="45" cy="40" rx="16" ry="17" fill="#C07838"/>
+              <circle cx="39" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="51" cy="38" r="3" fill="#1A0800"/>
+              <circle cx="40" cy="37" r="1" fill="white" opacity="0.7"/>
+              <circle cx="52" cy="37" r="1" fill="white" opacity="0.7"/>
+              <path d="M36 35 Q39 32 42 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M48 35 Q51 32 54 35" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="33" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <ellipse cx="57" cy="43" rx="4" ry="2.5" fill="#FF8080" opacity="0.3"/>
+              <path d="M40 48 Q45 53 50 48" stroke="#5A2208" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- طفل شماغ -->
+          <div class="av svg-av" onclick="pickAv(this)" title="طفل شماغ">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#1A0808"/>
+              <ellipse cx="45" cy="78" rx="24" ry="20" fill="#F5F5F5"/>
+              <rect x="40" y="55" width="10" height="10" rx="2" fill="#D4906A"/>
+              <circle cx="45" cy="42" r="18" fill="#D4906A"/>
+              <path d="M27 38 Q28 18 45 16 Q62 18 63 38 Q57 26 45 26 Q33 26 27 38Z" fill="#CC1010"/>
+              <path d="M63 38 Q67 50 65 62 L70 68 Q74 62 72 50 Q70 38 63 38Z" fill="#AA0808"/>
+              <ellipse cx="45" cy="24" rx="19" ry="7" fill="#111"/>
+              <circle cx="38" cy="42" r="3.5" fill="#1A0800"/>
+              <circle cx="52" cy="42" r="3.5" fill="#1A0800"/>
+              <circle cx="39" cy="41" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="53" cy="41" r="1.3" fill="white" opacity="0.7"/>
+              <ellipse cx="31" cy="48" rx="5" ry="3" fill="#FF7070" opacity="0.4"/>
+              <ellipse cx="59" cy="48" rx="5" ry="3" fill="#FF7070" opacity="0.4"/>
+              <path d="M38 51 Q45 59 52 51" stroke="#8A3010" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- طفلة ضفائر -->
+          <div class="av svg-av" onclick="pickAv(this)" title="طفلة ضفائر">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#200A20"/>
+              <ellipse cx="45" cy="78" rx="25" ry="20" fill="#E850A0"/>
+              <rect x="40" y="56" width="10" height="10" rx="2" fill="#CC8850"/>
+              <path d="M26 38 Q27 18 45 16 Q63 18 64 38 Q59 26 45 26 Q31 26 26 38Z" fill="#4A1800"/>
+              <ellipse cx="45" cy="23" rx="20" ry="9" fill="#4A1800"/>
+              <path d="M26 38 Q19 52 21 66 Q23 72 25 66 Q25 54 26 38Z" fill="#4A1800"/>
+              <path d="M64 38 Q71 52 69 66 Q67 72 65 66 Q65 54 64 38Z" fill="#4A1800"/>
+              <circle cx="21" cy="64" r="5" fill="#FF50A0"/>
+              <circle cx="69" cy="64" r="5" fill="#FF50A0"/>
+              <circle cx="45" cy="42" r="17" fill="#CC8850"/>
+              <circle cx="38" cy="40" r="3.5" fill="#1A0800"/>
+              <circle cx="52" cy="40" r="3.5" fill="#1A0800"/>
+              <circle cx="39" cy="39" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="53" cy="39" r="1.3" fill="white" opacity="0.7"/>
+              <path d="M35 37 Q38 34 41 37" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M49 37 Q52 34 55 37" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="31" cy="46" rx="5" ry="3" fill="#FF8090" opacity="0.4"/>
+              <ellipse cx="59" cy="46" rx="5" ry="3" fill="#FF8090" opacity="0.4"/>
+              <path d="M38 50 Q45 57 52 50" stroke="#7A2810" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- طفل -->
+          <div class="av svg-av" onclick="pickAv(this)" title="طفل">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#0A1A30"/>
+              <ellipse cx="45" cy="78" rx="24" ry="20" fill="#2050B0"/>
+              <path d="M35 58 L33 78 Q39 74 45 75 Q51 74 57 78 L55 58 L45 64Z" fill="#1A3888"/>
+              <rect x="40" y="55" width="10" height="10" rx="2" fill="#C87040"/>
+              <circle cx="45" cy="42" r="18" fill="#C87040"/>
+              <path d="M27 38 Q28 20 45 18 Q62 20 63 38 Q58 28 45 28 Q32 28 27 38Z" fill="#0A0500"/>
+              <ellipse cx="45" cy="24" rx="19" ry="8" fill="#0A0500"/>
+              <circle cx="38" cy="42" r="3.5" fill="#0A0500"/>
+              <circle cx="52" cy="42" r="3.5" fill="#0A0500"/>
+              <circle cx="39" cy="41" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="53" cy="41" r="1.3" fill="white" opacity="0.7"/>
+              <ellipse cx="31" cy="48" rx="5" ry="3" fill="#FF7070" opacity="0.35"/>
+              <ellipse cx="59" cy="48" rx="5" ry="3" fill="#FF7070" opacity="0.35"/>
+              <path d="M38 51 Q45 58 52 51" stroke="#6A2808" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- طفلة حجاب بنفسجي -->
+          <div class="av svg-av" onclick="pickAv(this)" title="طفلة حجاب">
+            <svg width="48" height="48" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="45" fill="#100A1A"/>
+              <ellipse cx="45" cy="78" rx="26" ry="22" fill="#8030C0"/>
+              <path d="M22 42 Q22 16 45 14 Q68 16 68 42 Q62 30 45 28 Q28 30 22 42Z" fill="#601890"/>
+              <path d="M22 42 Q18 56 20 70 L22 90 L68 90 L70 70 Q72 56 68 42 Q62 56 45 59 Q28 56 22 42Z" fill="#601890"/>
+              <ellipse cx="45" cy="42" rx="17" ry="18" fill="#C88860"/>
+              <circle cx="38" cy="40" r="3.5" fill="#1A0800"/>
+              <circle cx="52" cy="40" r="3.5" fill="#1A0800"/>
+              <circle cx="39" cy="39" r="1.3" fill="white" opacity="0.7"/>
+              <circle cx="53" cy="39" r="1.3" fill="white" opacity="0.7"/>
+              <path d="M35 37 Q38 34 41 37" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <path d="M49 37 Q52 34 55 37" stroke="#0A0500" stroke-width="1.5" fill="none"/>
+              <ellipse cx="31" cy="47" rx="5" ry="3" fill="#FF8090" opacity="0.4"/>
+              <ellipse cx="59" cy="47" rx="5" ry="3" fill="#FF8090" opacity="0.4"/>
+              <path d="M38 51 Q45 57 52 51" stroke="#6A2808" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+              <path d="M22 52 Q22 44 32 42 Q42 44 42 52 L44 64 L20 64Z" fill="#9040D0"/>
+            </svg>
+          </div>
+
+        </div>
+      </div>
+      <button class="join-cta"><i class="ph ph-arrow-left"></i> انضم الآن</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN 5 — FINAL RESULTS ═══════════════ -->
+<div class="screen" id="s5">
+  <!-- Confetti -->
+  <div id="confetti-container"></div>
+
+  <div class="results-wrap">
+    <!-- Trophy + Title -->
+    <div class="trophy-wrap">
+      <div class="trophy-icon">🏆</div>
+      <div class="results-title">🎉 النتائج النهائية</div>
+      <div class="results-sub">٤ لاعبين شاركوا في اللعبة</div>
+    </div>
+
+    <!-- Podium -->
+    <div class="podium">
+      <!-- 2nd -->
+      <div class="podium-item pod-2">
+        <div class="podium-avatar">🦊</div>
+        <div class="podium-name">نورة</div>
+        <div class="podium-score">438</div>
+        <div class="podium-block">
+          <div class="medal">🥈</div>
+          <div class="podium-rank">المركز الثاني</div>
+        </div>
+      </div>
+      <!-- 1st -->
+      <div class="podium-item pod-1">
+        <div class="podium-avatar">🐸</div>
+        <div class="podium-name">فاطمة</div>
+        <div class="podium-score">632</div>
+        <div class="podium-block">
+          <div class="medal">🥇</div>
+          <div class="podium-rank">البطل!</div>
+        </div>
+      </div>
+      <!-- 3rd -->
+      <div class="podium-item pod-3">
+        <div class="podium-avatar">🐯</div>
+        <div class="podium-name">عبدالله</div>
+        <div class="podium-score">270</div>
+        <div class="podium-block">
+          <div class="medal">🥉</div>
+          <div class="podium-rank">المركز الثالث</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Players -->
+    <div class="all-players-card">
+      <div class="all-players-header">
+        <span>جميع اللاعبين</span>
+        <span style="background:rgba(255,255,255,0.1);border-radius:999px;padding:2px 10px;font-size:11px">٤</span>
+      </div>
+      <div class="player-row">
+        <div class="pr-rank" style="color:#E8B84B">١</div>
+        <div class="pr-av">🐸</div>
+        <div class="pr-name">فاطمة</div>
+        <div class="pr-medal">👑</div>
+        <div class="pr-score" style="color:#E8B84B">632</div>
+      </div>
+      <div class="player-row">
+        <div class="pr-rank" style="color:#C0C8CC">٢</div>
+        <div class="pr-av">🦊</div>
+        <div class="pr-name">نورة</div>
+        <div class="pr-medal">🥈</div>
+        <div class="pr-score" style="color:#C0C8CC">438</div>
+      </div>
+      <div class="player-row">
+        <div class="pr-rank" style="color:#C97A40">٣</div>
+        <div class="pr-av">🐯</div>
+        <div class="pr-name">عبدالله</div>
+        <div class="pr-medal">🥉</div>
+        <div class="pr-score" style="color:#C97A40">270</div>
+      </div>
+      <div class="player-row" style="background:rgba(232,184,75,0.06);border:none">
+        <div class="pr-rank" style="color:rgba(255,255,255,0.4)">٤</div>
+        <div class="pr-av">😎</div>
+        <div class="pr-name" style="color:#E8B84B">أنت</div>
+        <div class="pr-medal" style="opacity:0.4">—</div>
+        <div class="pr-score" style="color:rgba(255,255,255,0.5)">80</div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="result-actions">
+      <button class="btn-save"><i class="ph ph-floppy-disk"></i> حفظ النتائج</button>
+      <button class="btn-replay"><i class="ph ph-arrow-counter-clockwise"></i> العب مرة أخرى</button>
+      <button class="btn-home"><i class="ph ph-house-simple"></i> العودة للرئيسية</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCREEN 4 — LEADERBOARD ═══════════════ -->
+<div class="screen" id="s4">
+  <!-- Answer reveal -->
+  <div class="reveal-banner">
+    <div class="reveal-icon">✅</div>
+    <div class="reveal-text">الإجابة الصحيحة:</div>
+    <div class="reveal-answer">الضمة | الضمة</div>
+  </div>
+
+  <!-- Round strip -->
+  <div class="round-strip">
+    <div class="round-label"><i class="ph ph-ranking"></i> ترتيب السؤال ٣ من ٨</div>
+    <div class="next-q-pill"><span class="blink">●</span> السؤال التالي خلال 5 ثوانٍ</div>
+  </div>
+
+  <!-- Players -->
+  <div class="lb2-body">
+
+    <div class="lb2-row rank-1">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-1">١</div></div>
+      <div class="lb2-av">🦁</div>
+      <div class="lb2-name">خالد</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:100%"></div></div>
+      <div class="lb2-delta delta-up">↑٢</div>
+      <div class="lb2-gain">+٨٠</div>
+      <div class="lb2-score">378</div>
+    </div>
+
+    <div class="lb2-row rank-2">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-2">٢</div></div>
+      <div class="lb2-av">🐯</div>
+      <div class="lb2-name">سق</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:95%"></div></div>
+      <div class="lb2-delta delta-same">—</div>
+      <div class="lb2-gain">+٦٠</div>
+      <div class="lb2-score">361</div>
+    </div>
+
+    <div class="lb2-row rank-3">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-3">٣</div></div>
+      <div class="lb2-av">🐼</div>
+      <div class="lb2-name">عبدالله</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:94%"></div></div>
+      <div class="lb2-delta delta-up">↑١</div>
+      <div class="lb2-gain">+٧٥</div>
+      <div class="lb2-score">359</div>
+    </div>
+
+    <div class="lb2-row rank-4">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-4">٤</div></div>
+      <div class="lb2-av">👑</div>
+      <div class="lb2-name">محمد</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:76%"></div></div>
+      <div class="lb2-delta delta-same">—</div>
+      <div class="lb2-gain zero">+٠</div>
+      <div class="lb2-score">290</div>
+    </div>
+
+    <div class="lb2-row rank-5">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-5">٥</div></div>
+      <div class="lb2-av">🌟</div>
+      <div class="lb2-name">نورة</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:71%"></div></div>
+      <div class="lb2-delta delta-up">↑١</div>
+      <div class="lb2-gain">+٤٥</div>
+      <div class="lb2-score">269</div>
+    </div>
+
+    <div class="lb2-row rank-6">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-6">٦</div></div>
+      <div class="lb2-av">🎯</div>
+      <div class="lb2-name">سالم</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:44%"></div></div>
+      <div class="lb2-delta delta-same">—</div>
+      <div class="lb2-gain zero">+٠</div>
+      <div class="lb2-score">166</div>
+    </div>
+
+    <div class="lb2-row you rank-7">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-7">٧</div></div>
+      <div class="lb2-av">😎</div>
+      <div class="lb2-name" style="color:#E8B84B">أنت</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:21%"></div></div>
+      <div class="lb2-delta delta-up">↑١</div>
+      <div class="lb2-gain">+٣٠</div>
+      <div class="lb2-score" style="color:#E8B84B">80</div>
+    </div>
+
+    <div class="lb2-row rank-8">
+      <div class="lb2-rank-wrap"><div class="lb2-rank lb2-rank-8">٨</div></div>
+      <div class="lb2-av">🔥</div>
+      <div class="lb2-name">فاطمة</div>
+      <div class="lb2-bar-wrap"><div class="lb2-bar-fill" style="width:2%"></div></div>
+      <div class="lb2-delta delta-same">—</div>
+      <div class="lb2-gain zero">+٠</div>
+      <div class="lb2-score">0</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ DEV SCREEN SWITCHER ═══ -->
+<div class="dev-bar">
+  <button class="dev-btn active" onclick="showScreen('s3', this)">١ الانضمام</button>
+  <button class="dev-btn" onclick="showScreen('s1', this)">٢ عرض المضيف</button>
+  <button class="dev-btn" onclick="showScreen('s2', this)">٣ شاشة اللاعب</button>
+  <button class="dev-btn" onclick="showScreen('s4', this)">٤ الترتيب</button>
+  <button class="dev-btn" onclick="showScreen('s5', this)">٥ النتائج النهائية</button>
+</div>
+
+<script>
+function showScreen(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+// Start on join screen
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s3').classList.add('active');
+});
+
+// Confetti
+const colors = ['#E8B84B','#C9960C','#1A3A28','#2D7A4A','#7A0A0A','#08386E','#B8860B'];
+const container = document.getElementById('confetti-container');
+for (let i = 0; i < 40; i++) {
+  const el = document.createElement('div');
+  el.className = 'confetti-piece';
+  el.style.left = Math.random() * 100 + 'vw';
+  el.style.background = colors[Math.floor(Math.random() * colors.length)];
+  el.style.animationDuration = (Math.random() * 4 + 3) + 's';
+  el.style.animationDelay = (Math.random() * 5) + 's';
+  el.style.width = (Math.random() * 8 + 5) + 'px';
+  el.style.height = (Math.random() * 8 + 5) + 'px';
+  el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+  container.appendChild(el);
+}
+
+// Avatar selection
+function pickAv(el) {
+  document.querySelectorAll('.svg-av').forEach(a => a.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// Timer countdown for screen 1
+let t = 15;
+setInterval(() => {
+  if (document.getElementById('s1').classList.contains('active')) {
+    t = t > 0 ? t - 1 : 15;
+    document.querySelector('.timer-circle').textContent = t;
+    const pct = ((15 - t) / 15) * 100;
+    document.querySelector('.progress-fill').style.width = pct + '%';
+  }
+}, 1000);
+</script>
+</body>
+</html>

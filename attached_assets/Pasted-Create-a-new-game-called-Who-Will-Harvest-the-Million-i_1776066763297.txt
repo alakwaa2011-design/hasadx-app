@@ -1,0 +1,60 @@
+Create a new game called "من سيحصد المليون" (Who Will Harvest the Million) in my React app. 
+
+Create these files:
+- src/pages/game/million-setup.tsx (setup page)
+- src/pages/game/million-play.tsx (game page)
+
+Add routes in App.tsx:
+- /game/million → million-setup.tsx
+- /game/million/play → million-play.tsx
+
+Add it to the games list in home.tsx with icon Trophy, title "من سيحصد المليون", description "تحدَّ نفسك عبر 15 مرحلة متصاعدة — هل تصل للمليون؟"
+
+GAME RULES:
+- 15 questions, multiple choice (A B C D)
+- All numbers displayed in English digits (1, 2, 3... not ١, ٢, ٣)
+- Two safe havens: question 5 and question 10
+- If wrong after safe haven, player keeps safe haven score
+- 3 lifelines (each used once only):
+  * 50/50: removes 2 wrong answers
+  * Phone a friend: shows an AI-generated hint
+  * Ask the audience: shows fake percentage distribution favoring correct answer
+
+PRIZE LADDER (English numbers):
+1: 100 pts
+2: 200 pts
+3: 300 pts
+4: 500 pts
+5: 1,000 pts ← SAFE HAVEN
+6: 2,000 pts
+7: 4,000 pts
+8: 8,000 pts
+9: 16,000 pts
+10: 32,000 pts ← SAFE HAVEN
+11: 64,000 pts
+12: 125,000 pts
+13: 250,000 pts
+14: 500,000 pts
+15: 1,000,000 pts ← WINNER
+
+QUESTION SOURCE:
+- Fetch from existing public assignments API: /api/public/assignments
+- Randomly pick 15 questions from available questions
+- If teacher is logged in, also allow choosing from their own assignments
+
+TWO MODES:
+- Solo: player answers alone, progress saved to leaderboard
+- Class mode: teacher displays on screen, selects a student to answer
+
+UI STYLE:
+- Dark blue background: #0a1628
+- Question box: #0d1f3c with border #1e3a6e
+- Gold color for prizes and current level: #f0c040
+- Correct answer: green border #22c55e, background #052a10
+- Wrong answer: red border #ef4444, background #2a0505
+- Safe haven rows: purple #7c3aed tint
+- Show prize ladder on the right side (desktop) or collapsible (mobile)
+- Show current level indicator strip at the bottom
+- Lifeline buttons are circular, grayed out when used
+
+Match the existing app style, routing, and i18n system (ar/en). Use existing UI components from @/components/ui-elements.
