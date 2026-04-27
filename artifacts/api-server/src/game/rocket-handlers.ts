@@ -24,7 +24,9 @@ export interface RocketPlayer {
   score: number;
   correctCount: number;
   wrongCount: number;
-  currentQuestionIdx: number; // each player progresses independently
+  currentQuestionIdx: number; // current question index (cycles)
+  totalAnswered: number;      // total questions answered (for cycle calc)
+  wrongIndices: number[];     // queue of wrong question indices to retry
   questionStartTime?: number;
   finished: boolean;
   finishedAt?: number;
@@ -47,7 +49,8 @@ interface RocketGame {
   players: Record<string, RocketPlayer>;
   pendingPlayers: Record<string, PendingPlayer>;
   startedAt?: number;
-  duration: number;           // race duration in seconds (timeout)
+  duration: number;           // per-question duration in seconds
+  totalDurationSecs: number;  // total game timer (default 300s = 5 min)
   raceTimer?: ReturnType<typeof setTimeout>;
   finishOrder: string[];      // socketIds in finish order
   targetClass?: string;
@@ -123,21 +126,30 @@ function cleanupGame(pin: string) {
   rocketGames.delete(pin);
 }
 
+// Helper: get next question index for a player (wrong-first priority, then cycle)
+function nextQuestionIdx(game: RocketGame, player: RocketPlayer): number {
+  if (player.wrongIndices.length > 0) {
+    return player.wrongIndices.shift()!;
+  }
+  return player.totalAnswered % game.questions.length;
+}
+
 function endGame(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
   if (game.state === "finished") return;
   game.state = "finished";
   if (game.raceTimer) clearTimeout(game.raceTimer);
 
-  // Mark all unfinished players as finished
-  for (const p of Object.values(game.players)) {
-    if (!p.finished) {
-      p.finished = true;
-      p.finishedAt = Date.now();
-      if (!game.finishOrder.includes(p.socketId)) game.finishOrder.push(p.socketId);
-      const rank = game.finishOrder.indexOf(p.socketId) + 1;
-      p.finishRank = rank;
-    }
-  }
+  // Rank all players by score (fastest ties resolved by correctCount then wrongCount)
+  const sortedPlayers = Object.values(game.players).sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+    return a.wrongCount - b.wrongCount;
+  });
+  sortedPlayers.forEach((p, i) => {
+    p.finished = true;
+    p.finishedAt = Date.now();
+    p.finishRank = i + 1;
+  });
 
   rocketNs.to(`rocket:${game.pin}`).emit("rocket:game-end", {
     players: getPlayerList(game),
@@ -153,6 +165,7 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
   rocketNs.to(`rocket:${game.pin}`).emit("rocket:countdown", {
     total: game.questions.length,
     durationSecs: game.duration,
+    totalDurationSecs: game.totalDurationSecs,
   });
 
   setTimeout(() => {
@@ -160,15 +173,18 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
     game.state = "racing";
     game.startedAt = Date.now();
 
-    // Send first question to all players
+    // Init each player for looping mode
     for (const p of Object.values(game.players)) {
       p.currentQuestionIdx = 0;
+      p.totalAnswered = 0;
+      p.wrongIndices = [];
       p.questionStartTime = Date.now();
     }
 
     const q = game.questions[0];
     rocketNs.to(`rocket:${game.pin}`).emit("rocket:race-start", {
       total: game.questions.length,
+      gameDuration: game.totalDurationSecs,
       question: {
         index: 0,
         text: q.text,
@@ -178,10 +194,9 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
       },
     });
 
-    // Hard timeout for the entire race
-    const totalRaceMs = game.questions.length * 30 * 1000 + 60_000;
+    // Game ends when total timer expires
     if (game.raceTimer) clearTimeout(game.raceTimer);
-    game.raceTimer = setTimeout(() => endGame(rocketNs, game), totalRaceMs);
+    game.raceTimer = setTimeout(() => endGame(rocketNs, game), game.totalDurationSecs * 1000);
   }, 4000);
 }
 
@@ -227,6 +242,7 @@ export function setupRocketSocket(io: Server) {
         data: {
           questions: RocketQuestion[];
           duration?: number;
+          totalDurationSecs?: number;
           targetClass?: string;
           title?: string;
         },
@@ -245,6 +261,7 @@ export function setupRocketSocket(io: Server) {
 
           const pin = generatePin();
           const duration = Math.max(5, Math.min(60, data.duration ?? 20));
+          const totalDurationSecs = Math.max(60, Math.min(3600, data.totalDurationSecs ?? 300));
           const creatorToken = randomBytes(16).toString("hex");
 
           const questions: RocketQuestion[] = data.questions.map((q) => ({
@@ -265,6 +282,7 @@ export function setupRocketSocket(io: Server) {
             players: {},
             pendingPlayers: {},
             duration,
+            totalDurationSecs,
             finishOrder: [],
             targetClass: data.targetClass || undefined,
             teacherId: sessionTeacherId || undefined,
@@ -337,6 +355,8 @@ export function setupRocketSocket(io: Server) {
             correctCount: 0,
             wrongCount: 0,
             currentQuestionIdx: 0,
+            totalAnswered: 0,
+            wrongIndices: [],
             finished: false,
             streak: 0,
           };
@@ -353,6 +373,7 @@ export function setupRocketSocket(io: Server) {
             rocketColor: player.rocketColor,
             totalQuestions: game.questions.length,
             duration: game.duration,
+            totalDurationSecs: game.totalDurationSecs,
             title: game.title,
           });
         } catch (err) {
@@ -417,7 +438,8 @@ export function setupRocketSocket(io: Server) {
           avatar: data.avatar || "🦁",
           rocketColor: pickColor(game),
           altitude: 0, score: 0, correctCount: 0, wrongCount: 0,
-          currentQuestionIdx: 0, finished: false, streak: 0,
+          currentQuestionIdx: 0, totalAnswered: 0, wrongIndices: [],
+          finished: false, streak: 0,
         };
         game.players[socket.id] = player;
         socket.join(`rocket:${game.pin}`);
@@ -428,7 +450,8 @@ export function setupRocketSocket(io: Server) {
 
         cb({
           success: true, pin: game.pin, rocketColor: player.rocketColor,
-          totalQuestions: game.questions.length, duration: game.duration, title: game.title,
+          totalQuestions: game.questions.length, duration: game.duration,
+          totalDurationSecs: game.totalDurationSecs, title: game.title,
         });
       },
     );
@@ -477,6 +500,8 @@ export function setupRocketSocket(io: Server) {
           correct = data.answerIndex === q.correct;
         }
 
+        const currentQIdx = player.currentQuestionIdx;
+
         if (correct) {
           player.correctCount += 1;
           player.streak += 1;
@@ -486,27 +511,18 @@ export function setupRocketSocket(io: Server) {
         } else {
           player.wrongCount += 1;
           player.streak = 0;
+          // Queue this question for retry (avoid duplicates)
+          if (!player.wrongIndices.includes(currentQIdx)) {
+            player.wrongIndices.push(currentQIdx);
+          }
         }
 
-        // Advance to next question (regardless of correct/wrong, but small penalty for wrong: stay in place)
-        player.currentQuestionIdx += 1;
+        // Advance: get next question index (wrong-first priority, then cycle)
+        player.totalAnswered += 1;
+        player.currentQuestionIdx = nextQuestionIdx(game, player);
         player.questionStartTime = Date.now();
 
-        // Check if reached 100% altitude OR exhausted questions
-        const reachedTop = player.altitude >= 100;
-        const noMoreQuestions = player.currentQuestionIdx >= game.questions.length;
-
-        if (reachedTop || noMoreQuestions) {
-          player.finished = true;
-          player.finishedAt = Date.now();
-          player.altitude = 100;
-          if (!game.finishOrder.includes(player.socketId)) {
-            game.finishOrder.push(player.socketId);
-          }
-          player.finishRank = game.finishOrder.indexOf(player.socketId) + 1;
-        }
-
-        // Send personal answer feedback
+        // Send personal answer feedback (never "finished" during race; game ends by timer)
         cb({
           success: true,
           correct,
@@ -515,34 +531,25 @@ export function setupRocketSocket(io: Server) {
           altitude: player.altitude,
           score: player.score,
           streak: player.streak,
-          finished: player.finished,
-          finishRank: player.finishRank,
+          finished: false,
         });
 
-        // Send next question if not finished
-        if (!player.finished) {
-          const nextQ = game.questions[player.currentQuestionIdx];
-          if (nextQ) {
-            socket.emit("rocket:next-question", {
-              index: player.currentQuestionIdx,
-              text: nextQ.text,
-              type: nextQ.type,
-              options: nextQ.options,
-              duration: nextQ.duration,
-            });
-          }
+        // Send next question immediately
+        const nextQ = game.questions[player.currentQuestionIdx];
+        if (nextQ) {
+          socket.emit("rocket:next-question", {
+            index: player.currentQuestionIdx,
+            text: nextQ.text,
+            type: nextQ.type,
+            options: nextQ.options,
+            duration: nextQ.duration,
+          });
         }
 
         // Broadcast leaderboard update to all
         rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
           players: getPlayerList(game),
         });
-
-        // If all players finished, end the game
-        const allFinished = Object.values(game.players).every(p => p.finished);
-        if (allFinished) {
-          endGame(rocketNs, game);
-        }
       },
     );
 

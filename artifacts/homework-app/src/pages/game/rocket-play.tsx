@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2, VolumeX, Loader2, Trophy, CheckCircle2, XCircle, Send } from "lucide-react";
+import { Volume2, VolumeX, Loader2, CheckCircle2, XCircle, Send, Trophy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 
-const GREEN = "#225739";
 const GOLD = "#D9A521";
-const SPACE_BG = "linear-gradient(180deg, #0a0e27 0%, #1a1740 50%, #2d1b4e 100%)";
+const SPACE_BG = "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)";
 
 type QType = "mcq" | "true_false" | "fill_blank";
 
@@ -26,21 +25,60 @@ interface Player {
   rocketColor: string;
   altitude: number;
   score: number;
+  correctCount: number;
+  wrongCount: number;
   finished: boolean;
   finishRank?: number;
   streak: number;
   currentQuestionIdx: number;
 }
 
-// ─── Sound Engine ────────────────────────────────────────────────────────────
+// ─── Arabic encouragement messages ────────────────────────────────────────────
+const CORRECT_AR = [
+  "🔥 عبقري! صاروخك ينطلق!",
+  "⚡ مذهل! الصدارة لك!",
+  "🚀 ارتفعت! استمر!",
+  "💫 ممتاز جداً!",
+  "🌟 رائع! سرعتك لا تُضاهى!",
+  "🎯 دقيق! هكذا تُكسب السباقات!",
+  "🏆 أنت نجم الفضاء!",
+  "⭐ إجابة صحيحة! صعودٌ آخر!",
+];
+const CORRECT_EN = [
+  "🔥 Genius! Rocket launching!",
+  "⚡ Amazing! Take the lead!",
+  "🚀 Altitude gained!",
+  "💫 Excellent!",
+  "🌟 Fantastic speed!",
+  "🎯 Spot on!",
+  "🏆 Space star!",
+  "⭐ Up you go!",
+];
+const WRONG_AR = [
+  "💪 ركّز! السؤال سيعود!",
+  "⚡ لا تستسلم! التالي لك!",
+  "🌙 اقترب أكثر! حاول مجدداً!",
+  "🛸 الخطأ يُعلّم، استعد!",
+];
+const WRONG_EN = [
+  "💪 Focus! Question returns!",
+  "⚡ Don't give up!",
+  "🌙 Almost! Try again!",
+  "🛸 Learn and retry!",
+];
+const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+// ─── Space Sound Engine ───────────────────────────────────────────────────────
 class RocketSoundEngine {
   ctx: AudioContext | null = null;
   muted = false;
-  bgGain: GainNode | null = null;
   bgInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    try { this.ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)(); } catch { /* ignore */ }
+    try {
+      this.ctx = new (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    } catch { /* ignore */ }
     try { this.muted = localStorage.getItem("rocket-music-muted") === "1"; } catch { /* ignore */ }
   }
 
@@ -48,90 +86,116 @@ class RocketSoundEngine {
     this.muted = m;
     try { localStorage.setItem("rocket-music-muted", m ? "1" : "0"); } catch { /* ignore */ }
     if (m) this.stopBackground();
-    else if (this.bgInterval === null) this.startBackground();
+    else this.startBackground();
   }
 
-  private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.15, delay = 0, filterFreq = 4000) {
+  private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12, delay = 0, decay = 0.9) {
     if (!this.ctx || this.muted) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     const filter = this.ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = filterFreq;
+    filter.frequency.value = 3000;
     osc.type = type;
     osc.frequency.value = freq;
     const now = this.ctx.currentTime + delay;
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(vol, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur * decay);
     osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
     osc.start(now); osc.stop(now + dur + 0.05);
   }
 
+  // Deep space ambient: low drones + radio bleeps
   startBackground() {
     if (this.muted || !this.ctx || this.bgInterval !== null) return;
-    // Soft, ambient space loop
     const playLoop = () => {
-      const notes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
-      notes.forEach((f, i) => this.tone(f, 0.55, "sine", 0.06, i * 0.5, 1800));
-      // Bass pulse
-      this.tone(65.41, 0.5, "triangle", 0.08, 0, 800);
-      this.tone(82.41, 0.5, "triangle", 0.08, 1.5, 800);
+      if (!this.ctx || this.muted) return;
+      // Sub-bass drone
+      this.tone(55, 4.0, "sine", 0.05, 0);
+      this.tone(82.4, 4.0, "triangle", 0.04, 0.5);
+      // Radio blips
+      this.tone(1200, 0.05, "square", 0.04, 1.2);
+      this.tone(1400, 0.05, "square", 0.03, 2.4);
+      this.tone(800, 0.08, "square", 0.03, 3.5);
+      // Subtle sweep
+      if (this.ctx) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(400, this.ctx.currentTime + 3.8);
+        gain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 1);
+        gain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 4);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 4);
+      }
     };
     playLoop();
-    this.bgInterval = setInterval(playLoop, 3500);
+    this.bgInterval = setInterval(playLoop, 4500);
   }
 
   stopBackground() {
     if (this.bgInterval) { clearInterval(this.bgInterval); this.bgInterval = null; }
   }
 
+  // Rocket ignition: rumble → whoosh
   playLaunch() {
-    // Whoosh + ascending tone
-    this.tone(220, 0.3, "sawtooth", 0.1, 0, 1200);
-    this.tone(330, 0.3, "sawtooth", 0.08, 0.05, 1500);
-    this.tone(440, 0.4, "sine", 0.12, 0.1, 2000);
-    this.tone(660, 0.5, "sine", 0.1, 0.2, 2500);
+    for (let i = 0; i < 6; i++) {
+      this.tone(60 + i * 15, 0.18, "sawtooth", 0.08, i * 0.05);
+    }
+    this.tone(200, 0.4, "sawtooth", 0.1, 0.1);
+    this.tone(500, 0.6, "sine", 0.1, 0.3);
+    this.tone(1000, 0.5, "sine", 0.08, 0.6);
   }
 
+  // Ascending chime with echo
   playCorrect() {
-    // Cheerful chime
-    this.tone(523.25, 0.1, "sine", 0.18);
-    this.tone(659.25, 0.12, "sine", 0.18, 0.08);
-    this.tone(783.99, 0.18, "sine", 0.2, 0.16);
-    this.tone(1046.50, 0.25, "sine", 0.16, 0.24);
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+    notes.forEach((f, i) => this.tone(f, 0.18, "sine", 0.15, i * 0.07));
+    notes.forEach((f, i) => this.tone(f, 0.25, "sine", 0.07, i * 0.07 + 0.5));
   }
 
+  // Static noise + descending tone
   playWrong() {
-    this.tone(220, 0.18, "triangle", 0.15);
-    this.tone(165, 0.22, "triangle", 0.15, 0.1);
+    this.tone(250, 0.1, "sawtooth", 0.12);
+    this.tone(200, 0.12, "sawtooth", 0.1, 0.05);
+    this.tone(150, 0.15, "triangle", 0.1, 0.1);
   }
 
+  // Rapid ascending sweep = boost
   playBoost() {
-    // Speed boost - whoosh up
-    for (let i = 0; i < 8; i++) {
-      this.tone(440 + i * 80, 0.06, "sine", 0.1, i * 0.04);
+    for (let i = 0; i < 10; i++) {
+      this.tone(300 + i * 100, 0.07, "sine", 0.12, i * 0.035);
+    }
+    // Exhaust burst
+    for (let i = 0; i < 5; i++) {
+      this.tone(80 + i * 20, 0.05, "sawtooth", 0.06, i * 0.02);
     }
   }
 
+  // Victory fanfare
   playWin() {
-    // Victory fanfare
-    const melody = [523.25, 659.25, 783.99, 1046.50, 1318.51];
-    melody.forEach((f, i) => this.tone(f, 0.3, "sine", 0.18, i * 0.12));
-    melody.forEach((f, i) => this.tone(f * 2, 0.4, "triangle", 0.1, i * 0.12 + 0.6));
+    const melody = [523.25, 659.25, 783.99, 659.25, 1046.5, 1318.5];
+    melody.forEach((f, i) => {
+      this.tone(f, 0.35, "sine", 0.18, i * 0.15);
+      this.tone(f * 0.5, 0.35, "triangle", 0.08, i * 0.15);
+    });
   }
 
   playCountdown() {
-    this.tone(880, 0.18, "sine", 0.2);
+    this.tone(880, 0.2, "sine", 0.22);
   }
 
   playGo() {
-    this.tone(523.25, 0.2, "sine", 0.22);
-    this.tone(783.99, 0.3, "sine", 0.22, 0.15);
+    this.tone(523.25, 0.15, "sine", 0.25);
+    this.tone(659.25, 0.2, "sine", 0.25, 0.1);
+    this.tone(1046.5, 0.35, "sine", 0.22, 0.22);
   }
 
   playTick() {
-    this.tone(900, 0.04, "sine", 0.06);
+    this.tone(1200, 0.04, "square", 0.06);
   }
 
   destroy() {
@@ -141,59 +205,34 @@ class RocketSoundEngine {
   }
 }
 
-// ─── Rocket SVG ──────────────────────────────────────────────────────────────
-function RocketIcon({ color, isPlayer, size = 50, boosted = false }: { color: string; isPlayer?: boolean; size?: number; boosted?: boolean }) {
-  return (
-    <svg width={size} height={size * 1.6} viewBox="0 0 60 96" style={{ filter: isPlayer ? "drop-shadow(0 4px 16px rgba(255,255,255,0.5))" : "drop-shadow(0 2px 6px rgba(0,0,0,0.4))" }}>
-      {/* Flame */}
-      <motion.g
-        animate={{ scaleY: boosted ? [1, 1.4, 1] : [1, 1.15, 1] }}
-        transition={{ repeat: Infinity, duration: boosted ? 0.15 : 0.3 }}
-        style={{ originX: "30px", originY: "78px" }}
-      >
-        <path d="M22 78 Q30 96 38 78 Q34 86 30 88 Q26 86 22 78 Z" fill={boosted ? "#ffeb3b" : "#ff6b1a"} opacity="0.95" />
-        <path d="M25 78 Q30 88 35 78 Q32 84 30 85 Q28 84 25 78 Z" fill="#ffd54f" opacity="0.95" />
-      </motion.g>
-      {/* Body */}
-      <path d="M30 4 L42 28 L42 70 Q42 78 30 78 Q18 78 18 70 L18 28 Z" fill={color} />
-      {/* Window */}
-      <circle cx="30" cy="38" r="7" fill="#e0f2fe" stroke="#fff" strokeWidth="2" />
-      <circle cx="30" cy="38" r="4" fill="#0284c7" opacity="0.6" />
-      {/* Fins */}
-      <path d="M18 60 L8 78 L18 76 Z" fill={color} opacity="0.85" />
-      <path d="M42 60 L52 78 L42 76 Z" fill={color} opacity="0.85" />
-      {/* Tip */}
-      <path d="M30 4 L26 14 L34 14 Z" fill="#fff" opacity="0.9" />
-      {/* Highlight stripe */}
-      <rect x="22" y="46" width="16" height="3" fill="#fff" opacity="0.4" />
-      <rect x="22" y="54" width="16" height="2" fill="#fff" opacity="0.3" />
-    </svg>
-  );
-}
-
-// ─── Stars background ──────────────────────────────────────────────────────
-function StarField() {
-  const stars = Array.from({ length: 60 }, (_, i) => ({
+// ─── Confetti ────────────────────────────────────────────────────────────────
+function Confetti() {
+  const pieces = Array.from({ length: 90 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 0.5,
-    delay: Math.random() * 3,
+    color: ["#D9A521", "#ef4444", "#3b82f6", "#22c55e", "#a855f7", "#f97316", "#ec4899", "#06b6d4"][
+      Math.floor(Math.random() * 8)
+    ],
+    delay: Math.random() * 2.5,
+    dur: 2.5 + Math.random() * 2,
+    size: 7 + Math.random() * 8,
+    rotation: Math.random() * 360,
+    shape: Math.random() > 0.5 ? "rect" : "circle",
   }));
   return (
-    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {stars.map(s => (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 200, overflow: "hidden" }}>
+      {pieces.map(p => (
         <motion.div
-          key={s.id}
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ repeat: Infinity, duration: 2 + s.delay, delay: s.delay }}
+          key={p.id}
+          initial={{ y: -30, x: `${p.x}vw`, opacity: 1, rotate: 0, scale: 1 }}
+          animate={{ y: "110vh", opacity: [1, 1, 0.7, 0], rotate: p.rotation + 540, scale: [1, 0.8, 0.6] }}
+          transition={{ duration: p.dur, delay: p.delay, ease: "easeIn" }}
           style={{
             position: "absolute",
-            left: `${s.x}%`, top: `${s.y}%`,
-            width: s.size, height: s.size,
-            borderRadius: "50%",
-            background: "#fff",
-            boxShadow: `0 0 ${s.size * 2}px rgba(255,255,255,0.6)`,
+            width: p.size,
+            height: p.shape === "rect" ? p.size * 0.45 : p.size,
+            background: p.color,
+            borderRadius: p.shape === "circle" ? "50%" : 2,
           }}
         />
       ))}
@@ -201,6 +240,156 @@ function StarField() {
   );
 }
 
+// ─── Boost particles ─────────────────────────────────────────────────────────
+function BoostParticles({ active }: { active: boolean }) {
+  if (!active) return null;
+  const emojis = ["⚡", "🔥", "✨", "💫", "🚀", "⭐"];
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 150, overflow: "hidden" }}>
+      {emojis.map((e, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 1, y: "50vh", x: `${15 + i * 14}vw` }}
+          animate={{ opacity: 0, y: "5vh" }}
+          transition={{ duration: 0.7, delay: i * 0.06, ease: "easeOut" }}
+          style={{ position: "absolute", fontSize: 26 + i * 2 }}
+        >
+          {e}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Enhanced Rocket SVG with continuous motion ───────────────────────────────
+function RocketIcon({
+  color, isPlayer, size = 50, boosted = false,
+}: {
+  color: string; isPlayer?: boolean; size?: number; boosted?: boolean;
+}) {
+  return (
+    <motion.div
+      animate={{ y: boosted ? [-4, 4, -4] : [-3, 3, -3] }}
+      transition={{ repeat: Infinity, duration: boosted ? 0.25 : 0.8, ease: "easeInOut" }}
+    >
+      <svg
+        width={size}
+        height={size * 1.6}
+        viewBox="0 0 60 96"
+        style={{
+          filter: isPlayer
+            ? `drop-shadow(0 0 12px ${color}) drop-shadow(0 4px 20px rgba(255,255,255,0.4))`
+            : `drop-shadow(0 2px 8px ${color}80)`,
+        }}
+      >
+        {/* Exhaust flame */}
+        <motion.g
+          animate={{ scaleY: boosted ? [1, 1.6, 0.8, 1.4, 1] : [1, 1.2, 0.9, 1.15, 1] }}
+          transition={{ repeat: Infinity, duration: boosted ? 0.12 : 0.25 }}
+          style={{ originX: "30px", originY: "78px" }}
+        >
+          <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill={boosted ? "#fff176" : "#ff6b1a"} opacity="0.95" />
+          <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill="#ffd54f" opacity="0.95" />
+          <path d="M26 78 Q30 84 34 78 Q32 82 30 83 Q28 82 26 78 Z" fill="#fff9c4" opacity="0.9" />
+        </motion.g>
+        {/* Body gradient via layered paths */}
+        <defs>
+          <linearGradient id={`rg-${color.replace("#","")}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.7" />
+            <stop offset="40%" stopColor="#fff" stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.9" />
+          </linearGradient>
+        </defs>
+        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={color} />
+        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z"
+          fill={`url(#rg-${color.replace("#","")})`} />
+        {/* Window */}
+        <circle cx="30" cy="40" r="8" fill="#b3e5fc" stroke="#fff" strokeWidth="2.5" opacity="0.95" />
+        <circle cx="30" cy="40" r="5" fill="#0288d1" opacity="0.7" />
+        <circle cx="28" cy="38" r="2" fill="#fff" opacity="0.5" />
+        {/* Fins */}
+        <path d="M16 62 L4 82 L16 78 Z" fill={color} opacity="0.9" />
+        <path d="M44 62 L56 82 L44 78 Z" fill={color} opacity="0.9" />
+        {/* Nose */}
+        <path d="M30 4 L24 16 L36 16 Z" fill="#fff" opacity="0.9" />
+        {/* Stripe accents */}
+        <rect x="20" y="50" width="20" height="3" fill="#fff" opacity="0.35" rx="1" />
+        <rect x="20" y="58" width="20" height="2" fill="#fff" opacity="0.25" rx="1" />
+        {/* Rank badge for player */}
+        {isPlayer && (
+          <circle cx="30" cy="8" r="5" fill={GOLD} opacity="0.9" />
+        )}
+      </svg>
+    </motion.div>
+  );
+}
+
+// ─── Shooting star (decorative) ───────────────────────────────────────────────
+function ShootingStar({ x, y, delay }: { x: number; y: number; delay: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 0, y: 0, scaleX: 0 }}
+      animate={{ opacity: [0, 1, 0], x: -120, y: 60, scaleX: [0, 1, 0.5] }}
+      transition={{ duration: 1.2, delay, repeat: Infinity, repeatDelay: 5 + delay * 2 }}
+      style={{
+        position: "absolute", left: `${x}%`, top: `${y}%`,
+        width: 80, height: 1.5, background: "linear-gradient(90deg, transparent, #fff, #fff9)",
+        borderRadius: 2, pointerEvents: "none",
+      }}
+    />
+  );
+}
+
+// ─── Stars background ──────────────────────────────────────────────────────
+function StarField() {
+  const stars = Array.from({ length: 70 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2.5 + 0.5,
+    delay: Math.random() * 4,
+    twinkle: Math.random() > 0.6,
+  }));
+  const shooters = [
+    { x: 80, y: 10, delay: 3 },
+    { x: 60, y: 5, delay: 8 },
+    { x: 90, y: 20, delay: 15 },
+  ];
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {stars.map(s => (
+        <motion.div
+          key={s.id}
+          animate={s.twinkle ? { opacity: [0.2, 1, 0.2], scale: [1, 1.3, 1] } : { opacity: [0.4, 0.9, 0.4] }}
+          transition={{ repeat: Infinity, duration: 1.5 + s.delay, delay: s.delay * 0.3 }}
+          style={{
+            position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
+            width: s.size, height: s.size, borderRadius: "50%", background: "#fff",
+            boxShadow: s.size > 1.5 ? `0 0 ${s.size * 3}px rgba(255,255,255,0.8)` : undefined,
+          }}
+        />
+      ))}
+      {shooters.map((s, i) => (
+        <ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />
+      ))}
+      {/* Nebula glow layers */}
+      <div style={{
+        position: "absolute", top: "15%", left: "10%",
+        width: 300, height: 200,
+        background: "radial-gradient(ellipse, rgba(80,0,120,0.15) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", top: "50%", right: "5%",
+        width: 250, height: 180,
+        background: "radial-gradient(ellipse, rgba(0,40,120,0.12) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function RocketPlay() {
   const params = useParams<{ pin: string }>();
   const searchStr = useSearch();
@@ -209,10 +398,10 @@ export default function RocketPlay() {
   const queryAvatar = sp.get("avatar") || "🦁";
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
-  const dir = lang === "ar" ? "rtl" : "ltr";
   const ar = lang === "ar";
-
+  const dir = ar ? "rtl" : "ltr";
   const pin = params.pin || "";
+
   const [muted, setMutedState] = useState(() => {
     try { return localStorage.getItem("rocket-music-muted") === "1"; } catch { return false; }
   });
@@ -230,24 +419,47 @@ export default function RocketPlay() {
   const [questionStartTime, setQuestionStartTime] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; correctIndex?: number; correctText?: string } | null>(null);
-  const [finished, setFinished] = useState(false);
-  const [finishRank, setFinishRank] = useState<number | null>(null);
   const [countdownNum, setCountdownNum] = useState(3);
   const [fillAnswer, setFillAnswer] = useState("");
   const [boostFlash, setBoostFlash] = useState(false);
   const [title, setTitle] = useState("");
+  const [encouragement, setEncouragement] = useState<string | null>(null);
+  const [gameTimeLeft, setGameTimeLeft] = useState(0);
+  const [gameTimeMax, setGameTimeMax] = useState(300);
+  const gameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const gameEndTimeRef = useRef<number>(0);
 
-  // Init mute on engine
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
-    soundRef.current?.setMuted(muted);
-  }, [muted]);
-
-  // Cleanup
-  useEffect(() => () => {
-    soundRef.current?.destroy();
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
   }, []);
 
-  // Connect / join
+  useEffect(() => { soundRef.current?.setMuted(muted); }, [muted]);
+  useEffect(() => () => { soundRef.current?.destroy(); }, []);
+
+  // Game timer countdown (client-side)
+  const startGameTimer = useCallback((durationSecs: number) => {
+    const endTime = Date.now() + durationSecs * 1000;
+    gameEndTimeRef.current = endTime;
+    setGameTimeMax(durationSecs);
+    setGameTimeLeft(durationSecs);
+    if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+    gameTimerRef.current = setInterval(() => {
+      const rem = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      setGameTimeLeft(rem);
+      if (rem <= 10 && rem > 0) soundRef.current?.playTick();
+      if (rem === 0) {
+        if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+      }
+    }, 500);
+  }, []);
+
+  useEffect(() => () => { if (gameTimerRef.current) clearInterval(gameTimerRef.current); }, []);
+
+  // Connect & join
   useEffect(() => {
     if (!pin || !queryName) { setLocation(`/game/rocket/join/${pin}`); return; }
     const socket = getRocketSocket();
@@ -255,9 +467,10 @@ export default function RocketPlay() {
     const joinFlow = () => {
       socket.emit("rocket:rejoin", { pin, name: queryName, avatar: queryAvatar }, (res: {
         success?: boolean; error?: string;
-        state?: string; altitude?: number; score?: number; currentQuestionIdx?: number;
+        state?: string; altitude?: number; score?: number;
         totalQuestions?: number; rocketColor?: string; activeQuestion?: Question | null;
         finished?: boolean; finishRank?: number; title?: string;
+        totalDurationSecs?: number;
       }) => {
         if (res.error) { toast.error(res.error); setLocation(`/game/rocket/join/${pin}`); return; }
         if (res.success) {
@@ -266,14 +479,11 @@ export default function RocketPlay() {
           if (res.title) setTitle(res.title);
           setMyAltitude(res.altitude || 0);
           setMyScore(res.score || 0);
-          setFinished(!!res.finished);
-          if (res.finishRank) setFinishRank(res.finishRank);
           if (res.state === "racing" && res.activeQuestion) {
             setCurrentQ(res.activeQuestion);
             setQuestionStartTime(Date.now());
             setPhase("racing");
-          } else if (res.state === "racing" && res.finished) {
-            setPhase("racing");
+            if (res.totalDurationSecs) startGameTimer(res.totalDurationSecs);
           } else if (res.state === "finished") {
             setPhase("finished");
           } else {
@@ -283,12 +493,9 @@ export default function RocketPlay() {
       });
     };
 
-    if (socket.connected) joinFlow();
-    else socket.once("connect", joinFlow);
+    if (socket.connected) joinFlow(); else socket.once("connect", joinFlow);
 
-    socket.on("rocket:players-updated", (data: { players: Player[] }) => {
-      setPlayers(data.players);
-    });
+    socket.on("rocket:players-updated", (data: { players: Player[] }) => setPlayers(data.players));
 
     socket.on("rocket:countdown", () => {
       setPhase("countdown");
@@ -296,13 +503,14 @@ export default function RocketPlay() {
       soundRef.current?.startBackground();
     });
 
-    socket.on("rocket:race-start", (data: { total: number; question: Question }) => {
+    socket.on("rocket:race-start", (data: { total: number; gameDuration?: number; question: Question }) => {
       setPhase("racing");
       setTotalQuestions(data.total);
       setCurrentQ(data.question);
       setQuestionStartTime(Date.now());
       setFeedback(null);
       soundRef.current?.playLaunch();
+      if (data.gameDuration) startGameTimer(data.gameDuration);
     });
 
     socket.on("rocket:next-question", (q: Question) => {
@@ -310,21 +518,24 @@ export default function RocketPlay() {
       setQuestionStartTime(Date.now());
       setFeedback(null);
       setFillAnswer("");
+      setEncouragement(null);
     });
 
-    socket.on("rocket:leaderboard", (data: { players: Player[] }) => {
-      setPlayers(data.players);
-    });
+    socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
 
-    socket.on("rocket:game-end", () => {
+    socket.on("rocket:game-end", (data: { players: Player[] }) => {
       setPhase("finished");
+      if (data.players) setPlayers(data.players);
       soundRef.current?.stopBackground();
+      if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+      setGameTimeLeft(0);
     });
 
     socket.on("rocket:replay", () => {
       setMyAltitude(0); setMyScore(0); setMyStreak(0);
-      setFinished(false); setFinishRank(null);
       setPhase("lobby");
+      if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+      setGameTimeLeft(0);
     });
 
     return () => {
@@ -336,19 +547,15 @@ export default function RocketPlay() {
       socket.off("rocket:game-end");
       socket.off("rocket:replay");
     };
-  }, [pin, queryName, queryAvatar, setLocation]);
+  }, [pin, queryName, queryAvatar, setLocation, startGameTimer]);
 
-  // Countdown ticker
+  // Countdown
   useEffect(() => {
     if (phase !== "countdown") return;
     soundRef.current?.playCountdown();
     const intv = setInterval(() => {
       setCountdownNum(n => {
-        if (n <= 1) {
-          clearInterval(intv);
-          soundRef.current?.playGo();
-          return 0;
-        }
+        if (n <= 1) { clearInterval(intv); soundRef.current?.playGo(); return 0; }
         soundRef.current?.playCountdown();
         return n - 1;
       });
@@ -356,34 +563,29 @@ export default function RocketPlay() {
     return () => clearInterval(intv);
   }, [phase]);
 
-  // Question timer
+  // Per-question timer
   useEffect(() => {
-    if (phase !== "racing" || !currentQ || finished) return;
+    if (phase !== "racing" || !currentQ || feedback) return;
     setTimeLeft(currentQ.duration);
     const startMs = Date.now();
     const intv = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startMs) / 1000);
       const remaining = Math.max(0, currentQ.duration - elapsed);
       setTimeLeft(remaining);
-      if (remaining <= 5 && remaining > 0) soundRef.current?.playTick();
-      if (remaining === 0) {
-        clearInterval(intv);
-        // Auto-submit -1 (wrong)
-        submitAnswer(-1);
-      }
+      if (remaining <= 3 && remaining > 0) soundRef.current?.playTick();
+      if (remaining === 0) { clearInterval(intv); submitAnswer(-1); }
     }, 1000);
     return () => clearInterval(intv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQ?.index, phase, finished]);
+  }, [currentQ?.index, phase]);
 
   const submitAnswer = useCallback((answerIndex: number, answerText?: string) => {
-    if (!currentQ || finished) return;
+    if (!currentQ) return;
     const socket = getRocketSocket();
     socket.emit("rocket:answer", { pin, answerIndex, answerText }, (res: {
       success?: boolean; error?: string;
       correct?: boolean; correctIndex?: number; correctText?: string;
       altitude?: number; score?: number; streak?: number;
-      finished?: boolean; finishRank?: number;
     }) => {
       if (res.error) { toast.error(res.error); return; }
       if (res.success) {
@@ -394,47 +596,43 @@ export default function RocketPlay() {
         if (typeof res.streak === "number") setMyStreak(res.streak);
         if (res.correct) {
           soundRef.current?.playCorrect();
-          if (typeof res.altitude === "number" && res.altitude - prevAlt > 12) {
-            // Big jump = boost
+          setEncouragement(ar ? pick(CORRECT_AR) : pick(CORRECT_EN));
+          if (typeof res.altitude === "number" && res.altitude - prevAlt > 10) {
             setBoostFlash(true);
-            setTimeout(() => setBoostFlash(false), 800);
-            setTimeout(() => soundRef.current?.playBoost(), 200);
+            setTimeout(() => setBoostFlash(false), 900);
+            setTimeout(() => soundRef.current?.playBoost(), 150);
           }
         } else {
           soundRef.current?.playWrong();
-        }
-        if (res.finished) {
-          setFinished(true);
-          if (res.finishRank) setFinishRank(res.finishRank);
-          if (res.finishRank === 1) soundRef.current?.playWin();
+          setEncouragement(ar ? pick(WRONG_AR) : pick(WRONG_EN));
         }
       }
     });
-  }, [currentQ, finished, myAltitude, pin]);
+  }, [currentQ, myAltitude, pin, ar]);
 
-  const handleMCQAnswer = (idx: number) => {
-    if (feedback) return;
-    submitAnswer(idx);
-  };
-
+  const handleMCQAnswer = (idx: number) => { if (feedback) return; submitAnswer(idx); };
   const handleFillSubmit = () => {
     if (!fillAnswer.trim() || feedback) return;
     submitAnswer(-1, fillAnswer.trim());
   };
 
-  const me = players.find(p => p.name === queryName);
   const sortedPlayers = [...players].sort((a, b) => {
-    if (a.finished && !b.finished) return -1;
-    if (!a.finished && b.finished) return 1;
-    if (a.finished && b.finished) return (a.finishRank || 99) - (b.finishRank || 99);
+    if (b.score !== a.score) return b.score - a.score;
     return b.altitude - a.altitude;
   });
 
-  // ─── RENDER ────────────────────────────────────────────────────────────
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  // ─── Connecting ─────────────────────────────────────────────────────────
   if (phase === "connecting") {
     return (
       <div style={{ minHeight: "100dvh", background: SPACE_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 size={40} color={GOLD} className="animate-spin" />
+        <StarField />
+        <Loader2 size={44} color={GOLD} className="animate-spin" style={{ position: "relative", zIndex: 10 }} />
       </div>
     );
   }
@@ -442,37 +640,54 @@ export default function RocketPlay() {
   return (
     <div dir={dir} style={{ minHeight: "100dvh", background: SPACE_BG, position: "relative", overflow: "hidden" }}>
       <StarField />
+      <BoostParticles active={boostFlash} />
 
       {/* Top bar */}
       <div style={{
-        position: "relative", zIndex: 10,
+        position: "relative", zIndex: 20,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 18px",
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(8px)",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        padding: "10px 16px",
+        background: "rgba(0,0,0,0.4)",
+        backdropFilter: "blur(10px)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        flexWrap: "wrap", gap: 8,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff" }}>
-          <span style={{ fontSize: 22 }}>{queryAvatar}</span>
-          <div>
-            <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>{queryName}</p>
-            <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>
+        {/* Player info */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", minWidth: 0 }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>{queryAvatar}</span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{queryName}</p>
+            <p style={{ margin: 0, fontSize: 11, opacity: 0.75 }}>
               {ar ? "نقاط:" : "Score:"} <span style={{ color: GOLD, fontWeight: 700 }}>{myScore}</span>
-              {myStreak >= 3 && <span style={{ marginInlineStart: 8, color: "#ff6b1a" }}>🔥 {myStreak}</span>}
+              {myStreak >= 3 && <span style={{ marginInlineStart: 8, color: "#ff6b1a" }}>🔥 ×{myStreak}</span>}
             </p>
           </div>
         </div>
+
+        {/* Game timer */}
+        {phase === "racing" && gameTimeMax > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 14px",
+            borderRadius: 999,
+            background: gameTimeLeft <= 30 ? "rgba(220,38,38,0.35)" : gameTimeLeft <= 60 ? "rgba(217,165,33,0.3)" : "rgba(255,255,255,0.1)",
+            border: `1.5px solid ${gameTimeLeft <= 30 ? "#ef4444" : gameTimeLeft <= 60 ? GOLD : "rgba(255,255,255,0.2)"}`,
+            color: "#fff", fontWeight: 800, fontSize: 15,
+          }}>
+            {gameTimeLeft <= 30 ? "⚠️" : "🕐"} {formatTime(gameTimeLeft)}
+          </div>
+        )}
+
+        {/* Mute */}
         <button
           onClick={() => setMutedState(m => !m)}
           style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 12px",
-            borderRadius: 999,
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "6px 10px", borderRadius: 999,
             border: "1.5px solid rgba(255,255,255,0.2)",
             background: "rgba(255,255,255,0.08)",
-            color: "#fff",
-            fontWeight: 600, fontSize: 12,
-            cursor: "pointer",
+            color: "#fff", fontWeight: 600, fontSize: 11,
+            cursor: "pointer", flexShrink: 0,
           }}
         >
           {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -481,370 +696,220 @@ export default function RocketPlay() {
       </div>
 
       {title && (
-        <div style={{ position: "relative", zIndex: 5, textAlign: "center", padding: "8px 16px", color: "#fff", opacity: 0.8, fontSize: 13, fontWeight: 600 }}>
+        <div style={{ position: "relative", zIndex: 5, textAlign: "center", padding: "6px 16px", color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: 700 }}>
           🚀 {title}
         </div>
       )}
 
-      {/* Lobby */}
+      {/* ── Lobby ── */}
       {phase === "lobby" && (
         <div style={{ position: "relative", zIndex: 5, padding: "40px 20px", textAlign: "center" }}>
           <motion.div
-            animate={{ y: [-6, 6, -6] }}
+            animate={{ y: [-8, 8, -8] }}
             transition={{ repeat: Infinity, duration: 2.5 }}
             style={{ display: "inline-block", marginBottom: 20 }}
           >
-            <RocketIcon color={myColor} isPlayer size={80} />
+            <RocketIcon color={myColor} isPlayer size={90} />
           </motion.div>
           <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 900, margin: "0 0 8px" }}>
             {ar ? "في انتظار الانطلاق..." : "Awaiting Launch..."}
           </h1>
-          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, margin: 0 }}>
-            {ar ? "سينطلق السباق عند بدء المعلم" : "Race will start when teacher launches"}
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, margin: 0 }}>
+            {ar ? "سينطلق السباق عند بدء المعلم" : "Race starts when teacher launches"}
           </p>
-          <div style={{
-            marginTop: 28,
-            display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center",
-            maxWidth: 600, marginInline: "auto",
-          }}>
+          <div style={{ marginTop: 28, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600, marginInline: "auto" }}>
             {players.map((p, i) => (
               <motion.div
                 key={p.name}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.7 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 12px",
+                  padding: "8px 14px",
                   borderRadius: 999,
-                  background: p.name === queryName ? `${GOLD}30` : "rgba(255,255,255,0.1)",
-                  border: p.name === queryName ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
+                  background: p.name === queryName ? `${GOLD}30` : "rgba(255,255,255,0.08)",
+                  border: p.name === queryName ? `2px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
                   color: "#fff", fontSize: 13, fontWeight: 700,
                 }}
               >
                 <span>{p.avatar}</span>
                 <span>{p.name}</span>
+                {p.name === queryName && <span style={{ color: GOLD, fontSize: 11 }}>({ar ? "أنت" : "you"})</span>}
               </motion.div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Countdown */}
+      {/* ── Countdown ── */}
       {phase === "countdown" && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,14,39,0.85)", backdropFilter: "blur(8px)" }}>
-          <motion.div
-            key={countdownNum}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.5, opacity: 0 }}
-            style={{
-              fontSize: 160,
-              fontWeight: 900,
-              color: GOLD,
-              textShadow: `0 0 40px ${GOLD}, 0 0 80px ${GOLD}80`,
-            }}
-          >
-            {countdownNum > 0 ? countdownNum : (ar ? "انطلق!" : "GO!")}
-          </motion.div>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,8,24,0.88)", backdropFilter: "blur(10px)" }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={countdownNum}
+              initial={{ scale: 0.4, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 2, opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              style={{
+                fontSize: countdownNum > 0 ? 160 : 80,
+                fontWeight: 900,
+                color: GOLD,
+                textShadow: `0 0 40px ${GOLD}, 0 0 80px ${GOLD}60`,
+                textAlign: "center",
+              }}
+            >
+              {countdownNum > 0 ? countdownNum : (ar ? "🚀 انطلق!" : "🚀 GO!")}
+            </motion.div>
+          </AnimatePresence>
         </div>
       )}
 
-      {/* Racing */}
+      {/* ── Racing ── */}
       {phase === "racing" && (
-        <div style={{ position: "relative", zIndex: 5, display: "grid", gridTemplateColumns: "minmax(280px, 320px) 1fr", gap: 16, padding: 16, alignItems: "start" }}>
-          {/* Race track (left) */}
-          <div style={{
-            position: "relative",
-            height: "calc(100dvh - 100px)",
-            background: "rgba(255,255,255,0.05)",
-            borderRadius: 18,
-            border: "1px solid rgba(255,255,255,0.1)",
-            overflow: "hidden",
-            padding: "16px 8px",
-          }}>
-            {/* Finish line */}
-            <div style={{
-              position: "absolute", top: 16, left: 0, right: 0,
-              height: 4,
-              background: `repeating-linear-gradient(90deg, ${GOLD} 0 12px, #fff 12px 24px)`,
-              boxShadow: `0 0 16px ${GOLD}80`,
-            }} />
-            <div style={{
-              position: "absolute", top: 22, left: 0, right: 0,
-              textAlign: "center", color: GOLD, fontSize: 11, fontWeight: 800, letterSpacing: 2,
-            }}>
-              🏁 {ar ? "خط النهاية" : "FINISH"}
+        isMobile ? (
+          // MOBILE: question panel on top, compact rocket leaderboard at bottom
+          <div style={{ position: "relative", zIndex: 5, display: "flex", flexDirection: "column", height: "calc(100dvh - 56px)" }}>
+            {/* Question + answers (top, takes most space) */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {currentQ && <QuestionPanel
+                currentQ={currentQ}
+                timeLeft={timeLeft}
+                totalQuestions={totalQuestions}
+                feedback={feedback}
+                fillAnswer={fillAnswer}
+                setFillAnswer={setFillAnswer}
+                handleMCQAnswer={handleMCQAnswer}
+                handleFillSubmit={handleFillSubmit}
+                encouragement={encouragement}
+                ar={ar}
+              />}
             </div>
-
-            {/* Player rockets */}
-            <div style={{ position: "relative", width: "100%", height: "100%" }}>
-              {sortedPlayers.map((p, idx) => {
+            {/* Compact rocket leaderboard (bottom strip) */}
+            <div style={{
+              height: 110,
+              background: "rgba(0,0,0,0.5)",
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              padding: "8px 12px",
+              overflowX: "auto",
+              display: "flex", alignItems: "flex-end", gap: 12,
+              position: "relative",
+            }}>
+              {sortedPlayers.map((p) => {
                 const isMe = p.name === queryName;
-                const xPos = (idx / Math.max(1, sortedPlayers.length - 1)) * 80 + 10;
-                const yPos = 100 - p.altitude; // 0% altitude = bottom, 100% = top
+                const barH = Math.max(20, (p.altitude / 100) * 80);
                 return (
-                  <motion.div
-                    key={p.name}
-                    animate={{
-                      bottom: `${p.altitude}%`,
-                      left: `${xPos}%`,
-                    }}
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                    style={{
-                      position: "absolute",
-                      transform: "translateX(-50%)",
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                      zIndex: isMe ? 10 : 5 - Math.min(4, idx),
-                      opacity: isMe ? 1 : 0.85,
-                    }}
-                  >
-                    <span style={{
-                      fontSize: 10, fontWeight: 800,
-                      color: isMe ? GOLD : "#fff",
-                      background: "rgba(0,0,0,0.5)",
-                      padding: "1px 6px", borderRadius: 999,
-                      whiteSpace: "nowrap",
-                      maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {p.avatar} {p.name}{p.finished && p.finishRank ? ` 🏆${p.finishRank}` : ""}
+                  <div key={p.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
+                    <span style={{ fontSize: isMe ? 9 : 8, color: isMe ? GOLD : "rgba(255,255,255,0.6)", fontWeight: 700, whiteSpace: "nowrap", maxWidth: 50, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {p.avatar}
                     </span>
-                    <RocketIcon color={p.rocketColor} isPlayer={isMe} size={isMe ? 36 : 28} boosted={isMe && boostFlash} />
-                  </motion.div>
+                    <div style={{ position: "relative", height: barH, width: 24 }}>
+                      <RocketIcon color={p.rocketColor} isPlayer={isMe} size={isMe ? 28 : 22} />
+                    </div>
+                  </div>
                 );
               })}
             </div>
+          </div>
+        ) : (
+          // DESKTOP: rockets panel left, question right
+          <div style={{ position: "relative", zIndex: 5, display: "grid", gridTemplateColumns: "minmax(260px, 300px) 1fr", gap: 14, padding: "14px 16px", alignItems: "start", height: "calc(100dvh - 70px)" }}>
+            {/* Race track */}
+            <div style={{
+              position: "relative",
+              height: "100%",
+              background: "rgba(255,255,255,0.04)",
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.09)",
+              overflow: "hidden",
+              padding: "16px 8px",
+            }}>
+              {/* Finish line */}
+              <div style={{
+                position: "absolute", top: 16, left: 0, right: 0,
+                height: 4,
+                background: `repeating-linear-gradient(90deg, ${GOLD} 0 12px, #fff 12px 24px)`,
+                boxShadow: `0 0 18px ${GOLD}90`,
+              }} />
+              <div style={{ position: "absolute", top: 22, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 11, fontWeight: 800, letterSpacing: 2 }}>
+                🏁 {ar ? "خط النهاية" : "FINISH"}
+              </div>
+              {/* Stars inside track */}
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                {[...Array(12)].map((_, i) => (
+                  <div key={i} style={{
+                    position: "absolute",
+                    left: `${10 + (i % 4) * 22}%`, top: `${10 + Math.floor(i / 4) * 28}%`,
+                    width: 1.5, height: 1.5, borderRadius: "50%", background: "#ffffff60",
+                  }} />
+                ))}
+              </div>
 
-            {/* Altitude markers */}
-            <div style={{ position: "absolute", left: 4, top: 16, bottom: 8, width: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.4)", fontSize: 9, fontWeight: 700 }}>
-              {[100, 75, 50, 25, 0].map(v => <span key={v}>{v}%</span>)}
+              {/* Player rockets */}
+              <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                {sortedPlayers.map((p, idx) => {
+                  const isMe = p.name === queryName;
+                  const lanes = Math.max(1, sortedPlayers.length);
+                  const xPos = (idx / Math.max(1, lanes - 1)) * 76 + 12;
+                  return (
+                    <motion.div
+                      key={p.name}
+                      animate={{ bottom: `${Math.min(90, p.altitude)}%`, left: `${xPos}%` }}
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 60, damping: 18 }}
+                      style={{
+                        position: "absolute",
+                        transform: "translateX(-50%)",
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                        zIndex: isMe ? 10 : 5,
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, color: isMe ? GOLD : "#fff",
+                        background: "rgba(0,0,0,0.6)",
+                        padding: "1px 5px", borderRadius: 999, whiteSpace: "nowrap",
+                        maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis",
+                        border: isMe ? `1px solid ${GOLD}` : "none",
+                      }}>
+                        {p.avatar} {p.name}
+                      </span>
+                      <RocketIcon color={p.rocketColor} isPlayer={isMe} size={isMe ? 38 : 28} boosted={isMe && boostFlash} />
+                      {/* Score badge */}
+                      <span style={{ fontSize: 8, color: isMe ? GOLD : "rgba(255,255,255,0.5)", fontWeight: 700 }}>
+                        {p.score}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Altitude markers */}
+              <div style={{ position: "absolute", left: 4, top: 16, bottom: 8, width: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.35)", fontSize: 8, fontWeight: 700 }}>
+                {[100, 75, 50, 25, 0].map(v => <span key={v}>{v}%</span>)}
+              </div>
+            </div>
+
+            {/* Question */}
+            <div style={{ overflowY: "auto", maxHeight: "100%" }}>
+              {currentQ && <QuestionPanel
+                currentQ={currentQ}
+                timeLeft={timeLeft}
+                totalQuestions={totalQuestions}
+                feedback={feedback}
+                fillAnswer={fillAnswer}
+                setFillAnswer={setFillAnswer}
+                handleMCQAnswer={handleMCQAnswer}
+                handleFillSubmit={handleFillSubmit}
+                encouragement={encouragement}
+                ar={ar}
+              />}
             </div>
           </div>
-
-          {/* Question (right) */}
-          <div>
-            {finished ? (
-              <div style={{
-                background: "rgba(255,255,255,0.08)",
-                borderRadius: 24, padding: 32,
-                textAlign: "center",
-                border: `2px solid ${GOLD}`,
-              }}>
-                <motion.div
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ repeat: Infinity, duration: 1.5 }}
-                  style={{ fontSize: 80 }}
-                >
-                  {finishRank === 1 ? "🥇" : finishRank === 2 ? "🥈" : finishRank === 3 ? "🥉" : "🚀"}
-                </motion.div>
-                <h2 style={{ color: "#fff", fontSize: 28, fontWeight: 900, margin: "12px 0 8px" }}>
-                  {ar ? "وصلت للفضاء!" : "You Made It!"}
-                </h2>
-                <p style={{ color: GOLD, fontSize: 18, fontWeight: 800, margin: 0 }}>
-                  {ar ? "ترتيبك:" : "Rank:"} #{finishRank}
-                </p>
-                <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, margin: "8px 0 0" }}>
-                  {ar ? "نقاطك:" : "Score:"} {myScore}
-                </p>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, margin: "16px 0 0" }}>
-                  {ar ? "في انتظار باقي المتسابقين..." : "Waiting for others to finish..."}
-                </p>
-              </div>
-            ) : currentQ ? (
-              <div>
-                {/* Header: progress + timer */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <span style={{ color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: 700 }}>
-                    {ar ? "السؤال" : "Q"} {currentQ.index + 1} / {totalQuestions}
-                  </span>
-                  <div style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                    background: timeLeft <= 5 ? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.1)",
-                    border: `1.5px solid ${timeLeft <= 5 ? "#dc2626" : "rgba(255,255,255,0.2)"}`,
-                    color: "#fff",
-                    fontWeight: 800, fontSize: 14,
-                  }}>
-                    ⏱ {timeLeft}s
-                  </div>
-                </div>
-
-                {/* Question text */}
-                <div style={{
-                  background: "rgba(255,255,255,0.08)",
-                  borderRadius: 18,
-                  padding: "20px 18px",
-                  marginBottom: 14,
-                  border: `1.5px solid ${GOLD}40`,
-                  minHeight: 80,
-                }}>
-                  <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.5 }}>
-                    {currentQ.text}
-                  </p>
-                </div>
-
-                {/* Options */}
-                {currentQ.type === "mcq" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {currentQ.options.map((opt, idx) => {
-                      const COLORS = [
-                        "linear-gradient(160deg, #7A0A0A, #B01414)",
-                        "linear-gradient(160deg, #08386E, #1260A8)",
-                        "linear-gradient(160deg, #B8860B, #DAA520)",
-                        "linear-gradient(160deg, #5A1A8A, #8B35C8)",
-                      ];
-                      const showCorrect = feedback && feedback.correctIndex === idx;
-                      return (
-                        <motion.button
-                          key={idx}
-                          whileTap={{ scale: 0.97 }}
-                          disabled={!!feedback}
-                          onClick={() => handleMCQAnswer(idx)}
-                          style={{
-                            background: showCorrect ? "linear-gradient(160deg, #16a34a, #22c55e)" : COLORS[idx % 4],
-                            border: showCorrect ? `2px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.15)",
-                            borderRadius: 16,
-                            padding: "16px 14px",
-                            color: "#fff",
-                            fontSize: 16, fontWeight: 800,
-                            textAlign: "start",
-                            minHeight: 70,
-                            cursor: feedback ? "default" : "pointer",
-                            opacity: feedback && !showCorrect ? 0.4 : 1,
-                            transition: "opacity .25s",
-                          }}
-                        >
-                          <span style={{
-                            display: "inline-block", width: 26, height: 26, borderRadius: 8,
-                            background: "rgba(255,255,255,0.25)",
-                            color: "#fff", fontWeight: 900,
-                            textAlign: "center", lineHeight: "26px", marginInlineEnd: 10,
-                            fontSize: 13,
-                          }}>
-                            {["أ", "ب", "ج", "د"][idx]}
-                          </span>
-                          {opt}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {currentQ.type === "true_false" && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {[
-                      { idx: 0, label: ar ? "صحيح" : "True", color: "linear-gradient(160deg, #16a34a, #22c55e)", icon: <CheckCircle2 size={32} /> },
-                      { idx: 1, label: ar ? "خطأ" : "False", color: "linear-gradient(160deg, #dc2626, #ef4444)", icon: <XCircle size={32} /> },
-                    ].map(o => {
-                      const showCorrect = feedback && feedback.correctIndex === o.idx;
-                      return (
-                        <motion.button
-                          key={o.idx}
-                          whileTap={{ scale: 0.97 }}
-                          disabled={!!feedback}
-                          onClick={() => handleMCQAnswer(o.idx)}
-                          style={{
-                            background: o.color,
-                            border: showCorrect ? `3px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.15)",
-                            borderRadius: 18,
-                            padding: "26px 18px",
-                            color: "#fff",
-                            fontSize: 22, fontWeight: 900,
-                            cursor: feedback ? "default" : "pointer",
-                            opacity: feedback && !showCorrect ? 0.4 : 1,
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
-                            minHeight: 100,
-                          }}
-                        >
-                          {o.icon}
-                          {o.label}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {currentQ.type === "fill_blank" && (
-                  <div>
-                    <input
-                      value={fillAnswer}
-                      onChange={e => setFillAnswer(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleFillSubmit()}
-                      disabled={!!feedback}
-                      placeholder={ar ? "اكتب إجابتك هنا..." : "Type your answer..."}
-                      style={{
-                        width: "100%", boxSizing: "border-box",
-                        padding: "16px 18px",
-                        background: "rgba(255,255,255,0.1)",
-                        border: `2px solid ${feedback?.correct ? "#16a34a" : feedback?.correct === false ? "#dc2626" : "rgba(255,255,255,0.2)"}`,
-                        borderRadius: 14,
-                        color: "#fff",
-                        fontSize: 18, fontWeight: 700,
-                        outline: "none",
-                        marginBottom: 12,
-                      }}
-                    />
-                    <button
-                      onClick={handleFillSubmit}
-                      disabled={!!feedback || !fillAnswer.trim()}
-                      style={{
-                        width: "100%",
-                        padding: "14px 18px",
-                        background: feedback ? "rgba(255,255,255,0.15)" : `linear-gradient(135deg, ${GOLD}, #c89212)`,
-                        border: "none",
-                        borderRadius: 14,
-                        color: "#fff",
-                        fontSize: 16, fontWeight: 900,
-                        cursor: feedback ? "default" : "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        opacity: !fillAnswer.trim() ? 0.5 : 1,
-                      }}
-                    >
-                      <Send size={18} />
-                      {ar ? "إرسال" : "Submit"}
-                    </button>
-                    {feedback && feedback.correctText && !feedback.correct && (
-                      <p style={{ marginTop: 12, color: GOLD, fontSize: 14, fontWeight: 700, textAlign: "center" }}>
-                        {ar ? "الإجابة الصحيحة:" : "Correct answer:"} {feedback.correctText}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Feedback banner */}
-                <AnimatePresence>
-                  {feedback && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      style={{
-                        marginTop: 14,
-                        padding: "12px 16px",
-                        borderRadius: 14,
-                        background: feedback.correct ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
-                        border: `2px solid ${feedback.correct ? "#16a34a" : "#dc2626"}`,
-                        textAlign: "center",
-                        color: "#fff",
-                        fontWeight: 800,
-                        fontSize: 15,
-                      }}
-                    >
-                      {feedback.correct
-                        ? (ar ? "🚀 إجابة صحيحة! ارتفع صاروخك!" : "🚀 Correct! Rocket boosted!")
-                        : (ar ? "❌ إجابة خاطئة" : "❌ Wrong answer")}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        )
       )}
 
-      {/* Finished */}
+      {/* ── Finished ── */}
       {phase === "finished" && (
         <FinishedScreen
           players={sortedPlayers}
@@ -852,122 +917,452 @@ export default function RocketPlay() {
           myScore={myScore}
           ar={ar}
           onHome={() => setLocation("/")}
+          pin={pin}
         />
-      )}
-
-      {/* Indicator: my altitude (small float) */}
-      {phase === "racing" && me && (
-        <div style={{
-          position: "fixed", bottom: 16, [ar ? "left" : "right"]: 16,
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          padding: "8px 14px",
-          borderRadius: 999,
-          fontSize: 13,
-          fontWeight: 800,
-          border: `1.5px solid ${GOLD}`,
-          backdropFilter: "blur(8px)",
-        }}>
-          🚀 {ar ? "ارتفاع:" : "Alt:"} <span style={{ color: GOLD }}>{Math.round(myAltitude)}%</span>
-        </div>
       )}
     </div>
   );
 }
 
-// ─── Finished Screen ──────────────────────────────────────────────────────
+// ─── Question Panel (shared mobile/desktop) ───────────────────────────────────
+function QuestionPanel({
+  currentQ, timeLeft, totalQuestions, feedback, fillAnswer, setFillAnswer,
+  handleMCQAnswer, handleFillSubmit, encouragement, ar,
+}: {
+  currentQ: Question;
+  timeLeft: number;
+  totalQuestions: number;
+  feedback: { correct: boolean; correctIndex?: number; correctText?: string } | null;
+  fillAnswer: string;
+  setFillAnswer: (v: string) => void;
+  handleMCQAnswer: (i: number) => void;
+  handleFillSubmit: () => void;
+  encouragement: string | null;
+  ar: boolean;
+}) {
+  const MCQ_COLORS = [
+    "linear-gradient(155deg, #7f1d1d, #b91c1c)",
+    "linear-gradient(155deg, #1e3a5f, #1d4ed8)",
+    "linear-gradient(155deg, #713f12, #d97706)",
+    "linear-gradient(155deg, #4a1d96, #7c3aed)",
+  ];
+
+  return (
+    <div>
+      {/* Progress + timer row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700 }}>
+            {ar ? "السؤال" : "Q"} {currentQ.index + 1} / {totalQuestions}
+          </span>
+          {currentQ.index + 1 > totalQuestions && (
+            <span style={{ fontSize: 10, color: GOLD, fontWeight: 700, background: "rgba(217,165,33,0.15)", padding: "2px 8px", borderRadius: 999, border: `1px solid ${GOLD}50` }}>
+              {ar ? "دورة ثانية" : "Cycle 2+"}
+            </span>
+          )}
+        </div>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "5px 14px", borderRadius: 999,
+          background: timeLeft <= 5 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.1)",
+          border: `1.5px solid ${timeLeft <= 5 ? "#dc2626" : "rgba(255,255,255,0.2)"}`,
+          color: "#fff", fontWeight: 800, fontSize: 14,
+          animation: timeLeft <= 5 ? "pulse 0.5s infinite" : undefined,
+        }}>
+          ⏱ {timeLeft}s
+        </div>
+      </div>
+
+      {/* Question text */}
+      <div style={{
+        background: "rgba(255,255,255,0.07)",
+        borderRadius: 18, padding: "18px 18px", marginBottom: 12,
+        border: `1.5px solid rgba(217,165,33,0.3)`,
+        backdropFilter: "blur(4px)",
+      }}>
+        <p style={{ color: "#fff", fontSize: 17, fontWeight: 800, margin: 0, lineHeight: 1.55 }}>
+          {currentQ.text}
+        </p>
+      </div>
+
+      {/* MCQ options */}
+      {currentQ.type === "mcq" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {currentQ.options.map((opt, idx) => {
+            const showCorrect = feedback && feedback.correctIndex === idx;
+            const showWrong = feedback && !feedback.correct && idx === (feedback.correctIndex ?? -99) - 9999;
+            void showWrong;
+            return (
+              <motion.button
+                key={idx}
+                whileTap={{ scale: 0.96 }}
+                disabled={!!feedback}
+                onClick={() => handleMCQAnswer(idx)}
+                style={{
+                  background: showCorrect ? "linear-gradient(155deg, #15803d, #22c55e)" : MCQ_COLORS[idx % 4],
+                  border: showCorrect ? `2.5px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.12)",
+                  borderRadius: 16, padding: "15px 14px",
+                  color: "#fff", fontSize: 15, fontWeight: 800,
+                  textAlign: "start", minHeight: 66,
+                  cursor: feedback ? "default" : "pointer",
+                  opacity: feedback && !showCorrect ? 0.38 : 1,
+                  transition: "opacity .2s",
+                  display: "flex", alignItems: "center", gap: 10,
+                }}
+              >
+                <span style={{
+                  display: "inline-flex", width: 28, height: 28, borderRadius: 8,
+                  background: "rgba(255,255,255,0.22)",
+                  alignItems: "center", justifyContent: "center",
+                  fontWeight: 900, fontSize: 13, flexShrink: 0,
+                }}>
+                  {["أ", "ب", "ج", "د"][idx]}
+                </span>
+                <span style={{ lineHeight: 1.3 }}>{opt}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* True/False */}
+      {currentQ.type === "true_false" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {[
+            { idx: 0, label: ar ? "✓ صحيح" : "✓ True", color: "linear-gradient(155deg, #14532d, #16a34a)", icon: <CheckCircle2 size={28} /> },
+            { idx: 1, label: ar ? "✗ خطأ" : "✗ False", color: "linear-gradient(155deg, #7f1d1d, #dc2626)", icon: <XCircle size={28} /> },
+          ].map(o => {
+            const showCorrect = feedback && feedback.correctIndex === o.idx;
+            return (
+              <motion.button
+                key={o.idx}
+                whileTap={{ scale: 0.96 }}
+                disabled={!!feedback}
+                onClick={() => handleMCQAnswer(o.idx)}
+                style={{
+                  background: o.color, border: showCorrect ? `3px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.15)",
+                  borderRadius: 18, padding: "24px 18px",
+                  color: "#fff", fontSize: 20, fontWeight: 900,
+                  cursor: feedback ? "default" : "pointer",
+                  opacity: feedback && !showCorrect ? 0.38 : 1,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 90,
+                }}
+              >
+                {o.icon} {o.label}
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Fill blank */}
+      {currentQ.type === "fill_blank" && (
+        <div>
+          <input
+            value={fillAnswer}
+            onChange={e => setFillAnswer(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleFillSubmit()}
+            disabled={!!feedback}
+            placeholder={ar ? "اكتب إجابتك هنا..." : "Type your answer..."}
+            autoFocus
+            style={{
+              width: "100%", boxSizing: "border-box",
+              padding: "16px 18px", marginBottom: 12,
+              background: "rgba(255,255,255,0.1)",
+              border: `2px solid ${feedback?.correct ? "#16a34a" : feedback?.correct === false ? "#dc2626" : "rgba(255,255,255,0.25)"}`,
+              borderRadius: 14, color: "#fff", fontSize: 18, fontWeight: 700,
+              outline: "none",
+            }}
+          />
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleFillSubmit}
+            disabled={!!feedback || !fillAnswer.trim()}
+            style={{
+              width: "100%", padding: "14px",
+              background: feedback ? "rgba(255,255,255,0.15)" : `linear-gradient(135deg, ${GOLD}, #b8860b)`,
+              border: "none", borderRadius: 14,
+              color: "#fff", fontSize: 16, fontWeight: 900,
+              cursor: feedback ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              opacity: !fillAnswer.trim() ? 0.5 : 1,
+            }}
+          >
+            <Send size={18} />
+            {ar ? "إرسال" : "Submit"}
+          </motion.button>
+          {feedback && feedback.correctText && !feedback.correct && (
+            <p style={{ marginTop: 10, color: GOLD, fontSize: 14, fontWeight: 700, textAlign: "center" }}>
+              {ar ? "الإجابة الصحيحة:" : "Correct answer:"} {feedback.correctText}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Feedback banner + encouragement */}
+      <AnimatePresence>
+        {feedback && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={{
+              marginTop: 12, padding: "14px 18px", borderRadius: 16,
+              background: feedback.correct ? "rgba(22,163,74,0.28)" : "rgba(220,38,38,0.28)",
+              border: `2px solid ${feedback.correct ? "#22c55e" : "#dc2626"}`,
+              textAlign: "center",
+            }}
+          >
+            <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 4px" }}>
+              {encouragement || (feedback.correct
+                ? (ar ? "🚀 إجابة صحيحة! ارتفع صاروخك!" : "🚀 Correct! Rocket boosted!")
+                : (ar ? "❌ إجابة خاطئة، السؤال سيعود!" : "❌ Wrong! Question will return!"))}
+            </p>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, margin: 0 }}>
+              {feedback.correct
+                ? (ar ? "السؤال التالي يأتيك تلقائياً..." : "Next question coming...")
+                : (ar ? "ستحصل على فرصة أخرى لهذا السؤال" : "You'll get another chance at this")}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Finished Screen ──────────────────────────────────────────────────────────
 function FinishedScreen({
-  players, myName, myScore, ar, onHome,
+  players, myName, myScore, ar, onHome, pin,
 }: {
   players: Player[];
   myName: string;
   myScore: number;
   ar: boolean;
   onHome: () => void;
+  pin: string;
 }) {
-  const myRank = players.findIndex(p => p.name === myName) + 1;
-  return (
-    <div style={{ position: "relative", zIndex: 5, padding: "30px 16px", maxWidth: 600, marginInline: "auto" }}>
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        style={{
-          background: "rgba(255,255,255,0.08)",
-          backdropFilter: "blur(12px)",
-          borderRadius: 24,
-          padding: 28,
-          border: `2px solid ${GOLD}`,
-          textAlign: "center",
-        }}
-      >
-        <Trophy size={60} color={GOLD} style={{ margin: "0 auto 12px" }} />
-        <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 900, margin: "0 0 4px" }}>
-          {ar ? "انتهى السباق!" : "Race Complete!"}
-        </h1>
-        <p style={{ color: GOLD, fontSize: 16, fontWeight: 800, margin: 0 }}>
-          {ar ? "ترتيبك:" : "Your Rank:"} #{myRank} · {ar ? "نقاطك:" : "Score:"} {myScore}
-        </p>
+  const myIdx = players.findIndex(p => p.name === myName);
+  const myRank = myIdx + 1;
+  const [showConfetti, setShowConfetti] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-        <div style={{ marginTop: 24, textAlign: "start" }}>
-          {players.slice(0, 10).map((p, idx) => {
+  useEffect(() => {
+    const t = setTimeout(() => setShowConfetti(false), 7000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const motivationalText = () => {
+    if (!ar) {
+      if (myRank === 1) return "🏆 Champion of Space! You dominated the race!";
+      if (myRank <= 3) return "🥈 Outstanding! You're among the best!";
+      if (myRank <= Math.ceil(players.length / 2)) return "🚀 Great race! Keep pushing higher!";
+      return "⭐ You showed up and launched — that's a win! Next time, aim higher!";
+    }
+    if (myRank === 1) return "🏆 أنت بطل الفضاء! سيطرت على السباق وحلّقت أعلى الجميع!";
+    if (myRank <= 3) return "🥈 أداء رائع! أنت من نخبة المتسابقين!";
+    if (myRank <= Math.ceil(players.length / 2)) return "🚀 سباق ممتاز! استمر في التحسن والصعود!";
+    return "⭐ المشاركة بحد ذاتها انتصار! في المرة القادمة ستطير أعلى!";
+  };
+
+  const handleSaveScores = async () => {
+    setSaving(true);
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || "";
+      const res = await fetch(`${API_BASE}/api/rocket-games/${pin}/save-scores`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          scores: players.map((p, i) => ({
+            name: p.name,
+            score: p.score,
+            rank: i + 1,
+            correctCount: p.correctCount,
+            wrongCount: p.wrongCount,
+          })),
+        }),
+      });
+      if (res.ok) { setSaved(true); }
+      else { toast.error(ar ? "خطأ في الحفظ" : "Save failed"); }
+    } catch { toast.error(ar ? "خطأ في الحفظ" : "Save failed"); }
+    finally { setSaving(false); }
+  };
+
+  // Podium (positions 0,1,2 of sorted players)
+  const podiumPlayers = [players[1], players[0], players[2]].filter(Boolean);
+  const podiumHeights = [75, 100, 58]; // 2nd, 1st, 3rd
+
+  return (
+    <div style={{ position: "relative", zIndex: 5 }}>
+      {showConfetti && <Confetti />}
+
+      <div style={{ padding: "24px 16px", maxWidth: 640, marginInline: "auto" }}>
+        {/* Motivational header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 18 }}
+          style={{ textAlign: "center", marginBottom: 24 }}
+        >
+          <motion.div
+            animate={{ rotate: [-5, 5, -5], scale: [1, 1.05, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            style={{ fontSize: 60, marginBottom: 8 }}
+          >
+            {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🚀"}
+          </motion.div>
+          <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 8px", lineHeight: 1.3 }}>
+            {ar ? "🎊 انتهى السباق — أحسنتم جميعاً! 🎊" : "🎊 Race Over — You All Flew High! 🎊"}
+          </h1>
+          <p style={{ color: GOLD, fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
+            {motivationalText()}
+          </p>
+          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>
+            {ar ? `مرتبتك: #${myRank} · نقاطك: ${myScore}` : `Your rank: #${myRank} · Score: ${myScore}`}
+          </p>
+        </motion.div>
+
+        {/* Podium — only if 2+ players */}
+        {players.length >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            style={{
+              display: "flex", alignItems: "flex-end", justifyContent: "center",
+              gap: 12, marginBottom: 24,
+              padding: "20px 16px 0",
+            }}
+          >
+            {podiumPlayers.map((p, podIdx) => {
+              if (!p) return null;
+              const ranks = [2, 1, 3];
+              const rank = ranks[podIdx];
+              const h = podiumHeights[podIdx];
+              const rankColors: Record<number, string> = { 1: GOLD, 2: "#94a3b8", 3: "#cd7f32" };
+              const rankEmoji: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+              return (
+                <motion.div
+                  key={p.name}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 + podIdx * 0.15, type: "spring", stiffness: 200 }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: rank === 1 ? 1.2 : 1, maxWidth: 140 }}
+                >
+                  <span style={{ fontSize: 22 }}>{p.avatar}</span>
+                  <p style={{ color: "#fff", fontWeight: 800, fontSize: rank === 1 ? 14 : 12, margin: "4px 0 2px", textAlign: "center", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.name}
+                  </p>
+                  <p style={{ color: rankColors[rank], fontWeight: 700, fontSize: 11, margin: "0 0 4px" }}>
+                    {p.score} {ar ? "نق" : "pts"}
+                  </p>
+                  <div style={{
+                    width: "100%",
+                    height: h,
+                    background: `linear-gradient(180deg, ${rankColors[rank]}50, ${rankColors[rank]}20)`,
+                    border: `2px solid ${rankColors[rank]}80`,
+                    borderRadius: "8px 8px 0 0",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: rank === 1 ? 32 : 24,
+                  }}>
+                    {rankEmoji[rank]}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+
+        {/* Full player list */}
+        <div style={{
+          background: "rgba(255,255,255,0.05)",
+          borderRadius: 20, overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.1)",
+          marginBottom: 16,
+        }}>
+          <div style={{ padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+            <Trophy size={18} color={GOLD} style={{ display: "inline", marginInlineEnd: 8 }} />
+            <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>
+              {ar ? "الترتيب النهائي" : "Final Rankings"}
+            </span>
+          </div>
+          {players.map((p, idx) => {
             const isMe = p.name === myName;
+            const rankMedal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
             return (
               <motion.div
                 key={p.name}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: ar ? 20 : -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: idx * 0.06 }}
+                transition={{ delay: 0.5 + idx * 0.05 }}
                 style={{
                   display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 14px",
-                  margin: "6px 0",
-                  borderRadius: 14,
-                  background: isMe ? `${GOLD}25` : "rgba(255,255,255,0.06)",
-                  border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.1)",
+                  padding: "10px 18px",
+                  borderBottom: idx < players.length - 1 ? "1px solid rgba(255,255,255,0.06)" : undefined,
+                  background: isMe ? `${GOLD}18` : undefined,
                 }}
               >
                 <span style={{
-                  width: 32, height: 32, borderRadius: 10,
-                  background: idx === 0 ? GOLD : idx === 1 ? "#cbd5e1" : idx === 2 ? "#cd7f32" : "rgba(255,255,255,0.15)",
+                  width: 30, height: 30, borderRadius: 10, flexShrink: 0,
+                  background: idx === 0 ? GOLD : idx === 1 ? "#94a3b8" : idx === 2 ? "#cd7f32" : "rgba(255,255,255,0.12)",
                   color: idx < 3 ? "#000" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 900, fontSize: 14,
+                  fontWeight: 900, fontSize: idx < 3 ? 13 : 12,
                 }}>
-                  {idx + 1}
+                  {rankMedal || idx + 1}
                 </span>
-                <span style={{ fontSize: 22 }}>{p.avatar}</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 14 }}>
-                    {p.name} {isMe && <span style={{ color: GOLD, fontSize: 11 }}>({ar ? "أنت" : "you"})</span>}
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{p.avatar}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                    {isMe && <span style={{ color: GOLD, fontSize: 10, flexShrink: 0 }}>({ar ? "أنت" : "you"})</span>}
                   </p>
-                  <p style={{ margin: 0, color: "rgba(255,255,255,0.6)", fontSize: 11 }}>
-                    {ar ? "النقاط:" : "Score:"} {p.score}
+                  <p style={{ margin: 0, color: "rgba(255,255,255,0.55)", fontSize: 11 }}>
+                    {ar ? "نقاط:" : "Score:"} {p.score} · {ar ? "صح:" : "✓"} {p.correctCount} · {ar ? "خطأ:" : "✗"} {p.wrongCount}
                   </p>
                 </div>
-                {p.finished && p.finishRank && p.finishRank <= 3 && (
-                  <span style={{ fontSize: 22 }}>{p.finishRank === 1 ? "🥇" : p.finishRank === 2 ? "🥈" : "🥉"}</span>
-                )}
+                <span style={{ color: GOLD, fontWeight: 900, fontSize: 16, flexShrink: 0 }}>
+                  {p.score}
+                </span>
               </motion.div>
             );
           })}
         </div>
 
-        <button
-          onClick={onHome}
-          style={{
-            marginTop: 24,
-            padding: "12px 24px",
-            background: `linear-gradient(135deg, ${GOLD}, #c89212)`,
-            border: "none",
-            borderRadius: 14,
-            color: "#fff",
-            fontSize: 15, fontWeight: 900,
-            cursor: "pointer",
-          }}
-        >
-          {ar ? "الرئيسية" : "Home"}
-        </button>
-      </motion.div>
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={handleSaveScores}
+            disabled={saving || saved}
+            style={{
+              flex: 1, minWidth: 140,
+              padding: "13px 16px",
+              borderRadius: 14, border: "none",
+              background: saved ? "rgba(22,163,74,0.4)" : `linear-gradient(135deg, #1d4ed8, #2563eb)`,
+              color: "#fff", fontWeight: 800, fontSize: 14,
+              cursor: saving || saved ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saved ? (ar ? "✓ تم الحفظ!" : "✓ Saved!") : saving ? (ar ? "جاري الحفظ..." : "Saving...") : (ar ? "💾 حفظ النتائج" : "💾 Save Scores")}
+          </button>
+          <button
+            onClick={onHome}
+            style={{
+              flex: 1, minWidth: 140,
+              padding: "13px 16px",
+              borderRadius: 14, border: "none",
+              background: `linear-gradient(135deg, ${GOLD}, #b8860b)`,
+              color: "#000", fontWeight: 900, fontSize: 14,
+              cursor: "pointer",
+            }}
+          >
+            {ar ? "🏠 الرئيسية" : "🏠 Home"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

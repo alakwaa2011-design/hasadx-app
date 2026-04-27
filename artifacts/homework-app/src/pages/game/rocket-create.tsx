@@ -88,6 +88,7 @@ export default function RocketCreate() {
 
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
   const [duration, setDuration] = useState(20);
+  const [gameDurationMins, setGameDurationMins] = useState(5);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
@@ -161,6 +162,7 @@ export default function RocketCreate() {
     const socket = getRocketSocket();
     socket.emit("rocket:create", {
       questions, duration,
+      totalDurationSecs: gameDurationMins * 60,
       targetClass: targetClass || undefined,
       title: title.trim() || undefined,
     }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
@@ -465,7 +467,7 @@ export default function RocketCreate() {
               }}
             >
               <ExternalLink size={18} />
-              {ar ? "فتح لوحة التحكم" : "Open Host Panel"}
+              {ar ? "ابدأ بإدارة اللعبة" : "Start Game Management"}
             </button>
           </div>
         </motion.div>
@@ -510,7 +512,7 @@ export default function RocketCreate() {
             />
           </Card>
 
-          {/* Duration */}
+          {/* Duration per question */}
           <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
             <Clock className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} />
             <span className="font-bold text-sm flex-1">{ar ? "وقت كل سؤال" : "Time per question"}</span>
@@ -529,6 +531,38 @@ export default function RocketCreate() {
                   {s}{ar ? "ث" : "s"}
                 </button>
               ))}
+            </div>
+          </Card>
+
+          {/* Total game duration */}
+          <Card className="p-4 mb-3">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⏳</span>
+              <div className="flex-1">
+                <p className="font-bold text-sm">{ar ? "مدة اللعبة الكلية" : "Total Game Duration"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {ar ? "الأسئلة تتكرر حتى انتهاء الوقت، والأخطاء تُعاد أولاً" : "Questions loop until time ends, wrong answers repeat first"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setGameDurationMins(m => Math.max(1, m - 1))}
+                  className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-lg hover:bg-muted transition-colors"
+                  style={{ borderColor: BRAND_PRIMARY, color: BRAND_PRIMARY }}
+                >
+                  −
+                </button>
+                <span className="font-black text-xl min-w-[72px] text-center" style={{ color: BRAND_PRIMARY }}>
+                  {gameDurationMins} {ar ? "دق" : "min"}
+                </span>
+                <button
+                  onClick={() => setGameDurationMins(m => Math.min(30, m + 1))}
+                  className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-lg hover:bg-muted transition-colors"
+                  style={{ borderColor: BRAND_PRIMARY, color: BRAND_PRIMARY }}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </Card>
 
