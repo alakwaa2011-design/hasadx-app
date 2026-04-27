@@ -69,8 +69,9 @@ const STREAK_MSGS = [
   "سلسلة إجابات! 🔥🔥", "على النار! 🔥🔥🔥", "لا يوقفه أحد! ⚡🔥",
 ];
 
-type MusicStyle = "energetic" | "electronic" | "epic" | "chill";
+type MusicStyle = "energetic" | "electronic" | "epic" | "chill" | "challenge";
 const MUSIC_STYLES: { id: MusicStyle; icon: string; ar: string; en: string; descAr: string; descEn: string }[] = [
+  { id: "challenge", icon: "🎶", ar: "تحدي مشوق", en: "Fun Challenge", descAr: "حماسي وناعم — مثالي للطلاب", descEn: "Energetic yet gentle" },
   { id: "energetic", icon: "🔥", ar: "حماسي", en: "Energetic", descAr: "إيقاع سريع وقوي", descEn: "Fast & powerful" },
   { id: "electronic", icon: "🎮", ar: "إلكتروني", en: "Electronic", descAr: "أسلوب ألعاب الفيديو", descEn: "Retro game style" },
   { id: "epic", icon: "⚔️", ar: "ملحمي", en: "Epic", descAr: "طبول وأوتار ضخمة", descEn: "Drums & big chords" },
@@ -82,13 +83,13 @@ class TugSoundEngine {
   private started = false;
   private bgHandle: ReturnType<typeof setTimeout> | null = null;
   private urgent = false;
-  musicStyle: MusicStyle = "energetic";
+  musicStyle: MusicStyle = "challenge";
   muted = false;
 
   constructor() {
     try {
       const saved = localStorage.getItem("tug-music-style");
-      if (saved && ["energetic", "electronic", "epic", "chill"].includes(saved)) this.musicStyle = saved as MusicStyle;
+      if (saved && ["energetic", "electronic", "epic", "chill", "challenge"].includes(saved)) this.musicStyle = saved as MusicStyle;
       this.muted = localStorage.getItem("tug-music-muted") === "1";
     } catch (_) {}
   }
@@ -157,8 +158,8 @@ class TugSoundEngine {
       if (!this.started) return;
       try {
         const style = this.musicStyle;
-        const baseBpm = style === "energetic" ? 170 : style === "electronic" ? 160 : style === "epic" ? 145 : 125;
-        const urgBpm = style === "energetic" ? 210 : style === "electronic" ? 200 : style === "epic" ? 185 : 155;
+        const baseBpm = style === "energetic" ? 170 : style === "electronic" ? 160 : style === "epic" ? 145 : style === "challenge" ? 138 : 125;
+        const urgBpm  = style === "energetic" ? 210 : style === "electronic" ? 200 : style === "epic" ? 185 : style === "challenge" ? 172 : 155;
         const bpm = this.urgent ? urgBpm : baseBpm;
         const beat = 60 / bpm;
         const b = step % 8;
@@ -254,6 +255,51 @@ class TugSoundEngine {
             this.tone(ch, beat * 2, "triangle", 0.03);
             this.tone(ch * 1.25, beat * 2, "triangle", 0.025, 0.05);
             this.tone(ch * 1.5, beat * 2, "triangle", 0.02, 0.1);
+          }
+        } else if (style === "challenge") {
+          // ── تحدي مشوق: sine/triangle فقط — ناعم للطلاب ──────────────────
+          // Soft kick — sine waves, no harsh noise
+          if (b % 4 === 0) {
+            this.tone(this.urgent ? 88 : 68, 0.22, "sine", 0.42);
+            this.tone(this.urgent ? 44 : 34, 0.28, "sine", 0.30, 0.01);
+          }
+          if (b === 2 || b === 6) this.tone(60, 0.12, "sine", 0.18); // ghost beat
+
+          // Soft clap — mid-freq sine (no noise)
+          if (b % 4 === 2) {
+            this.tone(320, 0.07, "sine", 0.11);
+            this.tone(280, 0.06, "sine", 0.08, 0.012);
+          }
+
+          // Warm bass — G major pentatonic (sine)
+          // G2=196 A2=220 B2=247 D3=294 E3=330
+          const challengeBass = [196, 196, 220, 220, 247, 196, 220, 247];
+          this.tone(challengeBass[b], beat * 1.5, "sine", 0.26);
+
+          // Pad chords — triangle waves, one per bar
+          if (b === 0) {
+            const padChords = [[392, 494, 587], [330, 415, 494], [294, 370, 440], [440, 554, 659]];
+            const chord = padChords[bar % 4];
+            chord.forEach((f, i) => this.tone(f, beat * 7.5, "triangle", 0.05, i * 0.018));
+          }
+
+          // Xylophone melody — G major pentatonic
+          // G4=392 A4=440 B4=494 D5=587 E5=659 G5=784 A5=880
+          const melSeqs = [
+            [587, 659, 784,   0, 880,   0, 784, 659],
+            [587,   0, 659, 587, 494,   0, 587,   0],
+            [392, 494, 587, 659, 784,   0, 659, 587],
+            [  0, 880,   0,1047,   0, 880, 784,   0],
+          ];
+          const mel = melSeqs[bar % 4][b];
+          if (mel) {
+            this.tone(mel, beat * 1.4, "sine", this.urgent ? 0.16 : 0.13);
+            this.tone(mel * 2, beat * 0.6, "triangle", 0.04, 0.008); // shimmer harmonic
+          }
+
+          // Sparkle high note on off-beats every other bar
+          if (bar % 2 === 1 && (b === 1 || b === 3 || b === 5 || b === 7)) {
+            this.tone(1319, 0.08, "sine", 0.035);
           }
         }
 
@@ -706,9 +752,9 @@ export default function TugPlay() {
   const [musicStyle, setMusicStyleState] = useState<MusicStyle>(() => {
     try {
       const s = localStorage.getItem("tug-music-style");
-      if (s && ["energetic", "electronic", "epic", "chill"].includes(s)) return s as MusicStyle;
+      if (s && ["energetic", "electronic", "epic", "chill", "challenge"].includes(s)) return s as MusicStyle;
     } catch (_) {}
-    return "energetic";
+    return "challenge";
   });
   const [isMuted, setIsMutedState] = useState(() => {
     try { return localStorage.getItem("tug-music-muted") === "1"; } catch (_) { return false; }
@@ -1100,22 +1146,27 @@ export default function TugPlay() {
   const redTeam = players.filter((p) => p.team === "red");
   const isPulling = phase === "question" || phase === "answered";
   const KAHOOT_SHAPES = ["▲", "◆", "●", "■"];
-  const KAHOOT_BG = ["#e21b3c", "#1368ce", "#d89e00", "#26890c"];
-  const KAHOOT_BORDER = ["#c4162f", "#0f5ab8", "#b8870a", "#1f6e08"];
+  // Same gradients as وميض game (play.tsx OPTION_COLORS)
+  const WAMID_GRADIENT = [
+    "linear-gradient(160deg, #7A0A0A, #B01414)",  // A — أحمر
+    "linear-gradient(160deg, #08386E, #1260A8)",  // B — أزرق
+    "linear-gradient(160deg, #B8860B, #DAA520)",  // C — ذهبي
+    "linear-gradient(160deg, #5A1A8A, #8B35C8)",  // D — بنفسجي
+  ];
+  const WAMID_BORDER = ["#7A0A0A", "#08386E", "#B8860B", "#5A1A8A"];
 
   const optionStyle = (idx: number): { className: string; bg: string; border: string; crossed?: boolean } => {
-    const baseColor = KAHOOT_BG[idx] || KAHOOT_BG[0];
-    const baseBorder = KAHOOT_BORDER[idx] || KAHOOT_BORDER[0];
-    const alpha70 = (hex: string) => hex + "b3";
+    const baseGrad   = WAMID_GRADIENT[idx] || WAMID_GRADIENT[0];
+    const baseBorder = WAMID_BORDER[idx]   || WAMID_BORDER[0];
     const knownCorrect = roundData?.correctIndex ?? answerCorrectIndex;
     if ((phase === "round-end" || phase === "answered") && idx === knownCorrect)
-      return { className: "text-white ring-2 ring-green-300", bg: "#22c55e", border: "#16a34a" };
+      return { className: "text-white ring-2", bg: "#1a5c30", border: "#D9A521" };
     if (phase === "answered") {
-      if (idx === selectedAnswer && !answerCorrect) return { className: "text-white/70", bg: "#dc2626", border: "#b91c1c", crossed: true };
-      if (idx === selectedAnswer) return { className: "text-white", bg: "#22c55e", border: "#16a34a" };
+      if (idx === selectedAnswer && !answerCorrect) return { className: "text-white/60", bg: "#5c1212", border: "#7A0A0A", crossed: true };
+      if (idx === selectedAnswer) return { className: "text-white", bg: "#1a5c30", border: "#D9A521" };
     }
-    if (isPowerQ) return { className: "text-white", bg: alpha70(baseColor), border: "#f59e0b" };
-    return { className: "text-white", bg: alpha70(baseColor), border: baseBorder };
+    if (isPowerQ) return { className: "text-white", bg: baseGrad, border: "#D9A521" };
+    return { className: "text-white", bg: baseGrad, border: baseBorder };
   };
 
   const teamLabel = (t: "blue" | "red") =>
@@ -1144,8 +1195,9 @@ export default function TugPlay() {
       <Layout>
         <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-            className="w-12 h-12 rounded-full border-4 border-indigo-600 border-t-transparent" />
-          <p className="text-muted-foreground font-bold">{lang === "ar" ? "جاري الاتصال..." : "Connecting..."}</p>
+            className="w-12 h-12 rounded-full border-4 border-t-transparent"
+            style={{ borderColor: "#225739", borderTopColor: "transparent" }} />
+          <p className="font-bold" style={{ color: "#225739" }}>{lang === "ar" ? "جاري الاتصال..." : "Connecting..."}</p>
         </div>
       </Layout>
     );
@@ -1153,8 +1205,8 @@ export default function TugPlay() {
 
   return (
     <Layout>
-      <div className="min-h-screen flex flex-col select-none bg-gradient-to-br from-indigo-50 via-sky-50 to-purple-50 dark:from-indigo-950 dark:via-blue-950 dark:to-purple-950 text-gray-900 dark:text-white"
-        style={{ direction: dir }}
+      <div className="min-h-screen flex flex-col select-none text-gray-900 dark:text-white"
+        style={{ direction: dir, background: "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)" }}
       >
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
         {countdownNum !== null && <CountdownOverlay count={countdownNum} />}
@@ -1444,11 +1496,11 @@ export default function TugPlay() {
                 <motion.div key="question" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-3 lg:px-4 pt-2 pb-3 flex-1 flex flex-col">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`text-sm lg:text-base font-black px-3 py-1 rounded-xl ${
-                        isPowerQ
-                          ? "bg-gradient-to-r from-amber-500/40 to-yellow-500/40 border border-amber-400/50 text-amber-900 dark:text-amber-200"
-                          : "text-slate-300 dark:text-white/50 bg-slate-700/60 dark:bg-white/10"
-                      }`}>
+                      <span className="text-sm lg:text-base font-black px-3 py-1 rounded-xl text-white"
+                        style={{
+                          background: isPowerQ ? "rgba(217,165,33,0.3)" : "rgba(255,255,255,0.12)",
+                          border: `1px solid ${isPowerQ ? "#D9A521" : "rgba(255,255,255,0.2)"}`,
+                        }}>
                         {isPowerQ && "⚡ "}
                         {lang === "ar" ? `${question.index + 1} / ${question.total}` : `Q${question.index + 1}/${question.total}`}
                         {isPowerQ && " ×2"}
@@ -1470,13 +1522,19 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`rounded-2xl p-4 lg:p-5 mb-3 text-center border-2 ${
+                  <div className={`rounded-2xl p-4 lg:p-5 mb-3 text-center border-2 text-white ${
                     phase === "round-end" && roundData
-                      ? "bg-green-500/15 border-green-500/30"
+                      ? "border-[#D9A521]/60"
                       : isPowerQ
-                        ? "bg-gradient-to-b from-amber-900/40 to-amber-800/20 border-amber-400/30"
-                        : "bg-slate-800/70 dark:bg-white/10 border-slate-600/50 dark:border-white/15"
-                  }`}>
+                        ? "border-[#D9A521]/70"
+                        : "border-white/20"
+                  }`} style={{
+                    background: phase === "round-end" && roundData
+                      ? "rgba(34,87,57,0.55)"
+                      : isPowerQ
+                        ? "rgba(180,120,10,0.25)"
+                        : "rgba(255,255,255,0.08)",
+                  }}>
                     {isPowerQ && phase !== "round-end" && (
                       <motion.div animate={{ opacity: [0.6, 1, 0.6] }} transition={{ repeat: Infinity, duration: 1 }}
                         className="text-amber-600 dark:text-amber-300 text-xs lg:text-sm font-black mb-2 flex items-center justify-center gap-1"
@@ -1499,7 +1557,7 @@ export default function TugPlay() {
                         <button key={idx}
                           onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null || phase === "round-end"}
                           className={`relative flex items-center justify-center gap-3 p-4 lg:p-5 rounded-2xl text-center font-bold text-base sm:text-lg lg:text-xl border-2 overflow-hidden min-h-[70px] lg:min-h-[90px] shadow-lg touch-manipulation select-none transition-colors duration-150 ${os.className}`}
-                          style={{ backgroundColor: os.bg, borderColor: os.border }}
+                          style={{ background: os.bg, borderColor: os.border }}
                         >
                           {os.crossed && (
                             <svg className="absolute inset-0 w-full h-full pointer-events-none z-10" preserveAspectRatio="none">
@@ -1514,11 +1572,11 @@ export default function TugPlay() {
                   </div>
 
                   {phase === "answered" && (
-                    <div className={`text-center py-2 px-4 rounded-xl mt-3 font-bold text-base ${
-                      answerCorrect
-                        ? "bg-green-500/25 text-green-600 dark:text-green-300 border border-green-500/40"
-                        : "bg-red-500/25 text-red-600 dark:text-red-300 border border-red-500/40"
-                    }`}>
+                    <div className="text-center py-2 px-4 rounded-xl mt-3 font-bold text-base text-white"
+                      style={{
+                        background: answerCorrect ? "rgba(34,87,57,0.55)" : "rgba(122,28,28,0.55)",
+                        border: `1.5px solid ${answerCorrect ? "#D9A521" : "#e05555"}`,
+                      }}>
                       {answerCorrect
                         ? (lang === "ar" ? "✅ إجابة صحيحة" : "✅ Correct")
                         : (lang === "ar" ? "❌ إجابة خاطئة" : "❌ Wrong")}
@@ -1527,7 +1585,8 @@ export default function TugPlay() {
 
                   {phase === "round-end" && isCreator && (
                     <motion.button whileTap={{ scale: 0.96 }} onClick={handleNext}
-                      className="w-full mt-3 py-3 lg:py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-lg lg:text-xl shadow-xl"
+                      className="w-full mt-3 py-3 lg:py-4 rounded-2xl font-black text-lg lg:text-xl shadow-xl text-white"
+                      style={{ background: "#D9A521", color: "#1a2e1a" }}
                     >
                       {roundData?.isLast
                         ? (lang === "ar" ? "🏆 النتيجة النهائية!" : "🏆 Final Result!")
@@ -1561,7 +1620,8 @@ export default function TugPlay() {
                     </>
                   )}
 
-                  <div className="bg-slate-800/70 dark:bg-white/10 rounded-2xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto border-2 border-slate-600/50 dark:border-white/10">
+                  <div className="rounded-2xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-white"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(217,165,33,0.3)" }}>
                     <h3 className="text-sm lg:text-base font-black text-slate-400 dark:text-white/50 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div className="bg-blue-500/15 rounded-xl p-3 border border-blue-400/20 text-center">
@@ -1597,20 +1657,23 @@ export default function TugPlay() {
 
                   <div className="flex gap-3">
                     <button onClick={() => setLocation("/")}
-                      className="flex-1 py-3 rounded-xl bg-slate-700/80 dark:bg-white/10 hover:bg-slate-600/80 dark:hover:bg-white/20 font-bold text-sm transition-colors">
+                      className="flex-1 py-3 rounded-xl font-bold text-sm text-white transition-colors"
+                      style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
                       {lang === "ar" ? "الرئيسية" : "Home"}
                     </button>
                     {isCreator ? (
                       <motion.button whileTap={{ scale: 0.96 }}
                         onClick={handleReplay}
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-sm shadow-lg"
+                        className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg"
+                        style={{ background: "#D9A521", color: "#1a2e1a" }}
                       >
                         {lang === "ar" ? "🔄 أعد اللعبة" : "🔄 Replay"}
                       </motion.button>
                     ) : (
                       <motion.button whileTap={{ scale: 0.96 }}
                         onClick={() => setLocation(`/game/tug/join/${pin}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent(playerAvatar)}`)}
-                        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-sm shadow-lg"
+                        className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg"
+                        style={{ background: "#D9A521", color: "#1a2e1a" }}
                       >
                         {lang === "ar" ? "🔄 العب مجدداً" : "🔄 Play Again"}
                       </motion.button>
