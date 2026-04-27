@@ -1991,8 +1991,12 @@ function PresentationsInlineTab({ lang, setLocation }: { lang: string; setLocati
 
   useEffect(() => {
     fetch(`${BASE}/api/presentations`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : [])
-      .then((d) => { setPresentations(Array.isArray(d) ? d.slice(0, 8) : []); setLoading(false); })
+      .then((r) => r.ok ? r.json() : { presentations: [] })
+      .then((d) => {
+        const list = Array.isArray(d) ? d : (d?.presentations ?? []);
+        setPresentations(list.slice(0, 8));
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
@@ -2047,7 +2051,7 @@ function PresentationsInlineTab({ lang, setLocation }: { lang: string; setLocati
       )}
 
       <button onClick={() => setLocation("/teacher/presentations")} className="w-full py-2.5 rounded-xl border border-border/60 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all">
-        {isAr ? "عرض كل العروض التفاعلية ←" : "View all presentations →"}
+        {isAr ? "← عرض كل العروض وإدارتها" : "View & manage all presentations →"}
       </button>
     </div>
   );
