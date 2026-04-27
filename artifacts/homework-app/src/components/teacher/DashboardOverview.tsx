@@ -206,7 +206,7 @@ export default function DashboardOverview({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
         className="relative w-full overflow-hidden rounded-2xl text-white shadow-md min-h-[52px]"
-        style={{ background: "linear-gradient(135deg, #1a4731 0%, #2a6647 55%, #0d2015 100%)" }}
+        style={{ background: "linear-gradient(135deg, #1d3e27 0%, #2d6647 55%, #0d1c12 100%)" }}
       >
         <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-amber-300/10 blur-2xl pointer-events-none" />
         <div className="relative px-4 sm:px-5 py-2 flex items-center gap-2.5 sm:gap-3 flex-wrap">
@@ -266,7 +266,7 @@ export default function DashboardOverview({
                 : "Generate a complete lesson deck with Hasad games in seconds."}
             </div>
           </div>
-          <div className="hidden sm:flex shrink-0 items-center gap-1 bg-white text-[#1f5a3e] px-3 py-1.5 rounded-lg text-xs font-bold group-hover:scale-105 transition-transform shadow-md shadow-black/10">
+          <div className="hidden sm:flex shrink-0 items-center gap-1 bg-white text-[#225739] px-3 py-1.5 rounded-lg text-xs font-bold group-hover:scale-105 transition-transform shadow-md shadow-black/10">
             {isAr ? "ابدأ الآن" : "Start now"}
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>

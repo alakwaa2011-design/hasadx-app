@@ -63,7 +63,7 @@
   --popover-border: 40 20% 90%;
   
   /* Harvest Green Primary */
-  --primary: 145 55% 32%;
+  --primary: 146 44% 24%;
   --primary-foreground: 0 0% 100%;
   
   /* Golden Wheat Secondary / Accent */
@@ -81,7 +81,7 @@
   
   --border: 40 20% 88%;
   --input: 40 20% 88%;
-  --ring: 145 55% 32%;
+  --ring: 146 44% 24%;
   
   --radius: 0.75rem;
   
@@ -104,7 +104,7 @@
   --popover-foreground: 40 20% 95%;
   --popover-border: 200 20% 20%;
   
-  --primary: 145 45% 42%;
+  --primary: 146 40% 34%;
   --primary-foreground: 0 0% 100%;
   
   --secondary: 43 80% 55%;
