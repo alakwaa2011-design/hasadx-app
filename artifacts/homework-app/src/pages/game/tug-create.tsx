@@ -3,12 +3,19 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Play, ArrowRight, Clock, ChevronDown, ChevronUp, Sparkles, BookOpen, Search, Check, X, Loader2, FileText, Save, FolderOpen, GraduationCap } from "lucide-react";
+import {
+  Play, Clock, ChevronDown, ChevronUp,
+  Check, X, Loader2, FileText, BookOpen,
+  GraduationCap, Trash2, Search,
+} from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
 import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+const BLUE = "#3b5bdb";
+const INDIGO = "#4c6ef5";
 
 interface TugQuestion {
   text: string;
@@ -29,12 +36,6 @@ interface BankQuestion {
   tags: string | null;
 }
 
-const BLANK_QUESTION = (): TugQuestion => ({
-  text: "",
-  options: ["", "", "", ""],
-  correct: 0,
-});
-
 const correctAnswerToIndex = (ca: string | null): number => {
   if (!ca) return 0;
   return { A: 0, B: 1, C: 2, D: 3 }[ca.toUpperCase()] ?? 0;
@@ -49,26 +50,24 @@ const bankToTug = (bq: BankQuestion): TugQuestion => ({
 export default function TugCreate() {
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
+  const ar = lang === "ar";
   const [, setLocation] = useLocation();
 
-  const [questions, setQuestions] = useState<TugQuestion[]>([BLANK_QUESTION()]);
+  const [questions, setQuestions] = useState<TugQuestion[]>([]);
   const [duration, setDuration] = useState(20);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [expandedIdx, setExpandedIdx] = useState<number>(0);
+  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
+  const [targetClass, setTargetClass] = useState("");
 
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiTopic, setAiTopic] = useState("");
-  const [aiCount, setAiCount] = useState(5);
-  const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-  const [aiLoading, setAiLoading] = useState(false);
-
+  // Bank
   const [bankOpen, setBankOpen] = useState(false);
   const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
   const [bankSearch, setBankSearch] = useState("");
   const [bankSelected, setBankSelected] = useState<Set<number>>(new Set());
 
+  // Assignments
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number; isOwn?: boolean; ownerName?: string | null }[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
@@ -77,16 +76,6 @@ export default function TugCreate() {
   const [assignQLoading, setAssignQLoading] = useState(false);
   const [assignSelected, setAssignSelected] = useState<Set<number>>(new Set());
 
-  const [savedOpen, setSavedOpen] = useState(false);
-  const [savedTemplates, setSavedTemplates] = useState<{ id: number; title: string; questions: TugQuestion[]; duration: number; createdAt: string; isOwn?: boolean; ownerName?: string | null; fromAdmin?: boolean }[]>([]);
-  const [savedLoading, setSavedLoading] = useState(false);
-  const [saveTitle, setSaveTitle] = useState("");
-  const [showSaveInput, setShowSaveInput] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
-  const [targetClass, setTargetClass] = useState("");
-
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
@@ -94,8 +83,7 @@ export default function TugCreate() {
       .catch(() => {});
   }, []);
 
-  /* Deep-link auto-load from a presentation-launched assignment.
-     Reads ?assignmentId=N from URL and fills the questions list. */
+  // Auto-load from presentation deep-link
   useEffect(() => {
     const aid = new URLSearchParams(window.location.search).get("assignmentId");
     if (!aid) return;
@@ -108,267 +96,80 @@ export default function TugCreate() {
         const data = await r.json();
         type RawQ = { questionType?: string; text?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string };
         const qs = ((data.questions || []) as RawQ[])
-          .filter((q) =>
-            q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
-          .map((q) =>
-            bankToTug({
-              id: 0, subject: data.subject || "", text: q.text || "",
-              optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
-              correctAnswer: q.correctAnswer || "A", points: 1, tags: null,
-            } as BankQuestion))
+          .filter(q => q.questionType === "mcq" && !!q.optionA && !!q.optionB && !!q.optionC && !!q.optionD && !!q.correctAnswer)
+          .map(q => bankToTug({
+            id: 0, subject: data.subject || "", text: q.text || "",
+            optionA: q.optionA || "", optionB: q.optionB || "", optionC: q.optionC || "", optionD: q.optionD || "",
+            correctAnswer: q.correctAnswer || "A", points: 1, tags: null,
+          } as BankQuestion))
           .slice(0, 20);
         if (qs.length > 0) {
           setQuestions(qs);
-          if (data.title) {
-            toast.success(lang === "ar"
-              ? `تم تحميل ${qs.length} سؤال من العرض!`
-              : `Loaded ${qs.length} questions from presentation!`);
-          }
+          toast.success(ar ? `تم تحميل ${qs.length} سؤال من العرض!` : `Loaded ${qs.length} questions!`);
         }
       } catch { /* ignore */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadTemplates = async () => {
-    setSavedLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/tug-templates`, { credentials: "include" });
-      if (res.status === 401) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول أولاً" : "Please log in first");
-        return;
-      }
-      const data = await res.json();
-      setSavedTemplates(Array.isArray(data) ? data : []);
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في تحميل القوالب" : "Error loading templates");
-    } finally {
-      setSavedLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!saveTitle.trim()) {
-      toast.error(lang === "ar" ? "أدخل اسم اللعبة" : "Enter a name");
-      return;
-    }
-    if (!isValid) {
-      toast.error(lang === "ar" ? "يرجى ملء جميع الأسئلة والخيارات أولاً" : "Fill all questions first");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/tug-templates`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ title: saveTitle.trim(), questions, duration }),
-      });
-      if (res.status === 401) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول أولاً" : "Please log in first");
-        return;
-      }
-      if (!res.ok) throw new Error();
-      toast.success(lang === "ar" ? "تم حفظ اللعبة بنجاح!" : "Game saved!");
-      setSaveTitle("");
-      setShowSaveInput(false);
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في الحفظ" : "Save error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLoadTemplate = (t: typeof savedTemplates[0]) => {
-    setQuestions(t.questions as TugQuestion[]);
-    setDuration(t.duration);
-    setSavedOpen(false);
-    toast.success(lang === "ar" ? `تم تحميل "${t.title}"` : `Loaded "${t.title}"`);
-  };
-
-  const handleDeleteTemplate = async (id: number) => {
-    try {
-      await fetch(`${API_BASE}/api/tug-templates/${id}`, { method: "DELETE", credentials: "include" });
-      setSavedTemplates(prev => prev.filter(t => t.id !== id));
-      toast.success(lang === "ar" ? "تم الحذف" : "Deleted");
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في الحذف" : "Delete error");
-    }
-  };
-
-  const addQuestion = () => {
-    if (questions.length >= 20) return;
-    const newQ = BLANK_QUESTION();
-    setQuestions((q) => [...q, newQ]);
-    setExpandedIdx(questions.length);
-  };
-
-  const removeQuestion = (idx: number) => {
-    if (questions.length <= 1) return;
-    setQuestions((q) => q.filter((_, i) => i !== idx));
-    setExpandedIdx(Math.max(0, idx - 1));
-  };
-
-  const updateQuestion = (idx: number, field: keyof TugQuestion, value: string | number | string[]) => {
-    setQuestions((q) =>
-      q.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
-    );
-  };
-
-  const updateOption = (qIdx: number, oIdx: number, value: string) => {
-    setQuestions((q) =>
-      q.map((item, i) => {
-        if (i !== qIdx) return item;
-        const opts = [...item.options];
-        opts[oIdx] = value;
-        return { ...item, options: opts };
-      })
-    );
-  };
-
-  const isValid = questions.every(
-    (q) => q.text.trim() && q.options.every((o) => o.trim())
-  );
-
   const handleCreate = () => {
-    if (!isValid) {
-      toast.error(lang === "ar" ? "يرجى ملء جميع الأسئلة والخيارات." : "Please fill all questions and options.");
+    if (questions.length === 0) {
+      toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
       return;
     }
     setCreating(true);
     const socket = getTugSocket();
-    socket.emit("tug:create", { questions, duration, autoAdvance, targetClass: targetClass || undefined }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
-      setCreating(false);
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      if (res.pin && res.creatorToken) {
-        sessionStorage.setItem(`tug-creator-${res.pin}`, res.creatorToken);
-        setLocation(`/game/tug/play/${res.pin}?creator=1`);
-      }
-    });
-  };
-
-  const handleAiGenerate = async () => {
-    if (!aiTopic.trim()) {
-      toast.error(lang === "ar" ? "اكتب موضوع الأسئلة أولاً" : "Enter a topic first");
-      return;
-    }
-    setAiLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/ai/generate-questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ topic: aiTopic.trim(), count: aiCount, difficulty: aiDifficulty }),
+    socket.emit("tug:create", { questions, duration, autoAdvance, targetClass: targetClass || undefined },
+      (res: { pin?: string; creatorToken?: string; error?: string }) => {
+        setCreating(false);
+        if (res.error) { toast.error(res.error); return; }
+        if (res.pin && res.creatorToken) {
+          sessionStorage.setItem(`tug-creator-${res.pin}`, res.creatorToken);
+          setLocation(`/game/tug/play/${res.pin}?creator=1`);
+        }
       });
-      if (res.status === 401) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول أولاً لاستخدام هذه الميزة" : "Please log in first to use this feature");
-        return;
-      }
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.message || (lang === "ar" ? "خطأ في التوليد" : "Generation error"));
-        return;
-      }
-      const generated: TugQuestion[] = (data.questions || []).map((q: {
-        text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string;
-      }) => ({
-        text: q.text,
-        options: [q.optionA, q.optionB, q.optionC, q.optionD],
-        correct: correctAnswerToIndex(q.correctAnswer),
-      }));
-      if (generated.length === 0) {
-        toast.error(lang === "ar" ? "لم يتم توليد أسئلة" : "No questions generated");
-        return;
-      }
-      const hasEmpty = questions.length === 1 && !questions[0].text.trim();
-      const newQuestions = hasEmpty ? generated : [...questions, ...generated];
-      setQuestions(newQuestions.slice(0, 20));
-      setAiOpen(false);
-      setAiTopic("");
-      toast.success(lang === "ar" ? `تم إضافة ${generated.length} سؤال بنجاح!` : `Added ${generated.length} questions!`);
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
-    } finally {
-      setAiLoading(false);
-    }
   };
 
+  // Bank
   const loadBank = useCallback(async () => {
     setBankLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/question-bank`, { credentials: "include" });
-      if (res.status === 401) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول أولاً لاستخدام بنك الأسئلة" : "Please log in first to use the question bank");
-        setBankOpen(false);
-        return;
-      }
+      if (res.status === 401) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setBankOpen(false); return; }
       if (res.ok) {
         const data = await res.json();
         setBankQuestions(data.filter((q: BankQuestion) => q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer));
       }
     } catch { /* ignore */ } finally { setBankLoading(false); }
-  }, [lang]);
+  }, [ar]);
 
   useEffect(() => {
     if (bankOpen) { loadBank(); setBankSelected(new Set()); setBankSearch(""); }
   }, [bankOpen, loadBank]);
 
-  const toggleBankSelect = (id: number) => {
-    setBankSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const importSelected = () => {
+  const importBankSelected = () => {
     const selected = bankQuestions.filter(q => bankSelected.has(q.id));
     if (selected.length === 0) return;
-    const converted = selected.map(bankToTug);
-    const hasEmpty = questions.length === 1 && !questions[0].text.trim();
-    const newQuestions = hasEmpty ? converted : [...questions, ...converted];
-    setQuestions(newQuestions.slice(0, 20));
+    setQuestions(prev => [...prev, ...selected.map(bankToTug)].slice(0, 20));
     setBankOpen(false);
-    toast.success(lang === "ar" ? `تم استيراد ${converted.length} سؤال!` : `Imported ${converted.length} questions!`);
+    toast.success(ar ? `تم استيراد ${selected.length} سؤال!` : `Imported ${selected.length} questions!`);
   };
 
+  // Assignments
   const loadAssignments = useCallback(async () => {
     setAssignLoading(true);
     try {
       const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
-      if (meRes.status === 401 || !meRes.ok) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول أولاً" : "Please log in first");
-        setAssignOpen(false);
-        return;
-      }
+      if (!meRes.ok) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setAssignOpen(false); return; }
       const me = await meRes.json();
       const teacherId = me.teacherId || me.id;
-      if (!teacherId) {
-        toast.error(lang === "ar" ? "يجب تسجيل الدخول كمعلم" : "Must be logged in as teacher");
-        setAssignOpen(false);
-        return;
-      }
       const res = await fetch(`${API_BASE}/api/assignments?teacherId=${teacherId}&include=shared`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setAssignments(
-          data
-            .filter((a: { questionCount: number }) => a.questionCount > 0)
-            .map((a: { id: number; title: string; subject: string; questionCount: number; isOwn?: boolean; ownerName?: string | null }) => ({
-              id: a.id,
-              title: a.title,
-              subject: a.subject || "",
-              questionCount: a.questionCount,
-              isOwn: a.isOwn,
-              ownerName: a.ownerName,
-            })),
-        );
+        setAssignments(data.filter((a: { questionCount: number }) => a.questionCount > 0));
       }
     } catch { /* ignore */ } finally { setAssignLoading(false); }
-  }, [lang]);
+  }, [ar]);
 
   const loadAssignmentQuestions = useCallback(async (assignmentId: number) => {
     setAssignQLoading(true);
@@ -378,8 +179,7 @@ export default function TugCreate() {
         const data = await res.json();
         const qs = (data.questions || [])
           .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
-            q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer
-          )
+            q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
           .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number }) => ({
             id: q.id, subject: data.subject || "", text: q.text,
             optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
@@ -394,40 +194,20 @@ export default function TugCreate() {
     if (assignOpen) { loadAssignments(); setAssignSelected(new Set()); setAssignExpandedId(null); setAssignQuestions([]); }
   }, [assignOpen, loadAssignments]);
 
-  const handleExpandAssignment = (id: number) => {
-    if (assignExpandedId === id) { setAssignExpandedId(null); return; }
-    setAssignExpandedId(id);
-    setAssignSelected(new Set());
-    loadAssignmentQuestions(id);
-  };
-
-  const toggleAssignSelect = (id: number) => {
-    setAssignSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
   const importAssignSelected = () => {
     const selected = assignQuestions.filter(q => assignSelected.has(q.id));
     if (selected.length === 0) return;
-    const converted = selected.map(bankToTug);
-    const hasEmpty = questions.length === 1 && !questions[0].text.trim();
-    const newQuestions = hasEmpty ? converted : [...questions, ...converted];
-    setQuestions(newQuestions.slice(0, 20));
+    setQuestions(prev => [...prev, ...selected.map(bankToTug)].slice(0, 20));
     setAssignOpen(false);
-    toast.success(lang === "ar" ? `تم استيراد ${converted.length} سؤال من الواجب!` : `Imported ${converted.length} questions from assignment!`);
+    toast.success(ar ? `تم استيراد ${selected.length} سؤال من الواجب!` : `Imported ${selected.length} questions!`);
   };
 
   const filteredBank = bankSearch.trim()
-    ? bankQuestions.filter(q =>
-      q.text.includes(bankSearch) || q.subject.includes(bankSearch) || (q.tags && q.tags.includes(bankSearch))
-    )
+    ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch) || (q.tags && q.tags.includes(bankSearch)))
     : bankQuestions;
 
   const groupedBank = filteredBank.reduce<Record<string, BankQuestion[]>>((acc, q) => {
-    const key = q.subject || (lang === "ar" ? "بدون مادة" : "No subject");
+    const key = q.subject || (ar ? "بدون مادة" : "No subject");
     if (!acc[key]) acc[key] = [];
     acc[key].push(q);
     return acc;
@@ -437,504 +217,253 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 py-8 px-4" dir={dir}>
+      {/* pb-28 to leave room for sticky button */}
+      <div className="min-h-screen py-8 px-4 pb-28" dir={dir}
+        style={{ background: "linear-gradient(180deg, #eff6ff 0%, #eef2ff 100%)" }}>
         <div className="max-w-2xl mx-auto">
 
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-2xl shadow-blue-500/40 mb-4">
+          {/* Hero */}
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"
+              style={{ background: `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`, boxShadow: `0 12px 32px -8px ${BLUE}66` }}>
               <span className="text-4xl">🪢</span>
             </div>
-            <h1 className="text-3xl font-black text-foreground mb-1">
-              {lang === "ar" ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+            <h1 className="text-3xl font-black mb-1" style={{ color: BLUE }}>
+              {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
             </h1>
-            <p className="text-muted-foreground text-sm">
-              {lang === "ar" ? "أضف الأسئلة وابدأ المنافسة بين الفريقين!" : "Add questions and let the teams compete!"}
+            <p className="text-sm text-gray-500">
+              {ar ? "فريقان يتنافسان بالإجابة على الأسئلة!" : "Two teams compete by answering questions!"}
             </p>
           </motion.div>
 
-          <Card className="p-4 mb-4 flex items-center gap-4 flex-wrap">
-            <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
-            <span className="font-bold text-sm text-foreground flex-1">
-              {lang === "ar" ? "وقت كل سؤال" : "Time per question"}
+          {/* Duration */}
+          <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
+            <Clock className="w-5 h-5 shrink-0" style={{ color: BLUE }} />
+            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
+              {ar ? "وقت كل سؤال" : "Time per question"}
             </span>
             <div className="flex gap-2 flex-wrap">
-              {[10, 15, 20, 30].map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setDuration(s)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                    duration === s
-                      ? "bg-indigo-600 text-white shadow-lg"
-                      : "bg-background border border-border text-muted-foreground hover:border-indigo-400"
-                  }`}
-                >
-                  {s}{lang === "ar" ? "ث" : "s"}
+              {[10, 15, 20, 30].map(s => (
+                <button key={s} onClick={() => setDuration(s)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-bold transition-all border"
+                  style={{
+                    background: duration === s ? BLUE : "#fff",
+                    color: duration === s ? "#fff" : "#374151",
+                    borderColor: duration === s ? BLUE : "#d1d5db",
+                  }}>
+                  {s}{ar ? "ث" : "s"}
                 </button>
               ))}
             </div>
           </Card>
 
-          <Card className="p-4 mb-4 flex items-center gap-4">
-            <span className="text-lg">⏭</span>
-            <span className="font-bold text-sm text-foreground flex-1">
-              {lang === "ar" ? "تقدم تلقائي بعد كل سؤال" : "Auto-advance after each question"}
+          {/* Auto advance */}
+          <Card className="p-4 mb-3 flex items-center gap-4">
+            <span className="text-xl shrink-0">⏭</span>
+            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
+              {ar ? "تقدم تلقائي بعد كل سؤال" : "Auto-advance after each question"}
             </span>
-            <button
-              onClick={() => setAutoAdvance(!autoAdvance)}
-              className={`relative w-12 h-7 rounded-full transition-colors ${
-                autoAdvance ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
-              }`}
-            >
+            <button onClick={() => setAutoAdvance(!autoAdvance)}
+              className="relative w-12 h-7 rounded-full transition-colors flex-shrink-0"
+              style={{ background: autoAdvance ? "#16a34a" : "#d1d5db" }}>
               <motion.div
-                animate={{ x: autoAdvance ? 20 : 2 }}
+                animate={{ x: autoAdvance ? (dir === "rtl" ? -20 : 20) : 2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="absolute top-1 w-5 h-5 rounded-full bg-white dark:bg-slate-100 shadow"
+                className="absolute top-1 w-5 h-5 rounded-full bg-white shadow"
+                style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
               />
             </button>
           </Card>
 
+          {/* Target class */}
           {gradeLevels.length > 0 && (
-            <Card className="p-4 mb-4 flex items-center gap-4 flex-wrap">
-              <GraduationCap className="w-5 h-5 text-emerald-500 shrink-0" />
-              <span className="font-bold text-sm text-foreground flex-1">
-                {lang === "ar" ? "الصف المستهدف" : "Target class"}
+            <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
+              <GraduationCap className="w-5 h-5 shrink-0" style={{ color: "#10b981" }} />
+              <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
+                {ar ? "الصف المستهدف" : "Target class"}
               </span>
-              <select
-                value={targetClass}
-                onChange={e => setTargetClass(e.target.value)}
-                className="min-w-[160px] max-w-[260px] rounded-lg border border-input bg-background px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">{lang === "ar" ? "— جميع الصفوف —" : "— All classes —"}</option>
+              <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
+                className="min-w-[160px] max-w-[260px] rounded-lg border bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+                style={{ borderColor: "#d1d5db" }}>
+                <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
                 {gradeLevels.map(g => (
                   <option key={g.gradeLevel} value={g.gradeLevel}>
-                    {g.gradeLevel} ({g.count} {lang === "ar" ? "طالب" : "students"})
+                    {g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})
                   </option>
                 ))}
               </select>
             </Card>
           )}
 
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <button
-              onClick={() => setAiOpen(true)}
-              className="flex-1 min-w-[120px] py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transition-all flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              {lang === "ar" ? "توليد AI" : "AI Generate"}
-            </button>
-            <button
-              onClick={() => setBankOpen(true)}
-              className="flex-1 min-w-[120px] py-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold text-sm shadow-lg shadow-teal-500/30 hover:shadow-teal-500/50 transition-all flex items-center justify-center gap-2"
-            >
-              <BookOpen className="w-4 h-4" />
-              {lang === "ar" ? "بنك الأسئلة" : "Question Bank"}
-            </button>
-            <button
-              onClick={() => setAssignOpen(true)}
-              className="flex-1 min-w-[120px] py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all flex items-center justify-center gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              {lang === "ar" ? "استيراد من واجب" : "From Assignment"}
-            </button>
-            <button
-              onClick={() => { setSavedOpen(true); loadTemplates(); }}
-              className="flex-1 min-w-[120px] py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold text-sm shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all flex items-center justify-center gap-2"
-            >
-              <FolderOpen className="w-4 h-4" />
-              {lang === "ar" ? "ألعاب محفوظة" : "Saved Games"}
-            </button>
-          </div>
-
-          <div className="space-y-3 mb-4">
-            <AnimatePresence>
-              {questions.map((q, qIdx) => (
-                <motion.div
-                  key={qIdx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <Card className="overflow-hidden">
-                    <button
-                      onClick={() => setExpandedIdx(expandedIdx === qIdx ? -1 : qIdx)}
-                      className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 font-black text-sm shrink-0">
-                        {qIdx + 1}
-                      </div>
-                      <span className="flex-1 text-start text-sm font-bold text-foreground truncate">
-                        {q.text || (lang === "ar" ? "سؤال جديد..." : "New question...")}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {questions.length > 1 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); removeQuestion(qIdx); }}
-                            className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                        {expandedIdx === qIdx ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </button>
-
-                    <AnimatePresence>
-                      {expandedIdx === qIdx && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="border-t border-border"
-                        >
-                          <div className="p-4 space-y-4">
-                            <div>
-                              <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">
-                                {lang === "ar" ? "نص السؤال" : "Question text"}
-                              </label>
-                              <textarea
-                                value={q.text}
-                                onChange={(e) => updateQuestion(qIdx, "text", e.target.value)}
-                                placeholder={lang === "ar" ? "اكتب السؤال هنا..." : "Write your question here..."}
-                                rows={2}
-                                className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 border-border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
-                                {lang === "ar" ? "الخيارات (اضغط للتحديد كإجابة صحيحة)" : "Options (click to mark as correct)"}
-                              </label>
-                              <div className="grid grid-cols-1 gap-2">
-                                {q.options.map((opt, oIdx) => (
-                                  <div
-                                    key={oIdx}
-                                    className={`flex items-center gap-2 p-2 rounded-xl border-2 transition-all cursor-pointer ${
-                                      q.correct === oIdx
-                                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                                        : "border-border hover:border-indigo-300"
-                                    }`}
-                                    onClick={() => updateQuestion(qIdx, "correct", oIdx)}
-                                  >
-                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                                      q.correct === oIdx
-                                        ? "bg-green-500 text-white"
-                                        : "bg-muted text-muted-foreground"
-                                    }`}>
-                                      {optionLetters[oIdx]}
-                                    </span>
-                                    <input
-                                      type="text"
-                                      value={opt}
-                                      onChange={(e) => { e.stopPropagation(); updateOption(qIdx, oIdx, e.target.value); }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      placeholder={lang === "ar" ? `الخيار ${optionLetters[oIdx]}` : `Option ${["A","B","C","D"][oIdx]}`}
-                                      className="flex-1 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
-                                    />
-                                    {q.correct === oIdx && (
-                                      <span className="text-green-600 text-xs font-bold shrink-0">
-                                        {lang === "ar" ? "✓ صحيح" : "✓ Correct"}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {questions.length < 20 && (
-            <button
-              onClick={addQuestion}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-500 dark:text-indigo-400 font-bold text-sm hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all flex items-center justify-center gap-2 mb-6"
-            >
-              <Plus className="w-4 h-4" />
-              {lang === "ar" ? "أضف سؤالاً" : "Add question"}
-              <span className="text-xs text-muted-foreground font-normal">({questions.length}/20)</span>
-            </button>
-          )}
-
+          {/* Questions counter */}
           <AnimatePresence>
-            {showSaveInput && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-3">
-                <div className="flex gap-2">
-                  <input
-                    value={saveTitle}
-                    onChange={(e) => setSaveTitle(e.target.value)}
-                    placeholder={lang === "ar" ? "اسم اللعبة المحفوظة..." : "Saved game name..."}
-                    className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-background border-2 border-border focus:border-cyan-500 outline-none"
-                    onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  />
-                  <button onClick={handleSave} disabled={saving}
-                    className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold text-sm disabled:opacity-50 flex items-center gap-1.5">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {lang === "ar" ? "حفظ" : "Save"}
+            {questions.length > 0 && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+                <Card className="p-4 mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
+                      style={{ background: BLUE }}>
+                      {questions.length}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200">
+                        {ar ? "سؤال محمّل" : "questions loaded"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {ar ? "جاهز للانطلاق!" : "Ready to go!"}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setQuestions([])}
+                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    title={ar ? "مسح الأسئلة" : "Clear"}>
+                    <Trash2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setShowSaveInput(false)} className="py-2.5 px-3 rounded-xl bg-muted text-muted-foreground hover:bg-muted/80">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+                </Card>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="flex gap-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowSaveInput(true)}
-              disabled={!isValid}
-              className="py-4 px-5 rounded-2xl font-bold text-sm bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Save className="w-5 h-5" />
-              {lang === "ar" ? "حفظ" : "Save"}
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              whileHover={{ scale: 1.01 }}
-              onClick={handleCreate}
-              disabled={creating || !isValid}
-              className="flex-1 py-4 rounded-2xl font-black text-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-            >
-              {creating ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {lang === "ar" ? "جاري الإنشاء..." : "Creating..."}
-                </span>
-              ) : (
-                <>
-                  <Play className="w-6 h-6" />
-                  {lang === "ar" ? "أنشئ الغرفة وابدأ!" : "Create Room & Start!"}
-                  <ArrowRight className={`w-5 h-5 ${lang === "ar" ? "rotate-180" : ""}`} />
-                </>
+          {/* Import buttons */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <button onClick={() => setBankOpen(true)}
+              className="py-5 rounded-2xl text-white font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+              style={{ background: `linear-gradient(135deg, #0ea5e9, #3b82f6)`, boxShadow: "0 8px 20px -6px rgba(59,130,246,0.5)" }}>
+              <BookOpen className="w-6 h-6" />
+              <span>{ar ? "بنك الأسئلة" : "Question Bank"}</span>
+              {bankQuestions.length > 0 && (
+                <span className="text-xs opacity-80">({bankQuestions.length})</span>
               )}
-            </motion.button>
+            </button>
+            <button onClick={() => setAssignOpen(true)}
+              className="py-5 rounded-2xl text-white font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)", boxShadow: "0 8px 20px -6px rgba(245,158,11,0.5)" }}>
+              <FileText className="w-6 h-6" />
+              <span>{ar ? "من واجب" : "From Assignment"}</span>
+            </button>
           </div>
+
+          {questions.length === 0 && (
+            <p className="text-center text-sm text-gray-400 mt-2">
+              {ar ? "اختر مصدر الأسئلة أولاً ثم أنشئ الغرفة" : "Pick a question source, then create room"}
+            </p>
+          )}
         </div>
       </div>
 
-      <AnimatePresence>
-        {aiOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => !aiLoading && setAiOpen(false)}
+      {/* ── Sticky floating "Create Room" button ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 50,
+          padding: "12px 16px",
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(12px)",
+          borderTop: "1.5px solid rgba(59,130,246,0.15)",
+          boxShadow: "0 -8px 24px -4px rgba(59,130,246,0.15)",
+        }}
+        dir={dir}
+      >
+        <div className="max-w-2xl mx-auto">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={handleCreate}
+            disabled={creating || questions.length === 0}
+            className="w-full py-4 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all"
+            style={{
+              background: questions.length > 0
+                ? `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`
+                : "#d1d5db",
+              boxShadow: questions.length > 0 ? `0 12px 28px -8px ${BLUE}80` : "none",
+              cursor: questions.length > 0 ? "pointer" : "not-allowed",
+            }}
           >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-background rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-              dir={dir}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5" />
-                    <h2 className="font-black text-lg">
-                      {lang === "ar" ? "توليد أسئلة بالذكاء الاصطناعي" : "AI Question Generator"}
-                    </h2>
-                  </div>
-                  <button onClick={() => !aiLoading && setAiOpen(false)} className="p-1 rounded-lg hover:bg-white/20">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+            {creating ? (
+              <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جاري الإنشاء..." : "Creating..."}</>
+            ) : (
+              <>
+                <Play className="w-6 h-6" fill="currentColor" />
+                {ar
+                  ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} سؤال)` : "أنشئ الغرفة"
+                  : questions.length > 0 ? `Create Room (${questions.length} Qs)` : "Create Room"}
+              </>
+            )}
+          </motion.button>
+        </div>
+      </div>
 
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">
-                    {lang === "ar" ? "الموضوع" : "Topic"}
-                  </label>
-                  <textarea
-                    value={aiTopic}
-                    onChange={(e) => setAiTopic(e.target.value)}
-                    placeholder={lang === "ar" ? "مثال: الكسور العشرية للصف الخامس..." : "e.g., Fractions for 5th grade..."}
-                    rows={2}
-                    className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 border-border focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">
-                      {lang === "ar" ? "العدد" : "Count"}
-                    </label>
-                    <select
-                      value={aiCount}
-                      onChange={(e) => setAiCount(Number(e.target.value))}
-                      className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 border-border focus:border-purple-500 outline-none"
-                    >
-                      {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">
-                      {lang === "ar" ? "الصعوبة" : "Difficulty"}
-                    </label>
-                    <select
-                      value={aiDifficulty}
-                      onChange={(e) => setAiDifficulty(e.target.value as "easy" | "medium" | "hard")}
-                      className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 border-border focus:border-purple-500 outline-none"
-                    >
-                      <option value="easy">{lang === "ar" ? "سهل" : "Easy"}</option>
-                      <option value="medium">{lang === "ar" ? "متوسط" : "Medium"}</option>
-                      <option value="hard">{lang === "ar" ? "صعب" : "Hard"}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleAiGenerate}
-                  disabled={aiLoading || !aiTopic.trim()}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {aiLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {lang === "ar" ? "جاري التوليد..." : "Generating..."}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      {lang === "ar" ? "توليد الأسئلة" : "Generate Questions"}
-                    </>
-                  )}
-                </button>
-
-                {questions.length > 0 && questions[0].text.trim() && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    {lang === "ar"
-                      ? `سيتم إضافة الأسئلة الجديدة إلى الحالية (${questions.length}/20)`
-                      : `New questions will be added to existing (${questions.length}/20)`}
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* ── Bank modal ── */}
       <AnimatePresence>
         {bankOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setBankOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
-              dir={dir}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white shrink-0">
+            onClick={() => setBankOpen(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+              dir={dir} onClick={e => e.stopPropagation()}>
+              <div className="p-5 shrink-0 text-white"
+                style={{ background: "linear-gradient(135deg, #0ea5e9, #3b82f6)" }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
-                    <h2 className="font-black text-lg">
-                      {lang === "ar" ? "استيراد من بنك الأسئلة" : "Import from Question Bank"}
-                    </h2>
+                    <h2 className="font-black text-lg">{ar ? "بنك الأسئلة" : "Question Bank"}</h2>
                   </div>
-                  <button onClick={() => setBankOpen(false)} className="p-1 rounded-lg hover:bg-white/20">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <button onClick={() => setBankOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20"><X className="w-5 h-5" /></button>
                 </div>
               </div>
-
-              <div className="p-4 border-b border-border shrink-0">
+              <div className="p-4 border-b shrink-0">
                 <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={bankSearch}
-                    onChange={(e) => setBankSearch(e.target.value)}
-                    placeholder={lang === "ar" ? "بحث في بنك الأسئلة..." : "Search question bank..."}
-                    className="w-full text-sm py-2.5 px-3 pe-10 rounded-xl bg-background border-2 border-border focus:border-teal-500 outline-none"
-                  />
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input value={bankSearch} onChange={e => setBankSearch(e.target.value)}
+                    placeholder={ar ? "بحث..." : "Search..."}
+                    className="w-full text-sm py-2.5 ps-9 pe-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 outline-none text-gray-800 dark:text-gray-200 dark:bg-gray-800" />
                 </div>
                 {bankSelected.size > 0 && (
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-teal-600 font-bold">
-                      {lang === "ar" ? `تم اختيار ${bankSelected.size} سؤال` : `${bankSelected.size} selected`}
-                    </span>
-                    <button
-                      onClick={importSelected}
-                      className="py-1.5 px-4 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors flex items-center gap-1"
-                    >
-                      <Check className="w-3 h-3" />
-                      {lang === "ar" ? "استيراد المحدد" : "Import Selected"}
+                    <span className="text-xs font-bold text-blue-600">{ar ? `تم اختيار ${bankSelected.size}` : `${bankSelected.size} selected`}</span>
+                    <button onClick={importBankSelected}
+                      className="py-1.5 px-4 rounded-lg text-white text-xs font-bold"
+                      style={{ background: BLUE }}>
+                      <Check className="w-3 h-3 inline me-1" />
+                      {ar ? "استيراد" : "Import"}
                     </button>
                   </div>
                 )}
               </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {bankLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-teal-500" />
-                  </div>
-                ) : filteredBank.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">
-                    {lang === "ar" ? "لا توجد أسئلة في البنك" : "No questions in bank"}
-                  </div>
-                ) : (
-                  Object.entries(groupedBank).map(([subject, subjectQuestions]) => (
-                    <div key={subject} className="mb-3">
-                      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm py-1.5 px-2 mb-1.5 rounded-lg border border-border/50">
-                        <span className="text-xs font-black text-teal-600 dark:text-teal-400 uppercase tracking-wide">{subject}</span>
-                        <span className="text-[10px] text-muted-foreground ms-2">({subjectQuestions.length})</span>
-                      </div>
-                      <div className="space-y-2">
-                        {subjectQuestions.map((bq) => (
-                          <div
-                            key={bq.id}
-                            onClick={() => toggleBankSelect(bq.id)}
-                            className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                              bankSelected.has(bq.id)
-                                ? "border-teal-500 bg-teal-50 dark:bg-teal-900/20"
-                                : "border-border hover:border-teal-300"
-                            }`}
-                          >
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {bankLoading && <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-500" /></div>}
+                {!bankLoading && filteredBank.length === 0 && <p className="text-center py-12 text-sm text-gray-400">{ar ? "لا توجد أسئلة" : "No questions"}</p>}
+                {Object.entries(groupedBank).map(([subject, subjectQs]) => (
+                  <div key={subject}>
+                    <div className="py-1 px-2 mb-2 rounded-lg" style={{ background: `${BLUE}15` }}>
+                      <span className="text-xs font-black uppercase tracking-wide" style={{ color: BLUE }}>{subject} ({subjectQs.length})</span>
+                    </div>
+                    <div className="space-y-2">
+                      {subjectQs.map(bq => {
+                        const checked = bankSelected.has(bq.id);
+                        return (
+                          <div key={bq.id} onClick={() => { const n = new Set(bankSelected); if (n.has(bq.id)) n.delete(bq.id); else n.add(bq.id); setBankSelected(n); }}
+                            className="p-3 rounded-xl border-2 cursor-pointer transition-all"
+                            style={{ borderColor: checked ? BLUE : "#e5e7eb", background: checked ? `${BLUE}10` : "#fff" }}>
                             <div className="flex items-start gap-2">
-                              <div className={`w-5 h-5 rounded-md border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-                                bankSelected.has(bq.id)
-                                  ? "border-teal-500 bg-teal-500 text-white"
-                                  : "border-border"
-                              }`}>
-                                {bankSelected.has(bq.id) && <Check className="w-3 h-3" />}
+                              <div className="w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
+                                style={{ borderColor: checked ? BLUE : "#d1d5db", background: checked ? BLUE : "#fff" }}>
+                                {checked && <Check className="w-3 h-3 text-white" />}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-foreground leading-tight">{bq.text}</p>
-                                {bq.tags && (
-                                  <div className="mt-1">
-                                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">{bq.tags}</span>
-                                  </div>
-                                )}
+                                <p className="text-sm font-bold text-gray-800 dark:text-gray-200 leading-tight">{bq.text}</p>
                                 <div className="mt-1.5 grid grid-cols-2 gap-1">
                                   {[bq.optionA, bq.optionB, bq.optionC, bq.optionD].map((opt, i) => (
-                                    <span
-                                      key={i}
-                                      className={`text-[11px] px-2 py-0.5 rounded-md truncate ${
-                                        bq.correctAnswer === ["A","B","C","D"][i]
-                                          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold"
-                                          : "bg-muted/60 text-muted-foreground"
-                                      }`}
-                                    >
+                                    <span key={i} className="text-xs px-2 py-0.5 rounded truncate"
+                                      style={{
+                                        background: bq.correctAnswer === ["A","B","C","D"][i] ? "#dcfce7" : "#f3f4f6",
+                                        color: bq.correctAnswer === ["A","B","C","D"][i] ? "#15803d" : "#6b7280",
+                                        fontWeight: bq.correctAnswer === ["A","B","C","D"][i] ? "700" : "400",
+                                      }}>
                                       {optionLetters[i]}) {opt || "—"}
                                     </span>
                                   ))}
@@ -942,282 +471,143 @@ export default function TugCreate() {
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t shrink-0 flex gap-2">
+                <button onClick={() => setBankOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm">{ar ? "إلغاء" : "Cancel"}</button>
+                <button onClick={importBankSelected} disabled={bankSelected.size === 0}
+                  className="flex-1 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+                  style={{ background: BLUE }}>
+                  {ar ? `استيراد (${bankSelected.size})` : `Import (${bankSelected.size})`}
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Assignments modal ── */}
       <AnimatePresence>
         {assignOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setAssignOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
-              dir={dir}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0">
+            onClick={() => setAssignOpen(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+              dir={dir} onClick={e => e.stopPropagation()}>
+              <div className="p-5 shrink-0 text-white"
+                style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    <h2 className="font-black text-lg">
-                      {lang === "ar" ? "استيراد من واجب" : "Import from Assignment"}
-                    </h2>
+                    <h2 className="font-black text-lg">{ar ? "استيراد من واجب" : "Import from Assignment"}</h2>
                   </div>
-                  <button onClick={() => setAssignOpen(false)} className="p-1 rounded-lg hover:bg-white/20">
-                    <X className="w-5 h-5" />
-                  </button>
+                  <button onClick={() => setAssignOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20"><X className="w-5 h-5" /></button>
                 </div>
               </div>
-
               {assignSelected.size > 0 && (
-                <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
-                  <span className="text-xs text-amber-600 font-bold">
-                    {lang === "ar" ? `تم اختيار ${assignSelected.size} سؤال` : `${assignSelected.size} selected`}
-                  </span>
-                  <button
-                    onClick={importAssignSelected}
-                    className="py-1.5 px-4 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors flex items-center gap-1"
-                  >
-                    <Check className="w-3 h-3" />
-                    {lang === "ar" ? "استيراد المحدد" : "Import Selected"}
+                <div className="p-3 border-b shrink-0 flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-600">{ar ? `تم اختيار ${assignSelected.size}` : `${assignSelected.size} selected`}</span>
+                  <button onClick={importAssignSelected}
+                    className="py-1.5 px-4 rounded-lg text-white text-xs font-bold"
+                    style={{ background: "#f59e0b" }}>
+                    {ar ? "استيراد" : "Import"}
                   </button>
                 </div>
               )}
-
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {assignLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
-                  </div>
-                ) : assignments.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">
-                    {lang === "ar" ? "لا توجد واجبات" : "No assignments found"}
-                  </div>
-                ) : (
-                  (() => {
-                    const own = assignments.filter(a => a.isOwn !== false);
-                    const shared = assignments.filter(a => a.isOwn === false);
-                    const renderItem = (a: typeof assignments[number]) => (
-                      <div key={a.id} className="border rounded-xl overflow-hidden">
-                        <button
-                          onClick={() => handleExpandAssignment(a.id)}
-                          className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors text-start"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4 text-amber-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate">{a.title}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {a.subject && `${a.subject} · `}{a.questionCount} {lang === "ar" ? "سؤال" : "questions"}
-                              {a.isOwn === false && a.ownerName ? ` (${a.ownerName})` : ""}
-                            </p>
-                          </div>
-                          {assignExpandedId === a.id ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
-                        </button>
-
-                      <AnimatePresence>
-                        {assignExpandedId === a.id && (
-                          <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                            <div className="p-3 pt-0 space-y-1.5">
-                              {assignQLoading ? (
-                                <div className="flex items-center justify-center py-6">
-                                  <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
-                                </div>
-                              ) : assignQuestions.length === 0 ? (
-                                <p className="text-xs text-muted-foreground text-center py-4">
-                                  {lang === "ar" ? "لا توجد أسئلة اختيار متعدد صالحة (4 خيارات)" : "No valid MCQ questions (4 options required)"}
-                                </p>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      if (assignSelected.size === assignQuestions.length) {
-                                        setAssignSelected(new Set());
-                                      } else {
-                                        setAssignSelected(new Set(assignQuestions.map(q => q.id)));
-                                      }
-                                    }}
-                                    className="text-[10px] text-amber-600 font-bold hover:underline"
-                                  >
-                                    {assignSelected.size === assignQuestions.length
-                                      ? (lang === "ar" ? "إلغاء تحديد الكل" : "Deselect All")
-                                      : (lang === "ar" ? "تحديد الكل" : "Select All")}
-                                  </button>
-                                  {assignQuestions.map((q) => (
-                                    <div
-                                      key={q.id}
-                                      onClick={() => toggleAssignSelect(q.id)}
-                                      className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
-                                        assignSelected.has(q.id)
-                                          ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
-                                          : "border-border hover:border-amber-300"
-                                      }`}
-                                    >
-                                      <div className="flex items-start gap-2">
-                                        <div className={`w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all ${
-                                          assignSelected.has(q.id)
-                                            ? "border-amber-500 bg-amber-500 text-white"
-                                            : "border-border"
-                                        }`}>
-                                          {assignSelected.has(q.id) && <Check className="w-2.5 h-2.5" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-xs font-bold leading-tight">{q.text}</p>
-                                          <div className="mt-1 grid grid-cols-2 gap-1">
-                                            {[q.optionA, q.optionB, q.optionC, q.optionD].map((opt, i) => (
-                                              <span
-                                                key={i}
-                                                className={`text-[10px] px-1.5 py-0.5 rounded truncate ${
-                                                  q.correctAnswer === ["A","B","C","D"][i]
-                                                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-bold"
-                                                    : "bg-muted/60 text-muted-foreground"
-                                                }`}
-                                              >
-                                                {optionLetters[i]}) {opt || "—"}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
+                {assignLoading && <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-500" /></div>}
+                {!assignLoading && assignments.length === 0 && <p className="text-center py-12 text-sm text-gray-400">{ar ? "لا توجد واجبات" : "No assignments"}</p>}
+                {assignments.map(a => (
+                  <div key={a.id} className="rounded-xl border-2 overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
+                    <button
+                      onClick={() => {
+                        if (assignExpandedId === a.id) { setAssignExpandedId(null); return; }
+                        setAssignExpandedId(a.id);
+                        setAssignSelected(new Set());
+                        loadAssignmentQuestions(a.id);
+                      }}
+                      className="w-full p-3 flex items-center gap-3 hover:bg-amber-50 transition-colors">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: "#fef3c7" }}>
+                        <FileText className="w-4 h-4" style={{ color: "#d97706" }} />
+                      </div>
+                      <div className="flex-1 text-start">
+                        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{a.title}</p>
+                        <p className="text-xs text-gray-500">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
+                      </div>
+                      {assignExpandedId === a.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                    </button>
+                    <AnimatePresence>
+                      {assignExpandedId === a.id && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+                          <div className="p-3 border-t space-y-2" style={{ borderColor: "#fde68a" }}>
+                            {assignQLoading && <Loader2 className="w-4 h-4 animate-spin mx-auto text-amber-500" />}
+                            {!assignQLoading && assignQuestions.length === 0 && (
+                              <p className="text-xs text-gray-400 text-center py-3">{ar ? "لا توجد أسئلة اختيار متعدد" : "No MCQ questions"}</p>
+                            )}
+                            {assignQuestions.length > 0 && (
+                              <button
+                                onClick={() => setAssignSelected(
+                                  assignSelected.size === assignQuestions.length
+                                    ? new Set()
+                                    : new Set(assignQuestions.map(q => q.id))
+                                )}
+                                className="text-xs font-bold hover:underline"
+                                style={{ color: "#d97706" }}>
+                                {assignSelected.size === assignQuestions.length
+                                  ? (ar ? "إلغاء تحديد الكل" : "Deselect All")
+                                  : (ar ? "تحديد الكل" : "Select All")}
+                              </button>
+                            )}
+                            {assignQuestions.map(q => {
+                              const checked = assignSelected.has(q.id);
+                              return (
+                                <div key={q.id}
+                                  onClick={() => { const n = new Set(assignSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setAssignSelected(n); }}
+                                  className="p-2.5 rounded-lg border-2 cursor-pointer transition-all"
+                                  style={{ borderColor: checked ? "#f59e0b" : "#e5e7eb", background: checked ? "#fef9e7" : "#fff" }}>
+                                  <div className="flex items-start gap-2">
+                                    <div className="w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
+                                      style={{ borderColor: checked ? "#f59e0b" : "#d1d5db", background: checked ? "#f59e0b" : "#fff" }}>
+                                      {checked && <Check className="w-2.5 h-2.5 text-white" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-bold text-gray-800 leading-tight">{q.text}</p>
+                                      <div className="mt-1 grid grid-cols-2 gap-1">
+                                        {[q.optionA, q.optionB, q.optionC, q.optionD].map((opt, i) => (
+                                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded truncate"
+                                            style={{
+                                              background: q.correctAnswer === ["A","B","C","D"][i] ? "#dcfce7" : "#f3f4f6",
+                                              color: q.correctAnswer === ["A","B","C","D"][i] ? "#15803d" : "#6b7280",
+                                              fontWeight: q.correctAnswer === ["A","B","C","D"][i] ? "700" : "400",
+                                            }}>
+                                            {optionLetters[i]}) {opt || "—"}
+                                          </span>
+                                        ))}
                                       </div>
                                     </div>
-                                  ))}
-                                </>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      </div>
-                    );
-                    return (
-                      <>
-                        {own.length > 0 && (
-                          <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide pt-1">
-                            {lang === "ar" ? "── واجباتي ──" : "── My Assignments ──"}
-                          </div>
-                        )}
-                        {own.map(renderItem)}
-                        {shared.length > 0 && (
-                          <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide pt-3">
-                            {lang === "ar" ? "── واجبات مشتركة ──" : "── Shared Assignments ──"}
-                          </div>
-                        )}
-                        {shared.map(renderItem)}
-                      </>
-                    );
-                  })()
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {savedOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setSavedOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-background rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
-              dir={dir}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white shrink-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="w-5 h-5" />
-                    <h2 className="font-black text-lg">
-                      {lang === "ar" ? "ألعاب محفوظة" : "Saved Games"}
-                    </h2>
-                  </div>
-                  <button onClick={() => setSavedOpen(false)} className="p-1 rounded-lg hover:bg-white/20">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {savedLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
-                  </div>
-                ) : savedTemplates.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">
-                    {lang === "ar" ? "لا توجد ألعاب محفوظة بعد" : "No saved games yet"}
-                  </div>
-                ) : (
-                  (() => {
-                    const own = savedTemplates.filter(t => t.isOwn !== false);
-                    const fromAdmin = savedTemplates.filter(t => t.fromAdmin);
-                    const renderRow = (t: typeof savedTemplates[0]) => (
-                      <div key={t.id} className="border rounded-xl p-4 hover:border-cyan-400 transition-all">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.fromAdmin ? "bg-amber-100 dark:bg-amber-900/40" : "bg-cyan-100 dark:bg-cyan-900/40"}`}>
-                            <Play className={`w-5 h-5 ${t.fromAdmin ? "text-amber-600" : "text-cyan-600"}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="font-bold text-sm truncate">{t.title}</p>
-                              {t.fromAdmin && (
-                                <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded">
-                                  {lang === "ar" ? "من المسؤول" : "Admin"}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">
-                              {(t.questions as TugQuestion[]).length} {lang === "ar" ? "سؤال" : "questions"} · {t.duration}{lang === "ar" ? "ث" : "s"}
-                              {t.fromAdmin && t.ownerName ? ` · ${t.ownerName}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={() => handleLoadTemplate(t)}
-                              className="py-1.5 px-3 rounded-lg bg-cyan-500 text-white text-xs font-bold hover:bg-cyan-600 transition-colors"
-                            >
-                              {lang === "ar" ? "تحميل" : "Load"}
-                            </button>
-                            {!t.fromAdmin && (
-                              <button
-                                onClick={() => handleDeleteTemplate(t.id)}
-                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {assignQuestions.length > 0 && (
+                              <button onClick={importAssignSelected} disabled={assignSelected.size === 0}
+                                className="w-full py-2 rounded-xl text-white font-bold text-sm disabled:opacity-40"
+                                style={{ background: "#f59e0b" }}>
+                                {ar ? `استيراد (${assignSelected.size})` : `Import (${assignSelected.size})`}
                               </button>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    );
-                    return (
-                      <>
-                        {own.map(renderRow)}
-                        {fromAdmin.length > 0 && (
-                          <div className="pt-3 mt-2 border-t border-border/40">
-                            <p className="text-xs font-bold text-muted-foreground mb-2 px-1">
-                              {lang === "ar" ? "مشترك من المسؤول" : "Shared by admin"}
-                            </p>
-                            <div className="space-y-2">
-                              {fromAdmin.map(renderRow)}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()
-                )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </motion.div>
