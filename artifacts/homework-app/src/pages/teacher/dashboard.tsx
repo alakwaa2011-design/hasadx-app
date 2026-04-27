@@ -1936,7 +1936,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
             <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             {group.tools.map((tool) => {
               const delay = globalIdx++ * 0.04;
               const isGold = tool.accent === "#D9A521";
@@ -1946,10 +1946,9 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay }}
-                  className="h-full"
                 >
                   <div
-                    className="group relative h-full flex flex-col p-3.5 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden"
+                    className="group relative flex flex-col p-3 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden"
                     onClick={() => tool.href && setLocation(tool.href)}
                   >
                     {/* Top accent bar */}
@@ -1964,20 +1963,17 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                     />
 
                     {/* Icon + text row */}
-                    <div className="relative flex items-center gap-3 mb-3 pt-1 flex-1">
+                    <div className="relative flex items-center gap-2.5 mb-2.5 pt-0.5">
                       <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: `${tool.accent}12`, color: tool.accent }}
                       >
                         {tool.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground text-xs leading-snug truncate">
+                        <h3 className="font-bold text-foreground text-xs leading-snug line-clamp-2">
                           {tool.title}
                         </h3>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1 mt-0.5">
-                          {tool.desc}
-                        </p>
                       </div>
                     </div>
 
@@ -1992,7 +1988,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                         color: isGold ? "#1a3020" : "#FCFAF8",
                       }}
                     >
-                      {isAr ? "فتح الأداة" : "Open Tool"}
+                      {isAr ? "فتح" : "Open"}
                     </button>
                   </div>
                 </motion.div>
