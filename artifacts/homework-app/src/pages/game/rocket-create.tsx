@@ -4,13 +4,15 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus, Trash2, Play, ArrowRight, Clock, ChevronDown, ChevronUp,
-  Sparkles, BookOpen, Check, X, Loader2, FileText, Save, FolderOpen,
-  GraduationCap, CheckCircle2, XCircle, Type, ListChecks, Rocket,
+  Play, Clock, ChevronDown, ChevronUp,
+  Check, X, Loader2, FileText, FolderOpen,
+  GraduationCap, Trash2, BookOpen, Rocket, Copy,
+  ExternalLink, Users,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
+import QRCode from "react-qr-code";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -40,13 +42,6 @@ interface BankQuestion {
   tags: string | null;
 }
 
-const BLANK_MCQ = (): RocketQuestion => ({ text: "", type: "mcq", options: ["", "", "", ""], correct: 0 });
-const BLANK_TF = (): RocketQuestion => ({ text: "", type: "true_false", options: ["صحيح", "خطأ"], correct: 0 });
-const BLANK_FILL = (): RocketQuestion => ({ text: "", type: "fill_blank", options: [], correct: -1, correctText: "" });
-
-const blankFor = (t: QType): RocketQuestion =>
-  t === "mcq" ? BLANK_MCQ() : t === "true_false" ? BLANK_TF() : BLANK_FILL();
-
 const correctAnswerToIndex = (ca: string | null): number => {
   if (!ca) return 0;
   return { A: 0, B: 1, C: 2, D: 3 }[ca.toUpperCase()] ?? 0;
@@ -59,41 +54,69 @@ const bankToRocket = (bq: BankQuestion): RocketQuestion => ({
   correct: correctAnswerToIndex(bq.correctAnswer),
 });
 
+function StarField() {
+  const stars = Array.from({ length: 40 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2 + 0.5,
+    delay: Math.random() * 3,
+  }));
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {stars.map(s => (
+        <motion.div
+          key={s.id}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ repeat: Infinity, duration: 2 + s.delay, delay: s.delay }}
+          style={{
+            position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
+            width: s.size, height: s.size, borderRadius: "50%", background: "#fff",
+            boxShadow: `0 0 ${s.size * 2}px rgba(255,255,255,0.6)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function RocketCreate() {
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const ar = lang === "ar";
   const [, setLocation] = useLocation();
 
-  const [questions, setQuestions] = useState<RocketQuestion[]>([BLANK_MCQ()]);
+  const [questions, setQuestions] = useState<RocketQuestion[]>([]);
   const [duration, setDuration] = useState(20);
   const [creating, setCreating] = useState(false);
-  const [expandedIdx, setExpandedIdx] = useState<number>(0);
   const [title, setTitle] = useState("");
+  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
+  const [targetClass, setTargetClass] = useState("");
 
+  // Game created state
+  const [gamePin, setGamePin] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Bank
   const [bankOpen, setBankOpen] = useState(false);
   const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
   const [bankSearch, setBankSearch] = useState("");
   const [bankSelected, setBankSelected] = useState<Set<number>>(new Set());
 
+  // Assignments
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number; isOwn?: boolean; ownerName?: string | null }[]>([]);
+  const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number }[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignExpandedId, setAssignExpandedId] = useState<number | null>(null);
   const [assignQuestions, setAssignQuestions] = useState<BankQuestion[]>([]);
   const [assignQLoading, setAssignQLoading] = useState(false);
   const [assignSelected, setAssignSelected] = useState<Set<number>>(new Set());
 
+  // Templates
   const [savedOpen, setSavedOpen] = useState(false);
-  const [savedTemplates, setSavedTemplates] = useState<{ id: number; title: string; questions: RocketQuestion[]; duration: number; createdAt: string; isOwn?: boolean; ownerName?: string | null; fromAdmin?: boolean }[]>([]);
+  const [savedTemplates, setSavedTemplates] = useState<{ id: number; title: string; questions: RocketQuestion[]; duration: number; isOwn?: boolean; fromAdmin?: boolean }[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
-  const [showSaveInput, setShowSaveInput] = useState(false);
-  const [saveTitle, setSaveTitle] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
-  const [targetClass, setTargetClass] = useState("");
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
@@ -132,51 +155,9 @@ export default function RocketCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addQuestion = (type: QType = "mcq") => {
-    if (questions.length >= 30) return;
-    setQuestions(q => [...q, blankFor(type)]);
-    setExpandedIdx(questions.length);
-  };
-
-  const removeQuestion = (idx: number) => {
-    if (questions.length <= 1) return;
-    setQuestions(q => q.filter((_, i) => i !== idx));
-    setExpandedIdx(Math.max(0, idx - 1));
-  };
-
-  const updateQuestion = (idx: number, patch: Partial<RocketQuestion>) => {
-    setQuestions(q => q.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
-  };
-
-  const updateOption = (qIdx: number, oIdx: number, value: string) => {
-    setQuestions(q => q.map((it, i) => {
-      if (i !== qIdx) return it;
-      const opts = [...it.options];
-      opts[oIdx] = value;
-      return { ...it, options: opts };
-    }));
-  };
-
-  const changeType = (idx: number, newType: QType) => {
-    setQuestions(q => q.map((it, i) => {
-      if (i !== idx) return it;
-      const text = it.text;
-      const fresh = blankFor(newType);
-      return { ...fresh, text };
-    }));
-  };
-
-  const isValid = questions.every(q => {
-    if (!q.text.trim()) return false;
-    if (q.type === "mcq") return q.options.every(o => o.trim()) && q.correct >= 0 && q.correct < 4;
-    if (q.type === "true_false") return true;
-    if (q.type === "fill_blank") return !!(q.correctText && q.correctText.trim());
-    return false;
-  });
-
   const handleCreate = () => {
-    if (!isValid) {
-      toast.error(ar ? "يرجى ملء جميع الأسئلة بشكل صحيح" : "Please fill all questions correctly");
+    if (questions.length === 0) {
+      toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
       return;
     }
     setCreating(true);
@@ -190,9 +171,23 @@ export default function RocketCreate() {
       if (res.error) { toast.error(res.error); return; }
       if (res.pin && res.creatorToken) {
         sessionStorage.setItem(`rocket-creator-${res.pin}`, res.creatorToken);
-        setLocation(`/game/rocket/host/${res.pin}`);
+        setGamePin(res.pin);
       }
     });
+  };
+
+  const joinUrl = gamePin ? `${window.location.origin}/game/rocket/join/${gamePin}` : "";
+
+  const copyLink = async () => {
+    if (!joinUrl) return;
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+      toast.success(ar ? "تم نسخ الرابط!" : "Link copied!");
+    } catch {
+      toast.error(ar ? "فشل النسخ" : "Copy failed");
+    }
   };
 
   // Bank
@@ -200,11 +195,7 @@ export default function RocketCreate() {
     setBankLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/question-bank`, { credentials: "include" });
-      if (res.status === 401) {
-        toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first");
-        setBankOpen(false);
-        return;
-      }
+      if (res.status === 401) { toast.error(ar ? "يجب تسجيل الدخول أولاً" : "Please log in first"); setBankOpen(false); return; }
       if (res.ok) {
         const data = await res.json();
         setBankQuestions(data.filter((q: BankQuestion) => q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer));
@@ -219,12 +210,10 @@ export default function RocketCreate() {
   const importBankSelected = () => {
     const selected = bankQuestions.filter(q => bankSelected.has(q.id));
     if (selected.length === 0) return;
-    const converted = selected.map(bankToRocket);
-    const hasEmpty = questions.length === 1 && !questions[0].text.trim();
-    const merged = (hasEmpty ? converted : [...questions, ...converted]).slice(0, 30);
+    const merged = [...questions, ...selected.map(bankToRocket)].slice(0, 30);
     setQuestions(merged);
     setBankOpen(false);
-    toast.success(ar ? `تم استيراد ${converted.length} سؤال` : `Imported ${converted.length}`);
+    toast.success(ar ? `تم استيراد ${selected.length} سؤال` : `Imported ${selected.length}`);
   };
 
   // Assignments
@@ -232,11 +221,7 @@ export default function RocketCreate() {
     setAssignLoading(true);
     try {
       const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
-      if (!meRes.ok) {
-        toast.error(ar ? "يجب تسجيل الدخول" : "Please log in");
-        setAssignOpen(false);
-        return;
-      }
+      if (!meRes.ok) { toast.error(ar ? "يجب تسجيل الدخول" : "Please log in"); setAssignOpen(false); return; }
       const me = await meRes.json();
       const teacherId = me.teacherId || me.id;
       const res = await fetch(`${API_BASE}/api/assignments?teacherId=${teacherId}&include=shared`, { credentials: "include" });
@@ -254,7 +239,7 @@ export default function RocketCreate() {
       if (res.ok) {
         const data = await res.json();
         const qs = (data.questions || [])
-          .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) => q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
+          .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) => q.questionType === "mcq" && q.optionA && q.correctAnswer)
           .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
             id: q.id, subject: data.subject || "", text: q.text,
             optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
@@ -272,12 +257,10 @@ export default function RocketCreate() {
   const importAssignSelected = () => {
     const selected = assignQuestions.filter(q => assignSelected.has(q.id));
     if (selected.length === 0) return;
-    const converted = selected.map(bankToRocket);
-    const hasEmpty = questions.length === 1 && !questions[0].text.trim();
-    const merged = (hasEmpty ? converted : [...questions, ...converted]).slice(0, 30);
+    const merged = [...questions, ...selected.map(bankToRocket)].slice(0, 30);
     setQuestions(merged);
     setAssignOpen(false);
-    toast.success(ar ? `تم استيراد ${converted.length} سؤال من الواجب` : `Imported ${converted.length} from assignment`);
+    toast.success(ar ? `تم استيراد ${selected.length} سؤال من الواجب` : `Imported ${selected.length} from assignment`);
   };
 
   // Templates
@@ -285,30 +268,10 @@ export default function RocketCreate() {
     setSavedLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/rocket-templates`, { credentials: "include" });
-      if (!res.ok) {
-        toast.error(ar ? "خطأ في تحميل القوالب" : "Error loading templates");
-        return;
-      }
+      if (!res.ok) { toast.error(ar ? "خطأ في تحميل القوالب" : "Error loading templates"); return; }
       const data = await res.json();
       setSavedTemplates(Array.isArray(data) ? data : []);
     } finally { setSavedLoading(false); }
-  };
-
-  const handleSave = async () => {
-    if (!saveTitle.trim()) { toast.error(ar ? "أدخل اسم اللعبة" : "Enter a name"); return; }
-    if (!isValid) { toast.error(ar ? "املأ جميع الأسئلة أولاً" : "Fill all questions first"); return; }
-    setSaving(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/rocket-templates`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: saveTitle.trim(), questions, duration }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success(ar ? "تم حفظ اللعبة!" : "Saved!");
-      setSaveTitle(""); setShowSaveInput(false);
-    } catch { toast.error(ar ? "خطأ في الحفظ" : "Save error"); }
-    finally { setSaving(false); }
   };
 
   const handleLoadTemplate = (t: typeof savedTemplates[0]) => {
@@ -327,46 +290,217 @@ export default function RocketCreate() {
   };
 
   const filteredBank = bankSearch.trim()
-    ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch) || (q.tags && q.tags.includes(bankSearch)))
+    ? bankQuestions.filter(q => q.text.includes(bankSearch) || q.subject.includes(bankSearch))
     : bankQuestions;
 
-  const optionLetters = ["أ", "ب", "ج", "د"];
+  // ── Game Created Screen ────────────────────────────────────────────────────
+  if (gamePin) {
+    return (
+      <div
+        dir={dir}
+        style={{
+          minHeight: "100dvh",
+          background: "linear-gradient(180deg, #0a0e27 0%, #1a1740 50%, #2d1b4e 100%)",
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px 16px",
+        }}
+      >
+        <StarField />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          style={{ position: "relative", zIndex: 10, width: "100%", maxWidth: 520 }}
+        >
+          {/* Rocket icon */}
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <motion.div
+              animate={{ y: [-6, 6, -6] }}
+              transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+              style={{ display: "inline-block" }}
+            >
+              <div style={{
+                width: 80, height: 80, borderRadius: 24,
+                background: `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 16px 40px -8px ${BRAND_PRIMARY}88`,
+                margin: "0 auto",
+              }}>
+                <Rocket size={40} color="#fff" />
+              </div>
+            </motion.div>
+            <h1 style={{ color: "#fff", fontWeight: 900, fontSize: 22, margin: "14px 0 4px" }}>
+              {ar ? "🚀 السباق جاهز للانطلاق!" : "🚀 Race is Ready!"}
+            </h1>
+            {title && (
+              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: 0 }}>{title}</p>
+            )}
+          </div>
 
-  const TYPE_LABELS: Record<QType, { ar: string; en: string; icon: typeof ListChecks }> = {
-    mcq: { ar: "اختيار من متعدد", en: "Multiple Choice", icon: ListChecks },
-    true_false: { ar: "صح أو خطأ", en: "True/False", icon: CheckCircle2 },
-    fill_blank: { ar: "املأ الفراغ", en: "Fill Blank", icon: Type },
-  };
+          {/* PIN Card */}
+          <div style={{
+            background: "rgba(255,255,255,0.07)",
+            border: "1.5px solid rgba(255,255,255,0.15)",
+            borderRadius: 24,
+            padding: 28,
+            backdropFilter: "blur(12px)",
+            marginBottom: 16,
+          }}>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 700, margin: "0 0 8px", textAlign: "center" }}>
+              {ar ? "للانضمام، ادخل على الموقع واكتب الكود:" : "Join at the website and enter the code:"}
+            </p>
+            <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 600, margin: "0 0 14px", textAlign: "center", direction: "ltr" }}>
+              {window.location.host}/game/rocket/join
+            </p>
 
+            {/* Big PIN */}
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+              style={{
+                background: BRAND_GOLD,
+                borderRadius: 20,
+                padding: "20px 32px",
+                textAlign: "center",
+                fontSize: 64,
+                fontWeight: 900,
+                color: "#000",
+                letterSpacing: "0.18em",
+                fontFamily: "monospace",
+                direction: "ltr",
+                boxShadow: `0 16px 40px -8px ${BRAND_GOLD}80`,
+                marginBottom: 20,
+              }}
+            >
+              {gamePin}
+            </motion.div>
+
+            {/* QR + info */}
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+              <div style={{ background: "#fff", borderRadius: 14, padding: 10, flexShrink: 0 }}>
+                <QRCode value={joinUrl} size={120} />
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{
+                  background: "rgba(255,255,255,0.06)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  direction: "ltr",
+                  wordBreak: "break-all",
+                }}>
+                  {joinUrl}
+                </div>
+                <button
+                  onClick={copyLink}
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 14,
+                    border: "none",
+                    background: copied
+                      ? "linear-gradient(135deg, #16a34a, #15803d)"
+                      : `linear-gradient(135deg, ${BRAND_PRIMARY}, #2d6a45)`,
+                    color: "#fff",
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "all 0.2s",
+                    boxShadow: `0 8px 20px -4px ${BRAND_PRIMARY}60`,
+                  }}
+                >
+                  {copied ? <Check size={18} /> : <Copy size={18} />}
+                  {copied ? (ar ? "✓ تم النسخ!" : "✓ Copied!") : (ar ? "نسخ الرابط" : "Copy Link")}
+                </button>
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Users size={13} />
+                  {ar ? `${questions.length} سؤال · ${duration} ث لكل سؤال` : `${questions.length} questions · ${duration}s each`}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() => { setGamePin(null); setQuestions([]); }}
+              style={{
+                flex: 1,
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "1.5px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.8)",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              {ar ? "سباق جديد" : "New Race"}
+            </button>
+            <button
+              onClick={() => setLocation(`/game/rocket/host/${gamePin}`)}
+              style={{
+                flex: 2,
+                padding: "14px 16px",
+                borderRadius: 16,
+                border: "none",
+                background: `linear-gradient(135deg, ${BRAND_GOLD}, #c89212)`,
+                color: "#000",
+                fontWeight: 900,
+                fontSize: 15,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                boxShadow: `0 12px 28px -8px ${BRAND_GOLD}80`,
+              }}
+            >
+              <ExternalLink size={18} />
+              {ar ? "فتح لوحة التحكم" : "Open Host Panel"}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Create Screen ──────────────────────────────────────────────────────────
   return (
     <Layout>
       <div
         dir={dir}
         className="min-h-screen py-8 px-4"
-        style={{
-          background: "linear-gradient(180deg, #FCFAF8 0%, #F4EBD9 100%)",
-        }}
+        style={{ background: "linear-gradient(180deg, #FCFAF8 0%, #F4EBD9 100%)" }}
       >
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           {/* Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
+          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div
               className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"
-              style={{
-                background: `linear-gradient(135deg, ${BRAND_PRIMARY} 0%, #2d6a45 100%)`,
-                boxShadow: `0 12px 32px -8px ${BRAND_PRIMARY}66`,
-              }}
+              style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY} 0%, #2d6a45 100%)`, boxShadow: `0 12px 32px -8px ${BRAND_PRIMARY}66` }}
             >
               <Rocket className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-black mb-1" style={{ color: BRAND_PRIMARY }}>
               {ar ? "أنشئ سباق الصواريخ" : "Create Rocket Race"}
             </h1>
-            <p className="text-sm" style={{ color: "#6b7280" }}>
+            <p className="text-sm text-muted-foreground">
               {ar ? "كلما أجاب الطالب أسرع وأصح، صعد صاروخه أعلى!" : "Faster correct answers = higher rocket!"}
             </p>
           </motion.div>
@@ -378,7 +512,7 @@ export default function RocketCreate() {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder={ar ? "اسم السباق (اختياري)" : "Race title (optional)"}
-              className="flex-1 bg-transparent outline-none text-sm font-bold text-foreground placeholder:text-muted-foreground/60"
+              className="flex-1 bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/60"
               maxLength={60}
             />
           </Card>
@@ -426,27 +560,59 @@ export default function RocketCreate() {
             </Card>
           )}
 
-          {/* Source buttons */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          {/* Questions counter */}
+          <AnimatePresence>
+            {questions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <Card className="p-4 mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white"
+                      style={{ background: BRAND_PRIMARY }}
+                    >
+                      {questions.length}
+                    </div>
+                    <span className="font-bold text-sm" style={{ color: BRAND_PRIMARY }}>
+                      {ar ? `سؤال محمّل` : `questions loaded`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setQuestions([])}
+                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                    title={ar ? "مسح الأسئلة" : "Clear questions"}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Import buttons */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               onClick={() => setBankOpen(true)}
-              className="py-3 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
-              style={{ background: BRAND_PRIMARY }}
+              className="py-4 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90"
+              style={{ background: BRAND_PRIMARY, boxShadow: `0 8px 20px -6px ${BRAND_PRIMARY}60` }}
             >
               <BookOpen className="w-4 h-4" />
               {ar ? "بنك الأسئلة" : "Question Bank"}
             </button>
             <button
               onClick={() => setAssignOpen(true)}
-              className="py-3 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
-              style={{ background: BRAND_GOLD }}
+              className="py-4 rounded-xl text-white font-bold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90"
+              style={{ background: BRAND_GOLD, boxShadow: `0 8px 20px -6px ${BRAND_GOLD}60` }}
             >
               <FileText className="w-4 h-4" />
               {ar ? "من واجب" : "From Assignment"}
             </button>
             <button
               onClick={() => { setSavedOpen(true); loadTemplates(); }}
-              className="py-3 rounded-xl font-bold text-sm border-2 transition-all flex items-center justify-center gap-2 col-span-2"
+              className="py-4 rounded-xl font-bold text-sm border-2 transition-all flex items-center justify-center gap-2 col-span-2 hover:opacity-80"
               style={{ background: "#fff", color: BRAND_PRIMARY, borderColor: BRAND_PRIMARY }}
             >
               <FolderOpen className="w-4 h-4" />
@@ -454,289 +620,33 @@ export default function RocketCreate() {
             </button>
           </div>
 
-          {/* Question list */}
-          <div className="space-y-3 mb-4">
-            <AnimatePresence>
-              {questions.map((q, qIdx) => {
-                const Icon = TYPE_LABELS[q.type].icon;
-                return (
-                  <motion.div
-                    key={qIdx}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                  >
-                    <Card className="overflow-hidden">
-                      <button
-                        onClick={() => setExpandedIdx(expandedIdx === qIdx ? -1 : qIdx)}
-                        className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors"
-                      >
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
-                          style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}
-                        >
-                          {qIdx + 1}
-                        </div>
-                        <Icon className="w-4 h-4 shrink-0" style={{ color: BRAND_GOLD }} />
-                        <span className="flex-1 text-start text-sm font-bold truncate">
-                          {q.text || (ar ? "سؤال جديد..." : "New question...")}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {questions.length > 1 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); removeQuestion(qIdx); }}
-                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                          {expandedIdx === qIdx ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                        </div>
-                      </button>
-
-                      <AnimatePresence>
-                        {expandedIdx === qIdx && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="border-t border-border"
-                          >
-                            <div className="p-4 space-y-4">
-                              {/* Type chooser */}
-                              <div className="flex gap-2 flex-wrap">
-                                {(Object.keys(TYPE_LABELS) as QType[]).map(t => {
-                                  const TIcon = TYPE_LABELS[t].icon;
-                                  return (
-                                    <button
-                                      key={t}
-                                      onClick={() => changeType(qIdx, t)}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5"
-                                      style={{
-                                        background: q.type === t ? BRAND_PRIMARY : "#fff",
-                                        color: q.type === t ? "#fff" : "#374151",
-                                        borderColor: q.type === t ? BRAND_PRIMARY : "#e5e7eb",
-                                      }}
-                                    >
-                                      <TIcon className="w-3.5 h-3.5" />
-                                      {ar ? TYPE_LABELS[t].ar : TYPE_LABELS[t].en}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Text */}
-                              <div>
-                                <label className="block text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">
-                                  {ar ? "نص السؤال" : "Question text"}
-                                </label>
-                                <textarea
-                                  value={q.text}
-                                  onChange={e => updateQuestion(qIdx, { text: e.target.value })}
-                                  placeholder={
-                                    q.type === "fill_blank"
-                                      ? (ar ? "اكتب السؤال واترك فراغاً للإجابة..." : "Write question with blank...")
-                                      : (ar ? "اكتب السؤال هنا..." : "Write your question here...")
-                                  }
-                                  rows={2}
-                                  className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 outline-none transition-all resize-none"
-                                  style={{ borderColor: "#e5e7eb" }}
-                                />
-                              </div>
-
-                              {/* MCQ options */}
-                              {q.type === "mcq" && (
-                                <div>
-                                  <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
-                                    {ar ? "الخيارات (اضغط لتحديد الإجابة الصحيحة)" : "Options (click to mark correct)"}
-                                  </label>
-                                  <div className="grid grid-cols-1 gap-2">
-                                    {q.options.map((opt, oIdx) => (
-                                      <div
-                                        key={oIdx}
-                                        className="flex items-center gap-2 p-2 rounded-xl border-2 transition-all cursor-pointer"
-                                        style={{
-                                          borderColor: q.correct === oIdx ? BRAND_PRIMARY : "#e5e7eb",
-                                          background: q.correct === oIdx ? `${BRAND_PRIMARY}10` : "#fff",
-                                        }}
-                                        onClick={() => updateQuestion(qIdx, { correct: oIdx })}
-                                      >
-                                        <span
-                                          className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0"
-                                          style={{
-                                            background: q.correct === oIdx ? BRAND_PRIMARY : "#f3f4f6",
-                                            color: q.correct === oIdx ? "#fff" : "#6b7280",
-                                          }}
-                                        >
-                                          {optionLetters[oIdx]}
-                                        </span>
-                                        <input
-                                          type="text"
-                                          value={opt}
-                                          onChange={e => { e.stopPropagation(); updateOption(qIdx, oIdx, e.target.value); }}
-                                          onClick={e => e.stopPropagation()}
-                                          placeholder={ar ? `الخيار ${optionLetters[oIdx]}` : `Option ${["A", "B", "C", "D"][oIdx]}`}
-                                          className="flex-1 text-sm bg-transparent outline-none"
-                                        />
-                                        {q.correct === oIdx && (
-                                          <span className="text-xs font-bold shrink-0" style={{ color: BRAND_PRIMARY }}>
-                                            ✓ {ar ? "صحيح" : "Correct"}
-                                          </span>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* True/False */}
-                              {q.type === "true_false" && (
-                                <div>
-                                  <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
-                                    {ar ? "الإجابة الصحيحة" : "Correct answer"}
-                                  </label>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {[
-                                      { idx: 0, label: ar ? "صحيح" : "True", icon: CheckCircle2, color: "#16a34a" },
-                                      { idx: 1, label: ar ? "خطأ" : "False", icon: XCircle, color: "#dc2626" },
-                                    ].map(({ idx, label, icon: TFI, color }) => (
-                                      <button
-                                        key={idx}
-                                        onClick={() => updateQuestion(qIdx, { correct: idx })}
-                                        className="p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 font-bold"
-                                        style={{
-                                          borderColor: q.correct === idx ? color : "#e5e7eb",
-                                          background: q.correct === idx ? `${color}10` : "#fff",
-                                          color: q.correct === idx ? color : "#6b7280",
-                                        }}
-                                      >
-                                        <TFI className="w-5 h-5" />
-                                        {label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Fill blank */}
-                              {q.type === "fill_blank" && (
-                                <div>
-                                  <label className="block text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
-                                    {ar ? "الإجابة الصحيحة" : "Correct answer"}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={q.correctText || ""}
-                                    onChange={e => updateQuestion(qIdx, { correctText: e.target.value })}
-                                    placeholder={ar ? "الإجابة الصحيحة..." : "Correct answer..."}
-                                    className="w-full text-sm py-2.5 px-3 rounded-xl bg-background border-2 outline-none mb-2"
-                                    style={{ borderColor: "#e5e7eb" }}
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    {ar ? "💡 تلميح: تستطيع كتابة إجابات بديلة في الخيارات (تفصلها بفواصل)" : "Tip: Add alternate answers in options"}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-
-          {/* Add buttons */}
-          {questions.length < 30 && (
-            <div className="grid grid-cols-3 gap-2 mb-6">
-              {(Object.keys(TYPE_LABELS) as QType[]).map(t => {
-                const TIcon = TYPE_LABELS[t].icon;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => addQuestion(t)}
-                    className="py-3 rounded-xl border-2 border-dashed font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                    style={{ borderColor: `${BRAND_PRIMARY}66`, color: BRAND_PRIMARY, background: "#fff" }}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <TIcon className="w-3.5 h-3.5" />
-                    {ar ? TYPE_LABELS[t].ar : TYPE_LABELS[t].en}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Save input */}
-          <AnimatePresence>
-            {showSaveInput && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-3">
-                <div className="flex gap-2">
-                  <input
-                    value={saveTitle}
-                    onChange={e => setSaveTitle(e.target.value)}
-                    placeholder={ar ? "اسم السباق المحفوظ..." : "Race name..."}
-                    className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-background border-2 outline-none"
-                    style={{ borderColor: "#e5e7eb" }}
-                    onKeyDown={e => e.key === "Enter" && handleSave()}
-                  />
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="py-2.5 px-5 rounded-xl text-white font-bold text-sm disabled:opacity-50 flex items-center gap-1.5"
-                    style={{ background: BRAND_PRIMARY }}
-                  >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {ar ? "حفظ" : "Save"}
-                  </button>
-                  <button onClick={() => setShowSaveInput(false)} className="py-2.5 px-3 rounded-xl bg-muted text-muted-foreground hover:bg-muted/80">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
+          {/* Launch button */}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.01 }}
+            onClick={handleCreate}
+            disabled={creating || questions.length === 0}
+            className="w-full py-5 rounded-2xl font-black text-xl text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            style={{
+              background: questions.length > 0
+                ? `linear-gradient(135deg, ${BRAND_GOLD} 0%, #c89212 100%)`
+                : "#e5e7eb",
+              boxShadow: questions.length > 0 ? `0 16px 32px -8px ${BRAND_GOLD}80` : "none",
+              color: questions.length > 0 ? "#000" : "#9ca3af",
+            }}
+          >
+            {creating ? (
+              <><Loader2 className="w-6 h-6 animate-spin" />{ar ? "جاري الإنشاء..." : "Creating..."}</>
+            ) : (
+              <><Rocket className="w-6 h-6" />{ar ? "أطلق السباق!" : "Launch Race!"}</>
             )}
-          </AnimatePresence>
+          </motion.button>
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowSaveInput(true)}
-              disabled={!isValid}
-              className="py-4 px-5 rounded-2xl font-bold text-sm text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              style={{ background: BRAND_PRIMARY }}
-            >
-              <Save className="w-5 h-5" />
-              {ar ? "حفظ" : "Save"}
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              whileHover={{ scale: 1.01 }}
-              onClick={handleCreate}
-              disabled={creating || !isValid}
-              className="flex-1 py-4 rounded-2xl font-black text-lg text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-              style={{
-                background: `linear-gradient(135deg, ${BRAND_GOLD} 0%, #c89212 100%)`,
-                boxShadow: `0 12px 28px -8px ${BRAND_GOLD}80`,
-              }}
-            >
-              {creating ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  {ar ? "جاري الإنشاء..." : "Creating..."}
-                </span>
-              ) : (
-                <>
-                  <Rocket className="w-6 h-6" />
-                  {ar ? "أطلق السباق!" : "Launch Race!"}
-                  <ArrowRight className={`w-5 h-5 ${ar ? "rotate-180" : ""}`} />
-                </>
-              )}
-            </motion.button>
-          </div>
+          {questions.length === 0 && (
+            <p className="text-center text-xs text-muted-foreground mt-3">
+              {ar ? "اختر مصدر الأسئلة أولاً ثم أطلق السباق" : "Select a question source first, then launch"}
+            </p>
+          )}
         </div>
       </div>
 
@@ -754,9 +664,7 @@ export default function RocketCreate() {
                   <BookOpen className="w-5 h-5" />
                   {ar ? "بنك الأسئلة" : "Question Bank"}
                 </h3>
-                <button onClick={() => setBankOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setBankOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
               <div className="p-4">
                 <input
@@ -768,33 +676,14 @@ export default function RocketCreate() {
                 />
               </div>
               <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
-                {bankLoading && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                    {ar ? "جاري التحميل..." : "Loading..."}
-                  </div>
-                )}
-                {!bankLoading && filteredBank.length === 0 && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    {ar ? "لا توجد أسئلة" : "No questions"}
-                  </div>
-                )}
+                {bankLoading && <div className="text-center py-8 text-sm text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /></div>}
+                {!bankLoading && filteredBank.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد أسئلة" : "No questions"}</div>}
                 {filteredBank.map(q => {
                   const checked = bankSelected.has(q.id);
                   return (
-                    <div
-                      key={q.id}
-                      onClick={() => {
-                        const next = new Set(bankSelected);
-                        if (next.has(q.id)) next.delete(q.id); else next.add(q.id);
-                        setBankSelected(next);
-                      }}
+                    <div key={q.id} onClick={() => { const n = new Set(bankSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setBankSelected(n); }}
                       className="p-3 rounded-xl border-2 cursor-pointer transition-all"
-                      style={{
-                        borderColor: checked ? BRAND_PRIMARY : "#e5e7eb",
-                        background: checked ? `${BRAND_PRIMARY}10` : "#fff",
-                      }}
-                    >
+                      style={{ borderColor: checked ? BRAND_PRIMARY : "#e5e7eb", background: checked ? `${BRAND_PRIMARY}10` : "#fff" }}>
                       <div className="flex items-start gap-2">
                         <div className="w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
                           style={{ borderColor: checked ? BRAND_PRIMARY : "#d1d5db", background: checked ? BRAND_PRIMARY : "#fff" }}>
@@ -802,11 +691,7 @@ export default function RocketCreate() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold line-clamp-2">{q.text}</p>
-                          {q.subject && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs" style={{ background: `${BRAND_GOLD}25`, color: "#7c4a06" }}>
-                              {q.subject}
-                            </span>
-                          )}
+                          {q.subject && <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs" style={{ background: `${BRAND_GOLD}25`, color: "#7c4a06" }}>{q.subject}</span>}
                         </div>
                       </div>
                     </div>
@@ -814,15 +699,10 @@ export default function RocketCreate() {
                 })}
               </div>
               <div className="p-4 border-t flex gap-2" style={{ borderColor: "#e5e7eb" }}>
-                <button onClick={() => setBankOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 font-bold text-sm">
-                  {ar ? "إلغاء" : "Cancel"}
-                </button>
-                <button
-                  onClick={importBankSelected}
-                  disabled={bankSelected.size === 0}
+                <button onClick={() => setBankOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 font-bold text-sm">{ar ? "إلغاء" : "Cancel"}</button>
+                <button onClick={importBankSelected} disabled={bankSelected.size === 0}
                   className="flex-1 py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                  style={{ background: BRAND_PRIMARY }}
-                >
+                  style={{ background: BRAND_PRIMARY }}>
                   {ar ? `استيراد (${bankSelected.size})` : `Import (${bankSelected.size})`}
                 </button>
               </div>
@@ -845,21 +725,11 @@ export default function RocketCreate() {
                   <FileText className="w-5 h-5" />
                   {ar ? "استيراد من واجب" : "Import from Assignment"}
                 </h3>
-                <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {assignLoading && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  </div>
-                )}
-                {!assignLoading && assignments.length === 0 && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    {ar ? "لا توجد واجبات" : "No assignments"}
-                  </div>
-                )}
+                {assignLoading && <div className="text-center py-8"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>}
+                {!assignLoading && assignments.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد واجبات" : "No assignments"}</div>}
                 {assignments.map(a => (
                   <div key={a.id} className="rounded-xl border-2 overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
                     <button
@@ -886,19 +756,10 @@ export default function RocketCreate() {
                         {assignQuestions.map(q => {
                           const checked = assignSelected.has(q.id);
                           return (
-                            <div
-                              key={q.id}
-                              onClick={() => {
-                                const next = new Set(assignSelected);
-                                if (next.has(q.id)) next.delete(q.id); else next.add(q.id);
-                                setAssignSelected(next);
-                              }}
+                            <div key={q.id}
+                              onClick={() => { const n = new Set(assignSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setAssignSelected(n); }}
                               className="p-2 rounded-lg border-2 cursor-pointer flex items-start gap-2"
-                              style={{
-                                borderColor: checked ? BRAND_GOLD : "#e5e7eb",
-                                background: checked ? `${BRAND_GOLD}15` : "#fff",
-                              }}
-                            >
+                              style={{ borderColor: checked ? BRAND_GOLD : "#e5e7eb", background: checked ? `${BRAND_GOLD}15` : "#fff" }}>
                               <div className="w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
                                 style={{ borderColor: checked ? BRAND_GOLD : "#d1d5db", background: checked ? BRAND_GOLD : "#fff" }}>
                                 {checked && <Check className="w-3 h-3 text-white" />}
@@ -908,12 +769,9 @@ export default function RocketCreate() {
                           );
                         })}
                         {assignQuestions.length > 0 && (
-                          <button
-                            onClick={importAssignSelected}
-                            disabled={assignSelected.size === 0}
+                          <button onClick={importAssignSelected} disabled={assignSelected.size === 0}
                             className="w-full py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                            style={{ background: BRAND_GOLD }}
-                          >
+                            style={{ background: BRAND_GOLD }}>
                             {ar ? `استيراد (${assignSelected.size})` : `Import (${assignSelected.size})`}
                           </button>
                         )}
@@ -941,9 +799,7 @@ export default function RocketCreate() {
                   <FolderOpen className="w-5 h-5" />
                   {ar ? "السباقات المحفوظة" : "Saved Races"}
                 </h3>
-                <button onClick={() => setSavedOpen(false)} className="p-2 rounded-xl hover:bg-gray-100">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setSavedOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {savedLoading && <Loader2 className="w-5 h-5 animate-spin mx-auto" />}
@@ -956,18 +812,10 @@ export default function RocketCreate() {
                       <p className="text-sm font-bold truncate">{t.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {t.questions.length} {ar ? "سؤال" : "questions"}
-                        {t.fromAdmin && (
-                          <span className="ml-2 px-2 py-0.5 rounded" style={{ background: `${BRAND_GOLD}25`, color: "#7c4a06" }}>
-                            {ar ? "من المنصة" : "Platform"}
-                          </span>
-                        )}
+                        {t.fromAdmin && <span className="ml-2 px-2 py-0.5 rounded" style={{ background: `${BRAND_GOLD}25`, color: "#7c4a06" }}>{ar ? "من المنصة" : "Platform"}</span>}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleLoadTemplate(t)}
-                      className="px-3 py-1.5 rounded-lg text-white font-bold text-xs"
-                      style={{ background: BRAND_PRIMARY }}
-                    >
+                    <button onClick={() => handleLoadTemplate(t)} className="px-3 py-1.5 rounded-lg text-white font-bold text-xs" style={{ background: BRAND_PRIMARY }}>
                       {ar ? "تحميل" : "Load"}
                     </button>
                     {t.isOwn && (
