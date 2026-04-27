@@ -1784,44 +1784,41 @@ function CompetitiveTab({
 function ToolsTab({ t, lang, setLocation, user }: any) {
   const isAr = lang === "ar";
 
+  // Brand palette for tools — green primary, gold accent, warm white bg
+  const BRAND = { green: "#225739", gold: "#D9A521", light: "#FCFAF8" };
+
   const toolGroups = [
     {
       groupId: "content",
       groupTitle: isAr ? "إنشاء المحتوى" : "Content Creation",
       groupIcon: <Sparkles className="w-4 h-4" />,
-      groupColor: "text-violet-600",
-      groupBg: "bg-violet-500/10",
       tools: [
         {
-          icon: <Sparkles className="w-7 h-7" />,
+          icon: <Sparkles className="w-6 h-6" />,
           title: t.dashboard.toolAiGenerator,
           desc: t.dashboard.toolAiGeneratorDesc,
-          iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
-          btnClass: "bg-violet-600 hover:bg-violet-700 shadow-violet-500/30",
+          accent: BRAND.gold,
           href: "/teacher/new",
         },
         {
-          icon: <Database className="w-7 h-7" />,
+          icon: <Database className="w-6 h-6" />,
           title: t.dashboard.toolQuestionBank,
           desc: t.dashboard.toolQuestionBankDesc,
-          iconBg: "bg-gradient-to-br from-indigo-500 to-blue-600",
-          btnClass: "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30",
+          accent: BRAND.green,
           href: "/teacher/question-bank",
         },
         {
-          icon: <FolderOpen className="w-7 h-7" />,
+          icon: <FolderOpen className="w-6 h-6" />,
           title: t.dashboard.toolCollections,
           desc: t.dashboard.toolCollectionsDesc,
-          iconBg: "bg-gradient-to-br from-fuchsia-500 to-violet-600",
-          btnClass: "bg-fuchsia-600 hover:bg-fuchsia-700 shadow-fuchsia-500/30",
+          accent: BRAND.green,
           href: "/teacher/collections",
         },
         {
-          icon: <Tag className="w-7 h-7" />,
+          icon: <Tag className="w-6 h-6" />,
           title: t.dashboard.toolCategories,
           desc: t.dashboard.toolCategoriesDesc,
-          iconBg: "bg-gradient-to-br from-teal-500 to-cyan-600",
-          btnClass: "bg-teal-600 hover:bg-teal-700 shadow-teal-500/30",
+          accent: BRAND.green,
           href: "/teacher/categories",
         },
       ],
@@ -1830,37 +1827,32 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
       groupId: "teaching",
       groupTitle: isAr ? "أدوات التدريس" : "Teaching Tools",
       groupIcon: <Video className="w-4 h-4" />,
-      groupColor: "text-rose-600",
-      groupBg: "bg-rose-500/10",
       tools: [
         {
-          icon: <Video className="w-7 h-7" />,
+          icon: <Video className="w-6 h-6" />,
           title: isAr ? "درس فيديو تفاعلي" : "Interactive Video Lesson",
           desc: isAr
             ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
             : "Create a lesson with auto-pausing questions during the video",
-          iconBg: "bg-gradient-to-br from-red-500 to-rose-600",
-          btnClass: "bg-rose-600 hover:bg-rose-700 shadow-rose-500/30",
+          accent: BRAND.green,
           href: "/teacher/video-lesson/new",
         },
         {
-          icon: <Library className="w-7 h-7" />,
+          icon: <Library className="w-6 h-6" />,
           title: isAr ? "مكتبة المعلم" : "Teacher Library",
           desc: isAr
             ? "ارفع وأدر كتبك وعروضك ووثائقك المهمة"
             : "Upload and manage your books, presentations & docs",
-          iconBg: "bg-gradient-to-br from-violet-500 to-purple-600",
-          btnClass: "bg-violet-600 hover:bg-violet-700 shadow-violet-500/30",
+          accent: BRAND.green,
           href: "/teacher/library",
         },
         {
-          icon: <Globe className="w-7 h-7" />,
+          icon: <Globe className="w-6 h-6" />,
           title: isAr ? "المحتوى المشترك" : "Shared Content",
           desc: isAr
             ? "تصفح واجبات وأسئلة ومسابقات المعلمين الآخرين"
             : "Browse assignments, questions & games from other teachers",
-          iconBg: "bg-gradient-to-br from-cyan-500 to-teal-600",
-          btnClass: "bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/30",
+          accent: BRAND.green,
           href: "/teacher/shared",
         },
       ],
@@ -1869,15 +1861,12 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
       groupId: "students",
       groupTitle: isAr ? "إدارة الطلاب" : "Student Management",
       groupIcon: <Users className="w-4 h-4" />,
-      groupColor: "text-emerald-600",
-      groupBg: "bg-emerald-500/10",
       tools: [
         {
-          icon: <Users className="w-7 h-7" />,
+          icon: <Users className="w-6 h-6" />,
           title: t.dashboard.toolStudents,
           desc: t.dashboard.toolStudentsDesc,
-          iconBg: "bg-gradient-to-br from-green-500 to-emerald-600",
-          btnClass: "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30",
+          accent: BRAND.green,
           href: "/teacher/students",
         },
       ],
@@ -1886,27 +1875,23 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
       groupId: "other",
       groupTitle: isAr ? "أخرى" : "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
-      groupColor: "text-pink-600",
-      groupBg: "bg-pink-500/10",
       tools: [
         {
-          icon: <MessageSquarePlus className="w-7 h-7" />,
+          icon: <MessageSquarePlus className="w-6 h-6" />,
           title: t.dashboard.toolFeedback,
           desc: t.dashboard.toolFeedbackDesc,
-          iconBg: "bg-gradient-to-br from-pink-500 to-rose-600",
-          btnClass: "bg-pink-600 hover:bg-pink-700 shadow-pink-500/30",
+          accent: BRAND.green,
           href: "/feedback",
         },
         ...(user?.isAdmin
           ? [
               {
-                icon: <Crown className="w-7 h-7" />,
+                icon: <Crown className="w-6 h-6" />,
                 title: isAr ? "لوحة المسؤول" : "Admin Panel",
                 desc: isAr
                   ? "إدارة المعلمين والطلاب ومراقبة المنصة"
                   : "Manage teachers, students & monitor platform",
-                iconBg: "bg-gradient-to-br from-amber-500 to-orange-600",
-                btnClass: "bg-amber-600 hover:bg-amber-700 shadow-amber-500/30",
+                accent: BRAND.gold,
                 href: "/teacher/admin",
               },
             ]
@@ -1918,94 +1903,102 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
   let globalIdx = 0;
 
   return (
-    <div className="space-y-8">
-      <div className="text-center py-4">
-        <motion.div
-          animate={{ rotate: [0, -5, 5, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-violet-500/20 to-purple-500/20 rounded-2xl mb-4"
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex items-center gap-4 pb-1">
+        <div
+          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+          style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}
         >
-          <Sparkles className="w-10 h-10 text-violet-600" />
-        </motion.div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground mb-2">
-          {t.dashboard.toolsTitle}
-        </h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          {isAr
-            ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
-            : "Everything you need to manage your class and enrich student experience"}
-        </p>
+          <Sparkles className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-lg font-extrabold text-foreground">
+            {t.dashboard.toolsTitle}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isAr
+              ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
+              : "Everything you need to manage your class and enrich student experience"}
+          </p>
+        </div>
       </div>
 
       {toolGroups.map((group) => (
         <div key={group.groupId}>
-          <div className="flex items-center gap-2 mb-4">
+          {/* Group header */}
+          <div className="flex items-center gap-2 mb-3">
             <span
-              className={cn(
-                "p-1.5 rounded-lg",
-                group.groupBg,
-                group.groupColor,
-              )}
+              className="p-1.5 rounded-lg"
+              style={{ background: "rgba(34,87,57,0.08)", color: "#225739" }}
             >
               {group.groupIcon}
             </span>
-            <h3
-              className={cn(
-                "text-sm font-extrabold uppercase tracking-wider",
-                group.groupColor,
-              )}
-            >
+            <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#225739" }}>
               {group.groupTitle}
             </h3>
-            <div className="flex-1 h-px bg-border/50" />
+            <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {group.tools.map((tool) => {
-              const delay = globalIdx++ * 0.06;
+              const delay = globalIdx++ * 0.05;
+              const isGold = tool.accent === "#D9A521";
               return (
                 <motion.div
                   key={tool.href}
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay }}
-                  whileHover={{ y: -4, transition: { duration: 0.18 } }}
                   className="h-full"
                 >
-                  <Card
-                    className="p-5 sm:p-6 h-full flex flex-col gap-4 cursor-pointer group hover:shadow-xl hover:shadow-black/5 hover:border-primary/30 transition-all duration-200"
+                  <div
+                    className="group relative h-full flex flex-col p-5 rounded-2xl border border-border/60 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden"
                     onClick={() => tool.href && setLocation(tool.href)}
+                    style={{ "--tool-accent": tool.accent } as React.CSSProperties}
                   >
-                    <div className="flex items-start gap-4">
+                    {/* Top accent bar */}
+                    <div
+                      className="absolute top-0 inset-x-0 h-[3px] rounded-t-2xl opacity-80"
+                      style={{ background: tool.accent }}
+                    />
+                    {/* Hover glow */}
+                    <div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl"
+                      style={{ background: `radial-gradient(ellipse at top, ${tool.accent}0d 0%, transparent 70%)` }}
+                    />
+
+                    <div className="relative flex items-start gap-3 mb-3 pt-1">
                       <div
-                        className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0",
-                          tool.iconBg,
-                        )}
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: `${tool.accent}14`, color: tool.accent }}
                       >
                         {tool.icon}
                       </div>
-                      <div className="flex-1 min-w-0 pt-1">
-                        <h3 className="font-extrabold text-foreground text-base leading-snug group-hover:text-primary transition-colors mb-1">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-foreground text-sm leading-snug mb-1">
                           {tool.title}
                         </h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2">
+                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                           {tool.desc}
                         </p>
                       </div>
                     </div>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         tool.href && setLocation(tool.href);
                       }}
-                      className={cn(
-                        "mt-auto w-full py-2.5 rounded-xl text-white text-sm font-bold shadow-md transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0",
-                        tool.btnClass,
-                      )}
+                      className="relative mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90"
+                      style={{
+                        background: tool.accent,
+                        color: isGold ? "#1a3020" : "#FCFAF8",
+                      }}
                     >
                       {isAr ? "فتح الأداة" : "Open Tool"}
                     </button>
-                  </Card>
+                  </div>
                 </motion.div>
               );
             })}
