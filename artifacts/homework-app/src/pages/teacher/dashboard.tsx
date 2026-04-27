@@ -492,59 +492,81 @@ export default function TeacherDashboard() {
       {/* ── Desktop sidebar layout ── */}
       <div className="hidden lg:flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-56 shrink-0 border-e border-border/60 bg-card/60 backdrop-blur-sm flex flex-col py-6 px-3 sticky top-0 h-screen overflow-y-auto">
-          <div className="mb-6 px-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
+        <aside className="w-56 shrink-0 border-e border-border/60 bg-card/60 backdrop-blur-sm flex flex-col py-5 px-3 sticky top-0 h-screen overflow-y-auto">
+          {/* User greeting */}
+          <div className="mb-4 px-2">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5">
               {isAr ? "مرحباً" : "Hello"}
             </p>
             <p className="font-black text-foreground text-sm truncate">
               {user?.name}
             </p>
           </div>
-          <nav className="space-y-0.5 flex-1">
-            {tabs.map((tab) => {
+
+          {/* Create button at the very top */}
+          <button
+            onClick={() => setLocation("/teacher/new")}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all hover:opacity-90 hover:shadow-lg mb-5"
+            style={{ background: "linear-gradient(135deg, #225739 0%, #2d7050 100%)", color: "#FCFAF8" }}
+          >
+            <Plus className="w-4 h-4" />
+            {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
+          </button>
+
+          {/* Nav — Main section */}
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1">
+            {isAr ? "الرئيسية" : "Main"}
+          </p>
+          <nav className="space-y-0.5 mb-3">
+            {tabs.filter(t => ["overview","assignments","shared","students"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => {
-                    if (tab.href) setLocation(tab.href);
-                    else setActiveTab(tab.id);
-                  }}
+                  onClick={() => { if (tab.href) setLocation(tab.href); else setActiveTab(tab.id); }}
                   className={cn(
-                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
+                    "w-full flex items-center gap-3 px-3 py-2 text-sm transition-all",
+                    isAr ? "border-r-2 rounded-s-xl" : "border-l-2 rounded-e-xl",
                     active
-                      ? "text-white shadow-md"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-primary/10 text-primary font-bold border-primary"
+                      : "text-muted-foreground hover:bg-muted border-transparent",
                   )}
-                  style={active ? { background: "#225739" } : undefined}
                 >
-                  {/* Hover background for inactive */}
-                  {!active && (
-                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
-                  )}
-                  {/* Gold accent bar on active */}
-                  {active && (
-                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
-                  )}
-                  <span className={cn("relative [&_svg]:w-4 [&_svg]:h-4 shrink-0 transition-colors", active ? "text-white" : "text-muted-foreground group-hover:text-foreground")}>
-                    {tab.icon}
-                  </span>
-                  <span className="relative truncate">{tab.label}</span>
+                  <span className="[&_svg]:w-4 [&_svg]:h-4 shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
                 </button>
               );
             })}
           </nav>
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <button
-              onClick={() => setLocation("/teacher/new")}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all hover:opacity-90 hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg, #225739 0%, #2d7050 100%)", color: "#FCFAF8" }}
-            >
-              <Plus className="w-4 h-4" />
-              {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
-            </button>
-          </div>
+
+          {/* Divider */}
+          <div className="border-t border-border/50 mb-3" />
+
+          {/* Nav — Content section */}
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2 mb-1">
+            {isAr ? "المحتوى" : "Content"}
+          </p>
+          <nav className="space-y-0.5 flex-1">
+            {tabs.filter(t => ["competitive","tools","presentations","videos","stats"].includes(t.id)).map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { if (tab.href) setLocation(tab.href); else setActiveTab(tab.id); }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 text-sm transition-all",
+                    isAr ? "border-r-2 rounded-s-xl" : "border-l-2 rounded-e-xl",
+                    active
+                      ? "bg-primary/10 text-primary font-bold border-primary"
+                      : "text-muted-foreground hover:bg-muted border-transparent",
+                  )}
+                >
+                  <span className="[&_svg]:w-4 [&_svg]:h-4 shrink-0">{tab.icon}</span>
+                  <span className="truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </aside>
 
         {/* Main content */}
@@ -559,7 +581,7 @@ export default function TeacherDashboard() {
             </h1>
           </div>
           {/* Prominent stat cards */}
-          <div className="grid grid-cols-3 gap-3 mb-7">
+          <div className="grid grid-cols-4 gap-3 mb-7">
             <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <BookText className="w-5 h-5" />
@@ -586,21 +608,32 @@ export default function TeacherDashboard() {
                 </p>
               </div>
             </div>
-            <Link href="/teacher/students" className="block">
-              <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-emerald-400/50 transition-colors h-full">
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                    {isAr ? "النشطة" : "Active"}
-                  </p>
-                  <p className="text-2xl font-black text-foreground leading-tight">
-                    {activeAssignments.length}
-                  </p>
-                </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-emerald-400/50 transition-colors">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5" />
               </div>
-            </Link>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {isAr ? "النشطة" : "Active"}
+                </p>
+                <p className="text-2xl font-black text-foreground leading-tight">
+                  {activeAssignments.length}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-purple-400/50 transition-colors">
+              <div className="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  {isAr ? "الصفوف" : "Classes"}
+                </p>
+                <p className="text-2xl font-black text-foreground leading-tight">
+                  {(user as any)?.classCount || 0}
+                </p>
+              </div>
+            </div>
           </div>
           {tabContent}
         </main>
@@ -716,9 +749,6 @@ export default function TeacherDashboard() {
 
           {/* Mobile section picker — horizontal scrollable chip bar */}
           <div className="-mx-4 px-4 mb-3">
-            <p className="text-[11px] font-bold text-muted-foreground mb-1.5">
-              {isAr ? "اختر القسم:" : "Choose section:"}
-            </p>
             <div
               className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x scrollbar-hide"
               style={{ scrollbarWidth: "none" }}
@@ -734,12 +764,11 @@ export default function TeacherDashboard() {
                       else setActiveTab(tab.id);
                     }}
                     className={cn(
-                      "shrink-0 snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border transition-all",
+                      "shrink-0 snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all",
                       active
-                        ? "text-white border-transparent shadow-md"
-                        : "bg-card text-muted-foreground border-border/50 hover:text-foreground",
+                        ? "bg-primary/10 text-primary border-primary/30 shadow-sm"
+                        : "bg-muted/60 text-muted-foreground border-transparent",
                     )}
-                    style={active ? { background: "#225739", borderColor: "#225739" } : undefined}
                   >
                     <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">
                       {tab.icon}
@@ -771,40 +800,50 @@ export default function TeacherDashboard() {
         {/* Tab content */}
         <div className="px-4 pb-28">{tabContent}</div>
 
-        {/* Fixed mobile bottom nav */}
+        {/* Fixed mobile bottom nav — 4 tabs + floating + button */}
         <nav
-          className="fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/60 flex items-stretch"
+          className="fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/60 flex items-center"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           dir={isAr ? "rtl" : "ltr"}
         >
-          {tabs.map((tab) => {
-            const active = activeTab === tab.id;
+          {(["overview","assignments","shared","stats"] as TabId[]).map((tabId, idx) => {
+            const tab = tabs.find(t => t.id === tabId)!;
+            const active = activeTab === tabId;
+            /* Insert floating + button in the middle (after index 1) */
             return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (tab.href) setLocation(tab.href);
-                  else setActiveTab(tab.id);
-                }}
-                className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 transition-all relative",
-                  active ? "text-white" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {/* Active indicator dot at top */}
-                {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full" style={{ background: "#D9A521" }} />
-                )}
-                <span
-                  className="flex items-center justify-center w-9 h-9 rounded-xl transition-all [&_svg]:w-4 [&_svg]:h-4"
-                  style={active ? { background: "#225739" } : undefined}
+              <>
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 transition-all relative",
+                    active ? "text-primary" : "text-muted-foreground",
+                  )}
                 >
-                  {tab.icon}
-                </span>
-                <span className="text-[10px] font-semibold leading-none">
-                  {tab.shortLabel}
-                </span>
-              </button>
+                  {active && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary" />
+                  )}
+                  <span className={cn(
+                    "flex items-center justify-center w-9 h-9 rounded-xl transition-all [&_svg]:w-4 [&_svg]:h-4",
+                    active && "bg-primary/10",
+                  )}>
+                    {tab.icon}
+                  </span>
+                  <span className="text-[10px] font-semibold leading-none">
+                    {tab.shortLabel}
+                  </span>
+                </button>
+                {idx === 1 && (
+                  <div className="flex items-center justify-center px-2">
+                    <button
+                      onClick={() => setLocation("/teacher/new")}
+                      className="w-12 h-12 rounded-full bg-primary text-primary-foreground -mt-4 shadow-lg flex items-center justify-center transition-all hover:opacity-90 active:scale-95 shrink-0"
+                    >
+                      <Plus className="w-6 h-6" />
+                    </button>
+                  </div>
+                )}
+              </>
             );
           })}
         </nav>
