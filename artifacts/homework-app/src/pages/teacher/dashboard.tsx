@@ -1442,6 +1442,7 @@ function CompetitiveTab({
   const [gameHistory, setGameHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [showKnowledgeRace, setShowKnowledgeRace] = useState(false);
+  const wameethPickerRef = useRef<HTMLDivElement | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
   const [detailsById, setDetailsById] = useState<Record<number, any>>({});
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -1463,7 +1464,16 @@ function CompetitiveTab({
   }) => {
     if (game.available === false) return;
     const { type } = game;
-    if (type === "knowledge_race") setShowKnowledgeRace(!showKnowledgeRace);
+    if (type === "knowledge_race") {
+      setShowKnowledgeRace(true);
+      window.setTimeout(() => {
+        wameethPickerRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 280);
+      return;
+    }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
     else if (type === "rocket_race") setLocation("/game/rocket/create");
     else if (type === "video_lesson")
@@ -1798,6 +1808,100 @@ function CompetitiveTab({
         delayOffset={0}
       />
 
+      {/* وميض: اختيار الواجب — مباشرة تحت بطاقات المسابقات الحية */}
+      <div
+        ref={wameethPickerRef}
+        id="wameeth-assignment-picker"
+        className="scroll-mt-28"
+      >
+        <AnimatePresence>
+          {showKnowledgeRace && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-2 pb-2">
+                <Card className="p-4 sm:p-6 border-2 border-primary/25 bg-primary/[0.03] shadow-lg">
+                  <h3 className="text-lg font-black text-foreground mb-1 flex items-center gap-2">
+                    <Gamepad2 className="w-6 h-6 text-primary shrink-0" />
+                    {lang === "ar"
+                      ? "وميض — اختر الواجب وابدأ المسابقة الحية"
+                      : "Wameeth — pick an assignment to host"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+                    {lang === "ar"
+                      ? "كل واجب يحتوي أسئلة اختيار من متعدد يمكن استخدامه في الغرفة الحية. بعد الاختيار ستُفتح نافذة إعداد الفرق ثم مشاركة الرمز مع الطلاب."
+                      : "Any assignment with MCQs can power your live room. After you pick one, you'll set teams/solo mode then share the PIN."}
+                  </p>
+                  {mcqAssignments.length === 0 ? (
+                    <Card className="py-12 text-center border-dashed border-primary/30 bg-muted/20">
+                      <Gamepad2 className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                      <h4 className="text-lg font-bold text-foreground mb-1">
+                        {t.dashboard.noMcqAssignments}
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {t.dashboard.noMcqDesc}
+                      </p>
+                      <Button
+                        onClick={() => setLocation("/teacher/new")}
+                        className="gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {t.dashboard.createNew}
+                      </Button>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      {mcqAssignments.map((assignment: any, i: number) => (
+                        <motion.div
+                          key={assignment.id}
+                          initial={{ opacity: 0, scale: 0.98 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                        >
+                          <Card className="p-4 sm:p-5 hover:border-primary/40 hover:shadow-md transition-all group border-border">
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                                  {assignment.title}
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {assignment.subject} — {assignment.questionCount}{" "}
+                                  {t.dashboard.questionsCount}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0">
+                                <Gamepad2 className="w-4 h-4" />
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => startGame(assignment.id)}
+                              disabled={
+                                creatingGameForId === assignment.id
+                              }
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50"
+                            >
+                              <Gamepad2 className="w-4 h-4" />
+                              {creatingGameForId === assignment.id
+                                ? t.dashboard.creating
+                                : lang === "ar"
+                                  ? "اختر اللعبة وابدأ"
+                                  : "Choose game & start"}
+                            </button>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       <GameCatalogSection
         title={
           lang === "ar"
@@ -1813,82 +1917,6 @@ function CompetitiveTab({
         games={soloGames}
         delayOffset={liveGames.length}
       />
-
-      <AnimatePresence>
-        {showKnowledgeRace && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="pt-2">
-              <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Gamepad2 className="w-5 h-5 text-purple-600" />
-                {t.dashboard.startGameFrom || "ابدأ لعبة من واجب"}
-              </h3>
-              {mcqAssignments.length === 0 ? (
-                <Card className="py-12 text-center border-dashed border-purple-200">
-                  <Gamepad2 className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-                  <h4 className="text-lg font-bold text-foreground mb-1">
-                    {t.dashboard.noMcqAssignments}
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {t.dashboard.noMcqDesc}
-                  </p>
-                  <Button
-                    onClick={() => setLocation("/teacher/new")}
-                    className="gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {t.dashboard.createNew}
-                  </Button>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {mcqAssignments.map((assignment: any, i: number) => (
-                    <motion.div
-                      key={assignment.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: i * 0.06 }}
-                    >
-                      <Card className="p-4 sm:p-5 hover:border-purple-400/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all group">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-bold text-foreground group-hover:text-purple-600 transition-colors truncate">
-                              {assignment.title}
-                            </h4>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {assignment.subject} — {assignment.questionCount}{" "}
-                              {t.dashboard.questionsCount}
-                            </p>
-                          </div>
-                          <div className="p-2 bg-purple-100 rounded-lg text-purple-600 shrink-0">
-                            <Gamepad2 className="w-4 h-4" />
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => startGame(assignment.id)}
-                          disabled={creatingGameForId === assignment.id}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50"
-                        >
-                          <Gamepad2 className="w-4 h-4" />
-                          {creatingGameForId === assignment.id
-                            ? t.dashboard.creating
-                            : lang === "ar"
-                              ? "اختر اللعبة وابدأ"
-                              : "Choose game & start"}
-                        </button>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {gameHistory.length > 0 && (
         <div>
