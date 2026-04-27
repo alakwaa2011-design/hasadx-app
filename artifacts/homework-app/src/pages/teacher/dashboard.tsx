@@ -108,6 +108,14 @@ interface SharedAssignment {
 
 type GameMode = "solo" | "teams";
 
+/** Games that can be launched from an assignment (live session). Default: وميض */
+type AssignmentLiveGameChoice =
+  | "knowledge_race"
+  | "tug_of_war"
+  | "million"
+  | "hack"
+  | "rocket_race";
+
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
   const [creatingGameForId, setCreatingGameForId] = useState<number | null>(
@@ -126,6 +134,10 @@ export default function TeacherDashboard() {
     "",
   ]);
   const [statsOpen, setStatsOpen] = useState(false);
+  /** Assignment ID awaiting live-game choice (وميض default), then branch to setup / navigate */
+  const [assignmentGamePickerId, setAssignmentGamePickerId] = useState<number | null>(
+    null,
+  );
   const { t, lang } = useI18n();
   const BackArrow = lang === "ar" ? ArrowLeft : ArrowRight;
   const {
@@ -231,10 +243,50 @@ export default function TeacherDashboard() {
       e.preventDefault();
       e.stopPropagation();
     }
-    setGameMode("solo");
-    setTeamCount(2);
-    setCustomTeamNames(["", "", "", "", "", ""]);
-    setGameSetupModal(assignmentId);
+    setAssignmentGamePickerId(assignmentId);
+  };
+
+  const handleAssignmentGameChoice = (choice: AssignmentLiveGameChoice) => {
+    const id = assignmentGamePickerId;
+    if (id == null) return;
+    setAssignmentGamePickerId(null);
+
+    if (choice === "knowledge_race") {
+      setGameMode("solo");
+      setTeamCount(2);
+      setCustomTeamNames(["", "", "", "", "", ""]);
+      setGameSetupModal(id);
+      return;
+    }
+    if (choice === "tug_of_war") {
+      setLocation(`/game/tug/create?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "rocket_race") {
+      setLocation(`/game/rocket/create?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "million") {
+      setLocation(`/game/million?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "hack") {
+      setCreatingGameForId(id);
+      const socket = getSocket();
+      socket.emit(
+        "teacher:create-game",
+        { assignmentId: id, hackMode: true, gameMode: "solo" },
+        (res: { pin?: string; error?: string }) => {
+          setCreatingGameForId(null);
+          if (res.error) {
+            toast.error(res.error);
+            disconnectSocket();
+            return;
+          }
+          setLocation(`/teacher/game/${res.pin}`);
+        },
+      );
+    }
   };
 
   const confirmStartGame = () => {
@@ -810,6 +862,161 @@ export default function TeacherDashboard() {
         </nav>
       </div>
 
+      {/* ── Modal: اختيار لعبة من الواجب ── */}
+      <AnimatePresence>
+        {assignmentGamePickerId !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/65 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setAssignmentGamePickerId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 12 }}
+              className="bg-card rounded-2xl border border-border shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 sm:p-6 border-b border-border/60 bg-muted/30">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-foreground flex items-center gap-2">
+                      <Gamepad2 className="w-6 h-6 text-primary shrink-0" />
+                      {lang === "ar"
+                        ? "اختر نوع اللعبة الحية"
+                        : "Choose your live game"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                      {lang === "ar"
+                        ? "أسئلة الواجب ستُستخدم في اللعبة التي تختارها. وميض هي اللعبة الافتراضية (أسلوب كاهوت)."
+                        : "This assignment's questions power the mode you pick. Wameeth is the default (Kahoot-style)."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAssignmentGamePickerId(null)}
+                    className="shrink-0 rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    aria-label={lang === "ar" ? "إغلاق" : "Close"}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(
+                  [
+                    {
+                      key: "knowledge_race" as const,
+                      emoji: "⚡",
+                      titleAr: "وميض",
+                      titleEn: "Wameeth",
+                      descAr:
+                        "مسابقة حية على الشاشة الكبيرة — طلابك يجيبون من هواتفهم (مثل كاهوت).",
+                      descEn:
+                        "Live quiz on the big screen — students answer from phones (Kahoot-style).",
+                      gradient: "from-fuchsia-500 to-purple-600",
+                      defaultBadge: true,
+                    },
+                    {
+                      key: "tug_of_war" as const,
+                      emoji: "🪢",
+                      titleAr: "شد الحبل",
+                      titleEn: "Tug of War",
+                      descAr:
+                        "فريقان يتنافسان بالإجابة؛ الحبل يتحرك مع كل إجابة صحيحة.",
+                      descEn:
+                        "Two teams answer MCQs; the rope moves with each correct answer.",
+                      gradient: "from-blue-500 to-indigo-600",
+                    },
+                    {
+                      key: "million" as const,
+                      emoji: "🏆",
+                      titleAr: "من سيحصد المليون؟",
+                      titleEn: "Who Wants a Million?",
+                      descAr:
+                        "سلسلة أسئلة متصاعدة مع أطواق نجاة — يحتاج واجبك ٥ أسئلة أو أكثر.",
+                      descEn:
+                        "Escalating questions with lifelines — assignment needs 5+ questions.",
+                      gradient: "from-amber-500 to-orange-600",
+                    },
+                    {
+                      key: "hack" as const,
+                      emoji: "💻",
+                      titleAr: "لعبة الاختراق",
+                      titleEn: "Hack Game",
+                      descAr:
+                        "ماراثون تنافسي: كلمات سر، صناديق، وسحب نقاط بين الطلاب.",
+                      descEn:
+                        "Competitive marathon: passwords, loot boxes, steal points.",
+                      gradient: "from-emerald-700 to-teal-800",
+                    },
+                    {
+                      key: "rocket_race" as const,
+                      emoji: "🚀",
+                      titleAr: "سباق الصواريخ",
+                      titleEn: "Rocket Race",
+                      descAr:
+                        "كل طالب صاروخاً يصعد مع الإجابات الصحيحة السريعة.",
+                      descEn:
+                        "Each student is a rocket — faster correct answers climb higher.",
+                      gradient: "from-violet-500 to-fuchsia-600",
+                    },
+                  ] as const
+                ).map((opt) => {
+                  const busy =
+                    creatingGameForId === assignmentGamePickerId &&
+                    opt.key === "hack";
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleAssignmentGameChoice(opt.key)}
+                      className="text-start rounded-2xl border-2 border-border/70 bg-card hover:border-primary/50 hover:bg-primary/[0.03] hover:shadow-lg transition-all p-4 flex flex-col gap-2 disabled:opacity-60 disabled:pointer-events-none group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${opt.gradient} flex items-center justify-center text-2xl shadow-md shrink-0`}
+                        >
+                          {opt.emoji}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                            <span className="font-black text-base text-foreground leading-tight">
+                              {lang === "ar" ? opt.titleAr : opt.titleEn}
+                            </span>
+                            {opt.defaultBadge && (
+                              <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
+                                {lang === "ar" ? "افتراضي" : "Default"}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground leading-snug">
+                            {lang === "ar" ? opt.descAr : opt.descEn}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-primary group-hover:underline mt-1">
+                        {busy
+                          ? lang === "ar"
+                            ? "جاري الإنشاء…"
+                            : "Creating…"
+                          : lang === "ar"
+                            ? "اضغط للمتابعة ←"
+                            : "Tap to continue →"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Modal إعداد اللعبة ── */}
       <AnimatePresence>
         {gameSetupModal !== null && (
@@ -1250,40 +1457,33 @@ function CompetitiveTab({
       .finally(() => setLoadingHistory(false));
   }, []);
 
-  const gameTypes = [
-    {
-      icon: "🏆",
-      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
-      desc:
-        lang === "ar"
-          ? "15 سؤالاً تتصاعد صعوبةً حتى المليون — مع ثلاثة أطواق نجاة"
-          : "15 escalating questions with 3 lifelines — solo or class mode",
-      color: "from-amber-500 to-yellow-600",
-      type: "million",
-      available: true,
-    },
-    {
-      icon: "🪜",
-      title: lang === "ar" ? "مَراقي" : "Maraqui",
-      desc:
-        lang === "ar"
-          ? "المسابقة الأكثر حماساً وثقافةً عبر مراحل، تعرف على الصحابة والتاريخ"
-          : "Challenge students with progressive stages",
-      color: "from-teal-500 to-emerald-600",
-      type: "maraqui",
-      available: true,
-    },
-    {
-      icon: "🎨",
-      title: lang === "ar" ? "لعبة الألوان" : "Color Game",
-      desc:
-        lang === "ar"
-          ? "هل عينك حادة؟ ابحث عن المربع المختلف"
-          : "Find the odd square in the grid",
-      color: "from-violet-500 to-fuchsia-600",
-      type: "color_game",
-      available: true,
-    },
+  const openGameFromCatalog = (game: {
+    type: string;
+    available?: boolean;
+  }) => {
+    if (game.available === false) return;
+    const { type } = game;
+    if (type === "knowledge_race") setShowKnowledgeRace(!showKnowledgeRace);
+    else if (type === "tug_of_war") setLocation("/game/tug/create");
+    else if (type === "rocket_race") setLocation("/game/rocket/create");
+    else if (type === "video_lesson")
+      setLocation("/teacher/video-lesson/new");
+    else if (type === "flag_quiz") setLocation("/game/flags");
+    else if (type === "color_game") setLocation("/game/color");
+    else if (type === "memory_match") setLocation("/game/memory");
+    else if (type === "multiplication") setLocation("/game/multiply");
+    else if (type === "scramble_words") setLocation("/game/scramble");
+    else if (type === "stroop") setLocation("/game/stroop/create");
+    else if (type === "maraqui") setLocation("/game/maraqui");
+    else if (type === "million") setLocation("/game/million");
+    else if (type === "million_team")
+      setLocation("/game/million/team-setup");
+    else if (type === "hack") setLocation("/game/hack");
+    else if (type === "letrly") setLocation("/game/letrly");
+  };
+
+  /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
+  const liveGames = [
     {
       icon: "⚡",
       title:
@@ -1292,228 +1492,327 @@ function CompetitiveTab({
       desc:
         t.competitiveGames?.knowledgeRaceDesc ||
         (lang === "ar"
-          ? "لعبة جماعية مباشرة — أسئلة سريعة وتنافس حي بين الطلاب"
-          : "Live group game Kahoot-style"),
-      color: "from-purple-500 to-pink-600",
+          ? "مسابقة حية على الشاشة — الطلاب يجيبون من هواتفهم (مثل كاهوت أو وورد وال). اربطها بواجبك."
+          : "Live quiz on screen — students answer on phones (Kahoot-style). Link an assignment."),
+      color: "from-fuchsia-500 to-purple-600",
       type: "knowledge_race",
-      available: false,
-      badge: lang === "ar" ? "اللعبة الأساسية في المنصة" : "Core platform game",
+      available: true,
+      pill:
+        lang === "ar" ? "موصى به — مثل كاهوت" : "Recommended — Kahoot-style",
     },
     {
       icon: "🪢",
       title: lang === "ar" ? "شد الحبل" : "Tug of War",
       desc:
         lang === "ar"
-          ? "فريقان يتنافسان بالإجابة على الأسئلة"
-          : "Two teams compete by answering questions",
+          ? "فريقان يتنافسان بأسئلة اختيار من متعدد؛ الحبل يتحرك مع كل إجابة صحيحة."
+          : "Two teams battle with MCQs; the rope swings with correct answers.",
       color: "from-blue-500 to-indigo-600",
       type: "tug_of_war",
       available: true,
+      pill: lang === "ar" ? "جماعي" : "Team play",
     },
     {
       icon: "🚀",
       title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
       desc:
         lang === "ar"
-          ? "سباق فردي — كلما أجبت أسرع وأصح ارتفع صاروخك أعلى!"
-          : "Individual race — faster correct answers fly your rocket higher!",
+          ? "كل طالب صاروخ — السرعة والدقة ترقيه في المدرج. جيد للحماس الفردي داخل الصف."
+          : "Each student is a rocket — speed and accuracy climb the leaderboard.",
       color: "from-violet-500 to-fuchsia-600",
       type: "rocket_race",
       available: true,
+      pill: lang === "ar" ? "سباق حي" : "Live race",
     },
     {
-      icon: "🎬",
-      title: lang === "ar" ? "فيديو تفاعلي" : "Interactive Video",
+      icon: "🏆",
+      title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
       desc:
         lang === "ar"
-          ? "أنشئ درس فيديو تفاعلي بأسئلة تتوقف تلقائياً"
-          : "Create an interactive video lesson with auto-pausing questions",
-      color: "from-red-500 to-rose-600",
-      type: "video_lesson",
+          ? "أسئلة متصاعدة حتى الجائزة الكبرى مع أطواق نجاة — مناسبة للعرض على السبورة."
+          : "Escalating ladder to the grand prize with lifelines — great for whole-class display.",
+      color: "from-amber-500 to-yellow-600",
+      type: "million",
       available: true,
-    },
-    {
-      icon: "🏁",
-      title: lang === "ar" ? "أعلام الدول" : "Flag Quiz",
-      desc:
-        lang === "ar"
-          ? "اختبر معلوماتك في أعلام دول العالم"
-          : "Challenge students with world flags",
-      color: "from-sky-500 to-indigo-600",
-      type: "flag_quiz",
-      available: true,
-    },
-    {
-      icon: "🧠",
-      title: lang === "ar" ? "لعبة الذاكرة" : "Memory Match",
-      desc:
-        lang === "ar"
-          ? "اقلب البطاقات وابحث عن الأزواج المتطابقة"
-          : "Flip cards and find matching pairs",
-      color: "from-indigo-500 to-pink-600",
-      type: "memory_match",
-      available: true,
-    },
-    {
-      icon: "✖️",
-      title: lang === "ar" ? "جدول الضرب" : "Multiplication",
-      desc:
-        lang === "ar"
-          ? "اختبر سرعتك في جدول الضرب مع مضاعفات السلسلة"
-          : "Challenge students with multiplication tables",
-      color: "from-orange-500 to-amber-600",
-      type: "multiplication",
-      available: true,
-    },
-    {
-      icon: "🧠",
-      title: lang === "ar" ? "لعبة ارتباك" : "Stroop Game",
-      desc:
-        lang === "ar"
-          ? "اضغط على لون الحبر وليس معنى الكلمة — تحدَّ لعقلك!"
-          : "Challenge your brain! Click the ink color",
-      color: "from-red-500 to-orange-600",
-      type: "stroop",
-      available: true,
-    },
-    {
-      icon: "🔤",
-      title: lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words",
-      desc:
-        lang === "ar"
-          ? "رتّب الحروف المبعثرة لتكوّن الكلمة الصحيحة"
-          : "Unscramble letters to form words",
-      color: "from-violet-500 to-fuchsia-600",
-      type: "scramble_words",
-      available: true,
-    },
-    {
-      icon: "🆚",
-      title: lang === "ar" ? "مليون — فريق ضد فريق" : "Million — Team vs Team",
-      desc:
-        lang === "ar"
-          ? "نفس لعبة المليون لكن جماعية! فريقان يتنافسان في نفس الأسئلة بالتصويت"
-          : "Team million! Two teams vote on the same questions in real-time",
-      color: "from-blue-500 to-purple-600",
-      type: "million_team",
-      available: true,
+      pill: lang === "ar" ? "عرض صفّي" : "Class display",
     },
     {
       icon: "💻",
       title: lang === "ar" ? "لعبة الاختراق" : "Hack Game",
       desc:
         lang === "ar"
-          ? "ماراثون اختراق: كلمات سر، صناديق غامضة، وسحب نقاط الخصوم"
-          : "Hack marathon: passwords, mystery boxes, and stealing opponents' points",
+          ? "ماراثون تقني: كلمات سر، صناديق، وسحب نقاط بين الطلاب في جوّ مسابقات."
+          : "Terminal marathon: passwords, loot boxes, steal points — competitive energy.",
       color: "from-green-700 to-emerald-900",
       type: "hack",
       available: true,
+      pill: lang === "ar" ? "تنافس عالي" : "High stakes",
+    },
+    {
+      icon: "🆚",
+      title:
+        lang === "ar" ? "مليون — فريق ضد فريق" : "Million — Team vs Team",
+      desc:
+        lang === "ar"
+          ? "فريقان يصوتان على نفس الأسئلة في الوقت الفعلي كما في برامج التلفاز."
+          : "Two teams vote on the same questions in real-time TV-show style.",
+      color: "from-blue-500 to-purple-600",
+      type: "million_team",
+      available: true,
+      pill: lang === "ar" ? "تصويت جماعي" : "Team voting",
+    },
+    {
+      icon: "🎬",
+      title: lang === "ar" ? "فيديو تفاعلي" : "Interactive Video",
+      desc:
+        lang === "ar"
+          ? "أنشئ درس فيديو يتوقف تلقائياً عند الأسئلة لقياس الفهم أثناء العرض."
+          : "Video lessons that pause for questions — formative checks while watching.",
+      color: "from-red-500 to-rose-600",
+      type: "video_lesson",
+      available: true,
+      pill: lang === "ar" ? "درس مرئي" : "Video lesson",
+    },
+  ];
+
+  /** تحديات فردية — للتمرّن أو مسابقات الزوار بدون غرفة صفّية مباشرة */
+  const soloGames = [
+    {
+      icon: "🪜",
+      title: lang === "ar" ? "مَراقي" : "Maraqui",
+      desc:
+        lang === "ar"
+          ? "مسابقة ثقافية بمراحل متدرجة حتى المرحلة الأخيرة — تحدّ نفسك بالتاريخ والثقافة."
+          : "Progressive cultural quiz ladder — challenge yourself to the final stage.",
+      color: "from-teal-500 to-emerald-600",
+      type: "maraqui",
+      available: true,
+      pill: lang === "ar" ? "مراحل" : "Stages",
+    },
+    {
+      icon: "🎨",
+      title: lang === "ar" ? "لعبة الألوان" : "Color Game",
+      desc:
+        lang === "ar"
+          ? "اختبار تركيز بصري — اعثر على المربع المختلف بين شبكة متشابهة بسرعة."
+          : "Visual attention — spot the odd square in a grid, fast.",
+      color: "from-violet-500 to-fuchsia-600",
+      type: "color_game",
+      available: true,
+      pill: lang === "ar" ? "تركيز" : "Focus",
+    },
+    {
+      icon: "🏁",
+      title: lang === "ar" ? "أعلام الدول" : "Flag Quiz",
+      desc:
+        lang === "ar"
+          ? "اختبر ذاكرتك الجغرافية بربط الدول بأعلامها في وقت محدود."
+          : "Geography recall — match flags to countries against the clock.",
+      color: "from-sky-500 to-indigo-600",
+      type: "flag_quiz",
+      available: true,
+      pill: lang === "ar" ? "جغرافيا" : "Geo",
+    },
+    {
+      icon: "🧠",
+      title: lang === "ar" ? "لعبة الذاكرة" : "Memory Match",
+      desc:
+        lang === "ar"
+          ? "اقلب البطاقات واذكر مواقع الأزواج — تمرين ذاكرة عملي وممتع."
+          : "Flip and pair cards — practical memory training.",
+      color: "from-indigo-500 to-pink-600",
+      type: "memory_match",
+      available: true,
+      pill: lang === "ar" ? "ذاكرة" : "Memory",
+    },
+    {
+      icon: "✖️",
+      title: lang === "ar" ? "جدول الضرب" : "Multiplication",
+      desc:
+        lang === "ar"
+          ? "سرعة وحساب — سلسلة أسئلة ضرب لتثبيت الجدول بطريقة لعبية."
+          : "Speed drills — multiplication chains in a playful loop.",
+      color: "from-orange-500 to-amber-600",
+      type: "multiplication",
+      available: true,
+      pill: lang === "ar" ? "رياضيات" : "Math",
+    },
+    {
+      icon: "🧠",
+      title: lang === "ar" ? "لعبة ارتباك" : "Stroop Game",
+      desc:
+        lang === "ar"
+          ? "اضغط لون الحبر لا معنى الكلمة — كلاسيك علم النفس المعرفي."
+          : "Tap ink color, not word meaning — classic cognitive science.",
+      color: "from-red-500 to-orange-600",
+      type: "stroop",
+      available: true,
+      pill: lang === "ar" ? "دماغ" : "Brain",
+    },
+    {
+      icon: "🔤",
+      title: lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words",
+      desc:
+        lang === "ar"
+          ? "رتّب الحروف لتكوين الكلمات — مناسبة للتهجئة والمفردات."
+          : "Unscramble letters — spelling and vocabulary practice.",
+      color: "from-violet-500 to-fuchsia-600",
+      type: "scramble_words",
+      available: true,
+      pill: lang === "ar" ? "إملاء" : "Spelling",
     },
     {
       icon: "🔡",
       title: lang === "ar" ? "تحدي الكلمة" : "Word Challenge",
       desc:
         lang === "ar"
-          ? "العب بنفسك أو اكتب كلمة سرّية لطلابك وشارك الرابط — يحاولون حلّها في ٦ محاولات"
-          : "Play yourself or create a custom secret word and share the link with your students",
+          ? "Wordle بالعربية — كلمة سرّية ومحاولات محدودة، للعب الفردي أو مشاركة الرابط مع الطلاب."
+          : "Wordle-style — secret word, limited guesses; solo or share a link.",
       color: "from-emerald-500 to-teal-600",
       type: "letrly",
       available: true,
+      pill: lang === "ar" ? "كلمة يومية" : "Daily word",
     },
   ];
 
-  return (
-    <div className="space-y-8">
-      <div className="text-center py-4">
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl mb-4"
-        >
-          <Trophy className="w-10 h-10 text-purple-600" />
-        </motion.div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground mb-2">
-          {t.dashboard.tabCompetitive || "ألعاب تنافسية"}
-        </h2>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-          {t.competitiveGames?.tabDesc ||
-            "اختر نوع اللعبة التنافسية وأنشئ تجربة ممتعة لطلابك"}
-        </p>
+  const GameCatalogSection = ({
+    title,
+    subtitle,
+    accentClass,
+    games,
+    delayOffset,
+  }: {
+    title: string;
+    subtitle: string;
+    accentClass: string;
+    games: typeof liveGames;
+    delayOffset: number;
+  }) => (
+    <section className="space-y-4">
+      <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h3
+              className={`text-lg sm:text-xl font-black tracking-tight ${accentClass}`}
+            >
+              {title}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-3xl leading-relaxed">
+              {subtitle}
+            </p>
+          </div>
+        </div>
       </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {gameTypes.map((game, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {games.map((game, i) => (
           <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
+            key={`${game.type}-${i}`}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
+            transition={{ delay: (delayOffset + i) * 0.04 }}
           >
             <Card
-              className={`p-3 sm:p-6 h-full transition-all ${game.available ? "cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700" : "opacity-50 cursor-not-allowed select-none"}`}
-              onClick={() => {
-                if (!game.available) return;
-                if (game.type === "knowledge_race")
-                  setShowKnowledgeRace(!showKnowledgeRace);
-                else if (game.type === "tug_of_war")
-                  setLocation("/game/tug/create");
-                else if (game.type === "rocket_race")
-                  setLocation("/game/rocket/create");
-                else if (game.type === "video_lesson")
-                  setLocation("/teacher/video-lesson/new");
-                else if (game.type === "flag_quiz") setLocation("/game/flags");
-                else if (game.type === "color_game") setLocation("/game/color");
-                else if (game.type === "memory_match")
-                  setLocation("/game/memory");
-                else if (game.type === "multiplication")
-                  setLocation("/game/multiply");
-                else if (game.type === "scramble_words")
-                  setLocation("/game/scramble");
-                else if (game.type === "stroop")
-                  setLocation("/game/stroop/create");
-                else if (game.type === "maraqui") setLocation("/game/maraqui");
-                else if (game.type === "million") setLocation("/game/million");
-                else if (game.type === "million_team")
-                  setLocation("/game/million/team-setup");
-                else if (game.type === "hack") setLocation("/game/hack");
-                else if (game.type === "letrly") setLocation("/game/letrly");
-              }}
+              className="group h-full p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-primary/35 hover:-translate-y-0.5 border-2 border-border/70 bg-card"
+              onClick={() => openGameFromCatalog(game)}
             >
-              <div
-                className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-xl sm:text-3xl mb-2 sm:mb-4 shadow-md`}
-              >
-                {game.icon}
+              <div className="flex items-start gap-3 mb-3">
+                <div
+                  className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-2xl shadow-lg`}
+                >
+                  {game.icon}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <h4 className="font-black text-base sm:text-lg text-foreground leading-snug">
+                      {game.title}
+                    </h4>
+                    {(game as any).pill && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {(game as any).pill}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-4">
+                    {game.desc}
+                  </p>
+                </div>
               </div>
-              <h3 className="font-black text-sm sm:text-lg mb-1 sm:mb-2 leading-snug">
-                {game.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">
-                {game.desc}
-              </p>
-              {!game.available && (game as any).badge ? (
-                <span className="inline-flex items-center gap-1 mt-2 sm:mt-3 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs font-bold">
-                  ⭐ {(game as any).badge}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 mt-2 sm:mt-3 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-xs font-bold">
-                  <Gamepad2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                  {game.type === "maraqui"
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <span className="text-[11px] font-bold text-primary group-hover:underline">
+                  {game.type === "knowledge_race"
                     ? lang === "ar"
-                      ? "العب الآن"
-                      : "Play now"
-                    : game.type === "tug_of_war" || game.type === "video_lesson" || game.type === "rocket_race"
+                      ? "اختر واجباً وابدأ ←"
+                      : "Pick assignment & start →"
+                    : game.type === "tug_of_war" ||
+                        game.type === "video_lesson" ||
+                        game.type === "rocket_race"
                       ? lang === "ar"
-                        ? "أنشئ"
-                        : "Create"
+                        ? "إنشاء غرفة ←"
+                        : "Create session →"
                       : lang === "ar"
-                        ? "العب الآن"
-                        : "Play now"}
+                        ? "فتح اللعبة ←"
+                        : "Open game →"}
                 </span>
-              )}
+                <Gamepad2 className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
             </Card>
           </motion.div>
         ))}
       </div>
+    </section>
+  );
+
+  return (
+    <div className="space-y-10">
+      <div className="text-center py-2 sm:py-4">
+        <motion.div
+          animate={{ y: [0, -5, 0] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          className="inline-flex p-4 bg-gradient-to-br from-primary/15 to-amber-500/15 rounded-2xl mb-3 ring-1 ring-border/60"
+        >
+          <Trophy className="w-10 h-10 text-primary" />
+        </motion.div>
+        <h2 className="text-xl sm:text-3xl font-black text-foreground mb-2 tracking-tight">
+          {t.dashboard.tabCompetitive || "ألعاب تعليمية"}
+        </h2>
+        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2">
+          {lang === "ar"
+            ? "مكتبة ألعاب منظّمة: مسابقات حية مع صفّك كما في المنصات العالمية، وتحديات فردية للتمرّن والترفيه."
+            : "A structured game library: live class modes like leading platforms, plus solo brain challenges."}
+        </p>
+      </div>
+
+      <GameCatalogSection
+        title={
+          lang === "ar"
+            ? "مسابقات حية مع الصفّ"
+            : "Live classroom games"
+        }
+        subtitle={
+          lang === "ar"
+            ? "ألعاب جماعية بوقت حقيقي — اربط واجباتك أو أنشئ غرفة وشارك الرمز أو الرابط مع الطلاب."
+            : "Real-time whole-class modes — tie to assignments or create a room and share PIN/link."
+        }
+        accentClass="text-primary"
+        games={liveGames}
+        delayOffset={0}
+      />
+
+      <GameCatalogSection
+        title={
+          lang === "ar"
+            ? "تحديات ذكاء فردية"
+            : "Solo brain challenges"
+        }
+        subtitle={
+          lang === "ar"
+            ? "تمارين تركيز وذاكرة ولغة للعب الذاتي أو مسابقات الزوار — بدون غرفة صفّية كاملة."
+            : "Focus, memory, and language drills for solo play or visitor quizzes — no full live room required."
+        }
+        accentClass="text-foreground"
+        games={soloGames}
+        delayOffset={liveGames.length}
+      />
 
       <AnimatePresence>
         {showKnowledgeRace && (
@@ -1572,12 +1871,14 @@ function CompetitiveTab({
                         <button
                           onClick={() => startGame(assignment.id)}
                           disabled={creatingGameForId === assignment.id}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-bold text-sm shadow-md shadow-purple-500/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50"
                         >
                           <Gamepad2 className="w-4 h-4" />
                           {creatingGameForId === assignment.id
                             ? t.dashboard.creating
-                            : t.dashboard.startNow}
+                            : lang === "ar"
+                              ? "اختر اللعبة وابدأ"
+                              : "Choose game & start"}
                         </button>
                       </Card>
                     </motion.div>
