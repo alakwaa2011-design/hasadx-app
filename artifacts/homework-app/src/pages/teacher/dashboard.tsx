@@ -488,27 +488,39 @@ export default function TeacherDashboard() {
               {user?.name}
             </p>
           </div>
-          <nav className="space-y-1 flex-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (tab.href) setLocation(tab.href);
-                  else setActiveTab(tab.id);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all",
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                )}
-              >
-                <span className="[&_svg]:w-4 [&_svg]:h-4 shrink-0">
-                  {tab.icon}
-                </span>
-                <span className="truncate">{tab.label}</span>
-              </button>
-            ))}
+          <nav className="space-y-0.5 flex-1">
+            {tabs.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.href) setLocation(tab.href);
+                    else setActiveTab(tab.id);
+                  }}
+                  className={cn(
+                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
+                    active
+                      ? "text-white shadow-md"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  style={active ? { background: "#225739" } : undefined}
+                >
+                  {/* Hover background for inactive */}
+                  {!active && (
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
+                  )}
+                  {/* Gold accent bar on active */}
+                  {active && (
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
+                  )}
+                  <span className={cn("relative [&_svg]:w-4 [&_svg]:h-4 shrink-0 transition-colors", active ? "text-white" : "text-muted-foreground group-hover:text-foreground")}>
+                    {tab.icon}
+                  </span>
+                  <span className="relative truncate">{tab.label}</span>
+                </button>
+              );
+            })}
             <div className="pt-3 border-t border-border/50 mt-3">
               <Link href="/teacher/students">
                 <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
@@ -523,7 +535,8 @@ export default function TeacherDashboard() {
           <div className="mt-4 pt-4 border-t border-border/50">
             <button
               onClick={() => setLocation("/teacher/new")}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-sm shadow-sm hover:opacity-90 transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all hover:opacity-90 hover:shadow-lg"
+              style={{ background: "linear-gradient(135deg, #225739 0%, #2d7050 100%)", color: "#FCFAF8" }}
             >
               <Plus className="w-4 h-4" />
               {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
@@ -739,11 +752,12 @@ export default function TeacherDashboard() {
                       else setActiveTab(tab.id);
                     }}
                     className={cn(
-                      "shrink-0 snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border-2 transition-all",
+                      "shrink-0 snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border transition-all",
                       active
-                        ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25"
-                        : "bg-card text-foreground border-border/60 hover:border-primary/40",
+                        ? "text-white border-transparent shadow-md"
+                        : "bg-card text-muted-foreground border-border/50 hover:text-foreground",
                     )}
+                    style={active ? { background: "#225739", borderColor: "#225739" } : undefined}
                   >
                     <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">
                       {tab.icon}
@@ -781,33 +795,36 @@ export default function TeacherDashboard() {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           dir={isAr ? "rtl" : "ltr"}
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (tab.href) setLocation(tab.href);
-                else setActiveTab(tab.id);
-              }}
-              className={cn(
-                "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 transition-colors",
-                activeTab === tab.id
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  if (tab.href) setLocation(tab.href);
+                  else setActiveTab(tab.id);
+                }}
                 className={cn(
-                  "flex items-center justify-center w-8 h-8 rounded-xl transition-all [&_svg]:w-4 [&_svg]:h-4",
-                  activeTab === tab.id ? "bg-primary/15" : "",
+                  "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 transition-all relative",
+                  active ? "text-white" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {tab.icon}
-              </span>
-              <span className="text-[10px] font-semibold leading-none">
-                {tab.shortLabel}
-              </span>
-            </button>
-          ))}
+                {/* Active indicator dot at top */}
+                {active && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full" style={{ background: "#D9A521" }} />
+                )}
+                <span
+                  className="flex items-center justify-center w-9 h-9 rounded-xl transition-all [&_svg]:w-4 [&_svg]:h-4"
+                  style={active ? { background: "#225739" } : undefined}
+                >
+                  {tab.icon}
+                </span>
+                <span className="text-[10px] font-semibold leading-none">
+                  {tab.shortLabel}
+                </span>
+              </button>
+            );
+          })}
         </nav>
       </div>
 

@@ -131,12 +131,14 @@
 
   body {
     @apply antialiased bg-background text-foreground;
-    font-family: 'IBM Plex Sans Arabic', 'Inter', sans-serif;
+    font-family: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
     direction: rtl;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight;
+    @apply font-bold;
+    font-family: 'Readex Pro', 'Tajawal', system-ui, sans-serif;
+    letter-spacing: 0;
   }
 }
 

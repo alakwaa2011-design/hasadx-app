@@ -720,7 +720,7 @@ function BannerStat({ icon, label, value, accent = false }: { icon: React.ReactN
 }
 
 // ─────────────────────────────────────────────────────────
-// Quick action tile — bright, energetic, themed by tone
+// Quick action tile — premium brand-identity design
 // ─────────────────────────────────────────────────────────
 function QuickTile({
   icon,
@@ -735,29 +735,37 @@ function QuickTile({
   tone: "primary" | "amber" | "emerald" | "rose" | "sky";
   onClick: () => void;
 }) {
-  const tones: Record<typeof tone, { iconBg: string; iconText: string; ring: string; bg: string }> = {
-    primary: { iconBg: "bg-primary/15", iconText: "text-primary", ring: "hover:ring-primary/40", bg: "from-primary/5 to-transparent" },
-    amber:   { iconBg: "bg-amber-100 dark:bg-amber-900/30", iconText: "text-amber-700 dark:text-amber-300", ring: "hover:ring-amber-400/50", bg: "from-amber-50 to-transparent dark:from-amber-900/10" },
-    emerald: { iconBg: "bg-emerald-100 dark:bg-emerald-900/30", iconText: "text-emerald-700 dark:text-emerald-300", ring: "hover:ring-emerald-400/50", bg: "from-emerald-50 to-transparent dark:from-emerald-900/10" },
-    rose:    { iconBg: "bg-rose-100 dark:bg-rose-900/30", iconText: "text-rose-700 dark:text-rose-300", ring: "hover:ring-rose-400/50", bg: "from-rose-50 to-transparent dark:from-rose-900/10" },
-    sky:     { iconBg: "bg-sky-100 dark:bg-sky-900/30", iconText: "text-sky-700 dark:text-sky-300", ring: "hover:ring-sky-400/50", bg: "from-sky-50 to-transparent dark:from-sky-900/10" },
+  const PALETTE: Record<typeof tone, { accent: string; iconBg: string; iconColor: string; glow: string }> = {
+    primary: { accent: "#225739", iconBg: "rgba(34,87,57,0.10)",  iconColor: "#225739", glow: "rgba(34,87,57,0.12)" },
+    amber:   { accent: "#D9A521", iconBg: "rgba(217,165,33,0.10)", iconColor: "#b8871a", glow: "rgba(217,165,33,0.12)" },
+    emerald: { accent: "#2d7050", iconBg: "rgba(45,112,80,0.10)",  iconColor: "#2d7050", glow: "rgba(45,112,80,0.12)" },
+    rose:    { accent: "#e11d48", iconBg: "rgba(225,29,72,0.10)",  iconColor: "#be123c", glow: "rgba(225,29,72,0.12)" },
+    sky:     { accent: "#0284c7", iconBg: "rgba(2,132,199,0.10)",  iconColor: "#0369a1", glow: "rgba(2,132,199,0.12)" },
   };
-  const t = tones[tone];
+  const p = PALETTE[tone];
   return (
     <button
       onClick={onClick}
-      className={cn(
-        "group relative overflow-hidden p-4 rounded-2xl bg-card border border-border ring-1 ring-transparent transition-all text-start hover:-translate-y-0.5 hover:shadow-lg",
-        t.ring,
-      )}
+      className="group relative overflow-hidden p-4 rounded-2xl bg-card border border-border/60 text-start transition-all duration-200 hover:-translate-y-1 hover:shadow-xl"
+      style={{ "--tile-glow": p.glow } as React.CSSProperties}
     >
-      <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none", t.bg)} />
-      <div className="relative">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 shadow-sm", t.iconBg, t.iconText)}>
+      {/* Top accent line */}
+      <div className="absolute top-0 inset-x-0 h-[3px] rounded-t-2xl transition-all" style={{ background: p.accent, opacity: 0.7 }} />
+      {/* Glow on hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl" style={{ boxShadow: `inset 0 0 0 1.5px ${p.accent}55`, background: `radial-gradient(ellipse at top, ${p.glow} 0%, transparent 70%)` }} />
+      <div className="relative pt-1 flex flex-col items-center text-center">
+        <div
+          className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm"
+          style={{ background: p.iconBg, color: p.iconColor }}
+        >
           {icon}
         </div>
-        <p className="text-sm font-extrabold text-foreground leading-tight">{label}</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+        <p className="text-sm font-extrabold text-foreground leading-tight w-full">{label}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed w-full">{desc}</p>
+        <div className="mt-2.5 flex items-center justify-center gap-1" style={{ color: p.accent }}>
+          <span className="text-[10px] font-bold opacity-70 group-hover:opacity-100 transition-opacity">اذهب</span>
+          <ArrowUpRight className="w-3 h-3 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+        </div>
       </div>
     </button>
   );
