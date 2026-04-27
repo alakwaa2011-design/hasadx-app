@@ -235,7 +235,7 @@ class TugSoundEngine {
           }
           const epicBass = [65, 82, 98, 110];
           if (b % 2 === 0) this.tone(epicBass[bar % 4], beat * 1.5, "triangle", 0.12);
-        } else {
+        } else if (style === "chill") {
           if (b % 4 === 0) {
             this.tone(this.urgent ? 110 : 82, 0.3, "sine", 0.18);
             this.tone(this.urgent ? 55 : 41, 0.35, "sine", 0.12, 0.02);
