@@ -52,6 +52,10 @@ const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
 const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
+const RocketCreate = lazy(() => import("@/pages/game/rocket-create"));
+const RocketJoin = lazy(() => import("@/pages/game/rocket-join"));
+const RocketPlay = lazy(() => import("@/pages/game/rocket-play"));
+const RocketHost = lazy(() => import("@/pages/game/rocket-host"));
 const FlagsSetup = lazy(() => import("@/pages/game/flags-setup"));
 const FlagsPlay = lazy(() => import("@/pages/game/flags-play"));
 const FlagsJoin = lazy(() => import("@/pages/game/flags-join"));
@@ -188,6 +192,11 @@ function Router() {
         <Route path="/game/tug/create" component={TugCreate} />
         <Route path="/game/tug/join/:pin?" component={TugJoin} />
         <Route path="/game/tug/play/:pin" component={TugPlay} />
+        {/* Rocket Race Routes */}
+        <Route path="/game/rocket/create" component={RocketCreate} />
+        <Route path="/game/rocket/join/:pin?" component={RocketJoin} />
+        <Route path="/game/rocket/play/:pin" component={RocketPlay} />
+        <Route path="/game/rocket/host/:pin" component={RocketHost} />
         {/* Flag Quiz Routes */}
         <Route path="/game/flags" component={FlagsSetup} />
         <Route path="/game/flags/play" component={FlagsPlay} />

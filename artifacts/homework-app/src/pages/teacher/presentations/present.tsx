@@ -27,7 +27,7 @@ type Slide = {
   videoUrl?: string | null;
   speakerNotes?: string | null;
   question?: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: "A"|"B"|"C"|"D"; explanation?: string | null } | null;
-  activity?: { gameType: "wameed"|"million"|"tug"|"memory"|"scramble"; instructions?: string | null; questions: Question[] } | null;
+  activity?: { gameType: "wameed"|"million"|"tug"|"rocket"|"memory"|"scramble"; instructions?: string | null; questions: Question[] } | null;
   discussionPrompt?: string | null;
   discussionPoints?: string[] | null;
   customBackground?: CustomBackground | null;
@@ -503,6 +503,7 @@ function SlideRender({
       million: lang === "ar" ? "من سيربح المليون" : "Million",
       memory: lang === "ar" ? "لعبة الذاكرة" : "Memory",
       tug: lang === "ar" ? "شد الحبل" : "Tug of War",
+      rocket: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
       scramble: lang === "ar" ? "الكلمات المبعثرة" : "Scramble",
     };
     return (

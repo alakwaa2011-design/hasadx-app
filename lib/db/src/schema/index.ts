@@ -15,6 +15,7 @@ export * from "./collections";
 export * from "./platform-settings";
 export * from "./dismissed-shared";
 export * from "./tug-templates";
+export * from "./rocket-templates";
 export * from "./video-lessons";
 export * from "./video-questions";
 export * from "./video-submissions";

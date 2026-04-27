@@ -111,7 +111,7 @@ const slideSchema = z.object({
   }).nullish(),
   /* activity slide */
   activity: z.object({
-    gameType: z.enum(["wameed", "million", "tug", "memory", "scramble"]),
+    gameType: z.enum(["wameed", "million", "tug", "rocket", "memory", "scramble"]),
     instructions: z.string().nullish(),
     questions: z.array(z.object({
       text: z.string(),
@@ -583,6 +583,7 @@ router.post("/presentations/:id/launch-game", async (req, res) => {
     wameed: `/teacher/assignment/${assignment.id}`,
     million: `/game/million?assignmentId=${assignment.id}`,
     tug: `/game/tug/create?assignmentId=${assignment.id}`,
+    rocket: `/game/rocket/create?assignmentId=${assignment.id}`,
     memory: `/teacher/assignment/${assignment.id}`,
     scramble: `/teacher/assignment/${assignment.id}`,
   };
@@ -739,7 +740,7 @@ ${slideCount}. شريحة ملخص (summary) — أهم 3-5 نقاط للحفظ.
 - شرائح bullets فيها 3-5 نقاط مختصرة.
 - شرائح content فيها body قصير 2-4 جمل.
 - شريحة الكويز (quiz) فيها سؤال + 4 خيارات + الإجابة الصحيحة + شرح قصير.
-- شريحة النشاط (activity) فيها instructions موجزة + قائمة questions (5-8 أسئلة اختيار من متعدد) + اختر gameType الأنسب من: wameed (سؤال وجواب سريع) / million (مسابقة من سيربح المليون) / memory (لعبة الذاكرة) / tug (شد الحبل بين فريقين) / scramble (الكلمات المبعثرة).
+- شريحة النشاط (activity) فيها instructions موجزة + قائمة questions (5-8 أسئلة اختيار من متعدد) + اختر gameType الأنسب من: wameed (سؤال وجواب سريع) / million (مسابقة من سيربح المليون) / memory (لعبة الذاكرة) / tug (شد الحبل بين فريقين) / rocket (سباق صواريخ فردي سريع) / scramble (الكلمات المبعثرة).
 - شريحة النقاش (discussion) فيها discussionPrompt + discussionPoints (3-4 محاور للنقاش).
 - اكتب speakerNotes قصيرة لكل شريحة (2-3 جمل توجه المعلم ماذا يقول).
 - ضع id فريد لكل شريحة مثل: "s1", "s2", ...

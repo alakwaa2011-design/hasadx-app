@@ -53,6 +53,7 @@ import {
   Star,
   X,
   Presentation,
+  Rocket,
 } from "lucide-react";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -1310,6 +1311,17 @@ function CompetitiveTab({
       available: true,
     },
     {
+      icon: "🚀",
+      title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
+      desc:
+        lang === "ar"
+          ? "سباق فردي — كلما أجبت أسرع وأصح ارتفع صاروخك أعلى!"
+          : "Individual race — faster correct answers fly your rocket higher!",
+      color: "from-violet-500 to-fuchsia-600",
+      type: "rocket_race",
+      available: true,
+    },
+    {
       icon: "🎬",
       title: lang === "ar" ? "فيديو تفاعلي" : "Interactive Video",
       desc:
@@ -1445,6 +1457,8 @@ function CompetitiveTab({
                   setShowKnowledgeRace(!showKnowledgeRace);
                 else if (game.type === "tug_of_war")
                   setLocation("/game/tug/create");
+                else if (game.type === "rocket_race")
+                  setLocation("/game/rocket/create");
                 else if (game.type === "video_lesson")
                   setLocation("/teacher/video-lesson/new");
                 else if (game.type === "flag_quiz") setLocation("/game/flags");
@@ -1487,7 +1501,7 @@ function CompetitiveTab({
                     ? lang === "ar"
                       ? "العب الآن"
                       : "Play now"
-                    : game.type === "tug_of_war" || game.type === "video_lesson"
+                    : game.type === "tug_of_war" || game.type === "video_lesson" || game.type === "rocket_race"
                       ? lang === "ar"
                         ? "أنشئ"
                         : "Create"
@@ -3213,6 +3227,13 @@ function AssignmentsTabRender({
       icon: Swords,
     },
     {
+      type: "rocket_race",
+      title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
+      desc: lang === "ar" ? "سباق فردي للصواريخ" : "Individual rocket race",
+      icon: Rocket,
+      tag: lang === "ar" ? "جديد" : "New",
+    },
+    {
       type: "maraqui",
       title: lang === "ar" ? "مَراقي" : "Maraqui",
       desc: lang === "ar" ? "مراحل متدرجة الصعوبة" : "Progressive stages",
@@ -3245,6 +3266,9 @@ function AssignmentsTabRender({
         break;
       case "tug_of_war":
         setLocation("/game/tug/create");
+        break;
+      case "rocket_race":
+        setLocation("/game/rocket/create");
         break;
       case "maraqui":
         setLocation("/game/maraqui");

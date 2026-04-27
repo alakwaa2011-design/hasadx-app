@@ -55,7 +55,7 @@ type Slide = {
   videoUrl?: string | null;
   speakerNotes?: string | null;
   question?: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: "A"|"B"|"C"|"D"; explanation?: string | null } | null;
-  activity?: { gameType: "wameed"|"million"|"tug"|"memory"|"scramble"; instructions?: string | null; questions: Question[] } | null;
+  activity?: { gameType: "wameed"|"million"|"tug"|"rocket"|"memory"|"scramble"; instructions?: string | null; questions: Question[] } | null;
   discussionPrompt?: string | null;
   discussionPoints?: string[] | null;
   /* Per-slide AI-picked background gradient. Only honoured when the
@@ -1292,6 +1292,7 @@ function SlideInspector({ slide, updateSlide, lang }: { slide: Slide; updateSlid
             <option value="million">💰 {lang === "ar" ? "من سيربح المليون" : "Million"}</option>
             <option value="memory">🧠 {lang === "ar" ? "الذاكرة" : "Memory"}</option>
             <option value="tug">🪢 {lang === "ar" ? "شد الحبل" : "Tug of War"}</option>
+            <option value="rocket">🚀 {lang === "ar" ? "سباق الصواريخ" : "Rocket Race"}</option>
             <option value="scramble">🔤 {lang === "ar" ? "الكلمات المبعثرة" : "Scramble"}</option>
           </select>
         </div>

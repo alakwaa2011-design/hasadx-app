@@ -5,6 +5,7 @@ import { logger } from "./lib/logger";
 import { setupGameSocket } from "./game/socket-handlers";
 import { setupWhiteboardSocket } from "./game/whiteboard-handlers";
 import { setupTugSocket } from "./game/tug-handlers";
+import { setupRocketSocket } from "./game/rocket-handlers";
 import { setupFlagSocket } from "./game/flag-socket-handlers";
 import { setupColorSocket } from "./game/color-socket-handlers";
 import { setupVideoSocket } from "./game/video-socket-handlers";
@@ -54,6 +55,18 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE tug_templates
         ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT false
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS rocket_templates (
+        id SERIAL PRIMARY KEY,
+        teacher_id INTEGER NOT NULL REFERENCES teachers(id),
+        title TEXT NOT NULL,
+        questions JSONB NOT NULL,
+        duration INTEGER NOT NULL DEFAULT 20,
+        is_shared BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
     `);
     logger.info("Schema migrations applied");
   } catch (err) {
@@ -116,6 +129,7 @@ io.engine.use(sessionMiddleware);
 setupGameSocket(io);
 setupWhiteboardSocket(io);
 setupTugSocket(io);
+setupRocketSocket(io);
 setupFlagSocket(io);
 setupColorSocket(io);
 setupVideoSocket(io);
