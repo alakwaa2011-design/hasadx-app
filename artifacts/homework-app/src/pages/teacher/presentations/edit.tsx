@@ -631,27 +631,64 @@ export default function PresentationEditPage() {
               {pres.isShared && <span className="absolute -top-0.5 -end-0.5 w-2 h-2 bg-emerald-500 rounded-full" />}
             </button>
 
+            {/* Export button — visible label + large touch area */}
             <div className="relative">
               <button
                 onClick={() => setShowExportMenu((v) => !v)}
-                title={lang === "ar" ? "تصدير" : "Export"}
-                className="p-2 rounded-lg hover:bg-muted inline-flex items-center"
                 disabled={exporting}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted font-semibold text-sm transition-colors"
               >
-                {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                {exporting
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <FileDown className="w-4 h-4 text-primary" />}
+                <span className="hidden xs:inline">{lang === "ar" ? "تصدير" : "Export"}</span>
               </button>
+
+              {/* Desktop dropdown / Mobile bottom-sheet */}
               {showExportMenu && (
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowExportMenu(false)} />
-                  <div className={`absolute z-40 mt-1 w-56 bg-card border border-border rounded-xl shadow-2xl p-1 ${lang === "ar" ? "start-0" : "end-0"}`}>
-                    <button onClick={exportPDF} className="w-full text-start px-3 py-2 hover:bg-muted rounded-lg flex items-center gap-2 text-sm">
-                      <FileDown className="w-4 h-4 text-rose-500" />
-                      {lang === "ar" ? "تصدير PDF" : "Export PDF"}
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+
+                  {/* Bottom sheet on mobile, dropdown on desktop */}
+                  <div className={`
+                    fixed z-50
+                    sm:absolute sm:bottom-auto sm:inset-x-auto sm:mt-2 sm:w-64 sm:rounded-xl sm:shadow-2xl sm:border sm:border-border
+                    bottom-0 left-0 right-0 rounded-t-2xl shadow-2xl border-t border-border
+                    bg-card p-3
+                    ${lang === "ar" ? "sm:start-0" : "sm:end-0"}
+                  `}>
+                    {/* Handle (mobile only) */}
+                    <div className="sm:hidden w-10 h-1 bg-border rounded-full mx-auto mb-4" />
+                    <p className="text-xs text-muted-foreground font-bold px-2 mb-2">
+                      {lang === "ar" ? "اختر صيغة التصدير" : "Choose export format"}
+                    </p>
+                    <button
+                      onClick={exportPDF}
+                      className="w-full text-start px-4 py-3 hover:bg-muted rounded-xl flex items-center gap-3 text-sm font-medium transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-rose-100 flex items-center justify-center shrink-0">
+                        <FileDown className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold">{lang === "ar" ? "تصدير PDF" : "Export PDF"}</p>
+                        <p className="text-xs text-muted-foreground">{lang === "ar" ? "يفتح نافذة الطباعة" : "Opens print dialog"}</p>
+                      </div>
                     </button>
-                    <button onClick={exportPPTX} className="w-full text-start px-3 py-2 hover:bg-muted rounded-lg flex items-center gap-2 text-sm">
-                      <FileDown className="w-4 h-4 text-orange-500" />
-                      {lang === "ar" ? "تصدير PowerPoint" : "Export PowerPoint"}
+                    <button
+                      onClick={exportPPTX}
+                      className="w-full text-start px-4 py-3 hover:bg-muted rounded-xl flex items-center gap-3 text-sm font-medium transition-colors mt-1"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                        <FileDown className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold">{lang === "ar" ? "تصدير PowerPoint" : "Export PowerPoint"}</p>
+                        <p className="text-xs text-muted-foreground">{lang === "ar" ? "ملف .pptx قابل للتعديل" : "Editable .pptx file"}</p>
+                      </div>
                     </button>
+                    {/* Extra padding for mobile home bar */}
+                    <div className="sm:hidden h-4" />
                   </div>
                 </>
               )}
