@@ -54,6 +54,7 @@ import {
   X,
   Presentation,
   Rocket,
+  ChevronLeft,
 } from "lucide-react";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -1442,6 +1443,7 @@ function CompetitiveTab({
   const [gameHistory, setGameHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [showKnowledgeRace, setShowKnowledgeRace] = useState(false);
+  const [showWameethModal, setShowWameethModal] = useState(false);
   const wameethPickerRef = useRef<HTMLDivElement | null>(null);
   const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
   const [detailsById, setDetailsById] = useState<Record<number, any>>({});
@@ -1465,13 +1467,7 @@ function CompetitiveTab({
     if (game.available === false) return;
     const { type } = game;
     if (type === "knowledge_race") {
-      setShowKnowledgeRace(true);
-      window.setTimeout(() => {
-        wameethPickerRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 280);
+      setShowWameethModal(true);
       return;
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
@@ -1807,6 +1803,112 @@ function CompetitiveTab({
         games={liveGames}
         delayOffset={0}
       />
+
+      {/* ── Modal: وميض — اختر الواجب ── */}
+      <AnimatePresence>
+        {showWameethModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setShowWameethModal(false)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+              className="bg-card w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl border border-border shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-border/60 bg-gradient-to-r from-fuchsia-500/10 to-purple-600/10 flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">⚡</span>
+                  <div>
+                    <h3 className="text-lg font-black text-foreground">
+                      {lang === "ar" ? "وميض — ابدأ مسابقة حية" : "Wameeth — Start a Live Quiz"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === "ar"
+                        ? "اختر الواجب الذي تريد استخدام أسئلته"
+                        : "Pick an assignment to power your live room"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowWameethModal(false)}
+                  className="rounded-xl p-2 text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="overflow-y-auto flex-1 p-4 sm:p-5">
+                {mcqAssignments.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <span className="text-5xl mb-4 block">📭</span>
+                    <h4 className="font-bold text-foreground mb-2">
+                      {lang === "ar" ? "لا توجد واجبات بأسئلة" : "No assignments with questions"}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {lang === "ar"
+                        ? "أنشئ واجباً يحتوي أسئلة اختيار من متعدد أولاً"
+                        : "Create an assignment with MCQ questions first"}
+                    </p>
+                    <button
+                      onClick={() => { setShowWameethModal(false); setLocation("/teacher/new"); }}
+                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {lang === "ar" ? "إنشاء واجب" : "Create assignment"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {mcqAssignments.map((assignment: any) => (
+                      <button
+                        key={assignment.id}
+                        onClick={() => {
+                          setShowWameethModal(false);
+                          startGame(assignment.id);
+                        }}
+                        disabled={creatingGameForId === assignment.id}
+                        className="text-start p-4 rounded-2xl border border-border hover:border-primary/40 hover:bg-primary/[0.03] hover:shadow-md transition-all group disabled:opacity-60"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-fuchsia-500/10 flex items-center justify-center shrink-0 group-hover:bg-fuchsia-500/20 transition-colors">
+                            <Gamepad2 className="w-5 h-5 text-fuchsia-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-foreground group-hover:text-primary transition-colors truncate text-sm">
+                              {assignment.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {assignment.subject} · {assignment.questionCount} {lang === "ar" ? "سؤال" : "questions"}
+                            </p>
+                          </div>
+                          <ChevronLeft className={`w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`} />
+                        </div>
+                        {creatingGameForId === assignment.id && (
+                          <div className="mt-2 flex items-center gap-2 text-xs text-primary font-medium">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {lang === "ar" ? "جاري الإنشاء..." : "Creating..."}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Safe area spacer for mobile */}
+              <div className="h-2 sm:h-0 shrink-0" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* وميض: اختيار الواجب — مباشرة تحت بطاقات المسابقات الحية */}
       <div
