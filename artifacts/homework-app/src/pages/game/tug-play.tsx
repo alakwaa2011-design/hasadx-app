@@ -902,11 +902,24 @@ export default function TugPlay() {
               return;
             }
             socket.emit("tug:join", { pin, name: playerName, avatar: playerAvatar },
-              (res: { success?: boolean; team?: "blue" | "red"; players?: PlayerInfo[]; error?: string }) => {
+              (res: { success?: boolean; team?: "blue" | "red"; players?: PlayerInfo[]; error?: string; gameState?: string; ropePosition?: number; activeQuestion?: QuestionData & { remainingSecs?: number }; roundSummary?: RoundEndData }) => {
                 if (res.error) { setError(res.error); return; }
                 setMyTeam(res.team ?? null);
                 setPlayers(res.players ?? []);
-                setPhase("lobby");
+                if (res.ropePosition !== undefined) setRopePos(res.ropePosition);
+                const gs = (res.gameState ?? "lobby") as Phase;
+                setPhase(gs);
+                if (gs === "question" && res.activeQuestion) {
+                  const aq = res.activeQuestion;
+                  setQuestion(aq);
+                  setIsPowerQ(!!aq.isPower);
+                  startTimer(aq.remainingSecs ?? aq.duration);
+                  getSound().startBackground();
+                } else if (gs === "round-end" && res.roundSummary && res.activeQuestion) {
+                  setRoundData({ ...res.roundSummary, players: res.players ?? [] });
+                  setQuestion(res.activeQuestion);
+                  setIsPowerQ(!!res.activeQuestion.isPower);
+                }
               }
             );
           }
@@ -1130,14 +1143,8 @@ export default function TugPlay() {
     });
   };
 
-  const handleAddBots = (count: number) => {
-    getTugSocket().emit("tug:add-bots", { pin, count }, (res: { success?: boolean; error?: string }) => {
-      if (res.error) setError(res.error);
-    });
-  };
-
-  const handleRemoveBots = () => {
-    getTugSocket().emit("tug:remove-bots", { pin }, (res: { success?: boolean; error?: string }) => {
+  const handleMovePlayer = (playerName: string, team: "blue" | "red") => {
+    getTugSocket().emit("tug:move-player", { pin, playerName, team }, (res: { success?: boolean; error?: string }) => {
       if (res.error) setError(res.error);
     });
   };
@@ -1325,10 +1332,10 @@ export default function TugPlay() {
 
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/50 dark:border-white/10 bg-black/20 dark:bg-black/20">
           <div className="flex items-center gap-2">
-            <div className="text-xs font-black opacity-50 uppercase tracking-wide">
+            <div className="text-xs font-black text-white/60 uppercase tracking-wide">
               {lang === "ar" ? "شد الحبل" : "Tug of War"}
             </div>
-            <div className="text-sm font-mono font-black bg-slate-700/80 dark:bg-white/10 px-2.5 py-0.5 rounded-lg">#{pin}</div>
+            <div className="text-sm font-mono font-black bg-white/20 text-white px-2.5 py-0.5 rounded-lg">#{pin}</div>
             <QRModalButton url={joinUrl} pin={pin ?? ""} variant="dark" label="" />
             <motion.button whileTap={{ scale: 0.9 }}
               onClick={() => { navigator.clipboard.writeText(joinUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
@@ -1341,13 +1348,14 @@ export default function TugPlay() {
             {myTeam && (
               <motion.div
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
-                className={`flex items-center gap-1.5 font-black px-3 py-1 rounded-xl text-sm shadow-lg border ${
-                  myTeam === "blue"
-                    ? "bg-blue-500/50 text-blue-800 dark:text-blue-100 border-blue-400/50"
-                    : "bg-red-500/50 text-red-800 dark:text-red-100 border-red-400/50"
-                }`}
+                className="flex items-center gap-1.5 font-black px-3 py-1 rounded-xl text-sm shadow-lg"
+                style={{
+                  background: "#ffffff",
+                  color: myTeam === "blue" ? "#1D4ED8" : "#DC2626",
+                  border: `2px solid ${myTeam === "blue" ? "#3b82f6" : "#ef4444"}`,
+                }}
               >
-                <span className={`w-2.5 h-2.5 rounded-full ${myTeam === "blue" ? "bg-blue-300" : "bg-red-300"}`} />
+                <span className={`w-2.5 h-2.5 rounded-full ${myTeam === "blue" ? "bg-blue-500" : "bg-red-500"}`} />
                 {teamLabel(myTeam)}
                 {myStreak >= 3 && <StreakBadge streak={myStreak} />}
               </motion.div>
@@ -1386,79 +1394,60 @@ export default function TugPlay() {
               {phase === "lobby" && (
                 <motion.div key="lobby" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-4 py-4">
 
-                  {isCreator && (
-                    <div className="bg-purple-500/10 rounded-2xl p-3 mb-4 border border-purple-400/30">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-purple-600 dark:text-purple-300 font-black text-sm flex items-center gap-2">
-                          🤖 {lang === "ar" ? "لاعبون وهميون" : "Bot Players"}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAddBots(2)}
-                            className="px-3 py-1.5 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-600 dark:text-purple-300 text-xs font-black hover:bg-purple-500/40 transition-colors"
-                          >
-                            {lang === "ar" ? "+2 روبوت" : "+2 Bots"}
-                          </motion.button>
-                          <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAddBots(4)}
-                            className="px-3 py-1.5 rounded-xl bg-purple-500/30 border border-purple-400/40 text-purple-600 dark:text-purple-300 text-xs font-black hover:bg-purple-500/40 transition-colors"
-                          >
-                            {lang === "ar" ? "+4 روبوت" : "+4 Bots"}
-                          </motion.button>
-                          {players.some(p => p.name.startsWith("روبوت")) && (
-                            <motion.button whileTap={{ scale: 0.95 }} onClick={handleRemoveBots}
-                              className="px-3 py-1.5 rounded-xl bg-red-500/30 border border-red-400/40 text-red-600 dark:text-red-300 text-xs font-black hover:bg-red-500/40 transition-colors"
-                            >
-                              {lang === "ar" ? "حذف الكل" : "Remove"}
-                            </motion.button>
-                          )}
-                        </div>
+                  {/* Team grids with assignment control for teacher */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {/* Blue Team */}
+                    <div className="rounded-2xl p-3 border-2 border-blue-400/50" style={{ background: "rgba(255,255,255,0.12)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="bg-white text-blue-700 font-black text-xs px-3 py-1 rounded-lg shadow">
+                          {teamLabel("blue")} ({blueTeam.length})
+                        </span>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-blue-500/15 rounded-2xl p-4 border-2 border-blue-400/30">
-                      <h3 className="text-blue-600 dark:text-blue-300 font-black text-sm lg:text-base mb-3 flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-blue-400 inline-block shadow-lg shadow-blue-400/50" />
-                        {teamLabel("blue")}
-                        <span className="text-blue-400/50 font-normal text-xs">({blueTeam.length})</span>
-                      </h3>
                       <div className="space-y-1.5">
                         {blueTeam.length === 0
-                          ? <p className="text-blue-400/40 text-sm">{lang === "ar" ? "انتظار لاعبين..." : "Waiting..."}</p>
+                          ? <p className="text-blue-300/60 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
                           : blueTeam.map((p) => (
                             <motion.div key={p.name} initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-2 py-2 px-3 rounded-xl bg-blue-500/10 border border-blue-400/20">
+                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl bg-blue-500/20 border border-blue-400/30">
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-blue-700 dark:text-blue-100 font-bold text-sm lg:text-base truncate">{p.name}</span>
+                              <span className="text-white font-bold text-xs flex-1 truncate">{p.name}</span>
+                              {isCreator && (
+                                <button onClick={() => handleMovePlayer(p.name, "red")}
+                                  className="text-red-300 hover:text-red-100 text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors shrink-0">
+                                  →🔴
+                                </button>
+                              )}
                             </motion.div>
                           ))
                         }
                       </div>
                     </div>
-                    <div className="bg-red-500/15 rounded-2xl p-4 border-2 border-red-400/30">
-                      <h3 className="text-red-600 dark:text-red-300 font-black text-sm lg:text-base mb-3 flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-red-400 inline-block shadow-lg shadow-red-400/50" />
-                        {teamLabel("red")}
-                        <span className="text-red-400/50 font-normal text-xs">({redTeam.length})</span>
-                      </h3>
+                    {/* Red Team */}
+                    <div className="rounded-2xl p-3 border-2 border-red-400/50" style={{ background: "rgba(255,255,255,0.12)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="bg-white text-red-700 font-black text-xs px-3 py-1 rounded-lg shadow">
+                          {teamLabel("red")} ({redTeam.length})
+                        </span>
+                      </div>
                       <div className="space-y-1.5">
                         {redTeam.length === 0
-                          ? <p className="text-red-400/40 text-sm">{lang === "ar" ? "انتظار لاعبين..." : "Waiting..."}</p>
+                          ? <p className="text-red-300/60 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
                           : redTeam.map((p) => (
                             <motion.div key={p.name} initial={{ x: 10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-2 py-2 px-3 rounded-xl bg-red-500/10 border border-red-400/20">
+                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl bg-red-500/20 border border-red-400/30">
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-red-700 dark:text-red-100 font-bold text-sm lg:text-base truncate">{p.name}</span>
+                              <span className="text-white font-bold text-xs flex-1 truncate">{p.name}</span>
+                              {isCreator && (
+                                <button onClick={() => handleMovePlayer(p.name, "blue")}
+                                  className="text-blue-300 hover:text-blue-100 text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-500/20 hover:bg-blue-500/40 transition-colors shrink-0">
+                                  🔵←
+                                </button>
+                              )}
                             </motion.div>
                           ))
                         }
                       </div>
                     </div>
-                  </div>
-
-                  <div className="bg-slate-800/70 dark:bg-white/10 rounded-2xl p-4 mb-4 border border-slate-600/50 dark:border-white/10 text-center">
-                    <p className="text-slate-400 dark:text-white/40 text-xs mb-1">{lang === "ar" ? "شارك الرمز من الشريط العلوي ☝️" : "Share PIN from header bar ☝️"}</p>
-                    <p className="text-4xl font-black tracking-[0.3em] text-amber-600 dark:text-amber-300">{pin}</p>
                   </div>
 
                   {isCreator ? (
@@ -1472,7 +1461,7 @@ export default function TugPlay() {
                     <div className="text-center py-4">
                       <motion.div animate={{ scale: [1, 1.12, 1], rotate: [-5, 5, -5] }} transition={{ repeat: Infinity, duration: 1.4 }}
                         className="text-5xl mb-2 inline-block">🪢</motion.div>
-                      <p className="text-slate-300 dark:text-white/50 text-sm">{lang === "ar" ? "انتظر المنشئ ليبدأ..." : "Waiting for host..."}</p>
+                      <p className="text-white/60 text-sm">{lang === "ar" ? "انتظر المعلم ليبدأ..." : "Waiting for host..."}</p>
                     </div>
                   )}
                 </motion.div>
@@ -1601,8 +1590,8 @@ export default function TugPlay() {
                   {gameEnd.winner === "draw" ? (
                     <>
                       <div className="text-7xl mb-2">🤝</div>
-                      <h2 className="text-3xl lg:text-4xl font-black mb-1">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
-                      <p className="text-slate-400 dark:text-white/40 text-sm mb-4">{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
+                      <h2 className="text-3xl lg:text-4xl font-black mb-1 text-white">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
+                      <p className="font-bold text-sm mb-4" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
                     </>
                   ) : (
                     <>

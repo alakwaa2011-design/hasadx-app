@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Play, Clock, ChevronDown, ChevronUp,
+  Play, Clock,
   Check, X, Loader2, FileText, BookOpen,
   GraduationCap, Trash2, Search,
 } from "lucide-react";
@@ -71,10 +71,7 @@ export default function TugCreate() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number; isOwn?: boolean; ownerName?: string | null }[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
-  const [assignExpandedId, setAssignExpandedId] = useState<number | null>(null);
-  const [assignQuestions, setAssignQuestions] = useState<BankQuestion[]>([]);
-  const [assignQLoading, setAssignQLoading] = useState(false);
-  const [assignSelected, setAssignSelected] = useState<Set<number>>(new Set());
+  const [assignImporting, setAssignImporting] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
@@ -171,35 +168,31 @@ export default function TugCreate() {
     } catch { /* ignore */ } finally { setAssignLoading(false); }
   }, [ar]);
 
-  const loadAssignmentQuestions = useCallback(async (assignmentId: number) => {
-    setAssignQLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        const qs = (data.questions || [])
-          .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
-            q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
-          .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number }) => ({
-            id: q.id, subject: data.subject || "", text: q.text,
-            optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-            correctAnswer: q.correctAnswer, points: q.points || 1, tags: null,
-          } as BankQuestion));
-        setAssignQuestions(qs);
-      }
-    } catch { /* ignore */ } finally { setAssignQLoading(false); }
-  }, []);
 
   useEffect(() => {
-    if (assignOpen) { loadAssignments(); setAssignSelected(new Set()); setAssignExpandedId(null); setAssignQuestions([]); }
+    if (assignOpen) { loadAssignments(); }
   }, [assignOpen, loadAssignments]);
 
-  const importAssignSelected = () => {
-    const selected = assignQuestions.filter(q => assignSelected.has(q.id));
-    if (selected.length === 0) return;
-    setQuestions(prev => [...prev, ...selected.map(bankToTug)].slice(0, 20));
-    setAssignOpen(false);
-    toast.success(ar ? `تم استيراد ${selected.length} سؤال من الواجب!` : `Imported ${selected.length} questions!`);
+  const importAllFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
+    setAssignImporting(assignmentId);
+    try {
+      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
+      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
+      const data = await res.json();
+      const qs = (data.questions || [])
+        .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
+          q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
+        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number }) => bankToTug({
+          id: q.id, subject: data.subject || "", text: q.text,
+          optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+          correctAnswer: q.correctAnswer, points: q.points || 1, tags: null,
+        } as BankQuestion));
+      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد في هذا الواجب" : "No MCQ questions found"); return; }
+      setQuestions(qs.slice(0, 20));
+      setAssignOpen(false);
+      toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
+    } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
+    finally { setAssignImporting(null); }
   };
 
   const filteredBank = bankSearch.trim()
@@ -504,109 +497,33 @@ export default function TugCreate() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    <h2 className="font-black text-lg">{ar ? "استيراد من واجب" : "Import from Assignment"}</h2>
+                    <h2 className="font-black text-lg">{ar ? "اختر واجباً" : "Select Assignment"}</h2>
                   </div>
                   <button onClick={() => setAssignOpen(false)} className="p-1.5 rounded-lg hover:bg-white/20"><X className="w-5 h-5" /></button>
                 </div>
+                <p className="text-white/80 text-xs mt-1">{ar ? "اضغط على الواجب لاستيراد جميع أسئلته مباشرة" : "Tap an assignment to import all its questions"}</p>
               </div>
-              {assignSelected.size > 0 && (
-                <div className="p-3 border-b shrink-0 flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-600">{ar ? `تم اختيار ${assignSelected.size}` : `${assignSelected.size} selected`}</span>
-                  <button onClick={importAssignSelected}
-                    className="py-1.5 px-4 rounded-lg text-white text-xs font-bold"
-                    style={{ background: "#f59e0b" }}>
-                    {ar ? "استيراد" : "Import"}
-                  </button>
-                </div>
-              )}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {assignLoading && <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-amber-500" /></div>}
                 {!assignLoading && assignments.length === 0 && <p className="text-center py-12 text-sm text-gray-400">{ar ? "لا توجد واجبات" : "No assignments"}</p>}
                 {assignments.map(a => (
-                  <div key={a.id} className="rounded-xl border-2 overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <button
-                      onClick={() => {
-                        if (assignExpandedId === a.id) { setAssignExpandedId(null); return; }
-                        setAssignExpandedId(a.id);
-                        setAssignSelected(new Set());
-                        loadAssignmentQuestions(a.id);
-                      }}
-                      className="w-full p-3 flex items-center gap-3 hover:bg-amber-50 transition-colors">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: "#fef3c7" }}>
-                        <FileText className="w-4 h-4" style={{ color: "#d97706" }} />
-                      </div>
-                      <div className="flex-1 text-start">
-                        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{a.title}</p>
-                        <p className="text-xs text-gray-500">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
-                      </div>
-                      {assignExpandedId === a.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                    </button>
-                    <AnimatePresence>
-                      {assignExpandedId === a.id && (
-                        <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                          <div className="p-3 border-t space-y-2" style={{ borderColor: "#fde68a" }}>
-                            {assignQLoading && <Loader2 className="w-4 h-4 animate-spin mx-auto text-amber-500" />}
-                            {!assignQLoading && assignQuestions.length === 0 && (
-                              <p className="text-xs text-gray-400 text-center py-3">{ar ? "لا توجد أسئلة اختيار متعدد" : "No MCQ questions"}</p>
-                            )}
-                            {assignQuestions.length > 0 && (
-                              <button
-                                onClick={() => setAssignSelected(
-                                  assignSelected.size === assignQuestions.length
-                                    ? new Set()
-                                    : new Set(assignQuestions.map(q => q.id))
-                                )}
-                                className="text-xs font-bold hover:underline"
-                                style={{ color: "#d97706" }}>
-                                {assignSelected.size === assignQuestions.length
-                                  ? (ar ? "إلغاء تحديد الكل" : "Deselect All")
-                                  : (ar ? "تحديد الكل" : "Select All")}
-                              </button>
-                            )}
-                            {assignQuestions.map(q => {
-                              const checked = assignSelected.has(q.id);
-                              return (
-                                <div key={q.id}
-                                  onClick={() => { const n = new Set(assignSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setAssignSelected(n); }}
-                                  className="p-2.5 rounded-lg border-2 cursor-pointer transition-all"
-                                  style={{ borderColor: checked ? "#f59e0b" : "#e5e7eb", background: checked ? "#fef9e7" : "#fff" }}>
-                                  <div className="flex items-start gap-2">
-                                    <div className="w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
-                                      style={{ borderColor: checked ? "#f59e0b" : "#d1d5db", background: checked ? "#f59e0b" : "#fff" }}>
-                                      {checked && <Check className="w-2.5 h-2.5 text-white" />}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-bold text-gray-800 leading-tight">{q.text}</p>
-                                      <div className="mt-1 grid grid-cols-2 gap-1">
-                                        {[q.optionA, q.optionB, q.optionC, q.optionD].map((opt, i) => (
-                                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded truncate"
-                                            style={{
-                                              background: q.correctAnswer === ["A","B","C","D"][i] ? "#dcfce7" : "#f3f4f6",
-                                              color: q.correctAnswer === ["A","B","C","D"][i] ? "#15803d" : "#6b7280",
-                                              fontWeight: q.correctAnswer === ["A","B","C","D"][i] ? "700" : "400",
-                                            }}>
-                                            {optionLetters[i]}) {opt || "—"}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {assignQuestions.length > 0 && (
-                              <button onClick={importAssignSelected} disabled={assignSelected.size === 0}
-                                className="w-full py-2 rounded-xl text-white font-bold text-sm disabled:opacity-40"
-                                style={{ background: "#f59e0b" }}>
-                                {ar ? `استيراد (${assignSelected.size})` : `Import (${assignSelected.size})`}
-                              </button>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  <motion.button key={a.id} whileTap={{ scale: 0.97 }}
+                    onClick={() => importAllFromAssignment(a.id, a.title)}
+                    disabled={assignImporting !== null}
+                    className="w-full p-4 rounded-2xl border-2 flex items-center gap-3 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors text-start"
+                    style={{ borderColor: "#f59e0b", background: assignImporting === a.id ? "#fef3c7" : "#fff" }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
+                      {assignImporting === a.id
+                        ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        : <FileText className="w-5 h-5 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-gray-800 dark:text-gray-100 truncate">{a.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
+                    </div>
+                    <Check className="w-5 h-5 text-amber-500 shrink-0" />
+                  </motion.button>
                 ))}
               </div>
             </motion.div>

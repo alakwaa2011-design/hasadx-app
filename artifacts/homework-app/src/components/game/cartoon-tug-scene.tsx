@@ -654,12 +654,15 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
 function CenterLine() {
   return (
     <g>
-      <rect x={CENTER_X - 3} y={GROUND_Y - 40} width={6} height={80} rx={2} fill="#FFD700" opacity={0.85} />
-      <rect x={CENTER_X - 1} y={GROUND_Y - 40} width={2} height={80} fill="white" opacity={0.4} />
-      <line x1={CENTER_X - 18} y1={GROUND_Y - 40} x2={CENTER_X + 18} y2={GROUND_Y - 40}
-        stroke="#FFD700" strokeWidth={3} strokeLinecap="round" opacity={0.7} />
-      <polygon points={`${CENTER_X},${GROUND_Y - 48} ${CENTER_X - 9},${GROUND_Y - 38} ${CENTER_X + 9},${GROUND_Y - 38}`}
-        fill="#FFD700" opacity={0.8} />
+      {/* Ground center line - horizontal white stripe on the dirt */}
+      <rect x={CENTER_X - 4} y={GROUND_Y - 2} width={8} height={24} rx={2} fill="white" opacity={0.9} />
+      <rect x={CENTER_X - 22} y={GROUND_Y + 2} width={44} height={6} rx={3} fill="white" opacity={0.7} />
+      <rect x={CENTER_X - 14} y={GROUND_Y + 10} width={28} height={4} rx={2} fill="white" opacity={0.4} />
+      {/* Small flag post at ground */}
+      <line x1={CENTER_X} y1={GROUND_Y - 2} x2={CENTER_X} y2={GROUND_Y - 28}
+        stroke="white" strokeWidth={2.5} opacity={0.8} />
+      <polygon points={`${CENTER_X},${GROUND_Y - 28} ${CENTER_X},${GROUND_Y - 16} ${CENTER_X + 16},${GROUND_Y - 22}`}
+        fill="#ef4444" opacity={0.95} />
     </g>
   );
 }
@@ -750,7 +753,10 @@ function SVGConfetti({ active }: { active: boolean }) {
 }
 
 export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide }: CartoonTugSceneProps) {
-  const slideX = (ropePos - 50) * 4.5;
+  // When celebrating, losing team slides extra toward winner (retreats past center line)
+  const baseSlideX = (ropePos - 50) * 4.5;
+  const retreatOffset = isCelebrating && winnerSide ? (winnerSide === "blue" ? -120 : 120) : 0;
+  const slideX = baseSlideX + retreatOffset;
   const blueFatigue = Math.max(0, Math.min(1, (ropePos - 50) / 40));
   const redFatigue = Math.max(0, Math.min(1, (50 - ropePos) / 40));
   const [pullCycle, setPullCycle] = useState(0);

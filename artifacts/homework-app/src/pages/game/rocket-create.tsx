@@ -108,10 +108,7 @@ export default function RocketCreate() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignments, setAssignments] = useState<{ id: number; title: string; subject: string; questionCount: number }[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
-  const [assignExpandedId, setAssignExpandedId] = useState<number | null>(null);
-  const [assignQuestions, setAssignQuestions] = useState<BankQuestion[]>([]);
-  const [assignQLoading, setAssignQLoading] = useState(false);
-  const [assignSelected, setAssignSelected] = useState<Set<number>>(new Set());
+  const [assignImporting, setAssignImporting] = useState<number | null>(null);
 
   // Templates
   const [savedOpen, setSavedOpen] = useState(false);
@@ -232,35 +229,31 @@ export default function RocketCreate() {
     } catch { /* ignore */ } finally { setAssignLoading(false); }
   }, [ar]);
 
-  const loadAssignmentQuestions = useCallback(async (assignmentId: number) => {
-    setAssignQLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        const qs = (data.questions || [])
-          .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) => q.questionType === "mcq" && q.optionA && q.correctAnswer)
-          .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
-            id: q.id, subject: data.subject || "", text: q.text,
-            optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-            correctAnswer: q.correctAnswer, points: 1, tags: null,
-          } as BankQuestion));
-        setAssignQuestions(qs);
-      }
-    } catch { /* ignore */ } finally { setAssignQLoading(false); }
-  }, []);
-
   useEffect(() => {
-    if (assignOpen) { loadAssignments(); setAssignSelected(new Set()); setAssignExpandedId(null); setAssignQuestions([]); }
+    if (assignOpen) { loadAssignments(); }
   }, [assignOpen, loadAssignments]);
 
-  const importAssignSelected = () => {
-    const selected = assignQuestions.filter(q => assignSelected.has(q.id));
-    if (selected.length === 0) return;
-    const merged = [...questions, ...selected.map(bankToRocket)].slice(0, 30);
-    setQuestions(merged);
-    setAssignOpen(false);
-    toast.success(ar ? `تم استيراد ${selected.length} سؤال من الواجب` : `Imported ${selected.length} from assignment`);
+  const importAllFromAssignment = async (assignmentId: number, assignmentTitle: string) => {
+    setAssignImporting(assignmentId);
+    try {
+      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
+      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
+      const data = await res.json();
+      const qs = (data.questions || [])
+        .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
+          q.questionType === "mcq" && q.optionA && q.correctAnswer)
+        .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => bankToRocket({
+          id: q.id, subject: data.subject || "", text: q.text,
+          optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+          correctAnswer: q.correctAnswer, points: 1, tags: null,
+        } as BankQuestion));
+      if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد" : "No MCQ questions found"); return; }
+      setQuestions(qs.slice(0, 30));
+      if (data.title) setTitle(data.title);
+      setAssignOpen(false);
+      toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
+    } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
+    finally { setAssignImporting(null); }
   };
 
   // Templates
@@ -720,64 +713,39 @@ export default function RocketCreate() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
               onClick={e => e.stopPropagation()}
               className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-              <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "#e5e7eb" }}>
-                <h3 className="text-lg font-black flex items-center gap-2" style={{ color: BRAND_GOLD }}>
-                  <FileText className="w-5 h-5" />
-                  {ar ? "استيراد من واجب" : "Import from Assignment"}
-                </h3>
-                <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
+              <div className="p-5 border-b" style={{ background: "linear-gradient(135deg, #225739, #1a4a2e)", borderColor: "#e5e7eb" }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      {ar ? "اختر واجباً" : "Select Assignment"}
+                    </h3>
+                    <p className="text-white/70 text-xs mt-0.5">{ar ? "اضغط على الواجب لاستيراد جميع أسئلته" : "Tap to import all questions"}</p>
+                  </div>
+                  <button onClick={() => setAssignOpen(false)} className="p-2 rounded-xl hover:bg-white/20 text-white"><X className="w-5 h-5" /></button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {assignLoading && <div className="text-center py-8"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>}
                 {!assignLoading && assignments.length === 0 && <div className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد واجبات" : "No assignments"}</div>}
                 {assignments.map(a => (
-                  <div key={a.id} className="rounded-xl border-2 overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <button
-                      onClick={() => {
-                        if (assignExpandedId === a.id) { setAssignExpandedId(null); return; }
-                        setAssignExpandedId(a.id);
-                        setAssignSelected(new Set());
-                        loadAssignmentQuestions(a.id);
-                      }}
-                      className="w-full p-3 flex items-center gap-3 hover:bg-gray-50"
-                    >
-                      <div className="flex-1 text-start">
-                        <p className="text-sm font-bold">{a.title}</p>
-                        <p className="text-xs text-muted-foreground">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
-                      </div>
-                      {assignExpandedId === a.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                    {assignExpandedId === a.id && (
-                      <div className="border-t p-3 space-y-2" style={{ borderColor: "#e5e7eb" }}>
-                        {assignQLoading && <Loader2 className="w-4 h-4 animate-spin mx-auto" />}
-                        {!assignQLoading && assignQuestions.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center">{ar ? "لا توجد أسئلة اختيار من متعدد" : "No MCQ questions"}</p>
-                        )}
-                        {assignQuestions.map(q => {
-                          const checked = assignSelected.has(q.id);
-                          return (
-                            <div key={q.id}
-                              onClick={() => { const n = new Set(assignSelected); if (n.has(q.id)) n.delete(q.id); else n.add(q.id); setAssignSelected(n); }}
-                              className="p-2 rounded-lg border-2 cursor-pointer flex items-start gap-2"
-                              style={{ borderColor: checked ? BRAND_GOLD : "#e5e7eb", background: checked ? `${BRAND_GOLD}15` : "#fff" }}>
-                              <div className="w-4 h-4 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center"
-                                style={{ borderColor: checked ? BRAND_GOLD : "#d1d5db", background: checked ? BRAND_GOLD : "#fff" }}>
-                                {checked && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                              <p className="text-xs font-medium line-clamp-2 flex-1">{q.text}</p>
-                            </div>
-                          );
-                        })}
-                        {assignQuestions.length > 0 && (
-                          <button onClick={importAssignSelected} disabled={assignSelected.size === 0}
-                            className="w-full py-2 rounded-xl text-white font-bold text-sm disabled:opacity-50"
-                            style={{ background: BRAND_GOLD }}>
-                            {ar ? `استيراد (${assignSelected.size})` : `Import (${assignSelected.size})`}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <motion.button key={a.id} whileTap={{ scale: 0.97 }}
+                    onClick={() => importAllFromAssignment(a.id, a.title)}
+                    disabled={assignImporting !== null}
+                    className="w-full p-4 rounded-2xl border-2 flex items-center gap-3 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors text-start"
+                    style={{ borderColor: BRAND_PRIMARY, background: assignImporting === a.id ? "#f0fdf4" : "#fff" }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "linear-gradient(135deg, #225739, #388e3c)" }}>
+                      {assignImporting === a.id
+                        ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                        : <FileText className="w-5 h-5 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-gray-800 dark:text-gray-100 truncate">{a.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{a.subject} · {a.questionCount} {ar ? "سؤال" : "questions"}</p>
+                    </div>
+                    <Check className="w-5 h-5 shrink-0" style={{ color: BRAND_PRIMARY }} />
+                  </motion.button>
                 ))}
               </div>
             </motion.div>

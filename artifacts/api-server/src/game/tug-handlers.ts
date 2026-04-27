@@ -295,7 +295,7 @@ function endRound(tugNs: ReturnType<Server["of"]>, game: TugGame) {
   game.autoAdvanceTimer = setTimeout(() => {
     game.autoAdvanceTimer = undefined;
     advanceToNext(tugNs, game);
-  }, 50);
+  }, 1000);
 }
 
 // Per-socket rate limiter for tug:create. Prevents flood-creating tug games
@@ -446,7 +446,7 @@ export function setupTugSocket(io: Server) {
         try {
           const game = tugGames.get(data.pin);
           if (!game) return cb({ error: "لم يتم العثور على الغرفة. تحقق من الرمز." });
-          if (game.state !== "lobby") return cb({ error: "اللعبة بدأت بالفعل." });
+          if (game.state === "finished") return cb({ error: "انتهت اللعبة." });
 
           const trimmedName = (data.name || "").trim();
           if (!trimmedName) return cb({ error: "يرجى إدخال اسمك." });
@@ -484,11 +484,35 @@ export function setupTugSocket(io: Server) {
 
           tugNs.to(`tug:${game.pin}`).emit("tug:players-updated", { players: getPlayerList(game) });
 
+          const q = game.questions[game.currentQuestionIndex];
+          const remainingSecs = game.state === "question" && game.questionStartTime && q
+            ? Math.max(0, q.duration - Math.floor((Date.now() - game.questionStartTime) / 1000))
+            : undefined;
+
           cb({
             success: true,
             team,
             players: getPlayerList(game),
             pin: game.pin,
+            gameState: game.state,
+            ropePosition: game.ropePosition,
+            activeQuestion: (game.state === "question" || game.state === "round-end") && q ? {
+              index: game.currentQuestionIndex,
+              total: game.questions.length,
+              text: q.text,
+              options: q.options,
+              duration: q.duration,
+              isPower: isPowerQuestion(game.currentQuestionIndex),
+              remainingSecs,
+            } : undefined,
+            roundSummary: game.state === "round-end" && q ? {
+              correctIndex: q.correct,
+              ropePosition: game.ropePosition,
+              blueScore: 0, redScore: 0,
+              questionIndex: game.currentQuestionIndex,
+              total: game.questions.length,
+              isLast: game.currentQuestionIndex >= game.questions.length - 1,
+            } : undefined,
           });
         } catch (err) {
           logger.error(err, "tug:join error");
@@ -551,6 +575,22 @@ export function setupTugSocket(io: Server) {
         cb({ success: true });
       } catch (err) {
         logger.error(err, "tug:remove-bots error");
+        cb({ error: "حدث خطأ" });
+      }
+    });
+
+    socket.on("tug:move-player", (data: { pin: string; playerName: string; team: "blue" | "red" }, cb: (r: object) => void) => {
+      try {
+        const game = tugGames.get(data.pin);
+        if (!game) return cb({ error: "الغرفة غير موجودة." });
+        if (game.creatorSocketId !== socket.id) return cb({ error: "فقط المعلم يمكنه تغيير الفرق." });
+        const player = Object.values(game.players).find(p => p.name === data.playerName);
+        if (!player) return cb({ error: "اللاعب غير موجود." });
+        player.team = data.team;
+        tugNs.to(`tug:${game.pin}`).emit("tug:players-updated", { players: getPlayerList(game) });
+        cb({ success: true });
+      } catch (err) {
+        logger.error(err, "tug:move-player error");
         cb({ error: "حدث خطأ" });
       }
     });

@@ -57,10 +57,15 @@ export default function TugJoin() {
       fetch(`${API_BASE}/api/tug-game-info/${trimmed}`)
         .then(r => r.json())
         .then(data => {
-          if (data.exists && data.targetClass) {
-            setGameTargetClass(data.targetClass);
-            setGameStudents(data.students || []);
-            setName("");
+          if (data.exists) {
+            if (data.targetClass) {
+              setGameTargetClass(data.targetClass);
+              setGameStudents(data.students || []);
+              setName("");
+            } else {
+              setGameTargetClass(null);
+              setGameStudents([]);
+            }
             setPinValid(true);
           } else {
             setGameTargetClass(null);
@@ -207,7 +212,7 @@ export default function TugJoin() {
               </div>
               {pinValid === false && (
                 <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626", fontWeight: 600 }}>
-                  {ar ? "رمز غير صحيح أو اللعبة لم تبدأ بعد" : "Invalid code or game not started"}
+                  {ar ? "لا توجد غرفة بهذا الرمز" : "No room found with this code"}
                 </p>
               )}
             </div>
