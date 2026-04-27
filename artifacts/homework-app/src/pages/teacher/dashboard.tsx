@@ -1423,34 +1423,33 @@ function CompetitiveTab({
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="text-center py-4">
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl mb-4"
-        >
-          <Trophy className="w-10 h-10 text-purple-600" />
-        </motion.div>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-foreground mb-2">
-          {t.dashboard.tabCompetitive || "ألعاب تنافسية"}
-        </h2>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-          {t.competitiveGames?.tabDesc ||
-            "اختر نوع اللعبة التنافسية وأنشئ تجربة ممتعة لطلابك"}
-        </p>
+    <div className="space-y-4 sm:space-y-8">
+      {/* Header — compact on mobile */}
+      <div className="flex items-center gap-3 sm:flex-col sm:text-center sm:gap-0 sm:py-4">
+        <div className="inline-flex p-2.5 sm:p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl sm:mb-4 shrink-0">
+          <Trophy className="w-6 h-6 sm:w-10 sm:h-10 text-purple-600" />
+        </div>
+        <div>
+          <h2 className="text-lg sm:text-2xl font-extrabold text-foreground sm:mb-2">
+            {t.dashboard.tabCompetitive || "ألعاب تنافسية"}
+          </h2>
+          <p className="hidden sm:block text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
+            {t.competitiveGames?.tabDesc ||
+              "اختر نوع اللعبة التنافسية وأنشئ تجربة ممتعة لطلابك"}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         {gameTypes.map((game, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
+            transition={{ delay: i * 0.04 }}
           >
             <Card
-              className={`p-3 sm:p-6 h-full transition-all ${game.available ? "cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700" : "opacity-50 cursor-not-allowed select-none"}`}
+              className={`p-2.5 sm:p-6 h-full transition-all ${game.available ? "cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 active:scale-95" : "opacity-50 cursor-not-allowed select-none"}`}
               onClick={() => {
                 if (!game.available) return;
                 if (game.type === "knowledge_race")
@@ -1480,34 +1479,31 @@ function CompetitiveTab({
               }}
             >
               <div
-                className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-xl sm:text-3xl mb-2 sm:mb-4 shadow-md`}
+                className={`w-9 h-9 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-lg sm:text-3xl mb-2 sm:mb-4 shadow-md`}
               >
                 {game.icon}
               </div>
-              <h3 className="font-black text-sm sm:text-lg mb-1 sm:mb-2 leading-snug">
+              <h3 className="font-black text-xs sm:text-lg mb-0.5 sm:mb-2 leading-snug line-clamp-2">
                 {game.title}
               </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">
+              <p className="hidden sm:block text-xs sm:text-sm text-muted-foreground line-clamp-2 sm:line-clamp-none">
                 {game.desc}
               </p>
               {!game.available && (game as any).badge ? (
-                <span className="inline-flex items-center gap-1 mt-2 sm:mt-3 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs font-bold">
-                  ⭐ {(game as any).badge}
+                <span className="inline-flex items-center gap-1 mt-1.5 sm:mt-3 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[9px] sm:text-xs font-bold">
+                  ⭐ <span className="hidden sm:inline">{(game as any).badge}</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 mt-2 sm:mt-3 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[10px] sm:text-xs font-bold">
-                  <Gamepad2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                  {game.type === "maraqui"
-                    ? lang === "ar"
-                      ? "العب الآن"
-                      : "Play now"
-                    : game.type === "tug_of_war" || game.type === "video_lesson" || game.type === "rocket_race"
-                      ? lang === "ar"
-                        ? "أنشئ"
-                        : "Create"
-                      : lang === "ar"
-                        ? "العب الآن"
-                        : "Play now"}
+                <span className="inline-flex items-center gap-1 mt-1.5 sm:mt-3 px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-[9px] sm:text-xs font-bold">
+                  <Gamepad2 className="w-2 h-2 sm:w-3 sm:h-3" />
+                  <span className="hidden sm:inline">
+                    {game.type === "maraqui"
+                      ? lang === "ar" ? "العب الآن" : "Play now"
+                      : game.type === "tug_of_war" || game.type === "video_lesson" || game.type === "rocket_race"
+                        ? lang === "ar" ? "أنشئ" : "Create"
+                        : lang === "ar" ? "العب الآن" : "Play now"}
+                  </span>
+                  <span className="sm:hidden">▶</span>
                 </span>
               )}
             </Card>
@@ -1591,8 +1587,8 @@ function CompetitiveTab({
 
       {gameHistory.length > 0 && (
         <div>
-          <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-purple-600" />
+          <h3 className="text-base sm:text-lg font-bold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
             {t.dashboard.recentGames}
           </h3>
           <div className="space-y-3">
