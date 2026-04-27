@@ -1904,82 +1904,78 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
 
   return (
     <div className="space-y-7">
-      {/* Header */}
-      <div className="flex items-center gap-4 pb-1">
+      {/* Header — centered */}
+      <div className="text-center py-2">
         <div
-          className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+          className="inline-flex w-11 h-11 rounded-2xl items-center justify-center mb-3"
           style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}
         >
-          <Sparkles className="w-6 h-6" />
+          <Sparkles className="w-5 h-5" />
         </div>
-        <div>
-          <h2 className="text-lg font-extrabold text-foreground">
-            {t.dashboard.toolsTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isAr
-              ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
-              : "Everything you need to manage your class and enrich student experience"}
-          </p>
-        </div>
+        <h2 className="text-lg font-extrabold text-foreground mb-1">
+          {t.dashboard.toolsTitle}
+        </h2>
+        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          {isAr
+            ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
+            : "Everything you need to manage your class and enrich student experience"}
+        </p>
       </div>
 
       {toolGroups.map((group) => (
         <div key={group.groupId}>
           {/* Group header */}
           <div className="flex items-center gap-2 mb-3">
-            <span
-              className="p-1.5 rounded-lg"
-              style={{ background: "rgba(34,87,57,0.08)", color: "#225739" }}
-            >
-              {group.groupIcon}
-            </span>
-            <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: "#225739" }}>
-              {group.groupTitle}
-            </h3>
+            <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "rgba(34,87,57,0.07)" }}>
+              <span style={{ color: "#225739" }}>{group.groupIcon}</span>
+              <h3 className="text-[11px] font-bold tracking-wider" style={{ color: "#225739" }}>
+                {group.groupTitle}
+              </h3>
+            </div>
             <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {group.tools.map((tool) => {
-              const delay = globalIdx++ * 0.05;
+              const delay = globalIdx++ * 0.04;
               const isGold = tool.accent === "#D9A521";
               return (
                 <motion.div
                   key={tool.href}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay }}
                   className="h-full"
                 >
                   <div
-                    className="group relative h-full flex flex-col p-5 rounded-2xl border border-border/60 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden"
+                    className="group relative h-full flex flex-col p-3.5 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden"
                     onClick={() => tool.href && setLocation(tool.href)}
-                    style={{ "--tool-accent": tool.accent } as React.CSSProperties}
                   >
                     {/* Top accent bar */}
                     <div
-                      className="absolute top-0 inset-x-0 h-[3px] rounded-t-2xl opacity-80"
-                      style={{ background: tool.accent }}
+                      className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl"
+                      style={{ background: tool.accent, opacity: 0.85 }}
                     />
                     {/* Hover glow */}
                     <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl"
-                      style={{ background: `radial-gradient(ellipse at top, ${tool.accent}0d 0%, transparent 70%)` }}
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl"
+                      style={{ background: `${tool.accent}09` }}
                     />
 
-                    <div className="relative flex items-start gap-3 mb-3 pt-1">
+                    {/* Icon + text row */}
+                    <div className="relative flex items-center gap-3 mb-3 pt-1 flex-1">
                       <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: `${tool.accent}14`, color: tool.accent }}
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: `${tool.accent}12`, color: tool.accent }}
                       >
                         {tool.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground text-sm leading-snug mb-1">
+                        <h3 className="font-bold text-foreground text-xs leading-snug truncate">
                           {tool.title}
                         </h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1 mt-0.5">
                           {tool.desc}
                         </p>
                       </div>
@@ -1990,7 +1986,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                         e.stopPropagation();
                         tool.href && setLocation(tool.href);
                       }}
-                      className="relative mt-auto w-full py-2 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90"
+                      className="relative w-full py-1.5 rounded-lg text-xs font-bold transition-all duration-200 hover:opacity-90"
                       style={{
                         background: tool.accent,
                         color: isGold ? "#1a3020" : "#FCFAF8",
