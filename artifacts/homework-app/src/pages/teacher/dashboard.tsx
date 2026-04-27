@@ -88,7 +88,8 @@ type TabId =
   | "tools"
   | "presentations"
   | "videos"
-  | "stats";
+  | "stats"
+  | "students";
 
 interface SharedAssignment {
   id: number;
@@ -350,7 +351,6 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
       shortLabel: lang === "ar" ? "العروض" : "Decks",
       icon: <Presentation className="w-4 h-4" />,
-      href: "/teacher/presentations",
     },
     {
       id: "videos",
@@ -363,6 +363,12 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "ملخص الأداء" : "Performance Summary",
       shortLabel: lang === "ar" ? "الأداء" : "Stats",
       icon: <BarChart3 className="w-4 h-4" />,
+    },
+    {
+      id: "students",
+      label: lang === "ar" ? "صفوفي وطلابي" : "My Classes & Students",
+      shortLabel: lang === "ar" ? "الطلاب" : "Students",
+      icon: <Users className="w-4 h-4" />,
     },
   ];
 
@@ -470,6 +476,12 @@ export default function TeacherDashboard() {
             lang={lang}
           />
         )}
+        {activeTab === "presentations" && (
+          <PresentationsInlineTab lang={lang} setLocation={setLocation} />
+        )}
+        {activeTab === "students" && (
+          <StudentsInlineTab lang={lang} setLocation={setLocation} />
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -521,16 +533,6 @@ export default function TeacherDashboard() {
                 </button>
               );
             })}
-            <div className="pt-3 border-t border-border/50 mt-3">
-              <Link href="/teacher/students">
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
-                  <Users className="w-4 h-4 shrink-0" />
-                  <span className="truncate">
-                    {isAr ? "صفوفي وطلابي" : "My Classes"}
-                  </span>
-                </button>
-              </Link>
-            </div>
           </nav>
           <div className="mt-4 pt-4 border-t border-border/50">
             <button
@@ -627,27 +629,6 @@ export default function TeacherDashboard() {
               {isAr ? "أنشئ نشاطًا" : "Create"}
             </button>
           </div>
-          <button
-            onClick={() => setLocation("/teacher/students")}
-            className="w-full flex items-center justify-between px-4 py-3 bg-card border border-border/60 rounded-2xl mb-4 transition-colors hover:bg-muted/30"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-600 shrink-0">
-                <Users className="w-4 h-4" />
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-sm text-foreground">
-                  {isAr ? "صفوفي وطلابي" : "My Classes"}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {isAr
-                    ? "عرض الصفوف التي أنشأتها"
-                    : "View the classes you created"}
-                </p>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </button>
 
           {/* Collapsible stats */}
           <button
@@ -1936,7 +1917,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
             <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {group.tools.map((tool) => {
               const delay = globalIdx++ * 0.04;
               const isGold = tool.accent === "#D9A521";
@@ -1948,7 +1929,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                   transition={{ delay }}
                 >
                   <div
-                    className="group relative flex flex-col p-3 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden"
+                    className="group relative flex flex-col p-4 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden min-h-[108px]"
                     onClick={() => tool.href && setLocation(tool.href)}
                   >
                     {/* Top accent bar */}
@@ -1963,15 +1944,15 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                     />
 
                     {/* Icon + text row */}
-                    <div className="relative flex items-center gap-2.5 mb-2.5 pt-0.5">
+                    <div className="relative flex items-center gap-3 mb-3 pt-0.5 flex-1">
                       <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: `${tool.accent}12`, color: tool.accent }}
                       >
                         {tool.icon}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground text-xs leading-snug line-clamp-2">
+                        <h3 className="font-bold text-foreground text-[13px] leading-snug line-clamp-2">
                           {tool.title}
                         </h3>
                       </div>
@@ -1997,6 +1978,145 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Presentations Inline Tab ────────────────────────────
+function PresentationsInlineTab({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
+  const isAr = lang === "ar";
+  const BASE = (import.meta as any).env?.VITE_API_URL || "";
+  const [presentations, setPresentations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/presentations`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => { setPresentations(Array.isArray(d) ? d.slice(0, 8) : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
+            <Presentation className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-foreground text-base">{isAr ? "العروض التفاعلية" : "Interactive Presentations"}</h2>
+            <p className="text-xs text-muted-foreground">{isAr ? "أنشئ عروضاً درسية بالذكاء الاصطناعي" : "Create AI-powered lesson decks"}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setLocation("/teacher/presentations/new")}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+          style={{ background: "#225739", color: "#FCFAF8" }}
+        >
+          <Plus className="w-4 h-4" />
+          {isAr ? "عرض جديد" : "New"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-muted/40 animate-pulse" />)}
+        </div>
+      ) : presentations.length === 0 ? (
+        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl">
+          <Presentation className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="font-bold text-foreground mb-1">{isAr ? "لا توجد عروض بعد" : "No presentations yet"}</p>
+          <p className="text-sm text-muted-foreground mb-4">{isAr ? "أنشئ أول عرض تفاعلي بالذكاء الاصطناعي" : "Create your first AI presentation"}</p>
+          <button onClick={() => setLocation("/teacher/presentations/new")} className="px-5 py-2 rounded-xl text-sm font-bold text-white" style={{ background: "#225739" }}>
+            {isAr ? "ابدأ الآن" : "Get started"}
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {presentations.map((p: any) => (
+            <button key={p.id} onClick={() => setLocation(`/teacher/presentations/${p.id}`)}
+              className="group text-start p-4 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden relative"
+            >
+              <div className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl" style={{ background: "#225739" }} />
+              <Presentation className="w-6 h-6 mb-2" style={{ color: "#225739" }} />
+              <p className="font-bold text-xs text-foreground line-clamp-2">{p.title || (isAr ? "بدون عنوان" : "Untitled")}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">{p.slideCount || 0} {isAr ? "شريحة" : "slides"}</p>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button onClick={() => setLocation("/teacher/presentations")} className="w-full py-2.5 rounded-xl border border-border/60 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all">
+        {isAr ? "عرض كل العروض التفاعلية ←" : "View all presentations →"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Students Inline Tab ──────────────────────────────────
+function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
+  const isAr = lang === "ar";
+  const BASE = (import.meta as any).env?.VITE_API_URL || "";
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/teacher/classes`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : [])
+      .then((d) => { setClasses(Array.isArray(d) ? d : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-foreground text-base">{isAr ? "صفوفي وطلابي" : "My Classes & Students"}</h2>
+            <p className="text-xs text-muted-foreground">{isAr ? "إدارة الصفوف والطلاب" : "Manage classes and students"}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setLocation("/teacher/students")}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+          style={{ background: "#225739", color: "#FCFAF8" }}
+        >
+          <Users className="w-4 h-4" />
+          {isAr ? "إدارة الطلاب" : "Manage"}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-20 rounded-xl bg-muted/40 animate-pulse" />)}
+        </div>
+      ) : classes.length === 0 ? (
+        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl">
+          <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="font-bold text-foreground mb-1">{isAr ? "لا توجد صفوف بعد" : "No classes yet"}</p>
+          <button onClick={() => setLocation("/teacher/students")} className="px-5 py-2 rounded-xl text-sm font-bold text-white mt-2" style={{ background: "#225739" }}>
+            {isAr ? "أضف صفاً جديداً" : "Add class"}
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {classes.map((cls: any) => (
+            <button key={cls.name} onClick={() => setLocation(`/teacher/students?class=${encodeURIComponent(cls.name)}`)}
+              className="group text-start p-4 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden relative"
+            >
+              <div className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl" style={{ background: "#225739" }} />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
+                <Users className="w-4 h-4" />
+              </div>
+              <p className="font-bold text-xs text-foreground truncate">{cls.name}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{cls.studentCount || 0} {isAr ? "طالب" : "students"}</p>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
