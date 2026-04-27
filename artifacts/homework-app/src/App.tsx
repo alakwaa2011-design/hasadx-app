@@ -52,6 +52,10 @@ const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
 const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
+const HotSeatCreate = lazy(() => import("@/pages/game/hotseat-create"));
+const HotSeatHost = lazy(() => import("@/pages/game/hotseat-host"));
+const HotSeatJoin = lazy(() => import("@/pages/game/hotseat-join"));
+const HotSeatPlay = lazy(() => import("@/pages/game/hotseat-play"));
 const RocketCreate = lazy(() => import("@/pages/game/rocket-create"));
 const RocketJoin = lazy(() => import("@/pages/game/rocket-join"));
 const RocketPlay = lazy(() => import("@/pages/game/rocket-play"));
@@ -192,6 +196,11 @@ function Router() {
         <Route path="/game/tug/create" component={TugCreate} />
         <Route path="/game/tug/join/:pin?" component={TugJoin} />
         <Route path="/game/tug/play/:pin" component={TugPlay} />
+        {/* HotSeat Routes */}
+        <Route path="/game/hotseat/create" component={HotSeatCreate} />
+        <Route path="/game/hotseat/join/:pin?" component={HotSeatJoin} />
+        <Route path="/game/hotseat/play/:pin" component={HotSeatPlay} />
+        <Route path="/game/hotseat/host/:pin" component={HotSeatHost} />
         {/* Rocket Race Routes */}
         <Route path="/game/rocket/create" component={RocketCreate} />
         <Route path="/game/rocket/join/:pin?" component={RocketJoin} />

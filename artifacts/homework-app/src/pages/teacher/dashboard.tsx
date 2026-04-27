@@ -115,7 +115,8 @@ type AssignmentLiveGameChoice =
   | "tug_of_war"
   | "million"
   | "hack"
-  | "rocket_race";
+  | "rocket_race"
+  | "hotseat";
 
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
@@ -265,6 +266,10 @@ export default function TeacherDashboard() {
     }
     if (choice === "rocket_race") {
       setLocation(`/game/rocket/create?assignmentId=${id}`);
+      return;
+    }
+    if (choice === "hotseat") {
+      setLocation(`/game/hotseat/create`);
       return;
     }
     if (choice === "million") {
@@ -965,6 +970,17 @@ export default function TeacherDashboard() {
                         "Each student is a rocket — faster correct answers climb higher.",
                       gradient: "from-violet-500 to-fuchsia-600",
                     },
+                    {
+                      key: "hotseat" as const,
+                      emoji: "🔥",
+                      titleAr: "الكرسي الساخن",
+                      titleEn: "HotSeat",
+                      descAr:
+                        "طالب على الكرسي يجيب على أسئلة زملائه المجهولة والجميع يصوّت.",
+                      descEn:
+                        "One student answers anonymous classmates' questions — everyone votes.",
+                      gradient: "from-orange-500 to-red-600",
+                    },
                   ] as const
                 ).map((opt) => {
                   const busy =
@@ -1472,6 +1488,7 @@ function CompetitiveTab({
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
     else if (type === "rocket_race") setLocation("/game/rocket/create");
+    else if (type === "hotseat") setLocation("/game/hotseat/create");
     else if (type === "video_lesson")
       setLocation("/teacher/video-lesson/new");
     else if (type === "flag_quiz") setLocation("/game/flags");
@@ -1529,6 +1546,18 @@ function CompetitiveTab({
       type: "rocket_race",
       available: true,
       pill: lang === "ar" ? "سباق حي" : "Live race",
+    },
+    {
+      icon: "🔥",
+      title: lang === "ar" ? "الكرسي الساخن" : "HotSeat",
+      desc:
+        lang === "ar"
+          ? "طالب يجلس على الكرسي ويجيب على أسئلة زملائه المجهولة — والجميع يصوّت على إجابته. نقاط للأسرع والأكثر إقناعاً!"
+          : "One student sits in the hot seat and answers anonymous classmates' questions — everyone votes. Points for speed and persuasion!",
+      color: "from-orange-500 to-red-600",
+      type: "hotseat",
+      available: true,
+      pill: lang === "ar" ? "حوار وتقييم" : "Q&A + vote",
     },
     {
       icon: "🏆",
@@ -1749,9 +1778,10 @@ function CompetitiveTab({
                     ? lang === "ar"
                       ? "اختر واجباً وابدأ ←"
                       : "Pick assignment & start →"
-                    : game.type === "tug_of_war" ||
+                    :                     game.type === "tug_of_war" ||
                         game.type === "video_lesson" ||
-                        game.type === "rocket_race"
+                        game.type === "rocket_race" ||
+                        game.type === "hotseat"
                       ? lang === "ar"
                         ? "إنشاء غرفة ←"
                         : "Create session →"

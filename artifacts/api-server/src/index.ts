@@ -14,6 +14,7 @@ import { setupCapitalSocket } from "./game/capital-socket-handlers";
 import { setupMillionTeamSocket } from "./game/million-team-handlers";
 import { setupMillionClassSocket } from "./game/million-class-handlers";
 import { setupArenaSocket } from "./game/arena-handlers";
+import { setupHotSeatSocket } from "./game/hotseat-handlers";
 import { db, teachersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { inArray } from "drizzle-orm";
@@ -138,6 +139,7 @@ setupCapitalSocket(io);
 setupMillionTeamSocket(io);
 setupMillionClassSocket(io);
 setupArenaSocket(io);
+setupHotSeatSocket(io);
 
 ensureSessionTable()
   .then(() => runSchemaMigrations())
