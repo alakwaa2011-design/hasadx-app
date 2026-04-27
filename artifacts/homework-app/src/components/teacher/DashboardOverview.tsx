@@ -206,7 +206,7 @@ export default function DashboardOverview({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
         className="relative w-full overflow-hidden rounded-2xl text-white shadow-md min-h-[52px]"
-        style={{ background: "linear-gradient(135deg, #1d3e27 0%, #2d6647 55%, #0d1c12 100%)" }}
+        style={{ background: "#225739" }}
       >
         <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-amber-300/10 blur-2xl pointer-events-none" />
         <div className="relative px-4 sm:px-5 py-2 flex items-center gap-2.5 sm:gap-3 flex-wrap">
