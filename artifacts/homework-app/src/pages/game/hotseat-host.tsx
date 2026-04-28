@@ -73,6 +73,8 @@ export default function HotSeatHost() {
   const [timerVal, setTimerVal] = useState(0);
   const [customQuestion, setCustomQuestion] = useState("");
   const [ending, setEnding] = useState(false);
+  const [connected, setConnected] = useState(true);
+  const [linkCopied, setLinkCopied] = useState(false);
   const stateRef = useRef<GameState | null>(null);
   const [muted, setMuted] = useState(() => {
     try { return localStorage.getItem("hotseat-muted") === "1"; } catch { return false; }
@@ -91,13 +93,20 @@ export default function HotSeatHost() {
     const socket = getHotSeatSocket();
 
     const reclaim = () => {
+      setConnected(true);
       socket.emit("hotseat:reclaim", { pin, creatorToken: token }, (res: { success?: boolean; state?: GameState; error?: string }) => {
         if (res.error) { toast.error(res.error); return; }
         if (res.state) { setState(res.state); stateRef.current = res.state; setTimerVal(res.state.timerVal); }
       });
     };
 
-    if (socket.connected) reclaim(); else socket.once("connect", reclaim);
+    const handleDisconnect = () => setConnected(false);
+    const handleConnect = () => reclaim();
+
+    // Reclaim immediately if already connected, and on every subsequent reconnect
+    if (socket.connected) reclaim();
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
 
     socket.on("hotseat:phase-change", (data: { phase: Phase; state: GameState }) => {
       setState(data.state); stateRef.current = data.state;
@@ -117,6 +126,8 @@ export default function HotSeatHost() {
     });
 
     return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
       socket.off("hotseat:phase-change");
       socket.off("hotseat:players-updated");
       socket.off("hotseat:questions-updated");
@@ -319,41 +330,83 @@ export default function HotSeatHost() {
 
       {/* Top bar */}
       <div style={{
-        position: "relative", zIndex: 20, padding: "10px 16px",
-        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)",
+        position: "relative", zIndex: 20, padding: "8px 12px",
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)",
         borderBottom: "1px solid rgba(255,107,43,0.2)",
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 22 }}>🔥</span>
+        {/* Left: title */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 20 }}>🔥</span>
           <div>
-            <p style={{ color: "#fff", fontWeight: 900, fontSize: 14, margin: 0 }}>
+            <p style={{ color: "#fff", fontWeight: 900, fontSize: 13, margin: 0 }}>
               {ar ? "الكرسي الساخن" : "HotSeat"}
             </p>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>
-              {state.grade} · {state.subject}{state.topic && ` · ${state.topic}`}
+            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, margin: 0 }}>
+              {[state.grade, state.subject, state.topic].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+        {/* Center: PIN + copy */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Connection badge */}
           <div style={{
-            padding: "5px 14px", borderRadius: 999,
-            background: `${FIRE}25`, border: `1px solid ${FIRE}50`,
-            color: FIRE2, fontWeight: 800, fontSize: 13, fontFamily: "monospace",
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700,
+            background: connected ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+            border: `1px solid ${connected ? "rgba(34,197,94,0.4)" : "rgba(239,68,68,0.4)"}`,
+            color: connected ? "#4ade80" : "#f87171",
           }}>
-            {state.pin}
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: connected ? "#22c55e" : "#ef4444", display: "inline-block" }} />
+            {connected ? (ar ? "متصل" : "Live") : (ar ? "انقطع..." : "Reconnecting")}
           </div>
+
+          {/* PIN pill */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "5px 10px", borderRadius: 10,
+            background: `${FIRE}20`, border: `1px solid ${FIRE}45`,
+          }}>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 700 }}>PIN</span>
+            <span style={{ color: FIRE2, fontWeight: 900, fontSize: 15, fontFamily: "monospace", letterSpacing: "0.1em" }}>{state.pin}</span>
+          </div>
+
+          {/* Copy link button */}
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(joinUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2500);
+              } catch { toast.error("Error"); }
+            }}
+            style={{
+              padding: "5px 10px", borderRadius: 10, border: "none", cursor: "pointer",
+              background: linkCopied ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.1)",
+              color: linkCopied ? "#4ade80" : "rgba(255,255,255,0.75)",
+              fontWeight: 700, fontSize: 11,
+              display: "flex", alignItems: "center", gap: 4, transition: "all .2s",
+            }}
+          >
+            <Copy size={12} />
+            {linkCopied ? (ar ? "✓ تم!" : "✓ Done!") : (ar ? "نسخ الرابط" : "Copy Link")}
+          </button>
+        </div>
+
+        {/* Right: student count, mute, end */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
-            <Users size={14} /> {students.length}
+            <Users size={13} /> {students.length}
           </div>
           <button onClick={toggleMute} style={{
-            padding: "6px 10px", borderRadius: 10,
+            padding: "5px 9px", borderRadius: 9,
             border: `1px solid ${muted ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.15)"}`,
             background: muted ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.07)",
             color: muted ? "#ef4444" : "rgba(255,255,255,0.7)",
-            cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12,
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 3,
           }}>
-            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
           </button>
           <button
             onClick={() => {
@@ -361,8 +414,8 @@ export default function HotSeatHost() {
               setEnding(true);
               emit("hotseat:end", {}, () => {});
             }}
-            style={{ padding: "6px 12px", borderRadius: 10, border: "1px solid rgba(220,38,38,0.4)",
-              background: "rgba(220,38,38,0.15)", color: "#ef4444", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            style={{ padding: "5px 10px", borderRadius: 9, border: "1px solid rgba(220,38,38,0.4)",
+              background: "rgba(220,38,38,0.15)", color: "#ef4444", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
           >
             {ending ? "..." : (ar ? "إنهاء" : "End")}
           </button>

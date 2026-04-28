@@ -3,18 +3,22 @@ import { io, Socket } from "socket.io-client";
 let hotseatSocket: Socket | null = null;
 
 export function getHotSeatSocket(): Socket {
-  if (!hotseatSocket || !hotseatSocket.connected) {
+  // Only create a new socket if none exists yet.
+  // Never recreate based on .connected status — let the built-in
+  // auto-reconnect logic handle temporary disconnections.
+  if (!hotseatSocket) {
     const baseUrl = window.location.origin;
     const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     hotseatSocket = io(`${baseUrl}/hotseat`, {
       path: `${basePath}/api/socket.io`.replace(/\/\//g, "/"),
-      transports: ["polling", "websocket"],
+      transports: ["websocket", "polling"],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 20,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelayMax: 8000,
+      timeout: 30000,
+      forceNew: false,
     });
   }
   return hotseatSocket;

@@ -516,7 +516,9 @@ export default function HotSeatPlay() {
       });
     };
 
-    if (socket.connected) doJoin(); else socket.once("connect", doJoin);
+    // Join on initial connect, and re-join automatically on every reconnect
+    if (socket.connected) doJoin();
+    socket.on("connect", doJoin);
 
     socket.on("hotseat:phase-change", (data: { phase: Phase; state: GameState; result?: { convincingPct: number } }) => {
       setState(data.state);
@@ -588,6 +590,7 @@ export default function HotSeatPlay() {
     if (!mutedRef.current) musicRef.current?.start("lobby");
 
     return () => {
+      socket.off("connect", doJoin);
       socket.off("hotseat:phase-change");
       socket.off("hotseat:players-updated");
       socket.off("hotseat:questions-updated");
