@@ -11,6 +11,6 @@
     "react": ">=18"
   },
   "devDependencies": {
-    "@types/react": "^18.0.0"
+    "@types/react": "catalog:"
   }
 }
