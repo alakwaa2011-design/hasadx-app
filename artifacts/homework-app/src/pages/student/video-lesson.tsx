@@ -118,17 +118,26 @@ export default function StudentVideoLesson() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
   const [activeQuestion, setActiveQuestion] = useState<VideoQuestionData | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // answeredQuestions state is used only for UI rendering (progress bar, chips).
+  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(new Set());
+  // Refs mirror the state so the polling interval can read them without being
+  // listed as a dependency (avoids constant interval teardown/recreation).
+  const answeredQsRef = useRef<Set<number>>(new Set());
+  // Separate "triggered" ref — a question is triggered the moment the video
+  // reaches its timestamp, preventing it from firing a second time.
+  const triggeredQsRef = useRef<Set<number>>(new Set());
 
   const playerRef = useRef<YTPlayer | null>(null);
   const html5VideoRef = useRef<HTMLVideoElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
   const lastCheckedTime = useRef(-1);
+  const activeQuestionRef = useRef<VideoQuestionData | null>(null);
 
   const isYoutube = lesson?.videoType === "youtube";
   const youtubeId = lesson?.videoUrl && isYoutube ? extractYouTubeId(lesson.videoUrl) : null;
@@ -232,11 +241,17 @@ export default function StudentVideoLesson() {
     };
   }, [started, isYoutube, lesson?.videoUrl]);
 
+  // Keep activeQuestionRef in sync with state so the interval can read it
+  // without being listed as a dependency (avoids constant interval teardown).
+  useEffect(() => { activeQuestionRef.current = activeQuestion; }, [activeQuestion]);
+
   useEffect(() => {
     if (!playerReady || !lesson?.questions) return;
 
+    // 300 ms on mobile is more reliable than 500 ms when browsers throttle timers.
     const interval = setInterval(() => {
-      if (activeQuestion) return;
+      // If a question is already visible, don't fire another one.
+      if (activeQuestionRef.current) return;
       try {
         let time = 0;
         if (isYoutube) {
@@ -247,6 +262,7 @@ export default function StudentVideoLesson() {
         if (time === lastCheckedTime.current) return;
         lastCheckedTime.current = time;
 
+        // Skip segments
         const segments = lesson.skipSegments || [];
         for (const seg of segments) {
           if (time >= seg.start && time < seg.end) {
@@ -260,10 +276,15 @@ export default function StudentVideoLesson() {
           }
         }
 
+        // Fire the earliest un-triggered question whose timestamp has been reached.
+        // No upper-bound window — once time >= timestamp and not yet triggered,
+        // we show the question. This prevents questions being missed even when the
+        // browser heavily throttles the interval (e.g. on low-end mobile).
         const sortedQ = [...lesson.questions].sort((a, b) => a.timestampSeconds - b.timestampSeconds);
         for (const q of sortedQ) {
-          if (answeredQuestions.has(q.id)) continue;
-          if (time >= q.timestampSeconds && time <= q.timestampSeconds + 2) {
+          if (triggeredQsRef.current.has(q.id)) continue;
+          if (time >= q.timestampSeconds) {
+            triggeredQsRef.current.add(q.id);
             if (isYoutube) {
               playerRef.current?.pauseVideo?.();
             } else {
@@ -275,15 +296,18 @@ export default function StudentVideoLesson() {
           }
         }
       } catch {}
-    }, 500);
+    }, 300);
 
     return () => clearInterval(interval);
-  }, [playerReady, lesson?.questions, lesson?.skipSegments, answeredQuestions, activeQuestion, isYoutube]);
+    // Stable deps — answeredQsRef / triggeredQsRef are refs, not state,
+    // so this interval is created once and never torn down mid-session.
+  }, [playerReady, lesson?.questions, lesson?.skipSegments, isYoutube]);
 
   const handleAnswerQuestion = () => {
     if (!activeQuestion || !selectedAnswer.trim()) return;
-    setAnswers((prev) => ({ ...prev, [activeQuestion.id]: selectedAnswer }));
+    answeredQsRef.current.add(activeQuestion.id);
     setAnsweredQuestions((prev) => new Set(prev).add(activeQuestion.id));
+    setAnswers((prev) => ({ ...prev, [activeQuestion.id]: selectedAnswer }));
     setActiveQuestion(null);
     setSelectedAnswer("");
     setTimeout(() => {
