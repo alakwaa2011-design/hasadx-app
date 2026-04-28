@@ -44,6 +44,10 @@ import {
   ShieldCheck,
   Lightbulb,
   Puzzle,
+  Rocket,
+  Swords,
+  Cpu,
+  Video,
 } from "lucide-react";
 import { Card } from "@/components/ui-elements";
 import { InstallAppButton } from "@/components/install-app-button";
@@ -639,6 +643,264 @@ function WameethQuickStartModal({
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// LaunchGameModal — two-step: pick assignment → pick game
+// ──────────────────────────────────────────────────────────────────────────────
+function LaunchGameModal({
+  assignments,
+  onClose,
+}: {
+  assignments: TeacherAssignment[];
+  onClose: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  const { lang } = useI18n();
+  const ar = lang === "ar";
+  const [step, setStep] = useState<"assignment" | "game">("assignment");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState("");
+  const [wameethLoading, setWameethLoading] = useState(false);
+  const [wameethError, setWameethError] = useState<string | null>(null);
+
+  const games = [
+    {
+      id: "wameeth",
+      label: ar ? "وميض" : "Flash",
+      desc: ar ? "لعبة أسئلة سريعة وتنافسية" : "Fast-paced quiz battle",
+      icon: Zap,
+      color: "#D97706",
+      bg: "bg-amber-500/10",
+      badge: ar ? "الافتراضي" : "Default",
+    },
+    {
+      id: "tug",
+      label: ar ? "شد الحبل" : "Tug of War",
+      desc: ar ? "تنافس الفريقين بالإجابات" : "Team battle with answers",
+      icon: Swords,
+      color: "#EF4444",
+      bg: "bg-red-500/10",
+    },
+    {
+      id: "rocket",
+      label: ar ? "سباق الصواريخ" : "Rocket Race",
+      desc: ar ? "سباق فردي في الفضاء" : "Solo rocket race in space",
+      icon: Rocket,
+      color: "#8B5CF6",
+      bg: "bg-violet-500/10",
+    },
+    {
+      id: "hotseat",
+      label: ar ? "الكرسي الساخن" : "Hot Seat",
+      desc: ar ? "كرسي واحد وكل العيون عليك" : "One seat, all eyes on you",
+      icon: Trophy,
+      color: "#F97316",
+      bg: "bg-orange-500/10",
+    },
+    {
+      id: "million",
+      label: ar ? "من سيحصد المليون" : "Who Wants Millions",
+      desc: ar ? "المليون في متناول يدك" : "Million is within reach",
+      icon: Brain,
+      color: "#D97706",
+      bg: "bg-yellow-500/10",
+    },
+    {
+      id: "hack",
+      label: ar ? "لعبة الاختراق" : "Hack Game",
+      desc: ar ? "اختبر مهاراتك التقنية" : "Test your tech skills",
+      icon: Cpu,
+      color: "#10B981",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      id: "video",
+      label: ar ? "فيديو تفاعلي" : "Interactive Video",
+      desc: ar ? "أسئلة مدمجة في الفيديو" : "Questions embedded in video",
+      icon: Video,
+      color: "#3B82F6",
+      bg: "bg-blue-500/10",
+    },
+    {
+      id: "scramble",
+      label: ar ? "كلمات مبعثرة" : "Scramble Words",
+      desc: ar ? "رتّب الحروف وكوّن الكلمة" : "Unscramble the letters",
+      icon: Shuffle,
+      color: "#EC4899",
+      bg: "bg-pink-500/10",
+    },
+  ];
+
+  const handleStartGame = (gameId: string) => {
+    if (selectedId === null) return;
+    if (gameId === "wameeth") {
+      setWameethLoading(true);
+      setWameethError(null);
+      const socket = getSocket();
+      socket.emit(
+        "teacher:create-game",
+        { assignmentId: selectedId, gameMode: "classic" },
+        (res: { pin?: string; error?: string }) => {
+          setWameethLoading(false);
+          if (res.error || !res.pin) {
+            setWameethError(res.error || (ar ? "حدث خطأ. حاول مرة أخرى." : "Error. Please try again."));
+            disconnectSocket();
+            return;
+          }
+          setLocation(`/teacher/game/${res.pin}`);
+          onClose();
+        },
+      );
+      return;
+    }
+    const routes: Record<string, string> = {
+      tug: `/game/tug/create?assignmentId=${selectedId}`,
+      rocket: `/game/rocket/create?assignmentId=${selectedId}`,
+      hotseat: `/game/hotseat/create?assignmentId=${selectedId}`,
+      million: `/game/million?assignmentId=${selectedId}`,
+      hack: `/game/hack?assignmentId=${selectedId}`,
+      video: `/teacher/video-lesson/new?assignmentId=${selectedId}`,
+      scramble: `/game/scramble/create`,
+    };
+    if (routes[gameId]) {
+      setLocation(routes[gameId]);
+      onClose();
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: "spring", damping: 28, stiffness: 300 }}
+        onClick={(e) => e.stopPropagation()}
+        dir={ar ? "rtl" : "ltr"}
+        className="bg-card w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-border/60 flex flex-col max-h-[90vh]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border/40 shrink-0">
+          <div className="flex items-center gap-3">
+            {step === "game" && (
+              <button
+                onClick={() => setStep("assignment")}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+              >
+                {ar ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              </button>
+            )}
+            <div>
+              <h3 className="font-black text-foreground text-base">
+                {step === "assignment"
+                  ? ar ? "اختر واجباً" : "Choose Assignment"
+                  : ar ? "اختر اللعبة" : "Choose Game"}
+              </h3>
+              {step === "game" && selectedTitle && (
+                <p className="text-xs text-muted-foreground truncate max-w-[220px]">{selectedTitle}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Step 1: Assignment list */}
+        {step === "assignment" && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <p className="px-6 pt-4 pb-2 text-sm text-muted-foreground">
+              {ar
+                ? "اختر واجباً ثم اختر أي لعبة تفاعلية تريدها"
+                : "Pick an assignment, then choose any interactive game you want"}
+            </p>
+            {assignments.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm py-10">
+                {ar ? "لا توجد واجبات بعد — أنشئ أولاً." : "No assignments yet — create one first."}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2 pt-2">
+                {assignments.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      setSelectedId(a.id);
+                      setSelectedTitle(a.title);
+                      setStep("game");
+                    }}
+                    className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-all text-start group"
+                  >
+                    <div className="p-2 rounded-lg bg-primary/8 text-primary shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground truncate">{a.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {a.questionCount} {ar ? "سؤال" : "Q"}{a.subject ? ` · ${a.subject}` : ""}
+                      </p>
+                    </div>
+                    {ar ? (
+                      <ArrowLeft className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2: Game selection */}
+        {step === "game" && (
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-3">
+            {wameethError && (
+              <p className="text-destructive text-xs text-center mb-3 bg-destructive/10 rounded-lg px-3 py-2">
+                {wameethError}
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-2.5">
+              {games.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => handleStartGame(g.id)}
+                  disabled={wameethLoading && g.id === "wameeth"}
+                  className="relative flex flex-col items-start gap-2 p-4 rounded-2xl border border-border/60 hover:border-primary/40 hover:shadow-md transition-all text-start bg-card hover:-translate-y-0.5 disabled:opacity-60"
+                >
+                  {g.badge && (
+                    <span className="absolute top-2.5 end-2.5 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">
+                      {g.badge}
+                    </span>
+                  )}
+                  <div className={`p-2 rounded-xl ${g.bg} shrink-0`} style={{ color: g.color }}>
+                    {wameethLoading && g.id === "wameeth" ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <g.icon className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-foreground leading-tight">{g.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">{g.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function modeLabel(
   mode: string,
   th: { modeElectronic: string; modePaper: string; modeBoth: string },
@@ -1059,7 +1321,32 @@ export default function Home() {
     >
   >({});
   const [botGameLoading, setBotGameLoading] = useState<number | null>(null);
-  const [showWameethQuickStart, setShowWameethQuickStart] = useState(false);
+  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [pinDigits, setPinDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const pinBoxRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null, null, null]);
+
+  const handlePinDigit = (idx: number, val: string) => {
+    const d = val.replace(/\D/g, "").slice(-1);
+    const next = [...pinDigits];
+    next[idx] = d;
+    setPinDigits(next);
+    if (d && idx < 5) pinBoxRefs.current[idx + 1]?.focus();
+  };
+  const handlePinKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !pinDigits[idx] && idx > 0) {
+      pinBoxRefs.current[idx - 1]?.focus();
+    } else if (e.key === "Enter" && pinDigits.join("").length === 6) {
+      setLocation(`/game/join/${pinDigits.join("")}`);
+    }
+  };
+  const handlePinPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const digits = (text.split("").concat(Array(6).fill(""))).slice(0, 6) as string[];
+    setPinDigits(digits);
+    pinBoxRefs.current[Math.min(text.length, 5)]?.focus();
+  };
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/settings`)
@@ -1332,7 +1619,7 @@ export default function Home() {
                 <FileText className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <h4 className="font-bold text-foreground text-sm line-clamp-2 leading-snug">
+                <h4 className="font-bold text-foreground text-sm truncate leading-snug" title={a.title}>
                   {a.title}
                 </h4>
                 {a.subject && (
@@ -1397,130 +1684,151 @@ export default function Home() {
           {showQuickChallenge && (
             <QuickChallengeModal onClose={() => setShowQuickChallenge(false)} />
           )}
-          {showWameethQuickStart && (
-            <WameethQuickStartModal
+          {showLaunchModal && (
+            <LaunchGameModal
               assignments={ownAssignments}
-              onClose={() => setShowWameethQuickStart(false)}
+              onClose={() => setShowLaunchModal(false)}
             />
           )}
         </AnimatePresence>
 
         <div className="min-h-screen bg-background overflow-x-hidden" dir={dir}>
+          {/* ── Hero Action Cards ── */}
           <div className="border-b border-border/40 bg-gradient-to-b from-primary/[0.04] to-transparent">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-8 sm:py-10">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-6 sm:py-8">
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0"
+                className="grid grid-cols-1 sm:grid-cols-3 gap-4"
               >
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {lang === "ar" ? "مرحباً بعودتك" : "Welcome back"}
-                  </p>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground break-words">
-                    {teacher.name ? (
-                      <>
-                        <span className="text-muted-foreground">
-                          {lang === "ar" ? "أستاذ " : ""}
-                        </span>
-                        <span className="text-primary">{teacher.name}</span>
-                      </>
-                    ) : (
-                      <span className="text-primary">
-                        {lang === "ar" ? "لوحة المعلم" : "Teacher Dashboard"}
-                      </span>
-                    )}
-                  </h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {lang === "ar"
-                      ? "اختر واجباً وابدأ مسابقة فورية أو جرّب العب بمفردك أو مع فريق"
-                      : "Pick an assignment and start an instant quiz, or try playing solo or with a team"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Card 1: Create Activity */}
+                <div className="relative">
                   <button
-                    onClick={() => setShowWameethQuickStart(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground font-bold text-sm shadow-sm hover:-translate-y-0.5 transition-all"
+                    onClick={() => setShowCreateMenu((v) => !v)}
+                    className="w-full text-start p-5 rounded-2xl bg-card border border-border/60 hover:border-primary/50 hover:shadow-lg transition-all group"
                   >
-                    <Zap className="w-4 h-4" />
-                    {lang === "ar" ? "لعبة مباشرة" : "Live Game"}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <ChevronDown
+                        className="w-4 h-4 text-muted-foreground mt-0.5 transition-transform"
+                        style={{ transform: showCreateMenu ? "rotate(180deg)" : "" }}
+                      />
+                    </div>
+                    <h3 className="font-black text-foreground text-base mb-1">
+                      {lang === "ar" ? "إنشاء نشاط" : "Create Activity"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {lang === "ar" ? "أسئلة، عروض، فيديو تفاعلي" : "Questions, Presentations, Videos"}
+                    </p>
                   </button>
-                  <Link
-                    href="/teacher/new"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-sm hover:-translate-y-0.5 transition-all"
+                  <AnimatePresence>
+                    {showCreateMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute top-full mt-2 start-0 end-0 z-30 bg-card border border-border/60 rounded-2xl shadow-xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {[
+                          {
+                            label: lang === "ar" ? "إنشاء أسئلة لواجب أو مسابقة" : "Create Assignment Questions",
+                            icon: FileText,
+                            href: "/teacher/new",
+                          },
+                          {
+                            label: lang === "ar" ? "إنشاء عرض تفاعلي" : "Interactive Presentation",
+                            icon: Presentation,
+                            href: "/teacher/presentations/new",
+                          },
+                          {
+                            label: lang === "ar" ? "إنشاء فيديو تفاعلي" : "Interactive Video",
+                            icon: Video,
+                            href: "/teacher/video-lesson/new",
+                          },
+                        ].map((item, i) => (
+                          <Link
+                            key={i}
+                            href={item.href}
+                            onClick={() => setShowCreateMenu(false)}
+                            className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors border-b last:border-0 border-border/40"
+                          >
+                            <div className="p-1.5 rounded-lg bg-primary/8 text-primary shrink-0">
+                              <item.icon className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Card 2: Launch Live Competition */}
+                <button
+                  onClick={() => { setShowLaunchModal(true); setShowCreateMenu(false); }}
+                  className="text-start p-5 rounded-2xl bg-gradient-to-br from-primary to-primary/75 text-primary-foreground hover:from-primary/95 hover:shadow-xl transition-all hover:-translate-y-0.5 group"
+                >
+                  <div className="p-2.5 rounded-xl bg-white/15 w-fit mb-3 group-hover:bg-white/20 transition-colors">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-black text-base mb-1">
+                    {lang === "ar" ? "أطلق مسابقة مباشرة" : "Launch Live Game"}
+                  </h3>
+                  <p className="text-sm opacity-75">
+                    {lang === "ar" ? "اختر واجباً وابدأ لعبة فورية" : "Pick an assignment & start instantly"}
+                  </p>
+                </button>
+
+                {/* Card 3: Enter Competition Code */}
+                <div
+                  className="p-5 rounded-2xl bg-card border border-border/60 hover:border-amber-400/50 transition-all"
+                  onClick={() => setShowCreateMenu(false)}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-600">
+                      <Gamepad2 className="w-5 h-5" />
+                    </div>
+                    <h3 className="font-black text-foreground text-base">
+                      {lang === "ar" ? "أدخل كود المسابقة" : "Enter Game Code"}
+                    </h3>
+                  </div>
+                  <div dir="ltr" className="flex gap-1.5 justify-center mb-3">
+                    {pinDigits.map((digit, idx) => (
+                      <input
+                        key={idx}
+                        ref={(el) => { pinBoxRefs.current[idx] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handlePinDigit(idx, e.target.value)}
+                        onKeyDown={(e) => handlePinKeyDown(idx, e)}
+                        onPaste={idx === 0 ? handlePinPaste : undefined}
+                        className="w-9 h-11 text-center text-lg font-black rounded-xl border-2 border-border bg-background focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 outline-none transition-all"
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const full = pinDigits.join("");
+                      if (full.length === 6) setLocation(`/game/join/${full}`);
+                    }}
+                    disabled={pinDigits.join("").length < 6}
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white font-bold text-sm transition-all"
                   >
-                    <Plus className="w-4 h-4" />
-                    {lang === "ar" ? "أنشئ مسابقتك" : "Create Quiz"}
-                  </Link>
-                  <Link
-                    href="/teacher"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 text-white font-bold text-sm shadow-md shadow-amber-500/30 hover:-translate-y-0.5 transition-all border border-amber-300/60"
-                  >
-                    <Trophy className="w-4 h-4" />
-                    {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                  </Link>
-                  <InstallAppButton variant="compact" />
+                    {lang === "ar" ? "انضم الآن" : "Join Now"}
+                  </button>
                 </div>
               </motion.div>
             </div>
           </div>
 
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-8">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-center gap-3 bg-card border border-border/50 rounded-2xl px-4 py-3 mb-7 shadow-sm"
-            >
-              <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {t.home.pinSectionTitle}
-              </span>
-              <div className="flex gap-2 items-center flex-1 min-w-0" dir="ltr">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={pin}
-                  onKeyDown={(e) => {
-                    const allowed = [
-                      "Backspace",
-                      "Delete",
-                      "ArrowLeft",
-                      "ArrowRight",
-                      "Tab",
-                      "Enter",
-                    ];
-                    if (!allowed.includes(e.key) && !/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const text = e.clipboardData
-                      .getData("text")
-                      .replace(/\D/g, "")
-                      .slice(0, 6);
-                    setPin(text);
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                    setPin(val);
-                  }}
-                  maxLength={6}
-                  placeholder="000000"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-center font-bold tracking-[0.3em] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition-colors"
-                />
-
-                <button
-                  onClick={handlePinJoin}
-                  disabled={!pin.trim()}
-                  className="shrink-0 px-4 py-2 sm:py-1.5 bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground font-bold rounded-lg text-sm transition-all"
-                >
-                  {t.home.pinJoinBtn}
-                </button>
-              </div>
-            </motion.div>
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -1616,15 +1924,13 @@ export default function Home() {
                         : "Be the first to share a quiz with the community"}
                   </p>
                 </div>
-                <Link
-                  href="/teacher/new"
+                <button
+                  onClick={() => setShowLaunchModal(true)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-sm transition-all hover:-translate-y-0.5"
                 >
                   <Plus className="w-4 h-4" />
-                  {lang === "ar"
-                    ? "أنشئ مسابقتك الأولى"
-                    : "Create Your First Quiz"}
-                </Link>
+                  {lang === "ar" ? "أنشئ نشاطًا الآن" : "Create Activity Now"}
+                </button>
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

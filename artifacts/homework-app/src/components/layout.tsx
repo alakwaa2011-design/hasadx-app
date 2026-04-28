@@ -165,19 +165,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 ) : user ? (
                   <div className="flex items-center gap-1.5">
-                    <Link
-                      href="/teacher"
-                      className={cn(
-                        "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                        location === "/teacher" ||
-                          location.startsWith("/teacher/")
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                      )}
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                    </Link>
                     <NotificationBell />
                     <div className="h-5 w-px bg-border mx-1" />
 

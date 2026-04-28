@@ -559,8 +559,12 @@ export default function TeacherDashboard() {
               {user?.name}
             </p>
           </div>
-          <nav className="space-y-0.5 flex-1">
-            {tabs.map((tab) => {
+          <nav className="flex-1 space-y-0.5">
+            {/* ── Section: Main ── */}
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+              {isAr ? "الرئيسية" : "Main"}
+            </p>
+            {tabs.filter(t => ["overview","assignments","shared","competitive","stats","students"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -571,17 +575,49 @@ export default function TeacherDashboard() {
                   }}
                   className={cn(
                     "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
-                    active
-                      ? "text-white shadow-md"
-                      : "text-muted-foreground hover:text-foreground",
+                    active ? "text-white shadow-md" : "text-muted-foreground hover:text-foreground",
                   )}
                   style={active ? { background: "#225739" } : undefined}
                 >
-                  {/* Hover background for inactive */}
                   {!active && (
                     <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
                   )}
-                  {/* Gold accent bar on active */}
+                  {active && (
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
+                  )}
+                  <span className={cn("relative [&_svg]:w-4 [&_svg]:h-4 shrink-0 transition-colors", active ? "text-white" : "text-muted-foreground group-hover:text-foreground")}>
+                    {tab.icon}
+                  </span>
+                  <span className="relative truncate">{tab.label}</span>
+                </button>
+              );
+            })}
+
+            {/* ── Divider ── */}
+            <div className="my-3 border-t border-border/50" />
+
+            {/* ── Section: Content ── */}
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+              {isAr ? "المحتوى" : "Content"}
+            </p>
+            {tabs.filter(t => ["presentations","videos","tools"].includes(t.id)).map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.href) setLocation(tab.href);
+                    else setActiveTab(tab.id);
+                  }}
+                  className={cn(
+                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
+                    active ? "text-white shadow-md" : "text-muted-foreground hover:text-foreground",
+                  )}
+                  style={active ? { background: "#225739" } : undefined}
+                >
+                  {!active && (
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
+                  )}
                   {active && (
                     <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
                   )}
