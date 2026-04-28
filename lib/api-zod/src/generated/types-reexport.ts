@@ -1,0 +1,40 @@
+// Re-exports all types EXCEPT the 6 that conflict with Zod schema names in api.ts
+// (CreateAssignmentBody, LoginTeacherBody, RegisterTeacherBody,
+//  SubmitAssignmentBody, SubmitFeedbackBody, UpdateSubmissionBody)
+export type * from "./types/adminTeacherSummary";
+export type * from "./types/answerBody";
+export type * from "./types/answerResult";
+export type * from "./types/assignment";
+export type * from "./types/assignmentAccessMode";
+export type * from "./types/assignmentResultsReleaseMode";
+export type * from "./types/assignmentSubmissionMode";
+export type * from "./types/assignmentWithQuestions";
+export type * from "./types/assignmentWithQuestionsAccessMode";
+export type * from "./types/assignmentWithQuestionsResultsReleaseMode";
+export type * from "./types/assignmentWithQuestionsSubmissionMode";
+export type * from "./types/authResponse";
+export type * from "./types/createAssignmentBodyAccessMode";
+export type * from "./types/createAssignmentBodyAdaptiveConfig";
+export type * from "./types/createAssignmentBodyResultsReleaseMode";
+export type * from "./types/createAssignmentBodySubmissionMode";
+export type * from "./types/createQuestionBody";
+export type * from "./types/createQuestionBodyQuestionType";
+export type * from "./types/errorResponse";
+export type * from "./types/examSessionResponse";
+export type * from "./types/healthStatus";
+export type * from "./types/listAssignmentsInclude";
+export type * from "./types/listAssignmentsParams";
+export type * from "./types/question";
+export type * from "./types/questionQuestionType";
+export type * from "./types/revokeSessionResponse";
+export type * from "./types/revokeSessionsResponse";
+export type * from "./types/startExamBody";
+export type * from "./types/submission";
+export type * from "./types/submissionResult";
+export type * from "./types/submitFeedbackBodyType";
+export type * from "./types/submitImageBody";
+export type * from "./types/successResponse";
+export type * from "./types/teacherProfile";
+export type * from "./types/teacherSession";
+export type * from "./types/teacherSessionDeviceType";
+export type * from "./types/updateProfileBody";
