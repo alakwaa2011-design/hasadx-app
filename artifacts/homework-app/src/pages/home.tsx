@@ -1012,6 +1012,7 @@ export default function Home() {
     : teacherData
       ? true
       : false;
+
   const teacher = {
     isLoggedIn,
     name: teacherData?.name ?? null,
@@ -1021,6 +1022,7 @@ export default function Home() {
   const [teacherTab, setTeacherTab] = useState<"mine" | "shared">("mine");
   const [showGuestGate, setShowGuestGate] = useState(false);
   const [showQuickChallenge, setShowQuickChallenge] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [hasDraft] = useState(() => hasSavedDraft());
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [installTab, setInstallTab] = useState<"ios" | "android" | "video">(
@@ -1406,121 +1408,140 @@ export default function Home() {
         </AnimatePresence>
 
         <div className="min-h-screen bg-background overflow-x-hidden" dir={dir}>
-          <div className="border-b border-border/40 bg-gradient-to-b from-primary/[0.04] to-transparent">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-8 sm:py-10">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {lang === "ar" ? "مرحباً بعودتك" : "Welcome back"}
-                  </p>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground break-words">
-                    {teacher.name ? (
-                      <>
-                        <span className="text-muted-foreground">
-                          {lang === "ar" ? "أستاذ " : ""}
-                        </span>
-                        <span className="text-primary">{teacher.name}</span>
-                      </>
-                    ) : (
-                      <span className="text-primary">
-                        {lang === "ar" ? "لوحة المعلم" : "Teacher Dashboard"}
-                      </span>
-                    )}
-                  </h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {lang === "ar"
-                      ? "اختر واجباً وابدأ مسابقة فورية أو جرّب العب بمفردك أو مع فريق"
-                      : "Pick an assignment and start an instant quiz, or try playing solo or with a team"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <button
-                    onClick={() => setShowWameethQuickStart(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground font-bold text-sm shadow-sm hover:-translate-y-0.5 transition-all"
-                  >
-                    <Zap className="w-4 h-4" />
-                    {lang === "ar" ? "لعبة مباشرة" : "Live Game"}
-                  </button>
-                  <Link
-                    href="/teacher/new"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-sm hover:-translate-y-0.5 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    {lang === "ar" ? "أنشئ مسابقتك" : "Create Quiz"}
-                  </Link>
-                  <Link
-                    href="/teacher"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-500 text-white font-bold text-sm shadow-md shadow-amber-500/30 hover:-translate-y-0.5 transition-all border border-amber-300/60"
-                  >
-                    <Trophy className="w-4 h-4" />
-                    {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                  </Link>
-                  <InstallAppButton variant="compact" />
-                </div>
-              </motion.div>
-            </div>
-          </div>
 
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-8">
+          {/* ── 3 action cards ───────────────────────────────────────────── */}
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl pt-8 pb-4">
             <motion.div
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-center gap-3 bg-card border border-border/50 rounded-2xl px-4 py-3 mb-7 shadow-sm"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
             >
-              <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {t.home.pinSectionTitle}
-              </span>
-              <div className="flex gap-2 items-center flex-1 min-w-0" dir="ltr">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={pin}
-                  onKeyDown={(e) => {
-                    const allowed = [
-                      "Backspace",
-                      "Delete",
-                      "ArrowLeft",
-                      "ArrowRight",
-                      "Tab",
-                      "Enter",
-                    ];
-                    if (!allowed.includes(e.key) && !/^[0-9]$/.test(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const text = e.clipboardData
-                      .getData("text")
-                      .replace(/\D/g, "")
-                      .slice(0, 6);
-                    setPin(text);
-                  }}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                    setPin(val);
-                  }}
-                  maxLength={6}
-                  placeholder="000000"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-center font-bold tracking-[0.3em] text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37] transition-colors"
-                />
-
+              {/* ① إنشاء نشاط */}
+              <div className="relative">
                 <button
-                  onClick={handlePinJoin}
-                  disabled={!pin.trim()}
-                  className="shrink-0 px-4 py-2 sm:py-1.5 bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground font-bold rounded-lg text-sm transition-all"
+                  onClick={() => setShowCreateMenu(v => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-base shadow-lg shadow-primary/25 hover:bg-primary/90 hover:-translate-y-0.5 transition-all"
                 >
-                  {t.home.pinJoinBtn}
+                  <span className="flex items-center gap-2.5">
+                    <Plus className="w-5 h-5" />
+                    {lang === "ar" ? "إنشاء نشاط" : "Create Activity"}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showCreateMenu ? "rotate-180" : ""}`} />
                 </button>
+
+                <AnimatePresence>
+                  {showCreateMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full mt-2 w-full bg-card border border-border rounded-2xl shadow-xl overflow-hidden z-50"
+                    >
+                      <Link href="/teacher/new" onClick={() => setShowCreateMenu(false)}>
+                        <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors cursor-pointer">
+                          <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">
+                              {lang === "ar" ? "واجب أو مسابقة" : "Assignment / Quiz"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {lang === "ar" ? "أسئلة متعددة وتقييم فوري" : "Questions & instant grading"}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                      <div className="h-px bg-border/50 mx-4" />
+                      <Link href="/teacher/presentations/new" onClick={() => setShowCreateMenu(false)}>
+                        <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors cursor-pointer">
+                          <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-500/20 text-violet-600">
+                            <Presentation className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">
+                              {lang === "ar" ? "عرض تفاعلي" : "Interactive Presentation"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {lang === "ar" ? "شرائح + ألعاب + تصويت" : "Slides + games + polls"}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                      <div className="h-px bg-border/50 mx-4" />
+                      <Link href="/teacher/create-video-lesson" onClick={() => setShowCreateMenu(false)}>
+                        <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer">
+                          <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-600">
+                            <Play className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">
+                              {lang === "ar" ? "فيديو تفاعلي" : "Interactive Video"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {lang === "ar" ? "فيديو مع أسئلة مضمّنة" : "Video with embedded questions"}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* ② إنشاء مسابقة */}
+              <Link href="/teacher">
+                <motion.div
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-amber-500 text-white font-bold text-base shadow-lg shadow-amber-500/25 hover:bg-amber-400 transition-all cursor-pointer"
+                >
+                  <Trophy className="w-5 h-5 shrink-0" />
+                  <span>{lang === "ar" ? "إنشاء مسابقة" : "Start Competition"}</span>
+                </motion.div>
+              </Link>
+
+              {/* ③ أدخل الكود */}
+              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-card border border-border shadow-sm">
+                <Gamepad2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex gap-2 items-center flex-1 min-w-0" dir="ltr">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={pin}
+                    onKeyDown={(e) => {
+                      const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Enter"];
+                      if (!allowed.includes(e.key) && !/^[0-9]$/.test(e.key)) e.preventDefault();
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                      setPin(text);
+                    }}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    maxLength={6}
+                    placeholder={lang === "ar" ? "أدخل الكود" : "Enter code"}
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-center font-bold tracking-[0.2em] text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                  <button
+                    onClick={handlePinJoin}
+                    disabled={!pin.trim()}
+                    className="shrink-0 px-4 py-2 bg-primary hover:bg-primary/90 disabled:opacity-40 text-primary-foreground font-bold rounded-lg text-sm transition-all"
+                  >
+                    {t.home.pinJoinBtn}
+                  </button>
+                </div>
               </div>
             </motion.div>
+          </div>
+
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl py-4">
+            {/* close create menu when clicking outside */}
+            {showCreateMenu && (
+              <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
+            )}
 
             <motion.div
               initial={{ opacity: 0 }}
