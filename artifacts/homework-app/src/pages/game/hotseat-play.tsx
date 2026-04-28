@@ -41,6 +41,151 @@ function playTone(ctx: AudioContext, freq: number, dur: number, vol = 0.3, type:
   } catch { /* ignore */ }
 }
 
+// ── Background Music Engine ────────────────────────────────────────────────
+class HotSeatMusicEngine {
+  private ctx: AudioContext | null = null;
+  private loopTimer: ReturnType<typeof setTimeout> | null = null;
+  private mode: "lobby" | "game" | "off" = "off";
+  private beat = 0;
+
+  private getCtx(): AudioContext | null {
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || (window as never as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)(); } catch { return null; }
+    }
+    if (this.ctx?.state === "suspended") this.ctx.resume().catch(() => {});
+    return this.ctx;
+  }
+
+  private note(freq: number, dur: number, vol: number, type: OscillatorType = "sine", delay = 0) {
+    const ctx = this.getCtx(); if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type; osc.frequency.value = freq;
+      const t = ctx.currentTime + delay;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.85);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t); osc.stop(t + dur + 0.05);
+    } catch { /* ignore */ }
+  }
+
+  private kick(delay = 0) {
+    const ctx = this.getCtx(); if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine";
+      const t = ctx.currentTime + delay;
+      osc.frequency.setValueAtTime(180, t);
+      osc.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+      g.gain.setValueAtTime(0.55, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.3);
+    } catch { /* ignore */ }
+  }
+
+  private hihat(delay = 0, vol = 0.06) {
+    const ctx = this.getCtx(); if (!ctx) return;
+    try {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "highpass"; filter.frequency.value = 7000;
+      const g = ctx.createGain();
+      const t = ctx.currentTime + delay;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      src.connect(filter); filter.connect(g); g.connect(ctx.destination);
+      src.start(t); src.stop(t + 0.06);
+    } catch { /* ignore */ }
+  }
+
+  // ── LOBBY LOOP — mysterious arpeggios, heartbeat bass (70 BPM → 857ms/beat)
+  private lobbyStep() {
+    if (this.mode !== "lobby") return;
+    const b = this.beat % 8;
+    const beat = 857;
+
+    // heartbeat bass every 2 beats
+    if (b === 0 || b === 4) { this.note(55, 0.28, 0.12, "sine"); this.note(55, 0.14, 0.08, "sine", 0.22); }
+    // hi-hat accent
+    if (b % 2 === 0) this.hihat(0, 0.05);
+
+    // Arpeggio in A-minor (A2 C3 E3 G3 A3 E4 A4)
+    const arp = [110, 131, 165, 196, 220, 330, 440, 330];
+    this.note(arp[b], 0.45, 0.07, "triangle", 0.1);
+
+    // Low pad chord every 4 beats
+    if (b === 0) {
+      this.note(110, 1.8, 0.04, "sine"); // A
+      this.note(165, 1.8, 0.03, "sine"); // E
+    } else if (b === 4) {
+      this.note(98, 1.8, 0.04, "sine"); // G
+      this.note(147, 1.8, 0.03, "sine"); // D
+    }
+
+    this.beat++;
+    this.loopTimer = setTimeout(() => this.lobbyStep(), beat);
+  }
+
+  // ── GAME LOOP — urgent rhythm, fast arpeggios (130 BPM → 461ms/beat)
+  private gameStep() {
+    if (this.mode !== "game") return;
+    const b = this.beat % 16;
+    const beat = 461;
+
+    // Kick: beats 0, 4, 8, 12 (quarter notes)
+    if (b % 4 === 0) this.kick();
+    // Extra kick for energy on beat 10
+    if (b === 10) this.kick(0);
+
+    // Hi-hat on every beat
+    this.hihat(0, 0.07);
+    // Open hihat accent on beats 2 & 6
+    if (b === 2 || b === 6 || b === 14) this.hihat(0, 0.12);
+
+    // Driving bass line — E-minor feel
+    const bassLine = [82, 82, 98, 82, 110, 82, 98, 110, 82, 82, 88, 82, 98, 82, 98, 82];
+    this.note(bassLine[b], 0.28, 0.1, "sawtooth");
+
+    // Melodic pattern — E minor pentatonic staccato
+    const melody = [330, 392, 440, 494, 440, 392, 330, 294, 330, 440, 392, 330, 494, 440, 392, 330];
+    if (b % 2 === 0) this.note(melody[b], 0.18, 0.06, "square");
+
+    // Tension chord accent every 4 beats
+    if (b === 0) {
+      this.note(165, 0.6, 0.04, "sine"); // E3
+      this.note(247, 0.6, 0.03, "sine"); // B3
+    } else if (b === 8) {
+      this.note(147, 0.6, 0.04, "sine"); // D3
+      this.note(220, 0.6, 0.03, "sine"); // A3
+    }
+
+    this.beat++;
+    this.loopTimer = setTimeout(() => this.gameStep(), beat);
+  }
+
+  start(mode: "lobby" | "game") {
+    this.stop();
+    this.mode = mode;
+    this.beat = 0;
+    if (mode === "lobby") this.lobbyStep();
+    else this.gameStep();
+  }
+
+  stop() {
+    this.mode = "off";
+    if (this.loopTimer) { clearTimeout(this.loopTimer); this.loopTimer = null; }
+  }
+
+  destroy() { this.stop(); }
+}
+
 function addReverb(ctx: AudioContext, source: AudioNode, wet = 0.3) {
   try {
     const convolver = ctx.createConvolver();
@@ -317,6 +462,9 @@ export default function HotSeatPlay() {
   const [likedQuestions, setLikedQuestions] = useState<Set<string>>(new Set());
 
   const audioCtx = useRef<AudioContext | null>(null);
+  const musicRef = useRef<HotSeatMusicEngine | null>(null);
+  if (!musicRef.current) musicRef.current = new HotSeatMusicEngine();
+
   const [mutedState, setMutedState] = useState(() => {
     try { return localStorage.getItem("hotseat-muted") === "1"; } catch { return false; }
   });
@@ -326,6 +474,13 @@ export default function HotSeatPlay() {
     mutedRef.current = next;
     setMutedState(next);
     try { localStorage.setItem("hotseat-muted", next ? "1" : "0"); } catch {}
+    if (next) musicRef.current?.stop();
+    else {
+      // Resume music based on current phase
+      const phase = state?.phase;
+      if (phase === "lobby" || phase === "picking") musicRef.current?.start("lobby");
+      else if (phase === "asking" || phase === "answering" || phase === "voting") musicRef.current?.start("game");
+    }
   };
 
   const play = useCallback((fn: (ctx: AudioContext) => void) => {
@@ -372,23 +527,29 @@ export default function HotSeatPlay() {
       const me = data.state.students.find(s => s.uid === myUid || s.name === myName);
       if (me) setMyScore(me.score);
 
-      // 🔊 Sound per phase
-      if (data.phase === "ended") {
-        play(playVictoryFanfare);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 6000);
-      } else if (data.phase === "asking") {
-        // Someone was picked for the seat — dramatic boom
-        play(playSeatSound);
-      } else if (data.phase === "answering") {
-        // Question revealed — suspenseful melody
-        play(playQuestionSound);
-      } else if (data.phase === "result") {
-        // Result sound based on convincing %
-        if (data.result && data.result.convincingPct > 60) {
-          play(playConvincingSound);
-        } else {
-          play(playNotConvincingSound);
+      // 🔊 Sound + background music per phase
+      if (!mutedRef.current) {
+        if (data.phase === "ended") {
+          musicRef.current?.stop();
+          play(playVictoryFanfare);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 6000);
+        } else if (data.phase === "lobby" || data.phase === "picking") {
+          musicRef.current?.start("lobby");
+        } else if (data.phase === "asking") {
+          musicRef.current?.start("game");
+          play(playSeatSound);
+        } else if (data.phase === "answering") {
+          play(playQuestionSound);
+        } else if (data.phase === "voting") {
+          // keep game music going
+        } else if (data.phase === "result") {
+          musicRef.current?.stop();
+          if (data.result && data.result.convincingPct > 60) {
+            play(playConvincingSound);
+          } else {
+            play(playNotConvincingSound);
+          }
         }
       }
     });
@@ -423,12 +584,16 @@ export default function HotSeatPlay() {
       setState(prev => prev ? { ...prev, votes: data.votes } : prev);
     });
 
+    // Start lobby music on connect
+    if (!mutedRef.current) musicRef.current?.start("lobby");
+
     return () => {
       socket.off("hotseat:phase-change");
       socket.off("hotseat:players-updated");
       socket.off("hotseat:questions-updated");
       socket.off("hotseat:timer-tick");
       socket.off("hotseat:vote-update");
+      musicRef.current?.stop();
     };
   }, [pin, myName, myAvatar, myUid, ar, setLocation, play, myScore]);
 

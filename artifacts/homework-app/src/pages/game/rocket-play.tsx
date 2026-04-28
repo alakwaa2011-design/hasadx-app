@@ -82,11 +82,11 @@ class RocketSoundEngine {
     try { this.muted = localStorage.getItem("rocket-music-muted") === "1"; } catch { /* ignore */ }
   }
 
-  setMuted(m: boolean) {
+  setMuted(m: boolean, currentMode?: "lobby" | "race") {
     this.muted = m;
     try { localStorage.setItem("rocket-music-muted", m ? "1" : "0"); } catch { /* ignore */ }
     if (m) this.stopBackground();
-    else this.startBackground();
+    else this.startBackground(currentMode ?? this.bgMode === "off" ? "lobby" : this.bgMode as "lobby" | "race");
   }
 
   private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12, delay = 0, decay = 0.9) {
@@ -106,37 +106,92 @@ class RocketSoundEngine {
     osc.start(now); osc.stop(now + dur + 0.05);
   }
 
-  // Deep space ambient: low drones + radio bleeps
-  startBackground() {
-    if (this.muted || !this.ctx || this.bgInterval !== null) return;
-    const playLoop = () => {
-      if (!this.ctx || this.muted) return;
-      // Sub-bass drone
-      this.tone(55, 4.0, "sine", 0.05, 0);
-      this.tone(82.4, 4.0, "triangle", 0.04, 0.5);
-      // Radio blips
-      this.tone(1200, 0.05, "square", 0.04, 1.2);
-      this.tone(1400, 0.05, "square", 0.03, 2.4);
-      this.tone(800, 0.08, "square", 0.03, 3.5);
-      // Subtle sweep
-      if (this.ctx) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(400, this.ctx.currentTime + 3.8);
-        gain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.03, this.ctx.currentTime + 1);
-        gain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 4);
-        osc.connect(gain); gain.connect(this.ctx.destination);
-        osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 4);
-      }
-    };
-    playLoop();
-    this.bgInterval = setInterval(playLoop, 4500);
+  private bgMode: "lobby" | "race" | "off" = "off";
+  private bgBeat = 0;
+  private bgTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private kick(delay = 0) {
+    if (!this.ctx || this.muted) return;
+    try {
+      const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
+      osc.type = "sine";
+      const t = this.ctx.currentTime + delay;
+      osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.18);
+      g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      osc.connect(g); g.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.25);
+    } catch { /* ignore */ }
+  }
+
+  private hihat(delay = 0, vol = 0.05) {
+    if (!this.ctx || this.muted) return;
+    try {
+      const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.035, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource(); src.buffer = buf;
+      const filt = this.ctx.createBiquadFilter(); filt.type = "highpass"; filt.frequency.value = 8000;
+      const g = this.ctx.createGain();
+      const t = this.ctx.currentTime + delay;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      src.connect(filt); filt.connect(g); g.connect(this.ctx.destination); src.start(t); src.stop(t + 0.05);
+    } catch { /* ignore */ }
+  }
+
+  // ── LOBBY: Mysterious space ambient (building anticipation) — 80 BPM
+  private lobbyStep() {
+    if (this.bgMode !== "lobby" || !this.ctx || this.muted) return;
+    const b = this.bgBeat % 8; const beat = 750;
+    // Slow heartbeat bass
+    if (b === 0 || b === 4) { this.tone(55, 0.3, "sine", 0.06); this.tone(55, 0.15, "sine", 0.04, 0.25); }
+    // Space blip melody — C-minor arpeggios
+    const arp = [131, 155, 196, 233, 261, 311, 392, 311];
+    this.tone(arp[b], 0.35, "sine", 0.05, 0.08);
+    // Radio blip accent
+    if (b === 3 || b === 7) this.tone(1200 + b * 80, 0.04, "square", 0.025, 0.15);
+    // Atmospheric pad every 4 beats
+    if (b === 0) { this.tone(65, 2.8, "sine", 0.035); this.tone(98, 2.8, "triangle", 0.025); }
+    else if (b === 4) { this.tone(58, 2.8, "sine", 0.035); this.tone(87, 2.8, "triangle", 0.025); }
+    this.bgBeat++;
+    this.bgTimer = setTimeout(() => this.lobbyStep(), beat);
+  }
+
+  // ── RACE: Fast competitive music — 140 BPM space battle
+  private raceStep() {
+    if (this.bgMode !== "race" || !this.ctx || this.muted) return;
+    const b = this.bgBeat % 16; const beat = 428;
+    // Kick: 0, 4, 8, 12
+    if (b % 4 === 0) this.kick();
+    if (b === 10) this.kick(); // syncopated kick
+    // Hihat every beat
+    this.hihat(0, 0.06);
+    if (b === 2 || b === 6 || b === 14) this.hihat(0, 0.11);
+    // Driving bass — D-minor/space feel
+    const bass = [73, 73, 87, 73, 98, 73, 87, 98, 73, 73, 82, 73, 98, 87, 73, 87];
+    this.tone(bass[b], 0.25, "sawtooth", 0.07);
+    // Melodic stabs — pentatonic
+    const mel = [293, 349, 392, 440, 392, 349, 293, 261, 293, 392, 440, 349, 392, 293, 440, 349];
+    if (b % 2 === 0) this.tone(mel[b], 0.14, "square", 0.04);
+    // Chord accent every 4 beats
+    if (b === 0) { this.tone(146, 0.55, "sine", 0.03); this.tone(220, 0.55, "triangle", 0.025); }
+    else if (b === 8) { this.tone(130, 0.55, "sine", 0.03); this.tone(196, 0.55, "triangle", 0.025); }
+    // Tension riser every 16 beats
+    if (b === 15) { for (let i = 0; i < 5; i++) this.tone(400 + i * 120, 0.1, "sine", 0.025, i * 0.06); }
+    this.bgBeat++;
+    this.bgTimer = setTimeout(() => this.raceStep(), beat);
+  }
+
+  startBackground(mode: "lobby" | "race" = "lobby") {
+    if (this.muted || !this.ctx) return;
+    this.stopBackground();
+    this.bgMode = mode;
+    this.bgBeat = 0;
+    if (mode === "lobby") this.lobbyStep();
+    else this.raceStep();
   }
 
   stopBackground() {
+    this.bgMode = "off";
+    if (this.bgTimer) { clearTimeout(this.bgTimer); this.bgTimer = null; }
     if (this.bgInterval) { clearInterval(this.bgInterval); this.bgInterval = null; }
   }
 
@@ -488,6 +543,7 @@ export default function RocketPlay() {
             setPhase("finished");
           } else {
             setPhase("lobby");
+            soundRef.current?.startBackground("lobby");
           }
         }
       });
@@ -500,11 +556,12 @@ export default function RocketPlay() {
     socket.on("rocket:countdown", () => {
       setPhase("countdown");
       setCountdownNum(3);
-      soundRef.current?.startBackground();
+      soundRef.current?.startBackground("lobby");
     });
 
     socket.on("rocket:race-start", (data: { total: number; gameDuration?: number; question: Question }) => {
       setPhase("racing");
+      soundRef.current?.startBackground("race");
       setTotalQuestions(data.total);
       setCurrentQ(data.question);
       setQuestionStartTime(Date.now());
