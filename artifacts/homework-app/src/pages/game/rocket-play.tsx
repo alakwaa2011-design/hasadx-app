@@ -707,6 +707,7 @@ export default function RocketPlay() {
   const [boostFlash, setBoostFlash] = useState(false);
   const [penaltyFlash, setPenaltyFlash] = useState(false);
   const [chosenWrongIdx, setChosenWrongIdx] = useState<number | null>(null); // display index of wrong choice
+  const questionArrivalCountRef = useRef(0); // increments every time a new question arrives
 
   // Shuffled question display (options reordered each question)
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
@@ -759,7 +760,9 @@ export default function RocketPlay() {
     }
   }, [players, queryName, ar]);
 
-  // Shuffle options whenever a new question arrives
+  // Shuffle options on every new question arrival (not just by index, which
+  // would repeat the same shuffle on the second cycle through questions).
+  const [shuffleTick, setShuffleTick] = useState(0);
   useEffect(() => {
     if (!currentQ || currentQ.type === "fill_blank") {
       setShuffledOptions(currentQ?.options || []);
@@ -773,7 +776,7 @@ export default function RocketPlay() {
     }
     setShuffledOptions(indices.map(i => currentQ.options[i]));
     setOptionMapping(indices);
-  }, [currentQ?.index]);
+  }, [shuffleTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Game timer countdown (client-side)
   const startGameTimer = useCallback((durationSecs: number) => {
@@ -861,17 +864,20 @@ export default function RocketPlay() {
       setCurrentQ(data.question);
       setQuestionStartTime(Date.now());
       setFeedback(null);
+      setShuffleTick(c => c + 1);
       soundRef.current?.playLaunch();
       if (data.gameDuration) startGameTimer(data.gameDuration);
     });
 
     socket.on("rocket:next-question", (q: Question) => {
+      questionArrivalCountRef.current += 1;
       setCurrentQ(q);
       setQuestionStartTime(Date.now());
       setFeedback(null);
       setFillAnswer("");
       setEncouragement(null);
       setChosenWrongIdx(null);
+      setShuffleTick(c => c + 1);
     });
 
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));

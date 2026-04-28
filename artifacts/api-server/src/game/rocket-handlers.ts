@@ -133,11 +133,10 @@ function cleanupGame(pin: string) {
   rocketGames.delete(pin);
 }
 
-// Helper: get next question index for a player (wrong-first priority, then cycle)
+// Helper: get next question index for a player.
+// Always advances sequentially — wrong questions come back naturally in the
+// next cycle (we never immediately re-show the question just answered wrong).
 function nextQuestionIdx(game: RocketGame, player: RocketPlayer): number {
-  if (player.wrongIndices.length > 0) {
-    return player.wrongIndices.shift()!;
-  }
   return player.totalAnswered % game.questions.length;
 }
 
@@ -544,10 +543,6 @@ export function setupRocketSocket(io: Server) {
           player.streak = 0;
           altitudeChange = -altitudePenalty(game.questions.length);
           player.altitude = Math.max(0, player.altitude + altitudeChange);
-          // Queue this question for retry (avoid duplicates)
-          if (!player.wrongIndices.includes(currentQIdx)) {
-            player.wrongIndices.push(currentQIdx);
-          }
         }
 
         // Advance: get next question index (wrong-first priority, then cycle)
