@@ -303,10 +303,15 @@ export default function VideoLive() {
             const playing = event.data === 1;
             const paused = event.data === 2 || event.data === 0;
             if (playing || paused) {
+              // If the teacher tapped/clicked the video directly while a question
+              // was displayed, treat it exactly like pressing "Resume" — clear the
+              // active question and notify students to resume.
+              if (playing && activeQuestionIdRef.current !== null) {
+                handleResumeRef.current?.();
+                return;
+              }
               setIsPlaying(playing);
               // Immediately sync to students — don't wait for the 500ms interval.
-              // This is critical for "tap big play button in middle of video" because
-              // YouTube fires onStateChange but our interval may emit stale state.
               if (roomCodeRef.current && activeQuestionIdRef.current === null) {
                 const time = (() => {
                   try { return playerRef.current?.getCurrentTime() ?? 0; } catch { return 0; }
@@ -771,7 +776,15 @@ export default function VideoLive() {
                   src={videoUrl}
                   playsInline
                   className="w-full aspect-video bg-black"
-                  onPlay={() => setIsPlaying(true)}
+                  onPlay={() => {
+                    // If the teacher tapped the video to resume while a question
+                    // was showing, treat it like pressing the "Resume" button.
+                    if (activeQuestionIdRef.current !== null) {
+                      handleResumeRef.current?.();
+                      return;
+                    }
+                    setIsPlaying(true);
+                  }}
                   onPause={() => setIsPlaying(false)}
                   onLoadedMetadata={(e) => setVideoDuration((e.target as HTMLVideoElement).duration || 0)}
                   onTimeUpdate={(e) => setCurrentTime((e.target as HTMLVideoElement).currentTime || 0)}
