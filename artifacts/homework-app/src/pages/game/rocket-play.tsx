@@ -8,6 +8,11 @@ import { toast } from "@/components/ui/sonner";
 
 const GOLD = "#D9A521";
 const SPACE_BG = "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)";
+const PHASE_BACKGROUNDS = [
+  "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)", // Phase 1: Deep Space
+  "linear-gradient(180deg, #150505 0%, #2d0a00 40%, #3d1000 100%)", // Phase 2: Asteroid Field
+  "linear-gradient(180deg, #020f15 0%, #003028 40%, #001a20 100%)", // Phase 3: Crystal Planet
+];
 
 type QType = "mcq" | "true_false" | "fill_blank";
 
@@ -82,11 +87,14 @@ class RocketSoundEngine {
     try { this.muted = localStorage.getItem("rocket-music-muted") === "1"; } catch { /* ignore */ }
   }
 
-  setMuted(m: boolean, currentMode?: "lobby" | "race") {
+  setMuted(m: boolean, currentMode?: "lobby" | "race1" | "race2" | "race3") {
     this.muted = m;
     try { localStorage.setItem("rocket-music-muted", m ? "1" : "0"); } catch { /* ignore */ }
     if (m) this.stopBackground();
-    else this.startBackground(currentMode ?? this.bgMode === "off" ? "lobby" : this.bgMode as "lobby" | "race");
+    else {
+      const mode = currentMode ?? (this.bgMode === "off" ? "lobby" : this.bgMode as "lobby" | "race1" | "race2" | "race3");
+      this.startBackground(mode);
+    }
   }
 
   private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.12, delay = 0, decay = 0.9) {
@@ -94,10 +102,8 @@ class RocketSoundEngine {
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     const filter = this.ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 3000;
-    osc.type = type;
-    osc.frequency.value = freq;
+    filter.type = "lowpass"; filter.frequency.value = 3000;
+    osc.type = type; osc.frequency.value = freq;
     const now = this.ctx.currentTime + delay;
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(vol, now + 0.02);
@@ -106,18 +112,18 @@ class RocketSoundEngine {
     osc.start(now); osc.stop(now + dur + 0.05);
   }
 
-  private bgMode: "lobby" | "race" | "off" = "off";
+  private bgMode: "lobby" | "race1" | "race2" | "race3" | "off" = "off";
   private bgBeat = 0;
   private bgTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private kick(delay = 0) {
+  private kick(delay = 0, vol = 0.5) {
     if (!this.ctx || this.muted) return;
     try {
       const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
       osc.type = "sine";
       const t = this.ctx.currentTime + delay;
       osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(40, t + 0.18);
-      g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
       osc.connect(g); g.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.25);
     } catch { /* ignore */ }
   }
@@ -137,56 +143,90 @@ class RocketSoundEngine {
     } catch { /* ignore */ }
   }
 
-  // ── LOBBY: Mysterious space ambient (building anticipation) — 80 BPM
+  // ── LOBBY: Mysterious space ambient — 80 BPM
   private lobbyStep() {
     if (this.bgMode !== "lobby" || !this.ctx || this.muted) return;
     const b = this.bgBeat % 8; const beat = 750;
-    // Slow heartbeat bass
     if (b === 0 || b === 4) { this.tone(55, 0.3, "sine", 0.06); this.tone(55, 0.15, "sine", 0.04, 0.25); }
-    // Space blip melody — C-minor arpeggios
     const arp = [131, 155, 196, 233, 261, 311, 392, 311];
     this.tone(arp[b], 0.35, "sine", 0.05, 0.08);
-    // Radio blip accent
     if (b === 3 || b === 7) this.tone(1200 + b * 80, 0.04, "square", 0.025, 0.15);
-    // Atmospheric pad every 4 beats
     if (b === 0) { this.tone(65, 2.8, "sine", 0.035); this.tone(98, 2.8, "triangle", 0.025); }
     else if (b === 4) { this.tone(58, 2.8, "sine", 0.035); this.tone(87, 2.8, "triangle", 0.025); }
     this.bgBeat++;
     this.bgTimer = setTimeout(() => this.lobbyStep(), beat);
   }
 
-  // ── RACE: Fast competitive music — 140 BPM space battle
-  private raceStep() {
-    if (this.bgMode !== "race" || !this.ctx || this.muted) return;
+  // ── RACE 1 (Deep Space): Fast space battle — 140 BPM
+  private race1Step() {
+    if (this.bgMode !== "race1" || !this.ctx || this.muted) return;
     const b = this.bgBeat % 16; const beat = 428;
-    // Kick: 0, 4, 8, 12
     if (b % 4 === 0) this.kick();
-    if (b === 10) this.kick(); // syncopated kick
-    // Hihat every beat
+    if (b === 10) this.kick();
     this.hihat(0, 0.06);
     if (b === 2 || b === 6 || b === 14) this.hihat(0, 0.11);
-    // Driving bass — D-minor/space feel
     const bass = [73, 73, 87, 73, 98, 73, 87, 98, 73, 73, 82, 73, 98, 87, 73, 87];
     this.tone(bass[b], 0.25, "sawtooth", 0.07);
-    // Melodic stabs — pentatonic
     const mel = [293, 349, 392, 440, 392, 349, 293, 261, 293, 392, 440, 349, 392, 293, 440, 349];
     if (b % 2 === 0) this.tone(mel[b], 0.14, "square", 0.04);
-    // Chord accent every 4 beats
     if (b === 0) { this.tone(146, 0.55, "sine", 0.03); this.tone(220, 0.55, "triangle", 0.025); }
     else if (b === 8) { this.tone(130, 0.55, "sine", 0.03); this.tone(196, 0.55, "triangle", 0.025); }
-    // Tension riser every 16 beats
     if (b === 15) { for (let i = 0; i < 5; i++) this.tone(400 + i * 120, 0.1, "sine", 0.025, i * 0.06); }
     this.bgBeat++;
-    this.bgTimer = setTimeout(() => this.raceStep(), beat);
+    this.bgTimer = setTimeout(() => this.race1Step(), beat);
   }
 
-  startBackground(mode: "lobby" | "race" = "lobby") {
+  // ── RACE 2 (Asteroid Field): Aggressive heavy — 160 BPM
+  private race2Step() {
+    if (this.bgMode !== "race2" || !this.ctx || this.muted) return;
+    const b = this.bgBeat % 16; const beat = 375;
+    if (b % 2 === 0) this.kick(0, 0.6);
+    if (b === 1 || b === 5 || b === 9 || b === 13) this.kick(0, 0.35);
+    this.hihat(0, 0.09);
+    const bass = [82, 82, 82, 87, 82, 82, 98, 82, 82, 110, 82, 82, 98, 87, 82, 82];
+    this.tone(bass[b], 0.22, "sawtooth", 0.10);
+    this.tone(bass[b] * 0.5, 0.22, "sawtooth", 0.05);
+    const mel = [330, 370, 392, 415, 440, 415, 392, 370, 349, 392, 440, 494, 523, 494, 440, 392];
+    if (b % 2 === 0) this.tone(mel[b], 0.12, "square", 0.05);
+    if (b === 4 || b === 12) { this.tone(220, 0.18, "sawtooth", 0.06); this.tone(233, 0.18, "sawtooth", 0.05); }
+    if (b === 14) { for (let i = 0; i < 4; i++) this.tone(600 + i * 200, 0.08, "square", 0.04, i * 0.05); }
+    this.bgBeat++;
+    this.bgTimer = setTimeout(() => this.race2Step(), beat);
+  }
+
+  // ── RACE 3 (Crystal Planet): Epic orchestral triumph — 175 BPM
+  private race3Step() {
+    if (this.bgMode !== "race3" || !this.ctx || this.muted) return;
+    const b = this.bgBeat % 32; const beat = 343;
+    if (b % 4 === 0) this.kick(0, 0.7);
+    if (b === 6 || b === 14 || b === 22 || b === 30) this.kick(0, 0.45);
+    if (b % 2 === 0) this.hihat(0, 0.08);
+    const bass = [65,65,65,73,65,65,82,65, 65,65,87,65,73,65,65,73,
+                  98,98,98,110,98,98,87,98, 98,98,82,98,87,82,98,73];
+    this.tone(bass[b], 0.28, "sawtooth", 0.08);
+    const mel = [523,587,659,698,784,698,659,587,
+                 523,587,659,784,880,784,659,587,
+                 523,659,784,880,1047,880,784,659,
+                 523,784,1047,784,659,587,523,587];
+    if (b % 2 === 0) this.tone(mel[b], 0.18, "sine", 0.07);
+    if (b === 0) { [523,659,784].forEach((f,i) => this.tone(f,0.4,"triangle",0.05,i*0.02)); }
+    if (b === 8) { [440,523,659].forEach((f,i) => this.tone(f,0.4,"triangle",0.05,i*0.02)); }
+    if (b === 16) { [523,659,784,1047].forEach((f,i) => this.tone(f,0.5,"sine",0.06,i*0.025)); }
+    if (b === 24) { [392,523,659,784].forEach((f,i) => this.tone(f,0.4,"triangle",0.05,i*0.02)); }
+    if (b === 0 || b === 16) this.hihat(0, 0.14);
+    this.bgBeat++;
+    this.bgTimer = setTimeout(() => this.race3Step(), beat);
+  }
+
+  startBackground(mode: "lobby" | "race1" | "race2" | "race3" = "lobby") {
     if (this.muted || !this.ctx) return;
     this.stopBackground();
     this.bgMode = mode;
     this.bgBeat = 0;
     if (mode === "lobby") this.lobbyStep();
-    else this.raceStep();
+    else if (mode === "race1") this.race1Step();
+    else if (mode === "race2") this.race2Step();
+    else this.race3Step();
   }
 
   stopBackground() {
@@ -195,42 +235,41 @@ class RocketSoundEngine {
     if (this.bgInterval) { clearInterval(this.bgInterval); this.bgInterval = null; }
   }
 
-  // Rocket ignition: rumble → whoosh
+  // Warp transition sound between phases
+  playPhaseTransition() {
+    if (!this.ctx || this.muted) return;
+    for (let i = 0; i < 12; i++) this.tone(200 + i * 150, 0.15, "sawtooth", 0.07, i * 0.04);
+    this.tone(60, 0.5, "sine", 0.15, 0.3);
+    this.tone(30, 0.7, "sine", 0.10, 0.35);
+    this.tone(1046.5, 0.3, "sine", 0.12, 0.5);
+    this.tone(1318.5, 0.4, "sine", 0.10, 0.65);
+    this.tone(1567.98, 0.5, "sine", 0.08, 0.8);
+  }
+
   playLaunch() {
-    for (let i = 0; i < 6; i++) {
-      this.tone(60 + i * 15, 0.18, "sawtooth", 0.08, i * 0.05);
-    }
+    for (let i = 0; i < 6; i++) this.tone(60 + i * 15, 0.18, "sawtooth", 0.08, i * 0.05);
     this.tone(200, 0.4, "sawtooth", 0.1, 0.1);
     this.tone(500, 0.6, "sine", 0.1, 0.3);
     this.tone(1000, 0.5, "sine", 0.08, 0.6);
   }
 
-  // Ascending chime with echo
   playCorrect() {
     const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
     notes.forEach((f, i) => this.tone(f, 0.18, "sine", 0.15, i * 0.07));
     notes.forEach((f, i) => this.tone(f, 0.25, "sine", 0.07, i * 0.07 + 0.5));
   }
 
-  // Static noise + descending tone
   playWrong() {
     this.tone(250, 0.1, "sawtooth", 0.12);
     this.tone(200, 0.12, "sawtooth", 0.1, 0.05);
     this.tone(150, 0.15, "triangle", 0.1, 0.1);
   }
 
-  // Rapid ascending sweep = boost
   playBoost() {
-    for (let i = 0; i < 10; i++) {
-      this.tone(300 + i * 100, 0.07, "sine", 0.12, i * 0.035);
-    }
-    // Exhaust burst
-    for (let i = 0; i < 5; i++) {
-      this.tone(80 + i * 20, 0.05, "sawtooth", 0.06, i * 0.02);
-    }
+    for (let i = 0; i < 10; i++) this.tone(300 + i * 100, 0.07, "sine", 0.12, i * 0.035);
+    for (let i = 0; i < 5; i++) this.tone(80 + i * 20, 0.05, "sawtooth", 0.06, i * 0.02);
   }
 
-  // Victory fanfare
   playWin() {
     const melody = [523.25, 659.25, 783.99, 659.25, 1046.5, 1318.5];
     melody.forEach((f, i) => {
@@ -239,19 +278,13 @@ class RocketSoundEngine {
     });
   }
 
-  playCountdown() {
-    this.tone(880, 0.2, "sine", 0.22);
-  }
-
+  playCountdown() { this.tone(880, 0.2, "sine", 0.22); }
   playGo() {
     this.tone(523.25, 0.15, "sine", 0.25);
     this.tone(659.25, 0.2, "sine", 0.25, 0.1);
     this.tone(1046.5, 0.35, "sine", 0.22, 0.22);
   }
-
-  playTick() {
-    this.tone(1200, 0.04, "square", 0.06);
-  }
+  playTick() { this.tone(1200, 0.04, "square", 0.06); }
 
   destroy() {
     this.stopBackground();
@@ -318,10 +351,12 @@ function BoostParticles({ active }: { active: boolean }) {
 
 // ─── Enhanced Rocket SVG with continuous motion ───────────────────────────────
 function RocketIcon({
-  color, isPlayer, size = 50, boosted = false,
+  color, isPlayer, size = 50, boosted = false, mega = false,
 }: {
-  color: string; isPlayer?: boolean; size?: number; boosted?: boolean;
+  color: string; isPlayer?: boolean; size?: number; boosted?: boolean; mega?: boolean;
 }) {
+  const flameColor = mega ? "#00ffff" : boosted ? "#fff176" : "#ff6b1a";
+  const glowStrength = mega ? 20 : isPlayer ? 12 : 6;
   return (
     <motion.div
       animate={{ y: boosted ? [-4, 4, -4] : [-3, 3, -3] }}
@@ -333,21 +368,29 @@ function RocketIcon({
         viewBox="0 0 60 96"
         style={{
           filter: isPlayer
-            ? `drop-shadow(0 0 12px ${color}) drop-shadow(0 4px 20px rgba(255,255,255,0.4))`
+            ? `drop-shadow(0 0 ${glowStrength}px ${color}) drop-shadow(0 4px 20px rgba(255,255,255,0.4))`
             : `drop-shadow(0 2px 8px ${color}80)`,
         }}
       >
+        {/* Mega glow ring */}
+        {mega && (
+          <motion.circle cx="30" cy="78" r="24"
+            animate={{ opacity: [0.2, 0.5, 0.2], r: [22, 26, 22] }}
+            transition={{ repeat: Infinity, duration: 1.0 }}
+            fill="none" stroke={color} strokeWidth="2" />
+        )}
         {/* Exhaust flame */}
         <motion.g
-          animate={{ scaleY: boosted ? [1, 1.6, 0.8, 1.4, 1] : [1, 1.2, 0.9, 1.15, 1] }}
-          transition={{ repeat: Infinity, duration: boosted ? 0.12 : 0.25 }}
+          animate={{ scaleY: boosted ? [1, 1.6, 0.8, 1.4, 1] : mega ? [1, 1.4, 0.85, 1.3, 1] : [1, 1.2, 0.9, 1.15, 1] }}
+          transition={{ repeat: Infinity, duration: boosted ? 0.12 : mega ? 0.18 : 0.25 }}
           style={{ originX: "30px", originY: "78px" }}
         >
-          <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill={boosted ? "#fff176" : "#ff6b1a"} opacity="0.95" />
-          <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill="#ffd54f" opacity="0.95" />
+          {mega && <path d="M14 80 Q30 110 46 80 Q40 97 30 100 Q20 97 14 80 Z" fill="#7fffff" opacity="0.5" />}
+          <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill={flameColor} opacity="0.95" />
+          <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill={mega ? "#b2ffff" : "#ffd54f"} opacity="0.95" />
           <path d="M26 78 Q30 84 34 78 Q32 82 30 83 Q28 82 26 78 Z" fill="#fff9c4" opacity="0.9" />
         </motion.g>
-        {/* Body gradient via layered paths */}
+        {/* Body */}
         <defs>
           <linearGradient id={`rg-${color.replace("#","")}`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={color} stopOpacity="0.7" />
@@ -356,24 +399,28 @@ function RocketIcon({
           </linearGradient>
         </defs>
         <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={color} />
-        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z"
-          fill={`url(#rg-${color.replace("#","")})`} />
+        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={`url(#rg-${color.replace("#","")})`} />
         {/* Window */}
-        <circle cx="30" cy="40" r="8" fill="#b3e5fc" stroke="#fff" strokeWidth="2.5" opacity="0.95" />
-        <circle cx="30" cy="40" r="5" fill="#0288d1" opacity="0.7" />
+        <circle cx="30" cy="40" r="8" fill={mega ? "#80ffff" : "#b3e5fc"} stroke="#fff" strokeWidth="2.5" opacity="0.95" />
+        <circle cx="30" cy="40" r="5" fill={mega ? "#008080" : "#0288d1"} opacity="0.7" />
         <circle cx="28" cy="38" r="2" fill="#fff" opacity="0.5" />
-        {/* Fins */}
+        {/* Standard fins */}
         <path d="M16 62 L4 82 L16 78 Z" fill={color} opacity="0.9" />
         <path d="M44 62 L56 82 L44 78 Z" fill={color} opacity="0.9" />
+        {/* Mega extra wing fins */}
+        {mega && <>
+          <path d="M16 50 L0 68 L16 66 Z" fill={color} opacity="0.65" />
+          <path d="M44 50 L60 68 L44 66 Z" fill={color} opacity="0.65" />
+          <rect x="20" y="44" width="20" height="2" fill="#7fffff" opacity="0.55" rx="1" />
+          <rect x="20" y="66" width="20" height="3" fill="#7fffff" opacity="0.55" rx="1" />
+        </>}
         {/* Nose */}
         <path d="M30 4 L24 16 L36 16 Z" fill="#fff" opacity="0.9" />
-        {/* Stripe accents */}
+        {/* Stripes */}
         <rect x="20" y="50" width="20" height="3" fill="#fff" opacity="0.35" rx="1" />
         <rect x="20" y="58" width="20" height="2" fill="#fff" opacity="0.25" rx="1" />
-        {/* Rank badge for player */}
-        {isPlayer && (
-          <circle cx="30" cy="8" r="5" fill={GOLD} opacity="0.9" />
-        )}
+        {/* Player badge */}
+        {isPlayer && <circle cx="30" cy="8" r={mega ? 7 : 5} fill={GOLD} opacity="0.9" />}
       </svg>
     </motion.div>
   );
@@ -396,7 +443,7 @@ function ShootingStar({ x, y, delay }: { x: number; y: number; delay: number }) 
 }
 
 // ─── Stars background ──────────────────────────────────────────────────────
-function StarField() {
+function StarField({ phase = 0 }: { phase?: number }) {
   const stars = Array.from({ length: 70 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
@@ -405,11 +452,10 @@ function StarField() {
     delay: Math.random() * 4,
     twinkle: Math.random() > 0.6,
   }));
-  const shooters = [
-    { x: 80, y: 10, delay: 3 },
-    { x: 60, y: 5, delay: 8 },
-    { x: 90, y: 20, delay: 15 },
-  ];
+  const shooters = [{ x: 80, y: 10, delay: 3 }, { x: 60, y: 5, delay: 8 }, { x: 90, y: 20, delay: 15 }];
+  const starColor = phase === 0 ? "#fff" : phase === 1 ? "#ff9966" : "#88ffee";
+  const nebulaA = phase === 0 ? "rgba(80,0,120,0.15)" : phase === 1 ? "rgba(180,50,0,0.13)" : "rgba(0,200,180,0.12)";
+  const nebulaB = phase === 0 ? "rgba(0,40,120,0.12)" : phase === 1 ? "rgba(120,20,0,0.10)" : "rgba(0,100,200,0.10)";
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
       {stars.map(s => (
@@ -419,28 +465,156 @@ function StarField() {
           transition={{ repeat: Infinity, duration: 1.5 + s.delay, delay: s.delay * 0.3 }}
           style={{
             position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
-            width: s.size, height: s.size, borderRadius: "50%", background: "#fff",
-            boxShadow: s.size > 1.5 ? `0 0 ${s.size * 3}px rgba(255,255,255,0.8)` : undefined,
+            width: s.size, height: s.size, borderRadius: "50%", background: starColor,
+            boxShadow: s.size > 1.5 ? `0 0 ${s.size * 3}px ${starColor}cc` : undefined,
           }}
         />
       ))}
-      {shooters.map((s, i) => (
-        <ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />
-      ))}
-      {/* Nebula glow layers */}
-      <div style={{
-        position: "absolute", top: "15%", left: "10%",
-        width: 300, height: 200,
-        background: "radial-gradient(ellipse, rgba(80,0,120,0.15) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
-      <div style={{
-        position: "absolute", top: "50%", right: "5%",
-        width: 250, height: 180,
-        background: "radial-gradient(ellipse, rgba(0,40,120,0.12) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
+      {shooters.map((s, i) => (<ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />))}
+      <div style={{ position: "absolute", top: "15%", left: "10%", width: 300, height: 200, background: `radial-gradient(ellipse, ${nebulaA} 0%, transparent 70%)`, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "50%", right: "5%", width: 250, height: 180, background: `radial-gradient(ellipse, ${nebulaB} 0%, transparent 70%)`, pointerEvents: "none" }} />
     </div>
+  );
+}
+
+// ─── Phase 2: Asteroid Field background ──────────────────────────────────────
+function AsteroidField() {
+  const asteroids = [
+    { id:0, x:8, y:12, size:32, rot:1.2, dur:14, delay:0, drift:25 },
+    { id:1, x:75, y:8, size:22, rot:-0.9, dur:10, delay:2, drift:-18 },
+    { id:2, x:45, y:30, size:42, rot:0.7, dur:18, delay:1, drift:15 },
+    { id:3, x:90, y:55, size:18, rot:-1.5, dur:9, delay:3, drift:-12 },
+    { id:4, x:20, y:65, size:28, rot:1.0, dur:12, delay:0.5, drift:20 },
+    { id:5, x:60, y:75, size:35, rot:-0.6, dur:16, delay:4, drift:-22 },
+    { id:6, x:5, y:85, size:20, rot:1.4, dur:11, delay:1.5, drift:14 },
+    { id:7, x:85, y:88, size:26, rot:-1.1, dur:13, delay:2.5, drift:-16 },
+  ];
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {asteroids.map(a => (
+        <motion.div key={a.id}
+          animate={{ rotate: [0, a.rot * 360], x: [0, a.drift, 0], y: [0, a.drift * 0.4, 0] }}
+          transition={{ duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" }}
+          style={{ position: "absolute", left: `${a.x}%`, top: `${a.y}%` }}>
+          <svg width={a.size} height={a.size * 0.85} viewBox="0 0 60 50" opacity={0.35}>
+            <path d="M10 12 L20 4 L38 2 L52 14 L58 28 L50 42 L34 46 L18 44 L6 32 L8 18 Z"
+              fill="#7c3a1a" stroke="#c0601a" strokeWidth="1.5" />
+            <path d="M20 15 L28 10 L36 16 L32 26 L22 24 Z" fill="rgba(0,0,0,0.3)" />
+            <path d="M38 28 L46 32 L42 40 L34 36 Z" fill="rgba(0,0,0,0.2)" />
+            <path d="M12 22 L18 20 L16 28 L10 26 Z" fill="rgba(255,120,50,0.2)" />
+          </svg>
+        </motion.div>
+      ))}
+      {[...Array(6)].map((_, i) => (
+        <motion.div key={`ember-${i}`}
+          animate={{ y: [-10, -70], opacity: [0, 0.9, 0], x: [0, (i % 2 === 0 ? 1 : -1) * 20] }}
+          transition={{ duration: 1.8 + i * 0.4, delay: i * 1.0, repeat: Infinity }}
+          style={{
+            position: "absolute", bottom: `${8 + i * 14}%`, left: `${12 + i * 14}%`,
+            width: 5, height: 5, borderRadius: "50%",
+            background: `hsl(${20 + i * 12}, 100%, 60%)`,
+            boxShadow: `0 0 10px hsl(${20 + i * 12}, 100%, 60%)`,
+          }} />
+      ))}
+      <div style={{ position: "absolute", top: "20%", left: "15%", width: 350, height: 250, background: "radial-gradient(ellipse, rgba(200,50,0,0.12) 0%, transparent 70%)" }} />
+      <div style={{ position: "absolute", bottom: "15%", right: "8%", width: 280, height: 200, background: "radial-gradient(ellipse, rgba(255,100,0,0.08) 0%, transparent 70%)" }} />
+    </div>
+  );
+}
+
+// ─── Phase 3: Crystal Planet background ──────────────────────────────────────
+function CrystalField() {
+  const crystals = Array.from({ length: 14 }, (_, i) => ({
+    id: i, x: (i / 14) * 88 + 3,
+    height: 35 + (i % 4) * 22,
+    width: 8 + (i % 3) * 5,
+    hue: 160 + (i * 17) % 60,
+    delay: (i * 0.4) % 3.5,
+  }));
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {crystals.map(c => (
+        <motion.div key={c.id}
+          animate={{ y: [0, -12, 0], opacity: [0.45, 1, 0.45] }}
+          transition={{ duration: 2.5 + c.delay, delay: c.delay, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: "absolute", bottom: `${4 + (c.id % 4) * 5}%`, left: `${c.x}%`,
+            width: c.width, height: c.height,
+            background: `linear-gradient(180deg, hsl(${c.hue},100%,85%) 0%, hsl(${c.hue},80%,55%) 50%, hsl(${c.hue},60%,30%) 100%)`,
+            clipPath: "polygon(50% 0%, 80% 30%, 100% 80%, 60% 100%, 40% 100%, 0% 80%, 20% 30%)",
+            filter: `drop-shadow(0 0 6px hsl(${c.hue},100%,75%))`,
+          }} />
+      ))}
+      {[...Array(8)].map((_, i) => (
+        <motion.div key={`crystal-spark-${i}`}
+          animate={{ y: [0, -55, 0], opacity: [0, 1, 0], scale: [0.5, 1.5, 0] }}
+          transition={{ duration: 1.4 + i * 0.25, delay: i * 0.7, repeat: Infinity }}
+          style={{
+            position: "absolute", left: `${8 + i * 11}%`, bottom: `${12 + (i % 3) * 8}%`,
+            width: 4, height: 4, borderRadius: "50%",
+            background: `hsl(${170 + i * 8}, 100%, 75%)`,
+            boxShadow: `0 0 8px hsl(${170 + i * 8}, 100%, 75%)`,
+          }} />
+      ))}
+      <div style={{ position: "absolute", top: "10%", left: "10%", width: 400, height: 300, background: "radial-gradient(ellipse, rgba(0,210,190,0.11) 0%, transparent 70%)" }} />
+      <div style={{ position: "absolute", bottom: "20%", right: "5%", width: 300, height: 220, background: "radial-gradient(ellipse, rgba(0,130,255,0.09) 0%, transparent 70%)" }} />
+    </div>
+  );
+}
+
+// ─── Phase Transition Overlay ────────────────────────────────────────────────
+function PhaseTransitionOverlay({ gamePhase, show }: { gamePhase: number; show: boolean }) {
+  if (!show) return null;
+  const phases = [
+    { icon: "🚀", name: "الفضاء العميق", nameEn: "Deep Space", color: "#6b21a8", label: "المرحلة الأولى" },
+    { icon: "☄️", name: "حقل الكويكبات", nameEn: "Asteroid Field", color: "#c2410c", label: "المرحلة الثانية 🔥" },
+    { icon: "💎", name: "كوكب الكريستال", nameEn: "Crystal Planet", color: "#0e7490", label: "المرحلة الأخيرة ⚡" },
+  ];
+  const p = phases[gamePhase] || phases[0];
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: [0, 1, 1, 0] }}
+      transition={{ duration: 1.8, times: [0, 0.2, 0.75, 1] }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 300,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        background: `radial-gradient(ellipse at center, ${p.color}bb 0%, #000000bb 100%)`,
+        pointerEvents: "none",
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: [0.4, 1.15, 1], opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 1.8, times: [0, 0.3, 0.7, 1] }}
+        style={{ textAlign: "center" }}
+      >
+        <motion.div
+          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.3, 1] }}
+          transition={{ duration: 0.6, repeat: 2 }}
+          style={{ fontSize: 60, marginBottom: 12, display: "inline-block" }}
+        >
+          {p.icon}
+        </motion.div>
+        <div style={{ color: "#fff", fontSize: 24, fontWeight: 900, textShadow: `0 0 30px ${p.color}, 0 0 60px ${p.color}80` }}>
+          {p.name}
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginTop: 4 }}>{p.nameEn}</div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [8, 0, 0, -8] }}
+          transition={{ duration: 1.8, times: [0.2, 0.35, 0.7, 1] }}
+          style={{
+            marginTop: 18, color: "#fff", fontSize: 16, fontWeight: 800,
+            background: `${p.color}80`, padding: "8px 24px",
+            borderRadius: 999, border: `2px solid ${p.color}`,
+            display: "inline-block",
+          }}
+        >
+          {p.label}
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -484,6 +658,11 @@ export default function RocketPlay() {
   const gameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameEndTimeRef = useRef<number>(0);
 
+  // ─── Game Phase (0=Space, 1=Asteroids, 2=Crystal) ─────────────────────────
+  const [gamePhase, setGamePhase] = useState(0);
+  const [showPhaseTransition, setShowPhaseTransition] = useState(false);
+  const prevGamePhaseRef = useRef(0);
+
   // Mobile detection
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -513,6 +692,21 @@ export default function RocketPlay() {
   }, []);
 
   useEffect(() => () => { if (gameTimerRef.current) clearInterval(gameTimerRef.current); }, []);
+
+  // Detect phase transitions based on altitude
+  useEffect(() => {
+    if (phase !== "racing") return;
+    const newPhase = myAltitude >= 67 ? 2 : myAltitude >= 34 ? 1 : 0;
+    if (newPhase !== prevGamePhaseRef.current) {
+      prevGamePhaseRef.current = newPhase;
+      setGamePhase(newPhase);
+      setShowPhaseTransition(true);
+      setTimeout(() => setShowPhaseTransition(false), 1800);
+      soundRef.current?.playPhaseTransition();
+      const modes = ["race1", "race2", "race3"] as const;
+      soundRef.current?.startBackground(modes[newPhase]);
+    }
+  }, [myAltitude, phase]);
 
   // Connect & join
   useEffect(() => {
@@ -561,7 +755,7 @@ export default function RocketPlay() {
 
     socket.on("rocket:race-start", (data: { total: number; gameDuration?: number; question: Question }) => {
       setPhase("racing");
-      soundRef.current?.startBackground("race");
+      soundRef.current?.startBackground("race1");
       setTotalQuestions(data.total);
       setCurrentQ(data.question);
       setQuestionStartTime(Date.now());
@@ -695,8 +889,11 @@ export default function RocketPlay() {
   }
 
   return (
-    <div dir={dir} style={{ minHeight: "100dvh", background: SPACE_BG, position: "relative", overflow: "hidden" }}>
-      <StarField />
+    <div dir={dir} style={{ minHeight: "100dvh", background: PHASE_BACKGROUNDS[gamePhase], position: "relative", overflow: "hidden", transition: "background 2s ease" }}>
+      <StarField phase={gamePhase} />
+      {gamePhase === 1 && <AsteroidField />}
+      {gamePhase === 2 && <CrystalField />}
+      <PhaseTransitionOverlay gamePhase={gamePhase} show={showPhaseTransition} />
       <BoostParticles active={boostFlash} />
 
       {/* Top bar */}
@@ -874,31 +1071,38 @@ export default function RocketPlay() {
           <div style={{ position: "relative", zIndex: 5, display: "grid", gridTemplateColumns: "minmax(260px, 300px) 1fr", gap: 14, padding: "14px 16px", alignItems: "start", height: "calc(100dvh - 70px)" }}>
             {/* Race track */}
             <div style={{
-              position: "relative",
-              height: "100%",
-              background: "rgba(255,255,255,0.04)",
+              position: "relative", height: "100%",
+              background: gamePhase === 0 ? "rgba(255,255,255,0.04)"
+                : gamePhase === 1 ? "rgba(180,60,0,0.08)"
+                : "rgba(0,200,180,0.06)",
               borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.09)",
-              overflow: "hidden",
-              padding: "16px 8px",
+              border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.09)" : gamePhase === 1 ? "rgba(200,80,0,0.3)" : "rgba(0,200,180,0.25)"}`,
+              overflow: "hidden", padding: "16px 8px",
+              transition: "background 2s ease, border 2s ease",
             }}>
               {/* Finish line */}
               <div style={{
-                position: "absolute", top: 16, left: 0, right: 0,
-                height: 4,
+                position: "absolute", top: 16, left: 0, right: 0, height: 4,
                 background: `repeating-linear-gradient(90deg, ${GOLD} 0 12px, #fff 12px 24px)`,
                 boxShadow: `0 0 18px ${GOLD}90`,
               }} />
               <div style={{ position: "absolute", top: 22, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 11, fontWeight: 800, letterSpacing: 2 }}>
                 🏁 {ar ? "خط النهاية" : "FINISH"}
               </div>
-              {/* Stars inside track */}
+
+              {/* Phase indicator inside track */}
+              <div style={{ position: "absolute", top: 36, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.6)" : gamePhase === 1 ? "rgba(255,140,80,0.7)" : "rgba(80,255,220,0.7)" }}>
+                {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ الكويكبات" : "💎 الكريستال"}
+              </div>
+
+              {/* Background dots */}
               <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
                 {[...Array(12)].map((_, i) => (
                   <div key={i} style={{
                     position: "absolute",
                     left: `${10 + (i % 4) * 22}%`, top: `${10 + Math.floor(i / 4) * 28}%`,
-                    width: 1.5, height: 1.5, borderRadius: "50%", background: "#ffffff60",
+                    width: 1.5, height: 1.5, borderRadius: "50%",
+                    background: gamePhase === 2 ? "#00ffee60" : "#ffffff60",
                   }} />
                 ))}
               </div>
@@ -909,6 +1113,7 @@ export default function RocketPlay() {
                   const isMe = p.name === queryName;
                   const lanes = Math.max(1, sortedPlayers.length);
                   const xPos = (idx / Math.max(1, lanes - 1)) * 76 + 12;
+                  const isMega = isMe && gamePhase === 2;
                   return (
                     <motion.div
                       key={p.name}
@@ -931,8 +1136,13 @@ export default function RocketPlay() {
                       }}>
                         {p.avatar} {p.name}
                       </span>
-                      <RocketIcon color={p.rocketColor} isPlayer={isMe} size={isMe ? 38 : 28} boosted={isMe && boostFlash} />
-                      {/* Score badge */}
+                      <RocketIcon
+                        color={p.rocketColor}
+                        isPlayer={isMe}
+                        size={isMega ? 46 : isMe ? 38 : 28}
+                        boosted={isMe && boostFlash}
+                        mega={isMega}
+                      />
                       <span style={{ fontSize: 8, color: isMe ? GOLD : "rgba(255,255,255,0.5)", fontWeight: 700 }}>
                         {p.score}
                       </span>
