@@ -74,7 +74,7 @@ export function setupScrambleSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
 
     socket.on("scramble:teacher-start", (data: { pin: string; title: string }) => {
-      const reqSession = (socket.request as Record<string, unknown>).session as { teacherId?: number } | undefined;
+      const reqSession = ((socket.request as unknown) as Record<string, unknown>).session as { teacherId?: number } | undefined;
       if (!reqSession?.teacherId) {
         socket.emit("scramble:error", { message: "Authentication required" });
         return;
@@ -190,7 +190,7 @@ export function setupScrambleSocket(io: Server) {
     });
 
     socket.on("scramble:game-start", () => {
-      const reqSession = (socket.request as Record<string, unknown>).session as { teacherId?: number } | undefined;
+      const reqSession = ((socket.request as unknown) as Record<string, unknown>).session as { teacherId?: number } | undefined;
       if (!reqSession?.teacherId) return;
 
       const session = getSessionByTeacher(socket.id);
@@ -249,7 +249,7 @@ export function setupScrambleSocket(io: Server) {
     });
 
     socket.on("scramble:teacher-end", () => {
-      const reqSession = (socket.request as Record<string, unknown>).session as { teacherId?: number } | undefined;
+      const reqSession = ((socket.request as unknown) as Record<string, unknown>).session as { teacherId?: number } | undefined;
       if (!reqSession?.teacherId) return;
 
       const session = getSessionByTeacher(socket.id);

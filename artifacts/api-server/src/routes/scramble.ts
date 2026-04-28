@@ -16,20 +16,9 @@ const router = Router();
 router.get("/scramble-scores", async (req, res) => {
   try {
     const difficulty = typeof req.query.difficulty === "string" ? req.query.difficulty : undefined;
-    let query = db
-      .select()
-      .from(scrambleScoresTable)
-      .orderBy(desc(scrambleScoresTable.score))
-      .limit(20);
-    if (difficulty) {
-      query = db
-        .select()
-        .from(scrambleScoresTable)
-        .where(eq(scrambleScoresTable.difficulty, difficulty))
-        .orderBy(desc(scrambleScoresTable.score))
-        .limit(20);
-    }
-    const scores = await query;
+    const scores = await (difficulty
+      ? db.select().from(scrambleScoresTable).where(eq(scrambleScoresTable.difficulty, difficulty)).orderBy(desc(scrambleScoresTable.score)).limit(20)
+      : db.select().from(scrambleScoresTable).orderBy(desc(scrambleScoresTable.score)).limit(20));
     res.json(scores);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch scores" });

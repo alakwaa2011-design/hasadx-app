@@ -31,7 +31,7 @@ export function setupColorSocket(io: Server) {
         logger.info(`Color game created: ${game.pin} by ${socket.id}`);
         cb?.({ pin: game.pin, hostToken: game.hostToken });
       } catch (err) {
-        logger.error("Error creating color game:", err);
+        logger.error({ err }, "Error creating color game:");
         cb?.({ error: "Failed to create game" });
       }
     });
@@ -48,7 +48,7 @@ export function setupColorSocket(io: Server) {
         logger.info(`Host rejoined color game ${data.pin} as ${socket.id}`);
         cb?.({ success: true });
       } catch (err) {
-        logger.error("Error rejoining color game:", err);
+        logger.error({ err }, "Error rejoining color game:");
         cb?.({ error: "Failed to rejoin" });
       }
     });
@@ -70,7 +70,7 @@ export function setupColorSocket(io: Server) {
         logger.info(`Player ${data.name} joined color game ${data.pin}`);
         cb?.({ success: true, players });
       } catch (err) {
-        logger.error("Error joining color game:", err);
+        logger.error({ err }, "Error joining color game:");
         cb?.({ error: "Failed to join" });
       }
     });
@@ -90,7 +90,7 @@ export function setupColorSocket(io: Server) {
 
         cb?.({});
       } catch (err) {
-        logger.error("Error starting color game:", err);
+        logger.error({ err }, "Error starting color game:");
         cb?.({ error: "Failed to start" });
       }
     });
@@ -128,7 +128,7 @@ export function setupColorSocket(io: Server) {
           }, 800);
         }
       } catch (err) {
-        logger.error("Error submitting color answer:", err);
+        logger.error({ err }, "Error submitting color answer:");
         cb?.({ error: "Failed to submit" });
       }
     });

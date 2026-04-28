@@ -71,14 +71,14 @@ function generateRoomCode(): string {
 
 function getTeacherIdFromSocket(socket: Socket): number | null {
   const session = (
-    socket.request as Express.Request & { session?: { teacherId?: number } }
+    (socket.request as unknown) as Express.Request & { session?: { teacherId?: number } }
   ).session;
   return session?.teacherId ?? null;
 }
 
 async function getTeacherIdFromSocketAsync(socket: Socket): Promise<number | null> {
   const session = (
-    socket.request as Express.Request & { session?: { teacherId?: number; reload?: (cb: (err?: unknown) => void) => void } }
+    (socket.request as unknown) as Express.Request & { session?: { teacherId?: number; reload?: (cb: (err?: unknown) => void) => void } }
   ).session;
   if (!session) return null;
   if (typeof session.reload === "function") {

@@ -499,14 +499,15 @@ router.post("/api/quick-challenge/from-assignment/:id", async (req, res) => {
         id: q.id,
         text: q.text,
         questionType: q.questionType as string,
-        optionA: q.optionA ?? undefined,
-        optionB: q.optionB ?? undefined,
-        optionC: q.optionC ?? undefined,
-        optionD: q.optionD ?? undefined,
+        optionA: q.optionA ?? null,
+        optionB: q.optionB ?? null,
+        optionC: q.optionC ?? null,
+        optionD: q.optionD ?? null,
         correctAnswer: q.correctAnswer ?? "",
         points: q.points ?? 1,
         duration: 20,
-        imageUrl: q.imageUrl ?? undefined,
+        imageUrl: q.imageUrl ?? null,
+        readAloud: q.readAloud ?? false,
       }));
 
     if (gameQuestions.length === 0) {

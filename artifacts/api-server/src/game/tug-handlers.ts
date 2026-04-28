@@ -667,7 +667,7 @@ export function setupTugSocket(io: Server) {
         if (game.autoAdvanceTimer) { clearTimeout(game.autoAdvanceTimer); game.autoAdvanceTimer = undefined; }
 
         advanceToNext(tugNs, game);
-        cb({ success: true, finished: game.state === "finished" });
+        cb({ success: true, finished: (game.state as string) === "finished" });
       } catch (err) {
         logger.error(err, "tug:next error");
         cb({ error: "حدث خطأ" });

@@ -165,7 +165,7 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
 
 router.get("/million/class-session/:pin", (req, res) => {
   try {
-    const { pin } = req.params;
+    const { pin: _pin } = req.params; const pin = _pin as string;
     if (!pin || !/^\d{6}$/.test(pin)) {
       return res.status(400).json({ message: "رمز غير صالح" });
     }
@@ -187,7 +187,7 @@ router.get("/million/class-session/:pin", (req, res) => {
 
 router.get("/million/class-session/:pin/questions", questionsLimiter, async (req, res) => {
   try {
-    const { pin } = req.params;
+    const { pin: _pin } = req.params; const pin = _pin as string;
     if (!pin || !/^\d{6}$/.test(pin)) {
       return res.status(400).json({ message: "رمز غير صالح" });
     }

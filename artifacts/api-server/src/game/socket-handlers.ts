@@ -737,7 +737,7 @@ function scheduleQuestionTimeout(io: Server, game: Game, questionIndex: number) 
 }
 
 function getTeacherIdFromSocket(socket: Socket): number | null {
-  const session = (socket.request as Express.Request & { session?: { teacherId?: number } }).session;
+  const session = ((socket.request as unknown) as Express.Request & { session?: { teacherId?: number } }).session;
   return session?.teacherId ?? null;
 }
 

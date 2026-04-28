@@ -272,8 +272,8 @@ router.post("/assignments", async (req, res) => {
           readAloud: q.readAloud ?? false,
           difficulty: q.difficulty ?? null,
           skill: q.skill?.trim() || null,
-          allowMultipleAnswers: q.allowMultipleAnswers ?? false,
-          repeatQuestion: q.repeatQuestion ?? false,
+          allowMultipleAnswers: (q as any).allowMultipleAnswers ?? false,
+          repeatQuestion: (q as any).repeatQuestion ?? false,
         })),
       );
     }
@@ -511,7 +511,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
 
 router.get("/assignments/:id/class-students", publicReadLimiter, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (isNaN(id)) { res.status(400).json({ message: "Invalid ID" }); return; }
 
     const [assignment] = await db

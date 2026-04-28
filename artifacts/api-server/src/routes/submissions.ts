@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { z } from "zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import {
   SubmitAssignmentParams,
@@ -518,8 +519,8 @@ router.post("/assignments/:id/submissions/:submissionId/repeat", async (req, res
     }
 
     const isOwningTeacher = !!req.session.teacherId && assignment.teacherId === req.session.teacherId;
-    const isOwnerStudent = req.session.studentAccountId && submission.studentAccountId
-      ? req.session.studentAccountId === submission.studentAccountId
+    const isOwnerStudent = req.session.studentAccountId && (submission as any).studentAccountId
+      ? req.session.studentAccountId === (submission as any).studentAccountId
       : false;
     const isFingerprintMatch = body.deviceFingerprint && submission.deviceFingerprint
       ? body.deviceFingerprint.trim() === submission.deviceFingerprint.trim()
@@ -701,6 +702,8 @@ router.post("/assignments/:id/submit-image", imageUploadLimiter, async (req, res
       isCorrect: boolean;
       points: number;
       earnedPoints: number;
+      repeatQuestion?: boolean;
+      allowMultipleAnswers?: boolean;
     }> = [];
 
     const imageData = body.imageBase64.replace(/^data:image\/\w+;base64,/, "");

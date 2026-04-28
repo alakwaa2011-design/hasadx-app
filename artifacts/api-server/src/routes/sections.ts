@@ -4,7 +4,7 @@ import { eq, sql, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-async function requireAdmin(req: Record<string, unknown>, res: Record<string, unknown>): Promise<boolean> {
+async function requireAdmin(req: any, res: any): Promise<boolean> {
   const session = (req as Record<string, Record<string, unknown>>).session;
   const resFn = res as { status: (code: number) => { json: (data: Record<string, unknown>) => void } };
   if (!session.teacherId) {
@@ -42,11 +42,11 @@ router.get("/sections", async (_req, res) => {
 
     res.json({ sections, subSections, mappings });
   } catch (err) {
-    (res as Record<string, unknown> & { status: (c: number) => { json: (d: Record<string, unknown>) => void } }).status(500).json({ message: "خطأ في تحميل الأقسام" });
+    res.status(500).json({ message: "خطأ في تحميل الأقسام" });
   }
 });
 
-router.post("/admin/sections", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.post("/admin/sections", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -68,7 +68,7 @@ router.post("/admin/sections", async (req: Record<string, unknown>, res: Record<
   }
 });
 
-router.patch("/admin/sections/:id", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.patch("/admin/sections/:id", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -92,7 +92,7 @@ router.patch("/admin/sections/:id", async (req: Record<string, unknown>, res: Re
   }
 });
 
-router.delete("/admin/sections/:id", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.delete("/admin/sections/:id", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -105,7 +105,7 @@ router.delete("/admin/sections/:id", async (req: Record<string, unknown>, res: R
   }
 });
 
-router.post("/admin/sub-sections", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.post("/admin/sub-sections", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -127,7 +127,7 @@ router.post("/admin/sub-sections", async (req: Record<string, unknown>, res: Rec
   }
 });
 
-router.patch("/admin/sub-sections/:id", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.patch("/admin/sub-sections/:id", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -148,7 +148,7 @@ router.patch("/admin/sub-sections/:id", async (req: Record<string, unknown>, res
   }
 });
 
-router.delete("/admin/sub-sections/:id", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.delete("/admin/sub-sections/:id", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -161,7 +161,7 @@ router.delete("/admin/sub-sections/:id", async (req: Record<string, unknown>, re
   }
 });
 
-router.post("/admin/activities/assign-section", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.post("/admin/activities/assign-section", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -187,7 +187,7 @@ router.post("/admin/activities/assign-section", async (req: Record<string, unkno
   }
 });
 
-router.post("/admin/activities/unassign", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.post("/admin/activities/unassign", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };
@@ -207,7 +207,7 @@ router.post("/admin/activities/unassign", async (req: Record<string, unknown>, r
   }
 });
 
-router.patch("/admin/sections/reorder", async (req: Record<string, unknown>, res: Record<string, unknown>) => {
+router.patch("/admin/sections/reorder", async (req: any, res: any) => {
   if (!(await requireAdmin(req, res))) return;
   const r = req as Record<string, Record<string, unknown>>;
   const resFn = res as { json: (d: Record<string, unknown>) => void; status: (c: number) => { json: (d: Record<string, unknown>) => void } };

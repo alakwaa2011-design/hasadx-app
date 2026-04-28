@@ -39,7 +39,7 @@ export function setupFlagSocket(io: Server) {
         logger.info(`Flag game created: ${game.pin} by ${socket.id} (${questions.length} questions, tier ${data.tier})`);
         cb?.({ pin: game.pin });
       } catch (err) {
-        logger.error("Error creating flag game:", err);
+        logger.error({ err }, "Error creating flag game:");
         cb?.({ error: "Failed to create game" });
       }
     });
@@ -61,7 +61,7 @@ export function setupFlagSocket(io: Server) {
         logger.info(`Host rejoined flag game ${data.pin} as ${socket.id}`);
         cb?.({ success: true });
       } catch (err) {
-        logger.error("Error rejoining flag game:", err);
+        logger.error({ err }, "Error rejoining flag game:");
         cb?.({ error: "Failed to rejoin" });
       }
     });
@@ -99,7 +99,7 @@ export function setupFlagSocket(io: Server) {
           players,
         });
       } catch (err) {
-        logger.error("Error joining flag game:", err);
+        logger.error({ err }, "Error joining flag game:");
         cb?.({ error: "Failed to join" });
       }
     });
@@ -125,7 +125,7 @@ export function setupFlagSocket(io: Server) {
 
         cb?.({});
       } catch (err) {
-        logger.error("Error starting flag game:", err);
+        logger.error({ err }, "Error starting flag game:");
         cb?.({ error: "Failed to start" });
       }
     });
@@ -170,7 +170,7 @@ export function setupFlagSocket(io: Server) {
           }, 800);
         }
       } catch (err) {
-        logger.error("Error submitting flag answer:", err);
+        logger.error({ err }, "Error submitting flag answer:");
         cb?.({ error: "Failed to submit" });
       }
     });

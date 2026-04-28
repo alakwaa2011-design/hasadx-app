@@ -257,7 +257,7 @@ router.post("/question-bank/import-from-assignment", async (req, res) => {
       .values(
         questions.map((q) => ({
           teacherId: req.session.teacherId!,
-          subject: assignment.subject,
+          subject: assignment.subject ?? "",
           text: q.text,
           optionA: q.optionA,
           optionB: q.optionB,
