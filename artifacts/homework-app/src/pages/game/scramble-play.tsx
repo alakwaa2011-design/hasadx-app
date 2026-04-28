@@ -163,19 +163,21 @@ export default function ScramblePlay() {
       }
     });
 
-    socket.on("scramble:no-session", () => {
+    const handleWaitForTeacher = () => {
       setWaitingForTeacher(true);
       if (!waitRetryRef.current) {
         waitRetryRef.current = setInterval(() => {
           socket.emit("scramble:student-join", { pin: parsed.pin, name });
         }, 3000);
       }
-    });
+    };
+
+    socket.on("scramble:no-session", handleWaitForTeacher);
+    socket.on("scramble:waiting-for-teacher", handleWaitForTeacher);
 
     socket.on("scramble:teacher-connected", () => {
-      if (waitRetryRef.current) {
-        socket.emit("scramble:student-join", { pin: parsed.pin, name });
-      }
+      // Teacher just connected — re-join to get proper lobby state
+      socket.emit("scramble:student-join", { pin: parsed.pin, name });
     });
 
     socket.on("scramble:game-started", () => {
@@ -203,6 +205,7 @@ export default function ScramblePlay() {
       socket.off("scramble:joined-lobby");
       socket.off("scramble:joined-playing");
       socket.off("scramble:no-session");
+      socket.off("scramble:waiting-for-teacher");
       socket.off("scramble:teacher-connected");
       socket.off("scramble:game-started");
       socket.off("scramble:lobby-count");

@@ -88,7 +88,7 @@ export function setupScrambleSocket(io: Server) {
       const session: ScrambleSession = {
         pin,
         teacherSocketId: socket.id,
-        title: title || "",
+        title: title || existing?.title || "",
         state: existing?.state || "lobby",
         players: existing?.players || new Map(),
         createdAt: existing?.createdAt || Date.now(),
@@ -101,6 +101,17 @@ export function setupScrambleSocket(io: Server) {
         players: serializePlayers(session),
       });
 
+      // Notify any students who were already waiting before the teacher joined
+      for (const [playerSocketId, player] of session.players.entries()) {
+        if (playerSocketId !== socket.id) {
+          io.to(playerSocketId).emit("scramble:joined-lobby", {
+            pin,
+            title: session.title,
+            playerCount: session.players.size,
+          });
+        }
+      }
+
       io.to(`scramble:${pin}`).emit("scramble:teacher-connected");
     });
 
@@ -108,10 +119,18 @@ export function setupScrambleSocket(io: Server) {
       const { pin, name } = data;
       if (!pin || !name) return;
 
-      const session = sessions.get(pin);
+      // Allow students to join before teacher — create a waiting lobby
+      let session = sessions.get(pin);
       if (!session) {
-        socket.emit("scramble:no-session", { pin });
-        return;
+        session = {
+          pin,
+          teacherSocketId: "",   // teacher not connected yet
+          title: "",
+          state: "lobby",
+          players: new Map(),
+          createdAt: Date.now(),
+        };
+        sessions.set(pin, session);
       }
 
       const trimmedName = name.trim().slice(0, 30);
@@ -138,7 +157,10 @@ export function setupScrambleSocket(io: Server) {
       session.players.set(socket.id, player);
       socket.join(`scramble:${pin}`);
 
-      if (session.state === "lobby") {
+      if (!session.teacherSocketId) {
+        // Teacher not yet connected — student waits
+        socket.emit("scramble:waiting-for-teacher", { pin });
+      } else if (session.state === "lobby") {
         socket.emit("scramble:joined-lobby", {
           pin,
           title: session.title,
@@ -151,9 +173,12 @@ export function setupScrambleSocket(io: Server) {
         });
       }
 
-      io.to(session.teacherSocketId).emit("scramble:players-updated", {
-        players: serializePlayers(session),
-      });
+      // Notify teacher if already connected
+      if (session.teacherSocketId) {
+        io.to(session.teacherSocketId).emit("scramble:players-updated", {
+          players: serializePlayers(session),
+        });
+      }
 
       io.to(`scramble:${pin}`).emit("scramble:lobby-count", {
         count: session.players.size,
@@ -233,8 +258,17 @@ export function setupScrambleSocket(io: Server) {
     socket.on("disconnect", () => {
       const teacherSession = getSessionByTeacher(socket.id);
       if (teacherSession) {
-        io.to(`scramble:${teacherSession.pin}`).emit("scramble:session-ended");
-        sessions.delete(teacherSession.pin);
+        // Mark teacher as disconnected but keep session alive for 5 min so students can still wait
+        teacherSession.teacherSocketId = "";
+        io.to(`scramble:${teacherSession.pin}`).emit("scramble:waiting-for-teacher", { pin: teacherSession.pin });
+        // Actually end session after 5 minutes if teacher doesn't reconnect
+        setTimeout(() => {
+          const s = sessions.get(teacherSession.pin);
+          if (s && !s.teacherSocketId) {
+            io.to(`scramble:${s.pin}`).emit("scramble:session-ended");
+            sessions.delete(s.pin);
+          }
+        }, 5 * 60 * 1000);
         return;
       }
 
