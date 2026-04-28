@@ -915,6 +915,10 @@ export default function TugPlay() {
                   setIsPowerQ(!!aq.isPower);
                   startTimer(aq.remainingSecs ?? aq.duration);
                   getSound().startBackground();
+                } else if (gs === "paused" && res.activeQuestion) {
+                  setIsPaused(true);
+                  setQuestion(res.activeQuestion);
+                  setIsPowerQ(!!res.activeQuestion.isPower);
                 } else if (gs === "round-end" && res.roundSummary && res.activeQuestion) {
                   setRoundData({ ...res.roundSummary, players: res.players ?? [] });
                   setQuestion(res.activeQuestion);

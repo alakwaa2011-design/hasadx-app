@@ -485,9 +485,9 @@ export function setupTugSocket(io: Server) {
           tugNs.to(`tug:${game.pin}`).emit("tug:players-updated", { players: getPlayerList(game) });
 
           const q = game.questions[game.currentQuestionIndex];
-          const remainingSecs = game.state === "question" && game.questionStartTime && q
+          const remainingSecs = (game.state === "question" && game.questionStartTime && q)
             ? Math.max(0, q.duration - Math.floor((Date.now() - game.questionStartTime) / 1000))
-            : undefined;
+            : (game.state === "paused" ? (game.pausedTimeRemaining ?? q?.duration) : undefined);
 
           cb({
             success: true,
@@ -496,7 +496,7 @@ export function setupTugSocket(io: Server) {
             pin: game.pin,
             gameState: game.state,
             ropePosition: game.ropePosition,
-            activeQuestion: (game.state === "question" || game.state === "round-end") && q ? {
+            activeQuestion: (game.state === "question" || game.state === "paused" || game.state === "round-end") && q ? {
               index: game.currentQuestionIndex,
               total: game.questions.length,
               text: q.text,
