@@ -249,4 +249,45 @@ router.post("/game-history/save/:pin", async (req, res) => {
   }
 });
 
+// ── Unified PIN lookup ─────────────────────────────────────────────────────────
+// Returns { gameType } so the client can redirect to the correct join page.
+router.get("/pin-lookup/:pin", async (req, res) => {
+  const { pin } = req.params;
+  if (!pin || !/^\d{6}$/.test(pin)) {
+    res.json({ gameType: "unknown" });
+    return;
+  }
+
+  // 1. Wameeth (main live quiz)
+  const wameethGame = getGame(pin);
+  if (wameethGame) { res.json({ gameType: "wameeth" }); return; }
+
+  // 2. Tug of War
+  const { getTugGame } = await import("../game/tug-handlers.js");
+  if (getTugGame(pin)) { res.json({ gameType: "tug" }); return; }
+
+  // 3. Rocket Race
+  const { getRocketGame } = await import("../game/rocket-handlers.js");
+  if (getRocketGame(pin)) { res.json({ gameType: "rocket" }); return; }
+
+  // 4. HotSeat
+  const { getHotSeatGame } = await import("../game/hotseat-handlers.js");
+  if (getHotSeatGame(pin)) { res.json({ gameType: "hotseat" }); return; }
+
+  // 5. Million Team
+  const { getMillionTeamSession } = await import("../game/million-team-handlers.js");
+  if (getMillionTeamSession(pin)) { res.json({ gameType: "million-team" }); return; }
+
+  // 6. Million Class (DB-backed)
+  const { getClassSession } = await import("../game/million-class-handlers.js");
+  const classSession = getClassSession(pin);
+  if (classSession) { res.json({ gameType: "million" }); return; }
+
+  // 7. Scramble
+  const { getScrambleSession } = await import("../game/scramble-socket-handlers.js");
+  if (getScrambleSession && getScrambleSession(pin)) { res.json({ gameType: "scramble" }); return; }
+
+  res.json({ gameType: "unknown" });
+});
+
 export default router;

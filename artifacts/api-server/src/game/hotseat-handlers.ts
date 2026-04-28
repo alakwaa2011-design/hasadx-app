@@ -138,6 +138,10 @@ function cleanupGame(pin: string) {
   games.delete(pin);
 }
 
+export function getHotSeatGame(pin: string): HotSeatGame | undefined {
+  return games.get(pin);
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 export function setupHotSeatSocket(io: Server) {

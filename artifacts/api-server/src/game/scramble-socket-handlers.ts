@@ -66,6 +66,10 @@ function serializePlayers(session: ScrambleSession) {
   }));
 }
 
+export function getScrambleSession(pin: string): ScrambleSession | undefined {
+  return sessions.get(pin);
+}
+
 export function setupScrambleSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
 

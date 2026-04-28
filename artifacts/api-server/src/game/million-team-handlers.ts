@@ -445,6 +445,10 @@ function findSessionByHost(socketId: string): TeamSession | undefined {
   return undefined;
 }
 
+export function getMillionTeamSession(pin: string): TeamSession | undefined {
+  return sessions.get(pin);
+}
+
 export function setupMillionTeamSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
 

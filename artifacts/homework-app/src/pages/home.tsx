@@ -1263,30 +1263,39 @@ export default function Home() {
   const handlePinJoin = async () => {
     let trimmed = pin.trim();
     if (!trimmed) return;
-    // Accept full URLs from any game (millions, wameed, etc.)
-    const millionUrlMatch = trimmed.match(
-      /\/game\/million\/join\/([a-zA-Z0-9]+)/,
-    );
-    if (millionUrlMatch) {
-      setLocation(`/game/million/join/${millionUrlMatch[1]}`);
-      return;
-    }
+
+    // Extract PIN from a pasted full URL (e.g. https://…/game/tug/join/123456)
     const urlMatch = trimmed.match(
-      /\/game\/(?:join|[a-z]+\/join)\/([a-zA-Z0-9]+)/,
+      /\/game\/(?:[a-z-]+\/)*join\/([a-zA-Z0-9]+)/,
     );
     if (urlMatch) trimmed = urlMatch[1];
-    // Probe Million class session first; fall back to the universal join page
+
+    // Must be 6 digits
+    if (!/^\d{6}$/.test(trimmed)) {
+      setLocation(`/game/join/${trimmed}`);
+      return;
+    }
+
+    // Ask the server which game this PIN belongs to
     try {
-      const r = await fetch(
-        `${API_BASE}/api/million/class-session/${encodeURIComponent(trimmed)}`,
-      );
+      const r = await fetch(`${API_BASE}/api/pin-lookup/${trimmed}`);
       if (r.ok) {
-        setLocation(`/game/million/join/${trimmed}`);
-        return;
+        const data: { gameType: string } = await r.json();
+        switch (data.gameType) {
+          case "tug":         setLocation(`/game/tug/join/${trimmed}`); return;
+          case "rocket":      setLocation(`/game/rocket/join/${trimmed}`); return;
+          case "hotseat":     setLocation(`/game/hotseat/join/${trimmed}`); return;
+          case "million-team":setLocation(`/game/million/team-play/${trimmed}`); return;
+          case "million":     setLocation(`/game/million/join/${trimmed}`); return;
+          case "scramble":    setLocation(`/game/scramble/play?pin=${trimmed}`); return;
+          case "wameeth":     setLocation(`/game/join/${trimmed}`); return;
+          default: break; // unknown — fall through to generic join
+        }
       }
     } catch {
-      /* ignore network errors and fall through */
+      /* ignore and fall through */
     }
+
     setLocation(`/game/join/${trimmed}`);
   };
 
