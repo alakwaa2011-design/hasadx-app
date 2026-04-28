@@ -1012,6 +1012,14 @@ export default function Home() {
     : teacherData
       ? true
       : false;
+
+  // Redirect logged-in teachers directly to their dashboard
+  useEffect(() => {
+    if (isLoggedIn === true) {
+      setLocation("/teacher");
+    }
+  }, [isLoggedIn, setLocation]);
+
   const teacher = {
     isLoggedIn,
     name: teacherData?.name ?? null,
