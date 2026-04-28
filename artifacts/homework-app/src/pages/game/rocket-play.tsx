@@ -8,6 +8,20 @@ import { toast } from "@/components/ui/sonner";
 
 const GOLD = "#D9A521";
 const SPACE_BG = "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)";
+
+// Pre-generated star data for consistent scrolling (module-level = stable positions)
+const STAR_LAYERS = [
+  // Slow far layer (120 stars spread across 200% height)
+  Array.from({ length: 120 }, (_, i) => ({
+    id: i, x: ((i * 73 + 17) % 100), y: ((i * 91 + 33) % 200),
+    size: 0.5 + (i % 3) * 0.5, twinkle: i % 4 === 0,
+  })),
+  // Fast near layer (60 larger stars)
+  Array.from({ length: 60 }, (_, i) => ({
+    id: i + 200, x: ((i * 57 + 41) % 100), y: ((i * 113 + 11) % 200),
+    size: 1.5 + (i % 3) * 0.7, twinkle: i % 3 === 0,
+  })),
+];
 const PHASE_BACKGROUNDS = [
   "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)", // Phase 1: Deep Space
   "linear-gradient(180deg, #150505 0%, #2d0a00 40%, #3d1000 100%)", // Phase 2: Asteroid Field
@@ -442,82 +456,122 @@ function ShootingStar({ x, y, delay }: { x: number; y: number; delay: number }) 
   );
 }
 
-// ─── Stars background ──────────────────────────────────────────────────────
+// ─── Continuously scrolling star background ────────────────────────────────
 function StarField({ phase = 0 }: { phase?: number }) {
-  const stars = Array.from({ length: 70 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2.5 + 0.5,
-    delay: Math.random() * 4,
-    twinkle: Math.random() > 0.6,
-  }));
-  const shooters = [{ x: 80, y: 10, delay: 3 }, { x: 60, y: 5, delay: 8 }, { x: 90, y: 20, delay: 15 }];
-  const starColor = phase === 0 ? "#fff" : phase === 1 ? "#ff9966" : "#88ffee";
-  const nebulaA = phase === 0 ? "rgba(80,0,120,0.15)" : phase === 1 ? "rgba(180,50,0,0.13)" : "rgba(0,200,180,0.12)";
-  const nebulaB = phase === 0 ? "rgba(0,40,120,0.12)" : phase === 1 ? "rgba(120,20,0,0.10)" : "rgba(0,100,200,0.10)";
+  const starColor = phase === 0 ? "#fff" : phase === 1 ? "#ffa07a" : "#88ffee";
+  const glowColor = phase === 0 ? "rgba(180,160,255,0.18)" : phase === 1 ? "rgba(220,80,0,0.16)" : "rgba(0,220,200,0.15)";
+  const nebulaA = phase === 0 ? "rgba(80,0,140,0.18)" : phase === 1 ? "rgba(200,60,0,0.16)" : "rgba(0,200,180,0.15)";
+  const nebulaB = phase === 0 ? "rgba(0,40,150,0.14)" : phase === 1 ? "rgba(140,20,0,0.12)" : "rgba(0,120,220,0.13)";
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {stars.map(s => (
-        <motion.div
-          key={s.id}
-          animate={s.twinkle ? { opacity: [0.2, 1, 0.2], scale: [1, 1.3, 1] } : { opacity: [0.4, 0.9, 0.4] }}
-          transition={{ repeat: Infinity, duration: 1.5 + s.delay, delay: s.delay * 0.3 }}
-          style={{
-            position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
-            width: s.size, height: s.size, borderRadius: "50%", background: starColor,
-            boxShadow: s.size > 1.5 ? `0 0 ${s.size * 3}px ${starColor}cc` : undefined,
-          }}
-        />
+      {/* Nebula glow layers */}
+      <motion.div
+        animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.08, 1] }}
+        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
+        style={{ position: "absolute", top: "10%", left: "5%", width: 420, height: 280, background: `radial-gradient(ellipse, ${nebulaA} 0%, transparent 70%)` }}
+      />
+      <motion.div
+        animate={{ opacity: [0.5, 0.9, 0.5], scale: [1, 1.05, 1] }}
+        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut", delay: 2 }}
+        style={{ position: "absolute", top: "50%", right: "3%", width: 350, height: 240, background: `radial-gradient(ellipse, ${nebulaB} 0%, transparent 70%)` }}
+      />
+      <motion.div
+        animate={{ opacity: [0.3, 0.7, 0.3] }}
+        transition={{ repeat: Infinity, duration: 10, ease: "easeInOut", delay: 4 }}
+        style={{ position: "absolute", bottom: "15%", left: "20%", width: 300, height: 200, background: `radial-gradient(ellipse, ${glowColor} 0%, transparent 70%)` }}
+      />
+      {/* Far stars — slow scroll */}
+      <motion.div
+        animate={{ y: ["0%", "-50%"] }}
+        transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
+      >
+        {STAR_LAYERS[0].map(s => (
+          <motion.div
+            key={s.id}
+            animate={s.twinkle ? { opacity: [0.2, 1, 0.3, 0.9, 0.2] } : { opacity: [0.4, 0.85, 0.4] }}
+            transition={{ repeat: Infinity, duration: 2 + (s.id % 5), delay: (s.id % 7) * 0.3 }}
+            style={{
+              position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
+              width: s.size, height: s.size, borderRadius: "50%", background: starColor,
+              boxShadow: s.size > 1.2 ? `0 0 ${s.size * 4}px ${starColor}bb` : undefined,
+            }}
+          />
+        ))}
+      </motion.div>
+      {/* Near stars — faster scroll */}
+      <motion.div
+        animate={{ y: ["0%", "-50%"] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
+      >
+        {STAR_LAYERS[1].map(s => (
+          <motion.div
+            key={s.id}
+            animate={s.twinkle ? { opacity: [0.3, 1, 0.3], scale: [1, 1.5, 1] } : { opacity: [0.5, 1, 0.5] }}
+            transition={{ repeat: Infinity, duration: 1.5 + (s.id % 4) * 0.5, delay: (s.id % 5) * 0.4 }}
+            style={{
+              position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
+              width: s.size, height: s.size, borderRadius: "50%", background: starColor,
+              boxShadow: `0 0 ${s.size * 5}px ${starColor}dd`,
+            }}
+          />
+        ))}
+      </motion.div>
+      {/* Shooting stars */}
+      {[{ x: 80, y: 8, delay: 4 }, { x: 55, y: 3, delay: 11 }, { x: 92, y: 18, delay: 18 }].map((s, i) => (
+        <ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />
       ))}
-      {shooters.map((s, i) => (<ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />))}
-      <div style={{ position: "absolute", top: "15%", left: "10%", width: 300, height: 200, background: `radial-gradient(ellipse, ${nebulaA} 0%, transparent 70%)`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: "50%", right: "5%", width: 250, height: 180, background: `radial-gradient(ellipse, ${nebulaB} 0%, transparent 70%)`, pointerEvents: "none" }} />
     </div>
   );
 }
 
 // ─── Phase 2: Asteroid Field background ──────────────────────────────────────
+const ASTEROID_CONFIGS = [
+  { id:0, x:8, size:36, rot:1.2, dur:8, delay:0 },
+  { id:1, x:75, size:24, rot:-1.8, dur:6, delay:1.5 },
+  { id:2, x:22, size:48, rot:0.9, dur:11, delay:3 },
+  { id:3, x:60, size:20, rot:-2.2, dur:5, delay:0.5 },
+  { id:4, x:88, size:30, rot:1.6, dur:9, delay:4 },
+  { id:5, x:42, size:40, rot:-1.0, dur:12, delay:2 },
+  { id:6, x:15, size:22, rot:2.0, dur:7, delay:5 },
+  { id:7, x:70, size:28, rot:-0.8, dur:10, delay:1 },
+];
 function AsteroidField() {
-  const asteroids = [
-    { id:0, x:8, y:12, size:32, rot:1.2, dur:14, delay:0, drift:25 },
-    { id:1, x:75, y:8, size:22, rot:-0.9, dur:10, delay:2, drift:-18 },
-    { id:2, x:45, y:30, size:42, rot:0.7, dur:18, delay:1, drift:15 },
-    { id:3, x:90, y:55, size:18, rot:-1.5, dur:9, delay:3, drift:-12 },
-    { id:4, x:20, y:65, size:28, rot:1.0, dur:12, delay:0.5, drift:20 },
-    { id:5, x:60, y:75, size:35, rot:-0.6, dur:16, delay:4, drift:-22 },
-    { id:6, x:5, y:85, size:20, rot:1.4, dur:11, delay:1.5, drift:14 },
-    { id:7, x:85, y:88, size:26, rot:-1.1, dur:13, delay:2.5, drift:-16 },
-  ];
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {asteroids.map(a => (
+      {/* Scrolling asteroids from top */}
+      {ASTEROID_CONFIGS.map(a => (
         <motion.div key={a.id}
-          animate={{ rotate: [0, a.rot * 360], x: [0, a.drift, 0], y: [0, a.drift * 0.4, 0] }}
-          transition={{ duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" }}
-          style={{ position: "absolute", left: `${a.x}%`, top: `${a.y}%` }}>
-          <svg width={a.size} height={a.size * 0.85} viewBox="0 0 60 50" opacity={0.35}>
+          animate={{ y: ["-10%", "110%"], rotate: [0, a.rot * 360] }}
+          transition={{ y: { duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" }, rotate: { duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" } }}
+          style={{ position: "absolute", left: `${a.x}%`, top: 0 }}>
+          <svg width={a.size} height={a.size * 0.85} viewBox="0 0 60 50" opacity={0.45}>
             <path d="M10 12 L20 4 L38 2 L52 14 L58 28 L50 42 L34 46 L18 44 L6 32 L8 18 Z"
-              fill="#7c3a1a" stroke="#c0601a" strokeWidth="1.5" />
-            <path d="M20 15 L28 10 L36 16 L32 26 L22 24 Z" fill="rgba(0,0,0,0.3)" />
-            <path d="M38 28 L46 32 L42 40 L34 36 Z" fill="rgba(0,0,0,0.2)" />
-            <path d="M12 22 L18 20 L16 28 L10 26 Z" fill="rgba(255,120,50,0.2)" />
+              fill="#8b4513" stroke="#d2691e" strokeWidth="2" />
+            <path d="M20 15 L28 10 L36 16 L32 26 L22 24 Z" fill="rgba(0,0,0,0.35)" />
+            <path d="M38 28 L46 32 L42 40 L34 36 Z" fill="rgba(0,0,0,0.25)" />
+            <path d="M12 22 L18 20 L16 28 L10 26 Z" fill="rgba(255,140,60,0.3)" />
           </svg>
         </motion.div>
       ))}
-      {[...Array(6)].map((_, i) => (
+      {/* Fire embers drifting */}
+      {[...Array(8)].map((_, i) => (
         <motion.div key={`ember-${i}`}
-          animate={{ y: [-10, -70], opacity: [0, 0.9, 0], x: [0, (i % 2 === 0 ? 1 : -1) * 20] }}
-          transition={{ duration: 1.8 + i * 0.4, delay: i * 1.0, repeat: Infinity }}
+          animate={{ y: ["-5vh", "105vh"], opacity: [0, 0.8, 0.8, 0], x: [0, (i % 2 === 0 ? 1 : -1) * 30] }}
+          transition={{ duration: 3 + i * 0.5, delay: i * 0.8, repeat: Infinity, ease: "easeIn" }}
           style={{
-            position: "absolute", bottom: `${8 + i * 14}%`, left: `${12 + i * 14}%`,
-            width: 5, height: 5, borderRadius: "50%",
-            background: `hsl(${20 + i * 12}, 100%, 60%)`,
-            boxShadow: `0 0 10px hsl(${20 + i * 12}, 100%, 60%)`,
+            position: "absolute", top: 0, left: `${8 + i * 11}%`,
+            width: 6, height: 6, borderRadius: "50%",
+            background: `hsl(${15 + i * 10}, 100%, 60%)`,
+            boxShadow: `0 0 12px hsl(${15 + i * 10}, 100%, 60%)`,
           }} />
       ))}
-      <div style={{ position: "absolute", top: "20%", left: "15%", width: 350, height: 250, background: "radial-gradient(ellipse, rgba(200,50,0,0.12) 0%, transparent 70%)" }} />
-      <div style={{ position: "absolute", bottom: "15%", right: "8%", width: 280, height: 200, background: "radial-gradient(ellipse, rgba(255,100,0,0.08) 0%, transparent 70%)" }} />
+      {/* Nebula clouds */}
+      <motion.div animate={{ opacity: [0.7, 1, 0.7], x: [-10, 10, -10] }} transition={{ repeat: Infinity, duration: 8 }}
+        style={{ position: "absolute", top: "15%", left: "10%", width: 380, height: 260, background: "radial-gradient(ellipse, rgba(200,50,0,0.15) 0%, transparent 70%)" }} />
+      <motion.div animate={{ opacity: [0.5, 0.9, 0.5], x: [10, -10, 10] }} transition={{ repeat: Infinity, duration: 10, delay: 3 }}
+        style={{ position: "absolute", bottom: "10%", right: "5%", width: 320, height: 220, background: "radial-gradient(ellipse, rgba(255,100,0,0.12) 0%, transparent 70%)" }} />
     </div>
   );
 }
@@ -656,6 +710,11 @@ export default function RocketPlay() {
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [optionMapping, setOptionMapping] = useState<number[]>([]); // displayIdx → originalIdx
   const wrongAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rank tracking
+  const [myRank, setMyRank] = useState(0);
+  const prevRankRef = useRef(0);
+  const [rankMessage, setRankMessage] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [encouragement, setEncouragement] = useState<string | null>(null);
   const [gameTimeLeft, setGameTimeLeft] = useState(0);
@@ -678,6 +737,25 @@ export default function RocketPlay() {
 
   useEffect(() => { soundRef.current?.setMuted(muted); }, [muted]);
   useEffect(() => () => { soundRef.current?.destroy(); }, []);
+
+  // Track rank changes and show encouragement
+  useEffect(() => {
+    if (!queryName || players.length === 0) return;
+    const sorted = [...players].sort((a, b) => b.score !== a.score ? b.score - a.score : b.altitude - a.altitude);
+    const rank = sorted.findIndex(p => p.name === queryName) + 1;
+    if (rank > 0) {
+      if (prevRankRef.current > 0 && rank < prevRankRef.current) {
+        // Rank improved!
+        const msgs = ar
+          ? [`🏆 صعدت للمرتبة ${rank}! ممتاز!`, `🚀 المرتبة ${rank} الآن!`, `⚡ تقدمت! أنت في المرتبة ${rank}!`]
+          : [`🏆 Rank ${rank}! Keep going!`, `🚀 You're #${rank}!`, `⚡ Moving up! Rank ${rank}!`];
+        setRankMessage(msgs[Math.floor(Math.random() * msgs.length)]);
+        setTimeout(() => setRankMessage(null), 2500);
+      }
+      prevRankRef.current = rank;
+      setMyRank(rank);
+    }
+  }, [players, queryName, ar]);
 
   // Shuffle options whenever a new question arrives
   useEffect(() => {
@@ -952,6 +1030,26 @@ export default function RocketPlay() {
               {myStreak >= 3 && <span style={{ marginInlineStart: 8, color: "#ff6b1a" }}>🔥 ×{myStreak}</span>}
             </p>
           </div>
+          {/* Rank badge */}
+          {myRank > 0 && phase === "racing" && (
+            <motion.div
+              key={myRank}
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              style={{
+                background: myRank === 1 ? "linear-gradient(135deg,#D9A521,#c89212)"
+                  : myRank === 2 ? "linear-gradient(135deg,#94a3b8,#64748b)"
+                  : myRank === 3 ? "linear-gradient(135deg,#cd7f32,#a0522d)"
+                  : "rgba(255,255,255,0.15)",
+                borderRadius: 999, padding: "3px 10px",
+                fontWeight: 900, fontSize: 13, color: myRank <= 3 ? "#000" : "#fff",
+                border: myRank === 1 ? "1.5px solid #D9A521" : "1.5px solid transparent",
+                whiteSpace: "nowrap", flexShrink: 0,
+              }}
+            >
+              {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : `#${myRank}`}
+            </motion.div>
+          )}
         </div>
 
         {/* Game timer */}
@@ -1056,6 +1154,27 @@ export default function RocketPlay() {
         </div>
       )}
 
+      {/* Rank improvement toast */}
+      <AnimatePresence>
+        {rankMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -30, scale: 0.85 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            style={{
+              position: "fixed", top: 70, left: "50%", transform: "translateX(-50%)",
+              zIndex: 250, background: "linear-gradient(135deg, #D9A521, #c89212)",
+              borderRadius: 999, padding: "10px 24px",
+              fontWeight: 900, fontSize: 15, color: "#000",
+              boxShadow: "0 8px 24px rgba(217,165,33,0.6)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {rankMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Racing ── */}
       {phase === "racing" && (
         isMobile ? (
@@ -1110,7 +1229,7 @@ export default function RocketPlay() {
           </div>
         ) : (
           // DESKTOP: rockets panel left, question right
-          <div style={{ position: "relative", zIndex: 5, display: "grid", gridTemplateColumns: "minmax(260px, 300px) 1fr", gap: 14, padding: "14px 16px", alignItems: "start", height: "calc(100dvh - 70px)" }}>
+          <div style={{ position: "relative", zIndex: 5, display: "grid", gridTemplateColumns: "minmax(360px, 48%) 1fr", gap: 16, padding: "12px 16px", alignItems: "start", height: "calc(100dvh - 64px)" }}>
             {/* Race track */}
             <div style={{
               position: "relative", height: "100%",
@@ -1122,19 +1241,23 @@ export default function RocketPlay() {
               overflow: "hidden", padding: "16px 8px",
               transition: "background 2s ease, border 2s ease",
             }}>
-              {/* Finish line */}
-              <div style={{
-                position: "absolute", top: 16, left: 0, right: 0, height: 4,
-                background: `repeating-linear-gradient(90deg, ${GOLD} 0 12px, #fff 12px 24px)`,
-                boxShadow: `0 0 18px ${GOLD}90`,
-              }} />
-              <div style={{ position: "absolute", top: 22, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 11, fontWeight: 800, letterSpacing: 2 }}>
-                🏁 {ar ? "خط النهاية" : "FINISH"}
+              {/* Lead zone marker at top */}
+              <motion.div
+                animate={{ opacity: [0.7, 1, 0.7] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                style={{
+                  position: "absolute", top: 10, left: 0, right: 0, height: 3,
+                  background: `repeating-linear-gradient(90deg, ${GOLD} 0 10px, rgba(255,255,255,0.5) 10px 20px)`,
+                  boxShadow: `0 0 14px ${GOLD}90`,
+                }}
+              />
+              <div style={{ position: "absolute", top: 15, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>
+                🏆 {ar ? "منطقة الصدارة" : "LEAD ZONE"}
               </div>
 
               {/* Phase indicator inside track */}
-              <div style={{ position: "absolute", top: 36, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.6)" : gamePhase === 1 ? "rgba(255,140,80,0.7)" : "rgba(80,255,220,0.7)" }}>
-                {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ الكويكبات" : "💎 الكريستال"}
+              <div style={{ position: "absolute", top: 28, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.7)" : gamePhase === 1 ? "rgba(255,140,80,0.8)" : "rgba(80,255,220,0.8)" }}>
+                {gamePhase === 0 ? "🌌 الفضاء العميق" : gamePhase === 1 ? "☄️ حقل الكويكبات" : "💎 كوكب الكريستال"}
               </div>
 
               {/* Background dots */}
@@ -1154,38 +1277,47 @@ export default function RocketPlay() {
                 {sortedPlayers.map((p, idx) => {
                   const isMe = p.name === queryName;
                   const lanes = Math.max(1, sortedPlayers.length);
-                  const xPos = (idx / Math.max(1, lanes - 1)) * 76 + 12;
+                  // Distribute rockets evenly, more spacing for few players
+                  const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
+                  const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
                   const isMega = isMe && gamePhase === 2;
+                  const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
                   return (
                     <motion.div
                       key={p.name}
-                      animate={{ bottom: `${Math.min(90, p.altitude)}%`, left: `${xPos}%` }}
+                      animate={{ bottom: `${Math.min(86, p.altitude)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
                       initial={false}
-                      transition={{ type: "spring", stiffness: 60, damping: 18 }}
+                      transition={{ type: "spring", stiffness: 55, damping: 16 }}
                       style={{
                         position: "absolute",
                         transform: "translateX(-50%)",
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
                         zIndex: isMe ? 10 : 5,
                       }}
                     >
                       <span style={{
-                        fontSize: 9, fontWeight: 800, color: isMe ? GOLD : "#fff",
-                        background: "rgba(0,0,0,0.6)",
-                        padding: "1px 5px", borderRadius: 999, whiteSpace: "nowrap",
-                        maxWidth: 72, overflow: "hidden", textOverflow: "ellipsis",
-                        border: isMe ? `1px solid ${GOLD}` : "none",
+                        fontSize: isMe ? 10 : 9, fontWeight: 800,
+                        color: isMe ? GOLD : "#fff",
+                        background: isMe ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.55)",
+                        padding: "2px 6px", borderRadius: 999, whiteSpace: "nowrap",
+                        maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis",
+                        border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
                       }}>
-                        {p.avatar} {p.name}
+                        {rankEmoji}{p.avatar} {p.name}
                       </span>
                       <RocketIcon
                         color={p.rocketColor}
                         isPlayer={isMe}
-                        size={isMega ? 46 : isMe ? 38 : 28}
+                        size={isMega ? 50 : isMe ? 42 : 30}
                         boosted={isMe && boostFlash}
                         mega={isMega}
                       />
-                      <span style={{ fontSize: 8, color: isMe ? GOLD : "rgba(255,255,255,0.5)", fontWeight: 700 }}>
+                      <span style={{
+                        fontSize: isMe ? 9 : 8,
+                        color: isMe ? GOLD : "rgba(255,255,255,0.55)",
+                        fontWeight: 700, background: "rgba(0,0,0,0.4)",
+                        padding: "1px 4px", borderRadius: 4,
+                      }}>
                         {p.score}
                       </span>
                     </motion.div>
@@ -1265,77 +1397,114 @@ function QuestionPanel({
   ];
 
   return (
-    <div>
-      {/* Progress + timer row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 700 }}>
-            {ar ? "السؤال" : "Q"} {currentQ.index + 1} / {totalQuestions}
-          </span>
-          {currentQ.index + 1 > totalQuestions && (
-            <span style={{ fontSize: 10, color: GOLD, fontWeight: 700, background: "rgba(217,165,33,0.15)", padding: "2px 8px", borderRadius: 999, border: `1px solid ${GOLD}50` }}>
-              {ar ? "دورة ثانية" : "Cycle 2+"}
-            </span>
-          )}
-        </div>
-        <div style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "5px 14px", borderRadius: 999,
-          background: timeLeft <= 5 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.1)",
-          border: `1.5px solid ${timeLeft <= 5 ? "#dc2626" : "rgba(255,255,255,0.2)"}`,
-          color: "#fff", fontWeight: 800, fontSize: 14,
-          animation: timeLeft <= 5 ? "pulse 0.5s infinite" : undefined,
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Timer bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{
+          color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700,
+          background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: 999,
         }}>
+          {ar ? "السؤال" : "Q"} {currentQ.index + 1}
+          {currentQ.index + 1 > totalQuestions && (
+            <span style={{ marginInlineStart: 6, color: GOLD }}>{ar ? "🔁 دورة+" : "🔁 Cycle+"}</span>
+          )}
+        </span>
+        <motion.div
+          animate={timeLeft <= 5 ? { scale: [1, 1.08, 1] } : {}}
+          transition={{ repeat: Infinity, duration: 0.5 }}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            padding: "6px 16px", borderRadius: 999,
+            background: timeLeft <= 5 ? "rgba(220,38,38,0.5)" : timeLeft <= 10 ? "rgba(217,100,0,0.35)" : "rgba(255,255,255,0.12)",
+            border: `1.5px solid ${timeLeft <= 5 ? "#ef4444" : timeLeft <= 10 ? "#f97316" : "rgba(255,255,255,0.2)"}`,
+            color: "#fff", fontWeight: 900, fontSize: 16,
+          }}
+        >
           ⏱ {timeLeft}s
-        </div>
+        </motion.div>
+      </div>
+
+      {/* Timer progress bar */}
+      <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+        <motion.div
+          animate={{ width: `${(timeLeft / currentQ.duration) * 100}%` }}
+          transition={{ duration: 0.5 }}
+          style={{
+            height: "100%",
+            background: timeLeft <= 5 ? "#ef4444" : timeLeft <= 10 ? "#f97316" : GOLD,
+            borderRadius: 2,
+          }}
+        />
       </div>
 
       {/* Question text */}
       <div style={{
-        background: "rgba(255,255,255,0.07)",
-        borderRadius: 18, padding: "18px 18px", marginBottom: 12,
-        border: `1.5px solid rgba(217,165,33,0.3)`,
-        backdropFilter: "blur(4px)",
+        background: "rgba(255,255,255,0.08)",
+        borderRadius: 20, padding: "20px 22px",
+        border: `1.5px solid rgba(217,165,33,0.35)`,
+        backdropFilter: "blur(6px)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
       }}>
-        <p style={{ color: "#fff", fontSize: 17, fontWeight: 800, margin: 0, lineHeight: 1.55 }}>
+        <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.6, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
           {currentQ.text}
         </p>
       </div>
+
+      {/* Encouragement */}
+      <AnimatePresence mode="wait">
+        {encouragement && (
+          <motion.div
+            key={encouragement}
+            initial={{ opacity: 0, y: -8, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              textAlign: "center", color: GOLD, fontWeight: 900, fontSize: 17,
+              textShadow: `0 0 20px ${GOLD}99`,
+              background: "rgba(0,0,0,0.3)", padding: "8px 16px", borderRadius: 12,
+            }}
+          >
+            {encouragement}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MCQ options */}
       {currentQ.type === "mcq" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {options.map((opt, idx) => {
             const showCorrect = feedback && feedback.correctIndex === idx;
-            const showWrong = feedback && !feedback.correct && idx === (feedback.correctIndex ?? -99) - 9999;
-            void showWrong;
             return (
               <motion.button
                 key={idx}
-                whileTap={{ scale: 0.96 }}
+                whileTap={{ scale: 0.95 }}
+                whileHover={!feedback ? { scale: 1.02, brightness: 1.1 } : {}}
                 disabled={!!feedback}
                 onClick={() => handleMCQAnswer(idx)}
                 style={{
-                  background: showCorrect ? "linear-gradient(155deg, #15803d, #22c55e)" : MCQ_COLORS[idx % 4],
-                  border: showCorrect ? `2.5px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.12)",
-                  borderRadius: 16, padding: "15px 14px",
+                  background: showCorrect ? "linear-gradient(155deg, #14532d, #22c55e)" : MCQ_COLORS[idx % 4],
+                  border: showCorrect ? `2.5px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.14)",
+                  borderRadius: 18, padding: "18px 16px",
                   color: "#fff", fontSize: 15, fontWeight: 800,
-                  textAlign: "start", minHeight: 66,
+                  textAlign: "start", minHeight: 74,
                   cursor: feedback ? "default" : "pointer",
-                  opacity: feedback && !showCorrect ? 0.38 : 1,
-                  transition: "opacity .2s",
-                  display: "flex", alignItems: "center", gap: 10,
+                  opacity: feedback && !showCorrect ? 0.3 : 1,
+                  transition: "opacity .2s, transform .15s",
+                  display: "flex", alignItems: "center", gap: 12,
+                  boxShadow: showCorrect ? `0 0 20px #22c55e80` : "0 2px 8px rgba(0,0,0,0.3)",
                 }}
               >
                 <span style={{
-                  display: "inline-flex", width: 28, height: 28, borderRadius: 8,
-                  background: "rgba(255,255,255,0.22)",
+                  display: "inline-flex", width: 32, height: 32, borderRadius: 10,
+                  background: showCorrect ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
                   alignItems: "center", justifyContent: "center",
-                  fontWeight: 900, fontSize: 13, flexShrink: 0,
+                  fontWeight: 900, fontSize: 14, flexShrink: 0,
                 }}>
                   {["أ", "ب", "ج", "د"][idx]}
                 </span>
-                <span style={{ lineHeight: 1.3 }}>{opt}</span>
+                <span style={{ lineHeight: 1.4, flex: 1 }}>{opt}</span>
+                {showCorrect && <span style={{ fontSize: 20, flexShrink: 0 }}>✅</span>}
               </motion.button>
             );
           })}
@@ -1416,29 +1585,24 @@ function QuestionPanel({
         </div>
       )}
 
-      {/* Feedback banner + encouragement */}
+      {/* Feedback banner */}
       <AnimatePresence>
         {feedback && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 8 }}
+            initial={{ opacity: 0, scale: 0.88, y: 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
             style={{
-              marginTop: 12, padding: "14px 18px", borderRadius: 16,
-              background: feedback.correct ? "rgba(22,163,74,0.28)" : "rgba(220,38,38,0.28)",
-              border: `2px solid ${feedback.correct ? "#22c55e" : "#dc2626"}`,
+              padding: "10px 16px", borderRadius: 14,
+              background: feedback.correct ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
+              border: `1.5px solid ${feedback.correct ? "#22c55e" : "#dc2626"}`,
               textAlign: "center",
             }}
           >
-            <p style={{ color: "#fff", fontWeight: 900, fontSize: 17, margin: "0 0 4px" }}>
-              {encouragement || (feedback.correct
-                ? (ar ? "🚀 إجابة صحيحة! ارتفع صاروخك!" : "🚀 Correct! Rocket boosted!")
-                : (ar ? "❌ إجابة خاطئة، السؤال سيعود!" : "❌ Wrong! Question will return!"))}
-            </p>
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, margin: 0 }}>
+            <p style={{ color: "#fff", fontWeight: 800, fontSize: 14, margin: 0 }}>
               {feedback.correct
-                ? (ar ? "السؤال التالي يأتيك تلقائياً..." : "Next question coming...")
-                : (ar ? "ستحصل على فرصة أخرى لهذا السؤال" : "You'll get another chance at this")}
+                ? (ar ? "🚀 صح! صاروخك يرتفع..." : "🚀 Correct! Rocket up!")
+                : (ar ? "❌ خطأ — السؤال التالي قادم..." : "❌ Wrong — Next question soon...")}
             </p>
           </motion.div>
         )}

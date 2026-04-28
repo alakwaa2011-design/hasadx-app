@@ -333,7 +333,7 @@ export function setupRocketSocket(io: Server) {
         try {
           const game = rocketGames.get(data.pin);
           if (!game) return cb({ error: "لم يتم العثور على الغرفة." });
-          if (game.state !== "lobby") return cb({ error: "السباق بدأ بالفعل." });
+          if (game.state === "finished") return cb({ error: "انتهى السباق." });
 
           const trimmedName = (data.name || "").trim();
           if (!trimmedName) return cb({ error: "يرجى إدخال اسمك." });
@@ -367,15 +367,31 @@ export function setupRocketSocket(io: Server) {
             players: getPlayerList(game),
           });
 
-          cb({
-            success: true,
-            pin: game.pin,
-            rocketColor: player.rocketColor,
-            totalQuestions: game.questions.length,
-            duration: game.duration,
-            totalDurationSecs: game.totalDurationSecs,
-            title: game.title,
-          });
+          // If game is already racing, send remaining time and first question
+          if (game.state === "racing") {
+            const remainingSecs = game.startedAt
+              ? Math.max(0, Math.round((game.startedAt + game.totalDurationSecs * 1000 - Date.now()) / 1000))
+              : game.totalDurationSecs;
+            player.questionStartTime = Date.now();
+            const firstQ = game.questions[0];
+            cb({
+              success: true, pin: game.pin, rocketColor: player.rocketColor,
+              totalQuestions: game.questions.length, duration: game.duration,
+              totalDurationSecs: remainingSecs, title: game.title, lateJoin: true,
+            });
+            if (firstQ) {
+              socket.emit("rocket:race-start", {
+                total: game.questions.length, gameDuration: remainingSecs,
+                question: { index: 0, text: firstQ.text, type: firstQ.type, options: firstQ.options, duration: firstQ.duration },
+              });
+            }
+          } else {
+            cb({
+              success: true, pin: game.pin, rocketColor: player.rocketColor,
+              totalQuestions: game.questions.length, duration: game.duration,
+              totalDurationSecs: game.totalDurationSecs, title: game.title,
+            });
+          }
         } catch (err) {
           logger.error(err, "rocket:join error");
           cb({ error: "حدث خطأ" });
@@ -402,6 +418,9 @@ export function setupRocketSocket(io: Server) {
           socket.join(`rocket:${game.pin}`);
 
           const q = game.questions[existing.currentQuestionIdx];
+          const remainingSecs = game.startedAt
+            ? Math.max(0, Math.round((game.startedAt + game.totalDurationSecs * 1000 - Date.now()) / 1000))
+            : game.totalDurationSecs;
           cb({
             success: true,
             pin: game.pin,
@@ -412,6 +431,7 @@ export function setupRocketSocket(io: Server) {
             totalQuestions: game.questions.length,
             rocketColor: existing.rocketColor,
             title: game.title,
+            totalDurationSecs: remainingSecs,
             activeQuestion: game.state === "racing" && q ? {
               index: existing.currentQuestionIdx,
               text: q.text,
@@ -419,7 +439,7 @@ export function setupRocketSocket(io: Server) {
               options: q.options,
               duration: q.duration,
             } : null,
-            finished: existing.finished,
+            finished: false,
             finishRank: existing.finishRank,
           });
 
@@ -429,8 +449,8 @@ export function setupRocketSocket(io: Server) {
           return;
         }
 
-        // Otherwise, treat as fresh join (only if lobby)
-        if (game.state !== "lobby") return cb({ error: "السباق بدأ بالفعل." });
+        // Otherwise, fresh join — allow during racing too
+        if (game.state === "finished") return cb({ error: "انتهى السباق." });
 
         const player: RocketPlayer = {
           socketId: socket.id,
@@ -481,7 +501,6 @@ export function setupRocketSocket(io: Server) {
 
         const player = game.players[socket.id];
         if (!player) return cb({ error: "أنت غير مسجل." });
-        if (player.finished) return cb({ error: "أنهيت السباق بالفعل." });
 
         const q = game.questions[player.currentQuestionIdx];
         if (!q) return cb({ error: "خطأ في السؤال." });
