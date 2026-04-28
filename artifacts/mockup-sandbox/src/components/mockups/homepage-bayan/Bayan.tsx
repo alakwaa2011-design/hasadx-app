@@ -211,7 +211,7 @@ const translations = {
 // --- Animations ---
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } }
 };
 
 const staggerContainer = {
@@ -332,7 +332,7 @@ export function Bayan() {
             <motion.div 
               initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 1, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ delay: 0.4, duration: 1, ease: [0.22, 1, 0.36, 1] as const }}
               className="mt-20 w-full relative"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 h-full" />

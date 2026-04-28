@@ -103,7 +103,7 @@ const customStyles = `
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as const } }
 };
 
 const staggerContainer = {
@@ -189,7 +189,7 @@ export function BayanV2() {
         <motion.div 
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] as const }}
           className="w-full max-w-6xl mx-auto mt-24 relative z-10"
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F0D] via-transparent to-transparent z-20 pointer-events-none rounded-2xl"></div>
