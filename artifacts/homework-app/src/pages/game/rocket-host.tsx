@@ -281,10 +281,7 @@ export default function RocketHost() {
               {/* Left: pin */}
               <div>
                 <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700 }}>
-                  {ar ? "للانضمام، ادخلوا على:" : "Join at:"}
-                </p>
-                <p style={{ margin: "4px 0", color: "#fff", fontSize: 16, fontWeight: 700, opacity: 0.9 }} dir="ltr">
-                  {window.location.host}/game/rocket/join
+                  {ar ? "للانضمام اكتب الكود:" : "Join with code:"}
                 </p>
                 <div style={{
                   marginTop: 12,

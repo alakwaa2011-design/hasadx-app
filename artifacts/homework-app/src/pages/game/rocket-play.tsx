@@ -651,6 +651,11 @@ export default function RocketPlay() {
   const [countdownNum, setCountdownNum] = useState(3);
   const [fillAnswer, setFillAnswer] = useState("");
   const [boostFlash, setBoostFlash] = useState(false);
+
+  // Shuffled question display (options reordered each question)
+  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
+  const [optionMapping, setOptionMapping] = useState<number[]>([]); // displayIdx → originalIdx
+  const wrongAutoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [title, setTitle] = useState("");
   const [encouragement, setEncouragement] = useState<string | null>(null);
   const [gameTimeLeft, setGameTimeLeft] = useState(0);
@@ -673,6 +678,22 @@ export default function RocketPlay() {
 
   useEffect(() => { soundRef.current?.setMuted(muted); }, [muted]);
   useEffect(() => () => { soundRef.current?.destroy(); }, []);
+
+  // Shuffle options whenever a new question arrives
+  useEffect(() => {
+    if (!currentQ || currentQ.type === "fill_blank") {
+      setShuffledOptions(currentQ?.options || []);
+      setOptionMapping((currentQ?.options || []).map((_, i) => i));
+      return;
+    }
+    const indices = currentQ.options.map((_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    setShuffledOptions(indices.map(i => currentQ.options[i]));
+    setOptionMapping(indices);
+  }, [currentQ?.index]);
 
   // Game timer countdown (client-side)
   const startGameTimer = useCallback((durationSecs: number) => {
@@ -856,12 +877,27 @@ export default function RocketPlay() {
         } else {
           soundRef.current?.playWrong();
           setEncouragement(ar ? pick(WRONG_AR) : pick(WRONG_EN));
+          // Auto-advance to next question after 1 second on wrong answer
+          if (wrongAutoRef.current) clearTimeout(wrongAutoRef.current);
+          wrongAutoRef.current = setTimeout(() => {
+            setFeedback(null);
+            setFillAnswer("");
+            setEncouragement(null);
+            // Submit -1 to server so it sends rocket:next-question
+            const sock = getRocketSocket();
+            sock.emit("rocket:answer", { pin, answerIndex: -1, skipToNext: true }, () => {});
+          }, 1000);
         }
       }
     });
   }, [currentQ, myAltitude, pin, ar]);
 
-  const handleMCQAnswer = (idx: number) => { if (feedback) return; submitAnswer(idx); };
+  // Map display index back to original index before submitting
+  const handleMCQAnswer = (displayIdx: number) => {
+    if (feedback) return;
+    const originalIdx = optionMapping[displayIdx] ?? displayIdx;
+    submitAnswer(originalIdx);
+  };
   const handleFillSubmit = () => {
     if (!fillAnswer.trim() || feedback) return;
     submitAnswer(-1, fillAnswer.trim());
@@ -1031,13 +1067,19 @@ export default function RocketPlay() {
                 currentQ={currentQ}
                 timeLeft={timeLeft}
                 totalQuestions={totalQuestions}
-                feedback={feedback}
+                feedback={feedback && {
+                  ...feedback,
+                  correctIndex: feedback.correctIndex !== undefined
+                    ? optionMapping.indexOf(feedback.correctIndex)
+                    : feedback.correctIndex,
+                }}
                 fillAnswer={fillAnswer}
                 setFillAnswer={setFillAnswer}
                 handleMCQAnswer={handleMCQAnswer}
                 handleFillSubmit={handleFillSubmit}
                 encouragement={encouragement}
                 ar={ar}
+                displayOptions={shuffledOptions}
               />}
             </div>
             {/* Compact rocket leaderboard (bottom strip) */}
@@ -1163,13 +1205,19 @@ export default function RocketPlay() {
                 currentQ={currentQ}
                 timeLeft={timeLeft}
                 totalQuestions={totalQuestions}
-                feedback={feedback}
+                feedback={feedback && {
+                  ...feedback,
+                  correctIndex: feedback.correctIndex !== undefined
+                    ? optionMapping.indexOf(feedback.correctIndex)
+                    : feedback.correctIndex,
+                }}
                 fillAnswer={fillAnswer}
                 setFillAnswer={setFillAnswer}
                 handleMCQAnswer={handleMCQAnswer}
                 handleFillSubmit={handleFillSubmit}
                 encouragement={encouragement}
                 ar={ar}
+                displayOptions={shuffledOptions}
               />}
             </div>
           </div>
@@ -1194,7 +1242,7 @@ export default function RocketPlay() {
 // ─── Question Panel (shared mobile/desktop) ───────────────────────────────────
 function QuestionPanel({
   currentQ, timeLeft, totalQuestions, feedback, fillAnswer, setFillAnswer,
-  handleMCQAnswer, handleFillSubmit, encouragement, ar,
+  handleMCQAnswer, handleFillSubmit, encouragement, ar, displayOptions,
 }: {
   currentQ: Question;
   timeLeft: number;
@@ -1206,7 +1254,9 @@ function QuestionPanel({
   handleFillSubmit: () => void;
   encouragement: string | null;
   ar: boolean;
+  displayOptions?: string[];
 }) {
+  const options = displayOptions && displayOptions.length > 0 ? displayOptions : currentQ.options;
   const MCQ_COLORS = [
     "linear-gradient(155deg, #7f1d1d, #b91c1c)",
     "linear-gradient(155deg, #1e3a5f, #1d4ed8)",
@@ -1255,7 +1305,7 @@ function QuestionPanel({
       {/* MCQ options */}
       {currentQ.type === "mcq" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {currentQ.options.map((opt, idx) => {
+          {options.map((opt, idx) => {
             const showCorrect = feedback && feedback.correctIndex === idx;
             const showWrong = feedback && !feedback.correct && idx === (feedback.correctIndex ?? -99) - 9999;
             void showWrong;

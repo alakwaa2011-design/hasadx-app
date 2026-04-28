@@ -170,7 +170,8 @@ export default function RocketCreate() {
       if (res.error) { toast.error(res.error); return; }
       if (res.pin && res.creatorToken) {
         sessionStorage.setItem(`rocket-creator-${res.pin}`, res.creatorToken);
-        setGamePin(res.pin);
+        // Go directly to host panel — no intermediate PIN page
+        setLocation(`/game/rocket/host/${res.pin}`);
       }
     });
   };
