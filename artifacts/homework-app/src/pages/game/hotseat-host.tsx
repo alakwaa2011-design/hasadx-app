@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, ThumbsUp, ThumbsDown, Send, Flame, Users, SkipForward, XCircle } from "lucide-react";
+import { Trophy, ThumbsUp, ThumbsDown, Send, Flame, Users, SkipForward, XCircle, Copy } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
@@ -138,6 +138,157 @@ export default function HotSeatHost() {
   const sortedStudents = [...students].sort((a, b) => b.score - a.score);
   const totalVoters = students.filter(s => !s.isOnSeat).length;
   const votesCast = votes.yes + votes.no;
+  const joinUrl = `${window.location.origin}/game/hotseat/join/${state.pin}`;
+
+  // ── LOBBY VIEW ─────────────────────────────────────────────────────────────
+  if (phase === "lobby") {
+    const pinDigits = state.pin.split("");
+    const shareWhatsApp = () => {
+      const text = ar
+        ? `🔥 الكرسي الساخن\n📍 ${state.grade} · ${state.subject}${state.topic ? ` · ${state.topic}` : ""}\n\n🔢 رمز الدخول: ${state.pin}\n🔗 ${joinUrl}`
+        : `🔥 HotSeat Game\n📍 ${state.grade} · ${state.subject}\n\n🔢 Code: ${state.pin}\n🔗 ${joinUrl}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    };
+    return (
+      <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative" }}>
+        <div style={{ padding: "20px 16px", maxWidth: 560, marginInline: "auto" }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+              <span style={{ fontSize: 52 }}>🔥</span>
+            </motion.div>
+            <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "8px 0 4px" }}>
+              {ar ? "الكرسي الساخن — انتظر الطلاب" : "HotSeat — Waiting for Students"}
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, margin: 0 }}>
+              {state.grade} · {state.subject}{state.topic && ` · ${state.topic}`}
+            </p>
+          </div>
+
+          {/* Big PIN display */}
+          <div style={{
+            background: "rgba(0,0,0,0.5)", border: `2px solid ${FIRE}60`,
+            borderRadius: 24, padding: "20px 16px", marginBottom: 14,
+          }}>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 800, textAlign: "center", letterSpacing: "0.15em", margin: "0 0 12px" }}>
+              {ar ? "🔢 شارك هذا الرمز مع طلابك" : "🔢 Share this code with students"}
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 14, direction: "ltr" }}>
+              {pinDigits.map((d, i) => (
+                <div key={i} style={{
+                  width: 50, height: 62,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: `${FIRE}25`, border: `2px solid ${FIRE}70`,
+                  borderRadius: 12, fontSize: 38, fontWeight: 900, color: "#fff", fontFamily: "monospace",
+                }}>{d}</div>
+              ))}
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 10, textAlign: "center", margin: "0 0 12px", direction: "ltr", wordBreak: "break-all" }}>
+              {joinUrl}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button
+                onClick={async () => {
+                  try { await navigator.clipboard.writeText(joinUrl); toast.success(ar ? "تم النسخ!" : "Copied!"); } catch { toast.error("Error"); }
+                }}
+                style={{
+                  padding: "10px", borderRadius: 12, border: "none",
+                  background: "rgba(255,255,255,0.1)", color: "#fff",
+                  fontWeight: 800, fontSize: 13, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                <Copy size={15} /> {ar ? "نسخ الرابط" : "Copy Link"}
+              </button>
+              <button
+                onClick={shareWhatsApp}
+                style={{
+                  padding: "10px", borderRadius: 12, border: "1px solid rgba(37,211,102,0.3)",
+                  background: "rgba(37,211,102,0.15)", color: "#25D366",
+                  fontWeight: 800, fontSize: 13, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                📱 {ar ? "واتساب" : "WhatsApp"}
+              </button>
+            </div>
+          </div>
+
+          {/* Students */}
+          <div style={{
+            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 18, padding: "14px 16px", marginBottom: 14,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <Users size={15} color={FIRE} />
+              <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700 }}>
+                {ar ? "الطلاب المنضمون" : "Students"}
+              </span>
+              <span style={{
+                marginInlineStart: "auto",
+                background: `${FIRE}30`, border: `1px solid ${FIRE}50`,
+                color: FIRE2, fontWeight: 900, fontSize: 15, padding: "2px 12px", borderRadius: 999,
+              }}>{students.length}</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, minHeight: 36 }}>
+              <AnimatePresence>
+                {students.map(s => (
+                  <motion.div key={s.uid} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "5px 10px", borderRadius: 999,
+                      background: "rgba(255,255,255,0.07)", border: `1.5px solid ${s.color}50`,
+                    }}>
+                    <span style={{ fontSize: 16 }}>{s.avatar}</span>
+                    <span style={{ color: s.color, fontSize: 12, fontWeight: 800 }}>{s.name}</span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {students.length === 0 && (
+                <motion.p animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ repeat: Infinity, duration: 1.5 }}
+                  style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, margin: 0, fontStyle: "italic" }}>
+                  {ar ? "في انتظار الطلاب..." : "Waiting for students..."}
+                </motion.p>
+              )}
+            </div>
+          </div>
+
+          {/* Start button */}
+          <button
+            onClick={() => {
+              if (students.length === 0) { toast.error(ar ? "لا يوجد طلاب بعد" : "No students yet"); return; }
+              emit("hotseat:start", {}, (r: { error?: string; success?: boolean }) => {
+                if (r.error) toast.error(r.error);
+              });
+            }}
+            style={{
+              width: "100%", padding: "16px", borderRadius: 18, border: "none",
+              background: students.length === 0
+                ? "rgba(255,107,43,0.2)"
+                : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
+              color: students.length === 0 ? "rgba(255,255,255,0.4)" : "#fff",
+              fontWeight: 900, fontSize: 17, cursor: students.length === 0 ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              boxShadow: students.length > 0 ? `0 12px 36px ${FIRE}50` : undefined,
+            }}
+          >
+            <Flame size={22} />
+            {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"}
+            {students.length > 0 && (
+              <span style={{ background: "rgba(0,0,0,0.25)", borderRadius: 999, padding: "2px 10px", fontSize: 13 }}>
+                {students.length} {ar ? "طالب" : "students"}
+              </span>
+            )}
+          </button>
+          {students.length < 1 && (
+            <p style={{ color: "rgba(255,107,43,0.6)", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+              {ar ? "انتظر حتى ينضم طالب واحد على الأقل" : "At least 1 student must join first"}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative", overflow: "hidden" }}>
