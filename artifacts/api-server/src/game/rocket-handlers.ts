@@ -107,17 +107,24 @@ function getPlayerList(game: RocketGame) {
 function altitudeForAnswer(timeMs: number, durationSecs: number, totalQuestions: number): number {
   const baseStep = 100 / totalQuestions;
   const speedRatio = Math.max(0, 1 - timeMs / (durationSecs * 1000));
-  // Speed bonus: up to +30% of the base step
-  const bonus = baseStep * 0.3 * speedRatio;
+  // Faster = up to +60% more altitude (rewards speed significantly)
+  const bonus = baseStep * 0.6 * speedRatio;
   return baseStep + bonus;
+}
+
+function altitudePenalty(totalQuestions: number): number {
+  // Penalty = 60% of a normal base step (going wrong hurts but doesn't ruin the game)
+  return (100 / totalQuestions) * 0.6;
 }
 
 function scoreForAnswer(correct: boolean, timeMs: number, durationSecs: number, streak: number): number {
   if (!correct) return 0;
-  const base = 100;
-  const speedBonus = Math.floor((1 - timeMs / (durationSecs * 1000)) * 80);
-  const streakBonus = streak >= 3 ? 50 : streak >= 5 ? 100 : 0;
-  return base + Math.max(0, speedBonus) + streakBonus;
+  const speedRatio = Math.max(0, 1 - timeMs / (durationSecs * 1000));
+  // Base 50 + up to 150 speed bonus = max 200 per question; fast answers are worth 3× slow ones
+  const base = 50;
+  const speedBonus = Math.floor(speedRatio * 150);
+  const streakBonus = streak >= 5 ? 100 : streak >= 3 ? 50 : 0;
+  return base + speedBonus + streakBonus;
 }
 
 function cleanupGame(pin: string) {
@@ -492,7 +499,7 @@ export function setupRocketSocket(io: Server) {
     socket.on(
       "rocket:answer",
       (
-        data: { pin: string; answerIndex: number; answerText?: string },
+        data: { pin: string; answerIndex: number; answerText?: string; skipToNext?: boolean },
         cb: (r: object) => void,
       ) => {
         const game = rocketGames.get(data.pin);
@@ -501,6 +508,10 @@ export function setupRocketSocket(io: Server) {
 
         const player = game.players[socket.id];
         if (!player) return cb({ error: "أنت غير مسجل." });
+
+        // skipToNext is a legacy no-op — the question was already processed
+        // when the wrong answer was submitted; ignore it silently.
+        if (data.skipToNext) return cb({ success: true, skipped: true });
 
         const q = game.questions[player.currentQuestionIdx];
         if (!q) return cb({ error: "خطأ في السؤال." });
@@ -520,16 +531,19 @@ export function setupRocketSocket(io: Server) {
         }
 
         const currentQIdx = player.currentQuestionIdx;
+        let altitudeChange = 0;
 
         if (correct) {
           player.correctCount += 1;
           player.streak += 1;
-          const altitudeGain = altitudeForAnswer(elapsedMs, q.duration, game.questions.length);
-          player.altitude = Math.min(100, player.altitude + altitudeGain);
+          altitudeChange = altitudeForAnswer(elapsedMs, q.duration, game.questions.length);
+          player.altitude = Math.min(100, player.altitude + altitudeChange);
           player.score += scoreForAnswer(true, elapsedMs, q.duration, player.streak);
         } else {
           player.wrongCount += 1;
           player.streak = 0;
+          altitudeChange = -altitudePenalty(game.questions.length);
+          player.altitude = Math.max(0, player.altitude + altitudeChange);
           // Queue this question for retry (avoid duplicates)
           if (!player.wrongIndices.includes(currentQIdx)) {
             player.wrongIndices.push(currentQIdx);
@@ -541,10 +555,11 @@ export function setupRocketSocket(io: Server) {
         player.currentQuestionIdx = nextQuestionIdx(game, player);
         player.questionStartTime = Date.now();
 
-        // Send personal answer feedback (never "finished" during race; game ends by timer)
+        // Send personal answer feedback
         cb({
           success: true,
           correct,
+          altitudeChange,
           correctIndex: q.type === "fill_blank" ? -1 : q.correct,
           correctText: q.correctText,
           altitude: player.altitude,
@@ -553,22 +568,30 @@ export function setupRocketSocket(io: Server) {
           finished: false,
         });
 
-        // Send next question immediately
-        const nextQ = game.questions[player.currentQuestionIdx];
-        if (nextQ) {
-          socket.emit("rocket:next-question", {
-            index: player.currentQuestionIdx,
-            text: nextQ.text,
-            type: nextQ.type,
-            options: nextQ.options,
-            duration: nextQ.duration,
-          });
-        }
-
-        // Broadcast leaderboard update to all
+        // Broadcast leaderboard immediately so the track updates for everyone
         rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
           players: getPlayerList(game),
         });
+
+        // Delay the next question so the player sees the feedback for ~1 second
+        const delay = correct ? 800 : 1200;
+        setTimeout(() => {
+          // Verify game is still running before sending
+          const g = rocketGames.get(data.pin);
+          if (!g || g.state !== "racing") return;
+          const p = g.players[socket.id];
+          if (!p) return;
+          const nextQ = g.questions[p.currentQuestionIdx];
+          if (nextQ) {
+            socket.emit("rocket:next-question", {
+              index: p.currentQuestionIdx,
+              text: nextQ.text,
+              type: nextQ.type,
+              options: nextQ.options,
+              duration: nextQ.duration,
+            });
+          }
+        }, delay);
       },
     );
 

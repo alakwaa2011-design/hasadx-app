@@ -705,6 +705,8 @@ export default function RocketPlay() {
   const [countdownNum, setCountdownNum] = useState(3);
   const [fillAnswer, setFillAnswer] = useState("");
   const [boostFlash, setBoostFlash] = useState(false);
+  const [penaltyFlash, setPenaltyFlash] = useState(false);
+  const [chosenWrongIdx, setChosenWrongIdx] = useState<number | null>(null); // display index of wrong choice
 
   // Shuffled question display (options reordered each question)
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
@@ -869,6 +871,7 @@ export default function RocketPlay() {
       setFeedback(null);
       setFillAnswer("");
       setEncouragement(null);
+      setChosenWrongIdx(null);
     });
 
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
@@ -933,42 +936,51 @@ export default function RocketPlay() {
     if (!currentQ) return;
     const socket = getRocketSocket();
     socket.emit("rocket:answer", { pin, answerIndex, answerText }, (res: {
-      success?: boolean; error?: string;
-      correct?: boolean; correctIndex?: number; correctText?: string;
+      success?: boolean; error?: string; skipped?: boolean;
+      correct?: boolean; altitudeChange?: number;
+      correctIndex?: number; correctText?: string;
       altitude?: number; score?: number; streak?: number;
     }) => {
       if (res.error) { toast.error(res.error); return; }
-      if (res.success) {
-        setFeedback({ correct: !!res.correct, correctIndex: res.correctIndex, correctText: res.correctText });
-        const prevAlt = myAltitude;
-        if (typeof res.altitude === "number") setMyAltitude(res.altitude);
-        if (typeof res.score === "number") setMyScore(res.score);
-        if (typeof res.streak === "number") setMyStreak(res.streak);
-        if (res.correct) {
-          soundRef.current?.playCorrect();
-          setEncouragement(ar ? pick(CORRECT_AR) : pick(CORRECT_EN));
-          if (typeof res.altitude === "number" && res.altitude - prevAlt > 10) {
-            setBoostFlash(true);
-            setTimeout(() => setBoostFlash(false), 900);
-            setTimeout(() => soundRef.current?.playBoost(), 150);
-          }
-        } else {
-          soundRef.current?.playWrong();
-          setEncouragement(ar ? pick(WRONG_AR) : pick(WRONG_EN));
-          // Auto-advance to next question after 1 second on wrong answer
-          if (wrongAutoRef.current) clearTimeout(wrongAutoRef.current);
-          wrongAutoRef.current = setTimeout(() => {
-            setFeedback(null);
-            setFillAnswer("");
-            setEncouragement(null);
-            // Submit -1 to server so it sends rocket:next-question
-            const sock = getRocketSocket();
-            sock.emit("rocket:answer", { pin, answerIndex: -1, skipToNext: true }, () => {});
-          }, 1000);
+      if (!res.success || res.skipped) return;
+
+      setFeedback({ correct: !!res.correct, correctIndex: res.correctIndex, correctText: res.correctText });
+      if (typeof res.altitude === "number") setMyAltitude(res.altitude);
+      if (typeof res.score === "number") setMyScore(res.score);
+      if (typeof res.streak === "number") setMyStreak(res.streak);
+
+      if (res.correct) {
+        soundRef.current?.playCorrect();
+        setEncouragement(ar ? pick(CORRECT_AR) : pick(CORRECT_EN));
+        // Always show boost flash on correct (rocket goes up)
+        setBoostFlash(true);
+        setTimeout(() => setBoostFlash(false), 900);
+        setTimeout(() => soundRef.current?.playBoost(), 150);
+      } else {
+        soundRef.current?.playWrong();
+        setEncouragement(ar ? pick(WRONG_AR) : pick(WRONG_EN));
+        // Red penalty flash (rocket goes down)
+        setPenaltyFlash(true);
+        setTimeout(() => setPenaltyFlash(false), 900);
+        // Track which display-index was chosen wrong (for red highlight)
+        if (answerIndex >= 0) {
+          const displayIdx = optionMapping.indexOf(answerIndex);
+          setChosenWrongIdx(displayIdx >= 0 ? displayIdx : null);
         }
       }
+
+      // feedback is auto-cleared when rocket:next-question arrives from server
+      // (after ~800ms for correct, ~1200ms for wrong).
+      // Safety fallback: clear after 2s in case the event is delayed.
+      if (wrongAutoRef.current) clearTimeout(wrongAutoRef.current);
+      wrongAutoRef.current = setTimeout(() => {
+        setFeedback(null);
+        setFillAnswer("");
+        setEncouragement(null);
+        setChosenWrongIdx(null);
+      }, 2000);
     });
-  }, [currentQ, myAltitude, pin, ar]);
+  }, [currentQ, pin, ar, optionMapping]);
 
   // Map display index back to original index before submitting
   const handleMCQAnswer = (displayIdx: number) => {
@@ -1009,6 +1021,23 @@ export default function RocketPlay() {
       {gamePhase === 2 && <CrystalField />}
       <PhaseTransitionOverlay gamePhase={gamePhase} show={showPhaseTransition} />
       <BoostParticles active={boostFlash} />
+
+      {/* Penalty flash (wrong answer) */}
+      <AnimatePresence>
+        {penaltyFlash && (
+          <motion.div
+            initial={{ opacity: 0.55 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.85, ease: "easeOut" }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 50,
+              background: "radial-gradient(ellipse at center, rgba(220,38,38,0.55) 0%, rgba(180,0,0,0.35) 60%, transparent 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Top bar */}
       <div style={{
@@ -1192,6 +1221,7 @@ export default function RocketPlay() {
                     ? optionMapping.indexOf(feedback.correctIndex)
                     : feedback.correctIndex,
                 }}
+                chosenWrongIdx={chosenWrongIdx}
                 fillAnswer={fillAnswer}
                 setFillAnswer={setFillAnswer}
                 handleMCQAnswer={handleMCQAnswer}
@@ -1343,6 +1373,7 @@ export default function RocketPlay() {
                     ? optionMapping.indexOf(feedback.correctIndex)
                     : feedback.correctIndex,
                 }}
+                chosenWrongIdx={chosenWrongIdx}
                 fillAnswer={fillAnswer}
                 setFillAnswer={setFillAnswer}
                 handleMCQAnswer={handleMCQAnswer}
@@ -1373,13 +1404,14 @@ export default function RocketPlay() {
 
 // ─── Question Panel (shared mobile/desktop) ───────────────────────────────────
 function QuestionPanel({
-  currentQ, timeLeft, totalQuestions, feedback, fillAnswer, setFillAnswer,
+  currentQ, timeLeft, totalQuestions, feedback, chosenWrongIdx, fillAnswer, setFillAnswer,
   handleMCQAnswer, handleFillSubmit, encouragement, ar, displayOptions,
 }: {
   currentQ: Question;
   timeLeft: number;
   totalQuestions: number;
   feedback: { correct: boolean; correctIndex?: number; correctText?: string } | null;
+  chosenWrongIdx: number | null;
   fillAnswer: string;
   setFillAnswer: (v: string) => void;
   handleMCQAnswer: (i: number) => void;
@@ -1475,29 +1507,43 @@ function QuestionPanel({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {options.map((opt, idx) => {
             const showCorrect = feedback && feedback.correctIndex === idx;
+            const showWrong = feedback && !feedback.correct && chosenWrongIdx === idx;
+            const dimmed = feedback && !showCorrect && !showWrong;
             return (
               <motion.button
                 key={idx}
                 whileTap={{ scale: 0.95 }}
-                whileHover={!feedback ? { scale: 1.02, brightness: 1.1 } : {}}
+                whileHover={!feedback ? { scale: 1.02 } : {}}
                 disabled={!!feedback}
                 onClick={() => handleMCQAnswer(idx)}
                 style={{
-                  background: showCorrect ? "linear-gradient(155deg, #14532d, #22c55e)" : MCQ_COLORS[idx % 4],
-                  border: showCorrect ? `2.5px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.14)",
+                  background: showCorrect
+                    ? "linear-gradient(155deg, #14532d, #22c55e)"
+                    : showWrong
+                      ? "linear-gradient(155deg, #7f1d1d, #dc2626)"
+                      : MCQ_COLORS[idx % 4],
+                  border: showCorrect
+                    ? `2.5px solid ${GOLD}`
+                    : showWrong
+                      ? "2.5px solid #ef4444"
+                      : "1.5px solid rgba(255,255,255,0.14)",
                   borderRadius: 18, padding: "18px 16px",
                   color: "#fff", fontSize: 15, fontWeight: 800,
                   textAlign: "start", minHeight: 74,
                   cursor: feedback ? "default" : "pointer",
-                  opacity: feedback && !showCorrect ? 0.3 : 1,
+                  opacity: dimmed ? 0.3 : 1,
                   transition: "opacity .2s, transform .15s",
                   display: "flex", alignItems: "center", gap: 12,
-                  boxShadow: showCorrect ? `0 0 20px #22c55e80` : "0 2px 8px rgba(0,0,0,0.3)",
+                  boxShadow: showCorrect
+                    ? "0 0 20px #22c55e80"
+                    : showWrong
+                      ? "0 0 18px #ef444460"
+                      : "0 2px 8px rgba(0,0,0,0.3)",
                 }}
               >
                 <span style={{
                   display: "inline-flex", width: 32, height: 32, borderRadius: 10,
-                  background: showCorrect ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
+                  background: showCorrect || showWrong ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
                   alignItems: "center", justifyContent: "center",
                   fontWeight: 900, fontSize: 14, flexShrink: 0,
                 }}>
@@ -1505,6 +1551,7 @@ function QuestionPanel({
                 </span>
                 <span style={{ lineHeight: 1.4, flex: 1 }}>{opt}</span>
                 {showCorrect && <span style={{ fontSize: 20, flexShrink: 0 }}>✅</span>}
+                {showWrong && <span style={{ fontSize: 20, flexShrink: 0 }}>❌</span>}
               </motion.button>
             );
           })}
