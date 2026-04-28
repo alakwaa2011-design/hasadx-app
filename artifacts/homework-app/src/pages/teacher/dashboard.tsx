@@ -5,6 +5,7 @@ import {
   useGetCurrentTeacher,
   useDeleteAssignment,
 } from "@workspace/api-client-react";
+import type { Assignment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Link, useLocation } from "wouter";
@@ -152,7 +153,7 @@ export default function TeacherDashboard() {
     useListAssignments(user ? { teacherId: user.id } : undefined, {
       query: { enabled: !!user },
     });
-  const assignments = Array.isArray(assignmentsRaw)
+  const assignments: Assignment[] = Array.isArray(assignmentsRaw)
     ? assignmentsRaw
     : Array.isArray((assignmentsRaw as any)?.assignments)
       ? (assignmentsRaw as any).assignments
@@ -1041,7 +1042,7 @@ export default function TeacherDashboard() {
                             <span className="font-black text-base text-foreground leading-tight">
                               {lang === "ar" ? opt.titleAr : opt.titleEn}
                             </span>
-                            {opt.defaultBadge && (
+                            {(opt as { defaultBadge?: boolean }).defaultBadge && (
                               <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
                                 {lang === "ar" ? "افتراضي" : "Default"}
                               </span>

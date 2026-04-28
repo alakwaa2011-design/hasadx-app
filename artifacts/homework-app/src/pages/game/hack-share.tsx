@@ -324,7 +324,7 @@ export default function HackShare() {
             >
               <Segmented
                 value={navMode}
-                onChange={setNavMode}
+                onChange={(v: NavMode) => setNavMode(v)}
                 options={[
                   { value: "auto", label: isAr ? "تلقائي" : "Auto" },
                   { value: "manual", label: isAr ? "يدوي" : "Manual" },

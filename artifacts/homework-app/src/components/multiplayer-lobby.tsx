@@ -616,6 +616,7 @@ export function ArenaBar({ myName, myScore, opponents, results, isRtl = true, on
       return () => clearTimeout(t);
     }
     prevLeadingRef.current = leadingName;
+    return undefined;
   }, [leadingName, results]);
 
   // ── Results screen ──────────────────────────────────────────────────────────

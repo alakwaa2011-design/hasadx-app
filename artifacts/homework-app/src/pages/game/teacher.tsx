@@ -338,7 +338,7 @@ export default function TeacherGame() {
       setAnsweredCount(0);
       setTimeLeft(0);
       setCorrectAnswer(null);
-      setDistribution(null);
+      setDistribution({});
       setIsPaused(false);
       setHackMarathonActive(false);
       setStudentStats(new Map());

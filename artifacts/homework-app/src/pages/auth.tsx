@@ -401,7 +401,6 @@ function LoginForm({
               onError={() => {
                 toast.error(lang === "ar" ? "تعذّر تسجيل الدخول عبر Google" : "Google sign-in failed");
               }}
-              locale={lang === "ar" ? "ar" : "en"}
               theme="outline"
               size="large"
               text="continue_with"

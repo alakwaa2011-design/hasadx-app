@@ -213,7 +213,7 @@ export default function TeacherAssignmentDetail() {
   const startEditingAssignment = () => {
     if (!assignment) return;
     setEditTitle(assignment.title);
-    setEditSubject(assignment.subject);
+    setEditSubject(assignment.subject ?? "");
     setEditDescription(assignment.description || "");
     setEditTargetClass(assignment.targetClass || "");
     fetch(`${BASE}/api/teacher/grade-levels`, { credentials: "include" })

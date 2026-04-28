@@ -439,7 +439,7 @@ export default function StudentSolve() {
   };
 
   useEffect(() => {
-    if (assignment && (assignment as Record<string, unknown>).isAdaptive) {
+    if (assignment && (assignment as unknown as Record<string, unknown>).isAdaptive) {
       window.location.replace(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/solve/adaptive/${id}`);
     }
   }, [assignment, id]);
@@ -515,7 +515,7 @@ export default function StudentSolve() {
     );
   }
   if (!assignment) return <Layout><div className="text-center p-20 text-xl font-bold">{t.solve.notFound}</div></Layout>;
-  if ((assignment as Record<string, unknown>).isAdaptive) return <Layout><div className="flex h-96 items-center justify-center"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /></div></Layout>;
+  if ((assignment as unknown as Record<string, unknown>).isAdaptive) return <Layout><div className="flex h-96 items-center justify-center"><div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full" /></div></Layout>;
 
   const isExpired = assignment.deadline ? new Date(assignment.deadline) < new Date() : false;
 

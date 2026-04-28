@@ -18,4 +18,7 @@ export interface Question {
   correctAnswer?: string | null;
   points: number;
   imageUrl?: string | null;
+  readAloud?: boolean;
+  repeatQuestion?: boolean;
+  allowMultipleAnswers?: boolean;
 }

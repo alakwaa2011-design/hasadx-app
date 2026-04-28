@@ -180,7 +180,7 @@ export default function TugCreate() {
       if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
       const data = await res.json();
       const qs = (data.questions || [])
-        .filter((q: { questionType?: string; optionA?: string; correctAnswer?: string }) =>
+        .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
           q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
         .map((q: { id: number; text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; points: number }) => bankToTug({
           id: q.id, subject: data.subject || "", text: q.text,

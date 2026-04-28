@@ -293,6 +293,9 @@ export interface Question {
   correctAnswer?: string | null;
   points: number;
   imageUrl?: string | null;
+  readAloud?: boolean;
+  repeatQuestion?: boolean;
+  allowMultipleAnswers?: boolean;
 }
 
 export interface AssignmentWithQuestions {
@@ -363,6 +366,7 @@ export interface SubmissionResult {
   showResults: boolean;
   answers: AnswerResult[];
   aiFeedback?: string | null;
+  repeatEligibleIds?: number[];
 }
 
 export interface Submission {

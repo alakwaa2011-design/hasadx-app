@@ -3095,7 +3095,7 @@ export default function GamePlay() {
                 ? answerResult?.correctAnswerText
                   ? qType === "true_false"
                     ? normalize(answerResult.correctAnswerText) ===
-                      normalize(opt.text)
+                      normalize(opt.text ?? "")
                     : answerResult.correctAnswerText === opt.text
                   : correctAnswer === opt.key
                 : correctAnswer === opt.key;

@@ -375,7 +375,6 @@ export default function StudentAuth() {
                       onError={() => {
                         toast.error(isAr ? "تعذّر تسجيل الدخول عبر Google" : "Google sign-in failed");
                       }}
-                      locale={isAr ? "ar" : "en"}
                       theme="outline"
                       size="large"
                       text="continue_with"

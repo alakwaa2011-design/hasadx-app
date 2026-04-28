@@ -19,4 +19,5 @@ export interface SubmissionResult {
   showResults: boolean;
   answers: AnswerResult[];
   aiFeedback?: string | null;
+  repeatEligibleIds?: number[];
 }

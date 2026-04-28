@@ -229,7 +229,7 @@ function Router() {
         {/* Letrly (Arabic Wordle) Routes */}
         <Route path="/game/letrly" component={LetrlySetup} />
         <Route path="/game/letrly/play" component={LetrlyPlay} />
-        <Route path="/game/letrly/create" component={LetrlyCreate} />
+        <Route path="/game/letrly/create" component={LetrlyCreate as any} />
         {/* Scrambled Words Routes */}
         <Route path="/game/scramble" component={ScrambleSetup} />
         <Route path="/game/scramble/play" component={ScramblePlay} />

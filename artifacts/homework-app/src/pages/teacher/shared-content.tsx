@@ -217,7 +217,7 @@ export default function SharedContentPage() {
       if (res.ok) {
         if (itemType === "assignment") setAssignments(prev => prev.filter(a => a.id !== itemId));
         else if (itemType === "question") setQuestions(prev => prev.filter(q => q.id !== itemId));
-        else setGames(prev => prev.filter(g => g.id !== itemId));
+        else setVideoLessons(prev => prev.filter(g => g.id !== itemId));
         toast.success(lang === "ar" ? "تم إخفاء العنصر من قائمتك" : "Item removed from your list");
       } else {
         toast.error(lang === "ar" ? "خطأ في الإخفاء" : "Failed to remove");

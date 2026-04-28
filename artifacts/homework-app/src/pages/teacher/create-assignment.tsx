@@ -867,7 +867,7 @@ export default function CreateAssignment() {
                     <div className="flex flex-col items-center">
                       <button
                         type="button"
-                        onClick={() => { if (step.num < wizardStep) setWizardStep(step.num as 1|2|3|4); }}
+                        onClick={() => { if (step.num < wizardStep) setWizardStep(step.num as 1|2|3); }}
                         className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-black transition-all border-2 ${
                           wizardStep === step.num
                             ? "bg-white text-primary border-white shadow-lg shadow-black/10 scale-110"
