@@ -479,23 +479,49 @@ export default function HotSeatHost() {
               <div>
                 <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
                   {ar ? "أسئلة جاهزة" : "Ready Questions"}
+                  {questions.filter(q => q.isPreset).length > 0 && (
+                    <span style={{ color: FIRE2, marginInlineStart: 6 }}>
+                      ({questions.filter(q => q.isPreset).length})
+                    </span>
+                  )}
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                  {PRESET_QUESTIONS_AR.map((text, i) => (
-                    <button
-                      key={i}
-                      onClick={() => emit("hotseat:pick-question", { customText: text })}
-                      style={{
-                        padding: "10px 14px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.1)",
-                        background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.8)",
-                        fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "start",
-                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                      }}
-                    >
-                      <span>{text}</span>
-                      <Flame size={13} color={FIRE} />
-                    </button>
-                  ))}
+                {/* Imported questions from assignment (isPreset = true) */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10, maxHeight: 220, overflowY: "auto" }}>
+                  {questions.filter(q => q.isPreset).length > 0 ? (
+                    questions.filter(q => q.isPreset).map(q => (
+                      <button
+                        key={q.id}
+                        onClick={() => emit("hotseat:pick-question", { questionId: q.id })}
+                        style={{
+                          padding: "10px 14px", borderRadius: 12,
+                          border: `1.5px solid rgba(255,165,0,0.3)`,
+                          background: "rgba(255,130,0,0.1)", color: "#fff",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "start",
+                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                        }}
+                      >
+                        <span style={{ flex: 1, lineHeight: 1.4 }}>{q.text}</span>
+                        <Flame size={13} color={FIRE2} />
+                      </button>
+                    ))
+                  ) : (
+                    // Fallback: hardcoded preset questions if no imported ones
+                    PRESET_QUESTIONS_AR.map((text, i) => (
+                      <button
+                        key={i}
+                        onClick={() => emit("hotseat:pick-question", { customText: text })}
+                        style={{
+                          padding: "10px 14px", borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.1)",
+                          background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.8)",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "start",
+                          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                        }}
+                      >
+                        <span>{text}</span>
+                        <Flame size={13} color={FIRE} />
+                      </button>
+                    ))
+                  )}
                 </div>
 
                 {/* Custom question */}

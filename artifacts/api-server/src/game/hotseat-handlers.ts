@@ -153,10 +153,28 @@ export function setupHotSeatSocket(io: Server) {
       subject: string;
       topic?: string;
       timerDuration?: number;
+      seedQuestions?: Array<{ id: string; text: string; type?: string; options?: string[]; correct?: string }>;
     }, cb: (r: object) => void) => {
       try {
         const pin = generatePin();
         const creatorToken = randomBytes(16).toString("hex");
+
+        // Pre-populate questions from seedQuestions (from assignment / question bank)
+        const presetQuestions: Record<string, HotSeatQuestion> = {};
+        if (Array.isArray(data.seedQuestions)) {
+          data.seedQuestions.slice(0, 40).forEach((q) => {
+            const id = q.id || String(Date.now() + Math.random());
+            presetQuestions[id] = {
+              id,
+              text: q.text,
+              isPreset: true,
+              authorUid: "teacher",
+              likes: 0,
+              likedBy: [],
+            };
+          });
+        }
+
         const game: HotSeatGame = {
           pin, creatorSocketId: socket.id, creatorToken,
           teacherName: (data.teacherName || "المعلم").trim(),
@@ -166,7 +184,8 @@ export function setupHotSeatSocket(io: Server) {
           timerDuration: Math.max(10, Math.min(120, data.timerDuration ?? 30)),
           phase: "lobby",
           students: {}, uidBySocket: {},
-          timerVal: 0, votes: { yes: 0, no: 0 }, rounds: 0, questions: {},
+          timerVal: 0, votes: { yes: 0, no: 0 }, rounds: 0,
+          questions: presetQuestions,
         };
         games.set(pin, game);
         socket.join(`hotseat:${pin}`);
