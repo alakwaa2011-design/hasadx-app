@@ -14,8 +14,6 @@ const FIRE2 = "#FF9F43";
 const DARK_BG = "linear-gradient(180deg, #050818 0%, #0d1230 60%, #1a0a00 100%)";
 const GOLD = "#D9A521";
 
-const SUBJECTS_AR = ["رياضيات","علوم","عربي","إنجليزي","تاريخ","جغرافيا","فيزياء","كيمياء","أحياء","دين","حاسوب","أخرى"];
-const SUBJECTS_EN = ["Math","Science","Arabic","English","History","Geography","Physics","Chemistry","Biology","Religion","CS","Other"];
 
 interface Student { uid: string; name: string; avatar: string; color: string; score: number; isOnSeat: boolean; roundsOnSeat: number; }
 
@@ -47,12 +45,10 @@ export default function HotSeatCreate() {
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
 
-  // Form state
+  // Form state — simplified
   const [teacherName, setTeacherName] = useState("");
-  const [gradeLevel, setGradeLevel] = useState<"ابتدائي"|"متوسط"|"ثانوي"|"جامعي"|"أخرى"|"">("");
-  const [gradeYear, setGradeYear] = useState("");
-  const [section, setSection] = useState("");
-  const [subject, setSubject] = useState("");
+  const [grade, setGrade] = useState("");       // free text, optional
+  const [subject, setSubject] = useState("");   // free text, optional
   const [topic, setTopic] = useState("");
   const [timerDuration, setTimerDuration] = useState(30);
   const [creating, setCreating] = useState(false);
@@ -62,19 +58,6 @@ export default function HotSeatCreate() {
   const [creatorToken, setCreatorToken] = useState<string | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [copied, setCopied] = useState(false);
-
-  const gradeYears: Record<string, string[]> = {
-    "ابتدائي": ["1","2","3","4","5","6"],
-    "متوسط": ["1","2","3"],
-    "ثانوي": ["1","2","3"],
-    "جامعي": ["1","2","3","4","5"],
-    "أخرى": [],
-  };
-  const sections = ["أ","ب","ج","د","هـ"];
-
-  const gradeLabel = gradeLevel
-    ? `${gradeLevel}${gradeYear ? " " + gradeYear : ""}${section ? " " + section : ""}`
-    : "";
 
   useEffect(() => {
     if (!gamePin) return;
@@ -87,13 +70,12 @@ export default function HotSeatCreate() {
 
   const handleCreate = () => {
     if (!teacherName.trim()) { toast.error(ar ? "أدخل اسمك أولاً" : "Enter your name"); return; }
-    if (!subject) { toast.error(ar ? "اختر المادة" : "Choose a subject"); return; }
     setCreating(true);
     const socket = getHotSeatSocket();
     socket.emit("hotseat:create", {
       teacherName: teacherName.trim(),
-      grade: gradeLabel || (ar ? "غير محدد" : "Unspecified"),
-      subject,
+      grade: grade.trim() || "",
+      subject: subject.trim() || "",
       topic: topic.trim() || undefined,
       timerDuration,
     }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
@@ -362,13 +344,10 @@ export default function HotSeatCreate() {
   }
 
   // ── Create Form ───────────────────────────────────────────────────────────
-  const subjects = ar ? SUBJECTS_AR : SUBJECTS_EN;
-  const subjectsAr = SUBJECTS_AR;
-
   return (
     <Layout>
       <div dir={dir} className="min-h-screen py-8 px-4" style={{ background: "linear-gradient(180deg, #FCFAF8, #F4EBD9)" }}>
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-lg mx-auto">
           <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <div
               className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"
@@ -386,124 +365,78 @@ export default function HotSeatCreate() {
             </p>
           </motion.div>
 
-          {/* Teacher name */}
-          <Card className="p-4 mb-3">
-            <label className="block text-sm font-bold mb-2">{ar ? "👋 اسم المعلم" : "👋 Your Name"}</label>
+          {/* Teacher name — required */}
+          <Card className="p-5 mb-3">
+            <label className="block text-sm font-bold mb-2">
+              {ar ? "👋 اسمك *" : "👋 Your Name *"}
+            </label>
             <input
               value={teacherName}
               onChange={e => setTeacherName(e.target.value)}
               placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
-              className="w-full bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/50 border-b border-border pb-1"
+              className="w-full bg-transparent outline-none text-base font-bold placeholder:text-muted-foreground/50 border-b-2 border-border pb-1 focus:border-orange-400 transition-colors"
               maxLength={40}
             />
           </Card>
 
-          {/* Grade level */}
-          <Card className="p-4 mb-3">
-            <label className="block text-sm font-bold mb-3">{ar ? "🏫 المرحلة الدراسية" : "🏫 Grade Level"}</label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(["ابتدائي","متوسط","ثانوي","جامعي","أخرى"] as const).map(level => (
-                <button
-                  key={level}
-                  onClick={() => { setGradeLevel(level); setGradeYear(""); }}
-                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all"
-                  style={{
-                    background: gradeLevel === level ? FIRE : "#fff",
-                    color: gradeLevel === level ? "#fff" : "#374151",
-                    borderColor: gradeLevel === level ? FIRE : "#e5e7eb",
-                    boxShadow: gradeLevel === level ? `0 4px 12px ${FIRE}40` : undefined,
-                  }}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-            {gradeLevel && gradeYears[gradeLevel].length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {gradeYears[gradeLevel].map(y => (
-                  <button
-                    key={y}
-                    onClick={() => setGradeYear(y)}
-                    className="w-10 h-10 rounded-xl text-sm font-bold border-2 transition-all"
-                    style={{
-                      background: gradeYear === y ? FIRE2 : "#fff",
-                      color: gradeYear === y ? "#fff" : "#374151",
-                      borderColor: gradeYear === y ? FIRE2 : "#e5e7eb",
-                    }}
-                  >
-                    {y}
-                  </button>
-                ))}
+          {/* Grade + Subject — optional free text */}
+          <Card className="p-5 mb-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-2">
+                  {ar ? "🏫 الصف (اختياري)" : "🏫 Class (optional)"}
+                </label>
+                <input
+                  value={grade}
+                  onChange={e => setGrade(e.target.value)}
+                  placeholder={ar ? "مثال: 3 متوسط أ" : "e.g. Grade 8B"}
+                  className="w-full bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/40 border-b border-border pb-1 focus:border-orange-400 transition-colors"
+                  maxLength={30}
+                />
               </div>
-            )}
-            {gradeLevel && (
-              <div className="flex flex-wrap gap-2">
-                {sections.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setSection(s)}
-                    className="w-10 h-10 rounded-xl text-sm font-bold border-2 transition-all"
-                    style={{
-                      background: section === s ? GOLD : "#fff",
-                      color: section === s ? "#000" : "#374151",
-                      borderColor: section === s ? GOLD : "#e5e7eb",
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-2">
+                  {ar ? "📚 المادة (اختياري)" : "📚 Subject (optional)"}
+                </label>
+                <input
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  placeholder={ar ? "مثال: رياضيات" : "e.g. Science"}
+                  className="w-full bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/40 border-b border-border pb-1 focus:border-orange-400 transition-colors"
+                  maxLength={30}
+                />
               </div>
-            )}
-          </Card>
-
-          {/* Subject */}
-          <Card className="p-4 mb-3">
-            <label className="block text-sm font-bold mb-3">{ar ? "📚 المادة" : "📚 Subject"}</label>
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((s, i) => (
-                <button
-                  key={s}
-                  onClick={() => setSubject(ar ? subjectsAr[i] : s)}
-                  className="px-3 py-2 rounded-xl text-sm font-bold border-2 transition-all"
-                  style={{
-                    background: subject === (ar ? subjectsAr[i] : s) ? FIRE : "#fff",
-                    color: subject === (ar ? subjectsAr[i] : s) ? "#fff" : "#374151",
-                    borderColor: subject === (ar ? subjectsAr[i] : s) ? FIRE : "#e5e7eb",
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
             </div>
           </Card>
 
-          {/* Topic */}
-          <Card className="p-4 mb-3">
-            <label className="block text-sm font-bold mb-2">
+          {/* Topic — optional */}
+          <Card className="p-5 mb-3">
+            <label className="block text-xs font-bold text-muted-foreground mb-2">
               {ar ? "💡 موضوع الجلسة (اختياري)" : "💡 Session Topic (optional)"}
             </label>
             <input
               value={topic}
               onChange={e => setTopic(e.target.value)}
               placeholder={ar ? "مثال: قوانين نيوتن، الكسور العشرية..." : "e.g. Newton's Laws, Fractions..."}
-              className="w-full bg-transparent outline-none text-sm placeholder:text-muted-foreground/50 border-b border-border pb-1"
+              className="w-full bg-transparent outline-none text-sm placeholder:text-muted-foreground/40 border-b border-border pb-1 focus:border-orange-400 transition-colors"
               maxLength={80}
             />
           </Card>
 
           {/* Timer */}
-          <Card className="p-4 mb-6">
+          <Card className="p-5 mb-6">
             <label className="block text-sm font-bold mb-3">{ar ? "⏱ مدة الإجابة" : "⏱ Answer Time"}</label>
-            <div className="flex flex-wrap gap-2">
-              {[15,30,45,60].map(t => (
+            <div className="flex gap-2">
+              {[15, 30, 45, 60].map(t => (
                 <button
                   key={t}
                   onClick={() => setTimerDuration(t)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold border-2 transition-all"
                   style={{
                     background: timerDuration === t ? FIRE : "#fff",
                     color: timerDuration === t ? "#fff" : "#374151",
                     borderColor: timerDuration === t ? FIRE : "#e5e7eb",
+                    boxShadow: timerDuration === t ? `0 4px 12px ${FIRE}40` : undefined,
                   }}
                 >
                   {t}{ar ? "ث" : "s"}
@@ -513,22 +446,30 @@ export default function HotSeatCreate() {
           </Card>
 
           {/* Create button */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleCreate}
-            disabled={creating}
-            className="w-full py-4 rounded-2xl font-black text-lg text-white transition-all flex items-center justify-center gap-3"
+            disabled={creating || !teacherName.trim()}
+            className="w-full py-4 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3"
             style={{
-              background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-              boxShadow: `0 12px 32px ${FIRE}60`,
+              background: !teacherName.trim()
+                ? "rgba(255,107,43,0.4)"
+                : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
+              boxShadow: teacherName.trim() ? `0 12px 32px ${FIRE}60` : undefined,
               opacity: creating ? 0.7 : 1,
+              cursor: !teacherName.trim() || creating ? "not-allowed" : "pointer",
             }}
           >
-            {creating ? (
-              <span className="animate-spin">🔥</span>
-            ) : (
-              <><Flame size={22} /> {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"} <ChevronRight size={20} /></>
-            )}
-          </button>
+            {creating
+              ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}>🔥</motion.span>
+              : <><Flame size={22} /> {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"} <ChevronRight size={20} /></>}
+          </motion.button>
+          {!teacherName.trim() && (
+            <p className="text-center text-xs mt-2" style={{ color: `${FIRE}99` }}>
+              {ar ? "* اسمك مطلوب فقط" : "* Only your name is required"}
+            </p>
+          )}
         </div>
       </div>
     </Layout>

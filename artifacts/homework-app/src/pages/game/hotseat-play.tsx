@@ -40,26 +40,162 @@ function playTone(ctx: AudioContext, freq: number, dur: number, vol = 0.3, type:
   } catch { /* ignore */ }
 }
 
-function playVoteSound(ctx: AudioContext) {
-  playTone(ctx, 880, 0.15, 0.3); 
-  setTimeout(() => playTone(ctx, 1100, 0.15, 0.3), 100);
+function addReverb(ctx: AudioContext, source: AudioNode, wet = 0.3) {
+  try {
+    const convolver = ctx.createConvolver();
+    const len = ctx.sampleRate * 0.8;
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    }
+    convolver.buffer = buf;
+    const dryGain = ctx.createGain(); dryGain.gain.value = 1 - wet;
+    const wetGain = ctx.createGain(); wetGain.gain.value = wet;
+    source.connect(dryGain); dryGain.connect(ctx.destination);
+    source.connect(convolver); convolver.connect(wetGain); wetGain.connect(ctx.destination);
+  } catch { source.connect(ctx.destination); }
 }
 
-function playCorrectSound(ctx: AudioContext) {
-  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(ctx, f, 0.2, 0.4), i * 80));
+// 🔥 Dramatic seat selection sound — deep boom + rising sweep
+function playSeatSound(ctx: AudioContext) {
+  // Bass boom
+  const bass = ctx.createOscillator();
+  const bassGain = ctx.createGain();
+  bass.type = "sine"; bass.frequency.setValueAtTime(80, ctx.currentTime);
+  bass.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.4);
+  bassGain.gain.setValueAtTime(0.8, ctx.currentTime);
+  bassGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+  bass.connect(bassGain); bassGain.connect(ctx.destination);
+  bass.start(); bass.stop(ctx.currentTime + 0.5);
+  // Rising sweep
+  const sweep = ctx.createOscillator();
+  const sweepGain = ctx.createGain();
+  sweep.type = "sawtooth"; sweep.frequency.setValueAtTime(200, ctx.currentTime + 0.1);
+  sweep.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.7);
+  sweepGain.gain.setValueAtTime(0.3, ctx.currentTime + 0.1);
+  sweepGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+  sweep.connect(sweepGain); sweepGain.connect(ctx.destination);
+  sweep.start(ctx.currentTime + 0.1); sweep.stop(ctx.currentTime + 0.8);
 }
 
+// ⏱ Countdown tick — sharp click
 function playTimerBeep(ctx: AudioContext, urgent: boolean) {
-  playTone(ctx, urgent ? 880 : 660, 0.1, urgent ? 0.5 : 0.25);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(urgent ? 1200 : 800, ctx.currentTime);
+  gain.gain.setValueAtTime(urgent ? 0.5 : 0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.06);
+  if (urgent) {
+    // double click for last 3 seconds
+    const osc2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    osc2.type = "square"; osc2.frequency.value = 1400;
+    g2.gain.setValueAtTime(0.4, ctx.currentTime + 0.1);
+    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+    osc2.connect(g2); g2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.1); osc2.stop(ctx.currentTime + 0.16);
+  }
 }
 
-function playVictoryFanfare(ctx: AudioContext) {
-  const notes = [523, 659, 784, 880, 1047];
-  notes.forEach((f, i) => {
+// 👍 Vote cast — satisfying pop
+function playVoteSound(ctx: AudioContext) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine"; osc.frequency.setValueAtTime(600, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.4, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.15);
+}
+
+// ✨ Points earned — cheerful ding sequence
+function playCorrectSound(ctx: AudioContext) {
+  [523, 659, 784, 1047, 1319].forEach((f, i) => {
     setTimeout(() => {
-      playTone(ctx, f, 0.35, 0.6, "triangle");
-      playTone(ctx, f * 1.5, 0.2, 0.3, "sine");
-    }, i * 120);
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle"; osc.frequency.value = f;
+      g.gain.setValueAtTime(0.5, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.25);
+    }, i * 70);
+  });
+}
+
+// 🏆 Victory fanfare — full orchestral hit
+function playVictoryFanfare(ctx: AudioContext) {
+  // Chord hit
+  [261, 329, 392, 523, 659].forEach((f, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = i % 2 === 0 ? "triangle" : "sawtooth";
+      osc.frequency.value = f;
+      g.gain.setValueAtTime(0.5, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      addReverb(ctx, osc.connect(g) as unknown as AudioNode);
+      osc.start(); osc.stop(ctx.currentTime + 1.2);
+    }, i * 40);
+  });
+  // Rising triumphant melody
+  [523, 659, 784, 1047, 1319, 1047, 784, 1047].forEach((f, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle"; osc.frequency.value = f;
+      g.gain.setValueAtTime(0.4, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
+    }, 300 + i * 130);
+  });
+}
+
+// 😬 Not convincing — low buzzer
+function playNotConvincingSound(ctx: AudioContext) {
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = "sawtooth"; osc.frequency.setValueAtTime(180, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.4);
+  g.gain.setValueAtTime(0.4, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.45);
+}
+
+// 🎉 Convincing celebration — happy burst
+function playConvincingSound(ctx: AudioContext) {
+  [659, 784, 880, 1047, 1319, 1047, 880].forEach((f, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle"; osc.frequency.value = f;
+      g.gain.setValueAtTime(0.45, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.18);
+    }, i * 80);
+  });
+}
+
+// ❓ Question picked — dramatic reveal
+function playQuestionSound(ctx: AudioContext) {
+  [440, 554, 659, 880].forEach((f, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sine"; osc.frequency.value = f;
+      g.gain.setValueAtTime(0.35, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    }, i * 100);
   });
 }
 
@@ -217,7 +353,7 @@ export default function HotSeatPlay() {
 
     if (socket.connected) doJoin(); else socket.once("connect", doJoin);
 
-    socket.on("hotseat:phase-change", (data: { phase: Phase; state: GameState }) => {
+    socket.on("hotseat:phase-change", (data: { phase: Phase; state: GameState; result?: { convincingPct: number } }) => {
       setState(data.state);
       setTimerVal(data.state.timerVal);
       setMyVote(null);
@@ -226,10 +362,24 @@ export default function HotSeatPlay() {
       const me = data.state.students.find(s => s.uid === myUid || s.name === myName);
       if (me) setMyScore(me.score);
 
+      // 🔊 Sound per phase
       if (data.phase === "ended") {
         play(playVictoryFanfare);
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 6000);
+      } else if (data.phase === "asking") {
+        // Someone was picked for the seat — dramatic boom
+        play(playSeatSound);
+      } else if (data.phase === "answering") {
+        // Question revealed — suspenseful melody
+        play(playQuestionSound);
+      } else if (data.phase === "result") {
+        // Result sound based on convincing %
+        if (data.result && data.result.convincingPct > 60) {
+          play(playConvincingSound);
+        } else {
+          play(playNotConvincingSound);
+        }
       }
     });
 
