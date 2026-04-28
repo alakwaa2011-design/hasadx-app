@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, ThumbsUp, ThumbsDown, Send, Flame, Users, SkipForward, XCircle, Copy } from "lucide-react";
+import { Trophy, ThumbsUp, ThumbsDown, Send, Flame, Users, SkipForward, XCircle, Copy, Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
@@ -74,6 +74,14 @@ export default function HotSeatHost() {
   const [customQuestion, setCustomQuestion] = useState("");
   const [ending, setEnding] = useState(false);
   const stateRef = useRef<GameState | null>(null);
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem("hotseat-muted") === "1"; } catch { return false; }
+  });
+  const toggleMute = () => setMuted(prev => {
+    const next = !prev;
+    try { localStorage.setItem("hotseat-muted", next ? "1" : "0"); } catch {}
+    return next;
+  });
 
   useEffect(() => {
     if (!pin) return;
@@ -153,6 +161,18 @@ export default function HotSeatHost() {
       <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative" }}>
         <div style={{ padding: "20px 16px", maxWidth: 560, marginInline: "auto" }}>
           {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 12 }}>
+            <button onClick={toggleMute} style={{
+              padding: "7px 12px", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.07)",
+              color: muted ? "#ef4444" : "rgba(255,255,255,0.7)",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700,
+            }}>
+              {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+              {muted ? (ar ? "الصوت مكتوم" : "Muted") : (ar ? "صوت" : "Sound")}
+            </button>
+          </div>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
               <span style={{ fontSize: 52 }}>🔥</span>
@@ -161,7 +181,7 @@ export default function HotSeatHost() {
               {ar ? "الكرسي الساخن — انتظر الطلاب" : "HotSeat — Waiting for Students"}
             </h1>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, margin: 0 }}>
-              {state.grade} · {state.subject}{state.topic && ` · ${state.topic}`}
+              {[state.grade, state.subject, state.topic].filter(Boolean).join(" · ") || ""}
             </p>
           </div>
 
@@ -326,6 +346,15 @@ export default function HotSeatHost() {
           <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
             <Users size={14} /> {students.length}
           </div>
+          <button onClick={toggleMute} style={{
+            padding: "6px 10px", borderRadius: 10,
+            border: `1px solid ${muted ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.15)"}`,
+            background: muted ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.07)",
+            color: muted ? "#ef4444" : "rgba(255,255,255,0.7)",
+            cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 12,
+          }}>
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+          </button>
           <button
             onClick={() => {
               if (!confirm(ar ? "إنهاء الجلسة نهائياً؟" : "End session permanently?")) return;

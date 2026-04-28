@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, useParams, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getHotSeatSocket, disconnectHotSeatSocket } from "@/lib/hotseat-socket";
 import { toast } from "@/components/ui/sonner";
@@ -316,10 +317,19 @@ export default function HotSeatPlay() {
   const [likedQuestions, setLikedQuestions] = useState<Set<string>>(new Set());
 
   const audioCtx = useRef<AudioContext | null>(null);
-  const muted = useRef(false);
+  const [mutedState, setMutedState] = useState(() => {
+    try { return localStorage.getItem("hotseat-muted") === "1"; } catch { return false; }
+  });
+  const mutedRef = useRef(mutedState);
+  const toggleMute = () => {
+    const next = !mutedRef.current;
+    mutedRef.current = next;
+    setMutedState(next);
+    try { localStorage.setItem("hotseat-muted", next ? "1" : "0"); } catch {}
+  };
 
   const play = useCallback((fn: (ctx: AudioContext) => void) => {
-    if (muted.current) return;
+    if (mutedRef.current) return;
     if (!audioCtx.current) audioCtx.current = createAudioCtx();
     const ctx = audioCtx.current;
     if (ctx) {
@@ -532,6 +542,15 @@ export default function HotSeatPlay() {
         <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
           <span>👥</span> {students.length}
         </div>
+        <button onClick={toggleMute} style={{
+          padding: "5px 9px", borderRadius: 9,
+          border: `1px solid ${mutedState ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.15)"}`,
+          background: mutedState ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.07)",
+          color: mutedState ? "#ef4444" : "rgba(255,255,255,0.6)",
+          cursor: "pointer", display: "flex", alignItems: "center",
+        }}>
+          {mutedState ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        </button>
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 500, marginInline: "auto" }}>
