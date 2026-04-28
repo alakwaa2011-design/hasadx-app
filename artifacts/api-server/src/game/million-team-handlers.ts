@@ -11,6 +11,13 @@ type GameStatus = "waiting" | "playing" | "revealing" | "finished";
 
 const PRIZE_LADDER = [100, 200, 300, 500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000, 125_000, 250_000, 500_000, 1_000_000];
 const SAFE_HAVEN_LEVELS = new Set([4, 9]);
+
+function getQuestionMeta(idx: number, totalQ: number): { tier: number; isPower: boolean; pointsPerVoter: number } {
+  const ratio = idx / Math.max(1, totalQ - 1);
+  const tier = ratio < 1 / 3 ? 1 : ratio < 2 / 3 ? 2 : 3;
+  const isPower = (idx + 1) % 5 === 0;
+  return { tier, isPower, pointsPerVoter: tier * 100 * (isPower ? 2 : 1) };
+}
 const QUESTION_SECONDS = 30;
 const SPEED_BONUS_RATIO = 0.2;
 
@@ -236,8 +243,9 @@ function revealQuestion(io: Server, session: TeamSession) {
     }
   }
 
-  session.points.A += correctVotersA;
-  session.points.B += correctVotersB;
+  const { pointsPerVoter } = getQuestionMeta(session.currentIndex, session.questions.length);
+  session.points.A += correctVotersA * pointsPerVoter;
+  session.points.B += correctVotersB * pointsPerVoter;
 
   const prizeA = PRIZE_LADDER[Math.max(0, session.prizeLevels.A)] ?? 0;
   const prizeB = PRIZE_LADDER[Math.max(0, session.prizeLevels.B)] ?? 0;
@@ -374,6 +382,7 @@ function broadcastQuestion(io: Server, session: TeamSession) {
     }
   }
 
+  const qMeta = getQuestionMeta(session.currentIndex, session.questions.length);
   io.to(`million-team:${session.pin}`).emit("million-team:next-question", {
     question: {
       id: q.id,
@@ -391,6 +400,9 @@ function broadcastQuestion(io: Server, session: TeamSession) {
     lifelinesUsed: session.lifelinesUsed,
     teamNames: session.teamNames,
     frozenTeam: session.frozenTeam,
+    questionTier: qMeta.tier,
+    isPowerQuestion: qMeta.isPower,
+    pointsPerVoter: qMeta.pointsPerVoter,
   });
 
   startTimer(io, session);
@@ -453,7 +465,7 @@ export function setupMillionTeamSocket(io: Server) {
           pin,
           hostSocketId: socket.id,
           hostToken,
-          questions: data.questions.slice(0, 15),
+          questions: data.questions.slice(0, 40),
           currentIndex: 0,
           status: "waiting",
           teamNames: {

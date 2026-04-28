@@ -408,8 +408,8 @@ export default function MillionSetup() {
             </h1>
             <p className="text-blue-300 text-sm">
               {lang === "ar"
-                ? "15 سؤالاً تتصاعد صعوبةً — وساعدك بأربعة أطواق نجاة"
-                : "15 escalating questions — with 4 lifelines to help you"}
+                ? "أسئلة تتصاعد صعوبةً — وساعدك بأربعة أطواق نجاة"
+                : "Escalating questions — with 4 lifelines to help you"}
             </p>
           </motion.div>
 

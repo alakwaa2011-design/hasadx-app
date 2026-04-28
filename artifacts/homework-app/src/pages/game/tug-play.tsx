@@ -1401,23 +1401,23 @@ export default function TugPlay() {
                   {/* Team grids with assignment control for teacher */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {/* Blue Team */}
-                    <div className="rounded-2xl p-3 border-2 border-blue-400/50" style={{ background: "rgba(255,255,255,0.12)" }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="bg-white text-blue-700 font-black text-xs px-3 py-1 rounded-lg shadow">
+                    <div className="rounded-2xl border-2 border-blue-500 overflow-hidden" style={{ background: "#ffffff" }}>
+                      <div className="px-3 py-2 flex items-center justify-between" style={{ background: "#1d4ed8" }}>
+                        <span className="text-white font-black text-sm">
                           {teamLabel("blue")} ({blueTeam.length})
                         </span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="p-3 space-y-1.5">
                         {blueTeam.length === 0
-                          ? <p className="text-blue-300/60 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
+                          ? <p className="text-blue-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
                           : blueTeam.map((p) => (
                             <motion.div key={p.name} initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl bg-blue-500/20 border border-blue-400/30">
+                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl border border-blue-200" style={{ background: "#eff6ff" }}>
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-white font-bold text-xs flex-1 truncate">{p.name}</span>
+                              <span className="text-blue-900 font-bold text-xs flex-1 truncate">{p.name}</span>
                               {isCreator && (
                                 <button onClick={() => handleMovePlayer(p.name, "red")}
-                                  className="text-red-300 hover:text-red-100 text-[10px] font-black px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors shrink-0">
+                                  className="text-red-700 hover:text-red-900 text-[10px] font-black px-1.5 py-0.5 rounded transition-colors shrink-0" style={{ background: "#fee2e2" }}>
                                   →🔴
                                 </button>
                               )}
@@ -1427,23 +1427,23 @@ export default function TugPlay() {
                       </div>
                     </div>
                     {/* Red Team */}
-                    <div className="rounded-2xl p-3 border-2 border-red-400/50" style={{ background: "rgba(255,255,255,0.12)" }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="bg-white text-red-700 font-black text-xs px-3 py-1 rounded-lg shadow">
+                    <div className="rounded-2xl border-2 border-red-500 overflow-hidden" style={{ background: "#ffffff" }}>
+                      <div className="px-3 py-2 flex items-center justify-between" style={{ background: "#dc2626" }}>
+                        <span className="text-white font-black text-sm">
                           {teamLabel("red")} ({redTeam.length})
                         </span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="p-3 space-y-1.5">
                         {redTeam.length === 0
-                          ? <p className="text-red-300/60 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
+                          ? <p className="text-red-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
                           : redTeam.map((p) => (
                             <motion.div key={p.name} initial={{ x: 10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl bg-red-500/20 border border-red-400/30">
+                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl border border-red-200" style={{ background: "#fef2f2" }}>
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-white font-bold text-xs flex-1 truncate">{p.name}</span>
+                              <span className="text-red-900 font-bold text-xs flex-1 truncate">{p.name}</span>
                               {isCreator && (
                                 <button onClick={() => handleMovePlayer(p.name, "blue")}
-                                  className="text-blue-300 hover:text-blue-100 text-[10px] font-black px-1.5 py-0.5 rounded bg-blue-500/20 hover:bg-blue-500/40 transition-colors shrink-0">
+                                  className="text-blue-700 hover:text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded transition-colors shrink-0" style={{ background: "#dbeafe" }}>
                                   🔵←
                                 </button>
                               )}
@@ -1679,24 +1679,24 @@ export default function TugPlay() {
         </div>
 
         {(phase === "question" || phase === "answered" || phase === "round-end" || phase === "countdown") && players.length > 0 && (
-          <div className="px-3 py-2 mt-auto border-t border-slate-200/80 dark:border-white/10 bg-black/10 dark:bg-black/30">
+          <div className="px-3 py-2 mt-auto border-t-2 border-gray-200" style={{ background: "#ffffff" }}>
             <div className="flex gap-3">
               <div className="flex-1">
-                <div className="text-[10px] font-black text-blue-600/60 dark:text-blue-400/60 mb-1">{teamLabel("blue")}</div>
+                <div className="text-[10px] font-black text-blue-700 mb-1">{teamLabel("blue")}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {blueTeam.map(p => (
-                    <span key={p.name} className="text-xs text-blue-700 dark:text-blue-200 bg-blue-500/20 px-2 py-1 rounded-lg leading-tight font-bold border border-blue-400/20 flex items-center gap-1">
+                    <span key={p.name} className="text-xs text-blue-800 px-2 py-0.5 rounded-lg leading-tight font-bold border border-blue-300 flex items-center gap-1" style={{ background: "#dbeafe" }}>
                       <AvatarDisplay avatar={p.avatar} size="sm" /> {p.name}
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="w-px bg-slate-300/80 dark:bg-white/10" />
+              <div className="w-px bg-gray-200" />
               <div className="flex-1">
-                <div className="text-[10px] font-black text-red-600/60 dark:text-red-400/60 mb-1 text-end">{teamLabel("red")}</div>
+                <div className="text-[10px] font-black text-red-700 mb-1 text-end">{teamLabel("red")}</div>
                 <div className="flex flex-wrap gap-1.5 justify-end">
                   {redTeam.map(p => (
-                    <span key={p.name} className="text-xs text-red-700 dark:text-red-200 bg-red-500/20 px-2 py-1 rounded-lg leading-tight font-bold border border-red-400/20 flex items-center gap-1">
+                    <span key={p.name} className="text-xs text-red-800 px-2 py-0.5 rounded-lg leading-tight font-bold border border-red-300 flex items-center gap-1" style={{ background: "#fee2e2" }}>
                       <AvatarDisplay avatar={p.avatar} size="sm" /> {p.name}
                     </span>
                   ))}

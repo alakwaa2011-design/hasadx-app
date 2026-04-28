@@ -107,7 +107,7 @@ router.get("/million/questions", questionsLimiter, async (req, res) => {
       return res.status(400).json({ message: "لا توجد أسئلة كافية في هذا الواجب (الحد الأدنى 5 أسئلة)" });
     }
 
-    const shuffled = shuffleArray(mcqQuestions).slice(0, 15);
+    const shuffled = shuffleArray(mcqQuestions).slice(0, 40);
 
     const questions = shuffled.map(q => ({
       id: q.id,
