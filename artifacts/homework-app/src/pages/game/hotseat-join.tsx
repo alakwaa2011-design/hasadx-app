@@ -21,13 +21,14 @@ function PinInput({ value, onChange, disabled }: { value: string; onChange: (v: 
     if (e.key === "Backspace") {
       e.preventDefault();
       const newVal = value.slice(0, i > 0 ? i - 1 : 0) + value.slice(i);
-      onChange(newVal.slice(0, PIN_LENGTH).toUpperCase());
+      onChange(newVal.slice(0, PIN_LENGTH));
       if (i > 0) refs.current[i - 1]?.focus();
     }
   };
 
   const handleChange = (i: number, v: string) => {
-    const ch = v.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(-1);
+    // Numbers only
+    const ch = v.replace(/\D/g, "").slice(-1);
     if (!ch) return;
     const arr = chars.map((c, idx) => (idx === i ? ch : c === " " ? "" : c));
     const joined = arr.join("").slice(0, PIN_LENGTH);
@@ -37,7 +38,7 @@ function PinInput({ value, onChange, disabled }: { value: string; onChange: (v: 
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const text = e.clipboardData.getData("text").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, PIN_LENGTH);
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, PIN_LENGTH);
     onChange(text);
     const nextIdx = Math.min(text.length, PIN_LENGTH - 1);
     refs.current[nextIdx]?.focus();
@@ -91,7 +92,7 @@ export default function HotSeatJoin() {
 
   // Validate PIN via socket
   useEffect(() => {
-    const trimmed = pin.trim().toUpperCase();
+    const trimmed = pin.trim();
     if (trimmed.length === PIN_LENGTH && trimmed !== checkedPin) {
       setCheckedPin(trimmed);
       const socket = getHotSeatSocket();
@@ -103,7 +104,7 @@ export default function HotSeatJoin() {
   }, [pin, checkedPin]);
 
   const handleJoin = () => {
-    const trimPin = pin.trim().toUpperCase();
+    const trimPin = pin.trim();
     const trimName = name.trim();
     if (!trimPin || trimPin.length !== PIN_LENGTH) { toast.error(ar ? "أدخل كود الغرفة" : "Enter room code"); return; }
     if (!trimName) { toast.error(ar ? "أدخل اسمك" : "Enter your name"); return; }

@@ -125,167 +125,235 @@ export default function HotSeatCreate() {
 
   // ── Game Created Screen (Lobby) ───────────────────────────────────────────
   if (gamePin) {
+    // Split PIN into individual digits for large display
+    const pinDigits = gamePin.split("");
+
+    const shareWhatsApp = () => {
+      const text = ar
+        ? `🔥 الكرسي الساخن\n📍 ${gradeLabel || ""} · ${subject}${topic ? ` · ${topic}` : ""}\n\n🔢 رمز الدخول:\n${gamePin}\n\n🔗 أو افتح الرابط:\n${joinUrl}`
+        : `🔥 HotSeat Game\n📍 ${gradeLabel || ""} · ${subject}${topic ? ` · ${topic}` : ""}\n\n🔢 Room Code:\n${gamePin}\n\n🔗 Or open:\n${joinUrl}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    };
+
     return (
       <div dir={dir} style={{ minHeight: "100dvh", background: DARK_BG, position: "relative", overflow: "hidden" }}>
-        {/* Animated fire particles */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{ y: [-20, -120], opacity: [0.7, 0], scale: [1, 0.3] }}
-              transition={{ repeat: Infinity, duration: 1.5 + Math.random() * 2, delay: Math.random() * 3 }}
-              style={{
-                position: "absolute",
-                bottom: 0, left: `${5 + Math.random() * 90}%`,
-                fontSize: 12 + Math.random() * 20,
-              }}
-            >
-              🔥
-            </motion.div>
+        {/* Fire embers */}
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "none" }}>
+          {[...Array(16)].map((_, i) => (
+            <motion.div key={i}
+              animate={{ y: [-20, -140], opacity: [0.7, 0], scale: [1, 0.2] }}
+              transition={{ repeat: Infinity, duration: 2 + Math.random() * 2, delay: Math.random() * 4 }}
+              style={{ position: "absolute", bottom: 0, left: `${5 + Math.random() * 90}%`, fontSize: 10 + Math.random() * 14 }}
+            >🔥</motion.div>
           ))}
         </div>
 
-        <div style={{ position: "relative", zIndex: 10, padding: "24px 16px", maxWidth: 560, marginInline: "auto" }}>
-          {/* Header */}
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} style={{ textAlign: "center", marginBottom: 24 }}>
-            <FireRing />
-            <h1 style={{ color: "#fff", fontSize: 24, fontWeight: 900, margin: "12px 0 4px" }}>
-              {ar ? "🔥 الجلسة جاهزة!" : "🔥 Session Ready!"}
-            </h1>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, margin: 0 }}>
-              {gradeLabel && `${gradeLabel} · `}{subject}
-              {topic && ` · ${topic}`}
-            </p>
-          </motion.div>
+        <div style={{ position: "relative", zIndex: 10, padding: "20px 16px", maxWidth: 580, marginInline: "auto" }}>
 
-          {/* PIN Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1.5px solid rgba(255,107,43,0.3)",
-              borderRadius: 24,
-              padding: 24,
-              backdropFilter: "blur(12px)",
-              marginBottom: 16,
-            }}
-          >
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 700, textAlign: "center", margin: "0 0 12px", direction: "ltr" }}>
-              {window.location.host}/game/hotseat/join
-            </p>
-            <motion.div
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+          {/* Session info bar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div>
+              <p style={{ color: FIRE2, fontSize: 11, fontWeight: 700, margin: 0 }}>
+                🔥 {ar ? "الكرسي الساخن — جلسة نشطة" : "HotSeat — Active Session"}
+              </p>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, margin: "2px 0 0" }}>
+                {gradeLabel && `${gradeLabel} · `}{subject}{topic && ` · ${topic}`}
+              </p>
+            </div>
+            <button
+              onClick={() => { setGamePin(null); setCreatorToken(null); setStudents([]); }}
               style={{
-                background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-                borderRadius: 18, padding: "18px 28px",
-                textAlign: "center", fontSize: 58, fontWeight: 900,
-                color: "#fff", letterSpacing: "0.2em", fontFamily: "monospace",
-                direction: "ltr", boxShadow: `0 12px 40px ${FIRE}60`,
-                marginBottom: 18,
+                padding: "6px 12px", borderRadius: 10,
+                border: "1px solid rgba(255,255,255,0.15)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}
             >
-              {gamePin}
-            </motion.div>
+              {ar ? "← جلسة جديدة" : "New Session →"}
+            </button>
+          </div>
 
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <div style={{ background: "#fff", borderRadius: 12, padding: 8, flexShrink: 0 }}>
-                <QRCode value={joinUrl} size={110} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 8, wordBreak: "break-all", direction: "ltr" }}>
-                  {joinUrl}
-                </p>
-                <button
-                  onClick={copyLink}
+          {/* ━━━━━ BIG PIN DISPLAY ━━━━━ */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: "rgba(0,0,0,0.5)",
+              border: `2px solid ${FIRE}60`,
+              borderRadius: 28,
+              padding: "24px 20px",
+              backdropFilter: "blur(16px)",
+              marginBottom: 14,
+              boxShadow: `0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
+            }}
+          >
+            {/* Label */}
+            <p style={{
+              color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 800,
+              textAlign: "center", letterSpacing: "0.15em", textTransform: "uppercase",
+              margin: "0 0 14px",
+            }}>
+              {ar ? "🔢 رمز دخول الطلاب" : "🔢 Student Room Code"}
+            </p>
+
+            {/* Giant digits */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 16, direction: "ltr" }}>
+              {pinDigits.map((d, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * i, type: "spring", stiffness: 400 }}
                   style={{
-                    width: "100%", padding: "10px 14px", borderRadius: 12, border: "none",
-                    background: copied ? "rgba(22,163,74,0.4)" : "rgba(255,255,255,0.1)",
-                    color: "#fff", fontWeight: 800, fontSize: 13,
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    width: 52, height: 64,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: `linear-gradient(180deg, ${FIRE}30 0%, ${FIRE}15 100%)`,
+                    border: `2px solid ${FIRE}80`,
+                    borderRadius: 14,
+                    fontSize: 40, fontWeight: 900, color: "#fff",
+                    fontFamily: "monospace",
+                    boxShadow: `0 4px 16px ${FIRE}30, inset 0 1px 0 rgba(255,255,255,0.1)`,
                   }}
                 >
-                  {copied ? <Check size={15} /> : <Copy size={15} />}
-                  {copied ? (ar ? "تم النسخ!" : "Copied!") : (ar ? "نسخ الرابط" : "Copy Link")}
-                </button>
+                  {d}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Join URL small */}
+            <p style={{
+              color: "rgba(255,255,255,0.3)", fontSize: 10, textAlign: "center",
+              margin: "0 0 14px", direction: "ltr", wordBreak: "break-all",
+            }}>
+              {joinUrl}
+            </p>
+
+            {/* Share buttons */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              <button
+                onClick={copyLink}
+                style={{
+                  padding: "10px 8px", borderRadius: 12, border: "none",
+                  background: copied ? "rgba(22,163,74,0.4)" : "rgba(255,255,255,0.1)",
+                  color: "#fff", fontWeight: 800, fontSize: 12,
+                  cursor: "pointer", display: "flex", flexDirection: "column",
+                  alignItems: "center", gap: 4,
+                }}
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                <span>{copied ? (ar ? "تم!" : "Copied!") : (ar ? "نسخ" : "Copy")}</span>
+              </button>
+              <button
+                onClick={shareWhatsApp}
+                style={{
+                  padding: "10px 8px", borderRadius: 12, border: "none",
+                  background: "rgba(37,211,102,0.2)",
+                  border: "1px solid rgba(37,211,102,0.3)",
+                  color: "#25D366", fontWeight: 800, fontSize: 12,
+                  cursor: "pointer", display: "flex", flexDirection: "column",
+                  alignItems: "center", gap: 4,
+                } as React.CSSProperties}
+              >
+                <span style={{ fontSize: 18 }}>📱</span>
+                <span>{ar ? "واتساب" : "WhatsApp"}</span>
+              </button>
+              <div style={{
+                padding: "6px", borderRadius: 12,
+                background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <QRCode value={joinUrl} size={56} />
               </div>
             </div>
           </motion.div>
 
-          {/* Students */}
-          <div style={{ marginBottom: 16 }}>
+          {/* ━━━━━ STUDENTS LIST ━━━━━ */}
+          <div style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 20, padding: "14px 16px", marginBottom: 14,
+          }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <Users size={16} color={FIRE} />
+              <Users size={15} color={FIRE} />
               <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700 }}>
-                {ar ? `الطلاب المنضمون (${students.length})` : `Students joined (${students.length})`}
+                {ar ? `الطلاب المنضمون` : `Students joined`}
+              </span>
+              <span style={{
+                marginInlineStart: "auto",
+                background: `${FIRE}30`, border: `1px solid ${FIRE}50`,
+                color: FIRE2, fontWeight: 900, fontSize: 16,
+                padding: "2px 12px", borderRadius: 999,
+              }}>
+                {students.length}
               </span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, minHeight: 36 }}>
               <AnimatePresence>
                 {students.map(s => (
                   <motion.div
                     key={s.uid}
-                    initial={{ opacity: 0, scale: 0.6 }}
+                    initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "6px 12px", borderRadius: 999,
-                      background: "rgba(255,255,255,0.08)",
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "5px 10px", borderRadius: 999,
+                      background: "rgba(255,255,255,0.07)",
                       border: `1.5px solid ${s.color}50`,
-                      color: "#fff", fontSize: 13, fontWeight: 700,
                     }}
                   >
-                    <span>{s.avatar}</span>
-                    <span style={{ color: s.color }}>{s.name}</span>
+                    <span style={{ fontSize: 16 }}>{s.avatar}</span>
+                    <span style={{ color: s.color, fontSize: 12, fontWeight: 800 }}>{s.name}</span>
                   </motion.div>
                 ))}
               </AnimatePresence>
               {students.length === 0 && (
-                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, fontStyle: "italic" }}>
-                  {ar ? "في انتظار الطلاب..." : "Waiting for students..."}
-                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                  <motion.div
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    style={{ fontSize: 18 }}
+                  >⏳</motion.div>
+                  <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: 0 }}>
+                    {ar ? "شارك الرمز مع طلابك..." : "Share the code with your students..."}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              onClick={() => { setGamePin(null); setCreatorToken(null); setStudents([]); }}
-              style={{
-                flex: 1, padding: "14px", borderRadius: 16,
-                border: "1.5px solid rgba(255,255,255,0.2)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.8)", fontWeight: 700, fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              {ar ? "جلسة جديدة" : "New Session"}
-            </button>
-            <button
-              onClick={startGame}
-              disabled={students.length === 0}
-              style={{
-                flex: 2, padding: "14px", borderRadius: 16, border: "none",
-                background: students.length === 0
-                  ? "rgba(255,107,43,0.3)"
-                  : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-                color: "#fff", fontWeight: 900, fontSize: 15,
-                cursor: students.length === 0 ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                boxShadow: students.length > 0 ? `0 10px 28px ${FIRE}60` : undefined,
-              }}
-            >
-              <Flame size={18} />
-              {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"}
-            </button>
-          </div>
+          {/* ━━━━━ START BUTTON ━━━━━ */}
+          <motion.button
+            whileHover={students.length > 0 ? { scale: 1.02 } : undefined}
+            whileTap={students.length > 0 ? { scale: 0.97 } : undefined}
+            onClick={startGame}
+            disabled={students.length === 0}
+            style={{
+              width: "100%", padding: "16px", borderRadius: 20, border: "none",
+              background: students.length === 0
+                ? "rgba(255,107,43,0.2)"
+                : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
+              color: students.length === 0 ? "rgba(255,255,255,0.4)" : "#fff",
+              fontWeight: 900, fontSize: 17,
+              cursor: students.length === 0 ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              boxShadow: students.length > 0 ? `0 12px 36px ${FIRE}50` : undefined,
+            }}
+          >
+            <Flame size={22} />
+            {ar ? "ابدأ الجلسة 🔥" : "Start Session 🔥"}
+            {students.length > 0 && (
+              <span style={{
+                background: "rgba(0,0,0,0.25)", borderRadius: 999,
+                padding: "2px 10px", fontSize: 13, fontWeight: 800,
+              }}>
+                {students.length} {ar ? "طالب" : "students"}
+              </span>
+            )}
+          </motion.button>
           {students.length < 1 && (
-            <p style={{ color: "rgba(255,107,43,0.7)", fontSize: 12, textAlign: "center", marginTop: 8 }}>
-              {ar ? "يلزم طالب واحد على الأقل" : "At least 1 student required"}
+            <p style={{ color: "rgba(255,107,43,0.6)", fontSize: 12, textAlign: "center", marginTop: 8 }}>
+              {ar ? "انتظر حتى ينضم طالب واحد على الأقل" : "Wait for at least 1 student to join"}
             </p>
           )}
         </div>

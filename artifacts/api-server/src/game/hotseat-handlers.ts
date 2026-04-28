@@ -77,10 +77,10 @@ const POINTS = {
 };
 
 function generatePin(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let pin: string;
   do {
-    pin = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    // 6-digit numeric PIN (100000–999999)
+    pin = String(Math.floor(100000 + Math.random() * 900000));
   } while (games.has(pin));
   return pin;
 }
