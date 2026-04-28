@@ -731,9 +731,9 @@ router.get("/video-lessons/:id/class-students", async (req, res) => {
       ));
 
     if (isTeacher) {
-      res.json(students);
+      return res.json(students);
     } else {
-      res.json(students.map((s) => ({ id: s.id, name: s.name })));
+      return res.json(students.map((s) => ({ id: s.id, name: s.name })));
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
