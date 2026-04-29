@@ -14,6 +14,9 @@ export const millionClassSessionsTable = pgTable("million_class_sessions", {
   teamBName: text("team_b_name"),
   teamAMembers: jsonb("team_a_members"),
   teamBMembers: jsonb("team_b_members"),
+  questionCount: integer("question_count"),
+  pointsScheme: text("points_scheme"),
+  basePoints: integer("base_points"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
 });

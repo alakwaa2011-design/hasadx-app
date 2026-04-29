@@ -8,6 +8,7 @@ type PlayerStatus = "playing" | "won" | "wrong" | "quit" | "finished";
 type SessionMode = "individual" | "broadcast" | "team-control";
 type LifelineKey = "fifty" | "phone" | "audience" | "swap";
 type TeamSide = "A" | "B";
+export type PointsScheme = "even" | "progressive" | "stages" | "millionaire-ladder";
 
 interface ClassPlayer {
   name: string;
@@ -64,6 +65,10 @@ interface ClassSession {
   teamA: TeamState | null;
   teamB: TeamState | null;
   transferredQuestions: Set<number>; // q indexes that were already transferred
+  // Per-session game settings (team-control only)
+  questionCount: number;
+  pointsScheme: PointsScheme;
+  basePoints: number;
   // Authoritative question list for server-side scoring & spectator display
   cachedQuestions: CachedQuestion[] | null;
 }
@@ -71,6 +76,38 @@ interface ClassSession {
 // Prize ladder is mirrored from the client and used as the authoritative reward
 // for each correctly-answered question in broadcast mode.
 const PRIZE_LADDER = [100, 200, 300, 500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000, 125_000, 250_000, 500_000, 1_000_000];
+
+/**
+ * Per-question reward used by team-control mode.
+ * - even        → every question awards `basePoints`
+ * - progressive → starts at basePoints, grows by 25% of basePoints per question
+ * - stages      → first half = basePoints, second half = 2× basePoints, last 5 questions = 5× basePoints
+ * - millionaire-ladder → legacy 15-step pyramid (kept so existing solo/team-host modes are untouched)
+ */
+export function getQuestionPoints(
+  scheme: PointsScheme,
+  basePoints: number,
+  questionIndex: number,
+  totalQuestions: number,
+): number {
+  const base = Math.max(1, Math.floor(basePoints || 100));
+  switch (scheme) {
+    case "even":
+      return base;
+    case "progressive":
+      return base + Math.floor(base * 0.25) * questionIndex;
+    case "stages": {
+      const lastFiveStart = Math.max(0, totalQuestions - 5);
+      if (questionIndex >= lastFiveStart) return base * 5;
+      const halfway = Math.floor(totalQuestions / 2);
+      if (questionIndex >= halfway) return base * 2;
+      return base;
+    }
+    case "millionaire-ladder":
+    default:
+      return PRIZE_LADDER[Math.min(questionIndex, PRIZE_LADDER.length - 1)] ?? base;
+  }
+}
 
 const classSessions = new Map<string, ClassSession>();
 
@@ -153,6 +190,15 @@ function broadcastTeamState(io: Server, session: ClassSession) {
     questionRevealed: session.questionRevealed,
     transferredQuestions: Array.from(session.transferredQuestions),
     currentQuestion: getPublicCurrentQuestion(session),
+    pointsScheme: session.pointsScheme,
+    basePoints: session.basePoints,
+    questionCount: session.questionCount,
+    currentQuestionPoints: getQuestionPoints(
+      session.pointsScheme,
+      session.basePoints,
+      session.currentQuestionIdx,
+      session.questionCount,
+    ),
   });
 }
 
@@ -204,6 +250,15 @@ export function setupMillionClassSocket(io: Server) {
             questionRevealed: session.questionRevealed,
             transferredQuestions: Array.from(session.transferredQuestions),
             currentQuestion: getPublicCurrentQuestion(session),
+            pointsScheme: session.pointsScheme,
+            basePoints: session.basePoints,
+            questionCount: session.questionCount,
+            currentQuestionPoints: getQuestionPoints(
+              session.pointsScheme,
+              session.basePoints,
+              session.currentQuestionIdx,
+              session.questionCount,
+            ),
           });
         } else {
           socket.emit("million-class:leaderboard", {
@@ -577,6 +632,9 @@ export async function createClassSession(opts: {
   teamBName?: string;
   teamAMembers?: string[];
   teamBMembers?: string[];
+  questionCount?: number;
+  pointsScheme?: PointsScheme;
+  basePoints?: number;
 }): Promise<{ pin: string; hostToken: string }> {
   const pin = generatePin();
   const hostToken = generateToken();
@@ -590,6 +648,15 @@ export async function createClassSession(opts: {
   const teamB: TeamState | null = mode === "team-control"
     ? { name: opts.teamBName || "الفريق ب", members: opts.teamBMembers || [], score: 0, lifelinesUsed: { fifty: false, phone: false, audience: false, swap: false } }
     : null;
+
+  // Game-settings defaults: legacy ladder & 15 questions for non team-control modes.
+  const isTeamControl = mode === "team-control";
+  const rawCount = opts.questionCount ?? (isTeamControl ? 15 : 15);
+  const questionCount = Math.max(5, Math.min(50, Math.floor(rawCount)));
+  const pointsScheme: PointsScheme = isTeamControl
+    ? (opts.pointsScheme ?? "even")
+    : "millionaire-ladder";
+  const basePoints = Math.max(1, Math.min(10_000, Math.floor(opts.basePoints ?? 100)));
 
   const session: ClassSession = {
     pin,
@@ -608,6 +675,9 @@ export async function createClassSession(opts: {
     teamA,
     teamB,
     transferredQuestions: new Set(),
+    questionCount,
+    pointsScheme,
+    basePoints,
     cachedQuestions: null,
   };
   classSessions.set(pin, session);
@@ -627,6 +697,9 @@ export async function createClassSession(opts: {
       teamBName: teamB?.name ?? null,
       teamAMembers: teamA?.members ?? null,
       teamBMembers: teamB?.members ?? null,
+      questionCount,
+      pointsScheme,
+      basePoints,
       expiresAt: expiresAtDate,
     });
   } catch (err) {
@@ -650,6 +723,9 @@ export function getClassSession(pin: string): {
   teamBMembers?: string[];
   currentQuestionIdx: number;
   cachedQuestions: CachedQuestion[] | null;
+  questionCount: number;
+  pointsScheme: PointsScheme;
+  basePoints: number;
 } | null {
   const session = classSessions.get(pin);
   if (!session || Date.now() > session.expiresAt) return null;
@@ -667,5 +743,8 @@ export function getClassSession(pin: string): {
     teamBMembers: session.teamB?.members,
     currentQuestionIdx: session.currentQuestionIdx,
     cachedQuestions: session.cachedQuestions,
+    questionCount: session.questionCount,
+    pointsScheme: session.pointsScheme,
+    basePoints: session.basePoints,
   };
 }

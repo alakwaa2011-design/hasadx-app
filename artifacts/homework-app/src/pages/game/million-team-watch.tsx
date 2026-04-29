@@ -42,6 +42,7 @@ export default function MillionTeamWatch() {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [isTransferred, setIsTransferred] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<PublicQuestion | null>(null);
+  const [currentQuestionPoints, setCurrentQuestionPoints] = useState<number | null>(null);
   const [gameEnded, setGameEnded] = useState(false);
 
   useEffect(() => {
@@ -49,12 +50,22 @@ export default function MillionTeamWatch() {
     // Subscribe to the session room without re-joining as a player
     // (the student already registered via million-class:join during /game/million/join).
     socket.emit("million-class:subscribe", { pin });
-    const onTeam = (data: { teamA: TeamState; teamB: TeamState; currentQuestionIdx: number; transferredQuestions: number[]; currentQuestion: PublicQuestion | null }) => {
+    const onTeam = (data: {
+      teamA: TeamState;
+      teamB: TeamState;
+      currentQuestionIdx: number;
+      transferredQuestions: number[];
+      currentQuestion: PublicQuestion | null;
+      currentQuestionPoints?: number;
+      questionCount?: number;
+    }) => {
       setTeamA(data.teamA);
       setTeamB(data.teamB);
       setCurrentIdx(data.currentQuestionIdx);
       setIsTransferred(data.transferredQuestions.includes(data.currentQuestionIdx));
       setCurrentQuestion(data.currentQuestion);
+      if (typeof data.currentQuestionPoints === "number") setCurrentQuestionPoints(data.currentQuestionPoints);
+      if (typeof data.questionCount === "number" && data.questionCount > 0) setTotalQuestions(data.questionCount);
     };
     const onEnded = (data: { teamA?: TeamState; teamB?: TeamState; totalQuestions: number }) => {
       setGameEnded(true);
@@ -150,7 +161,14 @@ export default function MillionTeamWatch() {
 
           {!isFinished && currentQuestion && (
             <div className="rounded-2xl p-5 mb-5" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.25)" }}>
-              <p className="text-amber-300 text-xs font-bold mb-2">{lang === "ar" ? "السؤال الحالي" : "Current question"}</p>
+              <div className="flex items-center justify-between mb-2 gap-2">
+                <p className="text-amber-300 text-xs font-bold">{lang === "ar" ? "السؤال الحالي" : "Current question"}</p>
+                {currentQuestionPoints !== null && (
+                  <span className="px-2.5 py-1 rounded-full text-amber-200 text-xs font-black" style={{ background: "rgba(217,165,33,0.18)", border: "1px solid rgba(217,165,33,0.45)" }}>
+                    {lang === "ar" ? `يساوي ${fmt(currentQuestionPoints)} نقطة` : `Worth ${fmt(currentQuestionPoints)} pts`}
+                  </span>
+                )}
+              </div>
               <p className="text-white text-lg font-bold leading-relaxed">{currentQuestion.text}</p>
               {currentQuestion.imageUrl && <img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-48 mx-auto rounded-lg" />}
               <div className="grid grid-cols-2 gap-2 mt-3">

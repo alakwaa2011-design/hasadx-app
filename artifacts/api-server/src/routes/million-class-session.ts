@@ -71,7 +71,7 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       return res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
     }
 
-    const { questionSource, assignmentId, bankLevel, bankCategory, autoAdvance, mode, teamAName, teamBName, teamAMembers, teamBMembers } = req.body as {
+    const { questionSource, assignmentId, bankLevel, bankCategory, autoAdvance, mode, teamAName, teamBName, teamAMembers, teamBMembers, questionCount, pointsScheme, basePoints } = req.body as {
       questionSource?: string;
       assignmentId?: number;
       bankLevel?: string;
@@ -82,10 +82,36 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       teamBName?: string;
       teamAMembers?: string[];
       teamBMembers?: string[];
+      questionCount?: number;
+      pointsScheme?: "even" | "progressive" | "stages" | "millionaire-ladder";
+      basePoints?: number;
     };
 
     const safeMode: "individual" | "broadcast" | "team-control" =
       mode === "broadcast" || mode === "team-control" ? mode : "individual";
+
+    // Game settings — only honored for team-control mode. Other modes keep the
+    // legacy 15-question millionaire ladder.
+    let safeQuestionCount: number | undefined;
+    let safePointsScheme: "even" | "progressive" | "stages" | "millionaire-ladder" | undefined;
+    let safeBasePoints: number | undefined;
+    if (safeMode === "team-control") {
+      const n = Number(questionCount);
+      if (!Number.isFinite(n) || n < 5 || n > 50) {
+        return res.status(400).json({ message: "عدد الأسئلة يجب أن يكون بين 5 و 50" });
+      }
+      safeQuestionCount = Math.floor(n);
+      const allowed = ["even", "progressive", "stages"] as const;
+      if (!allowed.includes(pointsScheme as (typeof allowed)[number])) {
+        return res.status(400).json({ message: "نظام النقاط غير صحيح" });
+      }
+      safePointsScheme = pointsScheme as typeof safePointsScheme;
+      const bp = Number(basePoints);
+      if (!Number.isFinite(bp) || bp < 1 || bp > 10_000) {
+        return res.status(400).json({ message: "النقاط الأساسية يجب أن تكون بين 1 و 10000" });
+      }
+      safeBasePoints = Math.floor(bp);
+    }
 
     if (safeMode === "team-control") {
       if (!teamAName?.trim() || !teamBName?.trim()) {
@@ -154,6 +180,9 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       teamBName: teamBName?.trim().slice(0, 30),
       teamAMembers: sanitizeMembers(teamAMembers),
       teamBMembers: sanitizeMembers(teamBMembers),
+      questionCount: safeQuestionCount,
+      pointsScheme: safePointsScheme,
+      basePoints: safeBasePoints,
     });
 
     res.status(201).json(result);
@@ -256,7 +285,8 @@ router.get("/million/class-session/:pin/questions", questionsLimiter, async (req
         return res.status(400).json({ message: "لا توجد أسئلة كافية في هذا الواجب (الحد الأدنى 5 أسئلة)" });
       }
 
-      const selected = shuffleArray(mcqQuestions).slice(0, 15);
+      const targetCount = session.questionCount ?? 15;
+      const selected = shuffleArray(mcqQuestions).slice(0, targetCount);
       const payload = selected.map(q => ({
         id: q.id,
         text: q.text,
@@ -283,17 +313,27 @@ router.get("/million/class-session/:pin/questions", questionsLimiter, async (req
       ? session.bankCategory
       : null;
 
+    const targetCount = session.questionCount ?? 15;
+
     if (!levelFilter) {
-      async function fetchLvl(lvl: string) {
+      // Distribute target across easy/medium/hard, splitting any remainder
+      // evenly so each tier still gets at least one question when possible.
+      const perTier = Math.floor(targetCount / 3);
+      const remainder = targetCount - perTier * 3;
+      const easyCount = perTier + (remainder > 0 ? 1 : 0);
+      const medCount = perTier + (remainder > 1 ? 1 : 0);
+      const hardCount = perTier;
+      async function fetchLvl(lvl: string, count: number) {
+        if (count <= 0) return [] as Awaited<ReturnType<typeof fetchBankQs>>;
         let pool = await fetchBankQs(lvl, categoryFilter);
-        if (pool.length < 5 && categoryFilter) pool = await fetchBankQs(lvl, null);
+        if (pool.length < count && categoryFilter) pool = await fetchBankQs(lvl, null);
         if (pool.length === 0) pool = await fetchBankQs(null, null);
-        return shuffleArray(pool).slice(0, 5);
+        return shuffleArray(pool).slice(0, count);
       }
-      const [easy5, med5, hard5] = await Promise.all([
-        fetchLvl("easy"), fetchLvl("medium"), fetchLvl("hard"),
+      const [easyPool, medPool, hardPool] = await Promise.all([
+        fetchLvl("easy", easyCount), fetchLvl("medium", medCount), fetchLvl("hard", hardCount),
       ]);
-      const ordered = [...easy5, ...med5, ...hard5];
+      const ordered = [...easyPool, ...medPool, ...hardPool];
       if (ordered.length < 5) {
         return res.status(400).json({ message: "لا توجد أسئلة كافية في البنك" });
       }
@@ -303,12 +343,12 @@ router.get("/million/class-session/:pin/questions", questionsLimiter, async (req
     }
 
     let pool = await fetchBankQs(levelFilter, categoryFilter);
-    if (pool.length < 15 && categoryFilter) pool = await fetchBankQs(levelFilter, null);
-    if (pool.length < 15) pool = await fetchBankQs(null, null);
+    if (pool.length < targetCount && categoryFilter) pool = await fetchBankQs(levelFilter, null);
+    if (pool.length < targetCount) pool = await fetchBankQs(null, null);
     if (pool.length < 5) {
       return res.status(400).json({ message: "لا توجد أسئلة كافية في البنك" });
     }
-    const selected = shuffleArray(pool).slice(0, 15);
+    const selected = shuffleArray(pool).slice(0, targetCount);
     const payload = selected.map(mapBankQ);
     setCachedQuestions(pin, payload);
     return res.json({ questions: payload, assignmentTitle: "بنك الأسئلة", questionSource: "bank", bankLevel: session.bankLevel, bankCategory: session.bankCategory });

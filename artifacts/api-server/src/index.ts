@@ -58,6 +58,12 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT false
     `);
     await db.execute(sql`
+      ALTER TABLE million_class_sessions
+        ADD COLUMN IF NOT EXISTS question_count INTEGER NOT NULL DEFAULT 15,
+        ADD COLUMN IF NOT EXISTS points_scheme TEXT NOT NULL DEFAULT 'even',
+        ADD COLUMN IF NOT EXISTS base_points INTEGER NOT NULL DEFAULT 100
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS rocket_templates (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id),

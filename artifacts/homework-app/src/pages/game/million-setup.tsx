@@ -85,6 +85,13 @@ export default function MillionSetup() {
   const [teamBMembersInput, setTeamBMembersInput] = useState("");
   const [teamAMembersList, setTeamAMembersList] = useState<string[]>([]);
   const [teamBMembersList, setTeamBMembersList] = useState<string[]>([]);
+  // Two-teams game settings
+  type SetupTab = "teams" | "questions" | "points" | "review";
+  type Scheme = "even" | "progressive" | "stages";
+  const [setupTab, setSetupTab] = useState<SetupTab>("teams");
+  const [twoTeamsQuestionCount, setTwoTeamsQuestionCount] = useState<number>(15);
+  const [twoTeamsScheme, setTwoTeamsScheme] = useState<Scheme>("even");
+  const [twoTeamsBasePoints, setTwoTeamsBasePoints] = useState<number>(100);
 
   function addTeamMember(side: "A" | "B") {
     const raw = (side === "A" ? teamAMembersInput : teamBMembersInput).trim();
@@ -253,18 +260,31 @@ export default function MillionSetup() {
     if (isTeamControl) {
       if (!teamCtlAName.trim() || !teamCtlBName.trim()) {
         toast.error(lang === "ar" ? "أسماء الفريقين مطلوبة" : "Both team names are required");
+        setSetupTab("teams");
         return;
       }
       if (teamAMembersList.length < 1 || teamBMembersList.length < 1) {
         toast.error(lang === "ar"
           ? "أضف على الأقل لاعبًا واحدًا في كل فريق"
           : "Add at least one player to each team");
+        setSetupTab("teams");
         return;
       }
       if (teamAMembersList.length > 20 || teamBMembersList.length > 20) {
         toast.error(lang === "ar"
           ? "الحد الأقصى 20 لاعبًا لكل فريق"
           : "Maximum 20 players per team");
+        setSetupTab("teams");
+        return;
+      }
+      if (twoTeamsQuestionCount < 5 || twoTeamsQuestionCount > 50) {
+        toast.error(lang === "ar" ? "عدد الأسئلة يجب أن يكون بين 5 و 50" : "Questions must be 5-50");
+        setSetupTab("questions");
+        return;
+      }
+      if (twoTeamsBasePoints < 1 || twoTeamsBasePoints > 10000) {
+        toast.error(lang === "ar" ? "النقاط الأساسية يجب أن تكون بين 1 و 10000" : "Base points must be 1-10000");
+        setSetupTab("points");
         return;
       }
     }
@@ -278,6 +298,9 @@ export default function MillionSetup() {
         body.teamBName = teamCtlBName.trim();
         body.teamAMembers = teamAMembersList;
         body.teamBMembers = teamBMembersList;
+        body.questionCount = twoTeamsQuestionCount;
+        body.pointsScheme = twoTeamsScheme;
+        body.basePoints = twoTeamsBasePoints;
       }
       if (questionSource === "assignment" && selectedAssignmentId) body.assignmentId = selectedAssignmentId;
       else {
@@ -316,6 +339,7 @@ export default function MillionSetup() {
     // Mode toggles & team-control inputs must be in deps or stale values get captured.
     playMode, classTwoTeams, broadcastInClassSession,
     teamCtlAName, teamCtlBName, teamAMembersList, teamBMembersList,
+    twoTeamsQuestionCount, twoTeamsScheme, twoTeamsBasePoints,
   ]);
 
   function handleStart() {
@@ -671,6 +695,247 @@ export default function MillionSetup() {
                               ? "أنت المعلم تدير اللعبة بالكامل: كشف الإجابة، التحويل بين الفريقين، منح النقاط، وتفعيل المساعدات. لا يصوّت الطلاب."
                               : "You (teacher) drive the entire game: reveal answers, transfer questions, award points, and use lifelines. Students don't vote."}
                           </p>
+
+                          {/* Wizard tabs */}
+                          {(() => {
+                            const tabs: { key: SetupTab; ar: string; en: string }[] = [
+                              { key: "teams", ar: "١. الفريقان", en: "1. Teams" },
+                              { key: "questions", ar: "٢. عدد الأسئلة", en: "2. Questions" },
+                              { key: "points", ar: "٣. نظام النقاط", en: "3. Points" },
+                              { key: "review", ar: "٤. مراجعة", en: "4. Review" },
+                            ];
+                            return (
+                              <div className="grid grid-cols-4 gap-1.5 rounded-xl p-1" style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                                {tabs.map(t => (
+                                  <button
+                                    key={t.key}
+                                    onClick={() => setSetupTab(t.key)}
+                                    className="py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                                    style={{
+                                      background: setupTab === t.key ? "rgba(217,165,33,0.3)" : "transparent",
+                                      color: setupTab === t.key ? "#fde68a" : "#bfdbfe",
+                                      border: setupTab === t.key ? "1px solid rgba(217,165,33,0.55)" : "1px solid transparent",
+                                    }}
+                                  >
+                                    {lang === "ar" ? t.ar : t.en}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
+
+                          {setupTab === "questions" && (
+                            <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(34,87,57,0.12)", border: "1px solid rgba(34,87,57,0.35)" }}>
+                              <div className="flex items-center justify-between">
+                                <label className="text-emerald-200 text-xs font-bold">
+                                  {lang === "ar" ? "عدد الأسئلة في الجولة" : "Questions per round"}
+                                </label>
+                                <span className="text-amber-300 font-black text-2xl">{twoTeamsQuestionCount}</span>
+                              </div>
+                              <input
+                                type="range"
+                                min={5}
+                                max={50}
+                                step={1}
+                                value={twoTeamsQuestionCount}
+                                onChange={e => setTwoTeamsQuestionCount(Number(e.target.value))}
+                                className="w-full accent-amber-400"
+                              />
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={5}
+                                  max={50}
+                                  value={twoTeamsQuestionCount}
+                                  onChange={e => {
+                                    const v = Number(e.target.value);
+                                    if (Number.isFinite(v)) setTwoTeamsQuestionCount(Math.max(5, Math.min(50, Math.floor(v))));
+                                  }}
+                                  className="w-24 px-3 py-2 rounded-lg text-white text-sm font-bold focus:outline-none"
+                                  style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.12)" }}
+                                />
+                                <p className="text-[11px] text-emerald-300 flex-1">
+                                  {lang === "ar"
+                                    ? "اختر بين 5 و 50 سؤالاً. الأسئلة تُختار عشوائياً من المصدر المحدد."
+                                    : "Choose between 5 and 50 questions. Picked at random from your selected source."}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[10, 15, 20, 30].map(n => (
+                                  <button
+                                    key={n}
+                                    onClick={() => setTwoTeamsQuestionCount(n)}
+                                    className="py-1.5 rounded-md text-xs font-bold border transition-all"
+                                    style={{
+                                      background: twoTeamsQuestionCount === n ? "rgba(217,165,33,0.25)" : "rgba(255,255,255,0.04)",
+                                      borderColor: twoTeamsQuestionCount === n ? "rgba(217,165,33,0.6)" : "rgba(255,255,255,0.1)",
+                                      color: twoTeamsQuestionCount === n ? "#fde68a" : "#cbd5e1",
+                                    }}
+                                  >
+                                    {n}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {setupTab === "points" && (
+                            <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(217,165,33,0.10)", border: "1px solid rgba(217,165,33,0.30)" }}>
+                              <label className="text-amber-200 text-xs font-bold block">
+                                {lang === "ar" ? "نظام احتساب النقاط" : "Points system"}
+                              </label>
+                              {(() => {
+                                const schemes: { key: Scheme; titleAr: string; titleEn: string; descAr: string; descEn: string }[] = [
+                                  {
+                                    key: "even",
+                                    titleAr: "متساوٍ",
+                                    titleEn: "Even",
+                                    descAr: "كل سؤال = نفس النقاط — مناسب للجولات السريعة والمتوازنة.",
+                                    descEn: "Every question is worth the same — great for quick balanced rounds.",
+                                  },
+                                  {
+                                    key: "progressive",
+                                    titleAr: "تصاعدي",
+                                    titleEn: "Progressive",
+                                    descAr: "تبدأ النقاط صغيرة وتزداد ٢٥٪ من القيمة الأساسية مع كل سؤال.",
+                                    descEn: "Points start small and grow by 25% of the base value each question.",
+                                  },
+                                  {
+                                    key: "stages",
+                                    titleAr: "مراحل",
+                                    titleEn: "Stages",
+                                    descAr: "النصف الأول قيمة أساسية، النصف الثاني الضعف، وآخر ٥ أسئلة بـ ٥ أضعاف.",
+                                    descEn: "First half: base. Second half: 2×. Last 5 questions: 5× the base.",
+                                  },
+                                ];
+                                return (
+                                  <div className="grid gap-2">
+                                    {schemes.map(s => (
+                                      <button
+                                        key={s.key}
+                                        onClick={() => setTwoTeamsScheme(s.key)}
+                                        className="text-start rounded-lg p-3 border transition-all"
+                                        style={{
+                                          background: twoTeamsScheme === s.key ? "rgba(217,165,33,0.18)" : "rgba(255,255,255,0.04)",
+                                          borderColor: twoTeamsScheme === s.key ? "rgba(217,165,33,0.6)" : "rgba(255,255,255,0.1)",
+                                        }}
+                                      >
+                                        <div className="flex items-center justify-between mb-1">
+                                          <span className="text-amber-200 font-black text-sm">{lang === "ar" ? s.titleAr : s.titleEn}</span>
+                                          {twoTeamsScheme === s.key && <span className="text-amber-300 text-xs">✓</span>}
+                                        </div>
+                                        <p className="text-blue-200 text-[11px] leading-relaxed">{lang === "ar" ? s.descAr : s.descEn}</p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
+                              <div>
+                                <label className="text-amber-200 text-xs font-bold block mb-1">
+                                  {lang === "ar" ? "النقاط الأساسية لكل سؤال" : "Base points per question"}
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={10000}
+                                    value={twoTeamsBasePoints}
+                                    onChange={e => {
+                                      const v = Number(e.target.value);
+                                      if (Number.isFinite(v)) setTwoTeamsBasePoints(Math.max(1, Math.min(10000, Math.floor(v))));
+                                    }}
+                                    className="w-28 px-3 py-2 rounded-lg text-white text-sm font-bold focus:outline-none"
+                                    style={{ background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.12)" }}
+                                  />
+                                  <div className="flex gap-1">
+                                    {[50, 100, 200, 500].map(n => (
+                                      <button
+                                        key={n}
+                                        onClick={() => setTwoTeamsBasePoints(n)}
+                                        className="px-2.5 py-1.5 rounded-md text-xs font-bold border transition-all"
+                                        style={{
+                                          background: twoTeamsBasePoints === n ? "rgba(217,165,33,0.25)" : "rgba(255,255,255,0.04)",
+                                          borderColor: twoTeamsBasePoints === n ? "rgba(217,165,33,0.6)" : "rgba(255,255,255,0.1)",
+                                          color: twoTeamsBasePoints === n ? "#fde68a" : "#cbd5e1",
+                                        }}
+                                      >
+                                        {n}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {setupTab === "review" && (
+                            <div className="rounded-xl p-4 space-y-3" style={{ background: "rgba(34,87,57,0.10)", border: "1px solid rgba(34,87,57,0.35)" }}>
+                              <p className="text-emerald-200 text-xs font-bold">{lang === "ar" ? "مراجعة سريعة" : "Quick review"}</p>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                                  <p className="text-blue-300 font-bold mb-0.5">🔵 {teamCtlAName || "—"}</p>
+                                  <p className="text-white">{teamAMembersList.length} {lang === "ar" ? "لاعب" : "players"}</p>
+                                </div>
+                                <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                                  <p className="text-red-300 font-bold mb-0.5">🔴 {teamCtlBName || "—"}</p>
+                                  <p className="text-white">{teamBMembersList.length} {lang === "ar" ? "لاعب" : "players"}</p>
+                                </div>
+                                <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                                  <p className="text-amber-300 font-bold mb-0.5">{lang === "ar" ? "عدد الأسئلة" : "Questions"}</p>
+                                  <p className="text-white font-bold">{twoTeamsQuestionCount}</p>
+                                </div>
+                                <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                                  <p className="text-amber-300 font-bold mb-0.5">{lang === "ar" ? "النظام" : "Scheme"}</p>
+                                  <p className="text-white font-bold">
+                                    {twoTeamsScheme === "even" ? (lang === "ar" ? "متساوٍ" : "Even")
+                                      : twoTeamsScheme === "progressive" ? (lang === "ar" ? "تصاعدي" : "Progressive")
+                                      : (lang === "ar" ? "مراحل" : "Stages")}
+                                    {" · "}
+                                    <span className="opacity-80">{twoTeamsBasePoints}</span>
+                                  </p>
+                                </div>
+                              </div>
+                              {(() => {
+                                const previewIdxs = (() => {
+                                  const total = twoTeamsQuestionCount;
+                                  const out: number[] = [];
+                                  out.push(0);
+                                  if (total > 1) out.push(Math.floor(total / 2));
+                                  if (total > 2) out.push(total - 1);
+                                  return out;
+                                })();
+                                const compute = (idx: number, total: number, scheme: Scheme, base: number) => {
+                                  switch (scheme) {
+                                    case "even": return base;
+                                    case "progressive": return base + Math.floor(base * 0.25) * idx;
+                                    case "stages": {
+                                      const lastFiveStart = Math.max(0, total - 5);
+                                      if (idx >= lastFiveStart) return base * 5;
+                                      const halfway = Math.floor(total / 2);
+                                      if (idx >= halfway) return base * 2;
+                                      return base;
+                                    }
+                                  }
+                                };
+                                return (
+                                  <div>
+                                    <p className="text-emerald-200 text-[11px] font-bold mb-1">{lang === "ar" ? "أمثلة على النقاط" : "Sample points"}</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {previewIdxs.map(i => (
+                                        <div key={i} className="rounded-lg p-2 text-center" style={{ background: "rgba(217,165,33,0.12)", border: "1px solid rgba(217,165,33,0.3)" }}>
+                                          <p className="text-blue-300 text-[10px]">{lang === "ar" ? `سؤال ${i + 1}` : `Q ${i + 1}`}</p>
+                                          <p className="text-amber-300 font-black text-base">{compute(i, twoTeamsQuestionCount, twoTeamsScheme, twoTeamsBasePoints).toLocaleString("en-US")}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {setupTab === "teams" && (
+                          <>
                           {(["A", "B"] as const).map(side => {
                             const isA = side === "A";
                             const name = isA ? teamCtlAName : teamCtlBName;
@@ -729,6 +994,8 @@ export default function MillionSetup() {
                               </div>
                             );
                           })}
+                          </>
+                          )}
                         </div>
                       ) : (
                       <>

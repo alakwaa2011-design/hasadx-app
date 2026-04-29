@@ -10,8 +10,62 @@ import { HostJoinBar } from "@/components/host-join-bar";
 import { useGameAudio } from "./useGameAudio";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const PRIZE_LADDER = [100, 200, 300, 500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000, 125_000, 250_000, 500_000, 1_000_000];
 const fmt = (n: number) => n.toLocaleString("en-US");
+
+type PointsScheme = "even" | "progressive" | "stages" | "millionaire-ladder";
+const DEFAULT_LADDER = [100, 200, 300, 500, 1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 64_000, 125_000, 250_000, 500_000, 1_000_000];
+
+// Mirrors the server-side reward function in million-class-handlers.ts so the
+// host's "default prize" button matches what the server will actually award.
+function getQuestionPoints(scheme: PointsScheme, basePoints: number, idx: number, total: number): number {
+  const base = Math.max(1, Math.floor(basePoints || 100));
+  switch (scheme) {
+    case "even": return base;
+    case "progressive": return base + Math.floor(base * 0.25) * idx;
+    case "stages": {
+      const lastFiveStart = Math.max(0, total - 5);
+      if (idx >= lastFiveStart) return base * 5;
+      const halfway = Math.floor(total / 2);
+      if (idx >= halfway) return base * 2;
+      return base;
+    }
+    case "millionaire-ladder":
+    default:
+      return DEFAULT_LADDER[Math.min(idx, DEFAULT_LADDER.length - 1)] ?? base;
+  }
+}
+
+function describeScheme(scheme: PointsScheme, basePoints: number, total: number, lang: "ar" | "en"): string {
+  const ar = lang === "ar";
+  switch (scheme) {
+    case "even":
+      return ar ? `كل سؤال = ${fmt(basePoints)} نقطة` : `Each question = ${fmt(basePoints)} pts`;
+    case "progressive":
+      return ar
+        ? `يبدأ من ${fmt(basePoints)} ويزداد ${fmt(Math.floor(basePoints * 0.25))} نقطة في كل سؤال`
+        : `Starts at ${fmt(basePoints)}, grows by ${fmt(Math.floor(basePoints * 0.25))} per question`;
+    case "stages": {
+      const half = Math.floor(total / 2);
+      const lastFive = Math.min(5, total);
+      return ar
+        ? `أول ${half} ${fmt(basePoints)} • منتصف ${fmt(basePoints * 2)} • آخر ${lastFive} = ${fmt(basePoints * 5)}`
+        : `First ${half}: ${fmt(basePoints)} • Middle: ${fmt(basePoints * 2)} • Last ${lastFive}: ${fmt(basePoints * 5)}`;
+    }
+    case "millionaire-ladder":
+    default:
+      return ar ? "سلّم المليون التقليدي" : "Classic millionaire ladder";
+  }
+}
+
+function schemeLabel(scheme: PointsScheme, lang: "ar" | "en"): string {
+  const ar = lang === "ar";
+  switch (scheme) {
+    case "even": return ar ? "نظام متساوٍ" : "Even";
+    case "progressive": return ar ? "نظام تصاعدي" : "Progressive";
+    case "stages": return ar ? "نظام المراحل" : "Stages";
+    case "millionaire-ladder": default: return ar ? "سلّم المليون" : "Millionaire ladder";
+  }
+}
 
 interface Q {
   id: number;
@@ -72,6 +126,10 @@ export default function MillionTeamControlHost() {
   const [transferred, setTransferred] = useState<Set<number>>(new Set());
   const [awarding, setAwarding] = useState(false);
   const [customPoints, setCustomPoints] = useState<Record<Side, number>>({ A: 0, B: 0 });
+  const [pointsScheme, setPointsScheme] = useState<PointsScheme>("even");
+  const [basePoints, setBasePoints] = useState<number>(100);
+  const [questionCount, setQuestionCount] = useState<number>(15);
+  const [panelTab, setPanelTab] = useState<"teams" | "settings">("teams");
   const [editing, setEditing] = useState<Side | null>(null);
   const [draftName, setDraftName] = useState("");
   const [draftMembers, setDraftMembers] = useState<{ A: string[]; B: string[] }>({ A: [], B: [] });
@@ -119,12 +177,24 @@ export default function MillionTeamControlHost() {
     socket.emit("million-class:create", { pin, hostToken }, (res: { ok?: boolean; error?: string }) => {
       if (res.error) toast.error(res.error);
     });
-    const onTeam = (data: { teamA: TeamState; teamB: TeamState; currentQuestionIdx: number; questionRevealed: boolean; transferredQuestions: number[] }) => {
+    const onTeam = (data: {
+      teamA: TeamState;
+      teamB: TeamState;
+      currentQuestionIdx: number;
+      questionRevealed: boolean;
+      transferredQuestions: number[];
+      pointsScheme?: PointsScheme;
+      basePoints?: number;
+      questionCount?: number;
+    }) => {
       setTeamA(data.teamA);
       setTeamB(data.teamB);
       setCurrentIdx(data.currentQuestionIdx);
       setReveal(data.questionRevealed);
       setTransferred(new Set(data.transferredQuestions));
+      if (data.pointsScheme) setPointsScheme(data.pointsScheme);
+      if (typeof data.basePoints === "number") setBasePoints(data.basePoints);
+      if (typeof data.questionCount === "number") setQuestionCount(data.questionCount);
     };
     socket.on("million-class:team-state", onTeam);
     return () => { socket.off("million-class:team-state", onTeam); };
@@ -135,7 +205,7 @@ export default function MillionTeamControlHost() {
   const totalQ = questions.length;
   const isLast = currentIdx >= totalQ - 1;
   const isFinished = totalQ > 0 && currentIdx >= totalQ;
-  const defaultPrize = PRIZE_LADDER[currentIdx] ?? 1000;
+  const defaultPrize = getQuestionPoints(pointsScheme, basePoints, currentIdx, questionCount || totalQ || 15);
   const isTransferred = transferred.has(currentIdx);
   const winner: "A" | "B" | "TIE" | null = !isFinished || !teamA || !teamB
     ? null
@@ -601,10 +671,85 @@ export default function MillionTeamControlHost() {
               )}
             </div>
 
-            {/* Teams */}
+            {/* Right panel: tabs */}
             <div className="space-y-3">
-              {renderTeamCard("A", teamA)}
-              {renderTeamCard("B", teamB)}
+              <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                <button
+                  onClick={() => setPanelTab("teams")}
+                  className="flex-1 py-2 text-sm font-bold transition-colors"
+                  style={{
+                    background: panelTab === "teams" ? "rgba(217,165,33,0.25)" : "rgba(255,255,255,0.04)",
+                    color: panelTab === "teams" ? "#fde68a" : "#cbd5e1",
+                  }}
+                >
+                  {lang === "ar" ? `الفريقان` : "Teams"}
+                </button>
+                <button
+                  onClick={() => setPanelTab("settings")}
+                  className="flex-1 py-2 text-sm font-bold transition-colors"
+                  style={{
+                    background: panelTab === "settings" ? "rgba(217,165,33,0.25)" : "rgba(255,255,255,0.04)",
+                    color: panelTab === "settings" ? "#fde68a" : "#cbd5e1",
+                  }}
+                >
+                  {lang === "ar" ? "السؤال والإعدادات" : "Question & settings"}
+                </button>
+              </div>
+
+              {panelTab === "teams" ? (
+                <>
+                  {renderTeamCard("A", teamA)}
+                  {renderTeamCard("B", teamB)}
+                </>
+              ) : (
+                <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-blue-300 font-bold mb-1">
+                      {lang === "ar" ? "هذا السؤال يساوي" : "This question is worth"}
+                    </p>
+                    <p className="text-amber-300 font-black text-3xl">{fmt(defaultPrize)} <span className="text-base font-bold opacity-70">{lang === "ar" ? "نقطة" : "pts"}</span></p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                      <p className="text-blue-300 font-bold mb-0.5">{lang === "ar" ? "نظام النقاط" : "Scheme"}</p>
+                      <p className="text-white font-bold">{schemeLabel(pointsScheme, lang as "ar" | "en")}</p>
+                    </div>
+                    <div className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.25)" }}>
+                      <p className="text-blue-300 font-bold mb-0.5">{lang === "ar" ? "عدد الأسئلة" : "Questions"}</p>
+                      <p className="text-white font-bold">{questionCount}</p>
+                    </div>
+                  </div>
+                  <p className="text-[12px] text-blue-200 leading-relaxed bg-black/20 rounded-lg p-2 border border-white/10">
+                    {describeScheme(pointsScheme, basePoints, questionCount || totalQ || 15, lang as "ar" | "en")}
+                  </p>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-blue-300 font-bold mb-2">
+                      {lang === "ar" ? "قائمة الأسئلة" : "All questions"}
+                    </p>
+                    <div className="max-h-[420px] overflow-y-auto pr-1 space-y-1">
+                      {questions.map((q, i) => {
+                        const pts = getQuestionPoints(pointsScheme, basePoints, i, questionCount || totalQ || 15);
+                        const isCur = i === currentIdx;
+                        const isPast = i < currentIdx;
+                        return (
+                          <div
+                            key={q.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs"
+                            style={{
+                              background: isCur ? "rgba(217,165,33,0.2)" : isPast ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.03)",
+                              border: isCur ? "1px solid rgba(217,165,33,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                            }}
+                          >
+                            <span className={`w-6 text-center font-bold ${isCur ? "text-amber-300" : "text-blue-300"}`}>{i + 1}</span>
+                            <span className="flex-1 text-white truncate">{q.text}</span>
+                            <span className="text-amber-300 font-bold shrink-0">{fmt(pts)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>}
         </div>
