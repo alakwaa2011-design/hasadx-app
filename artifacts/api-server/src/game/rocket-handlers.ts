@@ -550,6 +550,7 @@ export function setupRocketSocket(io: Server) {
           finished: false,
           streak: 0,
         };
+        player.questionStartTime = game.state === "racing" ? Date.now() : undefined;
         game.players[socket.id] = player;
         socket.join(`rocket:${game.pin}`);
 
@@ -557,10 +558,39 @@ export function setupRocketSocket(io: Server) {
           players: getPlayerList(game),
         });
 
+        const remainingSecsFresh =
+          game.startedAt != null
+            ? Math.max(0, Math.round((game.startedAt + game.totalDurationSecs * 1000 - Date.now()) / 1000))
+            : game.totalDurationSecs;
+        const freshQIdx =
+          game.state === "racing" && game.advanceMode === "host_sync"
+            ? game.syncQuestionIdx
+            : player.currentQuestionIdx;
+        const freshQ =
+          game.state === "racing" && game.questions[freshQIdx] ? game.questions[freshQIdx] : undefined;
+
         cb({
-          success: true, pin: game.pin, rocketColor: player.rocketColor,
-          totalQuestions: game.questions.length, duration: game.duration,
-          totalDurationSecs: game.totalDurationSecs, title: game.title, advanceMode: game.advanceMode,
+          success: true,
+          pin: game.pin,
+          rocketColor: player.rocketColor,
+          state: game.state,
+          altitude: player.altitude,
+          score: player.score,
+          totalQuestions: game.questions.length,
+          duration: game.duration,
+          totalDurationSecs: game.state === "racing" || game.state === "countdown" ? remainingSecsFresh : game.totalDurationSecs,
+          title: game.title,
+          advanceMode: game.advanceMode,
+          activeQuestion:
+            game.state === "racing" && freshQ
+              ? {
+                  index: freshQIdx,
+                  text: freshQ.text,
+                  type: freshQ.type,
+                  options: freshQ.options,
+                  duration: freshQ.duration,
+                }
+              : null,
         });
       },
     );
