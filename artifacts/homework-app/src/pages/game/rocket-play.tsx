@@ -831,15 +831,23 @@ export default function RocketPlay() {
           setMyColor(res.rocketColor || "#dc2626");
           setTotalQuestions(res.totalQuestions || 0);
           if (res.title) setTitle(res.title);
-          setMyAltitude(res.altitude || 0);
-          setMyScore(res.score || 0);
-          if (res.state === "racing" && res.activeQuestion) {
-            setCurrentQ(res.activeQuestion);
-            setQuestionStartTime(Date.now());
+          setMyAltitude(res.altitude ?? 0);
+          setMyScore(res.score ?? 0);
+          const st = res.state;
+          if (st === "countdown") {
+            setPhase("countdown");
+            setCountdownNum(3);
+            soundRef.current?.startBackground("lobby");
+          } else if (st === "racing") {
             setPhase("racing");
-            setShuffleTick(c => c + 1);
+            soundRef.current?.startBackground("race1");
+            if (res.activeQuestion) {
+              setCurrentQ(res.activeQuestion);
+              setQuestionStartTime(Date.now());
+              setShuffleTick(c => c + 1);
+            }
             if (res.totalDurationSecs !== undefined) startGameTimer(res.totalDurationSecs);
-          } else if (res.state === "finished") {
+          } else if (st === "finished") {
             setPhase("finished");
           } else {
             setPhase("lobby");
@@ -1043,11 +1051,8 @@ export default function RocketPlay() {
     return b.altitude - a.altitude;
   });
 
-  /** During race, show only the student's rocket so the track animates clearly (esp. mobile). */
-  const trackPlayers =
-    phase === "racing"
-      ? sortedPlayers.filter((p) => p.name === queryName)
-      : sortedPlayers;
+  /** During race, show all rockets so everyone sees relative positions (sorted by score/altitude). */
+  const trackPlayers = sortedPlayers;
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -1270,7 +1275,7 @@ export default function RocketPlay() {
               position: "relative",
             }}>
               <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 800, textAlign: "center" }}>
-                {ar ? "🚀 صاروخك — الارتفاع حيّ" : "🚀 Your rocket — live altitude"}
+                {ar ? "🚀 جميع اللاعبين — صاروخك مميز بالذهب" : "🚀 All racers — yours highlighted in gold"}
               </p>
               <div style={{
                 position: "relative",
@@ -1311,12 +1316,16 @@ export default function RocketPlay() {
                           maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                           border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
                         }}>
-                          {p.avatar} {Math.round(displayAltitude(p))}%
+                          {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.round(displayAltitude(p))}%
                         </span>
                         <RocketIcon
                           color={p.rocketColor}
                           isPlayer={isMe}
-                          size={isMega ? 46 : 40}
+                          size={
+                            isMega ? 46
+                              : lanes > 10 ? (isMe ? 36 : 26)
+                              : lanes > 6 ? (isMe ? 40 : 32)
+                              : 40}
                           boosted={isMe && boostFlash}
                           mega={isMega}
                         />
@@ -1373,6 +1382,7 @@ export default function RocketPlay() {
                   const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
                   const isMega = isMe && gamePhase === 2;
                   const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+                  const compact = lanes > 8;
                   return (
                     <motion.div
                       key={p.name}
@@ -1391,15 +1401,19 @@ export default function RocketPlay() {
                         color: isMe ? GOLD : "#fff",
                         background: isMe ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.55)",
                         padding: "2px 6px", borderRadius: 999, whiteSpace: "nowrap",
-                        maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis",
+                        maxWidth: compact ? 72 : 80, overflow: "hidden", textOverflow: "ellipsis",
                         border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
                       }}>
-                        {rankEmoji}{p.avatar} {p.name}
+                        #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{p.avatar} {p.name}
                       </span>
                       <RocketIcon
                         color={p.rocketColor}
                         isPlayer={isMe}
-                        size={isMega ? 50 : isMe ? 42 : 30}
+                        size={
+                          isMega ? 50
+                            : compact ? (isMe ? 36 : 24)
+                            : isMe ? 42 : 30
+                        }
                         boosted={isMe && boostFlash}
                         mega={isMega}
                       />
