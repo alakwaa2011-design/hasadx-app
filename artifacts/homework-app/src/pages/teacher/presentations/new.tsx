@@ -56,17 +56,18 @@ export default function NewPresentationPage() {
   const [generating, setGenerating] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
-  const [availableTiers, setAvailableTiers] = useState<("standard" | "pro")[]>(["standard"]);
-  const [selectedTier, setSelectedTier] = useState<"standard" | "pro">("standard");
+  const [availableTiers, setAvailableTiers] = useState<("standard" | "pro" | "claude")[]>(["standard"]);
+  const [selectedTier, setSelectedTier] = useState<"standard" | "pro" | "claude">("standard");
 
   useEffect(() => {
     fetch(`${API_BASE}/api/presentations/ai-options`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.tiers && Array.isArray(data.tiers)) {
-          const tiers = data.tiers.filter((t: string) => t === "standard" || t === "pro");
-          setAvailableTiers(tiers);
-          if (tiers.includes("pro")) setSelectedTier("pro");
+          const tiers = data.tiers.filter((t: string) => t === "standard" || t === "pro" || t === "claude");
+          setAvailableTiers(tiers as ("standard" | "pro" | "claude")[]);
+          if (tiers.includes("claude")) setSelectedTier("claude");
+          else if (tiers.includes("pro")) setSelectedTier("pro");
         }
       })
       .catch(() => { /* fall back to standard */ });
@@ -468,7 +469,7 @@ export default function NewPresentationPage() {
                 <p className="text-xs font-bold text-muted-foreground mb-2">
                   {lang === "ar" ? "جودة الذكاء الاصطناعي" : "AI quality"}
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${availableTiers.includes("claude") ? "grid-cols-3" : "grid-cols-2"}`}>
                   <button
                     type="button"
                     onClick={() => setSelectedTier("standard")}
@@ -493,33 +494,66 @@ export default function NewPresentationPage() {
                         : "Faster & cheaper. Solid quality for most lessons."}
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier("pro")}
-                    className={`text-start rounded-2xl border-2 p-4 transition-all relative ${
-                      selectedTier === "pro"
-                        ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
-                        : "border-border hover:border-border/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-4 h-4 text-violet-600" />
-                      <span className="font-bold text-sm">
-                        {lang === "ar" ? "احترافي" : "Pro"}
-                      </span>
-                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
-                        PRO
-                      </span>
-                      {selectedTier === "pro" && (
-                        <Check className="w-4 h-4 text-violet-600 ms-auto" />
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground leading-relaxed">
-                      {lang === "ar"
-                        ? "أعمق وأرقى. مثالي للدروس المهمة والعروض النهائية."
-                        : "Deeper & richer. Ideal for important lessons."}
-                    </div>
-                  </button>
+
+                  {availableTiers.includes("pro") && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTier("pro")}
+                      className={`text-start rounded-2xl border-2 p-4 transition-all relative ${
+                        selectedTier === "pro"
+                          ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
+                          : "border-border hover:border-border/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-4 h-4 text-violet-600" />
+                        <span className="font-bold text-sm">
+                          {lang === "ar" ? "احترافي" : "Pro"}
+                        </span>
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                          PRO
+                        </span>
+                        {selectedTier === "pro" && (
+                          <Check className="w-4 h-4 text-violet-600 ms-auto" />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {lang === "ar"
+                          ? "أعمق وأرقى. مثالي للدروس المهمة والعروض النهائية."
+                          : "Deeper & richer. Ideal for important lessons."}
+                      </div>
+                    </button>
+                  )}
+
+                  {availableTiers.includes("claude") && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTier("claude")}
+                      className={`text-start rounded-2xl border-2 p-4 transition-all relative ${
+                        selectedTier === "claude"
+                          ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/20"
+                          : "border-border hover:border-border/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Bot className="w-4 h-4 text-amber-600" />
+                        <span className="font-bold text-sm">
+                          {lang === "ar" ? "كلود" : "Claude"}
+                        </span>
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+                          Claude
+                        </span>
+                        {selectedTier === "claude" && (
+                          <Check className="w-4 h-4 text-amber-600 ms-auto" />
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {lang === "ar"
+                          ? "كلود سونيت — أذكى نموذج. لأفضل جودة إبداعية وتربوية."
+                          : "Claude Sonnet — smartest model. Best creative & educational quality."}
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
