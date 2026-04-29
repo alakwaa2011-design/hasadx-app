@@ -830,10 +830,18 @@ ${slideCount}. شريحة ملخص (summary) — أهم 3-5 نقاط للحفظ.
     }
   ],
   "coverEmoji": "📚",
-  "description": "وصف قصير للدرس (جملة واحدة)"
+  "description": "وصف قصير للدرس (جملة واحدة)",
+  "theme": "ocean"
 }
 
-مهم: نوّز مواضع الإجابات الصحيحة في الكويز والأنشطة بين A وB وC وD.`;
+مهم:
+- نوّع مواضع الإجابات الصحيحة في الكويز والأنشطة بين A وB وC وD.
+- اختر theme الأنسب للموضوع من هذه الأسماء فقط: harvest / ocean / sunset / midnight / rose
+  • harvest → الدروس العلمية، الطبيعة، الحياة، الصحة، البيئة.
+  • ocean → الجغرافيا، التاريخ، الأنظمة، العلوم البحرية، التكنولوجيا.
+  • sunset → الفنون، الأدب، اللغة، الإبداع، التاريخ الحضاري.
+  • midnight → الرياضيات، الفيزياء، الفلك، البرمجة، المنطق.
+  • rose → التربية، القيم، الدراسات الإجتماعية، التواصل، القيادة.`;
 
   try {
     const tier = await resolveTier(req.session.teacherId, (req.body as { tier?: string })?.tier);
@@ -879,10 +887,18 @@ ${slideCount}. شريحة ملخص (summary) — أهم 3-5 نقاط للحفظ.
         return safe;
       });
 
+    const VALID_THEMES = ["harvest", "ocean", "sunset", "midnight", "rose"];
+    const suggestedTheme =
+      typeof (parsedJson as Record<string, unknown>).theme === "string" &&
+      VALID_THEMES.includes((parsedJson as Record<string, unknown>).theme as string)
+        ? (parsedJson as Record<string, unknown>).theme as string
+        : null;
+
     res.json({
       slides: cleaned,
       coverEmoji: typeof parsedJson.coverEmoji === "string" ? parsedJson.coverEmoji : "📚",
       description: typeof parsedJson.description === "string" ? parsedJson.description : null,
+      theme: suggestedTheme,
     });
   } catch (err) {
     req.log.error({ err }, "Generate presentation failed");
