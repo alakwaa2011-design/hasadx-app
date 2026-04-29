@@ -15,6 +15,7 @@ import {
   Palette,
   Settings2,
   CheckCircle2,
+  Bot,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -49,7 +50,7 @@ export default function NewPresentationPage() {
   const [includeActivities, setIncludeActivities] = useState(true);
   const [includeDiscussion, setIncludeDiscussion] = useState(true);
 
-  const [theme, setTheme] = useState("harvest");
+  const [theme, setTheme] = useState<string>("ai");
   const [coverEmoji, setCoverEmoji] = useState("📚");
 
   const [generating, setGenerating] = useState(false);
@@ -113,6 +114,10 @@ export default function NewPresentationPage() {
       const gen = await r.json();
       setStatusMsg(lang === "ar" ? "حفظ العرض…" : "Saving…");
 
+      // When "ai" mode: use AI-suggested theme from generation, fallback to "harvest"
+      const effectiveTheme =
+        theme === "ai" ? (gen.theme ?? "harvest") : theme;
+
       const saveRes = await fetch(`${API_BASE}/api/presentations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,7 +126,7 @@ export default function NewPresentationPage() {
           title: title.trim(),
           subject: subject.trim() || null,
           gradeLevel: gradeLevel || null,
-          theme,
+          theme: effectiveTheme,
           coverEmoji: gen.coverEmoji || coverEmoji,
           description: gen.description || null,
           slides: gen.slides,
@@ -346,7 +351,35 @@ export default function NewPresentationPage() {
             </div>
 
             {/* Theme grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+              {/* AI auto-pick card */}
+              <button
+                onClick={() => setTheme("ai")}
+                className={`relative overflow-hidden rounded-2xl h-24 group ring-2 transition-all col-span-2 sm:col-span-3 ${
+                  theme === "ai" ? "ring-primary scale-[1.02]" : "ring-transparent hover:ring-border"
+                }`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(255,255,255,0.12),transparent_70%)]" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-white drop-shadow" />
+                    <span className="text-white text-sm font-extrabold drop-shadow">
+                      {lang === "ar" ? "ذكاء اصطناعي — يختار لك تلقائياً" : "AI — auto-picks for you"}
+                    </span>
+                  </div>
+                  <span className="text-white/75 text-xs">
+                    {lang === "ar" ? "يختار الذكاء الاصطناعي اللون المناسب للموضوع" : "AI selects the best color for your topic"}
+                  </span>
+                </div>
+                {theme === "ai" && (
+                  <div className="absolute top-2 end-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                )}
+              </button>
+
+              {/* Manual theme options */}
               {THEMES.map((t) => (
                 <button
                   key={t.key}
@@ -399,22 +432,34 @@ export default function NewPresentationPage() {
               <p className="text-xs font-bold text-muted-foreground mb-2">
                 {lang === "ar" ? "معاينة الغلاف" : "Cover preview"}
               </p>
-              <div
-                className={cn(
-                  "relative rounded-2xl h-40 flex flex-col items-center justify-center text-white shadow-xl overflow-hidden",
-                  THEMES.find((t) => t.key === theme)?.grad &&
-                    `bg-gradient-to-br ${THEMES.find((t) => t.key === theme)?.grad}`,
-                )}
-                style={
-                  theme === "harvest"
-                    ? { background: platformHarvestBg(lang === "ar") }
-                    : undefined
-                }
-              >
-                <div className="text-5xl mb-2">{coverEmoji}</div>
-                <div className="font-bold text-lg drop-shadow">{title || (lang==="ar"?"عنوان الدرس":"Lesson title")}</div>
-                {subject && <div className="text-xs opacity-90 mt-0.5">{subject}</div>}
-              </div>
+              {theme === "ai" ? (
+                <div className="relative rounded-2xl h-40 flex flex-col items-center justify-center text-white shadow-xl overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,255,255,0.15),transparent_70%)]" />
+                  <Bot className="w-8 h-8 text-white/80 mb-1 relative z-10" />
+                  <div className="font-bold text-sm drop-shadow relative z-10 text-center px-4">
+                    {lang === "ar"
+                      ? "سيختار الذكاء الاصطناعي اللون المناسب عند الإنشاء"
+                      : "AI will pick the best color when generating"}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "relative rounded-2xl h-40 flex flex-col items-center justify-center text-white shadow-xl overflow-hidden",
+                    THEMES.find((t) => t.key === theme)?.grad &&
+                      `bg-gradient-to-br ${THEMES.find((t) => t.key === theme)?.grad}`,
+                  )}
+                  style={
+                    theme === "harvest"
+                      ? { background: platformHarvestBg(lang === "ar") }
+                      : undefined
+                  }
+                >
+                  <div className="text-5xl mb-2">{coverEmoji}</div>
+                  <div className="font-bold text-lg drop-shadow">{title || (lang==="ar"?"عنوان الدرس":"Lesson title")}</div>
+                  {subject && <div className="text-xs opacity-90 mt-0.5">{subject}</div>}
+                </div>
+              )}
             </div>
 
             {/* AI tier picker (only when teacher has access to >1 tier) */}

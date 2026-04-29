@@ -52,6 +52,10 @@ interface Player {
   currentQuestionIdx: number;
 }
 
+/** من هذا العدد فما فوق نعرض مسارًا أفقيًا قابلًا للتمرير (صفوف طويلة) */
+/** When class size is consistently above ~15 racers, prefer horizontal scrolling lanes */
+const ROCKET_HORIZONTAL_LANES_MIN = 16;
+
 // ─── Arabic encouragement messages ────────────────────────────────────────────
 const CORRECT_AR = [
   "🔥 عبقري! صاروخك ينطلق!",
@@ -672,6 +676,201 @@ function PhaseTransitionOverlay({ gamePhase, show }: { gamePhase: number; show: 
   );
 }
 
+// ─── Many players: horizontally scrollable vertical lanes ─────────────────────
+function HorizontalRocketLanesStrip({
+  trackPlayers,
+  queryName,
+  displayAltitude,
+  gamePhase,
+  boostFlash,
+  variant,
+  ar,
+}: {
+  trackPlayers: Player[];
+  queryName: string;
+  displayAltitude: (p: Player) => number;
+  gamePhase: number;
+  boostFlash: boolean;
+  variant: "mobile" | "desktop";
+  ar: boolean;
+}) {
+  const n = Math.max(1, trackPlayers.length);
+  const laneW =
+    variant === "mobile"
+      ? n >= 24 ? 34 : n >= 18 ? 38 : n >= 12 ? 42 : 44
+      : n >= 24 ? 40 : n >= 18 ? 46 : 52;
+
+  const laneBg =
+    gamePhase === 0
+      ? "rgba(255,255,255,0.06)"
+      : gamePhase === 1
+        ? "rgba(180,60,0,0.14)"
+        : "rgba(0,200,180,0.1)";
+
+  return (
+    <div
+      style={{
+        overflowX: "auto",
+        overflowY: "hidden",
+        WebkitOverflowScrolling: "touch",
+        display: "flex",
+        flexDirection: "row",
+        gap: variant === "mobile" ? 4 : 8,
+        alignItems: "stretch",
+        padding: variant === "mobile" ? "4px 4px 6px 2px" : "6px 8px",
+        scrollbarGutter: "stable",
+        width: "100%",
+        height: variant === "mobile" ? "min(160px, 32vh)" : "100%",
+        maxHeight: variant === "desktop" ? "100%" : undefined,
+        boxSizing: "border-box",
+      }}
+      title={ar ? "مرّر أفقياً لرؤية جميع المتسابقين" : "Scroll sideways to see all racers"}
+    >
+      {trackPlayers.map((p, idx) => {
+        const isMe = p.name === queryName;
+        const isMega = isMe && gamePhase === 2;
+        const medals = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+        const alt = Math.min(88, displayAltitude(p));
+        const rz =
+          isMega ? (variant === "mobile" ? 36 : 40)
+          : laneW <= 38 ? (isMe ? 26 : 20)
+          : laneW <= 42 ? (isMe ? 30 : 24)
+          : isMe ? (variant === "mobile" ? 32 : 34) : variant === "mobile" ? 26 : 24;
+        const headerH = variant === "mobile" ? 26 : 30;
+        const shortName =
+          p.name.length > 14 ? `${p.name.slice(0, 11)}…` : p.name;
+        return (
+          <div
+            key={p.name}
+            style={{
+              width: laneW,
+              minWidth: laneW,
+              flexShrink: 0,
+              position: "relative",
+              alignSelf: "stretch",
+              minHeight: variant === "mobile" ? 148 : undefined,
+              height: variant === "desktop" ? "100%" : undefined,
+              borderRadius: variant === "mobile" ? 9 : 12,
+              background: laneBg,
+              border: isMe ? `2px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{
+              height: headerH,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+              padding: "2px 2px",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              fontSize: variant === "mobile" ? 8 : 9,
+              fontWeight: 900,
+              color: "#fff",
+              overflow: "hidden",
+            }}>
+              <span style={{ opacity: 0.9 }}>#{idx + 1}</span>
+              {medals ? <span aria-hidden>{medals}</span> : null}
+              {variant === "mobile"
+                ? <span style={{ fontSize: 12 }} aria-hidden>{p.avatar}</span>
+                : (
+                  <span style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: laneW - 24,
+                  }}
+                  >
+                    {shortName}
+                  </span>
+                )}
+            </div>
+            <div style={{
+              position: "absolute",
+              left: variant === "mobile" ? 2 : 3,
+              top: headerH + 4,
+              bottom: variant === "mobile" ? 22 : 28,
+              width: 6,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              color: "rgba(255,255,255,0.38)",
+              fontSize: variant === "mobile" ? 6 : 7,
+              fontWeight: 700,
+            }}>
+              {[100, 75, 50, 25, 0].map(v => (
+                <span key={v} style={{ lineHeight: 1 }}>{v}</span>
+              ))}
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                left: 10,
+                right: variant === "mobile" ? 2 : 4,
+                top: headerH + 4,
+                bottom: variant === "mobile" ? 22 : 28,
+              }}
+            >
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: 0,
+                  bottom: 0,
+                  width: 1,
+                  transform: "translateX(-50%)",
+                  background: "linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0.06), rgba(255,255,255,0.03))",
+                  borderRadius: 1,
+                  pointerEvents: "none",
+                }}
+              />
+              <motion.div
+                animate={{ bottom: `${alt}%` }}
+                transition={{ type: "spring", stiffness: 54, damping: 16 }}
+                initial={false}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  bottom: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  zIndex: 2,
+                }}
+              >
+                <RocketIcon
+                  color={p.rocketColor}
+                  isPlayer={isMe}
+                  size={rz}
+                  boosted={isMe && boostFlash}
+                  mega={isMega}
+                />
+              </motion.div>
+            </div>
+            <div style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 2,
+              textAlign: "center",
+              fontSize: variant === "mobile" ? 8 : 9,
+              fontWeight: 800,
+              color: isMe ? GOLD : "rgba(255,255,255,0.9)",
+              lineHeight: 1.2,
+            }}>
+              <div>{Math.round(alt)}%</div>
+              <div style={{ color: GOLD, fontSize: variant === "mobile" ? 7 : 8 }}>{p.score} pts</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function RocketPlay() {
   const params = useParams<{ pin: string }>();
@@ -1053,6 +1252,8 @@ export default function RocketPlay() {
 
   /** During race, show all rockets so everyone sees relative positions (sorted by score/altitude). */
   const trackPlayers = sortedPlayers;
+  const crowdedRocketLanes =
+    phase === "racing" && trackPlayers.length >= ROCKET_HORIZONTAL_LANES_MIN;
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -1266,79 +1467,97 @@ export default function RocketPlay() {
                 displayOptions={shuffledOptions}
               />}
             </div>
-            {/* Mobile: vertical race track — same bottom-% animation as desktop (fixes stuck rockets) */}
+            {/* Mobile: race track — horizontal scroll lanes when crowded (long classes) */}
             <div style={{
-              flex: "0 0 min(200px, 34vh)",
+              flex: crowdedRocketLanes ? "0 1 min(264px, 44vh)" : "0 0 min(200px, 34vh)",
               background: "rgba(0,0,0,0.55)",
               borderTop: "1px solid rgba(255,255,255,0.12)",
               padding: "10px 12px 8px",
               position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
             }}>
               <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 800, textAlign: "center" }}>
-                {ar ? "🚀 جميع اللاعبين — صاروخك مميز بالذهب" : "🚀 All racers — yours highlighted in gold"}
+                {crowdedRocketLanes
+                  ? (ar ? "↔ مرّر أفقياً — عمود لكل متسابق" : "↔ Scroll — one lane per racer")
+                  : (ar ? "🚀 جميع اللاعبين — صاروخك مميز بالذهب" : "🚀 All racers — yours highlighted in gold")}
               </p>
-              <div style={{
-                position: "relative",
-                height: "min(168px, 30vh)",
-                borderRadius: 14,
-                overflow: "hidden",
-                background: gamePhase === 0 ? "rgba(255,255,255,0.06)"
-                  : gamePhase === 1 ? "rgba(180,60,0,0.12)"
-                  : "rgba(0,200,180,0.08)",
-                border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.35)" : "rgba(0,200,180,0.3)"}`,
-              }}>
-                <div style={{ position: "absolute", top: 6, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.85)" : gamePhase === 1 ? "rgba(255,140,80,0.9)" : "rgba(80,255,220,0.9)" }}>
-                  {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ كويكبات" : "💎 كريستال"}
+              {crowdedRocketLanes ? (
+                <HorizontalRocketLanesStrip
+                  trackPlayers={trackPlayers}
+                  queryName={queryName || ""}
+                  displayAltitude={displayAltitude}
+                  gamePhase={gamePhase}
+                  boostFlash={boostFlash}
+                  variant="mobile"
+                  ar={ar}
+                />
+              ) : (
+                <div style={{
+                  position: "relative",
+                  flex: "1 1 auto",
+                  minHeight: "min(168px, 30vh)",
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  background: gamePhase === 0 ? "rgba(255,255,255,0.06)"
+                    : gamePhase === 1 ? "rgba(180,60,0,0.12)"
+                    : "rgba(0,200,180,0.08)",
+                  border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.35)" : "rgba(0,200,180,0.3)"}`,
+                }}>
+                  <div style={{ position: "absolute", top: 6, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.85)" : gamePhase === 1 ? "rgba(255,140,80,0.9)" : "rgba(80,255,220,0.9)" }}>
+                    {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ كويكبات" : "💎 كريستال"}
+                  </div>
+                  <div style={{ position: "relative", width: "100%", height: "100%", paddingTop: 22 }}>
+                    {trackPlayers.map((p, idx) => {
+                      const isMe = p.name === queryName;
+                      const lanes = Math.max(1, trackPlayers.length);
+                      const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
+                      const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
+                      const isMega = isMe && gamePhase === 2;
+                      return (
+                        <motion.div
+                          key={p.name}
+                          animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 55, damping: 16 }}
+                          style={{
+                            position: "absolute",
+                            transform: "translateX(-50%)",
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                            zIndex: 10,
+                          }}
+                        >
+                          <span style={{
+                            fontSize: 10, fontWeight: 800, color: isMe ? GOLD : "#fff",
+                            background: "rgba(0,0,0,0.65)", padding: "2px 6px", borderRadius: 999,
+                            maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
+                          }}>
+                            {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.round(displayAltitude(p))}%
+                          </span>
+                          <RocketIcon
+                            color={p.rocketColor}
+                            isPlayer={isMe}
+                            size={
+                              isMega ? 46
+                                : lanes > 10 ? (isMe ? 36 : 26)
+                                : lanes > 6 ? (isMe ? 40 : 32)
+                                : 40}
+                            boosted={isMe && boostFlash}
+                            mega={isMega}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ position: "absolute", left: 4, top: 28, bottom: 8, width: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.4)", fontSize: 8, fontWeight: 700 }}>
+                    {[100, 75, 50, 25, 0].map((v) => (
+                      <span key={v}>{v}%</span>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ position: "relative", width: "100%", height: "100%", paddingTop: 22 }}>
-                  {trackPlayers.map((p, idx) => {
-                    const isMe = p.name === queryName;
-                    const lanes = Math.max(1, trackPlayers.length);
-                    const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
-                    const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
-                    const isMega = isMe && gamePhase === 2;
-                    return (
-                      <motion.div
-                        key={p.name}
-                        animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 55, damping: 16 }}
-                        style={{
-                          position: "absolute",
-                          transform: "translateX(-50%)",
-                          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                          zIndex: 10,
-                        }}
-                      >
-                        <span style={{
-                          fontSize: 10, fontWeight: 800, color: isMe ? GOLD : "#fff",
-                          background: "rgba(0,0,0,0.65)", padding: "2px 6px", borderRadius: 999,
-                          maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
-                        }}>
-                          {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.round(displayAltitude(p))}%
-                        </span>
-                        <RocketIcon
-                          color={p.rocketColor}
-                          isPlayer={isMe}
-                          size={
-                            isMega ? 46
-                              : lanes > 10 ? (isMe ? 36 : 26)
-                              : lanes > 6 ? (isMe ? 40 : 32)
-                              : 40}
-                          boosted={isMe && boostFlash}
-                          mega={isMega}
-                        />
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                <div style={{ position: "absolute", left: 4, top: 28, bottom: 8, width: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.4)", fontSize: 8, fontWeight: 700 }}>
-                  {[100, 75, 50, 25, 0].map((v) => (
-                    <span key={v}>{v}%</span>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         ) : (
@@ -1360,80 +1579,116 @@ export default function RocketPlay() {
                 {gamePhase === 0 ? "🌌 الفضاء العميق" : gamePhase === 1 ? "☄️ حقل الكويكبات" : "💎 كوكب الكريستال"}
               </div>
 
-              {/* Background dots */}
-              <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-                {[...Array(12)].map((_, i) => (
-                  <div key={i} style={{
+              {crowdedRocketLanes ? (
+                <>
+                  <div style={{
                     position: "absolute",
-                    left: `${10 + (i % 4) * 22}%`, top: `${10 + Math.floor(i / 4) * 28}%`,
-                    width: 1.5, height: 1.5, borderRadius: "50%",
-                    background: gamePhase === 2 ? "#00ffee60" : "#ffffff60",
-                  }} />
-                ))}
-              </div>
-
-              {/* Player rockets */}
-              <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                {trackPlayers.map((p, idx) => {
-                  const isMe = p.name === queryName;
-                  const lanes = Math.max(1, trackPlayers.length);
-                  // Distribute rockets evenly, more spacing for few players
-                  const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
-                  const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
-                  const isMega = isMe && gamePhase === 2;
-                  const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
-                  const compact = lanes > 8;
-                  return (
-                    <motion.div
-                      key={p.name}
-                      animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
-                      initial={false}
-                      transition={{ type: "spring", stiffness: 55, damping: 16 }}
-                      style={{
+                    top: 50,
+                    left: 12,
+                    right: 12,
+                    textAlign: "center",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: "rgba(255,255,255,0.88)",
+                  }}>
+                    {ar ? "↔ مرّر أفقياً — عمود لكل متسابق" : "↔ Scroll sideways — one column per racer"}
+                  </div>
+                  <div style={{
+                    position: "absolute",
+                    top: 76,
+                    left: 10,
+                    right: 10,
+                    bottom: 14,
+                  }}>
+                    <HorizontalRocketLanesStrip
+                      trackPlayers={trackPlayers}
+                      queryName={queryName || ""}
+                      displayAltitude={displayAltitude}
+                      gamePhase={gamePhase}
+                      boostFlash={boostFlash}
+                      variant="desktop"
+                      ar={ar}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Background dots */}
+                  <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} style={{
                         position: "absolute",
-                        transform: "translateX(-50%)",
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
-                        zIndex: isMe ? 10 : 5,
-                      }}
-                    >
-                      <span style={{
-                        fontSize: isMe ? 10 : 9, fontWeight: 800,
-                        color: isMe ? GOLD : "#fff",
-                        background: isMe ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.55)",
-                        padding: "2px 6px", borderRadius: 999, whiteSpace: "nowrap",
-                        maxWidth: compact ? 72 : 80, overflow: "hidden", textOverflow: "ellipsis",
-                        border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
-                      }}>
-                        #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{p.avatar} {p.name}
-                      </span>
-                      <RocketIcon
-                        color={p.rocketColor}
-                        isPlayer={isMe}
-                        size={
-                          isMega ? 50
-                            : compact ? (isMe ? 36 : 24)
-                            : isMe ? 42 : 30
-                        }
-                        boosted={isMe && boostFlash}
-                        mega={isMega}
-                      />
-                      <span style={{
-                        fontSize: isMe ? 9 : 8,
-                        color: isMe ? GOLD : "rgba(255,255,255,0.55)",
-                        fontWeight: 700, background: "rgba(0,0,0,0.4)",
-                        padding: "1px 4px", borderRadius: 4,
-                      }}>
-                        {p.score}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                        left: `${10 + (i % 4) * 22}%`, top: `${10 + Math.floor(i / 4) * 28}%`,
+                        width: 1.5, height: 1.5, borderRadius: "50%",
+                        background: gamePhase === 2 ? "#00ffee60" : "#ffffff60",
+                      }} />
+                    ))}
+                  </div>
 
-              {/* Altitude markers */}
-              <div style={{ position: "absolute", left: 4, top: 16, bottom: 8, width: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.35)", fontSize: 8, fontWeight: 700 }}>
-                {[100, 75, 50, 25, 0].map(v => <span key={v}>{v}%</span>)}
-              </div>
+                  {/* Player rockets */}
+                  <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                    {trackPlayers.map((p, idx) => {
+                      const isMe = p.name === queryName;
+                      const lanes = Math.max(1, trackPlayers.length);
+                      // Distribute rockets evenly, more spacing for few players
+                      const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
+                      const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
+                      const isMega = isMe && gamePhase === 2;
+                      const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
+                      const compact = lanes > 8;
+                      return (
+                        <motion.div
+                          key={p.name}
+                          animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 55, damping: 16 }}
+                          style={{
+                            position: "absolute",
+                            transform: "translateX(-50%)",
+                            display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                            zIndex: isMe ? 10 : 5,
+                          }}
+                        >
+                          <span style={{
+                            fontSize: isMe ? 10 : 9, fontWeight: 800,
+                            color: isMe ? GOLD : "#fff",
+                            background: isMe ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.55)",
+                            padding: "2px 6px", borderRadius: 999, whiteSpace: "nowrap",
+                            maxWidth: compact ? 72 : 80, overflow: "hidden", textOverflow: "ellipsis",
+                            border: isMe ? `1.5px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
+                          }}>
+                            #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{p.avatar} {p.name}
+                          </span>
+                          <RocketIcon
+                            color={p.rocketColor}
+                            isPlayer={isMe}
+                            size={
+                              isMega ? 50
+                                : compact ? (isMe ? 36 : 24)
+                                : isMe ? 42 : 30
+                            }
+                            boosted={isMe && boostFlash}
+                            mega={isMega}
+                          />
+                          <span style={{
+                            fontSize: isMe ? 9 : 8,
+                            color: isMe ? GOLD : "rgba(255,255,255,0.55)",
+                            fontWeight: 700, background: "rgba(0,0,0,0.4)",
+                            padding: "1px 4px", borderRadius: 4,
+                          }}>
+                            {p.score}
+                          </span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Altitude markers */}
+                  <div style={{ position: "absolute", left: 4, top: 16, bottom: 8, width: 18, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.35)", fontSize: 8, fontWeight: 700 }}>
+                    {[100, 75, 50, 25, 0].map(v => <span key={v}>{v}%</span>)}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Question */}
