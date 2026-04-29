@@ -2,8 +2,9 @@ import { io, Socket } from "socket.io-client";
 
 let tugSocket: Socket | null = null;
 
+/** Single shared Tug namespace socket (same pattern as rocket-socket — do not recreate on disconnect). */
 export function getTugSocket(): Socket {
-  if (!tugSocket || !tugSocket.connected) {
+  if (!tugSocket) {
     const baseUrl = window.location.origin;
     const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     tugSocket = io(`${baseUrl}/tug`, {
@@ -11,10 +12,10 @@ export function getTugSocket(): Socket {
       transports: ["polling", "websocket"],
       withCredentials: true,
       reconnection: true,
-      reconnectionAttempts: 20,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 8000,
+      timeout: 25000,
     });
   }
   return tugSocket;

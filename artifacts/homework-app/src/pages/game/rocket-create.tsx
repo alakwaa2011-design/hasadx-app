@@ -89,6 +89,7 @@ export default function RocketCreate() {
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
   const [duration, setDuration] = useState(20);
   const [gameDurationMins, setGameDurationMins] = useState(5);
+  const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
@@ -165,6 +166,7 @@ export default function RocketCreate() {
       totalDurationSecs: gameDurationMins * 60,
       targetClass: targetClass || undefined,
       title: title.trim() || undefined,
+      advanceMode,
     }, (res: { pin?: string; creatorToken?: string; error?: string }) => {
       setCreating(false);
       if (res.error) { toast.error(res.error); return; }
@@ -532,6 +534,51 @@ export default function RocketCreate() {
                   {s}{ar ? "ث" : "s"}
                 </button>
               ))}
+            </div>
+          </Card>
+
+          {/* Advance mode: synced (teacher) vs independent pace */}
+          <Card className="p-4 mb-3">
+            <p className="font-bold text-sm mb-3" style={{ color: BRAND_PRIMARY }}>
+              {ar ? "طريقة تقدّم الأسئلة" : "Question pacing"}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAdvanceMode("per_player")}
+                className="text-left rounded-xl border-2 p-3 transition-all"
+                style={{
+                  borderColor: advanceMode === "per_player" ? BRAND_PRIMARY : "#e5e7eb",
+                  background: advanceMode === "per_player" ? "rgba(34, 87, 57, 0.06)" : "#fff",
+                }}
+              >
+                <span className="font-black text-sm block" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "⚡ تلقائي (كل طالب)" : "⚡ Auto / per student"}
+                </span>
+                <span className="text-xs text-muted-foreground leading-snug block mt-1">
+                  {ar
+                    ? "كل طالب يتلقى أسئلة بوتيرته؛ الفوز للأسرع والأدق."
+                    : "Each student cycles at their own pace; highest score wins."}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdvanceMode("host_sync")}
+                className="text-left rounded-xl border-2 p-3 transition-all"
+                style={{
+                  borderColor: advanceMode === "host_sync" ? BRAND_GOLD : "#e5e7eb",
+                  background: advanceMode === "host_sync" ? "rgba(217, 165, 33, 0.08)" : "#fff",
+                }}
+              >
+                <span className="font-black text-sm block" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "👨‍🏫 يدوي — سؤال واحد للجميع" : "👨‍🏫 Teacher sync"}
+                </span>
+                <span className="text-xs text-muted-foreground leading-snug block mt-1">
+                  {ar
+                    ? "المعلم يرى نفس سؤال الطلاب والانتقال يدوياً بعد الإجابة."
+                    : "Same question for everyone; you advance questions manually."}
+                </span>
+              </button>
             </div>
           </Card>
 

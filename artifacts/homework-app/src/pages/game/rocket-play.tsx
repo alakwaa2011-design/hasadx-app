@@ -702,6 +702,10 @@ export default function RocketPlay() {
   const [questionStartTime, setQuestionStartTime] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; correctIndex?: number; correctText?: string } | null>(null);
+  const feedbackRef = useRef(feedback);
+  useEffect(() => {
+    feedbackRef.current = feedback;
+  }, [feedback]);
   const [countdownNum, setCountdownNum] = useState(3);
   const [fillAnswer, setFillAnswer] = useState("");
   const [boostFlash, setBoostFlash] = useState(false);
@@ -716,8 +720,6 @@ export default function RocketPlay() {
 
   // Rank tracking
   const [myRank, setMyRank] = useState(0);
-  const prevRankRef = useRef(0);
-  const [rankMessage, setRankMessage] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [encouragement, setEncouragement] = useState<string | null>(null);
   const [gameTimeLeft, setGameTimeLeft] = useState(0);
@@ -741,28 +743,25 @@ export default function RocketPlay() {
   useEffect(() => { soundRef.current?.setMuted(muted); }, [muted]);
   useEffect(() => () => { soundRef.current?.destroy(); }, []);
 
-  // Track rank changes and show encouragement
+  // Track rank changes (announcements only after race ends — not during)
   useEffect(() => {
-    if (!queryName || players.length === 0) return;
+    if (phase !== "finished" || !queryName || players.length === 0) return;
     const sorted = [...players].sort((a, b) => b.score !== a.score ? b.score - a.score : b.altitude - a.altitude);
     const rank = sorted.findIndex(p => p.name === queryName) + 1;
-    if (rank > 0) {
-      if (prevRankRef.current > 0 && rank < prevRankRef.current) {
-        // Rank improved!
-        const msgs = ar
-          ? [`🏆 صعدت للمرتبة ${rank}! ممتاز!`, `🚀 المرتبة ${rank} الآن!`, `⚡ تقدمت! أنت في المرتبة ${rank}!`]
-          : [`🏆 Rank ${rank}! Keep going!`, `🚀 You're #${rank}!`, `⚡ Moving up! Rank ${rank}!`];
-        setRankMessage(msgs[Math.floor(Math.random() * msgs.length)]);
-        setTimeout(() => setRankMessage(null), 2500);
-      }
-      prevRankRef.current = rank;
-      setMyRank(rank);
-    }
-  }, [players, queryName, ar]);
+    if (rank > 0) setMyRank(rank);
+  }, [players, queryName, phase]);
 
   // Shuffle options on every new question arrival (not just by index, which
   // would repeat the same shuffle on the second cycle through questions).
   const [shuffleTick, setShuffleTick] = useState(0);
+  /** per_player vs host_sync — same question for all until teacher advances */
+  const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
+  const phaseRef = useRef(phase);
+  const gameTimeLeftRef = useRef(gameTimeLeft);
+  const advanceModeRef = useRef(advanceMode);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { gameTimeLeftRef.current = gameTimeLeft; }, [gameTimeLeft]);
+  useEffect(() => { advanceModeRef.current = advanceMode; }, [advanceMode]);
   useEffect(() => {
     if (!currentQ || currentQ.type === "fill_blank") {
       setShuffledOptions(currentQ?.options || []);
@@ -824,9 +823,11 @@ export default function RocketPlay() {
         totalQuestions?: number; rocketColor?: string; activeQuestion?: Question | null;
         finished?: boolean; finishRank?: number; title?: string;
         totalDurationSecs?: number;
+        advanceMode?: "per_player" | "host_sync";
       }) => {
         if (res.error) { toast.error(res.error); setLocation(`/game/rocket/join/${pin}`); return; }
         if (res.success) {
+          if (res.advanceMode) setAdvanceMode(res.advanceMode);
           setMyColor(res.rocketColor || "#dc2626");
           setTotalQuestions(res.totalQuestions || 0);
           if (res.title) setTitle(res.title);
@@ -836,7 +837,8 @@ export default function RocketPlay() {
             setCurrentQ(res.activeQuestion);
             setQuestionStartTime(Date.now());
             setPhase("racing");
-            if (res.totalDurationSecs) startGameTimer(res.totalDurationSecs);
+            setShuffleTick(c => c + 1);
+            if (res.totalDurationSecs !== undefined) startGameTimer(res.totalDurationSecs);
           } else if (res.state === "finished") {
             setPhase("finished");
           } else {
@@ -847,7 +849,8 @@ export default function RocketPlay() {
       });
     };
 
-    if (socket.connected) joinFlow(); else socket.once("connect", joinFlow);
+    if (socket.connected) joinFlow();
+    socket.on("connect", joinFlow);
 
     socket.on("rocket:players-updated", (data: { players: Player[] }) => setPlayers(data.players));
 
@@ -857,8 +860,14 @@ export default function RocketPlay() {
       soundRef.current?.startBackground("lobby");
     });
 
-    socket.on("rocket:race-start", (data: { total: number; gameDuration?: number; question: Question }) => {
+    socket.on("rocket:race-start", (data: {
+      total: number;
+      gameDuration?: number;
+      question: Question;
+      advanceMode?: "per_player" | "host_sync";
+    }) => {
       setPhase("racing");
+      setAdvanceMode(data.advanceMode ?? "per_player");
       soundRef.current?.startBackground("race1");
       setTotalQuestions(data.total);
       setCurrentQ(data.question);
@@ -880,12 +889,24 @@ export default function RocketPlay() {
       setShuffleTick(c => c + 1);
     });
 
+    socket.on("rocket:sync-question", (q: Question) => {
+      questionArrivalCountRef.current += 1;
+      setCurrentQ(q);
+      setQuestionStartTime(Date.now());
+      setFeedback(null);
+      setFillAnswer("");
+      setEncouragement(null);
+      setChosenWrongIdx(null);
+      setShuffleTick(c => c + 1);
+    });
+
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
 
     socket.on("rocket:game-end", (data: { players: Player[] }) => {
       setPhase("finished");
       if (data.players) setPlayers(data.players);
       soundRef.current?.stopBackground();
+      soundRef.current?.playWin();
       if (gameTimerRef.current) clearInterval(gameTimerRef.current);
       setGameTimeLeft(0);
     });
@@ -893,6 +914,7 @@ export default function RocketPlay() {
     socket.on("rocket:replay", () => {
       setMyAltitude(0); setMyScore(0); setMyStreak(0);
       setPhase("lobby");
+      setAdvanceMode("per_player");
       if (gameTimerRef.current) clearInterval(gameTimerRef.current);
       setGameTimeLeft(0);
     });
@@ -902,9 +924,11 @@ export default function RocketPlay() {
       socket.off("rocket:countdown");
       socket.off("rocket:race-start");
       socket.off("rocket:next-question");
+      socket.off("rocket:sync-question");
       socket.off("rocket:leaderboard");
       socket.off("rocket:game-end");
       socket.off("rocket:replay");
+      socket.off("connect", joinFlow);
     };
   }, [pin, queryName, queryAvatar, setLocation, startGameTimer]);
 
@@ -922,24 +946,10 @@ export default function RocketPlay() {
     return () => clearInterval(intv);
   }, [phase]);
 
-  // Per-question timer
-  useEffect(() => {
-    if (phase !== "racing" || !currentQ || feedback) return;
-    setTimeLeft(currentQ.duration);
-    const startMs = Date.now();
-    const intv = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startMs) / 1000);
-      const remaining = Math.max(0, currentQ.duration - elapsed);
-      setTimeLeft(remaining);
-      if (remaining <= 3 && remaining > 0) soundRef.current?.playTick();
-      if (remaining === 0) { clearInterval(intv); submitAnswer(-1); }
-    }, 1000);
-    return () => clearInterval(intv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQ?.index, phase]);
-
   const submitAnswer = useCallback((answerIndex: number, answerText?: string) => {
     if (!currentQ) return;
+    if (phaseRef.current !== "racing") return;
+    if (gameTimeLeftRef.current <= 0) return;
     const socket = getRocketSocket();
     socket.emit("rocket:answer", { pin, answerIndex, answerText }, (res: {
       success?: boolean; error?: string; skipped?: boolean;
@@ -958,26 +968,20 @@ export default function RocketPlay() {
       if (res.correct) {
         soundRef.current?.playCorrect();
         setEncouragement(ar ? pick(CORRECT_AR) : pick(CORRECT_EN));
-        // Always show boost flash on correct (rocket goes up)
         setBoostFlash(true);
         setTimeout(() => setBoostFlash(false), 900);
         setTimeout(() => soundRef.current?.playBoost(), 150);
       } else {
         soundRef.current?.playWrong();
         setEncouragement(ar ? pick(WRONG_AR) : pick(WRONG_EN));
-        // Red penalty flash (rocket goes down)
         setPenaltyFlash(true);
         setTimeout(() => setPenaltyFlash(false), 900);
-        // Track which display-index was chosen wrong (for red highlight)
         if (answerIndex >= 0) {
           const displayIdx = optionMapping.indexOf(answerIndex);
           setChosenWrongIdx(displayIdx >= 0 ? displayIdx : null);
         }
       }
 
-      // feedback is auto-cleared when rocket:next-question arrives from server
-      // (after ~800ms for correct, ~1200ms for wrong).
-      // Safety fallback: clear after 2s in case the event is delayed.
       if (wrongAutoRef.current) clearTimeout(wrongAutoRef.current);
       wrongAutoRef.current = setTimeout(() => {
         setFeedback(null);
@@ -987,6 +991,41 @@ export default function RocketPlay() {
       }, 2000);
     });
   }, [currentQ, pin, ar, optionMapping]);
+
+  // Per-question timer — auto-skip at 0 only in per_player (host advances in host_sync)
+  useEffect(() => {
+    if (phase !== "racing" || !currentQ) return;
+    setTimeLeft(currentQ.duration);
+    const startMs = Date.now();
+    const qDur = currentQ.duration;
+    const intv = setInterval(() => {
+      if (advanceModeRef.current === "host_sync") {
+        const elapsed = Math.floor((Date.now() - startMs) / 1000);
+        setTimeLeft(Math.max(0, qDur - elapsed));
+        return;
+      }
+      if (gameTimeLeftRef.current <= 0) {
+        setTimeLeft(0);
+        return;
+      }
+      const elapsed = Math.floor((Date.now() - startMs) / 1000);
+      const remaining = Math.max(0, qDur - elapsed);
+      setTimeLeft(remaining);
+      if (remaining <= 3 && remaining > 0) soundRef.current?.playTick();
+      if (remaining === 0) {
+        clearInterval(intv);
+        if (
+          feedbackRef.current
+          || !(gameTimeLeftRef.current > 0 && phaseRef.current === "racing")
+        ) return;
+        submitAnswer(-1);
+      }
+    }, 1000);
+    return () => clearInterval(intv);
+  }, [currentQ?.index, phase, advanceMode, submitAnswer]);
+
+  /** Live altitude on track uses immediate client value so the rocket moves without waiting for leaderboard */
+  const displayAltitude = (p: Player) => (p.name === queryName ? myAltitude : p.altitude);
 
   // Map display index back to original index before submitting
   const handleMCQAnswer = (displayIdx: number) => {
@@ -1003,6 +1042,12 @@ export default function RocketPlay() {
     if (b.score !== a.score) return b.score - a.score;
     return b.altitude - a.altitude;
   });
+
+  /** During race, show only the student's rocket so the track animates clearly (esp. mobile). */
+  const trackPlayers =
+    phase === "racing"
+      ? sortedPlayers.filter((p) => p.name === queryName)
+      : sortedPlayers;
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -1066,7 +1111,7 @@ export default function RocketPlay() {
             </p>
           </div>
           {/* Rank badge */}
-          {myRank > 0 && phase === "racing" && (
+          {myRank > 0 && phase === "finished" && (
             <motion.div
               key={myRank}
               initial={{ scale: 0.6, opacity: 0 }}
@@ -1189,27 +1234,6 @@ export default function RocketPlay() {
         </div>
       )}
 
-      {/* Rank improvement toast */}
-      <AnimatePresence>
-        {rankMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -30, scale: 0.85 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            style={{
-              position: "fixed", top: 70, left: "50%", transform: "translateX(-50%)",
-              zIndex: 250, background: "linear-gradient(135deg, #D9A521, #c89212)",
-              borderRadius: 999, padding: "10px 24px",
-              fontWeight: 900, fontSize: 15, color: "#000",
-              boxShadow: "0 8px 24px rgba(217,165,33,0.6)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {rankMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Racing ── */}
       {phase === "racing" && (
         isMobile ? (
@@ -1237,30 +1261,75 @@ export default function RocketPlay() {
                 displayOptions={shuffledOptions}
               />}
             </div>
-            {/* Compact rocket leaderboard (bottom strip) */}
+            {/* Mobile: vertical race track — same bottom-% animation as desktop (fixes stuck rockets) */}
             <div style={{
-              height: 110,
-              background: "rgba(0,0,0,0.5)",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-              padding: "8px 12px",
-              overflowX: "auto",
-              display: "flex", alignItems: "flex-end", gap: 12,
+              flex: "0 0 min(200px, 34vh)",
+              background: "rgba(0,0,0,0.55)",
+              borderTop: "1px solid rgba(255,255,255,0.12)",
+              padding: "10px 12px 8px",
               position: "relative",
             }}>
-              {sortedPlayers.map((p) => {
-                const isMe = p.name === queryName;
-                const barH = Math.max(20, (p.altitude / 100) * 80);
-                return (
-                  <div key={p.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
-                    <span style={{ fontSize: isMe ? 9 : 8, color: isMe ? GOLD : "rgba(255,255,255,0.6)", fontWeight: 700, whiteSpace: "nowrap", maxWidth: 50, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {p.avatar}
-                    </span>
-                    <div style={{ position: "relative", height: barH, width: 24 }}>
-                      <RocketIcon color={p.rocketColor} isPlayer={isMe} size={isMe ? 28 : 22} />
-                    </div>
-                  </div>
-                );
-              })}
+              <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 800, textAlign: "center" }}>
+                {ar ? "🚀 صاروخك — الارتفاع حيّ" : "🚀 Your rocket — live altitude"}
+              </p>
+              <div style={{
+                position: "relative",
+                height: "min(168px, 30vh)",
+                borderRadius: 14,
+                overflow: "hidden",
+                background: gamePhase === 0 ? "rgba(255,255,255,0.06)"
+                  : gamePhase === 1 ? "rgba(180,60,0,0.12)"
+                  : "rgba(0,200,180,0.08)",
+                border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.35)" : "rgba(0,200,180,0.3)"}`,
+              }}>
+                <div style={{ position: "absolute", top: 6, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.85)" : gamePhase === 1 ? "rgba(255,140,80,0.9)" : "rgba(80,255,220,0.9)" }}>
+                  {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ كويكبات" : "💎 كريستال"}
+                </div>
+                <div style={{ position: "relative", width: "100%", height: "100%", paddingTop: 22 }}>
+                  {trackPlayers.map((p, idx) => {
+                    const isMe = p.name === queryName;
+                    const lanes = Math.max(1, trackPlayers.length);
+                    const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
+                    const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
+                    const isMega = isMe && gamePhase === 2;
+                    return (
+                      <motion.div
+                        key={p.name}
+                        animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 55, damping: 16 }}
+                        style={{
+                          position: "absolute",
+                          transform: "translateX(-50%)",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                          zIndex: 10,
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 10, fontWeight: 800, color: isMe ? GOLD : "#fff",
+                          background: "rgba(0,0,0,0.65)", padding: "2px 6px", borderRadius: 999,
+                          maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
+                        }}>
+                          {p.avatar} {Math.round(displayAltitude(p))}%
+                        </span>
+                        <RocketIcon
+                          color={p.rocketColor}
+                          isPlayer={isMe}
+                          size={isMega ? 46 : 40}
+                          boosted={isMe && boostFlash}
+                          mega={isMega}
+                        />
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <div style={{ position: "absolute", left: 4, top: 28, bottom: 8, width: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.4)", fontSize: 8, fontWeight: 700 }}>
+                  {[100, 75, 50, 25, 0].map((v) => (
+                    <span key={v}>{v}%</span>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -1277,21 +1346,7 @@ export default function RocketPlay() {
               overflow: "hidden", padding: "16px 8px",
               transition: "background 2s ease, border 2s ease",
             }}>
-              {/* Lead zone marker at top */}
-              <motion.div
-                animate={{ opacity: [0.7, 1, 0.7] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                style={{
-                  position: "absolute", top: 10, left: 0, right: 0, height: 3,
-                  background: `repeating-linear-gradient(90deg, ${GOLD} 0 10px, rgba(255,255,255,0.5) 10px 20px)`,
-                  boxShadow: `0 0 14px ${GOLD}90`,
-                }}
-              />
-              <div style={{ position: "absolute", top: 15, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 10, fontWeight: 800, letterSpacing: 1 }}>
-                🏆 {ar ? "منطقة الصدارة" : "LEAD ZONE"}
-              </div>
-
-              {/* Phase indicator inside track */}
+              {/* Phase indicator — no "lead zone" banner during race (shown on results screen) */}
               <div style={{ position: "absolute", top: 28, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.7)" : gamePhase === 1 ? "rgba(255,140,80,0.8)" : "rgba(80,255,220,0.8)" }}>
                 {gamePhase === 0 ? "🌌 الفضاء العميق" : gamePhase === 1 ? "☄️ حقل الكويكبات" : "💎 كوكب الكريستال"}
               </div>
@@ -1310,9 +1365,9 @@ export default function RocketPlay() {
 
               {/* Player rockets */}
               <div style={{ position: "relative", width: "100%", height: "100%" }}>
-                {sortedPlayers.map((p, idx) => {
+                {trackPlayers.map((p, idx) => {
                   const isMe = p.name === queryName;
-                  const lanes = Math.max(1, sortedPlayers.length);
+                  const lanes = Math.max(1, trackPlayers.length);
                   // Distribute rockets evenly, more spacing for few players
                   const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
                   const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
@@ -1321,7 +1376,7 @@ export default function RocketPlay() {
                   return (
                     <motion.div
                       key={p.name}
-                      animate={{ bottom: `${Math.min(86, p.altitude)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                      animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
                       initial={false}
                       transition={{ type: "spring", stiffness: 55, damping: 16 }}
                       style={{

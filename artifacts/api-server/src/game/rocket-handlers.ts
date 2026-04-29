@@ -32,6 +32,8 @@ export interface RocketPlayer {
   finishedAt?: number;
   finishRank?: number;
   streak: number;
+  /** In host_sync: last syncQuestionIdx this player answered (prevent double submit). */
+  lastAnsweredSyncIdx?: number;
 }
 
 interface PendingPlayer {
@@ -56,6 +58,38 @@ interface RocketGame {
   targetClass?: string;
   teacherId?: number;
   title?: string;
+  /** Independent pace (default) vs one question at a time for the whole room (teacher advances). */
+  advanceMode: "per_player" | "host_sync";
+  /** Authoritative question index while racing in host_sync (all players answer the same prompt). */
+  syncQuestionIdx: number;
+}
+
+/** Tracks delayed `next-question` jobs so we cancel them when the race stops. */
+const rocketPendingTimers = new Map<string, Map<string, ReturnType<typeof setTimeout>>>();
+function scheduleDelayedQuestion(
+  pin: string,
+  socketId: string,
+  fn: () => void,
+  delay: number,
+) {
+  let byPin = rocketPendingTimers.get(pin);
+  if (!byPin) {
+    byPin = new Map();
+    rocketPendingTimers.set(pin, byPin);
+  }
+  const prev = byPin.get(socketId);
+  if (prev) clearTimeout(prev);
+  const t = setTimeout(() => {
+    byPin?.delete(socketId);
+    fn();
+  }, delay);
+  byPin.set(socketId, t);
+}
+function clearPendingQuestionTimers(pin: string) {
+  const byPin = rocketPendingTimers.get(pin);
+  if (!byPin) return;
+  for (const t of byPin.values()) clearTimeout(t);
+  rocketPendingTimers.delete(pin);
 }
 
 // ─── State ──────────────────────────────────────────────────────────────────
@@ -130,6 +164,7 @@ function scoreForAnswer(correct: boolean, timeMs: number, durationSecs: number, 
 function cleanupGame(pin: string) {
   const game = rocketGames.get(pin);
   if (game?.raceTimer) clearTimeout(game.raceTimer);
+  clearPendingQuestionTimers(pin);
   rocketGames.delete(pin);
 }
 
@@ -144,6 +179,7 @@ function endGame(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
   if (game.state === "finished") return;
   game.state = "finished";
   if (game.raceTimer) clearTimeout(game.raceTimer);
+  clearPendingQuestionTimers(game.pin);
 
   // Rank all players by score (fastest ties resolved by correctCount then wrongCount)
   const sortedPlayers = Object.values(game.players).sort((a, b) => {
@@ -177,22 +213,25 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
   setTimeout(() => {
     if (game.state !== "countdown") return;
     game.state = "racing";
+    game.syncQuestionIdx = 0;
     game.startedAt = Date.now();
 
-    // Init each player for looping mode
+    // Init each player for looping mode (or synced single-question mode)
     for (const p of Object.values(game.players)) {
-      p.currentQuestionIdx = 0;
+      p.currentQuestionIdx = game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0;
       p.totalAnswered = 0;
       p.wrongIndices = [];
       p.questionStartTime = Date.now();
+      p.lastAnsweredSyncIdx = undefined;
     }
 
-    const q = game.questions[0];
+    const q = game.questions[game.syncQuestionIdx];
     rocketNs.to(`rocket:${game.pin}`).emit("rocket:race-start", {
       total: game.questions.length,
       gameDuration: game.totalDurationSecs,
+      advanceMode: game.advanceMode,
       question: {
-        index: 0,
+        index: game.syncQuestionIdx,
         text: q.text,
         type: q.type,
         options: q.options,
@@ -251,6 +290,8 @@ export function setupRocketSocket(io: Server) {
           totalDurationSecs?: number;
           targetClass?: string;
           title?: string;
+          /** per_player = each student cycles questions at own pace; host_sync = same question until teacher advances */
+          advanceMode?: "per_player" | "host_sync";
         },
         cb: (r: object) => void,
       ) => {
@@ -279,6 +320,9 @@ export function setupRocketSocket(io: Server) {
             duration,
           }));
 
+          const advanceMode: "per_player" | "host_sync" =
+            data.advanceMode === "host_sync" ? "host_sync" : "per_player";
+
           const game: RocketGame = {
             pin,
             creatorSocketId: socket.id,
@@ -293,6 +337,8 @@ export function setupRocketSocket(io: Server) {
             targetClass: data.targetClass || undefined,
             teacherId: sessionTeacherId || undefined,
             title: data.title || undefined,
+            advanceMode,
+            syncQuestionIdx: 0,
           };
 
           rocketGames.set(pin, game);
@@ -313,7 +359,7 @@ export function setupRocketSocket(io: Server) {
     // ── Reclaim host (page reload) ────────────────────────────────────────
     socket.on(
       "rocket:reclaim-host",
-      (data: { pin: string; creatorToken: string }, cb: (r: object) => void) => {
+      (data: { pin: string; creatorToken: string },         cb: (r: object) => void) => {
         const game = rocketGames.get(data.pin);
         if (!game) return cb({ error: "الغرفة غير موجودة." });
         if (game.creatorToken !== data.creatorToken) return cb({ error: "رمز غير صحيح." });
@@ -321,6 +367,10 @@ export function setupRocketSocket(io: Server) {
         game.creatorSocketId = socket.id;
         socket.join(`rocket:${game.pin}`);
 
+        const syncQ =
+          game.state === "racing" && game.advanceMode === "host_sync"
+            ? game.questions[game.syncQuestionIdx]
+            : undefined;
         cb({
           success: true,
           state: game.state,
@@ -328,6 +378,12 @@ export function setupRocketSocket(io: Server) {
           totalQuestions: game.questions.length,
           duration: game.duration,
           title: game.title,
+          advanceMode: game.advanceMode,
+          syncQuestionIdx: game.syncQuestionIdx,
+          currentQuestionPreview:
+            syncQ !== undefined
+              ? { index: game.syncQuestionIdx, text: syncQ.text }
+              : undefined,
         });
       },
     );
@@ -360,7 +416,7 @@ export function setupRocketSocket(io: Server) {
             score: 0,
             correctCount: 0,
             wrongCount: 0,
-            currentQuestionIdx: 0,
+            currentQuestionIdx: game.state === "racing" && game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0,
             totalAnswered: 0,
             wrongIndices: [],
             finished: false,
@@ -379,16 +435,26 @@ export function setupRocketSocket(io: Server) {
               ? Math.max(0, Math.round((game.startedAt + game.totalDurationSecs * 1000 - Date.now()) / 1000))
               : game.totalDurationSecs;
             player.questionStartTime = Date.now();
-            const firstQ = game.questions[0];
+            const firstQ = game.questions[game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0];
             cb({
               success: true, pin: game.pin, rocketColor: player.rocketColor,
               totalQuestions: game.questions.length, duration: game.duration,
               totalDurationSecs: remainingSecs, title: game.title, lateJoin: true,
+              advanceMode: game.advanceMode,
             });
             if (firstQ) {
               socket.emit("rocket:race-start", {
                 total: game.questions.length, gameDuration: remainingSecs,
-                question: { index: 0, text: firstQ.text, type: firstQ.type, options: firstQ.options, duration: firstQ.duration },
+                advanceMode: game.advanceMode,
+                question: firstQ
+                  ? {
+                      index: game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0,
+                      text: firstQ.text,
+                      type: firstQ.type,
+                      options: firstQ.options,
+                      duration: firstQ.duration,
+                    }
+                  : undefined,
               });
             }
           } else {
@@ -423,7 +489,11 @@ export function setupRocketSocket(io: Server) {
           game.players[socket.id] = existing;
           socket.join(`rocket:${game.pin}`);
 
-          const q = game.questions[existing.currentQuestionIdx];
+          const qIdx =
+            game.advanceMode === "host_sync"
+              ? game.syncQuestionIdx
+              : existing.currentQuestionIdx;
+          const q = game.questions[qIdx];
           const remainingSecs = game.startedAt
             ? Math.max(0, Math.round((game.startedAt + game.totalDurationSecs * 1000 - Date.now()) / 1000))
             : game.totalDurationSecs;
@@ -433,18 +503,22 @@ export function setupRocketSocket(io: Server) {
             state: game.state,
             altitude: existing.altitude,
             score: existing.score,
-            currentQuestionIdx: existing.currentQuestionIdx,
+            advanceMode: game.advanceMode,
+            currentQuestionIdx:
+              game.advanceMode === "host_sync" ? qIdx : existing.currentQuestionIdx,
             totalQuestions: game.questions.length,
             rocketColor: existing.rocketColor,
             title: game.title,
             totalDurationSecs: remainingSecs,
-            activeQuestion: game.state === "racing" && q ? {
-              index: existing.currentQuestionIdx,
-              text: q.text,
-              type: q.type,
-              options: q.options,
-              duration: q.duration,
-            } : null,
+            activeQuestion: game.state === "racing" && q
+              ? {
+                  index: qIdx,
+                  text: q.text,
+                  type: q.type,
+                  options: q.options,
+                  duration: q.duration,
+                }
+              : null,
             finished: false,
             finishRank: existing.finishRank,
           });
@@ -463,9 +537,18 @@ export function setupRocketSocket(io: Server) {
           name: trimmedName,
           avatar: data.avatar || "🦁",
           rocketColor: pickColor(game),
-          altitude: 0, score: 0, correctCount: 0, wrongCount: 0,
-          currentQuestionIdx: 0, totalAnswered: 0, wrongIndices: [],
-          finished: false, streak: 0,
+          altitude: 0,
+          score: 0,
+          correctCount: 0,
+          wrongCount: 0,
+          currentQuestionIdx:
+            game.state === "racing" && game.advanceMode === "host_sync"
+              ? game.syncQuestionIdx
+              : 0,
+          totalAnswered: 0,
+          wrongIndices: [],
+          finished: false,
+          streak: 0,
         };
         game.players[socket.id] = player;
         socket.join(`rocket:${game.pin}`);
@@ -477,7 +560,7 @@ export function setupRocketSocket(io: Server) {
         cb({
           success: true, pin: game.pin, rocketColor: player.rocketColor,
           totalQuestions: game.questions.length, duration: game.duration,
-          totalDurationSecs: game.totalDurationSecs, title: game.title,
+          totalDurationSecs: game.totalDurationSecs, title: game.title, advanceMode: game.advanceMode,
         });
       },
     );
@@ -504,16 +587,29 @@ export function setupRocketSocket(io: Server) {
         const game = rocketGames.get(data.pin);
         if (!game) return cb({ error: "الغرفة غير موجودة." });
         if (game.state !== "racing") return cb({ error: "السباق ليس نشطاً." });
+        if (game.startedAt && Date.now() >= game.startedAt + game.totalDurationSecs * 1000) {
+          return cb({ error: "انتهى وقت السباق." });
+        }
 
         const player = game.players[socket.id];
         if (!player) return cb({ error: "أنت غير مسجل." });
 
-        // skipToNext is a legacy no-op — the question was already processed
-        // when the wrong answer was submitted; ignore it silently.
+        // skipToNext is a legacy no-op — ignore it silently.
         if (data.skipToNext) return cb({ success: true, skipped: true });
 
-        const q = game.questions[player.currentQuestionIdx];
+        const qIdx =
+          game.advanceMode === "host_sync"
+            ? game.syncQuestionIdx
+            : player.currentQuestionIdx;
+        const q = game.questions[qIdx];
         if (!q) return cb({ error: "خطأ في السؤال." });
+
+        if (
+          game.advanceMode === "host_sync" &&
+          player.lastAnsweredSyncIdx === game.syncQuestionIdx
+        ) {
+          return cb({ error: "تم تسجيل إجابة لهذا السؤال بالفعل." });
+        }
 
         const elapsedMs = player.questionStartTime ? Date.now() - player.questionStartTime : 0;
         let correct = false;
@@ -522,14 +618,13 @@ export function setupRocketSocket(io: Server) {
           const submitted = (data.answerText || "").trim().toLowerCase();
           const accepted = [
             (q.correctText || "").trim().toLowerCase(),
-            ...(q.options || []).map(o => o.trim().toLowerCase()),
+            ...(q.options || []).map((o) => o.trim().toLowerCase()),
           ].filter(Boolean);
           correct = accepted.includes(submitted);
         } else {
           correct = data.answerIndex === q.correct;
         }
 
-        const currentQIdx = player.currentQuestionIdx;
         let altitudeChange = 0;
 
         if (correct) {
@@ -545,12 +640,16 @@ export function setupRocketSocket(io: Server) {
           player.altitude = Math.max(0, player.altitude + altitudeChange);
         }
 
-        // Advance: get next question index (wrong-first priority, then cycle)
-        player.totalAnswered += 1;
-        player.currentQuestionIdx = nextQuestionIdx(game, player);
+        if (game.advanceMode === "host_sync") {
+          player.lastAnsweredSyncIdx = game.syncQuestionIdx;
+          player.totalAnswered += 1;
+          player.currentQuestionIdx = game.syncQuestionIdx;
+        } else {
+          player.totalAnswered += 1;
+          player.currentQuestionIdx = nextQuestionIdx(game, player);
+        }
         player.questionStartTime = Date.now();
 
-        // Send personal answer feedback
         cb({
           success: true,
           correct,
@@ -563,15 +662,16 @@ export function setupRocketSocket(io: Server) {
           finished: false,
         });
 
-        // Broadcast leaderboard immediately so the track updates for everyone
         rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
           players: getPlayerList(game),
         });
 
-        // Delay the next question so the player sees the feedback for ~1 second
+        if (game.advanceMode === "host_sync") {
+          return;
+        }
+
         const delay = correct ? 800 : 1200;
-        setTimeout(() => {
-          // Verify game is still running before sending
+        scheduleDelayedQuestion(game.pin, socket.id, () => {
           const g = rocketGames.get(data.pin);
           if (!g || g.state !== "racing") return;
           const p = g.players[socket.id];
@@ -590,7 +690,39 @@ export function setupRocketSocket(io: Server) {
       },
     );
 
-    // ── End game manually (host) ──────────────────────────────────────────
+    // ── Host advances question (sync mode only) ─────────────────────────
+    socket.on("rocket:host-next", (data: { pin: string }, cb: (r: object) => void) => {
+      const game = rocketGames.get(data.pin);
+      if (!game) return cb({ error: "الغرفة غير موجودة." });
+      if (game.creatorSocketId !== socket.id) return cb({ error: "غير مصرح." });
+      if (game.advanceMode !== "host_sync") {
+        return cb({ error: "هذا الوضع ليس ضبط الأسئلة اليدوي." });
+      }
+      if (game.state !== "racing") return cb({ error: "السباق غير نشط." });
+
+      const nextIdx = (game.syncQuestionIdx + 1) % game.questions.length;
+      game.syncQuestionIdx = nextIdx;
+      const nq = game.questions[nextIdx];
+      if (!nq) return cb({ error: "لا يوجد سؤال." });
+
+      for (const pl of Object.values(game.players)) {
+        pl.lastAnsweredSyncIdx = undefined;
+        pl.currentQuestionIdx = nextIdx;
+        pl.questionStartTime = Date.now();
+      }
+
+      rocketNs.to(`rocket:${game.pin}`).emit("rocket:sync-question", {
+        index: nextIdx,
+        text: nq.text,
+        type: nq.type,
+        options: nq.options,
+        duration: nq.duration,
+      });
+      rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
+        players: getPlayerList(game),
+      });
+      cb({ success: true });
+    });
     socket.on("rocket:end", (data: { pin: string }, cb: (r: object) => void) => {
       const game = rocketGames.get(data.pin);
       if (!game) return cb({ error: "الغرفة غير موجودة." });
@@ -607,12 +739,26 @@ export function setupRocketSocket(io: Server) {
 
       game.state = "lobby";
       game.finishOrder = [];
-      if (game.raceTimer) { clearTimeout(game.raceTimer); game.raceTimer = undefined; }
+      game.syncQuestionIdx = 0;
+      if (game.raceTimer) {
+        clearTimeout(game.raceTimer);
+        game.raceTimer = undefined;
+      }
       game.startedAt = undefined;
+      clearPendingQuestionTimers(game.pin);
       for (const p of Object.values(game.players)) {
-        p.altitude = 0; p.score = 0; p.correctCount = 0; p.wrongCount = 0;
-        p.currentQuestionIdx = 0; p.finished = false; p.finishRank = undefined;
-        p.streak = 0; p.questionStartTime = undefined; p.finishedAt = undefined;
+        p.altitude = 0;
+        p.score = 0;
+        p.correctCount = 0;
+        p.wrongCount = 0;
+        p.currentQuestionIdx = 0;
+        p.totalAnswered = 0;
+        p.finished = false;
+        p.finishRank = undefined;
+        p.streak = 0;
+        p.questionStartTime = undefined;
+        p.finishedAt = undefined;
+        p.lastAnsweredSyncIdx = undefined;
       }
       rocketNs.to(`rocket:${game.pin}`).emit("rocket:replay", {
         players: getPlayerList(game),

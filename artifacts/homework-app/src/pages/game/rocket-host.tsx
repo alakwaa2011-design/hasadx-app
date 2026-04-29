@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { useLocation, useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Volume2, VolumeX, Loader2, Trophy, Play, Copy, Check,
-  Users, RefreshCw, Home, X, Rocket,
+  Users, RefreshCw, Home, X, Rocket, Maximize2, ChevronRight,
 } from "lucide-react";
 import QRCode from "react-qr-code";
 import { useI18n } from "@/lib/i18n";
@@ -92,7 +93,8 @@ export default function RocketHost() {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-  const reclaimedRef = useRef(false);
+  const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
+  const [hostQuestion, setHostQuestion] = useState<{ index: number; text: string } | null>(null);
 
   // Sound (host)
   const playLaunchSound = () => {
@@ -126,56 +128,81 @@ export default function RocketHost() {
     if (!pin) return;
     const socket = getRocketSocket();
     const token = sessionStorage.getItem(`rocket-creator-${pin}`);
-
-    const reclaim = () => {
-      if (reclaimedRef.current) return;
-      reclaimedRef.current = true;
-      socket.emit("rocket:reclaim-host", { pin, creatorToken: token }, (res: {
-        success?: boolean; error?: string;
-        state?: string; players?: Player[]; totalQuestions?: number; duration?: number; title?: string;
-      }) => {
-        if (res.error) {
-          toast.error(res.error);
-          setLocation("/");
-          return;
-        }
-        if (res.success) {
-          setPlayers(res.players || []);
-          setTotalQuestions(res.totalQuestions || 0);
-          if (res.title) setTitle(res.title);
-          if (res.state === "lobby") setPhase("lobby");
-          else if (res.state === "racing" || res.state === "countdown") setPhase("racing");
-          else if (res.state === "finished") setPhase("finished");
-        }
-      });
-    };
-
     if (!token) {
       toast.error(ar ? "لا توجد صلاحية المعلم. أعد إنشاء السباق." : "No host token. Re-create the race.");
       setLocation("/game/rocket/create");
       return;
     }
 
+    const reclaim = () => {
+      const tok = sessionStorage.getItem(`rocket-creator-${pin}`);
+      if (!tok) return;
+      socket.emit(
+        "rocket:reclaim-host",
+        { pin, creatorToken: tok },
+        (res: {
+          success?: boolean; error?: string;
+          state?: string; players?: Player[]; totalQuestions?: number; duration?: number; title?: string;
+          advanceMode?: "per_player" | "host_sync"; syncQuestionIdx?: number;
+          currentQuestionPreview?: { index: number; text: string };
+        }) => {
+          if (res.error) {
+            toast.error(res.error);
+            setLocation("/");
+            return;
+          }
+          if (res.success) {
+            setPlayers(res.players || []);
+            setTotalQuestions(res.totalQuestions || 0);
+            if (res.title) setTitle(res.title);
+            if (res.advanceMode) setAdvanceMode(res.advanceMode);
+            if (res.currentQuestionPreview) setHostQuestion(res.currentQuestionPreview);
+            if (res.state === "lobby") setPhase("lobby");
+            else if (res.state === "racing" || res.state === "countdown") setPhase("racing");
+            else if (res.state === "finished") setPhase("finished");
+          }
+        },
+      );
+    };
+
     if (socket.connected) reclaim();
-    else socket.once("connect", reclaim);
+    socket.on("connect", reclaim);
 
     socket.on("rocket:players-updated", (data: { players: Player[] }) => setPlayers(data.players));
     socket.on("rocket:countdown", () => { setPhase("racing"); playLaunchSound(); });
-    socket.on("rocket:race-start", () => setPhase("racing"));
+    socket.on(
+      "rocket:race-start",
+      (data: {
+        advanceMode?: "per_player" | "host_sync";
+        question?: { index: number; text: string };
+      }) => {
+        setPhase("racing");
+        if (data.advanceMode) setAdvanceMode(data.advanceMode);
+        if (data.question) setHostQuestion({ index: data.question.index, text: data.question.text });
+      },
+    );
+    socket.on("rocket:sync-question", (q: { index: number; text: string }) => {
+      setHostQuestion({ index: q.index, text: q.text });
+    });
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
     socket.on("rocket:game-end", (data: { players: Player[] }) => {
       setPhase("finished");
       setPlayers(data.players);
+      setHostQuestion(null);
     });
     socket.on("rocket:replay", (data: { players: Player[] }) => {
       setPhase("lobby");
       setPlayers(data.players);
+      setAdvanceMode("per_player");
+      setHostQuestion(null);
     });
 
     return () => {
+      socket.off("connect", reclaim);
       socket.off("rocket:players-updated");
       socket.off("rocket:countdown");
       socket.off("rocket:race-start");
+      socket.off("rocket:sync-question");
       socket.off("rocket:leaderboard");
       socket.off("rocket:game-end");
       socket.off("rocket:replay");
@@ -212,6 +239,13 @@ export default function RocketHost() {
     socket.emit("rocket:end", { pin }, () => { setConfirmEnd(false); });
   };
 
+  const hostNextQuestion = () => {
+    const socket = getRocketSocket();
+    socket.emit("rocket:host-next", { pin }, (res: { error?: string }) => {
+      if (res?.error) toast.error(res.error);
+    });
+  };
+
   const replay = () => {
     const socket = getRocketSocket();
     socket.emit("rocket:replay", { pin }, () => {});
@@ -236,18 +270,20 @@ export default function RocketHost() {
     <div dir={dir} style={{ minHeight: "100dvh", background: SPACE_BG, position: "relative", overflow: "hidden" }}>
       <StarField />
 
-      {/* Top bar */}
+      {/* Top bar — join code + mini QR + enlarge (teacher only in this route) */}
       <div style={{
         position: "relative", zIndex: 10,
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12,
+        flexWrap: "wrap",
         padding: "12px 18px",
         background: "rgba(255,255,255,0.05)",
         backdropFilter: "blur(8px)",
         borderBottom: "1px solid rgba(255,255,255,0.1)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", minWidth: 0 }}>
           <Rocket size={22} color={GOLD} />
-          <div>
+          <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontWeight: 800, fontSize: 14 }}>
               {ar ? "سباق الصواريخ" : "Rocket Race"}
               {title && <span style={{ marginInlineStart: 8, opacity: 0.7, fontWeight: 600 }}>· {title}</span>}
@@ -257,7 +293,49 @@ export default function RocketHost() {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "rgba(0,0,0,0.28)",
+          borderRadius: 14,
+          padding: "6px 10px",
+          border: "1px solid rgba(255,255,255,0.12)",
+        }}>
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            title={ar ? "تكبير الباركود" : "Enlarge QR"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              background: "#fff",
+              border: "none",
+              borderRadius: 10,
+              padding: 4,
+              cursor: "pointer",
+            }}
+          >
+            <QRCode value={joinUrl} size={44} />
+          </button>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5 }}>
+              {ar ? "رمز الانضمام" : "Join code"}
+            </span>
+            <span style={{ fontFamily: "monospace", fontWeight: 900, fontSize: 20, color: GOLD, letterSpacing: "0.12em", direction: "ltr" }}>
+              {pin}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            style={{ ...btnSmall, flexShrink: 0 }}
+            title={ar ? "عرض بحجم أكبر" : "View larger"}
+          >
+            <Maximize2 size={14} />
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginInlineStart: "auto" }}>
           <button onClick={toggleMute} style={btnSmall}>
             {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
@@ -393,6 +471,53 @@ export default function RocketHost() {
       {/* Racing — live monitor */}
       {phase === "racing" && (
         <div style={{ position: "relative", zIndex: 5, padding: 16, maxWidth: 1200, marginInline: "auto" }}>
+          {(hostQuestion || advanceMode === "host_sync") && (
+            <div
+              style={{
+                marginBottom: 14,
+                padding: "12px 16px",
+                borderRadius: 16,
+                background: advanceMode === "host_sync" ? "rgba(217,165,33,0.12)" : "rgba(255,255,255,0.06)",
+                border: `1px solid ${advanceMode === "host_sync" ? GOLD : "rgba(255,255,255,0.1)"}`,
+              }}
+            >
+              <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 800, color: GOLD, letterSpacing: 0.5 }}>
+                {advanceMode === "host_sync"
+                  ? (ar ? "وضع المعلم: نفس السؤال للجميع — انتقل عند الانتهاء" : "Synced: same question for all — advance when ready")
+                  : (ar ? "لمحة عن السؤال الحالي للطلاب" : "Approx. student question")}
+              </p>
+              {hostQuestion && (
+                <p style={{ margin: 0, color: "#fff", fontSize: 14, lineHeight: 1.45, fontWeight: 600 }}>
+                  <span style={{ opacity: 0.65, marginInlineEnd: 8 }}>#{hostQuestion.index + 1}</span>
+                  {hostQuestion.text}
+                </p>
+              )}
+              {advanceMode === "host_sync" && (
+                <button
+                  type="button"
+                  onClick={hostNextQuestion}
+                  style={{
+                    marginTop: 12,
+                    padding: "10px 18px",
+                    borderRadius: 12,
+                    border: `1.5px solid ${GOLD}`,
+                    background: `linear-gradient(135deg, ${GOLD}, #c89212)`,
+                    color: "#000",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <ChevronRight size={18} />
+                  {ar ? "السؤال التالي للجميع" : "Next question (everyone)"}
+                </button>
+              )}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "minmax(360px, 480px) 1fr", gap: 16 }}>
             {/* Race track */}
             <div style={{
@@ -659,7 +784,7 @@ export default function RocketHost() {
   );
 }
 
-const btnSmall: React.CSSProperties = {
+const btnSmall: CSSProperties = {
   display: "flex", alignItems: "center", justifyContent: "center",
   width: 36, height: 36,
   borderRadius: 999,
@@ -669,7 +794,7 @@ const btnSmall: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const btnAction = (bg: string): React.CSSProperties => ({
+const btnAction = (bg: string): CSSProperties => ({
   padding: "10px 18px",
   borderRadius: 12,
   border: "none",
