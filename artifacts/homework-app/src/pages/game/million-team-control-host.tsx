@@ -7,6 +7,7 @@ import { Trophy, ChevronLeft, ChevronRight, Loader2, ArrowRight, ArrowLeft, Eye,
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
 import { HostJoinBar } from "@/components/host-join-bar";
+import { ConfettiBurst } from "@/components/confetti-burst";
 import { useGameAudio } from "./useGameAudio";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -216,6 +217,21 @@ export default function MillionTeamControlHost() {
   // Whose turn is it conceptually? Alternate by question index, with transfers swapping it
   const baseTurn: Side = currentIdx % 2 === 0 ? "A" : "B";
   const currentTurn: Side = isTransferred ? (baseTurn === "A" ? "B" : "A") : baseTurn;
+
+  // Fire victory fanfare + confetti exactly once when the game ends.
+  const celebratedRef = useRef(false);
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!isFinished || celebratedRef.current) return;
+    celebratedRef.current = true;
+    setCelebrate(true);
+    try { audio.stopBg(); } catch { /* ignore */ }
+    try { audio.playMillion(); } catch { /* ignore */ }
+    // Keep the confetti canvas mounted long enough for particles to fall.
+    const t = setTimeout(() => setCelebrate(false), 9000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
 
   function emitAction(payload: Record<string, unknown>, onAck?: (res: { ok?: boolean; error?: string }) => void) {
     const socket = getSocket();
@@ -508,6 +524,7 @@ export default function MillionTeamControlHost() {
 
   return (
     <Layout>
+      <ConfettiBurst active={celebrate} />
       <div dir={dir} className="min-h-[calc(100vh-4rem)] py-6 px-4" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%)" }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -537,7 +554,6 @@ export default function MillionTeamControlHost() {
               <span className="text-amber-200 text-xs font-bold mb-1">
                 {lang === "ar" ? "للانضمام: امسح الباركود أو افتح الرابط أو أدخل الرقم" : "To join: scan QR, open link, or enter PIN"}
               </span>
-              <span className="text-blue-200 text-[11px] opacity-80 break-all max-w-md">{joinUrl}</span>
             </div>
             <HostJoinBar pin={pin} joinUrl={joinUrl} variant="dark" compact />
           </div>

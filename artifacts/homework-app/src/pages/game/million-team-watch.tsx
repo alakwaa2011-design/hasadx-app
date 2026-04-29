@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, useSearch, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { getSocket } from "@/lib/socket";
+import { ConfettiBurst } from "@/components/confetti-burst";
+import { useGameAudio } from "./useGameAudio";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 type LifelineKey = "fifty" | "phone" | "audience" | "swap";
@@ -105,8 +107,23 @@ export default function MillionTeamWatch() {
     : teamB.members.includes(myName) ? "B"
     : null;
 
+  // Fire victory fanfare + confetti exactly once when the game ends.
+  const audio = useGameAudio();
+  const celebratedRef = useRef(false);
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!isFinished || celebratedRef.current) return;
+    celebratedRef.current = true;
+    setCelebrate(true);
+    try { audio.playMillion(); } catch { /* ignore */ }
+    const t = setTimeout(() => setCelebrate(false), 9000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFinished]);
+
   return (
     <Layout>
+      <ConfettiBurst active={celebrate} />
       <div dir={dir} className="min-h-[calc(100vh-4rem)] py-6 px-4" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #0a1628 100%)" }}>
         <div className="max-w-3xl mx-auto">
           <button onClick={() => setLocation("/game/million")} className="inline-flex items-center gap-2 text-sm text-blue-300 mb-4">
