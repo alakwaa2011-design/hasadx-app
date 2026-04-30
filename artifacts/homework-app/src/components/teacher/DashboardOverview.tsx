@@ -200,75 +200,40 @@ export default function DashboardOverview({
 
   return (
     <div className="space-y-5">
-      {/* ── 1. Slim greeting bar ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="relative w-full overflow-hidden rounded-2xl text-white shadow-md min-h-[52px]"
-        style={{ background: "#225739" }}
-      >
-        <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-amber-300/10 blur-2xl pointer-events-none" />
-        <div className="relative px-4 sm:px-5 py-2 flex items-center gap-2.5 sm:gap-3 flex-wrap">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-300/20 text-amber-200 ring-1 ring-amber-300/30 shrink-0">
-            <Flame className="w-3 h-3" />
-            {greeting}
-          </span>
-          <h1 className="text-sm sm:text-base font-extrabold tracking-tight truncate min-w-0 flex-1">
-            {isAr ? `أهلاً، ${teacherName}` : `Welcome, ${teacherName}`}
-            <span className="ms-1.5">👋</span>
-          </h1>
-          <div className="hidden md:flex items-center gap-1.5 text-[11px] text-white/80">
-            <span className="inline-flex items-center gap-1"><BookText className="w-3 h-3" />{stats.total}</span>
-            <span className="text-white/30">·</span>
-            <span className="inline-flex items-center gap-1"><Send className="w-3 h-3" />{stats.submissions}</span>
-            <span className="text-white/30">·</span>
-            <span className="inline-flex items-center gap-1"><Target className="w-3 h-3" />{stats.active}</span>
-          </div>
-          <button
-            onClick={() => setLocation("/teacher/new")}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-primary font-bold text-[11px] shadow hover:bg-amber-50 transition-colors shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {isAr ? "نشاط جديد" : "New activity"}
-          </button>
-        </div>
-      </motion.div>
-
       {/* ── AI Presentations promo card — prominent so teachers find it ── */}
       <motion.button
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25, delay: 0.05 }}
         onClick={() => setLocation("/teacher/presentations")}
-        className="group relative overflow-hidden w-full text-start rounded-2xl px-4 sm:px-5 py-2 min-h-[52px] shadow-md hover:shadow-lg hover:scale-[1.005] transition-all"
+        className="group relative overflow-hidden w-full text-start rounded-2xl px-5 sm:px-7 py-4 sm:py-5 shadow-lg hover:shadow-xl hover:scale-[1.005] transition-all"
         style={{ background: platformHarvestBg(isAr) }}
       >
-        <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-white/12 blur-2xl pointer-events-none" />
+        <div className="absolute -top-10 -end-10 w-52 h-52 rounded-full bg-white/12 blur-2xl pointer-events-none" />
         <div
-          className="absolute -bottom-12 -end-12 w-48 h-48 rounded-full blur-2xl pointer-events-none"
+          className="absolute -bottom-14 -end-14 w-56 h-56 rounded-full blur-2xl pointer-events-none"
           style={{ backgroundColor: "rgba(212, 175, 55, 0.35)" }}
         />
         <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
-        <div className="relative flex items-center gap-2.5 sm:gap-3">
-          <div className="text-3xl sm:text-4xl drop-shadow-lg shrink-0 leading-none">🎬</div>
+        <div className="relative flex items-center gap-3 sm:gap-4">
+          <div className="text-4xl sm:text-5xl drop-shadow-lg shrink-0 leading-none">🎬</div>
           <div className="flex-1 min-w-0 relative z-[1] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">
-            <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur px-2 py-0.5 rounded-full text-white text-[10px] font-bold mb-1 ring-1 ring-white/25">
-              <Sparkles className="w-2.5 h-2.5" />
+            <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur px-2.5 py-0.5 rounded-full text-white text-[11px] font-bold mb-1.5 ring-1 ring-white/25">
+              <Sparkles className="w-3 h-3" />
               {isAr ? "جديد · ذكاء اصطناعي" : "New · AI"}
             </div>
-            <div className="text-white font-extrabold text-sm sm:text-base leading-tight">
+            <div className="text-white font-extrabold text-base sm:text-lg leading-tight">
               {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
             </div>
-            <div className="text-white/85 text-[11px] sm:text-xs mt-0.5 line-clamp-1">
+            <div className="text-white/85 text-xs sm:text-sm mt-1 line-clamp-1">
               {isAr
                 ? "أنشئ عرضاً درسياً كاملاً بالذكاء الاصطناعي مع ألعاب حصاد التفاعلية في ثوانٍ."
                 : "Generate a complete lesson deck with Hasad games in seconds."}
             </div>
           </div>
-          <div className="hidden sm:flex shrink-0 items-center gap-1 bg-white text-[#225739] px-3 py-1.5 rounded-lg text-xs font-bold group-hover:scale-105 transition-transform shadow-md shadow-black/10">
+          <div className="hidden sm:flex shrink-0 items-center gap-1.5 bg-white text-[#225739] px-4 py-2 rounded-xl text-sm font-bold group-hover:scale-105 transition-transform shadow-md shadow-black/10">
             {isAr ? "ابدأ الآن" : "Start now"}
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <ArrowUpRight className="w-4 h-4" />
           </div>
         </div>
       </motion.button>
@@ -564,7 +529,7 @@ function QuickLaunchHero({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: 0.05 }}
     >
-      <Card className="relative overflow-hidden p-5 sm:p-6 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 dark:from-emerald-900/20 dark:via-card dark:to-amber-900/10 border border-emerald-200/60 dark:border-emerald-800/40">
+      <Card className="relative p-5 sm:p-6 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 dark:from-emerald-900/20 dark:via-card dark:to-amber-900/10 border border-emerald-200/60 dark:border-emerald-800/40">
         {/* Decorative pulse blobs */}
         <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-emerald-300/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-12 -start-12 w-44 h-44 rounded-full bg-amber-300/15 blur-3xl pointer-events-none" />
@@ -626,7 +591,7 @@ function QuickLaunchHero({
 
               {/* Results dropdown */}
               {showResults && !selected && (
-                <div className="absolute z-30 top-full mt-1.5 inset-x-0 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
+                <div className="absolute z-[200] top-full mt-1.5 inset-x-0 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-2xl">
                   {filtered.length === 0 ? (
                     <div className="px-4 py-6 text-center text-xs text-muted-foreground">
                       {isAr ? "لا توجد نتائج" : "No matches"}
