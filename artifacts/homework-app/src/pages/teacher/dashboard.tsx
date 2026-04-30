@@ -1501,6 +1501,7 @@ function CompetitiveTab({
   const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
   const [detailsById, setDetailsById] = useState<Record<number, any>>({});
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showAllGames, setShowAllGames] = useState(false);
   const BASE = import.meta.env.VITE_API_URL || "";
 
   useEffect(() => {
@@ -2094,7 +2095,7 @@ function CompetitiveTab({
             {t.dashboard.recentGames}
           </h3>
           <div className="space-y-3">
-            {gameHistory.slice(0, 10).map((g: any, i: number) => (
+            {(showAllGames ? gameHistory : gameHistory.slice(0, 5)).map((g: any, i: number) => (
               <motion.div
                 key={g.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -2267,6 +2268,24 @@ function CompetitiveTab({
                 </Card>
               </motion.div>
             ))}
+            {!showAllGames && gameHistory.length > 5 && (
+              <button
+                onClick={() => setShowAllGames(true)}
+                className="w-full py-2.5 bg-muted/40 border border-border/60 rounded-xl text-xs font-semibold text-primary hover:bg-muted/70 hover:border-primary/40 transition-all mt-1"
+              >
+                {lang === "ar"
+                  ? `عرض الكل (${gameHistory.length})`
+                  : `View all (${gameHistory.length})`}
+              </button>
+            )}
+            {showAllGames && gameHistory.length > 5 && (
+              <button
+                onClick={() => setShowAllGames(false)}
+                className="w-full py-2.5 bg-muted/30 border border-border/40 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+              >
+                {lang === "ar" ? "عرض أقل" : "Show less"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -3639,6 +3658,7 @@ function AssignmentsTabRender({
 }: any) {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [editingCollection, setEditingCollection] = useState<any>(null);
+  const [showAllAssignments, setShowAllAssignments] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "expired" | "favorites"
   >("all");
@@ -4143,36 +4163,65 @@ function AssignmentsTabRender({
               </div>
             )
           ) : (
-            statusFiltered.map((a: any) => (
-              <AssignmentRow
-                key={a.id}
-                assignment={a}
-                groupName={groupNameById(a.id)}
-                isExpanded={expandedRowId === a.id}
-                onToggle={() =>
-                  setExpandedRowId(expandedRowId === a.id ? null : a.id)
-                }
-                creatingGameForId={creatingGameForId}
-                startGame={startGame}
-                deleteAssignment={deleteAssignment}
-                setLocation={setLocation}
-                lang={lang}
-                t={t}
-                queryClient={queryClient}
-                onShare={onShare}
-                collections={collections}
-                addToCollection={addToCollection}
-                removeFromCollection={removeFromCollection}
-                creatingGroupName={creatingGroupName}
-                setCreatingGroupName={setCreatingGroupName}
-                createGroupAndAdd={createGroupAndAdd}
-                savingGroup={savingGroup}
-                isFavorite={favorites.has(a.id)}
-                onToggleFavorite={(e: React.MouseEvent) =>
-                  toggleFavorite(a.id, e)
-                }
-              />
-            ))
+            (() => {
+              const PAGE = 6;
+              const visibleAssignments = showAllAssignments
+                ? statusFiltered
+                : statusFiltered.slice(0, PAGE);
+              const hiddenCount = statusFiltered.length - PAGE;
+              return (
+                <>
+                  {visibleAssignments.map((a: any) => (
+                    <AssignmentRow
+                      key={a.id}
+                      assignment={a}
+                      groupName={groupNameById(a.id)}
+                      isExpanded={expandedRowId === a.id}
+                      onToggle={() =>
+                        setExpandedRowId(expandedRowId === a.id ? null : a.id)
+                      }
+                      creatingGameForId={creatingGameForId}
+                      startGame={startGame}
+                      deleteAssignment={deleteAssignment}
+                      setLocation={setLocation}
+                      lang={lang}
+                      t={t}
+                      queryClient={queryClient}
+                      onShare={onShare}
+                      collections={collections}
+                      addToCollection={addToCollection}
+                      removeFromCollection={removeFromCollection}
+                      creatingGroupName={creatingGroupName}
+                      setCreatingGroupName={setCreatingGroupName}
+                      createGroupAndAdd={createGroupAndAdd}
+                      savingGroup={savingGroup}
+                      isFavorite={favorites.has(a.id)}
+                      onToggleFavorite={(e: React.MouseEvent) =>
+                        toggleFavorite(a.id, e)
+                      }
+                    />
+                  ))}
+                  {!showAllAssignments && hiddenCount > 0 && (
+                    <button
+                      onClick={() => setShowAllAssignments(true)}
+                      className="w-full py-2.5 bg-muted/40 border border-border/60 rounded-xl text-xs font-semibold text-primary hover:bg-muted/70 hover:border-primary/40 transition-all"
+                    >
+                      {lang === "ar"
+                        ? `عرض الكل (${statusFiltered.length})`
+                        : `View all (${statusFiltered.length})`}
+                    </button>
+                  )}
+                  {showAllAssignments && statusFiltered.length > PAGE && (
+                    <button
+                      onClick={() => setShowAllAssignments(false)}
+                      className="w-full py-2.5 bg-muted/30 border border-border/40 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {lang === "ar" ? "عرض أقل" : "Show less"}
+                    </button>
+                  )}
+                </>
+              );
+            })()
           )}
           <button
             onClick={() => setLocation("/teacher/new")}

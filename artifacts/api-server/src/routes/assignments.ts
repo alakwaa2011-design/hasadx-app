@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable } from "@workspace/db";
-import { eq, sql, and, ne, notInArray, inArray } from "drizzle-orm";
+import { eq, sql, and, ne, notInArray, inArray, isNull } from "drizzle-orm";
 import { submissionsTable } from "@workspace/db";
 import {
   CreateAssignmentBody,
@@ -101,13 +101,17 @@ router.get("/assignments", async (req, res) => {
     // even if a teacher passes ?teacherId=X for a different teacher.
     const requesterTeacherId = req.session?.teacherId ?? null;
 
+    /* Exclude assignments auto-generated from presentation activity slides — they are
+       reused internally by the launch-game endpoint and should not clutter the list. */
+    const notFromPresentation = isNull(assignmentsTable.fromPresentationSlide);
+
     let ownResults;
     if (query.teacherId) {
-      ownResults = await baseQuery.where(eq(assignmentsTable.teacherId, query.teacherId));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, query.teacherId), notFromPresentation));
     } else if (req.session?.teacherId) {
-      ownResults = await baseQuery.where(eq(assignmentsTable.teacherId, req.session.teacherId));
+      ownResults = await baseQuery.where(and(eq(assignmentsTable.teacherId, req.session.teacherId), notFromPresentation));
     } else {
-      ownResults = await baseQuery;
+      ownResults = await baseQuery.where(notFromPresentation);
     }
 
     let sharedResults: typeof ownResults = [];

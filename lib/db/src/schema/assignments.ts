@@ -30,6 +30,9 @@ export const assignmentsTable = pgTable("assignments", {
   isAdaptive: boolean("is_adaptive").notNull().default(false),
   adaptiveConfig: text("adaptive_config"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  /** When created from a presentation activity slide, stores "presId:slideId" so the same
+   *  assignment is reused on subsequent plays instead of creating a new one each time. */
+  fromPresentationSlide: text("from_presentation_slide"),
 });
 
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });

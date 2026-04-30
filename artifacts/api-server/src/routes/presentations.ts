@@ -545,24 +545,49 @@ router.post("/presentations/:id/launch-game", async (req, res) => {
     return;
   }
 
-  /* Create a hidden assignment for the activity. */
+  /* Reuse the same assignment if one was created for this slide before,
+     so the teacher's list doesn't accumulate a new entry on every play. */
+  const slideKey = `${id}:${parsed.data.slideId}`;
   const totalPoints = activity.questions.reduce((sum, q) => sum + (q.points || 1), 0);
-  const [assignment] = await db
-    .insert(assignmentsTable)
-    .values({
-      title: `${pres.title} — ${(slide.title as string) || "نشاط"}`,
-      subject: pres.subject || "عرض تفاعلي",
-      description: `نشاط من العرض: ${pres.title}`,
-      submissionMode: "electronic",
-      accessMode: "private",
-      targetClass: pres.gradeLevel || null,
-      teacherId: req.session.teacherId,
-      totalPoints,
-      showResults: true,
-    })
-    .returning();
 
-  /* Insert questions linked to the assignment. */
+  const [existing] = await db
+    .select({ id: assignmentsTable.id })
+    .from(assignmentsTable)
+    .where(
+      and(
+        eq(assignmentsTable.teacherId, req.session.teacherId),
+        eq(assignmentsTable.fromPresentationSlide, slideKey),
+      ),
+    )
+    .limit(1);
+
+  let assignment: { id: number };
+
+  if (existing) {
+    /* Reuse — refresh the questions in case the slide was edited */
+    assignment = existing;
+    await db.delete(questionsTable).where(eq(questionsTable.assignmentId, existing.id));
+  } else {
+    /* First launch — create assignment (hidden from the main list) */
+    const [created] = await db
+      .insert(assignmentsTable)
+      .values({
+        title: `${pres.title} — ${(slide.title as string) || "نشاط"}`,
+        subject: pres.subject || "عرض تفاعلي",
+        description: `نشاط من العرض: ${pres.title}`,
+        submissionMode: "electronic",
+        accessMode: "private",
+        targetClass: pres.gradeLevel || null,
+        teacherId: req.session.teacherId,
+        totalPoints,
+        showResults: true,
+        fromPresentationSlide: slideKey,
+      })
+      .returning({ id: assignmentsTable.id });
+    assignment = created;
+  }
+
+  /* Insert (fresh) questions linked to the assignment. */
   const questionRows = activity.questions.map((q) => ({
     assignmentId: assignment.id,
     text: q.text,
