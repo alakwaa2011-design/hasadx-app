@@ -332,7 +332,7 @@ export default function RocketCreate() {
               </div>
             </motion.div>
             <h1 style={{ color: "#fff", fontWeight: 900, fontSize: 22, margin: "14px 0 4px" }}>
-              {ar ? "🚀 السباق جاهز للانطلاق!" : "🚀 Race is Ready!"}
+              {ar ? "🌌 المغامرة جاهزة للانطلاق!" : "🌌 Adventure is Ready!"}
             </h1>
             {title && (
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14, margin: 0 }}>{title}</p>
@@ -448,7 +448,7 @@ export default function RocketCreate() {
                 gap: 8,
               }}
             >
-              {ar ? "سباق جديد" : "New Race"}
+              {ar ? "مغامرة جديدة" : "New Adventure"}
             </button>
             <button
               onClick={() => setLocation(`/game/rocket/host/${gamePin}`)}
@@ -496,10 +496,10 @@ export default function RocketCreate() {
               <Rocket className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-black mb-1" style={{ color: BRAND_PRIMARY }}>
-              {ar ? "أنشئ سباق الصواريخ" : "Create Rocket Race"}
+              {ar ? "أنشئ مغامرة الفضاء" : "Create Space Adventure"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {ar ? "كلما أجاب الطالب أسرع وأصح، صعد صاروخه أعلى!" : "Faster correct answers = higher rocket!"}
+              {ar ? "كلما أجاب الطالب أسرع وأصح، حلّق أعلى في الفضاء!" : "Faster correct answers = fly higher in space!"}
             </p>
           </motion.div>
 
@@ -509,7 +509,7 @@ export default function RocketCreate() {
             <input
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder={ar ? "اسم السباق (اختياري)" : "Race title (optional)"}
+              placeholder={ar ? "اسم المغامرة (اختياري)" : "Adventure title (optional)"}
               className="flex-1 bg-transparent outline-none text-sm font-bold placeholder:text-muted-foreground/60"
               maxLength={60}
             />
@@ -691,7 +691,7 @@ export default function RocketCreate() {
               style={{ background: "#fff", color: BRAND_PRIMARY, borderColor: BRAND_PRIMARY }}
             >
               <FolderOpen className="w-4 h-4" />
-              {ar ? "السباقات المحفوظة" : "Saved Races"}
+              {ar ? "المغامرات المحفوظة" : "Saved Adventures"}
             </button>
           </div>
 
@@ -713,13 +713,13 @@ export default function RocketCreate() {
             {creating ? (
               <><Loader2 className="w-6 h-6 animate-spin" />{ar ? "جاري الإنشاء..." : "Creating..."}</>
             ) : (
-              <><Rocket className="w-6 h-6" />{ar ? "أطلق السباق!" : "Launch Race!"}</>
+              <><Rocket className="w-6 h-6" />{ar ? "أطلق المغامرة!" : "Launch Adventure!"}</>
             )}
           </motion.button>
 
           {questions.length === 0 && (
             <p className="text-center text-xs text-muted-foreground mt-3">
-              {ar ? "اختر مصدر الأسئلة أولاً ثم أطلق السباق" : "Select a question source first, then launch"}
+              {ar ? "اختر مصدر الأسئلة أولاً ثم أطلق المغامرة" : "Select a question source first, then launch"}
             </p>
           )}
         </div>
@@ -847,14 +847,14 @@ export default function RocketCreate() {
               <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: "#e5e7eb" }}>
                 <h3 className="text-lg font-black flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
                   <FolderOpen className="w-5 h-5" />
-                  {ar ? "السباقات المحفوظة" : "Saved Races"}
+                  {ar ? "المغامرات المحفوظة" : "Saved Adventures"}
                 </h3>
                 <button onClick={() => setSavedOpen(false)} className="p-2 rounded-xl hover:bg-gray-100"><X className="w-5 h-5" /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {savedLoading && <Loader2 className="w-5 h-5 animate-spin mx-auto" />}
                 {!savedLoading && savedTemplates.length === 0 && (
-                  <p className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد سباقات محفوظة" : "No saved races"}</p>
+                  <p className="text-center py-8 text-sm text-muted-foreground">{ar ? "لا توجد مغامرات محفوظة" : "No saved adventures"}</p>
                 )}
                 {savedTemplates.map(t => (
                   <div key={t.id} className="rounded-xl border-2 p-3 flex items-center gap-3" style={{ borderColor: "#e5e7eb" }}>

@@ -661,7 +661,7 @@ export function setupRocketSocket(io: Server) {
           player.correctCount += 1;
           player.streak += 1;
           altitudeChange = altitudeForAnswer(elapsedMs, q.duration, game.questions.length);
-          player.altitude = Math.min(100, player.altitude + altitudeChange);
+          player.altitude = player.altitude + altitudeChange;
           player.score += scoreForAnswer(true, elapsedMs, q.duration, player.streak);
         } else {
           player.wrongCount += 1;

@@ -44,6 +44,94 @@ type Presentation = {
   slides: Slide[];
 };
 
+/* ─────────────────────────────────────────────
+   Theme-specific rich background decorations
+   ───────────────────────────────────────────── */
+function ThemeDecorations({ theme }: { theme: string }) {
+  if (theme === "ocean") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-15%", right: "-10%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,165,233,0.22) 0%, transparent 65%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-20%", left: "-8%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "30%", left: "15%", width: 320, height: 320, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.09)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "25%", left: "10%", width: 420, height: 420, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 70px, rgba(255,255,255,0.025) 70px, rgba(255,255,255,0.025) 71px)" }} />
+    </>
+  );
+  if (theme === "sunset") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ bottom: "-20%", left: "-5%", width: 800, height: 800, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,146,60,0.28) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "-15%", right: "-10%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(244,63,94,0.2) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "5%", left: "5%", width: 500, height: 500, borderRadius: "50%", border: "1px solid rgba(251,191,36,0.15)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "0%", left: "0%", width: 650, height: 650, borderRadius: "50%", border: "1px solid rgba(251,191,36,0.08)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "radial-gradient(circle at 15% 85%, rgba(251,146,60,0.12) 0%, transparent 40%)" }} />
+    </>
+  );
+  if (theme === "midnight") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-10%", right: "10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 65%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-15%", left: "5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 60%)" }} />
+      {[...Array(18)].map((_, i) => (
+        <div key={i} className="absolute rounded-full pointer-events-none" style={{
+          width: i % 3 === 0 ? 3 : i % 3 === 1 ? 2 : 1.5,
+          height: i % 3 === 0 ? 3 : i % 3 === 1 ? 2 : 1.5,
+          background: "rgba(255,255,255,0.55)",
+          top: `${8 + (i * 23) % 84}%`, left: `${5 + (i * 31) % 90}%`,
+        }} />
+      ))}
+      <div className="absolute pointer-events-none" style={{ top: "40%", right: "18%", width: 260, height: 260, borderRadius: "50%", border: "1px solid rgba(139,92,246,0.2)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "35%", right: "13%", width: 360, height: 360, borderRadius: "50%", border: "1px solid rgba(139,92,246,0.1)" }} />
+    </>
+  );
+  if (theme === "rose") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-20%", right: "-15%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(251,113,133,0.25) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-10%", left: "-10%", width: 550, height: 550, borderRadius: "50%", background: "radial-gradient(circle, rgba(232,121,249,0.2) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "20%", left: "20%", width: 300, height: 300, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.1)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "15%", left: "15%", width: 400, height: 400, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.07)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 80% 20%, rgba(251,113,133,0.1) 0%, transparent 45%)" }} />
+    </>
+  );
+  if (theme === "royal" || theme === "noor") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-10%", right: "-5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(180,143,58,0.22) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-15%", left: "10%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(180,143,58,0.14) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(180,143,58,0.04) 40px, rgba(180,143,58,0.04) 41px)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 700, height: 700, borderRadius: "50%", border: "1px solid rgba(180,143,58,0.1)" }} />
+    </>
+  );
+  if (theme === "sage") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-15%", right: "-10%", width: 650, height: 650, borderRadius: "50%", background: "radial-gradient(circle, rgba(88,129,87,0.3) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-10%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(163,177,138,0.2) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 90% 10%, rgba(163,177,138,0.12) 0%, transparent 40%)" }} />
+    </>
+  );
+  if (theme === "sand") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-10%", right: "-5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(176,137,104,0.3) 0%, transparent 65%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-10%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(230,204,178,0.18) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "repeating-linear-gradient(120deg, transparent, transparent 60px, rgba(255,255,255,0.025) 60px, rgba(255,255,255,0.025) 61px)" }} />
+    </>
+  );
+  if (theme === "obsidian") return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-15%", right: "-10%", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(51,65,85,0.5) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-15%", left: "-5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(30,41,59,0.6) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(255,255,255,0.018) 80px, rgba(255,255,255,0.018) 81px), repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(255,255,255,0.018) 80px, rgba(255,255,255,0.018) 81px)" }} />
+    </>
+  );
+  /* harvest (default) */
+  return (
+    <>
+      <div className="absolute pointer-events-none" style={{ top: "-15%", right: "-10%", width: 650, height: 650, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.22) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ bottom: "-20%", left: "-5%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.2) 0%, transparent 60%)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "40%", right: "12%", width: 280, height: 280, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.08)" }} />
+      <div className="absolute pointer-events-none" style={{ top: "35%", right: "7%", width: 380, height: 380, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)" }} />
+      <div className="absolute pointer-events-none inset-0" style={{ backgroundImage: "radial-gradient(ellipse at 85% 15%, rgba(16,185,129,0.1) 0%, transparent 40%)" }} />
+    </>
+  );
+}
+
 export default function PresentPage() {
   const { id } = useParams<{ id: string }>();
   const { lang } = useI18n();
@@ -229,9 +317,8 @@ export default function PresentPage() {
           </>
         );
       })()}
-      {/* Decorative blobs */}
-      <div className="absolute -top-40 -end-40 w-96 h-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -start-40 w-[500px] h-[500px] rounded-full bg-amber-200/10 blur-3xl pointer-events-none" />
+      {/* ── Theme-specific rich decorations ── */}
+      <ThemeDecorations theme={pres.theme} />
 
       {/* Main slide area */}
       <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-10">
@@ -388,7 +475,7 @@ function SlideRender({
     const isSum = slide.type === "summary";
     const Icon = isObj ? Target : isSum ? CheckCircle2 : ListOrdered;
     return (
-      <div>
+      <div className="backdrop-blur-sm bg-white/8 border border-white/12 rounded-3xl px-8 py-7 shadow-2xl">
         <div className="flex items-center gap-4 mb-8">
           <div className="text-6xl drop-shadow-lg">{slide.emoji || "📌"}</div>
           <div>
@@ -421,7 +508,7 @@ function SlideRender({
 
   if (slide.type === "content" || slide.type === "warmup") {
     return (
-      <div>
+      <div className="backdrop-blur-sm bg-white/8 border border-white/12 rounded-3xl px-8 py-7 shadow-2xl">
         <div className="flex items-center gap-4 mb-8">
           <div className="text-6xl drop-shadow-lg">{slide.emoji || "💡"}</div>
           <div>
@@ -446,7 +533,7 @@ function SlideRender({
 
   if (slide.type === "quiz" && slide.question) {
     return (
-      <div>
+      <div className="backdrop-blur-sm bg-white/8 border border-white/12 rounded-3xl px-8 py-7 shadow-2xl">
         <div className="flex items-center gap-2 text-amber-200 text-sm font-bold uppercase tracking-wider mb-3">
           <HelpCircle className="w-4 h-4" />
           {lang === "ar" ? "اختبر فهمك" : "Quick check"}
@@ -507,7 +594,7 @@ function SlideRender({
       scramble: lang === "ar" ? "الكلمات المبعثرة" : "Scramble",
     };
     return (
-      <div>
+      <div className="backdrop-blur-sm bg-white/8 border border-white/12 rounded-3xl px-8 py-7 shadow-2xl">
         <div className="flex items-center gap-2 text-amber-200 text-sm font-bold uppercase tracking-wider mb-3">
           <Gamepad2 className="w-4 h-4" />
           {lang === "ar" ? "نشاط جماعي" : "Class activity"}
@@ -549,7 +636,7 @@ function SlideRender({
 
   if (slide.type === "discussion") {
     return (
-      <div>
+      <div className="backdrop-blur-sm bg-white/8 border border-white/12 rounded-3xl px-8 py-7 shadow-2xl">
         <div className="flex items-center gap-2 text-amber-200 text-sm font-bold uppercase tracking-wider mb-3">
           <MessageSquare className="w-4 h-4" />
           {lang === "ar" ? "حوار وتفكير" : "Discussion"}
