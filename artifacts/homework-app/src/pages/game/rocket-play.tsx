@@ -58,14 +58,14 @@ const ROCKET_HORIZONTAL_LANES_MIN = 16;
 
 // ─── Arabic encouragement messages ────────────────────────────────────────────
 const CORRECT_AR = [
-  "🔥 عبقري! صاروخك ينطلق!",
+  "🔥 عبقري! سفينتك تنطلق!",
   "⚡ مذهل! الصدارة لك!",
-  "🚀 ارتفعت! استمر!",
+  "🚀 صعودٌ! واصل الرحلة!",
   "💫 ممتاز جداً!",
   "🌟 رائع! سرعتك لا تُضاهى!",
-  "🎯 دقيق! هكذا تُكسب السباقات!",
+  "🎯 دقيق! هكذا تُكتشف المجرات!",
   "🏆 أنت نجم الفضاء!",
-  "⭐ إجابة صحيحة! صعودٌ آخر!",
+  "⭐ إجابة صحيحة! مداركَ آخر!",
 ];
 const CORRECT_EN = [
   "🔥 Genius! Rocket launching!",
@@ -444,6 +444,51 @@ function RocketIcon({
   );
 }
 
+// ─── Warp speed lines — shoot from centre outward, 3-D depth illusion ────────
+const WARP_CONFIGS = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  angle: i * 18,
+  len: 40 + (i % 5) * 14,
+  dur: 0.85 + (i % 6) * 0.15,
+  delay: (i * 0.13) % 1.8,
+}));
+
+function WarpField({ boosting }: { boosting: boolean }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 2 }}>
+      <div style={{ position: "absolute", left: "50%", top: "42%" }}>
+        {WARP_CONFIGS.map(w => (
+          <motion.div
+            key={w.id}
+            animate={{
+              scaleX: [0.02, 1],
+              opacity: [0, boosting ? 0.8 : 0.28, 0],
+            }}
+            transition={{
+              duration: boosting ? w.dur * 0.45 : w.dur,
+              delay: w.delay,
+              repeat: Infinity,
+              ease: "easeIn",
+            }}
+            style={{
+              position: "absolute",
+              left: 0, top: -1,
+              width: `${w.len}vw`,
+              height: boosting ? 3 : 1.5,
+              transformOrigin: "left center",
+              transform: `rotate(${w.angle}deg)`,
+              background: boosting
+                ? "linear-gradient(90deg, rgba(80,200,255,0.01) 0%, rgba(120,220,255,0.92) 100%)"
+                : "linear-gradient(90deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.8) 100%)",
+              borderRadius: 2,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Shooting star (decorative) ───────────────────────────────────────────────
 function ShootingStar({ x, y, delay }: { x: number; y: number; delay: number }) {
   return (
@@ -487,7 +532,7 @@ function StarField({ phase = 0 }: { phase?: number }) {
       {/* Far stars — slow scroll */}
       <motion.div
         animate={{ y: ["0%", "-50%"] }}
-        transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
         style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
       >
         {STAR_LAYERS[0].map(s => (
@@ -506,7 +551,7 @@ function StarField({ phase = 0 }: { phase?: number }) {
       {/* Near stars — faster scroll */}
       <motion.div
         animate={{ y: ["0%", "-50%"] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
         style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
       >
         {STAR_LAYERS[1].map(s => (
@@ -730,7 +775,8 @@ function HorizontalRocketLanesStrip({
         const isMe = p.name === queryName;
         const isMega = isMe && gamePhase === 2;
         const medals = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
-        const alt = Math.min(88, displayAltitude(p));
+        const alt = displayAltitude(p); // 0-99 from modulo, no cap needed
+        const orbit = Math.floor(p.altitude / 100);
         const rz =
           isMega ? (variant === "mobile" ? 36 : 40)
           : laneW <= 38 ? (isMe ? 26 : 20)
@@ -861,7 +907,7 @@ function HorizontalRocketLanesStrip({
               color: isMe ? GOLD : "rgba(255,255,255,0.9)",
               lineHeight: 1.2,
             }}>
-              <div>{Math.round(alt)}%</div>
+              <div>{orbit > 0 ? <span style={{ color: "#88ffee" }}>🌀{orbit} </span> : null}{Math.round(alt)}%</div>
               <div style={{ color: GOLD, fontSize: variant === "mobile" ? 7 : 8 }}>{p.score} pts</div>
             </div>
           </div>
@@ -998,7 +1044,8 @@ export default function RocketPlay() {
   // Detect phase transitions based on altitude
   useEffect(() => {
     if (phase !== "racing") return;
-    const newPhase = myAltitude >= 67 ? 2 : myAltitude >= 34 ? 1 : 0;
+    const posInOrbit = myAltitude % 100;
+    const newPhase = posInOrbit >= 67 ? 2 : posInOrbit >= 34 ? 1 : 0;
     if (newPhase !== prevGamePhaseRef.current) {
       prevGamePhaseRef.current = newPhase;
       setGamePhase(newPhase);
@@ -1231,8 +1278,16 @@ export default function RocketPlay() {
     return () => clearInterval(intv);
   }, [currentQ?.index, phase, advanceMode, submitAnswer]);
 
-  /** Live altitude on track uses immediate client value so the rocket moves without waiting for leaderboard */
-  const displayAltitude = (p: Player) => (p.name === queryName ? myAltitude : p.altitude);
+  /** Live altitude on track — uses modulo so rockets loop 0→100 continuously with no finish line */
+  const displayAltitude = (p: Player) => {
+    const raw = p.name === queryName ? myAltitude : p.altitude;
+    return raw % 100;
+  };
+  /** Number of full orbits completed (each 100 altitude = 1 orbit) */
+  const displayOrbit = (p: Player) => {
+    const raw = p.name === queryName ? myAltitude : p.altitude;
+    return Math.floor(raw / 100);
+  };
 
   // Map display index back to original index before submitting
   const handleMCQAnswer = (displayIdx: number) => {
@@ -1276,6 +1331,7 @@ export default function RocketPlay() {
       <StarField phase={gamePhase} />
       {gamePhase === 1 && <AsteroidField />}
       {gamePhase === 2 && <CrystalField />}
+      <WarpField boosting={boostFlash} />
       <PhaseTransitionOverlay gamePhase={gamePhase} show={showPhaseTransition} />
       <BoostParticles active={boostFlash} />
 
@@ -1481,7 +1537,7 @@ export default function RocketPlay() {
               <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 800, textAlign: "center" }}>
                 {crowdedRocketLanes
                   ? (ar ? "↔ مرّر أفقياً — عمود لكل متسابق" : "↔ Scroll — one lane per racer")
-                  : (ar ? "🚀 جميع اللاعبين — صاروخك مميز بالذهب" : "🚀 All racers — yours highlighted in gold")}
+                  : (ar ? "🌌 جميع الرواد — مركبتك مميزة بالذهب" : "🌌 All explorers — yours highlighted in gold")}
               </p>
               {crowdedRocketLanes ? (
                 <HorizontalRocketLanesStrip
@@ -1518,7 +1574,7 @@ export default function RocketPlay() {
                       return (
                         <motion.div
                           key={p.name}
-                          animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                          animate={{ bottom: `${displayAltitude(p)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
                           initial={false}
                           transition={{ type: "spring", stiffness: 55, damping: 16 }}
                           style={{
@@ -1534,7 +1590,7 @@ export default function RocketPlay() {
                             maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
                           }}>
-                            {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.round(displayAltitude(p))}%
+                            {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.floor(p.altitude / 100) > 0 ? `🌀${Math.floor(p.altitude / 100)} ` : ""}{Math.round(displayAltitude(p))}%
                           </span>
                           <RocketIcon
                             color={p.rocketColor}
@@ -1626,7 +1682,7 @@ export default function RocketPlay() {
                   </div>
 
                   {/* Player rockets */}
-                  <div style={{ position: "relative", width: "100%", height: "100%" }}>
+                  <div style={{ position: "relative", width: "100%", height: "100%", perspective: "600px" }}>
                     {trackPlayers.map((p, idx) => {
                       const isMe = p.name === queryName;
                       const lanes = Math.max(1, trackPlayers.length);
@@ -1636,15 +1692,19 @@ export default function RocketPlay() {
                       const isMega = isMe && gamePhase === 2;
                       const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
                       const compact = lanes > 8;
+                      // 3-D depth: rockets near bottom appear closer (bigger), near top appear farther (smaller)
+                      const depthScale = 1.1 - (displayAltitude(p) / 100) * 0.22;
+                      const pOrbit = Math.floor(p.altitude / 100);
                       return (
                         <motion.div
                           key={p.name}
-                          animate={{ bottom: `${Math.min(86, displayAltitude(p))}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                          animate={{ bottom: `${displayAltitude(p)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
                           initial={false}
                           transition={{ type: "spring", stiffness: 55, damping: 16 }}
                           style={{
                             position: "absolute",
-                            transform: "translateX(-50%)",
+                            transform: `translateX(-50%) scale(${depthScale})`,
+                            transformOrigin: "bottom center",
                             display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
                             zIndex: isMe ? 10 : 5,
                           }}
@@ -1659,6 +1719,11 @@ export default function RocketPlay() {
                           }}>
                             #{idx + 1}{lanes > 1 ? " " : ""}{rankEmoji}{p.avatar} {p.name}
                           </span>
+                          {pOrbit > 0 && (
+                            <span style={{ fontSize: 8, fontWeight: 900, color: "#88ffee", background: "rgba(0,200,180,0.25)", padding: "1px 5px", borderRadius: 999, border: "1px solid rgba(0,200,180,0.4)" }}>
+                              🌀×{pOrbit}
+                            </span>
+                          )}
                           <RocketIcon
                             color={p.rocketColor}
                             isPlayer={isMe}
@@ -1978,7 +2043,7 @@ function QuestionPanel({
           >
             <p style={{ color: "#fff", fontWeight: 800, fontSize: 14, margin: 0 }}>
               {feedback.correct
-                ? (ar ? "🚀 صح! صاروخك يرتفع..." : "🚀 Correct! Rocket up!")
+                ? (ar ? "🚀 صح! مضيٌّ قُدُماً!" : "🚀 Correct! Keep soaring!")
                 : (ar ? "❌ خطأ — السؤال التالي قادم..." : "❌ Wrong — Next question soon...")}
             </p>
           </motion.div>
@@ -2012,14 +2077,14 @@ function FinishedScreen({
 
   const motivationalText = () => {
     if (!ar) {
-      if (myRank === 1) return "🏆 Champion of Space! You dominated the race!";
-      if (myRank <= 3) return "🥈 Outstanding! You're among the best!";
-      if (myRank <= Math.ceil(players.length / 2)) return "🚀 Great race! Keep pushing higher!";
-      return "⭐ You showed up and launched — that's a win! Next time, aim higher!";
+      if (myRank === 1) return "🏆 Champion of Space! You led the whole adventure!";
+      if (myRank <= 3) return "🥈 Outstanding! You're among the best explorers!";
+      if (myRank <= Math.ceil(players.length / 2)) return "🚀 Great adventure! Keep pushing higher!";
+      return "⭐ You launched and explored — that's a win! Next time, aim higher!";
     }
-    if (myRank === 1) return "🏆 أنت بطل الفضاء! سيطرت على السباق وحلّقت أعلى الجميع!";
+    if (myRank === 1) return "🏆 أنت بطل الفضاء! قدتَ المغامرة وحلّقت أعلى الجميع!";
     if (myRank <= 3) return "🥈 أداء رائع! أنت من نخبة المتسابقين!";
-    if (myRank <= Math.ceil(players.length / 2)) return "🚀 سباق ممتاز! استمر في التحسن والصعود!";
+    if (myRank <= Math.ceil(players.length / 2)) return "🚀 مغامرة ممتازة! استمر في التحسن والصعود!";
     return "⭐ المشاركة بحد ذاتها انتصار! في المرة القادمة ستطير أعلى!";
   };
 
@@ -2071,7 +2136,7 @@ function FinishedScreen({
             {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🚀"}
           </motion.div>
           <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 8px", lineHeight: 1.3 }}>
-            {ar ? "🎊 انتهى السباق — أحسنتم جميعاً! 🎊" : "🎊 Race Over — You All Flew High! 🎊"}
+            {ar ? "🎊 انتهت المغامرة — أحسنتم جميعاً! 🎊" : "🎊 Adventure Over — You All Flew High! 🎊"}
           </h1>
           <p style={{ color: GOLD, fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
             {motivationalText()}
