@@ -1283,21 +1283,22 @@ export default function RocketPlay() {
     const raw = p.name === queryName ? myAltitude : p.altitude;
     return raw % 100;
   };
-  // displayOrbit available for future use (e.g. results screen)
   /**
-   * Camera-follows-player: my rocket is always at 30% from the bottom.
-   * Other rockets are offset by their raw altitude difference — no loops, no jumps.
+   * Desktop vertical track: rockets climb from bottom (0%) to near-top (88%).
+   * Caps at 88 so rockets never loop back — orbit counter shows extra laps.
    */
   const trackBottomPct = (p: Player) => {
     const rawP = p.name === queryName ? myAltitude : p.altitude;
-    const diff = rawP - myAltitude;
-    return Math.max(3, Math.min(92, 30 + diff * 0.45));
+    return Math.min(88, rawP);
   };
-  /** Camera-follows-player for horizontal track: my rocket at 30% from left. */
+  /**
+   * Mobile horizontal track: camera follows player so they're always at 30%
+   * from the left, rivals offset by raw altitude difference × scale.
+   */
   const trackLeftPct = (p: Player) => {
     const rawP = p.name === queryName ? myAltitude : p.altitude;
     const diff = rawP - myAltitude;
-    return Math.max(3, Math.min(92, 30 + diff * 0.45));
+    return Math.max(5, Math.min(88, 30 + diff * 1.2));
   };
 
   // Map display index back to original index before submitting
@@ -1714,9 +1715,9 @@ export default function RocketPlay() {
                       const isMega = isMe && gamePhase === 2;
                       const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
                       const compact = lanes > 8;
-                      // 3-D depth: camera-follows-player so use trackBottomPct for depth scale too
+                      // 3-D depth: rockets near bottom (low alt) look bigger/closer
                       const bottomPct = trackBottomPct(p);
-                      const depthScale = 1.1 - (bottomPct / 100) * 0.22;
+                      const depthScale = 1.15 - (bottomPct / 88) * 0.25;
                       const pOrbit = Math.floor(p.altitude / 100);
                       return (
                         <motion.div
