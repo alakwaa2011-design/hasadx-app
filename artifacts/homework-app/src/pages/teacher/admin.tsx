@@ -3248,19 +3248,48 @@ function AdminAiChatTab({ lang }: { lang: string }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedMsgs, setSelectedMsgs] = useState<AdminMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [instructions, setInstructions] = useState("");
+  const [instructionsDraft, setInstructionsDraft] = useState("");
+  const [savingInstructions, setSavingInstructions] = useState(false);
 
   useEffect(() => {
     Promise.all([
       fetch(`${API_BASE}/api/ai-chat/admin/conversations`, { credentials: "include" }).then(r => r.json()),
       fetch(`${API_BASE}/api/ai-chat/admin/stats`, { credentials: "include" }).then(r => r.json()),
+      fetch(`${API_BASE}/api/ai-chat/admin/instructions`, { credentials: "include" }).then(r => r.json()),
     ])
-      .then(([c, s]) => {
+      .then(([c, s, ins]) => {
         setConvos(c.conversations || []);
         setStats(s);
+        const txt = ins.content || "";
+        setInstructions(txt);
+        setInstructionsDraft(txt);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
+
+  async function saveInstructions() {
+    setSavingInstructions(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/ai-chat/admin/instructions`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: instructionsDraft }),
+      });
+      if (r.ok) {
+        setInstructions(instructionsDraft);
+        toast.success(lang === "ar" ? "تم الحفظ ✓" : "Saved ✓");
+      } else {
+        toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ" : "Error");
+    } finally {
+      setSavingInstructions(false);
+    }
+  }
 
   async function loadConvo(id: number) {
     setSelectedId(id);
@@ -3278,6 +3307,52 @@ function AdminAiChatTab({ lang }: { lang: string }) {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Custom Instructions Editor ── */}
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Bot className="w-5 h-5 text-primary" />
+          <h3 className="font-extrabold text-base text-foreground">
+            {lang === "ar" ? "تعليمات مخصصة للمساعد الذكي" : "Custom AI Instructions"}
+          </h3>
+          <span className="ms-auto text-[11px] text-muted-foreground px-2 py-0.5 rounded-full bg-muted border border-border">
+            {lang === "ar" ? "تُضاف تلقائياً لكل محادثة" : "Appended to every chat"}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {lang === "ar"
+            ? "اكتب هنا أي تعليمات أو معلومات تريد أن يعرفها المساعد ويُجيب بناءً عليها. مثال: «إذا سُئلت عن لعبة وميض، أخبر المعلم أنها اللعبة الرئيسية في المنصة وأن...»"
+            : "Write any instructions or facts you want the assistant to follow. E.g. «If asked about Wameeth game, tell teachers it is the main game of the platform and that...»"}
+        </p>
+        <textarea
+          value={instructionsDraft}
+          onChange={e => setInstructionsDraft(e.target.value)}
+          rows={7}
+          dir="auto"
+          placeholder={lang === "ar" ? "اكتب تعليماتك هنا..." : "Write your instructions here..."}
+          className="w-full rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground p-3 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y font-mono leading-relaxed"
+        />
+        <div className="flex items-center gap-3 justify-end">
+          {instructionsDraft !== instructions && (
+            <button
+              onClick={() => setInstructionsDraft(instructions)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {lang === "ar" ? "تراجع" : "Revert"}
+            </button>
+          )}
+          <button
+            onClick={saveInstructions}
+            disabled={savingInstructions || instructionsDraft === instructions}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground text-primary-foreground rounded-xl text-sm font-bold transition-colors"
+          >
+            {savingInstructions
+              ? (lang === "ar" ? "جارٍ الحفظ..." : "Saving...")
+              : (lang === "ar" ? "حفظ التعليمات" : "Save Instructions")}
+          </button>
+        </div>
+      </div>
+
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[

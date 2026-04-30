@@ -6,6 +6,7 @@ import { db } from "@workspace/db";
 import {
   aiCache,
   aiUsageDaily,
+  aiCustomInstructionsTable,
   conversations,
   messages,
   teachersTable,
@@ -312,11 +313,18 @@ router.post("/messages", async (req, res) => {
   let tokensIn = 0;
   let tokensOut = 0;
 
+  // Load admin custom instructions (cached per request — one fast PK lookup)
+  const customRows = await db.select().from(aiCustomInstructionsTable).limit(1);
+  const customContent = customRows[0]?.content?.trim() || "";
+  const fullSystemPrompt = customContent
+    ? `${HASAD_SYSTEM_PROMPT}\n\n## تعليمات إضافية من المسؤول\n${customContent}`
+    : HASAD_SYSTEM_PROMPT;
+
   try {
     const completion = await anthropic.messages.create({
       model: SONNET_MODEL,
       max_tokens: 1024,
-      system: HASAD_SYSTEM_PROMPT,
+      system: fullSystemPrompt,
       messages: apiMessages,
     });
     for (const block of completion.content) {
@@ -381,6 +389,32 @@ router.post("/messages", async (req, res) => {
 });
 
 // ============== Admin endpoints ==============
+
+// GET /api/ai-chat/admin/instructions — get custom instructions
+router.get("/admin/instructions", async (req, res) => {
+  const teacherId = await getTeacherId(req, res);
+  if (!teacherId) return;
+  if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "forbidden" });
+  const rows = await db.select().from(aiCustomInstructionsTable).limit(1);
+  res.json({ content: rows[0]?.content ?? "" });
+});
+
+// PUT /api/ai-chat/admin/instructions — save custom instructions
+router.put("/admin/instructions", async (req, res) => {
+  const teacherId = await getTeacherId(req, res);
+  if (!teacherId) return;
+  if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "forbidden" });
+  const { content } = z.object({ content: z.string().max(8000) }).parse(req.body);
+  const existing = await db.select({ id: aiCustomInstructionsTable.id }).from(aiCustomInstructionsTable).limit(1);
+  if (existing[0]) {
+    await db.update(aiCustomInstructionsTable)
+      .set({ content, updatedAt: new Date() })
+      .where(eq(aiCustomInstructionsTable.id, existing[0].id));
+  } else {
+    await db.insert(aiCustomInstructionsTable).values({ content });
+  }
+  res.json({ ok: true });
+});
 
 // GET /api/ai-chat/admin/conversations — admin: list all conversations
 router.get("/admin/conversations", async (req, res) => {
