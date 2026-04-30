@@ -124,6 +124,7 @@ if (Number.isNaN(port) || port <= 0) {
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
+  maxHttpBufferSize: 1e6,
   cors: {
     origin: corsOriginFn,
     credentials: true,
