@@ -1817,7 +1817,7 @@ export default function GamePlay() {
                 onClick={() => handleSelectNotifSound(opt.value)}
                 className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors ${lang === "ar" ? "flex-row-reverse text-right" : "text-left"} ${
                   notifSound === opt.value
-                    ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-semibold"
+                    ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold"
                     : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
                 }`}
               >
@@ -1879,7 +1879,7 @@ export default function GamePlay() {
               [..]
             </span>
           ) : (
-            <Gamepad2 className="w-16 h-16 text-purple-600 dark:text-white" />
+            <Gamepad2 className="w-16 h-16 text-amber-300" />
           )}
         </motion.div>
       </div>
@@ -1960,12 +1960,12 @@ export default function GamePlay() {
             transition={{ repeat: Infinity, duration: 2 }}
             className="mb-6"
           >
-            <Gamepad2 className="w-16 h-16 text-purple-600 dark:text-purple-300 mx-auto" />
+            <Gamepad2 className="w-16 h-16 text-amber-300 mx-auto" />
           </motion.div>
           <h1 className="text-3xl font-black text-white mb-2">
             {gameTitle}
           </h1>
-          <p className="text-purple-700 dark:text-purple-200 text-lg mb-4">
+          <p className="text-amber-200 text-lg mb-4">
             {t.gamePlay.waitingForTeacher}
           </p>
           {gameMode === "teams" && myTeam && (
@@ -1984,8 +1984,8 @@ export default function GamePlay() {
           )}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mb-4">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Users className="w-5 h-5 text-purple-600 dark:text-purple-300" />
-              <p className="text-purple-700 dark:text-purple-200 font-bold">
+              <Users className="w-5 h-5 text-amber-300" />
+              <p className="text-amber-200 font-bold">
                 {t.gamePlay.players} ({players.length})
               </p>
             </div>
@@ -1996,7 +1996,7 @@ export default function GamePlay() {
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className={`px-4 py-2 rounded-full font-bold text-sm flex items-center gap-1 ${p.name === myName ? "bg-purple-500 text-white" : "bg-white/20 text-gray-800 dark:text-white"}`}
+                  className={`px-4 py-2 rounded-full font-bold text-sm flex items-center gap-1 ${p.name === myName ? "bg-amber-500 text-white" : "bg-white/20 text-gray-800 dark:text-white"}`}
                 >
                   <AvatarDisplay avatar={p.avatar} size="sm" /> {p.name}
                 </motion.span>
@@ -2004,7 +2004,7 @@ export default function GamePlay() {
             </div>
           </div>
           <div className="flex items-center justify-center gap-3 bg-black/5 dark:bg-white/5 rounded-xl p-3">
-            <span className="text-purple-600 dark:text-purple-300 font-bold">
+            <span className="text-amber-300 font-bold">
               {t.gamePlay.yourNameLabel}
             </span>
             <span className="text-white font-black text-lg">
@@ -2754,7 +2754,7 @@ export default function GamePlay() {
             <>
               <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
-                  className={`h-full rounded-full ${isUrgent ? "bg-red-500" : "bg-purple-500"}`}
+                  className={`h-full rounded-full ${isUrgent ? "bg-red-500" : "bg-amber-500"}`}
                   style={{ width: `${timerPercent}%` }}
                   transition={{ duration: 0.1 }}
                 />
@@ -3041,7 +3041,7 @@ export default function GamePlay() {
                       submitAnswer(fillBlankInput.trim());
                   }}
                   placeholder={t.gamePlay.fillBlankPlaceholder}
-                  className="w-full max-w-lg px-6 py-4 rounded-2xl bg-white/10 border-2 border-white/30 text-white text-xl font-bold text-center placeholder:text-white/40 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-400/30"
+                  className="w-full max-w-lg px-6 py-4 rounded-2xl bg-white/10 border-2 border-white/30 text-white text-xl font-bold text-center placeholder:text-white/40 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/30"
                   dir={lang === "ar" ? "rtl" : "ltr"}
                   autoFocus
                 />
@@ -3051,7 +3051,7 @@ export default function GamePlay() {
                       submitAnswer(fillBlankInput.trim());
                   }}
                   disabled={!fillBlankInput.trim()}
-                  className="px-10 py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl font-black text-lg shadow-lg disabled:opacity-40 active:scale-95 transition-transform duration-75 touch-manipulation"
+                  className="px-10 py-4 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl font-black text-lg shadow-lg disabled:opacity-40 active:scale-95 transition-transform duration-75 touch-manipulation"
                 >
                   {t.gamePlay.submit}
                 </button>

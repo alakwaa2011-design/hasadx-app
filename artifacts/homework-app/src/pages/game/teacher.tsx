@@ -1460,7 +1460,7 @@ export default function TeacherGame() {
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     onClick={nextQ}
-                    className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-xs shadow-lg active:scale-95 transition-transform px-2"
+                    className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-xs shadow-lg active:scale-95 transition-transform px-2"
                   >
                     <SkipForward className="w-4 h-4" />
                     <span className="truncate">{lang === "ar" ? "تقدم الآن" : "Advance Now"}</span>
@@ -1480,7 +1480,7 @@ export default function TeacherGame() {
                 </>
               ) : (
                 <>
-                  <button onClick={nextQ} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform px-2">
+                  <button onClick={nextQ} className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-white font-black text-sm shadow-lg active:scale-95 transition-transform px-2">
                     <SkipForward className="w-4 h-4" />
                     <span className="truncate">{t.teacherGame.nextQuestion}</span>
                   </button>
@@ -1514,7 +1514,7 @@ export default function TeacherGame() {
           {currentGameMode === "teams" && teamLeaderboard.length > 0 && (
             <div className="mb-8">
               <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
-                <UsersRound className="w-6 h-6 text-purple-500" />
+                <UsersRound className="w-6 h-6 text-amber-400" />
                 {t.teacherGame.teamRanking}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1675,7 +1675,7 @@ export default function TeacherGame() {
                     <div className="space-y-3">
                       {distKeys.map((key) => {
                         const label = distKeyLabels[key] || key;
-                        const color = distColors[key] || "bg-purple-500";
+                        const color = distColors[key] || "bg-amber-500";
                         const isCorrect = correctAnswer && key.toLowerCase() === correctAnswer.toLowerCase();
                         return (
                           <div key={key} className="flex items-center gap-3">
@@ -1737,7 +1737,7 @@ export default function TeacherGame() {
                         </span>
                         <AvatarDisplay avatar={entry.avatar} size="xl" />
                         <span className="font-bold flex-1 truncate text-white">{entry.name}</span>
-                        {entry.teamName && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 font-bold shrink-0">{entry.teamName}</span>}
+                        {entry.teamName && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 font-bold shrink-0">{entry.teamName}</span>}
                         {entry.lastAnswer && (
                           entry.lastAnswer.correct
                             ? <span className="text-green-300 text-sm font-bold">+{entry.lastAnswer.points}</span>
@@ -1880,7 +1880,7 @@ export default function TeacherGame() {
               <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)]" />
             </motion.div>
             <h1 className="text-4xl sm:text-5xl font-black text-white mb-2">{t.teacherGame.finalResults}</h1>
-            <p className="text-purple-300 text-lg">{leaderboard.length} {t.teacherGame.playersParticipated}</p>
+            <p className="text-amber-300 text-lg">{leaderboard.length} {t.teacherGame.playersParticipated}</p>
           </motion.div>
 
           {currentGameMode === "teams" && winningTeam && (() => {
@@ -2006,7 +2006,7 @@ export default function TeacherGame() {
                     </span>
                     <AvatarDisplay avatar={entry.avatar} size="xl" />
                     <span className="font-bold flex-1 text-white/80 truncate">{entry.name}</span>
-                    {entry.teamName && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 font-bold">{entry.teamName}</span>}
+                    {entry.teamName && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/30 text-amber-200 font-bold">{entry.teamName}</span>}
                     <span className="font-black text-yellow-400">{entry.score}</span>
                   </motion.div>
                 ))}

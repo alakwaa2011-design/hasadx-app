@@ -159,7 +159,8 @@ interface UseGiftData {
 }
 
 const AUTO_ADVANCE_DELAY_MS = 5000;
-const TEACHER_RECONNECT_GRACE_MS = 60000;
+const TEACHER_RECONNECT_GRACE_LOBBY_MS = 90000;
+const TEACHER_RECONNECT_GRACE_ACTIVE_MS = 10 * 60 * 1000;
 
 let _sharedIo: Server | null = null;
 export function getGameIo(): Server | null { return _sharedIo; }
@@ -2108,6 +2109,8 @@ export function setupGameSocket(io: Server) {
         const existingTimer = teacherDisconnectTimers.get(teacherGame.pin);
         if (existingTimer) clearTimeout(existingTimer);
 
+        const isActiveGame = teacherGame.state !== "lobby" && teacherGame.state !== "finished";
+        const graceMs = isActiveGame ? TEACHER_RECONNECT_GRACE_ACTIVE_MS : TEACHER_RECONNECT_GRACE_LOBBY_MS;
         const timer = setTimeout(() => {
           teacherDisconnectTimers.delete(teacherGame.pin);
           const currentGame = getGame(teacherGame.pin);
@@ -2115,8 +2118,8 @@ export function setupGameSocket(io: Server) {
           clearQuestionTimeout(currentGame);
           io.to(`game:${currentGame.pin}`).emit("game:teacher-disconnected");
           deleteGame(currentGame.pin);
-          logger.info({ pin: teacherGame.pin }, "Teacher did not reconnect, game deleted");
-        }, TEACHER_RECONNECT_GRACE_MS);
+          logger.info({ pin: teacherGame.pin, graceMs }, "Teacher did not reconnect, game deleted");
+        }, graceMs);
         teacherDisconnectTimers.set(teacherGame.pin, timer);
         return;
       }
