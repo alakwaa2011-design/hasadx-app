@@ -1283,10 +1283,21 @@ export default function RocketPlay() {
     const raw = p.name === queryName ? myAltitude : p.altitude;
     return raw % 100;
   };
-  /** Number of full orbits completed (each 100 altitude = 1 orbit) */
-  const displayOrbit = (p: Player) => {
-    const raw = p.name === queryName ? myAltitude : p.altitude;
-    return Math.floor(raw / 100);
+  // displayOrbit available for future use (e.g. results screen)
+  /**
+   * Camera-follows-player: my rocket is always at 30% from the bottom.
+   * Other rockets are offset by their raw altitude difference — no loops, no jumps.
+   */
+  const trackBottomPct = (p: Player) => {
+    const rawP = p.name === queryName ? myAltitude : p.altitude;
+    const diff = rawP - myAltitude;
+    return Math.max(3, Math.min(92, 30 + diff * 0.45));
+  };
+  /** Camera-follows-player for horizontal track: my rocket at 30% from left. */
+  const trackLeftPct = (p: Player) => {
+    const rawP = p.name === queryName ? myAltitude : p.altitude;
+    const diff = rawP - myAltitude;
+    return Math.max(3, Math.min(92, 30 + diff * 0.45));
   };
 
   // Map display index back to original index before submitting
@@ -1523,97 +1534,108 @@ export default function RocketPlay() {
                 displayOptions={shuffledOptions}
               />}
             </div>
-            {/* Mobile: race track — horizontal scroll lanes when crowded (long classes) */}
+            {/* Mobile: horizontal race track — camera follows player, rockets face right */}
             <div style={{
-              flex: crowdedRocketLanes ? "0 1 min(264px, 44vh)" : "0 0 min(200px, 34vh)",
-              background: "rgba(0,0,0,0.55)",
-              borderTop: "1px solid rgba(255,255,255,0.12)",
-              padding: "10px 12px 8px",
+              flex: "0 0 auto",
+              background: "rgba(0,0,0,0.6)",
+              borderTop: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.3)" : "rgba(0,200,180,0.25)"}`,
               position: "relative",
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
+              overflow: "hidden",
             }}>
-              <p style={{ margin: "0 0 6px", color: "rgba(255,255,255,0.9)", fontSize: 11, fontWeight: 800, textAlign: "center" }}>
-                {crowdedRocketLanes
-                  ? (ar ? "↔ مرّر أفقياً — عمود لكل متسابق" : "↔ Scroll — one lane per racer")
-                  : (ar ? "🌌 جميع الرواد — مركبتك مميزة بالذهب" : "🌌 All explorers — yours highlighted in gold")}
-              </p>
-              {crowdedRocketLanes ? (
-                <HorizontalRocketLanesStrip
-                  trackPlayers={trackPlayers}
-                  queryName={queryName || ""}
-                  displayAltitude={displayAltitude}
-                  gamePhase={gamePhase}
-                  boostFlash={boostFlash}
-                  variant="mobile"
-                  ar={ar}
-                />
-              ) : (
-                <div style={{
-                  position: "relative",
-                  flex: "1 1 auto",
-                  minHeight: "min(168px, 30vh)",
-                  borderRadius: 14,
-                  overflow: "hidden",
-                  background: gamePhase === 0 ? "rgba(255,255,255,0.06)"
-                    : gamePhase === 1 ? "rgba(180,60,0,0.12)"
-                    : "rgba(0,200,180,0.08)",
-                  border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.35)" : "rgba(0,200,180,0.3)"}`,
-                }}>
-                  <div style={{ position: "absolute", top: 6, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.85)" : gamePhase === 1 ? "rgba(255,140,80,0.9)" : "rgba(80,255,220,0.9)" }}>
-                    {gamePhase === 0 ? "🌌 الفضاء" : gamePhase === 1 ? "☄️ كويكبات" : "💎 كريستال"}
-                  </div>
-                  <div style={{ position: "relative", width: "100%", height: "100%", paddingTop: 22 }}>
-                    {trackPlayers.map((p, idx) => {
-                      const isMe = p.name === queryName;
-                      const lanes = Math.max(1, trackPlayers.length);
-                      const spacing = lanes <= 4 ? 80 / lanes : 88 / lanes;
-                      const xPos = (idx + 0.5) * spacing + (100 - spacing * lanes) / 2;
-                      const isMega = isMe && gamePhase === 2;
-                      return (
-                        <motion.div
-                          key={p.name}
-                          animate={{ bottom: `${displayAltitude(p)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
-                          initial={false}
-                          transition={{ type: "spring", stiffness: 55, damping: 16 }}
-                          style={{
-                            position: "absolute",
-                            transform: "translateX(-50%)",
-                            display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                            zIndex: 10,
-                          }}
-                        >
-                          <span style={{
-                            fontSize: 10, fontWeight: 800, color: isMe ? GOLD : "#fff",
-                            background: "rgba(0,0,0,0.65)", padding: "2px 6px", borderRadius: 999,
-                            maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            border: isMe ? `1px solid ${GOLD}` : "1px solid rgba(255,255,255,0.12)",
-                          }}>
-                            {lanes > 1 ? `#${idx + 1} ` : ""}{p.avatar} {Math.floor(p.altitude / 100) > 0 ? `🌀${Math.floor(p.altitude / 100)} ` : ""}{Math.round(displayAltitude(p))}%
-                          </span>
-                          <RocketIcon
-                            color={p.rocketColor}
-                            isPlayer={isMe}
-                            size={
-                              isMega ? 46
-                                : lanes > 10 ? (isMe ? 36 : 26)
-                                : lanes > 6 ? (isMe ? 40 : 32)
-                                : 40}
-                            boosted={isMe && boostFlash}
-                            mega={isMega}
-                          />
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                  <div style={{ position: "absolute", left: 4, top: 28, bottom: 8, width: 16, display: "flex", flexDirection: "column", justifyContent: "space-between", color: "rgba(255,255,255,0.4)", fontSize: 8, fontWeight: 700 }}>
-                    {[100, 75, 50, 25, 0].map((v) => (
-                      <span key={v}>{v}%</span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Scrolling stars background */}
+              <motion.div
+                animate={{ x: ["0%", "-50%"] }}
+                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                style={{ position: "absolute", inset: 0, width: "200%", pointerEvents: "none" }}
+              >
+                {[...Array(30)].map((_, i) => (
+                  <div key={i} style={{
+                    position: "absolute",
+                    left: `${(i * 3.3 + 1) % 100}%`,
+                    top: `${(i * 7.1 + 5) % 100}%`,
+                    width: i % 5 === 0 ? 2.5 : 1.5, height: i % 5 === 0 ? 2.5 : 1.5,
+                    borderRadius: "50%",
+                    background: gamePhase === 2 ? "rgba(80,255,220,0.7)" : "rgba(255,255,255,0.6)",
+                    opacity: 0.4 + (i % 3) * 0.2,
+                  }} />
+                ))}
+              </motion.div>
+
+              {/* Phase label */}
+              <div style={{ position: "absolute", top: 4, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.8)" : gamePhase === 1 ? "rgba(255,140,80,0.9)" : "rgba(80,255,220,0.9)", pointerEvents: "none", zIndex: 2 }}>
+                {gamePhase === 0 ? "🌌 الفضاء العميق" : gamePhase === 1 ? "☄️ كويكبات" : "💎 كريستال"}
+              </div>
+
+              {/* Horizontal lanes — one per player */}
+              <div style={{ paddingTop: 20, paddingBottom: 6 }}>
+                {trackPlayers.map((p, idx) => {
+                  const isMe = p.name === queryName;
+                  const pOrbit = Math.floor(p.altitude / 100);
+                  const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+                  const leftPct = trackLeftPct(p);
+                  return (
+                    <div
+                      key={p.name}
+                      style={{
+                        position: "relative",
+                        height: isMe ? 36 : 28,
+                        marginBottom: 2,
+                        borderRadius: 6,
+                        background: isMe
+                          ? "rgba(212,175,55,0.10)"
+                          : "rgba(255,255,255,0.03)",
+                        border: isMe
+                          ? `1px solid rgba(212,175,55,0.25)`
+                          : "1px solid rgba(255,255,255,0.06)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {/* Fixed rank+name on the left */}
+                      <div style={{
+                        position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)",
+                        display: "flex", alignItems: "center", gap: 3, zIndex: 4, pointerEvents: "none",
+                      }}>
+                        <span style={{ fontSize: 9, fontWeight: 900, color: isMe ? GOLD : "rgba(255,255,255,0.75)" }}>
+                          {rankEmoji}
+                        </span>
+                        <span style={{ fontSize: 9, color: isMe ? GOLD : "rgba(255,255,255,0.6)", maxWidth: 52, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.avatar} {p.name}
+                        </span>
+                        {pOrbit > 0 && (
+                          <span style={{ fontSize: 7, color: "#88ffee", fontWeight: 900 }}>🌀{pOrbit}</span>
+                        )}
+                      </div>
+                      {/* Dashed centre line */}
+                      <div style={{ position: "absolute", left: "20%", right: 4, top: "50%", height: 1, background: isMe ? `repeating-linear-gradient(90deg,${GOLD}44 0,${GOLD}44 4px,transparent 4px,transparent 8px)` : "repeating-linear-gradient(90deg,rgba(255,255,255,0.18) 0,rgba(255,255,255,0.18) 4px,transparent 4px,transparent 8px)" }} />
+                      {/* Rocket — positioned by camera-follows-player, clipped to right side of name */}
+                      <motion.div
+                        key={p.name}
+                        animate={{ left: `${Math.max(20, leftPct)}%` }}
+                        initial={false}
+                        transition={{ type: "spring", stiffness: 60, damping: 18 }}
+                        style={{
+                          position: "absolute",
+                          top: "50%",
+                          transform: "translateY(-50%) rotate(90deg)",
+                          zIndex: 5,
+                        }}
+                      >
+                        <RocketIcon
+                          color={p.rocketColor}
+                          isPlayer={isMe}
+                          size={isMe ? 22 : 16}
+                          boosted={isMe && boostFlash}
+                          mega={false}
+                        />
+                      </motion.div>
+                      {/* Score badge on the right */}
+                      <div style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", fontSize: 8, fontWeight: 800, color: isMe ? GOLD : "rgba(255,255,255,0.5)", zIndex: 4 }}>
+                        {p.score}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
@@ -1692,13 +1714,14 @@ export default function RocketPlay() {
                       const isMega = isMe && gamePhase === 2;
                       const rankEmoji = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
                       const compact = lanes > 8;
-                      // 3-D depth: rockets near bottom appear closer (bigger), near top appear farther (smaller)
-                      const depthScale = 1.1 - (displayAltitude(p) / 100) * 0.22;
+                      // 3-D depth: camera-follows-player so use trackBottomPct for depth scale too
+                      const bottomPct = trackBottomPct(p);
+                      const depthScale = 1.1 - (bottomPct / 100) * 0.22;
                       const pOrbit = Math.floor(p.altitude / 100);
                       return (
                         <motion.div
                           key={p.name}
-                          animate={{ bottom: `${displayAltitude(p)}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
+                          animate={{ bottom: `${bottomPct}%`, left: `${Math.min(92, Math.max(4, xPos))}%` }}
                           initial={false}
                           transition={{ type: "spring", stiffness: 55, damping: 16 }}
                           style={{
