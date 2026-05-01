@@ -456,6 +456,7 @@ export default function HotSeatPlay() {
   const [myScore, setMyScore] = useState(0);
   const [questionText, setQuestionText] = useState("");
   const [questionSent, setQuestionSent] = useState(false);
+  const [questionSentCount, setQuestionSentCount] = useState(0);
   const [myVote, setMyVote] = useState<"yes" | "no" | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showPointsPopup, setShowPointsPopup] = useState<number | null>(null);
@@ -541,6 +542,8 @@ export default function HotSeatPlay() {
         } else if (data.phase === "asking") {
           musicRef.current?.start("game");
           play(playSeatSound);
+          setQuestionSent(false);
+          setQuestionSentCount(0);
         } else if (data.phase === "answering") {
           play(playQuestionSound);
         } else if (data.phase === "voting") {
@@ -610,12 +613,17 @@ export default function HotSeatPlay() {
   const sendQuestion = () => {
     const txt = questionText.trim();
     if (!txt) return;
-    emit("hotseat:send-question", { text: txt }, (r) => {
+    emit("hotseat:send-question", { text: txt }, (r: { error?: string; sentCount?: number; maxAllowed?: number }) => {
       if (r.error) { toast.error(r.error); return; }
-      setQuestionSent(true);
+      const sent = r.sentCount ?? 1;
+      const max = r.maxAllowed ?? 2;
+      setQuestionSentCount(sent);
+      if (sent >= max) {
+        setQuestionSent(true);
+      }
       setQuestionText("");
       play(playVoteSound);
-      toast.success(ar ? "تم إرسال سؤالك! 🎯" : "Question sent! 🎯");
+      toast.success(ar ? `تم إرسال سؤالك! 🎯 (${sent}/${max})` : `Question sent! 🎯 (${sent}/${max})`);
     });
   };
 
@@ -823,47 +831,8 @@ export default function HotSeatPlay() {
               </div>
             </div>
 
-            {/* Question input */}
-            {!questionSent ? (
-              <div style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1.5px solid rgba(255,107,43,0.25)", borderRadius: 20, padding: 20,
-                marginBottom: 16,
-              }}>
-                <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 700, marginBottom: 12 }}>
-                  {ar ? "📩 أرسل سؤالاً مجهولاً:" : "📩 Send an anonymous question:"}
-                </p>
-                <textarea
-                  value={questionText}
-                  onChange={e => setQuestionText(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendQuestion(); } }}
-                  placeholder={ar ? "اكتب سؤالاً لـ " + seatStudent.name + "..." : `Ask ${seatStudent.name} something...`}
-                  maxLength={200}
-                  rows={3}
-                  style={{
-                    width: "100%", padding: "12px 14px", borderRadius: 14,
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1.5px solid rgba(255,255,255,0.12)",
-                    color: "#fff", fontSize: 14, outline: "none", resize: "none",
-                    fontFamily: "inherit", boxSizing: "border-box",
-                  }}
-                />
-                <button
-                  onClick={sendQuestion}
-                  disabled={!questionText.trim()}
-                  style={{
-                    marginTop: 10, width: "100%", padding: "12px",
-                    borderRadius: 14, border: "none",
-                    background: questionText.trim()
-                      ? `linear-gradient(135deg, ${FIRE}, ${FIRE2})`
-                      : "rgba(255,255,255,0.1)",
-                    color: "#fff", fontWeight: 900, fontSize: 15, cursor: questionText.trim() ? "pointer" : "not-allowed",
-                  }}
-                >
-                  {ar ? "✈️ أرسل سؤالاً" : "✈️ Send Question"}
-                </button>
-              </div>
-            ) : (
+            {/* Question input / preset picker */}
+            {questionSent ? (
               <motion.div
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }}
                 style={{
@@ -872,48 +841,103 @@ export default function HotSeatPlay() {
                 }}
               >
                 <span style={{ fontSize: 40 }}>✅</span>
-                <p style={{ color: "#22c55e", fontWeight: 900, fontSize: 16, margin: "8px 0 0" }}>
-                  {ar ? "تم إرسال سؤالك بنجاح!" : "Question sent!"}
+                <p style={{ color: "#22c55e", fontWeight: 900, fontSize: 16, margin: "8px 0 4px" }}>
+                  {ar ? "وصلت للحد الأقصى من الأسئلة!" : "You've reached the question limit!"}
                 </p>
-                <button
-                  onClick={() => setQuestionSent(false)}
-                  style={{
-                    marginTop: 10, padding: "8px 20px", borderRadius: 12,
-                    background: "rgba(255,255,255,0.1)", border: "none",
-                    color: "rgba(255,255,255,0.7)", fontSize: 13, cursor: "pointer",
-                  }}
-                >
-                  {ar ? "أرسل سؤالاً آخر" : "Send another"}
-                </button>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13 }}>
+                  {ar ? "انتظر المعلم ليختار السؤال" : "Wait for the teacher to pick a question"}
+                </p>
               </motion.div>
+            ) : (
+              <div style={{ marginBottom: 16 }}>
+                {/* Counter badge */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: 700, margin: 0 }}>
+                    {questions.filter(q => q.isPreset).length > 0
+                      ? (ar ? "📋 اختر سؤالاً لتطرحه:" : "📋 Pick a question to ask:")
+                      : (ar ? "📩 أرسل سؤالاً مجهولاً:" : "📩 Send an anonymous question:")}
+                  </p>
+                  <span style={{
+                    background: questionSentCount > 0 ? `${FIRE}30` : "rgba(255,255,255,0.1)",
+                    color: questionSentCount > 0 ? FIRE2 : "rgba(255,255,255,0.5)",
+                    padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 800,
+                  }}>
+                    {questionSentCount}/2
+                  </span>
+                </div>
+
+                {/* Preset questions from assignment */}
+                {questions.filter(q => q.isPreset).length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {questions.filter(q => q.isPreset).map(q => (
+                      <button
+                        key={q.id}
+                        onClick={() => {
+                          emit("hotseat:send-question", { text: q.text }, (r: { error?: string; sentCount?: number; maxAllowed?: number }) => {
+                            if (r.error) { toast.error(r.error); return; }
+                            const sent = r.sentCount ?? 1;
+                            const max = r.maxAllowed ?? 2;
+                            setQuestionSentCount(sent);
+                            if (sent >= max) setQuestionSent(true);
+                            play(playVoteSound);
+                            toast.success(ar ? `تم إرسال السؤال! 🎯 (${sent}/${max})` : `Sent! 🎯 (${sent}/${max})`);
+                          });
+                        }}
+                        style={{
+                          padding: "12px 16px", borderRadius: 14,
+                          background: "rgba(255,255,255,0.06)", border: "1.5px solid rgba(255,107,43,0.2)",
+                          color: "#fff", fontSize: 14, fontWeight: 700,
+                          cursor: "pointer", textAlign: "start" as const,
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = `${FIRE}25`)}
+                        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                      >
+                        🔥 {q.text}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* Free-text input when no preset questions */
+                  <div style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1.5px solid rgba(255,107,43,0.25)", borderRadius: 20, padding: 20,
+                  }}>
+                    <textarea
+                      value={questionText}
+                      onChange={e => setQuestionText(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendQuestion(); } }}
+                      placeholder={ar ? "اكتب سؤالاً لـ " + seatStudent.name + "..." : `Ask ${seatStudent.name} something...`}
+                      maxLength={200}
+                      rows={3}
+                      style={{
+                        width: "100%", padding: "12px 14px", borderRadius: 14,
+                        background: "rgba(255,255,255,0.07)",
+                        border: "1.5px solid rgba(255,255,255,0.12)",
+                        color: "#fff", fontSize: 14, outline: "none", resize: "none",
+                        fontFamily: "inherit", boxSizing: "border-box",
+                      }}
+                    />
+                    <button
+                      onClick={sendQuestion}
+                      disabled={!questionText.trim()}
+                      style={{
+                        marginTop: 10, width: "100%", padding: "12px",
+                        borderRadius: 14, border: "none",
+                        background: questionText.trim()
+                          ? `linear-gradient(135deg, ${FIRE}, ${FIRE2})`
+                          : "rgba(255,255,255,0.1)",
+                        color: "#fff", fontWeight: 900, fontSize: 15, cursor: questionText.trim() ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {ar ? "✈️ أرسل سؤالاً" : "✈️ Send Question"}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* Suggested quick questions */}
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginBottom: 8 }}>
-              {ar ? "أو اختر سؤالاً جاهزاً:" : "Or pick a ready question:"}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {[
-                ar ? "اشرح الفكرة بكلامك" : "Explain in your own words",
-                ar ? "ما أصعب جزء في الدرس؟" : "What's the hardest part?",
-                ar ? "كيف تطبقه في الحياة؟" : "How to apply it in life?",
-              ].map((t, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setQuestionText(t); setQuestionSent(false); }}
-                  style={{
-                    padding: "10px 14px", borderRadius: 12,
-                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                    color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700,
-                    cursor: "pointer", textAlign: "start" as const,
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Questions with likes */}
+            {/* Sent questions — like the best (only show non-preset ones sent by others) */}
             {questions.filter(q => !q.isPreset).length > 0 && (
               <div style={{ marginTop: 16 }}>
                 <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, marginBottom: 8 }}>

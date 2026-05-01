@@ -55,6 +55,8 @@ interface HotSeatGame {
   votes: { yes: number; no: number };
   rounds: number;
   questions: Record<string, HotSeatQuestion>;
+  questionCountByUid: Record<string, number>;  // uid → how many questions sent this round
+  maxQuestionsPerStudent: number;
   lastResult?: { convincingPct: number; pointsAwarded: number; speedBonus: boolean };
 }
 
@@ -105,6 +107,17 @@ function getPublicStudents(game: HotSeatGame) {
 function getPublicQuestions(game: HotSeatGame) {
   return Object.values(game.questions).map(q => ({
     id: q.id, text: q.text, isPreset: q.isPreset, likes: q.likes,
+  }));
+}
+
+/** For the host only — includes authorName so teacher can see who sent each question */
+function getHostQuestions(game: HotSeatGame) {
+  return Object.values(game.questions).map(q => ({
+    id: q.id,
+    text: q.text,
+    isPreset: q.isPreset,
+    likes: q.likes,
+    authorName: q.authorUid === "teacher" ? "المعلم" : (game.students[q.authorUid]?.name ?? "طالب"),
   }));
 }
 
@@ -190,6 +203,8 @@ export function setupHotSeatSocket(io: Server) {
           students: {}, uidBySocket: {},
           timerVal: 0, votes: { yes: 0, no: 0 }, rounds: 0,
           questions: presetQuestions,
+          questionCountByUid: {},
+          maxQuestionsPerStudent: 2,
         };
         games.set(pin, game);
         socket.join(`hotseat:${pin}`);
@@ -297,6 +312,7 @@ export function setupHotSeatSocket(io: Server) {
       game.votes = { yes: 0, no: 0 };
       game.currentQuestion = undefined;
       game.currentQuestionId = undefined;
+      game.questionCountByUid = {}; // reset per-student question counts
       game.rounds++;
 
       ns.to(`hotseat:${game.pin}`).emit("hotseat:phase-change", {
@@ -320,13 +336,28 @@ export function setupHotSeatSocket(io: Server) {
       // Don't let the person on the seat submit
       if (game.currentSeatUid === uid) return cb({ error: "لا يمكنك إرسال سؤال لنفسك." });
 
+      // Enforce per-student question limit
+      const sent = game.questionCountByUid[uid || "anon"] ?? 0;
+      if (sent >= game.maxQuestionsPerStudent) {
+        return cb({ error: `وصلت للحد الأقصى (${game.maxQuestionsPerStudent} أسئلة لكل طالب).` });
+      }
+
       const id = randomBytes(6).toString("hex");
       game.questions[id] = { id, text, isPreset: false, authorUid: uid || "anon", likes: 0, likedBy: [] };
+      game.questionCountByUid[uid || "anon"] = sent + 1;
 
+      // Broadcast to all students (anonymous)
       ns.to(`hotseat:${game.pin}`).emit("hotseat:questions-updated", {
         questions: getPublicQuestions(game),
       });
-      cb({ success: true, id });
+      // Send host-enriched version to creator only
+      const creatorSocket = ns.sockets.get(game.creatorSocketId);
+      if (creatorSocket) {
+        creatorSocket.emit("hotseat:host-questions-updated", {
+          questions: getHostQuestions(game),
+        });
+      }
+      cb({ success: true, id, sentCount: sent + 1, maxAllowed: game.maxQuestionsPerStudent });
     });
 
     // ── Like question ─────────────────────────────────────────────────────────

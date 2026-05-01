@@ -14,7 +14,7 @@ const DARK_BG = "linear-gradient(180deg, #050818 0%, #0d1230 50%, #1a0800 100%)"
 type Phase = "lobby"|"picking"|"asking"|"answering"|"voting"|"result"|"ended";
 
 interface Student { uid: string; name: string; avatar: string; color: string; score: number; isOnSeat: boolean; roundsOnSeat: number; }
-interface Question { id: string; text: string; isPreset: boolean; likes: number; }
+interface Question { id: string; text: string; isPreset: boolean; likes: number; authorName?: string; }
 interface GameState {
   pin: string; phase: Phase; teacherName: string; grade: string; subject: string; topic?: string;
   timerDuration: number; timerVal: number; currentSeatUid?: string; currentQuestion?: string;
@@ -116,6 +116,10 @@ export default function HotSeatHost() {
       setState(prev => prev ? { ...prev, students: data.students } : prev);
     });
     socket.on("hotseat:questions-updated", (data: { questions: Question[] }) => {
+      setState(prev => prev ? { ...prev, questions: data.questions } : prev);
+    });
+    // Host-only event includes authorName
+    socket.on("hotseat:host-questions-updated", (data: { questions: Question[] }) => {
       setState(prev => prev ? { ...prev, questions: data.questions } : prev);
     });
     socket.on("hotseat:timer-tick", (data: { timerVal: number }) => {
@@ -831,11 +835,18 @@ function QuestionCard({ q, ar, onPick }: { q: Question; ar: boolean; onPick: () 
     >
       <div style={{ flex: 1 }}>
         <p style={{ color: "#fff", fontSize: 13, fontWeight: 700, margin: 0 }}>{q.text}</p>
-        {q.likes > 0 && (
-          <p style={{ color: FIRE2, fontSize: 11, margin: "2px 0 0" }}>
-            👍 {q.likes}
-          </p>
-        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center" }}>
+          {q.authorName && (
+            <span style={{ color: "#a78bfa", fontSize: 11, fontWeight: 700 }}>
+              👤 {q.authorName}
+            </span>
+          )}
+          {q.likes > 0 && (
+            <span style={{ color: FIRE2, fontSize: 11 }}>
+              👍 {q.likes}
+            </span>
+          )}
+        </div>
       </div>
       <button
         onClick={onPick}

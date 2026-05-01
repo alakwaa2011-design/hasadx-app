@@ -174,11 +174,11 @@ export default function HotSeatCreate() {
     : bankQuestions;
 
   const handleCreate = () => {
-    if (!teacherName.trim()) { toast.error(ar ? "أدخل اسمك أولاً" : "Enter your name"); return; }
+    if (!grade.trim() && !subject.trim()) { toast.error(ar ? "أدخل الصف أو المادة" : "Enter grade or subject"); return; }
     setCreating(true);
     const socket = getHotSeatSocket();
     socket.emit("hotseat:create", {
-      teacherName: teacherName.trim(),
+      teacherName: "المعلم",
       grade: grade.trim() || "",
       subject: subject.trim() || "",
       topic: topic.trim() || undefined,
@@ -408,11 +408,11 @@ export default function HotSeatCreate() {
             </p>
           </motion.div>
 
-          {/* Teacher name */}
+          {/* Teacher name removed — mute button moved to toolbar */}
+
+          {/* Grade + Subject */}
           <Card className="p-5 mb-3">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-bold">{ar ? "👋 اسمك *" : "👋 Your Name *"}</label>
-              {/* Mute button */}
+            <div className="flex justify-end mb-3">
               <button onClick={toggleMute}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all"
                 style={{
@@ -424,14 +424,6 @@ export default function HotSeatCreate() {
                 {muted ? (ar ? "صامت" : "Muted") : (ar ? "صوت" : "Sound")}
               </button>
             </div>
-            <input value={teacherName} onChange={e => setTeacherName(e.target.value)}
-              placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
-              className="w-full bg-transparent outline-none text-base font-bold placeholder:text-muted-foreground/50 border-b-2 border-border pb-1"
-              maxLength={40} />
-          </Card>
-
-          {/* Grade + Subject */}
-          <Card className="p-5 mb-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-2">
@@ -527,13 +519,13 @@ export default function HotSeatCreate() {
 
           {/* Create */}
           <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
-            onClick={handleCreate} disabled={creating || !teacherName.trim()}
+            onClick={handleCreate} disabled={creating}
             className="w-full py-4 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3"
             style={{
-              background: !teacherName.trim() ? "rgba(255,107,43,0.4)" : `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
-              boxShadow: teacherName.trim() ? `0 12px 32px ${FIRE}60` : undefined,
+              background: `linear-gradient(135deg, ${FIRE}, ${FIRE2})`,
+              boxShadow: `0 12px 32px ${FIRE}60`,
               opacity: creating ? 0.7 : 1,
-              cursor: !teacherName.trim() || creating ? "not-allowed" : "pointer",
+              cursor: creating ? "not-allowed" : "pointer",
             }}>
             {creating
               ? <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}>🔥</motion.span>
