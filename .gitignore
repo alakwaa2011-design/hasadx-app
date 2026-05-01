@@ -20,6 +20,9 @@ node_modules
 .settings/
 *.sublime-workspace
 
+# Cursor / Claude local tooling (never commit worktrees or settings)
+.claude/
+
 # IDE - VSCode
 .vscode/*
 !.vscode/settings.json
