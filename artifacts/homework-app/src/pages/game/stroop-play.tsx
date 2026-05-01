@@ -51,7 +51,7 @@ interface Question {
 }
 
 const LEVEL_UP_EVERY = 5;
-const BASE_TIMER_MS = 5000;
+const BASE_TIMER_MS = 10000;
 const TIMER_DECREMENT_MS = 200;
 const MIN_TIMER_MS = 1000;
 
