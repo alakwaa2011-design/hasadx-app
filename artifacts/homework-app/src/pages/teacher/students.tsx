@@ -13,7 +13,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Users, Plus, ArrowRight, Pencil, Trash2, X, Phone,
-  GripVertical, ChevronDown, ChevronRight,
+  GripVertical, ChevronDown, ChevronRight, ChevronLeft,
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
@@ -330,8 +330,8 @@ function ClassBlock({
                       <span className="hidden sm:inline">{groupName || "مجموعة"}</span>
                     </button>
                     {showGroupMenu && (
-                      <div className="absolute left-0 top-9 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-44 py-1 text-sm">
-                        <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border">تعيين إلى مجموعة:</p>
+                      <div className="absolute left-0 bottom-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-44 py-1 text-sm max-h-64 overflow-y-auto">
+                        <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border sticky top-0 bg-card">تعيين إلى مجموعة:</p>
                         {(allGroups ?? []).map(g => (
                           <button key={g}
                             onClick={() => { onAssignGroup(folderName, g); setShowGroupMenu(false); }}
@@ -504,13 +504,15 @@ export default function StudentsPage() {
   /* new-group dialog */
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
-  const [groupTargetClass, setGroupTargetClass] = useState("");
+  const [groupTargetClasses, setGroupTargetClasses] = useState<string[]>([]);
 
   /* attendance panel */
   const [attendanceClass, setAttendanceClass] = useState<string | null>(null);
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [attendanceTab, setAttendanceTab] = useState<"register" | "report">("register");
   type AttendanceStatus = "present" | "absent" | "late" | "excused";
   const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceStatus>>({});
+  const [attendanceReport, setAttendanceReport] = useState<Array<{ date: string; studentId: number; status: string }>>([]);
   const [savingAttendance, setSavingAttendance] = useState(false);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -801,7 +803,7 @@ export default function StudentsPage() {
           else delete next[className];
           return next;
         });
-        toast.success(groupName ? `تم تعيين "${className}" ضمن "${groupName}"` : `تمت إزالة "${className}" من المجموعة`);
+        if (groupName) toast.success(`تم تعيين "${className}" ضمن "${groupName}"`);
       } else {
         toast.error("حدث خطأ");
       }
@@ -810,9 +812,17 @@ export default function StudentsPage() {
     }
   };
 
+  const handleAssignGroupMulti = async (classNames: string[], groupName: string) => {
+    for (const cn of classNames) {
+      await handleAssignGroup(cn, groupName);
+    }
+    toast.success(`تم تعيين ${classNames.length} صف ضمن "${groupName}"`);
+  };
+
   /* ── Attendance ── */
   const openAttendance = async (className: string) => {
     setAttendanceClass(className);
+    setAttendanceTab("register");
     const currentDate = attendanceDate;
     try {
       const res = await fetch(
@@ -825,6 +835,14 @@ export default function StudentsPage() {
         rows.forEach(r => { map[r.studentId] = r.status as AttendanceStatus; });
         setAttendanceMap(map);
       }
+      // Load report (last 30 days)
+      const from = new Date(); from.setDate(from.getDate() - 30);
+      const fromStr = from.toISOString().slice(0, 10);
+      const repRes = await fetch(
+        `${API_BASE}/api/attendance?gradeLevel=${encodeURIComponent(className)}&from=${fromStr}`,
+        { credentials: "include" }
+      );
+      if (repRes.ok) setAttendanceReport(await repRes.json());
     } catch { /* ignore */ }
   };
 
@@ -1803,56 +1821,68 @@ export default function StudentsPage() {
             >
               <motion.div
                 initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[90vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center gap-2 mb-4">
                   <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl"><Layers size={20} className="text-violet-600" /></div>
                   <h3 className="font-bold text-foreground">مجموعة / مرحلة جديدة</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">أنشئ اسم المجموعة ثم عيّن الصفوف إليها من زر "مجموعة" في كل صف</p>
+
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">اسم المجموعة</label>
                 <input
                   autoFocus
                   value={newGroupName}
                   onChange={e => setNewGroupName(e.target.value)}
                   placeholder='مثال: صفوف الخامس'
                   className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && newGroupName.trim()) {
-                      setClassGroupMap(prev => prev);
-                      if (groupTargetClass) handleAssignGroup(groupTargetClass, newGroupName.trim());
-                      setNewGroupName(""); setShowAddGroup(false);
-                    }
-                  }}
                 />
-                <p className="text-xs text-muted-foreground mb-2">تعيين صف لهذه المجموعة الآن (اختياري):</p>
-                <select
-                  value={groupTargetClass}
-                  onChange={e => setGroupTargetClass(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
-                >
-                  <option value="">— اختر صفاً —</option>
-                  {namedFolders.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
+
+                <label className="block text-xs font-semibold text-muted-foreground mb-2">اختر الصفوف التي تريد إضافتها (يمكن اختيار أكثر من صف):</label>
+                <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto border border-border rounded-xl p-2">
+                  {namedFolders.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">لا توجد صفوف بعد</p>
+                  )}
+                  {namedFolders.map(f => (
+                    <label key={f} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={groupTargetClasses.includes(f)}
+                        onChange={e => {
+                          if (e.target.checked) setGroupTargetClasses(prev => [...prev, f]);
+                          else setGroupTargetClasses(prev => prev.filter(x => x !== f));
+                        }}
+                        className="w-4 h-4 accent-violet-500"
+                      />
+                      <span className="text-sm">{f}</span>
+                      {classGroupMap[f] && (
+                        <span className="text-[10px] text-violet-500 bg-violet-50 dark:bg-violet-950/30 px-1.5 py-0.5 rounded-full">{classGroupMap[f]}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                {groupTargetClasses.length > 0 && (
+                  <p className="text-xs text-violet-600 mb-3 font-medium">✓ تم تحديد {groupTargetClasses.length} صف</p>
+                )}
+
                 <div className="flex gap-3">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!newGroupName.trim()) return;
-                      if (groupTargetClass) handleAssignGroup(groupTargetClass, newGroupName.trim());
-                      else {
-                        // Just create the group in local state so it shows in dropdowns
-                        setClassGroupMap(prev => prev);
-                        toast.success(`تم إنشاء المجموعة "${newGroupName.trim()}" — عيّن الصفوف إليها من زر "مجموعة"`);
+                      if (groupTargetClasses.length > 0) {
+                        await handleAssignGroupMulti(groupTargetClasses, newGroupName.trim());
+                      } else {
+                        toast.success(`تم إنشاء المجموعة "${newGroupName.trim()}" — عيّن الصفوف إليها من زر "مجموعة" في كل صف`);
                       }
-                      setNewGroupName(""); setGroupTargetClass(""); setShowAddGroup(false);
+                      setNewGroupName(""); setGroupTargetClasses([]); setShowAddGroup(false);
                     }}
                     disabled={!newGroupName.trim()}
                     className="flex-1 py-2.5 bg-violet-500 text-white rounded-xl font-bold hover:bg-violet-600 transition-colors disabled:opacity-50"
                   >
-                    إنشاء
+                    إنشاء {groupTargetClasses.length > 0 ? `وإضافة ${groupTargetClasses.length} صف` : ""}
                   </button>
                   <button
-                    onClick={() => { setShowAddGroup(false); setNewGroupName(""); setGroupTargetClass(""); }}
+                    onClick={() => { setShowAddGroup(false); setNewGroupName(""); setGroupTargetClasses([]); }}
                     className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
                   >
                     إلغاء
@@ -1873,91 +1903,220 @@ export default function StudentsPage() {
             >
               <motion.div
                 initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-                className="bg-card text-card-foreground rounded-2xl w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col"
+                className="bg-card text-card-foreground rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
                 onClick={e => e.stopPropagation()}
               >
                 {/* Header */}
                 <div className="flex items-center gap-3 p-4 border-b border-border">
-                  <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><UserCheck size={18} className="text-sky-600" /></div>
+                  <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl shrink-0"><UserCheck size={18} className="text-sky-600" /></div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-foreground">الحضور والغياب — {attendanceClass}</h3>
-                    <input
-                      type="date"
-                      value={attendanceDate}
-                      onChange={e => {
-                        setAttendanceDate(e.target.value);
-                        if (attendanceClass) loadAttendanceForDate(attendanceClass, e.target.value);
-                      }}
-                      className="text-xs text-muted-foreground bg-transparent border-none focus:outline-none mt-0.5 cursor-pointer"
-                    />
+                    <h3 className="font-bold text-foreground text-sm">الحضور والغياب — {attendanceClass}</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">يمكنك تسجيل حضور أي يوم سابق باختيار التاريخ</p>
                   </div>
-                  <button onClick={() => setAttendanceClass(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted">
+                  <button onClick={() => setAttendanceClass(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted shrink-0">
                     <X size={16} />
                   </button>
                 </div>
 
-                {/* Legend */}
-                <div className="flex items-center gap-3 px-4 py-2 border-b border-border text-xs text-muted-foreground bg-muted/20">
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-400 inline-block"/> حاضر</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-400 inline-block"/> غائب</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-400 inline-block"/> متأخر</span>
-                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-400 inline-block"/> بعذر</span>
+                {/* Tabs */}
+                <div className="flex border-b border-border">
+                  <button
+                    onClick={() => setAttendanceTab("register")}
+                    className={`flex-1 py-2.5 text-xs font-bold transition-colors ${attendanceTab === "register" ? "text-sky-600 border-b-2 border-sky-500 bg-sky-50/50 dark:bg-sky-950/20" : "text-muted-foreground hover:bg-muted/50"}`}
+                  >
+                    📋 تسجيل الحضور
+                  </button>
+                  <button
+                    onClick={() => setAttendanceTab("report")}
+                    className={`flex-1 py-2.5 text-xs font-bold transition-colors ${attendanceTab === "report" ? "text-amber-600 border-b-2 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20" : "text-muted-foreground hover:bg-muted/50"}`}
+                  >
+                    📊 سجل الغياب
+                  </button>
                 </div>
 
-                {/* Student list */}
-                <div className="overflow-y-auto flex-1 p-3 space-y-1">
-                  {studentsInFolder(attendanceClass).map((s, idx) => {
-                    const status = attendanceMap[s.id] ?? "present";
-                    const STATUS_OPTIONS: Array<{ value: "present"|"absent"|"late"|"excused"; label: string; color: string }> = [
-                      { value: "present", label: "حاضر", color: "bg-green-500" },
-                      { value: "absent", label: "غائب", color: "bg-red-500" },
-                      { value: "late", label: "متأخر", color: "bg-amber-500" },
-                      { value: "excused", label: "بعذر", color: "bg-blue-500" },
-                    ];
-                    const current = STATUS_OPTIONS.find(o => o.value === status) ?? STATUS_OPTIONS[0];
-                    return (
-                      <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background border border-border/50 hover:border-border transition-colors">
-                        <span className="text-xs text-muted-foreground w-5 text-center font-bold">{idx + 1}</span>
-                        <span className="flex-1 text-sm font-medium">{s.name}</span>
-                        <div className="flex items-center gap-1">
-                          {STATUS_OPTIONS.map(opt => (
-                            <button
-                              key={opt.value}
-                              onClick={() => setAttendanceMap(prev => ({ ...prev, [s.id]: opt.value }))}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                                status === opt.value
-                                  ? `${opt.color} text-white shadow-sm`
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-                              }`}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
+                {attendanceTab === "register" && (
+                  <>
+                    {/* Date navigator */}
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/20">
+                      <button
+                        onClick={() => {
+                          const d = new Date(attendanceDate); d.setDate(d.getDate() - 1);
+                          const s = d.toISOString().slice(0, 10);
+                          setAttendanceDate(s);
+                          if (attendanceClass) loadAttendanceForDate(attendanceClass, s);
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                        title="اليوم السابق"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                      <input
+                        type="date"
+                        value={attendanceDate}
+                        max={new Date().toISOString().slice(0, 10)}
+                        onChange={e => {
+                          setAttendanceDate(e.target.value);
+                          if (attendanceClass) loadAttendanceForDate(attendanceClass, e.target.value);
+                        }}
+                        className="flex-1 text-center text-sm font-bold bg-transparent border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer"
+                      />
+                      <button
+                        onClick={() => {
+                          const d = new Date(attendanceDate); d.setDate(d.getDate() + 1);
+                          const s = d.toISOString().slice(0, 10);
+                          if (s <= new Date().toISOString().slice(0, 10)) {
+                            setAttendanceDate(s);
+                            if (attendanceClass) loadAttendanceForDate(attendanceClass, s);
+                          }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground disabled:opacity-30"
+                        title="اليوم التالي"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const today = new Date().toISOString().slice(0, 10);
+                          setAttendanceDate(today);
+                          if (attendanceClass) loadAttendanceForDate(attendanceClass, today);
+                        }}
+                        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 hover:bg-sky-200 transition-colors"
+                      >
+                        اليوم
+                      </button>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center gap-3 px-4 py-1.5 text-[10px] text-muted-foreground bg-muted/10">
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-400 inline-block"/> حاضر</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"/> غائب</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"/> متأخر</span>
+                      <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"/> بعذر</span>
+                      <span className="mr-auto text-sky-500 font-medium">
+                        غائب: {Object.values(attendanceMap).filter(v => v === "absent").length} طالب
+                      </span>
+                    </div>
+
+                    {/* Student list */}
+                    <div className="overflow-y-auto flex-1 p-3 space-y-1">
+                      {studentsInFolder(attendanceClass).map((s, idx) => {
+                        const status = attendanceMap[s.id] ?? "present";
+                        const STATUS_OPTIONS: Array<{ value: "present"|"absent"|"late"|"excused"; label: string; color: string }> = [
+                          { value: "present", label: "حاضر", color: "bg-green-500" },
+                          { value: "absent", label: "غائب", color: "bg-red-500" },
+                          { value: "late", label: "متأخر", color: "bg-amber-500" },
+                          { value: "excused", label: "بعذر", color: "bg-blue-500" },
+                        ];
+                        return (
+                          <div key={s.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors
+                            ${status === "absent" ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"
+                            : status === "late" ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50"
+                            : status === "excused" ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50"
+                            : "bg-background border-border/50 hover:border-border"}`}>
+                            <span className="text-xs text-muted-foreground w-5 text-center font-bold shrink-0">{idx + 1}</span>
+                            <span className="flex-1 text-sm font-medium">{s.name}</span>
+                            <div className="flex items-center gap-1">
+                              {STATUS_OPTIONS.map(opt => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setAttendanceMap(prev => ({ ...prev, [s.id]: opt.value }))}
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                    status === opt.value
+                                      ? `${opt.color} text-white shadow-sm scale-105`
+                                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {studentsInFolder(attendanceClass).length === 0 && (
+                        <p className="text-center py-8 text-muted-foreground text-sm">لا يوجد طلاب في هذا الصف</p>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 border-t border-border flex gap-3">
+                      <button
+                        onClick={saveAttendance}
+                        disabled={savingAttendance}
+                        className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {savingAttendance ? <><Loader2 size={14} className="animate-spin"/> حفظ...</> : <><Check size={14}/> حفظ الحضور</>}
+                      </button>
+                      <button
+                        onClick={() => setAttendanceClass(null)}
+                        className="px-4 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                      >
+                        إغلاق
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {attendanceTab === "report" && (
+                  <div className="overflow-y-auto flex-1 p-4">
+                    <p className="text-xs text-muted-foreground mb-3">سجل الغياب والتأخر — آخر 30 يوماً</p>
+                    {(() => {
+                      const classStudents = studentsInFolder(attendanceClass);
+                      const absentRecords = attendanceReport
+                        .filter(r => r.status === "absent" || r.status === "late" || r.status === "excused");
+                      if (absentRecords.length === 0) {
+                        return (
+                          <div className="text-center py-10 text-muted-foreground">
+                            <div className="text-4xl mb-2">✅</div>
+                            <p className="font-bold">لا توجد غيابات مسجّلة</p>
+                            <p className="text-xs mt-1">سجّل الحضور اليومي من تبويب "تسجيل الحضور"</p>
+                          </div>
+                        );
+                      }
+                      // Group by student
+                      const byStudent: Record<number, Array<{ date: string; status: string }>> = {};
+                      absentRecords.forEach(r => {
+                        if (!byStudent[r.studentId]) byStudent[r.studentId] = [];
+                        byStudent[r.studentId].push({ date: r.date, status: r.status });
+                      });
+                      return (
+                        <div className="space-y-3">
+                          {Object.entries(byStudent)
+                            .sort((a, b) => b[1].length - a[1].length)
+                            .map(([sid, records]) => {
+                              const student = classStudents.find(s => s.id === Number(sid));
+                              if (!student) return null;
+                              const absences = records.filter(r => r.status === "absent").length;
+                              const late = records.filter(r => r.status === "late").length;
+                              const excused = records.filter(r => r.status === "excused").length;
+                              return (
+                                <div key={sid} className="rounded-xl border border-border bg-background p-3">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="font-bold text-sm">{student.name}</span>
+                                    <span className="mr-auto flex items-center gap-1.5">
+                                      {absences > 0 && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 px-2 py-0.5 rounded-full font-bold">غائب {absences}×</span>}
+                                      {late > 0 && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 px-2 py-0.5 rounded-full font-bold">متأخر {late}×</span>}
+                                      {excused > 0 && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-2 py-0.5 rounded-full font-bold">بعذر {excused}×</span>}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {records.sort((a, b) => b.date.localeCompare(a.date)).map((r, i) => (
+                                      <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium
+                                        ${r.status === "absent" ? "bg-red-50 dark:bg-red-950/30 text-red-500"
+                                        : r.status === "late" ? "bg-amber-50 dark:bg-amber-950/30 text-amber-500"
+                                        : "bg-blue-50 dark:bg-blue-950/30 text-blue-500"}`}>
+                                        {r.date}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
                         </div>
-                      </div>
-                    );
-                  })}
-                  {studentsInFolder(attendanceClass).length === 0 && (
-                    <p className="text-center py-8 text-muted-foreground text-sm">لا يوجد طلاب في هذا الصف</p>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 border-t border-border flex gap-3">
-                  <button
-                    onClick={saveAttendance}
-                    disabled={savingAttendance}
-                    className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {savingAttendance ? <><Loader2 size={14} className="animate-spin"/> حفظ...</> : <><Check size={14}/> حفظ الحضور</>}
-                  </button>
-                  <button
-                    onClick={() => setAttendanceClass(null)}
-                    className="px-4 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
-                  >
-                    إغلاق
-                  </button>
-                </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}
