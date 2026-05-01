@@ -719,7 +719,7 @@ components:
           type: string
         questionType:
           type: string
-          enum: [mcq, true_false, fill_blank, whiteboard]
+          enum: [mcq, true_false, fill_blank, whiteboard, dictation]
           default: mcq
         optionA:
           type: string
@@ -919,7 +919,7 @@ components:
           type: string
         questionType:
           type: string
-          enum: [mcq, true_false, fill_blank, whiteboard]
+          enum: [mcq, true_false, fill_blank, whiteboard, dictation]
           default: mcq
         optionA:
           type: string

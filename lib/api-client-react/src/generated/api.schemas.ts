@@ -145,6 +145,7 @@ export const CreateQuestionBodyQuestionType = {
   true_false: "true_false",
   fill_blank: "fill_blank",
   whiteboard: "whiteboard",
+  dictation: "dictation",
 } as const;
 
 export interface CreateQuestionBody {
