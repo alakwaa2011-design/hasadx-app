@@ -1,3 +1,26 @@
+// Levenshtein distance for fuzzy dictation grading
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function gradeDictation(studentAnswer: string, correctText: string, allowErrors: boolean): boolean {
+  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+  const s = norm(studentAnswer);
+  const c = norm(correctText);
+  if (s === c) return true;
+  if (!allowErrors) return false;
+  // Allow up to ~15% character error rate for minor spelling mistakes
+  const maxDist = Math.max(1, Math.floor(c.length * 0.15));
+  return levenshtein(s, c) <= maxDist;
+}
+
 export interface GameQuestion {
   id: number;
   text: string;
@@ -975,6 +998,9 @@ export function submitPersonalAnswer(
     const studentAns = (answer || "").trim().toLowerCase();
     const acceptedAnswers = (question.correctAnswer || "").split("|").map(s => s.trim().toLowerCase()).filter(Boolean);
     correct = acceptedAnswers.length > 0 && acceptedAnswers.some(a => a === studentAns);
+  } else if (qType === "dictation") {
+    const allowErrors = question.optionC !== "false";
+    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors);
   } else if (qType === "mcq" && player.personalShuffledCorrectAnswer) {
     correct = answer === player.personalShuffledCorrectAnswer;
   } else {
@@ -1105,6 +1131,9 @@ export function submitAnswer(
     const studentAns = (answer || "").trim().toLowerCase();
     const acceptedAnswers = (question.correctAnswer || "").split("|").map(s => s.trim().toLowerCase()).filter(Boolean);
     correct = acceptedAnswers.length > 0 && acceptedAnswers.some(a => a === studentAns);
+  } else if (qType === "dictation") {
+    const allowErrors = question.optionC !== "false";
+    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors);
   } else if (qType === "mcq" && game.currentShuffledCorrectAnswer) {
     correct = answer === game.currentShuffledCorrectAnswer;
   } else {

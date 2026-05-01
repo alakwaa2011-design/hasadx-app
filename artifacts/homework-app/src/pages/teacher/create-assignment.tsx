@@ -9,7 +9,7 @@ import {
   Monitor, FileText, Layers, Globe, Lock, GraduationCap, Copy, Star,
   Eye, EyeOff, Sparkles, Wand2, Loader2, ChevronUp, ChevronDown,
   Calendar, Database, Clock, Settings, Settings2, Brain,
-  Tag, Camera, Upload, ChevronRight, GripVertical,
+  Tag, Camera, Upload, ChevronRight, GripVertical, Volume2, Play, Square,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -705,7 +705,7 @@ export default function CreateAssignment() {
     setQuestions(prev => { const newQs = [...prev]; newQs[index] = { ...newQs[index], [field]: value }; return newQs; });
   };
 
-  const handleQuestionTypeChange = (index: number, newType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "whiteboard_blank") => {
+  const handleQuestionTypeChange = (index: number, newType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "whiteboard_blank" | "dictation") => {
     setQuestions(prev => {
       const newQs = [...prev];
       const updates: Partial<CreateQuestionBody> = { questionType: newType === "whiteboard_blank" ? "whiteboard" : newType, optionA: '', optionB: '', optionC: '', optionD: '' };
@@ -713,6 +713,7 @@ export default function CreateAssignment() {
       else if (newType === "fill_blank") updates.correctAnswer = '';
       else if (newType === "whiteboard") { updates.correctAnswer = ''; updates.optionA = 'lined'; }
       else if (newType === "whiteboard_blank") { updates.correctAnswer = ''; updates.optionA = 'blank'; }
+      else if (newType === "dictation") { updates.correctAnswer = ''; updates.optionA = ''; updates.optionB = '3'; updates.optionC = 'true'; }
       else updates.correctAnswer = 'A';
       newQs[index] = { ...newQs[index], ...updates } as CreateQuestionBody;
       return newQs;
@@ -793,10 +794,10 @@ export default function CreateAssignment() {
 
   // ── Math toolbar panel ──
   const MathPanel = ({ onInsert }: { onInsert: (sym: string) => void }) => (
-    <div className="p-2.5 bg-muted/60 rounded-lg border border-purple-200 dark:border-purple-800 mt-1.5">
+    <div className="p-2.5 bg-muted/60 rounded-lg border border-primary/20 mt-1.5">
       {MATH_GROUPS.map(group => (
         <div key={group.labelEn} className="mb-1.5">
-          <span className="text-[10px] font-bold text-purple-500/70 uppercase tracking-wider block mb-1">
+          <span className="text-[10px] font-bold text-primary/60 uppercase tracking-wider block mb-1">
             {lang === "ar" ? group.labelAr : group.labelEn}
           </span>
           <div className="flex flex-wrap gap-1">
@@ -811,6 +812,83 @@ export default function CreateAssignment() {
       ))}
     </div>
   );
+
+  // ── Dictation question editor ──
+  const DictationQuestionEditor = ({
+    text, maxListens, allowErrors, lang: l,
+    onTextChange, onMaxListensChange, onAllowErrorsChange,
+  }: {
+    text: string; maxListens: number; allowErrors: boolean; lang: string;
+    onTextChange: (v: string) => void;
+    onMaxListensChange: (v: number) => void;
+    onAllowErrorsChange: (v: boolean) => void;
+  }) => {
+    const [speaking, setSpeaking] = useState(false);
+    const previewTts = () => {
+      if (!text.trim()) return;
+      window.speechSynthesis.cancel();
+      if (speaking) { setSpeaking(false); return; }
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = "ar-SA";
+      utt.rate = 0.85;
+      utt.onend = () => setSpeaking(false);
+      utt.onerror = () => setSpeaking(false);
+      setSpeaking(true);
+      window.speechSynthesis.speak(utt);
+    };
+    return (
+      <div className="bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl p-3 space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Volume2 className="w-4 h-4 text-teal-600" />
+          <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
+            {l === "ar" ? "نص الإملاء الصوتي" : "Dictation Text"}
+          </span>
+        </div>
+        <textarea
+          value={text}
+          onChange={e => onTextChange(e.target.value)}
+          placeholder={l === "ar" ? "اكتب الجملة أو الفقرة التي سيسمعها الطالب..." : "Write the sentence or paragraph the student will hear..."}
+          rows={3}
+          dir="auto"
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400 transition-colors"
+        />
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            type="button"
+            onClick={previewTts}
+            disabled={!text.trim()}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${speaking ? "bg-red-100 text-red-700 border border-red-300" : "bg-teal-600 text-white hover:bg-teal-700"}`}
+          >
+            {speaking ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            {speaking ? (l === "ar" ? "إيقاف" : "Stop") : (l === "ar" ? "استمع للمعاينة" : "Preview Audio")}
+          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">{l === "ar" ? "عدد الاستماع:" : "Max listens:"}</span>
+            <select
+              value={maxListens}
+              onChange={e => onMaxListensChange(parseInt(e.target.value))}
+              className="px-2 py-1 rounded-md bg-background border border-border text-xs font-bold focus:outline-none"
+            >
+              {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onAllowErrorsChange(!allowErrors)}
+              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${allowErrors ? "bg-teal-500" : "bg-gray-300 dark:bg-gray-600"}`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${allowErrors ? (l === "ar" ? "right-0.5" : "left-[18px]") : (l === "ar" ? "left-0.5" : "left-0.5")}`} />
+            </button>
+            <span className="text-xs text-muted-foreground">{l === "ar" ? "قبول الأخطاء الإملائية البسيطة" : "Allow minor spelling errors"}</span>
+          </div>
+        </div>
+        <p className="text-[10px] text-teal-600/70 dark:text-teal-400/60">
+          🎙 {l === "ar" ? "سيسمع الطالب النص ثم يكتب ما سمعه. يُصحَّح تلقائياً." : "Student hears the text then types what they heard. Auto-graded."}
+        </p>
+      </div>
+    );
+  };
 
   // ── Toggle helper ──
   const Toggle = ({ on, onChange, color = "green" }: { on: boolean; onChange: () => void; color?: string }) => (
@@ -1172,12 +1250,13 @@ export default function CreateAssignment() {
                                   <select value={q.questionType === "whiteboard" ? (q.optionA === "lined" ? "whiteboard" : "whiteboard_blank") : (q.questionType || "mcq")}
                                     onChange={e => {
                                     const v = e.target.value;
-                                    if (v === "mcq" || v === "true_false" || v === "fill_blank" || v === "whiteboard" || v === "whiteboard_blank") handleQuestionTypeChange(qIndex, v);
+                                    if (v === "mcq" || v === "true_false" || v === "fill_blank" || v === "whiteboard" || v === "whiteboard_blank" || v === "dictation") handleQuestionTypeChange(qIndex, v);
                                   }}
                                     className="px-2 py-1 rounded-md bg-muted/50 border border-border text-[11px] font-bold focus:outline-none focus:border-primary transition-all">
                                     <option value="mcq">{t.createAssignment.questionTypeMcq}</option>
                                     <option value="true_false">{t.createAssignment.questionTypeTrueFalse}</option>
                                     <option value="fill_blank">{t.createAssignment.questionTypeFillBlank}</option>
+                                    <option value="dictation">🎙 {lang === "ar" ? "إملاء صوتي" : "Dictation"}</option>
                                     <option value="whiteboard_blank">{t.createAssignment.questionTypeWhiteboardBlank}</option>
                                     <option value="whiteboard">{t.createAssignment.questionTypeWhiteboard}</option>
                                   </select>
@@ -1367,6 +1446,22 @@ export default function CreateAssignment() {
                                   )}
                                   <p className="text-[10px] text-muted-foreground/60">{lang === "ar" ? "ستُقبل أي من هذه الإجابات (غير حساسة للأحرف)" : "Any of these answers will be accepted (case-insensitive)"}</p>
                                 </div>
+                              )}
+
+                              {/* Dictation question */}
+                              {q.questionType === "dictation" && (
+                                <DictationQuestionEditor
+                                  text={q.optionA || ""}
+                                  maxListens={parseInt(q.optionB || "3") || 3}
+                                  allowErrors={q.optionC !== "false"}
+                                  lang={lang}
+                                  onTextChange={v => {
+                                    handleQuestionChange(qIndex, "optionA", v);
+                                    handleQuestionChange(qIndex, "correctAnswer", v);
+                                  }}
+                                  onMaxListensChange={v => handleQuestionChange(qIndex, "optionB", String(v))}
+                                  onAllowErrorsChange={v => handleQuestionChange(qIndex, "optionC", v ? "true" : "false")}
+                                />
                               )}
 
                               {q.questionType === "whiteboard" && (

@@ -888,6 +888,7 @@ export function setupGameSocket(io: Server) {
               if (qt === "mcq") return q.optionA && q.optionB;
               if (qt === "true_false") return q.correctAnswer === "true" || q.correctAnswer === "false";
               if (qt === "fill_blank") return q.correctAnswer && q.correctAnswer.trim().length > 0;
+              if (qt === "dictation") return q.optionA && q.optionA.trim().length > 0;
               return false;
             }
           );

@@ -771,6 +771,9 @@ export default function GamePlay() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const selectedAnswerRef = useRef<string | null>(null);
   const [fillBlankInput, setFillBlankInput] = useState("");
+  const [dictationInput, setDictationInput] = useState("");
+  const [dictationListenCount, setDictationListenCount] = useState(0);
+  const [dictationSpeaking, setDictationSpeaking] = useState(false);
   const [myScore, setMyScore] = useState(0);
   const [myStreak, setMyStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -994,6 +997,10 @@ export default function GamePlay() {
             setSelectedAnswer(null);
             selectedAnswerRef.current = null;
             setFillBlankInput("");
+            setDictationInput("");
+            setDictationListenCount(0);
+            setDictationSpeaking(false);
+            window.speechSynthesis?.cancel();
             setShowConfetti(false);
             tickPlayedRef.current = false;
             setIsDoublePoints(!!q.isDoublePoints);
@@ -1050,6 +1057,10 @@ export default function GamePlay() {
       setSelectedAnswer(null);
       selectedAnswerRef.current = null;
       setFillBlankInput("");
+      setDictationInput("");
+      setDictationListenCount(0);
+      setDictationSpeaking(false);
+      window.speechSynthesis?.cancel();
       setShowConfetti(false);
       tickPlayedRef.current = false;
       setIsDoublePoints(!!q.isDoublePoints);
@@ -2182,7 +2193,7 @@ export default function GamePlay() {
             { key: "true", text: lang === "ar" ? "صح ✓" : "True ✓" },
             { key: "false", text: lang === "ar" ? "خطأ ✗" : "False ✗" },
           ]
-        : qType === "fill_blank"
+        : qType === "fill_blank" || qType === "dictation"
           ? []
           : [
               { key: "A", text: question?.optionA },
@@ -3027,6 +3038,93 @@ export default function GamePlay() {
                 {t.gamePlay.frozenDesc}
               </p>
             </motion.div>
+          </div>
+        ) : qType === "dictation" ? (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8 gap-4">
+            {!selectedAnswer ? (
+              <>
+                {/* Listen button */}
+                <div className="flex flex-col items-center gap-2">
+                  {(() => {
+                    const maxListens = parseInt(question?.optionB || "3") || 3;
+                    const remaining = maxListens - dictationListenCount;
+                    const canListen = remaining > 0 && !dictationSpeaking;
+                    const playDictation = () => {
+                      if (!canListen || !question?.optionA) return;
+                      window.speechSynthesis.cancel();
+                      const utt = new SpeechSynthesisUtterance(question.optionA);
+                      utt.lang = "ar-SA";
+                      utt.rate = 0.85;
+                      utt.onend = () => setDictationSpeaking(false);
+                      utt.onerror = () => setDictationSpeaking(false);
+                      setDictationSpeaking(true);
+                      setDictationListenCount(c => c + 1);
+                      window.speechSynthesis.speak(utt);
+                    };
+                    return (
+                      <>
+                        <button
+                          onClick={playDictation}
+                          disabled={!canListen}
+                          className={`flex items-center gap-3 px-8 py-5 rounded-2xl font-black text-lg shadow-lg transition-all active:scale-95 touch-manipulation ${dictationSpeaking ? "bg-teal-400/20 border-2 border-teal-300 text-teal-200 animate-pulse" : canListen ? "bg-teal-500 hover:bg-teal-400 text-white" : "bg-white/10 text-white/40 cursor-not-allowed"}`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                          </svg>
+                          {dictationSpeaking
+                            ? (lang === "ar" ? "جارٍ الاستماع..." : "Listening...")
+                            : (lang === "ar" ? "استمع" : "Listen")}
+                        </button>
+                        <p className="text-white/50 text-sm">
+                          {lang === "ar"
+                            ? `${remaining} مرة متبقية من ${maxListens}`
+                            : `${remaining} listen${remaining !== 1 ? "s" : ""} remaining of ${maxListens}`}
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+                {/* Dictation input */}
+                <input
+                  type="text"
+                  value={dictationInput}
+                  onChange={(e) => setDictationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && dictationInput.trim())
+                      submitAnswer(dictationInput.trim());
+                  }}
+                  placeholder={lang === "ar" ? "اكتب ما سمعته..." : "Type what you heard..."}
+                  className="w-full max-w-lg px-6 py-4 rounded-2xl bg-white/10 border-2 border-white/30 text-white text-xl font-bold text-center placeholder:text-white/40 focus:outline-none focus:border-teal-400 focus:ring-4 focus:ring-teal-400/30"
+                  dir="auto"
+                  autoFocus={dictationListenCount > 0}
+                />
+                <button
+                  onClick={() => {
+                    if (dictationInput.trim()) submitAnswer(dictationInput.trim());
+                  }}
+                  disabled={!dictationInput.trim()}
+                  className="px-10 py-4 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-2xl font-black text-lg shadow-lg disabled:opacity-40 active:scale-95 transition-transform duration-75 touch-manipulation"
+                >
+                  {t.gamePlay.submit}
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <div className={`text-center text-2xl font-black ${answerResult?.correct ? "text-green-400" : "text-red-400"}`}>
+                  {selectedAnswer}
+                </div>
+                {!answerResult?.correct && correctAnswer && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center gap-2 bg-green-500/20 border-2 border-green-400/60 px-5 py-3 rounded-2xl"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <span className="text-green-300 font-black text-lg">{correctAnswer}</span>
+                  </motion.div>
+                )}
+              </div>
+            )}
           </div>
         ) : qType === "fill_blank" ? (
           <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8 gap-4">
