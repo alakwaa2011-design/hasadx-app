@@ -67,6 +67,8 @@ import {
 } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
 import { AvatarDisplay } from "@/components/avatar-display";
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
 const WOOMEEZ_FLASH_STYLES = `
   @keyframes successFlash { 0% { box-shadow: 0 0 10px rgba(0,255,0,0); } 50% { box-shadow: 0 0 50px rgba(0,255,0,0.9); } 100% { box-shadow: 0 0 10px rgba(0,255,0,0); } }
   @keyframes errorFlash { 0% { box-shadow: 0 0 10px rgba(255,0,0,0); } 50% { box-shadow: 0 0 50px rgba(255,0,0,0.9); } 100% { box-shadow: 0 0 10px rgba(255,0,0,0); } }
@@ -1106,6 +1108,9 @@ export default function GamePlay() {
       setSelectedAnswer(null);
       selectedAnswerRef.current = null;
       setFillBlankInput("");
+      setDictationInput("");
+      setDictationListenCount(0);
+      setDictationSpeaking(false);
       setShowConfetti(false);
       tickPlayedRef.current = false;
       setIsDoublePoints(false);
@@ -3049,17 +3054,35 @@ export default function GamePlay() {
                     const maxListens = parseInt(question?.optionB || "3") || 3;
                     const remaining = maxListens - dictationListenCount;
                     const canListen = remaining > 0 && !dictationSpeaking;
-                    const playDictation = () => {
+                    const playDictation = async () => {
                       if (!canListen || !question?.optionA) return;
-                      window.speechSynthesis.cancel();
-                      const utt = new SpeechSynthesisUtterance(question.optionA);
-                      utt.lang = "ar-SA";
-                      utt.rate = 0.85;
-                      utt.onend = () => setDictationSpeaking(false);
-                      utt.onerror = () => setDictationSpeaking(false);
                       setDictationSpeaking(true);
                       setDictationListenCount(c => c + 1);
-                      window.speechSynthesis.speak(utt);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/tts`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          credentials: "include",
+                          body: JSON.stringify({ text: question.optionA, voice: "nova", speed: 0.85 }),
+                        });
+                        if (!res.ok) throw new Error("tts failed");
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const audio = new Audio(url);
+                        audio.onended = () => { setDictationSpeaking(false); URL.revokeObjectURL(url); };
+                        audio.onerror = () => { setDictationSpeaking(false); URL.revokeObjectURL(url); };
+                        await audio.play();
+                      } catch {
+                        setDictationSpeaking(false);
+                        // fallback to Web Speech API
+                        if ("speechSynthesis" in window) {
+                          const utt = new SpeechSynthesisUtterance(question.optionA);
+                          utt.lang = "ar-SA"; utt.rate = 0.85;
+                          utt.onend = () => setDictationSpeaking(false);
+                          window.speechSynthesis.speak(utt);
+                          setDictationSpeaking(true);
+                        }
+                      }
                     };
                     return (
                       <>

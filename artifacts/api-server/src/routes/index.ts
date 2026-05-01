@@ -40,6 +40,7 @@ import libraryRouter from "./library";
 import customColumnsRouter from "./custom-columns";
 import letrlyRouter from "./letrly";
 import presentationsRouter from "./presentations";
+import ttsRouter from "./tts";
 
 const router: IRouter = Router();
 
@@ -84,5 +85,6 @@ router.use(libraryRouter);
 router.use(customColumnsRouter);
 router.use(letrlyRouter);
 router.use(presentationsRouter);
+router.use(ttsRouter);
 
 export default router;

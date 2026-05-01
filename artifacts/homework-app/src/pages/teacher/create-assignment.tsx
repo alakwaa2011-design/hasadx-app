@@ -824,17 +824,35 @@ export default function CreateAssignment() {
     onAllowErrorsChange: (v: boolean) => void;
   }) => {
     const [speaking, setSpeaking] = useState(false);
-    const previewTts = () => {
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const previewTts = async () => {
       if (!text.trim()) return;
-      window.speechSynthesis.cancel();
-      if (speaking) { setSpeaking(false); return; }
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.lang = "ar-SA";
-      utt.rate = 0.85;
-      utt.onend = () => setSpeaking(false);
-      utt.onerror = () => setSpeaking(false);
+      if (speaking) {
+        audioRef.current?.pause();
+        if (audioRef.current) audioRef.current.currentTime = 0;
+        setSpeaking(false);
+        return;
+      }
       setSpeaking(true);
-      window.speechSynthesis.speak(utt);
+      try {
+        const res = await fetch(`${API_BASE}/api/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ text: text.trim(), voice: "nova", speed: 0.85 }),
+        });
+        if (!res.ok) throw new Error("TTS failed");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => { setSpeaking(false); URL.revokeObjectURL(url); };
+        audio.onerror = () => { setSpeaking(false); URL.revokeObjectURL(url); };
+        await audio.play();
+      } catch {
+        setSpeaking(false);
+        toast.error(l === "ar" ? "تعذّر تشغيل الصوت" : "Could not play audio");
+      }
     };
     return (
       <div className="bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl p-3 space-y-3">
