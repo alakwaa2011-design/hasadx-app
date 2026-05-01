@@ -596,7 +596,7 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
       ));
 
     const assignmentIds = assignments.map(a => a.id);
-    let submissions: { assignmentId: number; studentName: string; studentId: number | null; earnedPoints: number; totalPoints: number; teacherAdjustedPoints: number | null; score: number; correctAnswers: number; totalQuestions: number }[] = [];
+    let submissions: { id: number; assignmentId: number; studentName: string; studentId: number | null; earnedPoints: number; totalPoints: number; teacherAdjustedPoints: number | null; score: number; correctAnswers: number; totalQuestions: number }[] = [];
 
     // Helper: round to 2 decimal places to keep the gradebook clean.
     const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -604,6 +604,7 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
     if (assignmentIds.length > 0) {
       const rawSubmissions = await db
         .select({
+          id: submissionsTable.id,
           assignmentId: submissionsTable.assignmentId,
           studentName: submissionsTable.studentName,
           studentId: submissionsTable.studentId,

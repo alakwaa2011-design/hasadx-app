@@ -22,6 +22,7 @@ type Assignment = {
   displayTotalPoints: number | null;
 };
 type Submission = {
+  id: number;
   assignmentId: number;
   studentName: string;
   studentId: number | null;
@@ -68,6 +69,12 @@ export default function ClassGrades() {
   const [editTotalFor, setEditTotalFor] = useState<number | null>(null);
   const [editTotalValue, setEditTotalValue] = useState("");
   const [savingTotal, setSavingTotal] = useState(false);
+
+  /* inline grade editing: key = `${studentId}_${assignmentId}` */
+  type GradeEditKey = string;
+  const [editingGrade, setEditingGrade] = useState<GradeEditKey | null>(null);
+  const [editingGradeValue, setEditingGradeValue] = useState("");
+  const [savingGrade, setSavingGrade] = useState(false);
 
   const autoSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -143,19 +150,21 @@ export default function ClassGrades() {
   /* ── Copy full sheet to Excel ── */
   const handleCopyExcel = () => {
     const header = [
+      "#",
       lang === "ar" ? "الطالب" : "Student",
       ...assignments.map(a => a.title),
       ...customCols.map(c => c.name),
       lang === "ar" ? "المعدل %" : "Avg %",
     ].join("\t");
 
-    const rows = sortedStudents.map(student => {
+    const rows = sortedStudents.map((student, idx) => {
       const assignGrades = assignments.map(a => {
         const sub = getSubmission(student.id, student.name, a.id);
-        return sub ? `${sub.teacherAdjustedPoints ?? sub.earnedPoints}/${sub.totalPoints}` : "-";
+        // Output plain numbers so Excel never misreads fractions as dates
+        return sub ? String(sub.teacherAdjustedPoints ?? sub.earnedPoints) : "-";
       });
       const customGrades = customCols.map(c => grades[gradeKey(student.id, c.id)] ?? "");
-      return [student.name, ...assignGrades, ...customGrades, `${getStudentAverage(student)}%`].join("\t");
+      return [idx + 1, student.name, ...assignGrades, ...customGrades, `${getStudentAverage(student)}%`].join("\t");
     });
 
     navigator.clipboard.writeText([header, ...rows].join("\n")).then(() => {
@@ -234,6 +243,47 @@ export default function ClassGrades() {
     } finally {
       setSavingTotal(false);
     }
+  };
+
+  /* ── Save teacher grade override for an assignment submission ── */
+  const handleSaveGrade = async (sub: Submission, rawValue: string) => {
+    const trimmed = rawValue.trim();
+    if (trimmed === "") {
+      // Clear override — restore earned points
+      setSavingGrade(true);
+      try {
+        await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ teacherAdjustedPoints: null }),
+        });
+        setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, teacherAdjustedPoints: null } : s));
+        toast.success(lang === "ar" ? "تمت إزالة التعديل" : "Override cleared");
+      } catch { toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed"); }
+      finally { setSavingGrade(false); setEditingGrade(null); }
+      return;
+    }
+    const num = parseFloat(trimmed.replace(",", "."));
+    if (isNaN(num) || num < 0 || num > sub.totalPoints) {
+      toast.error(lang === "ar" ? `أدخل رقماً بين 0 و ${sub.totalPoints}` : `Enter a number between 0 and ${sub.totalPoints}`);
+      return;
+    }
+    setSavingGrade(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ teacherAdjustedPoints: num }),
+      });
+      if (r.ok) {
+        setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, teacherAdjustedPoints: num } : s));
+        toast.success(lang === "ar" ? "تم تعديل الدرجة ✓" : "Grade updated ✓");
+        setEditingGrade(null);
+      } else { toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed"); }
+    } catch { toast.error(lang === "ar" ? "خطأ" : "Error"); }
+    finally { setSavingGrade(false); }
   };
 
   /* ── Cell edit (auto-save) ── */
@@ -467,9 +517,42 @@ export default function ClassGrades() {
                           if (!sub) return <td key={a.id} className="px-3 py-2.5 text-center"><span className="text-xs text-muted-foreground/50">—</span></td>;
                           const earned = sub.teacherAdjustedPoints ?? sub.earnedPoints;
                           const pct = sub.totalPoints > 0 ? Math.round((earned / sub.totalPoints) * 100) : 0;
+                          const cellKey = `${student.id}_${a.id}`;
+                          const isEditing = editingGrade === cellKey;
                           return (
-                            <td key={a.id} className="px-3 py-2.5 text-center">
-                              <span className={`font-bold text-xs ${getScoreColor(pct)}`}>{earned}/{sub.totalPoints}</span>
+                            <td key={a.id} className="px-1 py-1 text-center">
+                              {isEditing ? (
+                                <div className="flex items-center gap-1 justify-center">
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    min={0}
+                                    max={sub.totalPoints}
+                                    step="0.5"
+                                    defaultValue={earned}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter") handleSaveGrade(sub, (e.target as HTMLInputElement).value);
+                                      if (e.key === "Escape") setEditingGrade(null);
+                                    }}
+                                    onBlur={e => handleSaveGrade(sub, e.target.value)}
+                                    className="w-14 text-center px-1 py-0.5 rounded border border-primary/50 text-xs font-bold bg-card focus:outline-none focus:ring-1 focus:ring-primary"
+                                    disabled={savingGrade}
+                                  />
+                                  <span className="text-[10px] text-muted-foreground">/{sub.totalPoints}</span>
+                                </div>
+                              ) : (
+                                <button
+                                  title={lang === "ar" ? "انقر للتعديل" : "Click to edit"}
+                                  onClick={() => { setEditingGrade(cellKey); setEditingGradeValue(String(earned)); }}
+                                  className={`group inline-flex items-center gap-1 font-bold text-xs ${getScoreColor(pct)} hover:ring-1 hover:ring-primary/40 rounded px-1.5 py-0.5 transition-all`}
+                                >
+                                  {sub.teacherAdjustedPoints != null && (
+                                    <span title={lang === "ar" ? "درجة معدّلة" : "Adjusted"} className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                                  )}
+                                  {earned}/{sub.totalPoints}
+                                  <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 shrink-0" />
+                                </button>
+                              )}
                             </td>
                           );
                         })}

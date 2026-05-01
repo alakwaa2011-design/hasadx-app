@@ -7,6 +7,8 @@ export const teacherClassesTable = pgTable(
     id: serial("id").primaryKey(),
     teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    /** Optional group/stage name (e.g. "خامس", "سادس") to organize classes */
+    groupName: text("group_name"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({

@@ -26,10 +26,10 @@ router.get("/teacher/classes", requireAuth, async (req: any, res) => {
     const teacherId = req.session.teacherId;
     await backfillFromStudents(teacherId);
     const rows = await db
-      .select({ id: teacherClassesTable.id, name: teacherClassesTable.name })
+      .select({ id: teacherClassesTable.id, name: teacherClassesTable.name, groupName: teacherClassesTable.groupName })
       .from(teacherClassesTable)
       .where(eq(teacherClassesTable.teacherId, teacherId))
-      .orderBy(teacherClassesTable.name);
+      .orderBy(teacherClassesTable.groupName, teacherClassesTable.name);
     res.json(rows);
   } catch (err) {
     req.log?.error(err, "List teacher classes error");
@@ -91,6 +91,23 @@ router.patch("/teacher/classes/rename", requireAuth, async (req: any, res) => {
     res.json({ ok: true });
   } catch (err) {
     req.log?.error(err, "Rename teacher class error");
+    res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/** PATCH /api/teacher/classes/group — assign a class to a group */
+router.patch("/teacher/classes/group", requireAuth, async (req: any, res) => {
+  try {
+    const teacherId = req.session.teacherId;
+    const { className, groupName } = req.body || {};
+    if (!className) return res.status(400).json({ message: "اسم الصف مطلوب" });
+    await db
+      .update(teacherClassesTable)
+      .set({ groupName: groupName || null })
+      .where(and(eq(teacherClassesTable.teacherId, teacherId), eq(teacherClassesTable.name, className)));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log?.error(err, "Group class error");
     res.status(500).json({ message: "خطأ" });
   }
 });

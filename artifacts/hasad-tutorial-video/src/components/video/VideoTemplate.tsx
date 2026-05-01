@@ -6,8 +6,10 @@ import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
+import { TutorialFull } from './video_scenes/TutorialFull';
 
 export const SCENE_DURATIONS: Record<string, number> = {
+  tutorial: 47000,
   open: 10000,
   create: 18000,
   wameed: 18000,
@@ -16,6 +18,7 @@ export const SCENE_DURATIONS: Record<string, number> = {
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
+  tutorial: TutorialFull,
   open: Scene1,
   create: Scene2,
   wameed: Scene3,
@@ -23,7 +26,7 @@ const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
   close: Scene5,
 };
 
-const SCENE_ORDER = ['open', 'create', 'wameed', 'hack', 'close'];
+const SCENE_ORDER = ['tutorial', 'open', 'create', 'wameed', 'hack', 'close'];
 
 export default function VideoTemplate({
   durations = SCENE_DURATIONS,

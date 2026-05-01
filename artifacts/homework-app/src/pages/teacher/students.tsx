@@ -17,6 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
+  Layers, UserCheck,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -55,9 +56,10 @@ function getGroupKey(student: Student) {
 
 /* ─── Draggable Student Row ─────────────────────────────── */
 function StudentRow({
-  student, onEdit, onDelete, onMove, onResetPassword, folders, colorIdx, isOverlay = false,
+  student, idx, onEdit, onDelete, onMove, onResetPassword, folders, colorIdx, isOverlay = false,
 }: {
   student: Student;
+  idx: number;
   onEdit: (s: Student) => void;
   onDelete: (id: number) => void;
   onMove: (id: number, toFolder: string) => void;
@@ -99,6 +101,7 @@ function StudentRow({
         </button>
       )}
 
+      <span className="flex-shrink-0 text-[10px] font-bold text-muted-foreground/60 w-5 text-center">{idx}</span>
       <span className="flex-1 text-sm font-medium text-foreground truncate">{student.name}</span>
 
       {student.parentPhone && (
@@ -180,7 +183,7 @@ function StudentRow({
 function ClassBlock({
   className: folderName, students, allFolders, isExpanded, onToggle, colorIdx,
   onRename, onDeleteClass, onEditStudent, onDeleteStudent, onMoveStudent,
-  onAddStudent, onBulkAdd, onResetPassword,
+  onAddStudent, onBulkAdd, onResetPassword, groupName, allGroups, onAssignGroup, onAttendance,
 }: {
   className: string;
   students: Student[];
@@ -196,6 +199,10 @@ function ClassBlock({
   onAddStudent: (folder: string) => void;
   onBulkAdd: (folder: string) => void;
   onResetPassword: (s: Student) => void;
+  groupName?: string;
+  allGroups?: string[];
+  onAssignGroup?: (className: string, groupName: string | null) => void;
+  onAttendance?: (className: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: `folder-${folderName}` });
@@ -204,6 +211,7 @@ function ClassBlock({
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameVal, setRenameVal] = useState(folderName);
   const renameRef = useRef<HTMLInputElement>(null);
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
 
   const isUngrouped = folderName === UNGROUPED;
   const color = CLASS_COLORS[colorIdx % CLASS_COLORS.length];
@@ -297,6 +305,58 @@ function ClassBlock({
                   <span className="hidden sm:inline">الدرجات</span>
                 </Link>
 
+                {/* Attendance */}
+                {onAttendance && (
+                  <button
+                    onClick={() => onAttendance(folderName)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-500 text-white text-xs font-medium hover:opacity-90 transition-opacity"
+                    title="تسجيل الحضور والغياب"
+                  >
+                    <UserCheck size={13} />
+                    <span className="hidden sm:inline">حضور</span>
+                  </button>
+                )}
+
+                {/* Group assignment */}
+                {onAssignGroup && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowGroupMenu(v => !v)}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 transition-opacity
+                        ${groupName ? "bg-violet-500 text-white" : "bg-muted text-muted-foreground border border-border"}`}
+                      title="تعيين مجموعة/مرحلة"
+                    >
+                      <Layers size={13} />
+                      <span className="hidden sm:inline">{groupName || "مجموعة"}</span>
+                    </button>
+                    {showGroupMenu && (
+                      <div className="absolute left-0 top-9 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-44 py-1 text-sm">
+                        <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border">تعيين إلى مجموعة:</p>
+                        {(allGroups ?? []).map(g => (
+                          <button key={g}
+                            onClick={() => { onAssignGroup(folderName, g); setShowGroupMenu(false); }}
+                            className={`w-full text-right px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2
+                              ${groupName === g ? "text-violet-600 font-bold" : "text-foreground"}`}
+                          >
+                            {groupName === g && <Check size={12} className="shrink-0" />}
+                            {g}
+                          </button>
+                        ))}
+                        {groupName && (
+                          <button
+                            onClick={() => { onAssignGroup(folderName, null); setShowGroupMenu(false); }}
+                            className="w-full text-right px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-xs"
+                          >
+                            إزالة من المجموعة
+                          </button>
+                        )}
+                        {(allGroups ?? []).length === 0 && (
+                          <p className="px-3 py-2 text-xs text-muted-foreground">لا توجد مجموعات — أنشئ مجموعة أولاً</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <button
                   onClick={() => onAddStudent(folderName)}
@@ -381,10 +441,11 @@ function ClassBlock({
                         لا يوجد طلاب في هذا الصف بعد
                       </div>
                     ) : (
-                      sortedClassStudents.map((s) => (
+                      sortedClassStudents.map((s, sIdx) => (
                         <StudentRow
                           key={s.id}
                           student={s}
+                          idx={sIdx + 1}
                           onEdit={onEditStudent}
                           onDelete={onDeleteStudent}
                           onMove={onMoveStudent}
@@ -438,6 +499,20 @@ export default function StudentsPage() {
   const [folderOrder, setFolderOrder] = useState<string[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
+  /* class-group mapping: className -> groupName */
+  const [classGroupMap, setClassGroupMap] = useState<Record<string, string>>({});
+  /* new-group dialog */
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [groupTargetClass, setGroupTargetClass] = useState("");
+
+  /* attendance panel */
+  const [attendanceClass, setAttendanceClass] = useState<string | null>(null);
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  type AttendanceStatus = "present" | "absent" | "late" | "excused";
+  const [attendanceMap, setAttendanceMap] = useState<Record<number, AttendanceStatus>>({});
+  const [savingAttendance, setSavingAttendance] = useState(false);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeStudent, setActiveStudent] = useState<Student | null>(null);
 
@@ -482,9 +557,14 @@ export default function StudentsPage() {
       if (studentsRes.status === 401) { setLocation("/login"); return; }
       const data: Student[] = await studentsRes.json();
       setStudents(data);
-      const persistedClasses: string[] = classesRes.ok
-        ? ((await classesRes.json()) as Array<{ name: string }>).map((c) => c.name)
+      const persistedClassesData: Array<{ name: string; groupName?: string | null }> = classesRes.ok
+        ? await classesRes.json()
         : [];
+      const persistedClasses: string[] = persistedClassesData.map(c => c.name);
+      // Build groupMap from classes response
+      const map: Record<string, string> = {};
+      persistedClassesData.forEach(c => { if (c.groupName) map[c.name] = c.groupName; });
+      setClassGroupMap(map);
       const fromStudents = data.map((s) => s.gradeLevel).filter((g): g is string => !!g);
       const namedSet = new Set<string>([...persistedClasses, ...fromStudents]);
       setFolderOrder((prev) => {
@@ -705,6 +785,89 @@ export default function StudentsPage() {
     }
   };
 
+  /* ── Assign/move class to group ── */
+  const handleAssignGroup = async (className: string, groupName: string | null) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/teacher/classes/group`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ className, groupName }),
+      });
+      if (res.ok) {
+        setClassGroupMap(prev => {
+          const next = { ...prev };
+          if (groupName) next[className] = groupName;
+          else delete next[className];
+          return next;
+        });
+        toast.success(groupName ? `تم تعيين "${className}" ضمن "${groupName}"` : `تمت إزالة "${className}" من المجموعة`);
+      } else {
+        toast.error("حدث خطأ");
+      }
+    } catch {
+      toast.error("حدث خطأ");
+    }
+  };
+
+  /* ── Attendance ── */
+  const openAttendance = async (className: string) => {
+    setAttendanceClass(className);
+    const currentDate = attendanceDate;
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/attendance?gradeLevel=${encodeURIComponent(className)}&date=${currentDate}`,
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const rows: Array<{ studentId: number; status: string }> = await res.json();
+        const map: Record<number, AttendanceStatus> = {};
+        rows.forEach(r => { map[r.studentId] = r.status as AttendanceStatus; });
+        setAttendanceMap(map);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const loadAttendanceForDate = async (className: string, date: string) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/attendance?gradeLevel=${encodeURIComponent(className)}&date=${date}`,
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const rows: Array<{ studentId: number; status: string }> = await res.json();
+        const map: Record<number, AttendanceStatus> = {};
+        rows.forEach(r => { map[r.studentId] = r.status as AttendanceStatus; });
+        setAttendanceMap(map);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const saveAttendance = async () => {
+    if (!attendanceClass) return;
+    const classStudents = studentsInFolder(attendanceClass);
+    if (classStudents.length === 0) return;
+    setSavingAttendance(true);
+    try {
+      const records = classStudents.map(s => ({
+        studentId: s.id,
+        status: attendanceMap[s.id] ?? "present",
+      }));
+      const res = await fetch(`${API_BASE}/api/attendance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ date: attendanceDate, records }),
+      });
+      if (res.ok) toast.success("تم حفظ الحضور ✓");
+      else toast.error("فشل حفظ الحضور");
+    } catch {
+      toast.error("خطأ في الحفظ");
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
   const handleSaveStudent = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
@@ -917,6 +1080,7 @@ export default function StudentsPage() {
   const totalCount = students.length;
   const namedFolders = folders.filter((f) => f !== UNGROUPED);
   const hasUngrouped = folders.includes(UNGROUPED);
+  const allGroups = [...new Set(Object.values(classGroupMap))].sort((a, b) => a.localeCompare(b, "ar"));
 
   return (
     <Layout>
@@ -979,6 +1143,14 @@ export default function StudentsPage() {
               صف جديد
             </button>
 
+            <button
+              onClick={() => setShowAddGroup(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 text-white text-sm font-semibold rounded-xl hover:bg-violet-600 transition-colors shadow-md shadow-violet-200/50"
+            >
+              <Layers size={15} />
+              مجموعة
+            </button>
+
             {totalCount > 0 && (
               <button
                 onClick={() => setShowDeleteAll(true)}
@@ -1027,31 +1199,93 @@ export default function StudentsPage() {
                 items={folders.map((f) => `folder-${f}`)}
                 strategy={verticalListSortingStrategy}
               >
-                {namedFolders.map((folder, idx) => (
-                  <ClassBlock
-                    key={folder}
-                    className={folder}
-                    students={studentsInFolder(folder)}
-                    allFolders={folders}
-                    isExpanded={expandedFolders.has(folder)}
-                    colorIdx={idx}
-                    onToggle={() => {
-                      setExpandedFolders((prev) => {
-                        const next = new Set(prev);
-                        next.has(folder) ? next.delete(folder) : next.add(folder);
-                        return next;
-                      });
-                    }}
-                    onRename={handleRenameClass}
-                    onDeleteClass={handleDeleteClass}
-                    onEditStudent={openEditStudent}
-                    onDeleteStudent={handleDeleteStudent}
-                    onMoveStudent={handleMoveStudent}
-                    onAddStudent={openAddStudent}
-                    onBulkAdd={openBulkAdd}
-                    onResetPassword={openResetPassword}
-                  />
-                ))}
+                {/* Group classes by groupName */}
+                {(() => {
+                  const ungroupedClasses = namedFolders.filter(f => !classGroupMap[f]);
+                  const groupedClasses = allGroups.map(grp => ({
+                    name: grp,
+                    classes: namedFolders.filter(f => classGroupMap[f] === grp),
+                  })).filter(g => g.classes.length > 0);
+                  
+
+                  return (
+                    <>
+                      {/* Groups with headers */}
+                      {groupedClasses.map(group => (
+                        <div key={group.name} className="mb-3">
+                          <div className="flex items-center gap-2 px-2 mb-2">
+                            <Layers size={13} className="text-violet-500 shrink-0" />
+                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{group.name}</span>
+                            <div className="flex-1 h-px bg-violet-200 dark:bg-violet-800/50" />
+                            <span className="text-[10px] text-muted-foreground">{group.classes.length} صف</span>
+                          </div>
+                          <div className="pr-3 border-r-2 border-violet-200 dark:border-violet-800/50 space-y-2">
+                            {group.classes.map(folder => {
+                              const idx = namedFolders.indexOf(folder);
+                              return (
+                                <ClassBlock
+                                  key={folder}
+                                  className={folder}
+                                  students={studentsInFolder(folder)}
+                                  allFolders={folders}
+                                  isExpanded={expandedFolders.has(folder)}
+                                  colorIdx={idx}
+                                  groupName={classGroupMap[folder]}
+                                  allGroups={allGroups}
+                                  onAssignGroup={handleAssignGroup}
+                                  onAttendance={openAttendance}
+                                  onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
+                                  onRename={handleRenameClass}
+                                  onDeleteClass={handleDeleteClass}
+                                  onEditStudent={openEditStudent}
+                                  onDeleteStudent={handleDeleteStudent}
+                                  onMoveStudent={handleMoveStudent}
+                                  onAddStudent={openAddStudent}
+                                  onBulkAdd={openBulkAdd}
+                                  onResetPassword={openResetPassword}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Ungrouped classes */}
+                      {ungroupedClasses.length > 0 && groupedClasses.length > 0 && (
+                        <div className="flex items-center gap-2 px-2 mb-2 mt-2">
+                          <span className="text-xs font-medium text-muted-foreground">بدون مجموعة</span>
+                          <div className="flex-1 h-px bg-border" />
+                        </div>
+                      )}
+                      {ungroupedClasses.map((folder) => {
+                        const idx = namedFolders.indexOf(folder);
+                        return (
+                          <ClassBlock
+                            key={folder}
+                            className={folder}
+                            students={studentsInFolder(folder)}
+                            allFolders={folders}
+                            isExpanded={expandedFolders.has(folder)}
+                            colorIdx={idx}
+                            groupName={classGroupMap[folder]}
+                            allGroups={allGroups}
+                            onAssignGroup={handleAssignGroup}
+                            onAttendance={openAttendance}
+                            onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
+                            onRename={handleRenameClass}
+                            onDeleteClass={handleDeleteClass}
+                            onEditStudent={openEditStudent}
+                            onDeleteStudent={handleDeleteStudent}
+                            onMoveStudent={handleMoveStudent}
+                            onAddStudent={openAddStudent}
+                            onBulkAdd={openBulkAdd}
+                            onResetPassword={openResetPassword}
+                          />
+                        );
+                      })}
+                    </>
+                  );
+                })()}
 
                 {/* Ungrouped section at bottom */}
                 {hasUngrouped && (
@@ -1558,6 +1792,177 @@ export default function StudentsPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Add Group Modal ── */}
+        <AnimatePresence>
+          {showAddGroup && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowAddGroup(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                className="bg-card text-card-foreground rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl"><Layers size={20} className="text-violet-600" /></div>
+                  <h3 className="font-bold text-foreground">مجموعة / مرحلة جديدة</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">أنشئ اسم المجموعة ثم عيّن الصفوف إليها من زر "مجموعة" في كل صف</p>
+                <input
+                  autoFocus
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  placeholder='مثال: صفوف الخامس'
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && newGroupName.trim()) {
+                      setClassGroupMap(prev => prev);
+                      if (groupTargetClass) handleAssignGroup(groupTargetClass, newGroupName.trim());
+                      setNewGroupName(""); setShowAddGroup(false);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground mb-2">تعيين صف لهذه المجموعة الآن (اختياري):</p>
+                <select
+                  value={groupTargetClass}
+                  onChange={e => setGroupTargetClass(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4"
+                >
+                  <option value="">— اختر صفاً —</option>
+                  {namedFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      if (!newGroupName.trim()) return;
+                      if (groupTargetClass) handleAssignGroup(groupTargetClass, newGroupName.trim());
+                      else {
+                        // Just create the group in local state so it shows in dropdowns
+                        setClassGroupMap(prev => prev);
+                        toast.success(`تم إنشاء المجموعة "${newGroupName.trim()}" — عيّن الصفوف إليها من زر "مجموعة"`);
+                      }
+                      setNewGroupName(""); setGroupTargetClass(""); setShowAddGroup(false);
+                    }}
+                    disabled={!newGroupName.trim()}
+                    className="flex-1 py-2.5 bg-violet-500 text-white rounded-xl font-bold hover:bg-violet-600 transition-colors disabled:opacity-50"
+                  >
+                    إنشاء
+                  </button>
+                  <button
+                    onClick={() => { setShowAddGroup(false); setNewGroupName(""); setGroupTargetClass(""); }}
+                    className="flex-1 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Attendance Modal ── */}
+        <AnimatePresence>
+          {attendanceClass && (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+              onClick={() => setAttendanceClass(null)}
+            >
+              <motion.div
+                initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+                className="bg-card text-card-foreground rounded-2xl w-full max-w-lg shadow-2xl max-h-[85vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-3 p-4 border-b border-border">
+                  <div className="p-2 bg-sky-100 dark:bg-sky-900/30 rounded-xl"><UserCheck size={18} className="text-sky-600" /></div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-foreground">الحضور والغياب — {attendanceClass}</h3>
+                    <input
+                      type="date"
+                      value={attendanceDate}
+                      onChange={e => {
+                        setAttendanceDate(e.target.value);
+                        if (attendanceClass) loadAttendanceForDate(attendanceClass, e.target.value);
+                      }}
+                      className="text-xs text-muted-foreground bg-transparent border-none focus:outline-none mt-0.5 cursor-pointer"
+                    />
+                  </div>
+                  <button onClick={() => setAttendanceClass(null)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-border text-xs text-muted-foreground bg-muted/20">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-400 inline-block"/> حاضر</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-400 inline-block"/> غائب</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-amber-400 inline-block"/> متأخر</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-400 inline-block"/> بعذر</span>
+                </div>
+
+                {/* Student list */}
+                <div className="overflow-y-auto flex-1 p-3 space-y-1">
+                  {studentsInFolder(attendanceClass).map((s, idx) => {
+                    const status = attendanceMap[s.id] ?? "present";
+                    const STATUS_OPTIONS: Array<{ value: "present"|"absent"|"late"|"excused"; label: string; color: string }> = [
+                      { value: "present", label: "حاضر", color: "bg-green-500" },
+                      { value: "absent", label: "غائب", color: "bg-red-500" },
+                      { value: "late", label: "متأخر", color: "bg-amber-500" },
+                      { value: "excused", label: "بعذر", color: "bg-blue-500" },
+                    ];
+                    const current = STATUS_OPTIONS.find(o => o.value === status) ?? STATUS_OPTIONS[0];
+                    return (
+                      <div key={s.id} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background border border-border/50 hover:border-border transition-colors">
+                        <span className="text-xs text-muted-foreground w-5 text-center font-bold">{idx + 1}</span>
+                        <span className="flex-1 text-sm font-medium">{s.name}</span>
+                        <div className="flex items-center gap-1">
+                          {STATUS_OPTIONS.map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => setAttendanceMap(prev => ({ ...prev, [s.id]: opt.value }))}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                status === opt.value
+                                  ? `${opt.color} text-white shadow-sm`
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {studentsInFolder(attendanceClass).length === 0 && (
+                    <p className="text-center py-8 text-muted-foreground text-sm">لا يوجد طلاب في هذا الصف</p>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-border flex gap-3">
+                  <button
+                    onClick={saveAttendance}
+                    disabled={savingAttendance}
+                    className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {savingAttendance ? <><Loader2 size={14} className="animate-spin"/> حفظ...</> : <><Check size={14}/> حفظ الحضور</>}
+                  </button>
+                  <button
+                    onClick={() => setAttendanceClass(null)}
+                    className="px-4 py-2.5 bg-muted text-muted-foreground rounded-xl font-medium hover:bg-muted/80 transition-colors"
+                  >
+                    إغلاق
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </Layout>
   );
