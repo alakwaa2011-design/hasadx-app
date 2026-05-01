@@ -153,11 +153,10 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
         
-        {/* Teacher Routes */}
-        <Route path="/teacher" component={TeacherDashboard} />
-        <Route path="/teacher/new" component={NewActivity} />
+        {/* Teacher Routes — most specific `/teacher/*` paths first; dashboard `/teacher` last */}
         <Route path="/teacher/new/assignment" component={CreateAssignment} />
         <Route path="/teacher/new/dictation" component={DictationCreate} />
+        <Route path="/teacher/new" component={NewActivity} />
         <Route path="/teacher/assignment/:id" component={TeacherAssignmentDetail} />
         <Route path="/teacher/students" component={StudentsPage} />
         <Route path="/teacher/library" component={TeacherLibraryPage} />
@@ -181,7 +180,8 @@ function Router() {
         <Route path="/teacher/create-video-lesson" component={CreateVideoLesson} />
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
-        
+        <Route path="/teacher" component={TeacherDashboard} />
+
         {/* Student Account Routes */}
         <Route path="/student/login" component={StudentAuth} />
         <Route path="/student/register" component={StudentAuth} />

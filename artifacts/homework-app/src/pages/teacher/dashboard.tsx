@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   useListAssignments,
@@ -143,6 +143,8 @@ export default function TeacherDashboard() {
   const [assignmentGamePickerId, setAssignmentGamePickerId] = useState<number | null>(
     null,
   );
+  /** From `/teacher?liveGame=1` (نشاط جديد → لعبة مباشرة): open وميض assignment picker */
+  const [openWameethDeepLink, setOpenWameethDeepLink] = useState(false);
   const { t, lang } = useI18n();
   const BackArrow = lang === "ar" ? ArrowLeft : ArrowRight;
   const {
@@ -189,6 +191,23 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (userError) setLocation("/login");
   }, [userError, setLocation]);
+
+  const consumeWameethDeepLink = useCallback(() => {
+    setOpenWameethDeepLink(false);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("liveGame") !== "1") return;
+    setActiveTab("competitive");
+    setOpenWameethDeepLink(true);
+    params.delete("liveGame");
+    const qs = params.toString();
+    const path = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
+    window.history.replaceState({}, "", path);
+  }, [user]);
 
   useEffect(() => {
     if (activeTab !== "shared" || !user) return;
@@ -519,6 +538,8 @@ export default function TeacherDashboard() {
             mcqAssignments={mcqAssignments}
             creatingGameForId={creatingGameForId}
             startGame={openGameSetup}
+            initialOpenWameeth={openWameethDeepLink}
+            onConsumeWameethDeepLink={consumeWameethDeepLink}
           />
         )}
         {activeTab === "tools" && (
@@ -1516,6 +1537,8 @@ function CompetitiveTab({
   mcqAssignments,
   creatingGameForId,
   startGame,
+  initialOpenWameeth,
+  onConsumeWameethDeepLink,
 }: any) {
   const [gameHistory, setGameHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -1537,6 +1560,12 @@ function CompetitiveTab({
       .catch(() => {})
       .finally(() => setLoadingHistory(false));
   }, []);
+
+  useEffect(() => {
+    if (!initialOpenWameeth) return;
+    setShowWameethModal(true);
+    onConsumeWameethDeepLink?.();
+  }, [initialOpenWameeth, onConsumeWameethDeepLink]);
 
   const openGameFromCatalog = (game: {
     type: string;

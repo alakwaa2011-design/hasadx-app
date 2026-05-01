@@ -90,7 +90,7 @@ const ACTIVITY_TYPES: ActivityType[] = [
     iconBg: "bg-amber-100 dark:bg-amber-900/40",
     border: "border-border",
     hoverBorder: "hover:border-amber-400 hover:shadow-amber-100 dark:hover:shadow-amber-900/30",
-    route: "/teacher",
+    route: "/teacher?liveGame=1",
   },
 ];
 

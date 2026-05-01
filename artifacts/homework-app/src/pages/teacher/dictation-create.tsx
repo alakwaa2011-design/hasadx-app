@@ -29,6 +29,7 @@ import {
   Volume2,
   Square,
   Play,
+  Mic,
   ChevronRight,
   ChevronLeft,
   Check,
