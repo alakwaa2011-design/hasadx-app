@@ -15,19 +15,33 @@ interface DictationGradingOpts {
   ignoreDiacritics?: boolean;
   ignoreShadda?: boolean;
   ignoreTanween?: boolean;
-  tolerance?: number; // 0=exact, 1=slight, 2=moderate, 3=loose
+  ignorePunctuation?: boolean;
+  /** 0–30: max edit distance ratio */
+  errorTolerancePercent?: number;
+  /** Legacy: discrete 0–3 */
+  tolerance?: number;
 }
 
-function stripArabicDiacritics(s: string, opts: DictationGradingOpts): string {
+function stripArabicMarks(s: string, opts: DictationGradingOpts): string {
   let out = s;
+  // Main vowel marks — not shadda / tanween (handled separately)
   if (opts.ignoreDiacritics) {
-    // Remove all harakat (fatha, damma, kasra, sukun, etc.)
-    out = out.replace(/[\u064B-\u0652\u0670]/g, "");
-  } else {
-    if (opts.ignoreTanween) out = out.replace(/[\u064B\u064C\u064D]/g, ""); // tanween fath/damm/kasr
-    if (opts.ignoreShadda)  out = out.replace(/\u0651/g, "");               // shadda
+    out = out.replace(/[\u064E-\u0650\u0652\u0670]/g, "");
+  }
+  if (opts.ignoreTanween) {
+    out = out.replace(/[\u064B\u064C\u064D]/g, "");
+  }
+  if (opts.ignoreShadda) {
+    out = out.replace(/\u0651/g, "");
   }
   return out;
+}
+
+function stripPunctuationForGrade(s: string): string {
+  return s
+    .replace(/[\u060C\u061B\u061F\u066A\u066B\u066C٪٫٬.,;:!?…\-—–_/\\|[\]{}«»„‚""''‚'`´]+/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function gradeDictation(studentAnswer: string, correctText: string, allowErrors: boolean, optionD?: string | null): boolean {
@@ -35,19 +49,25 @@ function gradeDictation(studentAnswer: string, correctText: string, allowErrors:
   if (optionD) {
     try { opts = { allowErrors, ...JSON.parse(optionD) }; } catch { /* use defaults */ }
   }
-  const norm = (s: string) => {
-    let t = s.trim().replace(/\s+/g, " ").toLowerCase();
-    t = stripArabicDiacritics(t, opts);
+  const norm = (raw: string) => {
+    let t = raw.trim().replace(/\s+/g, " ").toLowerCase();
+    if (opts.ignorePunctuation) t = stripPunctuationForGrade(t);
+    t = stripArabicMarks(t, opts);
     return t;
   };
   const s = norm(studentAnswer);
   const c = norm(correctText);
   if (s === c) return true;
   if (!opts.allowErrors) return false;
-  const tol = typeof opts.tolerance === "number" ? opts.tolerance : 1;
-  // tolerance 0 = exact (1%), 1 = slight (15%), 2 = moderate (25%), 3 = loose (35%)
-  const rates = [0.01, 0.15, 0.25, 0.35];
-  const rate = rates[Math.min(tol, 3)];
+  let rate: number;
+  if (typeof opts.errorTolerancePercent === "number" && !Number.isNaN(opts.errorTolerancePercent)) {
+    const p = Math.min(30, Math.max(0, opts.errorTolerancePercent));
+    rate = p / 100;
+  } else {
+    const tol = typeof opts.tolerance === "number" ? opts.tolerance : 1;
+    const legacyRates = [0.01, 0.15, 0.25, 0.35];
+    rate = legacyRates[Math.min(tol, 3)];
+  }
   const maxDist = Math.max(1, Math.floor(c.length * rate));
   return levenshtein(s, c) <= maxDist;
 }
