@@ -1455,15 +1455,24 @@ export default function MillionPlay() {
                           : `🛡️ Safe Haven! If you walk away later you keep at least ${formatPrize(currentPrize)}`}
                       </motion.div>
                     )}
-                    <button onClick={handleNextQuestion}
-                      className="px-8 py-3 rounded-xl font-bold text-white text-sm"
-                      style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
-                      {currentIndex === totalQuestions - 2
-                        ? (lang === "ar" ? "السؤال الأخير — للمليون! 🏆" : "Final Question — For a Million! 🏆")
-                        : SAFE_HAVEN_INDICES.includes(currentIndex)
-                          ? (lang === "ar" ? "واصل! ←" : "Continue! →")
-                          : (lang === "ar" ? "السؤال التالي ←" : "Next Question →")}
-                    </button>
+                    {broadcastMode ? (
+                      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
+                        style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd" }}>
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        {lang === "ar" ? "انتظر المعلم للانتقال للسؤال التالي…" : "Waiting for teacher to advance…"}
+                      </motion.div>
+                    ) : (
+                      <button onClick={handleNextQuestion}
+                        className="px-8 py-3 rounded-xl font-bold text-white text-sm"
+                        style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
+                        {currentIndex === totalQuestions - 2
+                          ? (lang === "ar" ? "السؤال الأخير — للمليون! 🏆" : "Final Question — For a Million! 🏆")
+                          : SAFE_HAVEN_INDICES.includes(currentIndex)
+                            ? (lang === "ar" ? "واصل! ←" : "Continue! →")
+                            : (lang === "ar" ? "السؤال التالي ←" : "Next Question →")}
+                      </button>
+                    )}
                   </motion.div>
                 )}
 
