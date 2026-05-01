@@ -259,13 +259,9 @@ export default function StudentDashboard() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-blue-50/50 to-background dark:from-blue-950/20 dark:to-background">
+      <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-blue-50 to-background dark:from-blue-950/30 dark:to-background">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
+          <div className="mb-8 animate-in fade-in duration-300">
             <Card className="p-6 sm:p-8 bg-gradient-to-br from-blue-600 to-cyan-600 text-white border-0 shadow-xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -288,23 +284,13 @@ export default function StudentDashboard() {
                 </button>
               </div>
             </Card>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="mb-6"
-          >
+          <div className="mb-6 animate-in fade-in duration-300 delay-75">
             <InstallAppButton variant="card" />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-3 gap-4 mb-8"
-          >
+          <div className="grid grid-cols-3 gap-4 mb-8 animate-in fade-in duration-300 delay-100">
             <Card className="p-5 text-center">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center mx-auto mb-3">
                 <Trophy className="w-6 h-6 text-yellow-600" />
@@ -338,15 +324,10 @@ export default function StudentDashboard() {
                 {lang === "ar" ? "الترتيب" : "Rank"}
               </p>
             </Card>
-          </motion.div>
+          </div>
 
           {recentScores.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="mb-8"
-            >
+            <div className="mb-8 animate-in fade-in duration-300 delay-150">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-500" />
                 {lang === "ar" ? "آخر النتائج" : "Recent Results"}
@@ -376,14 +357,10 @@ export default function StudentDashboard() {
                   );
                 })}
               </Card>
-            </motion.div>
+            </div>
           )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div className="animate-in fade-in duration-300 delay-200">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Star className="w-5 h-5 text-yellow-500" />
               {lang === "ar" ? "الألعاب المتاحة" : "Available Games"}
@@ -412,15 +389,10 @@ export default function StudentDashboard() {
                 );
               })}
             </div>
-          </motion.div>
+          </div>
 
           {(assignmentsLoading || assignments.length > 0) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="mt-8"
-            >
+            <div className="mt-8 animate-in fade-in duration-300 delay-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                   <Zap className="w-5 h-5 text-amber-500" />
@@ -444,11 +416,8 @@ export default function StudentDashboard() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {assignments.map((a, i) => (
-                    <motion.div
+                    <div
                       key={a.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(i * 0.04, 0.3) }}
                       className="bg-card border border-border/50 rounded-2xl p-4 hover:shadow-lg transition-all hover:border-amber-400/30 flex flex-col gap-3"
                     >
                       <div className="flex items-start gap-2.5">
@@ -492,7 +461,6 @@ export default function StudentDashboard() {
                           {copiedId === a.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
-                    </motion.div>
                   ))}
                 </div>
               )}
@@ -508,7 +476,7 @@ export default function StudentDashboard() {
                   </Link>
                 </div>
               )}
-            </motion.div>
+            </div>
           )}
         </div>
       </div>

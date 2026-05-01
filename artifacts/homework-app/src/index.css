@@ -261,6 +261,29 @@
   }
 }
 
+/* Fix GPU rendering artifacts on MIUI (Xiaomi/Redmi) and older Android WebViews.
+   These devices sometimes show horizontal scan lines when elements use transform+opacity
+   animations simultaneously (framer-motion will-change stacking context bug). */
+@supports not (backdrop-filter: blur(1px)) {
+  header {
+    background-color: hsl(var(--background)) !important;
+  }
+}
+
+/* Tailwind v4 animate-in helpers for simple fade-in without GPU transform layers */
+@keyframes fade-in-simple {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-in.fade-in {
+  animation-name: fade-in-simple;
+  animation-fill-mode: both;
+}
+.delay-75  { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+
 /* ── Answer-feedback animations (shared across option-based games) ─────── */
 @keyframes fb-correct-bounce {
   0%   { transform: scale(1) rotate(0deg); }
