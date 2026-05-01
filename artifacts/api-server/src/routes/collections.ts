@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { contentCollectionsTable, collectionItemsTable, assignmentsTable, teachersTable } from "@workspace/db";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, ne, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -49,7 +49,7 @@ router.get("/collections", requireAuth, async (req: any, res) => {
 /* ── POST /collections ──────────────────────────── create collection */
 router.post("/collections", requireAuth, async (req: any, res) => {
   try {
-    const { name, description, coverImageUrl } = req.body;
+    const { name, description, coverImageUrl, isPublic } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "الاسم مطلوب" });
     const [col] = await db
       .insert(contentCollectionsTable)
@@ -58,6 +58,7 @@ router.post("/collections", requireAuth, async (req: any, res) => {
         name: name.trim(),
         description: description?.trim() || null,
         coverImageUrl: coverImageUrl?.trim() || null,
+        isPublic: typeof isPublic === "boolean" ? isPublic : false,
       })
       .returning();
     res.json(col);
@@ -97,10 +98,11 @@ router.put("/collections/:id", requireAuth, async (req: any, res) => {
 router.patch("/collections/:id/quick-edit", requireAuth, async (req: any, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, coverImageUrl } = req.body;
+    const { name, coverImageUrl, isPublic } = req.body;
     const updateData: any = {};
     if (typeof name === "string" && name.trim()) updateData.name = name.trim();
     if (coverImageUrl !== undefined) updateData.coverImageUrl = coverImageUrl?.trim() || null;
+    if (typeof isPublic === "boolean") updateData.isPublic = isPublic;
     if (Object.keys(updateData).length === 0) return res.status(400).json({ message: "لا تغييرات" });
     const [col] = await db
       .update(contentCollectionsTable)
@@ -331,6 +333,32 @@ router.get("/public/featured-collections", async (req: any, res) => {
     res.json(cols);
   } catch (err) {
     req.log.error(err, "Featured collections error");
+    res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/* ── GET /collections/public-from-others ───── list other teachers' public collections */
+router.get("/collections/public-from-others", requireAuth, async (req: any, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    const teacherId = req.session.teacherId;
+    const cols = await db
+      .select({
+        id: contentCollectionsTable.id,
+        name: contentCollectionsTable.name,
+        description: contentCollectionsTable.description,
+        coverImageUrl: contentCollectionsTable.coverImageUrl,
+        teacherName: teachersTable.name,
+        itemCount: sql<number>`(SELECT COUNT(*) FROM collection_items WHERE collection_items.collection_id = ${contentCollectionsTable.id})::int`,
+        assignmentIds: sql<number[]>`COALESCE((SELECT json_agg(ci.assignment_id) FROM collection_items ci WHERE ci.collection_id = ${contentCollectionsTable.id} AND ci.assignment_id IS NOT NULL), '[]')`,
+      })
+      .from(contentCollectionsTable)
+      .innerJoin(teachersTable, eq(contentCollectionsTable.teacherId, teachersTable.id))
+      .where(and(eq(contentCollectionsTable.isPublic, true), ne(contentCollectionsTable.teacherId, teacherId)))
+      .orderBy(desc(contentCollectionsTable.createdAt));
+    res.json(cols);
+  } catch (err) {
+    req.log.error(err, "Public collections from others error");
     res.status(500).json({ message: "خطأ" });
   }
 });

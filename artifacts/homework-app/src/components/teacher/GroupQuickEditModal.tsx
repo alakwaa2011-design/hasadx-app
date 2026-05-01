@@ -102,9 +102,24 @@ export default function GroupQuickEditModal({ open, collection, isAdmin, lang, o
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), coverImageUrl: coverImageUrl || null }),
+        body: JSON.stringify({ name: name.trim(), coverImageUrl: coverImageUrl || null, isPublic }),
       });
       if (!r.ok) throw new Error("save");
+
+      if (isAdmin && featuredOn !== (col.featuredOn || "")) {
+        const vr = await fetch(`${BASE}/api/collections/${col.id}/visibility`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPublic, featuredOn: featuredOn || null }),
+        });
+        if (!vr.ok) {
+          const msg = await vr.json().catch(() => ({}));
+          toast.error(msg.message || (lang === "ar" ? "تعذّر تحديث الإعدادات العامة" : "Visibility update failed"));
+          onSaved();
+          return;
+        }
+      }
 
       if (isAdmin && (isPublic !== !!col.isPublic || featuredOn !== (col.featuredOn || ""))) {
         const vr = await fetch(`${BASE}/api/collections/${col.id}/visibility`, {
@@ -119,8 +134,7 @@ export default function GroupQuickEditModal({ open, collection, isAdmin, lang, o
           onSaved();
           return;
         }
-      }
-      toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+      }      toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
       onSaved();
       onClose();
     } catch {
@@ -287,42 +301,51 @@ export default function GroupQuickEditModal({ open, collection, isAdmin, lang, o
                 </div>
               </div>
 
-              {/* Admin-only visibility */}
-              {isAdmin && (
-                <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3">
-                  <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2 flex items-center gap-1">
-                    <Globe className="w-3.5 h-3.5" />
-                    {lang === "ar" ? "إعدادات المسؤول — عرض للجميع" : "Admin — public visibility"}
+              {/* Visibility toggle – available to all teachers */}
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1">
+                  {isPublic
+                    ? <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                    : <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+                  {lang === "ar" ? "مستوى الخصوصية" : "Visibility"}
+                </p>
+                <label className="flex items-center gap-2 cursor-pointer mb-1">
+                  <input
+                    type="checkbox"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-600"
+                  />
+                  <span className="text-sm">
+                    {lang === "ar"
+                      ? "اجعل هذه المجموعة مرئية للمعلمين الآخرين"
+                      : "Make this group visible to other teachers"}
+                  </span>
+                </label>
+                {isPublic && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 ms-6">
+                    {lang === "ar"
+                      ? "سيتمكن المعلمون الآخرون من رؤية هذه المجموعة وواجباتها."
+                      : "Other teachers will be able to see this group and its assignments."}
                   </p>
-                  <label className="flex items-center gap-2 cursor-pointer mb-2">
-                    <input
-                      type="checkbox"
-                      checked={isPublic}
-                      onChange={(e) => setIsPublic(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">
-                      {lang === "ar" ? "اجعل هذه المجموعة مرئية لكل المستخدمين" : "Make this group public to all users"}
-                    </span>
-                  </label>
-                  {isPublic && (
-                    <div>
-                      <label className="text-xs font-semibold block mb-1">
-                        {lang === "ar" ? "أين تظهر؟" : "Where to feature?"}
-                      </label>
-                      <select
-                        value={featuredOn}
-                        onChange={(e) => setFeaturedOn(e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-lg border border-amber-300 bg-white dark:bg-zinc-800 text-sm"
-                      >
-                        <option value="">{lang === "ar" ? "الكل" : "Everywhere"}</option>
-                        <option value="home">{lang === "ar" ? "الصفحة الرئيسية" : "Homepage"}</option>
-                        <option value="assignments">{lang === "ar" ? "صفحة الواجبات" : "Assignments page"}</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+                {isAdmin && isPublic && (
+                  <div className="mt-2 ms-6">
+                    <label className="text-xs font-semibold block mb-1">
+                      {lang === "ar" ? "أين تظهر؟" : "Where to feature?"}
+                    </label>
+                    <select
+                      value={featuredOn}
+                      onChange={(e) => setFeaturedOn(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg border border-border bg-background text-sm"
+                    >
+                      <option value="">{lang === "ar" ? "الكل" : "Everywhere"}</option>
+                      <option value="home">{lang === "ar" ? "الصفحة الرئيسية" : "Homepage"}</option>
+                      <option value="assignments">{lang === "ar" ? "صفحة الواجبات" : "Assignments page"}</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="sticky bottom-0 bg-card/95 backdrop-blur border-t border-border px-5 py-3 flex justify-end gap-2">

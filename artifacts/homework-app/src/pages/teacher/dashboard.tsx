@@ -56,6 +56,8 @@ import {
   Presentation,
   Rocket,
   ChevronLeft,
+  Lock,
+  ExternalLink,
 } from "lucide-react";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -1215,8 +1217,11 @@ interface DashboardCollection {
   id: number;
   name: string;
   description: string | null;
+  coverImageUrl?: string | null;
+  isPublic?: boolean;
   itemCount: number;
   assignmentIds: number[];
+  teacherName?: string;
 }
 
 interface VideoLessonSummary {
@@ -1245,6 +1250,7 @@ function AssignmentsTab({
   user,
 }: any) {
   const [collections, setCollections] = useState<DashboardCollection[]>([]);
+  const [publicCollections, setPublicCollections] = useState<DashboardCollection[]>([]);
   const [filterCollectionId, setFilterCollectionId] = useState<
     number | "all" | "none"
   >("all");
@@ -1253,6 +1259,7 @@ function AssignmentsTab({
 
   useEffect(() => {
     loadCollections();
+    loadPublicCollections();
   }, []);
 
   function loadCollections() {
@@ -1265,6 +1272,36 @@ function AssignmentsTab({
         setCollections(Array.isArray(data) ? data : []),
       )
       .catch(() => {});
+  }
+
+  function loadPublicCollections() {
+    fetch(`${BASE_URL}/api/collections/public-from-others`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: DashboardCollection[]) =>
+        setPublicCollections(Array.isArray(data) ? data : []),
+      )
+      .catch(() => {});
+  }
+
+  async function createGroup(name: string, isPublic: boolean) {
+    const r = await fetch(`${BASE_URL}/api/collections`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), isPublic }),
+    });
+    if (r.ok) {
+      const newCol = await r.json();
+      toast.success(
+        lang === "ar" ? `تم إنشاء "${newCol.name}"` : `Created "${newCol.name}"`,
+      );
+      loadCollections();
+      return newCol;
+    }
+    throw new Error("create failed");
   }
 
   async function addToCollection(collectionId: number, assignmentId: number) {
@@ -1399,22 +1436,7 @@ function AssignmentsTab({
     }
   }
 
-  const filteredAssignments = !assignments
-    ? []
-    : assignments.filter((a: any) => {
-        if (filterCollectionId !== "all") {
-          if (filterCollectionId === "none") {
-            const inAnyCollection = collections.some((c) =>
-              c.assignmentIds?.includes(a.id),
-            );
-            if (inAnyCollection) return false;
-          } else {
-            const col = collections.find((c) => c.id === filterCollectionId);
-            if (!col?.assignmentIds?.includes(a.id)) return false;
-          }
-        }
-        return true;
-      });
+  const filteredAssignments = !assignments ? [] : assignments;
 
   if (isLoading) {
     return (
@@ -1463,6 +1485,7 @@ function AssignmentsTab({
       assignments={assignments}
       filteredAssignments={filteredAssignments}
       collections={collections}
+      publicCollections={publicCollections}
       filterCollectionId={filterCollectionId}
       setFilterCollectionId={setFilterCollectionId}
       creatingGameForId={creatingGameForId}
@@ -1478,6 +1501,7 @@ function AssignmentsTab({
       creatingGroupName={creatingGroupName}
       setCreatingGroupName={setCreatingGroupName}
       createGroupAndAdd={createGroupAndAdd}
+      createGroup={createGroup}
       savingGroup={savingGroup}
       user={user}
       reloadCollections={loadCollections}
@@ -3632,11 +3656,182 @@ function AssignmentRow({
   );
 }
 
+/* ── Group accordion row component ── */
+function GroupAccordionRow({
+  col,
+  assignments,
+  lang,
+  expanded,
+  onToggle,
+  onEdit,
+  onRemoveAssignment,
+  addToCollection,
+  creatingGameForId,
+  startGame,
+  setLocation,
+  t,
+}: any) {
+  const colAssignments = (assignments || []).filter((a: any) =>
+    (col.assignmentIds || []).includes(a.id),
+  );
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).classList.remove(
+      "ring-2",
+      "ring-emerald-400",
+    );
+    const aid = parseInt(
+      e.dataTransfer.getData("application/x-assignment-id") || "0",
+    );
+    if (!aid) return;
+    if ((col.assignmentIds || []).includes(aid)) {
+      toast.info(lang === "ar" ? "موجود بالفعل في المجموعة" : "Already in group");
+      return;
+    }
+    addToCollection(col.id, aid);
+  };
+
+  return (
+    <div
+      className="rounded-xl border border-border overflow-hidden transition-all"
+      onDrop={handleDrop}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-assignment-id")) {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).classList.add(
+            "ring-2",
+            "ring-emerald-400",
+          );
+        }
+      }}
+      onDragLeave={(e) =>
+        (e.currentTarget as HTMLElement).classList.remove(
+          "ring-2",
+          "ring-emerald-400",
+        )
+      }
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30 select-none"
+        onClick={onToggle}
+      >
+        {col.isPublic ? (
+          <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+        ) : (
+          <Lock className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+        )}
+        <span className="flex-1 text-sm font-semibold text-foreground truncate">
+          {col.name}
+        </span>
+        {col.isPublic && (
+          <span className="text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md shrink-0">
+            {lang === "ar" ? "عام" : "PUBLIC"}
+          </span>
+        )}
+        <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
+          {col.assignmentIds?.length || 0}
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          className="shrink-0 p-1 rounded-md hover:bg-muted/60 text-muted-foreground"
+          title={lang === "ar" ? "تعديل" : "Edit"}
+        >
+          <Pencil className="w-3 h-3" />
+        </button>
+        <ChevronDown
+          className={`w-4 h-4 text-muted-foreground/70 transition-transform duration-150 shrink-0 ${expanded ? "rotate-180" : ""}`}
+        />
+      </div>
+
+      {/* Content */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/40">
+              {colAssignments.length === 0 ? (
+                <div className="px-4 py-3 text-xs text-muted-foreground text-center">
+                  {lang === "ar"
+                    ? "🎯 اسحب واجبًا من القائمة أدناه وأفلته هنا"
+                    : "🎯 Drag an assignment from the list below and drop it here"}
+                </div>
+              ) : (
+                <div className="divide-y divide-border/30">
+                  {colAssignments.map((a: any) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-2 px-4 py-2 hover:bg-muted/20"
+                    >
+                      <span className="flex-1 text-xs font-medium text-foreground truncate">
+                        {a.title}
+                      </span>
+                      {a.subject && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md hidden sm:block shrink-0">
+                          {a.subject}
+                        </span>
+                      )}
+                      {a.questionCount > 0 && (
+                        <button
+                          onClick={() =>
+                            startGame(a.id, {
+                              stopPropagation: () => {},
+                            } as any)
+                          }
+                          disabled={creatingGameForId === a.id}
+                          className="shrink-0 p-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-md transition-colors disabled:opacity-50"
+                          title={t?.dashboard?.liveGame || "تشغيل"}
+                        >
+                          <Gamepad2 className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() =>
+                          setLocation(`/teacher/assignments/${a.id}`)
+                        }
+                        className="shrink-0 p-1.5 hover:bg-muted/60 rounded-md text-muted-foreground"
+                        title={lang === "ar" ? "فتح" : "Open"}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => onRemoveAssignment(col.id, a.id)}
+                        className="shrink-0 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-muted-foreground hover:text-red-500 transition-colors"
+                        title={
+                          lang === "ar"
+                            ? "إزالة من المجموعة"
+                            : "Remove from group"
+                        }
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ── Main mockup-style render ── */
 function AssignmentsTabRender({
   assignments,
   filteredAssignments,
   collections,
+  publicCollections,
   filterCollectionId,
   setFilterCollectionId,
   creatingGameForId,
@@ -3652,6 +3847,7 @@ function AssignmentsTabRender({
   creatingGroupName,
   setCreatingGroupName,
   createGroupAndAdd,
+  createGroup,
   savingGroup,
   user,
   reloadCollections,
@@ -3663,6 +3859,14 @@ function AssignmentsTabRender({
     "all" | "active" | "expired" | "favorites"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showNewGroupForm, setShowNewGroupForm] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupIsPublic, setNewGroupIsPublic] = useState(false);
+  const [savingNewGroup, setSavingNewGroup] = useState(false);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(
+    new Set(),
+  );
+  const [showPublicGroups, setShowPublicGroups] = useState(false);
   const [favorites, setFavorites] = useState<Set<number>>(() => {
     try {
       const stored = localStorage.getItem("assignment_favorites");
@@ -3685,6 +3889,24 @@ function AssignmentsTabRender({
       return next;
     });
   };
+
+  async function handleCreateGroup() {
+    if (!newGroupName.trim()) return;
+    setSavingNewGroup(true);
+    try {
+      const col = await createGroup(newGroupName.trim(), newGroupIsPublic);
+      setShowNewGroupForm(false);
+      setNewGroupName("");
+      setNewGroupIsPublic(false);
+      if (col?.id) {
+        setExpandedGroupIds((prev) => new Set([...prev, col.id]));
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الإنشاء" : "Creation failed");
+    } finally {
+      setSavingNewGroup(false);
+    }
+  }
 
   const now = new Date();
   const statusFiltered = filteredAssignments.filter((a: any) => {
@@ -3852,218 +4074,178 @@ function AssignmentsTabRender({
         count={filteredAssignments.length}
         defaultOpen
       >
-        {/* Group filter — large card-style tiles with image background area */}
-        {(() => {
-          const gradients = [
-            "from-violet-500 to-fuchsia-500",
-            "from-blue-500 to-cyan-500",
-            "from-emerald-500 to-teal-500",
-            "from-amber-500 to-orange-500",
-            "from-pink-500 to-rose-500",
-            "from-indigo-500 to-purple-500",
-            "from-lime-500 to-green-500",
-            "from-sky-500 to-blue-500",
-          ];
-          const gradFor = (id: number) =>
-            gradients[Math.abs(id) % gradients.length];
-          const noGroupCount = (assignments || []).filter(
-            (a: any) =>
-              !collections.some((c: any) => c.assignmentIds?.includes(a.id)),
-          ).length;
-
-          const handleDrop = (
-            e: React.DragEvent,
-            collectionId: number | null,
-          ) => {
-            e.preventDefault();
-            e.currentTarget.classList.remove(
-              "ring-4",
-              "ring-emerald-400",
-              "scale-105",
-            );
-            const aid = parseInt(
-              e.dataTransfer.getData("application/x-assignment-id") || "0",
-            );
-            if (!aid || !collectionId) return;
-            const col = collections.find((c: any) => c.id === collectionId);
-            if (col?.assignmentIds?.includes(aid)) {
-              toast.info(
-                lang === "ar" ? "موجود بالفعل في المجموعة" : "Already in group",
-              );
-              setFilterCollectionId(collectionId);
-              return;
-            }
-            addToCollection(collectionId, aid);
-            // Auto-switch to the target collection so the user sees the assignment immediately
-            setFilterCollectionId(collectionId);
-          };
-          const handleDragOver = (e: React.DragEvent) => {
-            if (e.dataTransfer.types.includes("application/x-assignment-id")) {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "copy";
-              e.currentTarget.classList.add(
-                "ring-4",
-                "ring-emerald-400",
-                "scale-105",
-              );
-            }
-          };
-          const handleDragLeave = (e: React.DragEvent) => {
-            e.currentTarget.classList.remove(
-              "ring-4",
-              "ring-emerald-400",
-              "scale-105",
-            );
-          };
-
-          const Tile = ({
-            active,
-            onClick,
-            label,
-            count,
-            bg,
-            initial,
-            imageUrl,
-            description,
-            droppable,
-            collectionId,
-            editable,
-          }: {
-            active: boolean;
-            onClick: () => void;
-            label: string;
-            count: number;
-            bg: string;
-            initial?: string;
-            imageUrl?: string;
-            description?: string;
-            droppable?: boolean;
-            collectionId?: number;
-            editable?: any;
-          }) => (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={onClick}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onClick();
-                }
-              }}
-              onDragOver={droppable ? handleDragOver : undefined}
-              onDragLeave={droppable ? handleDragLeave : undefined}
-              onDrop={
-                droppable && collectionId
-                  ? (e) => handleDrop(e, collectionId)
-                  : undefined
-              }
-              className={`group relative flex-shrink-0 w-[160px] h-[140px] rounded-2xl overflow-hidden text-start cursor-pointer transition-all duration-200 ${
-                active
-                  ? "ring-2 ring-foreground ring-offset-2 ring-offset-card shadow-lg"
-                  : "ring-1 ring-border hover:ring-foreground/40 hover:shadow-md"
-              }`}
+        {/* ── Groups Section ── */}
+        <div className="mb-4 space-y-2">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+              <FolderOpen className="w-4 h-4 text-violet-500" />
+              {lang === "ar" ? "مجموعاتي" : "My Groups"}
+              {collections.length > 0 && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  ({collections.length})
+                </span>
+              )}
+            </h3>
+            <button
+              onClick={() => setShowNewGroupForm((v: boolean) => !v)}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
             >
-              {imageUrl ? (
-                <div
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${imageUrl})` }}
-                />
-              ) : (
-                <div className={`absolute inset-0 bg-gradient-to-br ${bg}`} />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              {initial && (
-                <span className="absolute top-2 end-2.5 text-white/90 text-[24px] font-extrabold leading-none drop-shadow pointer-events-none">
-                  {initial}
-                </span>
-              )}
-              <span className="absolute top-2 start-2.5 text-[10px] font-bold text-white/95 bg-white/20 backdrop-blur-sm px-1.5 py-0.5 rounded-md pointer-events-none">
-                {count}
-              </span>
-              {editable && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingCollection(editable);
-                  }}
-                  className="absolute top-1.5 end-9 z-10 p-1 rounded-md bg-black/40 backdrop-blur-sm hover:bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label={
-                    lang === "ar" ? "خيارات المجموعة" : "Group options"
-                  }
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              )}
-              {editable?.isPublic && (
-                <span className="absolute bottom-2 end-2 z-10 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md shadow pointer-events-none">
-                  {lang === "ar" ? "عام" : "PUBLIC"}
-                </span>
-              )}
-              <div className="absolute bottom-0 inset-x-0 p-2.5 pointer-events-none">
-                <p className="text-white text-[14px] font-bold leading-tight line-clamp-2 drop-shadow">
-                  {label}
-                </p>
-                {description && (
-                  <p className="text-white/85 text-[10px] mt-0.5 line-clamp-1 drop-shadow">
-                    {description}
-                  </p>
-                )}
-                <p className="text-white/85 text-[10px] mt-0.5">
-                  {count}{" "}
-                  {lang === "ar" ? "عنصر" : count === 1 ? "item" : "items"}
-                </p>
-              </div>
-            </div>
-          );
+              <Plus className="w-3 h-3" />
+              {lang === "ar" ? "مجموعة جديدة" : "New Group"}
+            </button>
+          </div>
 
-          return (
-            <div className="flex items-stretch gap-3 overflow-x-auto pb-3 mb-4 -mx-1 px-1 scrollbar-thin">
-              <Tile
-                active={filterCollectionId === "all"}
-                onClick={() => setFilterCollectionId("all")}
-                label={lang === "ar" ? "كل الواجبات" : "All"}
-                count={(assignments || []).length}
-                bg="from-slate-700 to-slate-900"
-                initial="✦"
-              />
+          {/* New Group inline form */}
+          <AnimatePresence>
+            {showNewGroupForm && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-dashed border-violet-300 bg-violet-50 dark:bg-violet-900/20">
+                  <input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleCreateGroup()
+                    }
+                    placeholder={
+                      lang === "ar" ? "اسم المجموعة..." : "Group name..."
+                    }
+                    autoFocus
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-border bg-background text-sm"
+                  />
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={newGroupIsPublic}
+                      onChange={(e) => setNewGroupIsPublic(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-emerald-600"
+                    />
+                    <Globe className="w-3 h-3 text-emerald-600" />
+                    <span>{lang === "ar" ? "عام" : "Public"}</span>
+                  </label>
+                  <button
+                    onClick={handleCreateGroup}
+                    disabled={savingNewGroup || !newGroupName.trim()}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {savingNewGroup
+                      ? "..."
+                      : lang === "ar"
+                        ? "إنشاء"
+                        : "Create"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowNewGroupForm(false);
+                      setNewGroupName("");
+                    }}
+                    className="p-1.5 hover:bg-muted rounded-lg shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* My Groups list */}
+          {collections.length === 0 && !showNewGroupForm ? (
+            <div className="text-center py-5 border-2 border-dashed border-border rounded-xl text-xs text-muted-foreground">
+              {lang === "ar"
+                ? "لا توجد مجموعات بعد — اضغط «مجموعة جديدة» لإنشاء مجموعة"
+                : "No groups yet — click «New Group» to create one"}
+            </div>
+          ) : (
+            <div className="space-y-2">
               {collections.map((col: any) => (
-                <Tile
+                <GroupAccordionRow
                   key={col.id}
-                  active={filterCollectionId === col.id}
-                  onClick={() => setFilterCollectionId(col.id)}
-                  label={col.name}
-                  count={col.assignmentIds?.length || 0}
-                  bg={gradFor(col.id)}
-                  initial={(col.name || "?").trim().charAt(0)}
-                  imageUrl={col.coverImageUrl}
-                  description={col.description}
-                  droppable
-                  collectionId={col.id}
-                  editable={col}
+                  col={col}
+                  assignments={assignments}
+                  lang={lang}
+                  expanded={expandedGroupIds.has(col.id)}
+                  onToggle={() =>
+                    setExpandedGroupIds((prev: Set<number>) => {
+                      const next = new Set(prev);
+                      if (next.has(col.id)) next.delete(col.id);
+                      else next.add(col.id);
+                      return next;
+                    })
+                  }
+                  onEdit={() => setEditingCollection(col)}
+                  onRemoveAssignment={removeFromCollection}
+                  addToCollection={addToCollection}
+                  creatingGameForId={creatingGameForId}
+                  startGame={startGame}
+                  setLocation={setLocation}
+                  t={t}
                 />
               ))}
-              <Tile
-                active={filterCollectionId === "none"}
-                onClick={() => setFilterCollectionId("none")}
-                label={lang === "ar" ? "بدون مجموعة" : "No Group"}
-                count={noGroupCount}
-                bg="from-zinc-400 to-zinc-600"
-                initial="∅"
-              />
-              <Link
-                href="/teacher/collections"
-                className="flex-shrink-0 w-[120px] h-[140px] rounded-2xl border-2 border-dashed border-border hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors flex flex-col items-center justify-center gap-2 text-violet-600"
-              >
-                <Plus className="w-6 h-6" />
-                <span className="text-[12px] font-semibold">
-                  {lang === "ar" ? "إدارة" : "Manage"}
-                </span>
-              </Link>
             </div>
-          );
-        })()}
+          )}
+
+          {/* Public Groups from other teachers */}
+          {(publicCollections?.length ?? 0) > 0 && (
+            <div className="mt-3">
+              <button
+                onClick={() => setShowPublicGroups((v: boolean) => !v)}
+                className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors w-full"
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                {lang === "ar"
+                  ? `مجموعات عامة من معلمين آخرين (${publicCollections.length})`
+                  : `Public groups from other teachers (${publicCollections.length})`}
+                <ChevronDown
+                  className={`w-3.5 h-3.5 ms-auto transition-transform ${showPublicGroups ? "rotate-180" : ""}`}
+                />
+              </button>
+              <AnimatePresence>
+                {showPublicGroups && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="overflow-hidden mt-2 space-y-2"
+                  >
+                    {publicCollections.map((col: any) => (
+                      <div
+                        key={col.id}
+                        className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10 overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2 px-3 py-2.5">
+                          <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="flex-1 text-sm font-semibold text-foreground truncate">
+                            {col.name}
+                          </span>
+                          {col.teacherName && (
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              👤 {col.teacherName}
+                            </span>
+                          )}
+                          <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
+                            {col.assignmentIds?.length || 0}
+                          </span>
+                        </div>
+                        {col.description && (
+                          <p className="px-3 pb-2 text-[11px] text-muted-foreground">
+                            {col.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
 
         {/* Search bar */}
         <div className="relative mb-3">
