@@ -461,6 +461,7 @@ export default function StudentDashboard() {
                           {copiedId === a.id ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                       </div>
+                    </div>
                   ))}
                 </div>
               )}
