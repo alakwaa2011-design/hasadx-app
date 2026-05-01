@@ -247,7 +247,7 @@ export const CreateAssignmentBody = zod.object({
     zod.object({
       text: zod.string(),
       questionType: zod
-        .enum(["mcq", "true_false", "fill_blank", "whiteboard"])
+        .enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"])
         .default(createAssignmentBodyQuestionsItemQuestionTypeDefault),
       optionA: zod.string().optional(),
       optionB: zod.string().optional(),
@@ -306,7 +306,7 @@ export const GetAssignmentResponse = zod.object({
       id: zod.number(),
       text: zod.string(),
       questionType: zod
-        .enum(["mcq", "true_false", "fill_blank", "whiteboard"])
+        .enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"])
         .default(getAssignmentResponseQuestionsItemQuestionTypeDefault),
       optionA: zod.string().nullish(),
       optionB: zod.string().nullish(),

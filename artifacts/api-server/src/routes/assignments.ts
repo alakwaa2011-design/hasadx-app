@@ -34,7 +34,7 @@ const UpdateAssignmentBody = z.object({
     z.object({
       id: z.number().optional(),
       text: z.string().min(1),
-      questionType: z.enum(["mcq", "true_false", "fill_blank", "whiteboard"]).default("mcq"),
+      questionType: z.enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"]).default("mcq"),
       optionA: z.string().nullish(),
       optionB: z.string().nullish(),
       optionC: z.string().nullish(),
