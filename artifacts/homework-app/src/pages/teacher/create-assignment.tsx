@@ -802,7 +802,7 @@ export default function CreateAssignment() {
           <div className="flex flex-wrap gap-1">
             {group.symbols.map(sym => (
               <button key={sym} type="button" onClick={() => onInsert(sym)}
-                className="w-8 h-8 flex items-center justify-center rounded bg-background border border-border hover:bg-purple-50 hover:border-purple-400 text-sm font-mono transition-colors dark:hover:bg-purple-900/30">
+                className="w-8 h-8 flex items-center justify-center rounded bg-background border border-border hover:bg-primary/10 hover:border-primary/50 text-sm font-mono transition-colors">
                 {sym}
               </button>
             ))}
@@ -823,6 +823,7 @@ export default function CreateAssignment() {
 
   return (
     <Layout>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50/70 via-background to-amber-50/40 dark:from-emerald-950/30 dark:via-background dark:to-amber-950/20">
       <div className="container mx-auto px-4 py-6 max-w-3xl">
 
         {/* ══ Hero Header ══ */}
@@ -1232,7 +1233,7 @@ export default function CreateAssignment() {
                                   {/* Math toggle (only if NOT already auto-opened) */}
                                   {!isMathSubject && (
                                     <button type="button" onClick={() => setMathToolbarFor(mathToolbarFor === qIndex ? -1 : qIndex)}
-                                      className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold border border-dashed transition-colors ${mathToolbarFor === qIndex ? "text-purple-700 bg-purple-50 dark:bg-purple-900/20 border-purple-400" : "text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 border-border hover:border-purple-400"}`}>
+                                      className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold border border-dashed transition-colors ${mathToolbarFor === qIndex ? "text-primary bg-primary/10 border-primary/50" : "text-muted-foreground hover:text-primary hover:bg-primary/10 border-border hover:border-primary/40"}`}>
                                       Σ {lang === "ar" ? "رياضيات" : "Math"}
                                     </button>
                                   )}
@@ -1386,7 +1387,7 @@ export default function CreateAssignment() {
                         <Button type="button" variant="outline" onClick={handleAddQuestion} className="flex-1 py-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary text-sm">
                           <Plus className={`w-4 h-4 ${lang === "ar" ? "ml-1.5" : "mr-1.5"}`} />{t.createAssignment.addQuestion}
                         </Button>
-                        <Button type="button" variant="outline" onClick={openBankModal} className="flex-1 py-3 border-dashed border-2 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 text-muted-foreground hover:text-indigo-600 text-sm">
+                        <Button type="button" variant="outline" onClick={openBankModal} className="flex-1 py-3 border-dashed border-2 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary text-sm">
                           <Database className={`w-4 h-4 ${lang === "ar" ? "ml-1.5" : "mr-1.5"}`} />{t.questionBank.selectQuestions}
                         </Button>
                       </div>
@@ -1631,17 +1632,17 @@ export default function CreateAssignment() {
                           </div>
                         </div>
                         <button type="button" onClick={() => isAdmin && setIsAdaptive(!isAdaptive)} disabled={!isAdmin}
-                          className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${isAdaptive ? "bg-violet-600" : "bg-gray-300 dark:bg-gray-600"}`}>
+                          className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${isAdaptive ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"}`}>
                           <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${isAdaptive ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
                         </button>
                       </div>
                       <AnimatePresence>
                         {isAdaptive && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <div className="mt-3 p-3 rounded-xl border-2 border-violet-200 dark:border-violet-800 bg-violet-50/50 space-y-3">
+                            <div className="mt-3 p-3 rounded-xl border-2 border-primary/20 bg-primary/5 space-y-3">
                               <div className="flex flex-wrap gap-1.5">
                                 {adaptiveSkills.map((sk, i) => (
-                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-200 dark:bg-violet-800 text-violet-800 dark:text-violet-200 text-xs font-bold">
+                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/20 text-secondary-foreground text-xs font-bold">
                                     {sk}<button type="button" onClick={() => setAdaptiveSkills(adaptiveSkills.filter((_, j) => j !== i))} className="hover:text-red-500"><X className="w-3 h-3" /></button>
                                   </span>
                                 ))}
@@ -1651,7 +1652,7 @@ export default function CreateAssignment() {
                                   placeholder={lang === "ar" ? "أضف مهارة" : "Add a skill"} className="text-sm flex-1"
                                   onKeyDown={e => { if (e.key === "Enter" && adaptiveSkillInput.trim()) { e.preventDefault(); if (!adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); } }} />
                                 <button type="button" onClick={() => { if (adaptiveSkillInput.trim() && !adaptiveSkills.includes(adaptiveSkillInput.trim())) setAdaptiveSkills([...adaptiveSkills, adaptiveSkillInput.trim()]); setAdaptiveSkillInput(""); }}
-                                  className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold"><Plus className="w-4 h-4" /></button>
+                                  className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold"><Plus className="w-4 h-4" /></button>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Label className="text-xs font-bold text-violet-700">{lang === "ar" ? "أسئلة لكل طالب:" : "Questions per student:"}</Label>
@@ -1923,14 +1924,14 @@ export default function CreateAssignment() {
                   <div className="text-center py-8 text-muted-foreground">{t.questionBank.noQuestions}</div>
                 ) : (
                   bankQuestions.filter((q: any) => !bankFilterSubject || q.subject === bankFilterSubject).map((q: any) => (
-                    <button key={q.id} type="button" onClick={() => toggleBankQuestion(q.id)} className={`w-full text-start p-3 rounded-xl border-2 transition-all ${bankSelected.has(q.id) ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20" : "border-border hover:border-indigo-300"}`}>
+                    <button key={q.id} type="button" onClick={() => toggleBankQuestion(q.id)} className={`w-full text-start p-3 rounded-xl border-2 transition-all ${bankSelected.has(q.id) ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
                       <div className="flex items-start gap-2">
-                        <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${bankSelected.has(q.id) ? "bg-indigo-500 border-indigo-500 text-white" : "border-border"}`}>
+                        <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${bankSelected.has(q.id) ? "bg-primary border-primary text-white" : "border-border"}`}>
                           {bankSelected.has(q.id) && <CheckCircle2 className="w-3.5 h-3.5" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-1">
-                            <span className="px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold rounded">{q.subject}</span>
+                            <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">{q.subject}</span>
                             <span className="text-[10px] text-muted-foreground">{q.points} {lang === "ar" ? "د" : "pts"}</span>
                           </div>
                           <p className="text-sm font-bold text-foreground leading-snug">{q.text}</p>
@@ -1942,12 +1943,13 @@ export default function CreateAssignment() {
               </div>
               <div className="flex gap-3 mt-4 pt-3 border-t border-border">
                 <button onClick={() => setShowBankModal(false)} type="button" className="flex-1 px-4 py-3 bg-muted text-muted-foreground rounded-xl font-bold hover:bg-muted/80">{lang === "ar" ? "إلغاء" : "Cancel"}</button>
-                <button onClick={importBankQuestions} type="button" disabled={bankSelected.size === 0} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg hover:bg-indigo-700 disabled:opacity-50">{t.questionBank.addSelected} ({bankSelected.size})</button>
+                <button onClick={importBankQuestions} type="button" disabled={bankSelected.size === 0} className="flex-1 px-4 py-3 bg-primary text-white rounded-xl font-black shadow-lg hover:bg-primary/90 disabled:opacity-50">{t.questionBank.addSelected} ({bankSelected.size})</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </Layout>
   );
 }
