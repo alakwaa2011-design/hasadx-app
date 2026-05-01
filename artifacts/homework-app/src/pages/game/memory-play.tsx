@@ -439,7 +439,7 @@ export default function MemoryPlay() {
     setPhase("preview");
     setCards(newCards.map(c => ({ ...c, isFlipped: true })));
 
-    const previewTime = 5000 + (lvl - 1) * 5000;
+    const previewTime = 10000 + (lvl - 1) * 5000;
     setTimeout(() => {
       setCards(prev => prev.map(c => ({ ...c, isFlipped: false })));
       setPhase("playing");
