@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { db, notificationsTable, teachersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 const router = Router();
@@ -56,7 +57,9 @@ router.get("/maraqui-paths/public", async (_req, res) => {
   try {
     const result = await db.execute(
       sql`SELECT id, title, description, pin, stages, creator_id, creator_type, is_public, is_approved, group_id, created_at
-          FROM maraqui_paths WHERE is_public = true AND is_approved = true
+          FROM maraqui_paths
+          WHERE (creator_type = 'organizer' AND is_public = true)
+             OR (creator_type = 'teacher' AND is_public = true AND is_approved = true)
           ORDER BY created_at DESC LIMIT 50`
     );
     res.json(result.rows);
@@ -180,6 +183,27 @@ router.post("/maraqui-paths", async (req, res) => {
       }
     }
     res.json(row);
+
+    // Notify admins when a regular teacher requests public listing
+    if (!isAdmin && isPublicBool && row) {
+      try {
+        const creatorResult = await db.execute(sql`SELECT name FROM teachers WHERE id = ${req.session.teacherId} LIMIT 1`);
+        const creatorName = (creatorResult.rows[0] as Record<string, unknown>)?.name ?? "معلم";
+        const admins = await db.select({ id: teachersTable.id }).from(teachersTable).where(eq(teachersTable.isAdmin, true));
+        if (admins.length > 0) {
+          await db.insert(notificationsTable).values(
+            admins.map(admin => ({
+              teacherId: admin.id,
+              type: "maraqui_approval",
+              title: `طلب نشر مسار مراقي`,
+              body: `${creatorName} يطلب الموافقة على نشر مسار "${title.trim().slice(0, 50)}"`,
+            }))
+          );
+        }
+      } catch {
+        // notification failure is non-critical
+      }
+    }
   } catch {
     res.status(500).json({ error: "Failed to create path" });
   }

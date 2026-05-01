@@ -66,7 +66,10 @@ export function NotificationBell() {
 
   function handleNotifClick(n: Notification) {
     if (!n.isRead) markRead.mutate(n.id);
-    if (n.assignmentId) {
+    if (n.type === "maraqui_approval") {
+      setLocation("/teacher/admin?tab=maraqui");
+      setOpen(false);
+    } else if (n.assignmentId) {
       setLocation(`/teacher/assignment/${n.assignmentId}`);
       setOpen(false);
     }
