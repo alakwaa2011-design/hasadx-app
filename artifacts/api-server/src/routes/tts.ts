@@ -6,12 +6,7 @@ const router: IRouter = Router();
 const MAX_TEXT_LENGTH = 1000;
 
 router.post("/tts", async (req, res) => {
-  if (!req.session?.teacherId && !req.session?.studentId) {
-    res.status(401).json({ error: "يجب تسجيل الدخول" });
-    return;
-  }
-
-  const { text, voice = "nova", speed = 0.85 } = req.body;
+  const { text, voice = "nova" } = req.body;
 
   if (!text || typeof text !== "string" || !text.trim()) {
     res.status(400).json({ error: "النص مطلوب" });
@@ -24,14 +19,29 @@ router.post("/tts", async (req, res) => {
   }
 
   try {
-    const mp3 = await openai.audio.speech.create({
-      model: "tts-1-hd",
-      voice: voice as "nova" | "shimmer" | "alloy" | "echo" | "fable" | "onyx",
-      input: text.trim(),
-      speed: Math.min(1.5, Math.max(0.25, Number(speed) || 0.85)),
+    const response = await (openai.chat.completions as any).create({
+      model: "gpt-audio",
+      modalities: ["text", "audio"],
+      audio: { voice, format: "mp3" },
+      messages: [
+        {
+          role: "system",
+          content: "أنت مساعد يقرأ النصوص بصوت واضح وطبيعي دون إضافة أي كلام آخر.",
+        },
+        {
+          role: "user",
+          content: `اقرأ هذا النص كما هو بالضبط: ${text.trim()}`,
+        },
+      ],
     });
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const audioData: string = (response.choices[0]?.message as any)?.audio?.data ?? "";
+    if (!audioData) {
+      res.status(500).json({ error: "لم يتم توليد الصوت" });
+      return;
+    }
+
+    const buffer = Buffer.from(audioData, "base64");
     res.set("Content-Type", "audio/mpeg");
     res.set("Content-Length", String(buffer.length));
     res.set("Cache-Control", "public, max-age=3600");
