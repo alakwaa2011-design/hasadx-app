@@ -16,6 +16,8 @@ const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const ResetPassword = lazy(() => import("@/pages/reset-password"));
 const TeacherDashboard = lazy(() => import("@/pages/teacher/dashboard"));
 const CreateAssignment = lazy(() => import("@/pages/teacher/create-assignment"));
+const NewActivity = lazy(() => import("@/pages/teacher/new-activity"));
+const DictationCreate = lazy(() => import("@/pages/teacher/dictation-create"));
 const TeacherAssignmentDetail = lazy(() => import("@/pages/teacher/assignment-detail"));
 const StudentSolve = lazy(() => import("@/pages/student/solve"));
 const GameJoin = lazy(() => import("@/pages/game/join"));
@@ -153,7 +155,9 @@ function Router() {
         
         {/* Teacher Routes */}
         <Route path="/teacher" component={TeacherDashboard} />
-        <Route path="/teacher/new" component={CreateAssignment} />
+        <Route path="/teacher/new" component={NewActivity} />
+        <Route path="/teacher/new/assignment" component={CreateAssignment} />
+        <Route path="/teacher/new/dictation" component={DictationCreate} />
         <Route path="/teacher/assignment/:id" component={TeacherAssignmentDetail} />
         <Route path="/teacher/students" component={StudentsPage} />
         <Route path="/teacher/library" component={TeacherLibraryPage} />

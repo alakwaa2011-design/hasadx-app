@@ -10,14 +10,45 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-function gradeDictation(studentAnswer: string, correctText: string, allowErrors: boolean): boolean {
-  const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+interface DictationGradingOpts {
+  allowErrors?: boolean;
+  ignoreDiacritics?: boolean;
+  ignoreShadda?: boolean;
+  ignoreTanween?: boolean;
+  tolerance?: number; // 0=exact, 1=slight, 2=moderate, 3=loose
+}
+
+function stripArabicDiacritics(s: string, opts: DictationGradingOpts): string {
+  let out = s;
+  if (opts.ignoreDiacritics) {
+    // Remove all harakat (fatha, damma, kasra, sukun, etc.)
+    out = out.replace(/[\u064B-\u0652\u0670]/g, "");
+  } else {
+    if (opts.ignoreTanween) out = out.replace(/[\u064B\u064C\u064D]/g, ""); // tanween fath/damm/kasr
+    if (opts.ignoreShadda)  out = out.replace(/\u0651/g, "");               // shadda
+  }
+  return out;
+}
+
+function gradeDictation(studentAnswer: string, correctText: string, allowErrors: boolean, optionD?: string | null): boolean {
+  let opts: DictationGradingOpts = { allowErrors };
+  if (optionD) {
+    try { opts = { allowErrors, ...JSON.parse(optionD) }; } catch { /* use defaults */ }
+  }
+  const norm = (s: string) => {
+    let t = s.trim().replace(/\s+/g, " ").toLowerCase();
+    t = stripArabicDiacritics(t, opts);
+    return t;
+  };
   const s = norm(studentAnswer);
   const c = norm(correctText);
   if (s === c) return true;
-  if (!allowErrors) return false;
-  // Allow up to ~15% character error rate for minor spelling mistakes
-  const maxDist = Math.max(1, Math.floor(c.length * 0.15));
+  if (!opts.allowErrors) return false;
+  const tol = typeof opts.tolerance === "number" ? opts.tolerance : 1;
+  // tolerance 0 = exact (1%), 1 = slight (15%), 2 = moderate (25%), 3 = loose (35%)
+  const rates = [0.01, 0.15, 0.25, 0.35];
+  const rate = rates[Math.min(tol, 3)];
+  const maxDist = Math.max(1, Math.floor(c.length * rate));
   return levenshtein(s, c) <= maxDist;
 }
 
@@ -1000,7 +1031,7 @@ export function submitPersonalAnswer(
     correct = acceptedAnswers.length > 0 && acceptedAnswers.some(a => a === studentAns);
   } else if (qType === "dictation") {
     const allowErrors = question.optionC !== "false";
-    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors);
+    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors, question.optionD);
   } else if (qType === "mcq" && player.personalShuffledCorrectAnswer) {
     correct = answer === player.personalShuffledCorrectAnswer;
   } else {
@@ -1133,7 +1164,7 @@ export function submitAnswer(
     correct = acceptedAnswers.length > 0 && acceptedAnswers.some(a => a === studentAns);
   } else if (qType === "dictation") {
     const allowErrors = question.optionC !== "false";
-    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors);
+    correct = gradeDictation(answer || "", question.correctAnswer || question.optionA || "", allowErrors, question.optionD);
   } else if (qType === "mcq" && game.currentShuffledCorrectAnswer) {
     correct = answer === game.currentShuffledCorrectAnswer;
   } else {

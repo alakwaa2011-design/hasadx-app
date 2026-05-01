@@ -131,7 +131,7 @@ router.post("/public/start-wameeth/:assignmentId", async (req, res) => {
       .where(eq(questionsTable.assignmentId, assignmentId));
 
     const gameQuestions: GameQuestion[] = dbQuestions
-      .filter(q => q.questionType === "mcq" || q.questionType === "true_false" || q.questionType === "fill_blank")
+      .filter(q => q.questionType === "mcq" || q.questionType === "true_false" || q.questionType === "fill_blank" || q.questionType === "dictation")
       .map(q => ({
         id: q.id,
         text: q.text,
