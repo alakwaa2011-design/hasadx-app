@@ -711,10 +711,10 @@ export default function MillionPlay() {
   // Auto-advance to next question after answer — no manual "Next" tap needed.
   // Class mode: after class_reveal (so the host/students see the result first).
   // Solo & arena: as soon as the answer is locked in correct.
+  // Broadcast/class-session: host-driven only — never auto-advance.
+  const isTeacherControlled = broadcastMode || (!!classPin && !isClassMode);
   useEffect(() => {
-    // Broadcast mode is host-driven: NEVER auto-advance locally — wait for the
-    // server's million-class:question-changed event.
-    if (broadcastMode) return;
+    if (isTeacherControlled) return;
     const shouldAdvance =
       phase === "class_reveal" ||
       (!isClassMode && phase === "correct");
@@ -722,7 +722,7 @@ export default function MillionPlay() {
     const delay = isClassMode ? 2200 : 900;
     const t = setTimeout(() => handleNextQuestion(), delay);
     return () => clearTimeout(t);
-  }, [phase, isClassMode, handleNextQuestion]);
+  }, [phase, isClassMode, isTeacherControlled, handleNextQuestion]);
 
   const handleQuit = useCallback(() => {
     const score = currentIndex > 0 ? (prizeList[currentIndex - 1] ?? 0) : 0;
@@ -1455,7 +1455,7 @@ export default function MillionPlay() {
                           : `🛡️ Safe Haven! If you walk away later you keep at least ${formatPrize(currentPrize)}`}
                       </motion.div>
                     )}
-                    {broadcastMode ? (
+                    {isTeacherControlled ? (
                       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold"
                         style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd" }}>
