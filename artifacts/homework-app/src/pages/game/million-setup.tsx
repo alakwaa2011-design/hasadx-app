@@ -578,11 +578,18 @@ export default function MillionSetup() {
                             </span>
                           </button>
                           {broadcastInClassSession && (
-                            <p className="text-cyan-400 text-xs px-1">
-                              {lang === "ar"
-                                ? "كل الطلاب يرَون نفس السؤال في نفس اللحظة. الإجابة الخاطئة لا تُقصي — فقط الصحيحة تُضاف للجائزة."
-                                : "All students see the same question simultaneously. Wrong answers don't eliminate — only correct ones add to the prize."}
-                            </p>
+                            <div className="space-y-1">
+                              <p className="text-cyan-400 text-xs px-1">
+                                {lang === "ar"
+                                  ? "كل الطلاب يرَون نفس السؤال في نفس اللحظة. الإجابة الخاطئة لا تُقصي — فقط الصحيحة تُضاف للجائزة."
+                                  : "All students see the same question simultaneously. Wrong answers don't eliminate — only correct ones add to the prize."}
+                              </p>
+                              <p className="text-cyan-300/70 text-xs px-1">
+                                {lang === "ar"
+                                  ? "💡 يمكنك استخدام واجب خاص بك أو بنك الأسئلة — اختر المصدر أدناه."
+                                  : "💡 You can use your own assignment or the question bank — choose the source below."}
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
