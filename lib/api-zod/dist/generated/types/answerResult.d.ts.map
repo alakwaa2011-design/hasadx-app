@@ -1,0 +1,1 @@
+{"version":3,"file":"answerResult.d.ts","sourceRoot":"","sources":["../../../src/generated/types/answerResult.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,YAAY;IAC3B,UAAU,EAAE,MAAM,CAAC;IACnB,YAAY,EAAE,MAAM,CAAC;IACrB,cAAc,EAAE,MAAM,CAAC;IACvB,aAAa,CAAC,EAAE,MAAM,GAAG,IAAI,CAAC;IAC9B,SAAS,EAAE,OAAO,CAAC;IACnB,MAAM,EAAE,MAAM,CAAC;IACf,YAAY,EAAE,MAAM,CAAC;CACtB"}

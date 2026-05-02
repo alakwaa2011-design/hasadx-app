@@ -3,7 +3,6 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
 import { categoriesTable } from "./categories";
-
 export const assignmentsTable = pgTable("assignments", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -33,8 +32,18 @@ export const assignmentsTable = pgTable("assignments", {
   /** When created from a presentation activity slide, stores "presId:slideId" so the same
    *  assignment is reused on subsequent plays instead of creating a new one each time. */
   fromPresentationSlide: text("from_presentation_slide"),
+  // ─── Listening Activity fields ───────────────────────────────────────────────
+  /** "listening" | null — marks this assignment as a listening activity */
+  activityType: text("activity_type"),
+  /** The full text that gets converted to TTS audio for the student */
+  listeningAudioText: text("listening_audio_text"),
+  /** TTS voice name (shimmer, alloy, nova, onyx, echo) */
+  listeningVoice: text("listening_voice"),
+  /** TTS playback speed stored as text (e.g. "1", "1.25") */
+  listeningSpeed: text("listening_speed"),
+  /** JSON blob: { maxListens, allowSpeedControl, allowSeek, showTranscript } */
+  listeningSettings: text("listening_settings"),
 });
-
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;

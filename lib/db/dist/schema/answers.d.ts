@@ -1,0 +1,105 @@
+import { z } from "zod/v4";
+export declare const answersTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "answers";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "answers";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        submissionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "submission_id";
+            tableName: "answers";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        questionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "question_id";
+            tableName: "answers";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        selectedAnswer: import("drizzle-orm/pg-core").PgColumn<{
+            name: "selected_answer";
+            tableName: "answers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        isCorrect: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_correct";
+            tableName: "answers";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const insertAnswerSchema: z.ZodObject<{
+    submissionId: z.ZodInt;
+    questionId: z.ZodInt;
+    selectedAnswer: z.ZodString;
+    isCorrect: z.ZodBoolean;
+}, {
+    out: {};
+    in: {};
+}>;
+export type InsertAnswer = z.infer<typeof insertAnswerSchema>;
+export type Answer = typeof answersTable.$inferSelect;
+//# sourceMappingURL=answers.d.ts.map

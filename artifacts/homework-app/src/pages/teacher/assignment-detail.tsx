@@ -212,6 +212,11 @@ export default function TeacherAssignmentDetail() {
 
   const startEditingAssignment = () => {
     if (!assignment) return;
+    // إذا كان نشاط استماع، وجّه لصفحة التعديل الخاصة به
+    if ((assignment as any).activityType === "listening") {
+      setLocation(`/teacher/new/dictation?edit=${assignment.id}`);
+      return;
+    }
     setEditTitle(assignment.title);
     setEditSubject(assignment.subject ?? "");
     setEditDescription(assignment.description || "");
