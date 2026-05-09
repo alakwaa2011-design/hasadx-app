@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, Search, User, Copy, Check,
   Play, Globe, BookOpen, Loader2, Share2,
-  FileText, Tag, Gamepad2, Zap, Bot, Users, X, Terminal,
+  FileText, Tag, Gamepad2, Zap, Bot, Users, X, Terminal, Home,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -31,6 +31,7 @@ export default function PublicGamesPage() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
+  const ForwardArrow = lang === "ar" ? ArrowLeft : ArrowRight;
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [loading, setLoading] = useState(true);

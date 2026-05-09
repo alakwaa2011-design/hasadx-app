@@ -1,155 +1,7 @@
-
-
-مشاركة
-أرى في الصورة الاختصار مباشرة! اضغط:
-Cmd + J
-هذا يفتح Terminal في Cursor مباشرة. ثم اكتب:
-Bash
-git push origin main
-واضغط Enter.
-
-git pull origin main
-From https://github.com/alakwaa2011-design/hasadx-app
- * branch            main       -> FETCH_HEAD
-Already up to date.
-marwanalakwa@MacBookPro mnS-HSd % git push origin main
-
-Everything up-to-date
-marwanalakwa@MacBookPro mnS-HSd % 
-الآن اتضحت المشكلة الكاملة.
-"Everything up-to-date" يعني أن الكود على جهازك هو نفسه الكود على GitHub — لكن التغييرات التي كتبتها أنا موجودة في بيئتي الخاصة (sandbox) وليست على جهازك ولا على GitHub.
-يعني أنا كنت أعدّل نسخة عندي، وأعمل commit في مستودع محلي عندي، لكن لا أستطيع رفعها لـ GitHub لأنني لا أملك صلاحية.
-الحل الصحيح والنهائي
-أعطيك الملفات المعدّلة مباشرة — تضعها في مشروعك وتعمل push بنفسك.
-الملفات التي تحتاج استبدالها:
-الملف
-المسار في مشروعك
-dictation-create.tsx
-artifacts/homework-app/src/pages/teacher/
-solve.tsx
-artifacts/homework-app/src/pages/student/
-assignment-detail.tsx
-artifacts/homework-app/src/pages/teacher/
-new-activity.tsx
-artifacts/homework-app/src/pages/teacher/
-assignments.ts (schema)
-lib/db/src/schema/
-assignments.ts (routes)
-artifacts/api-server/src/
-api.schemas.ts
-lib/api-zod/src/
-هل تريد أرسل لك هذه الملفات الآن لتضعها في مشروعك؟
-علمني خطوة خطوة لا افهم شيء
-حسناً! سأشرح لك بأبسط طريقة ممكنة.
-المشكلة بكلمة واحدة
-أنا عدّلت الكود عندي لكن ما وصل لجهازك ولا لـ GitHub. الحل هو أن أرسل لك الملفات المعدّلة وأنت تضعها في مكانها الصحيح.
-الخطوات
-الخطوة 1 — افتح Finder على الماك
-اضغط على أيقونة Finder في الـ Dock (الوجه الأزرق والأبيض).
-الخطوة 2 — اذهب لمجلد المشروع
-في Finder اضغط Cmd+Shift+G وانسخ هذا المسار:
-Plain Text
-/Users/marwanalakwa/
-ثم ابحث عن مجلد المشروع (اسمه mnS-HSd كما يظهر في Cursor).
-الخطوة 3 — أنا أرسل لك الملفات
-سأرسل لك كل ملف معدّل، وأخبرك بالضبط أين تضعه.
-الخطوة 4 — تعمل Push
-بعد وضع الملفات، ترجع لـ Terminal في Cursor وتكتب:
-Bash
-git add .
-git commit -m "update listening activity"
-git push origin main
-هل أبدأ بإرسال الملفات الآن؟
-نعم الان فتحت مجلد المشروع عندي في الجهاز 
-ممتاز! سأرسل لك الملفات الآن واحداً واحداً مع مسار كل ملف بالضبط.
-اكتشفت أن التغييرات لم تُرفع إلى GitHub بعد، وأملك نسخة محلية فقط. سأرسل لك الملفات المعدلة لتركيبها يدوياً، ثم تنفذ push بنفسك.
-
-جميع الملفات جاهزة. سأرسلها لك الآن — 7 ملفات تحتاج استبدالها في مشروعك.
-dictation-create-new.tsx
-رمز · 46.23 KB
-solve-new.tsx
-رمز · 97.18 KB
-assignment-detail.tsx
-رمز · 92.85 KB
-new-activity-new.tsx
-رمز · 5.91 KB
-schema-assignments-new.ts
-رمز · 2.91 KB
-assignments-routes-new.ts
-رمز · 48.03 KB
-api-schemas-new.ts
-رمز · 10.58 KB
-عرض جميع الملفات في هذه المهمة
-كيف كانت هذه النتيجة؟
-الآن افتح مجلد مشروعك في Finder وضع كل ملف في مكانه:
-الملف الأول
-الاسم الجديد: dictation-create-new.tsx
-ضعه هنا: artifacts/homework-app/src/pages/teacher/
-احذف الملف القديم: dictation-create.tsx واستبدله بهذا (غيّر اسمه لـ dictation-create.tsx)
-الملف الثاني
-الاسم الجديد: solve-new.tsx
-ضعه هنا: artifacts/homework-app/src/pages/student/
-احذف الملف القديم: solve.tsx واستبدله (غيّر الاسم لـ solve.tsx)
-الملف الثالث
-الاسم الجديد: assignment-detail.tsx
-ضعه هنا: artifacts/homework-app/src/pages/teacher/
-استبدل الملف القديم بنفس الاسم
-الملف الرابع
-الاسم الجديد: new-activity-new.tsx
-ضعه هنا: artifacts/homework-app/src/pages/teacher/
-احذف القديم: new-activity.tsx واستبدله (غيّر الاسم لـ new-activity.tsx)
-الملف الخامس
-الاسم الجديد: schema-assignments-new.ts
-ضعه هنا: lib/db/src/schema/
-احذف القديم: assignments.ts واستبدله (غيّر الاسم لـ assignments.ts)
-الملف السادس
-الاسم الجديد: assignments-routes-new.ts
-ضعه هنا: artifacts/api-server/src/
-احذف القديم: assignments.ts واستبدله (غيّر الاسم لـ assignments.ts)
-الملف السابع
-الاسم الجديد: api-schemas-new.ts
-ضعه هنا: lib/api-zod/src/
-احذف القديم: api.schemas.ts واستبدله (غيّر الاسم لـ api.schemas.ts)
-بعد وضع كل الملفات، ارجع لـ Terminal في Cursor واكتب هذه الأوامر الثلاثة:
-Bash
-git add .
-git commit -m "feat: listening activity full update"
-git push origin main
-أخبرني عند الانتهاء.
-عندما اضغط فتح يفتح لي تلقائيا في كروسر
-ممتاز! هذا أسهل. في Cursor اضغط Cmd+Shift+E لفتح مستعرض الملفات على اليسار، ثم:
-للملف الأول:
-في الشريط الأيسر، انتقل لـ artifacts/homework-app/src/pages/teacher/
-انقر بزر الماوس الأيمن على dictation-create.tsx
-اختر Delete
-الآن اسحب الملف dictation-create-new.tsx الذي أرسلته لك إلى نفس المجلد
-انقر عليه بزر الأيمن → Rename → غيّر اسمه لـ dictation-create.tsx
-كرر نفس الخطوات لبقية الملفات.
-أو الطريقة الأسهل: افتح Terminal في Cursor (Cmd+J) واكتب هذا الأمر مباشرة — سيفعل كل شيء تلقائياً:
-Bash
-cp ~/Downloads/dictation-create-new.tsx artifacts/homework-app/src/pages/teacher/dictation-create.tsx && \
-cp ~/Downloads/solve-new.tsx artifacts/homework-app/src/pages/student/solve.tsx && \
-cp ~/Downloads/assignment-detail.tsx artifacts/homework-app/src/pages/teacher/assignment-detail.tsx && \
-cp ~/Downloads/new-activity-new.tsx artifacts/homework-app/src/pages/teacher/new-activity.tsx && \
-cp ~/Downloads/schema-assignments-new.ts lib/db/src/schema/assignments.ts && \
-cp ~/Downloads/assignments-routes-new.ts artifacts/api-server/src/assignments.ts && \
-cp ~/Downloads/api-schemas-new.ts lib/api-zod/src/api.schemas.ts && \
-echo "تم!"
-لكن هذا يشترط أن تكون الملفات في مجلد Downloads على جهازك — هل حفظتها هناك؟
-تم إكمال المهمة
-كيف كانت هذه النتيجة؟
-اقتراحات للمتابعة
-
-
-
-أجهزة الكمبيوتر السحابية
-جديد
-
-dictation-create-new.tsx
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   DndContext,
   closestCenter,
@@ -1214,7 +1066,7 @@ export default function DictationCreate() {
             style={{ backgroundColor: COLOR_PRIMARY }}
           >
             {step === 3 ? (
-              createMutation.isPending ? "جارٍ النشر..." : "نشر النشاط 🎉"
+              createMutation.isPending ? "جارٍ النشر..." : "نشر النشاط"
             ) : (
               <>
                 التالي <ChevronLeft className="w-4 h-4" />
@@ -1226,4 +1078,3 @@ export default function DictationCreate() {
     </div>
   );
 }
-عن المنصة وكل شيء اساسي - Manus

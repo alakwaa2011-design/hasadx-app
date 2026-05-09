@@ -108,6 +108,59 @@ export declare const feedbackTable: import("drizzle-orm/pg-core").PgTableWithCol
         }, {}, {
             length: 20;
         }>;
+        reply: import("drizzle-orm/pg-core").PgColumn<{
+            name: "reply";
+            tableName: "feedback";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        replyToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "reply_token";
+            tableName: "feedback";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 48;
+        }>;
+        repliedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "replied_at";
+            tableName: "feedback";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "feedback";

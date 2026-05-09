@@ -631,13 +631,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
               />
               <span className="font-semibold text-sm opacity-70">حصاد</span>
             </div>
-            <Link
-              href="/feedback"
-              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors min-h-[44px] sm:min-h-0 items-center"
-            >
-              <MessageSquarePlus className="w-3.5 h-3.5" />
-              {t.footer.feedback}
-            </Link>
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} {t.footer.copyright}
             </p>
