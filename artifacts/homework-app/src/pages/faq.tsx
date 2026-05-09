@@ -102,16 +102,6 @@ export default function FaqPage() {
             ))}
           </div>
 
-          <div className="mt-10 p-5 rounded-xl border border-border/50 bg-muted/20 text-center">
-            <p className="text-sm text-muted-foreground mb-3">لم تجد إجابة لسؤالك؟</p>
-            <Link
-              href="/feedback"
-              className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-lg transition-colors text-white"
-              style={{ background: "#1a4731" }}
-            >
-              تواصل معنا
-            </Link>
-          </div>
         </div>
       </div>
     </Layout>

@@ -3569,12 +3569,6 @@ export default function Home() {
             <p className="text-xs text-white/35">
               © {new Date().getFullYear()} حصاد — جميع الحقوق محفوظة
             </p>
-            <Link
-              href="/feedback"
-              className="text-xs text-white/35 hover:text-white/70"
-            >
-              اقتراحات
-            </Link>
           </div>
         </div>
       </footer>

@@ -2441,13 +2441,6 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
       groupTitle: isAr ? "أخرى" : "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
-        {
-          icon: <MessageSquarePlus className="w-6 h-6" />,
-          title: t.dashboard.toolFeedback,
-          desc: t.dashboard.toolFeedbackDesc,
-          accent: BRAND.green,
-          href: "/feedback",
-        },
         ...(user?.isAdmin
           ? [
               {
