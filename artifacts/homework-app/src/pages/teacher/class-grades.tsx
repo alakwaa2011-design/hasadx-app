@@ -77,6 +77,9 @@ export default function ClassGrades() {
   const [savingGrade, setSavingGrade] = useState(false);
 
   const autoSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const gradeTableRef = useRef<HTMLTableElement>(null);
+  /** Avoid duplicate PUT when arrow-key save unmounts the assignment grade input (blur fires). */
+  const suppressAssignmentGradeBlurSave = useRef(false);
 
   const gradeKey = (studentId: number, columnId: number) => `${studentId}_${columnId}`;
 
@@ -146,6 +149,78 @@ export default function ClassGrades() {
     "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300";
 
   const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, "ar"));
+
+  const totalGradeCols = assignments.length + customCols.length;
+
+  const isGradeCellNavigable = (rowIdx: number, colIdx: number) => {
+    if (rowIdx < 0 || rowIdx >= sortedStudents.length || colIdx < 0 || colIdx >= totalGradeCols) return false;
+    if (colIdx < assignments.length) {
+      const a = assignments[colIdx];
+      const st = sortedStudents[rowIdx];
+      return !!getSubmission(st.id, st.name, a.id);
+    }
+    return true;
+  };
+
+  const focusGradeCell = (rowIdx: number, colIdx: number) => {
+    gradeTableRef.current
+      ?.querySelector<HTMLElement>(`[data-grade-nav="${rowIdx}-${colIdx}"]`)
+      ?.focus();
+  };
+
+  /** Arrow keys: move between students (up/down) and columns (left/right). */
+  const handleGradeGridKeyDown = (
+    e: React.KeyboardEvent,
+    rowIdx: number,
+    colIdx: number,
+    opts?: { onLeaveAssignmentEdit?: () => Promise<boolean> }
+  ) => {
+    const key = e.key;
+    if (key !== "ArrowUp" && key !== "ArrowDown" && key !== "ArrowLeft" && key !== "ArrowRight") return false;
+
+    let dRow = 0;
+    let dCol = 0;
+    if (key === "ArrowUp") dRow = -1;
+    else if (key === "ArrowDown") dRow = 1;
+    else if (key === "ArrowLeft") dCol = -1;
+    else if (key === "ArrowRight") dCol = 1;
+
+    const findNext = (): { r: number; c: number } | null => {
+      let r = rowIdx + dRow;
+      let c = colIdx + dCol;
+      const maxR = sortedStudents.length - 1;
+      const maxC = totalGradeCols - 1;
+      const maxSteps = Math.max(sortedStudents.length, totalGradeCols) * 2 + 10;
+      let steps = 0;
+      while (steps++ < maxSteps) {
+        if (r < 0 || r > maxR || c < 0 || c > maxC) return null;
+        if (isGradeCellNavigable(r, c)) return { r, c };
+        if (dRow !== 0) r += dRow > 0 ? 1 : -1;
+        else if (dCol !== 0) c += dCol > 0 ? 1 : -1;
+        else return null;
+      }
+      return null;
+    };
+
+    const next = findNext();
+    if (!next) return false;
+
+    e.preventDefault();
+
+    const finish = () => {
+      requestAnimationFrame(() => focusGradeCell(next.r, next.c));
+    };
+
+    if (opts?.onLeaveAssignmentEdit) {
+      void opts.onLeaveAssignmentEdit().then(ok => {
+        if (ok) finish();
+      });
+      return true;
+    }
+
+    finish();
+    return true;
+  };
 
   /* ── Copy full sheet to Excel ── */
   const handleCopyExcel = () => {
@@ -246,28 +321,42 @@ export default function ClassGrades() {
   };
 
   /* ── Save teacher grade override for an assignment submission ── */
-  const handleSaveGrade = async (sub: Submission, rawValue: string) => {
+  const handleSaveGrade = async (
+    sub: Submission,
+    rawValue: string,
+    options?: { quiet?: boolean }
+  ): Promise<boolean> => {
+    const quiet = options?.quiet ?? false;
     const trimmed = rawValue.trim();
     if (trimmed === "") {
       // Clear override — restore earned points
       setSavingGrade(true);
       try {
-        await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
+        const res = await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ teacherAdjustedPoints: null }),
         });
+        if (!res.ok) {
+          if (!quiet) toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+          return false;
+        }
         setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, teacherAdjustedPoints: null } : s));
-        toast.success(lang === "ar" ? "تمت إزالة التعديل" : "Override cleared");
-      } catch { toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed"); }
-      finally { setSavingGrade(false); setEditingGrade(null); }
-      return;
+        if (!quiet) toast.success(lang === "ar" ? "تمت إزالة التعديل" : "Override cleared");
+        setEditingGrade(null);
+        return true;
+      } catch {
+        if (!quiet) toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+        return false;
+      } finally {
+        setSavingGrade(false);
+      }
     }
     const num = parseFloat(trimmed.replace(",", "."));
     if (isNaN(num) || num < 0 || num > sub.totalPoints) {
       toast.error(lang === "ar" ? `أدخل رقماً بين 0 و ${sub.totalPoints}` : `Enter a number between 0 and ${sub.totalPoints}`);
-      return;
+      return false;
     }
     setSavingGrade(true);
     try {
@@ -279,11 +368,18 @@ export default function ClassGrades() {
       });
       if (r.ok) {
         setSubmissions(prev => prev.map(s => s.id === sub.id ? { ...s, teacherAdjustedPoints: num } : s));
-        toast.success(lang === "ar" ? "تم تعديل الدرجة ✓" : "Grade updated ✓");
+        if (!quiet) toast.success(lang === "ar" ? "تم تعديل الدرجة ✓" : "Grade updated ✓");
         setEditingGrade(null);
-      } else { toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed"); }
-    } catch { toast.error(lang === "ar" ? "خطأ" : "Error"); }
-    finally { setSavingGrade(false); }
+        return true;
+      }
+      if (!quiet) toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+      return false;
+    } catch {
+      if (!quiet) toast.error(lang === "ar" ? "خطأ" : "Error");
+      return false;
+    } finally {
+      setSavingGrade(false);
+    }
   };
 
   /* ── Cell edit (auto-save) ── */
@@ -398,7 +494,7 @@ export default function ClassGrades() {
           <>
             {/* ── Main table ── */}
             <Card className="overflow-x-auto p-0">
-              <table className="w-full text-sm border-collapse">
+              <table ref={gradeTableRef} className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-muted/60 border-b border-border">
                     {/* # */}
@@ -512,13 +608,14 @@ export default function ClassGrades() {
                       <tr key={student.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors">
                         <td className="sticky start-0 z-10 bg-card px-3 py-2.5 text-muted-foreground text-xs font-bold">{idx + 1}</td>
                         <td className="sticky start-8 z-10 bg-card px-4 py-2.5 font-semibold text-foreground whitespace-nowrap">{student.name}</td>
-                        {assignments.map(a => {
+                        {assignments.map((a, ac) => {
                           const sub = getSubmission(student.id, student.name, a.id);
                           if (!sub) return <td key={a.id} className="px-3 py-2.5 text-center"><span className="text-xs text-muted-foreground/50">—</span></td>;
                           const earned = sub.teacherAdjustedPoints ?? sub.earnedPoints;
                           const pct = sub.totalPoints > 0 ? Math.round((earned / sub.totalPoints) * 100) : 0;
                           const cellKey = `${student.id}_${a.id}`;
                           const isEditing = editingGrade === cellKey;
+                          const navCol = ac;
                           return (
                             <td key={a.id} className="px-1 py-1 text-center">
                               {isEditing ? (
@@ -529,12 +626,30 @@ export default function ClassGrades() {
                                     min={0}
                                     max={sub.totalPoints}
                                     step="0.5"
+                                    data-grade-nav={`${idx}-${navCol}`}
                                     defaultValue={earned}
                                     onKeyDown={e => {
-                                      if (e.key === "Enter") handleSaveGrade(sub, (e.target as HTMLInputElement).value);
+                                      const inputEl = e.currentTarget;
+                                      if (e.key === "Enter") void handleSaveGrade(sub, inputEl.value);
                                       if (e.key === "Escape") setEditingGrade(null);
+                                      if (
+                                        handleGradeGridKeyDown(e, idx, navCol, {
+                                          onLeaveAssignmentEdit: async () => {
+                                            suppressAssignmentGradeBlurSave.current = true;
+                                            const ok = await handleSaveGrade(sub, inputEl.value, { quiet: true });
+                                            if (!ok) suppressAssignmentGradeBlurSave.current = false;
+                                            return ok;
+                                          },
+                                        })
+                                      ) return;
                                     }}
-                                    onBlur={e => handleSaveGrade(sub, e.target.value)}
+                                    onBlur={e => {
+                                      if (suppressAssignmentGradeBlurSave.current) {
+                                        suppressAssignmentGradeBlurSave.current = false;
+                                        return;
+                                      }
+                                      void handleSaveGrade(sub, e.target.value);
+                                    }}
                                     className="w-14 text-center px-1 py-0.5 rounded border border-primary/50 text-xs font-bold bg-card focus:outline-none focus:ring-1 focus:ring-primary"
                                     disabled={savingGrade}
                                   />
@@ -542,8 +657,19 @@ export default function ClassGrades() {
                                 </div>
                               ) : (
                                 <button
+                                  type="button"
                                   title={lang === "ar" ? "انقر للتعديل" : "Click to edit"}
+                                  data-grade-nav={`${idx}-${navCol}`}
                                   onClick={() => { setEditingGrade(cellKey); setEditingGradeValue(String(earned)); }}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setEditingGrade(cellKey);
+                                      setEditingGradeValue(String(earned));
+                                      return;
+                                    }
+                                    handleGradeGridKeyDown(e, idx, navCol);
+                                  }}
                                   className={`group inline-flex items-center gap-1 font-bold text-xs ${getScoreColor(pct)} hover:ring-1 hover:ring-primary/40 rounded px-1.5 py-0.5 transition-all`}
                                 >
                                   {sub.teacherAdjustedPoints != null && (
@@ -557,12 +683,14 @@ export default function ClassGrades() {
                           );
                         })}
                         {/* Custom grade cells */}
-                        {customCols.map(col => (
+                        {customCols.map((col, cc) => (
                           <td key={col.id} className="px-1 py-1 text-center border-r border-violet-100 dark:border-violet-900/20 bg-violet-50/30 dark:bg-violet-950/10">
                             <input
                               type="text"
+                              data-grade-nav={`${idx}-${assignments.length + cc}`}
                               value={grades[gradeKey(student.id, col.id)] ?? ""}
                               onChange={e => handleCellChange(student.id, col.id, e.target.value)}
+                              onKeyDown={e => handleGradeGridKeyDown(e, idx, assignments.length + cc)}
                               className="w-full text-center px-2 py-1.5 rounded-lg bg-transparent border border-transparent hover:border-violet-300 focus:border-violet-500 focus:bg-card outline-none text-xs transition-all font-medium placeholder:text-muted-foreground/40"
                               placeholder="—"
                             />
