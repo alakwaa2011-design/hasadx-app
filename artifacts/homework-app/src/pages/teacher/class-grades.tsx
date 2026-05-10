@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   GraduationCap, ArrowRight, ArrowLeft, Users, BookOpen,
   ClipboardCopy, Check, Plus, X, Loader2, PaintBucket, Columns3,
-  Pencil, RotateCcw,
+  Pencil, RotateCcw, Eraser,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
@@ -42,7 +42,7 @@ type FillTarget = { kind: "custom"; id: number } | { kind: "assignment"; id: num
 export default function ClassGrades() {
   const [, params] = useRoute("/teacher/class-grades/:gradeLevel");
   const gradeLevel = decodeURIComponent(params?.gradeLevel || "");
-  const { t, lang } = useI18n();
+  const { lang, dir } = useI18n();
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -194,9 +194,9 @@ export default function ClassGrades() {
     let dCol = 0;
     if (key === "ArrowUp") dRow = -1;
     else if (key === "ArrowDown") dRow = 1;
-    // In RTL (Arabic) the table’s visual column order is mirrored; swap horizontals so keys match what’s on screen.
-    else if (key === "ArrowLeft") dCol = lang === "ar" ? 1 : -1;
-    else if (key === "ArrowRight") dCol = lang === "ar" ? -1 : 1;
+    // Horizontal arrows follow *visual* direction: in RTL, adjacent grade columns run right→higher index (visually leftward).
+    else if (key === "ArrowLeft") dCol = dir === "rtl" ? 1 : -1;
+    else if (key === "ArrowRight") dCol = dir === "rtl" ? -1 : 1;
 
     const findNext = (): { r: number; c: number } | null => {
       let r = rowIdx + dRow;
@@ -284,6 +284,65 @@ export default function ClassGrades() {
       toast.success(lang === "ar" ? `تم نسخ عمود «${title}»` : `Copied "${title}" column`);
       setTimeout(() => setCopiedColKey(null), 2000);
     });
+  };
+
+  /** Clear teacher adjustments for this assignment column (restore auto/earned grades). */
+  const handleClearAssignmentColumn = async (assignmentId: number, title: string) => {
+    const msg =
+      lang === "ar"
+        ? `مسح الدرجات المعدّلة للجميع في «${title}»؟\n\nتعود كل خانة لدرجة التصحيح الأصلية (ولن يُحذف الواجب).`
+        : `Clear adjusted grades for every student in "${title}"?\n\nEach cell will revert to the score from grading (the assignment is not deleted).`;
+    if (!confirm(msg)) return;
+    let cleared = 0;
+    for (const s of sortedStudents) {
+      const sub = getSubmission(s.id, s.name, assignmentId);
+      if (!sub?.id) continue;
+      if (sub.teacherAdjustedPoints == null) continue;
+      const res = await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ teacherAdjustedPoints: null }),
+      });
+      if (res.ok) {
+        cleared++;
+        setSubmissions(prev => prev.map(x => (x.id === sub.id ? { ...x, teacherAdjustedPoints: null } : x)));
+      }
+    }
+    await refetchClassGrades();
+    toast.success(
+      lang === "ar"
+        ? cleared > 0
+          ? `تم مسح ${cleared} درجة معدّلة`
+          : "لا توجد درجات معدّلة لمسحها في هذا العمود"
+        : cleared > 0
+          ? `Cleared ${cleared} adjusted grade(s)`
+          : "No adjusted grades to clear in this column"
+    );
+  };
+
+  const handleClearCustomColumn = async (colId: number, colName: string) => {
+    const msg =
+      lang === "ar"
+        ? `مسح كل القيم في عمود «${colName}»؟\n\nلن يُحذف العمود نفسه.`
+        : `Clear all values in column "${colName}"?\n\nThe column itself is not deleted.`;
+    if (!confirm(msg)) return;
+    const next = { ...grades };
+    for (const s of sortedStudents) {
+      next[gradeKey(s.id, colId)] = "";
+    }
+    setGrades(next);
+    await Promise.all(
+      sortedStudents.map(s =>
+        fetch(`${API_BASE}/api/custom-grades`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ columnId: colId, studentId: s.id, value: "" }),
+        })
+      )
+    );
+    toast.success(lang === "ar" ? "تم مسح عمود الدرجات المخصصة" : "Custom column values cleared");
   };
 
   const handleHideAssignmentFromGradebook = async (assignmentId: number, title: string) => {
@@ -634,7 +693,7 @@ export default function ClassGrades() {
                                 <Pencil size={11} />
                               </button>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap justify-center">
                               <button
                                 type="button"
                                 onClick={() => { setFillOpen({ kind: "assignment", id: a.id }); setFillValue(""); }}
@@ -650,6 +709,14 @@ export default function ClassGrades() {
                                 title={lang === "ar" ? "نسخ العمود" : "Copy column"}
                               >
                                 {copiedColKey === `a-${a.id}` ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleClearAssignmentColumn(a.id, a.title)}
+                                className="p-1 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 text-primary/80 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+                                title={lang === "ar" ? "مسح الدرجات المعدّلة (العودة لدرجة التصحيح)" : "Clear adjusted grades (revert to graded score)"}
+                              >
+                                <Eraser size={12} />
                               </button>
                               <button
                                 type="button"
@@ -674,31 +741,36 @@ export default function ClassGrades() {
                               <span className="text-[9px] text-violet-400 bg-violet-100 dark:bg-violet-900/40 rounded px-1">كل الصفوف</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1">
-                            {/* Fill all button */}
+                          <div className="flex items-center gap-1 flex-wrap justify-center">
                             <button
                               type="button"
                               onClick={() => { setFillOpen({ kind: "custom", id: col.id }); setFillValue(""); }}
                               className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-800/40 text-violet-500 hover:text-violet-700 transition-colors"
-                              title="تعبئة العمود كله بنفس القيمة"
+                              title={lang === "ar" ? "تعبئة العمود كله بنفس القيمة" : "Fill entire column with one value"}
                             >
                               <PaintBucket size={12} />
                             </button>
-                            {/* Copy column button */}
                             <button
                               type="button"
                               onClick={() => handleCopyColumn(col)}
                               className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-800/40 text-violet-500 hover:text-violet-700 transition-colors"
-                              title="نسخ العمود كاملاً"
+                              title={lang === "ar" ? "نسخ العمود كاملاً" : "Copy entire column"}
                             >
                               {copiedColKey === `c-${col.id}` ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
                             </button>
-                            {/* Delete column button */}
+                            <button
+                              type="button"
+                              onClick={() => void handleClearCustomColumn(col.id, col.name)}
+                              className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-800/40 text-violet-500 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
+                              title={lang === "ar" ? "مسح قيم العمود (بدون حذف العمود)" : "Clear all cells (column stays)"}
+                            >
+                              <Eraser size={12} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteColumn(col.id)}
                               className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-violet-400 hover:text-red-500 transition-colors"
-                              title="حذف العمود"
+                              title={lang === "ar" ? "حذف العمود نهائياً" : "Delete column permanently"}
                             >
                               <X size={11} />
                             </button>
