@@ -43,6 +43,8 @@ export const assignmentsTable = pgTable("assignments", {
   listeningSpeed: text("listening_speed"),
   /** JSON blob: { maxListens, allowSpeedControl, allowSeek, showTranscript } */
   listeningSettings: text("listening_settings"),
+  /** When true, this assignment is omitted from the class grade sheet (not deleted). */
+  hiddenFromGradebook: boolean("hidden_from_gradebook").notNull().default(false),
 });
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;

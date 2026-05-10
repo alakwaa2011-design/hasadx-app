@@ -36,6 +36,10 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS target_classes TEXT[]
     `);
     await db.execute(sql`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS hidden_from_gradebook BOOLEAN NOT NULL DEFAULT false
+    `);
+    await db.execute(sql`
       CREATE TABLE IF NOT EXISTS class_custom_columns (
         id SERIAL PRIMARY KEY,
         teacher_id INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,

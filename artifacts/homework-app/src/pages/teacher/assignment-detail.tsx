@@ -85,6 +85,7 @@ export default function TeacherAssignmentDetail() {
   const [editSubject, setEditSubject] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editTargetClass, setEditTargetClass] = useState("");
+  const [editShowInGradebook, setEditShowInGradebook] = useState(true);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [editQuestions, setEditQuestions] = useState<EditQuestion[]>([]);
   const deleteMutation = useDeleteAssignment({
@@ -221,6 +222,7 @@ export default function TeacherAssignmentDetail() {
     setEditSubject(assignment.subject ?? "");
     setEditDescription(assignment.description || "");
     setEditTargetClass(assignment.targetClass || "");
+    setEditShowInGradebook((assignment as { hiddenFromGradebook?: boolean }).hiddenFromGradebook !== true);
     fetch(`${BASE}/api/teacher/grade-levels`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(setGradeLevels)
@@ -307,6 +309,7 @@ export default function TeacherAssignmentDetail() {
       subject: editSubject.trim() || undefined,
       description: editDescription || undefined,
       targetClass: editTargetClass || null,
+      hiddenFromGradebook: !editShowInGradebook,
       questions: editQuestions.map((q) => ({
         id: q.id,
         text: q.text,
@@ -595,6 +598,15 @@ export default function TeacherAssignmentDetail() {
                   )}
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={editShowInGradebook}
+                  onChange={e => setEditShowInGradebook(e.target.checked)}
+                  className="rounded border-2"
+                />
+                {lang === "ar" ? "إظهار هذا الواجب في كشف درجات الصف" : "Show this assignment on the class grade sheet"}
+              </label>
             </Card>
 
             <div className="flex items-center justify-between">

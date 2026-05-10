@@ -33,8 +33,11 @@ type Submission = {
   correctAnswers: number;
   totalQuestions: number;
 };
+/** Some gradebook rows are synthesized client-side (e.g. games) and may lack a persisted submission id. */
+type SubmissionRow = Submission & { id?: number };
 type CustomColumn = { id: number; name: string; appliedTo: string };
 type GradeMap = Record<string, string>; // `${studentId}_${columnId}` -> value
+type FillTarget = { kind: "custom"; id: number } | { kind: "assignment"; id: number };
 
 export default function ClassGrades() {
   const [, params] = useRoute("/teacher/class-grades/:gradeLevel");
@@ -58,12 +61,12 @@ export default function ClassGrades() {
   const [applyAll, setApplyAll] = useState(false);
   const [savingCol, setSavingCol] = useState(false);
 
-  /* fill-all state per column: columnId -> value being typed */
-  const [fillOpen, setFillOpen] = useState<number | null>(null);
+  /* fill-all: custom column id or assignment id */
+  const [fillOpen, setFillOpen] = useState<FillTarget | null>(null);
   const [fillValue, setFillValue] = useState("");
 
-  /* copy-column feedback */
-  const [copiedCol, setCopiedCol] = useState<number | null>(null);
+  /* copy-column feedback: "c:123" custom, "a:456" assignment */
+  const [copiedColKey, setCopiedColKey] = useState<string | null>(null);
 
   /* assignment display-total override */
   const [editTotalFor, setEditTotalFor] = useState<number | null>(null);
@@ -121,15 +124,24 @@ export default function ClassGrades() {
   useEffect(() => { loadCustom(); }, [loadCustom]);
 
   /* ── Helpers ── */
-  const getSubmission = (studentId: number, studentName: string, assignmentId: number): Submission | undefined => {
+  const getSubmission = (studentId: number, studentName: string, assignmentId: number): SubmissionRow | undefined => {
     const byId = submissions.find(s => s.assignmentId === assignmentId && s.studentId === studentId);
-    if (byId) return byId;
+    if (byId) return byId as SubmissionRow;
     const nameNorm = studentName.trim().toLowerCase();
     return submissions.find(s =>
       s.assignmentId === assignmentId && !s.studentId &&
       s.studentName.trim().toLowerCase() === nameNorm
-    );
+    ) as SubmissionRow | undefined;
   };
+
+  const refetchClassGrades = useCallback(async () => {
+    const r = await fetch(`${API_BASE}/api/class-grades/${encodeURIComponent(gradeLevel)}`, { credentials: "include" });
+    if (!r.ok) return;
+    const data = await r.json();
+    setStudents(data.students || []);
+    setAssignments(data.assignments || []);
+    setSubmissions(data.submissions || []);
+  }, [gradeLevel]);
 
   const getStudentAverage = (student: Student) => {
     const subs = assignments.map(a => getSubmission(student.id, student.name, a.id)).filter(Boolean) as Submission[];
@@ -253,13 +265,47 @@ export default function ClassGrades() {
   /* ── Copy a single custom column (values only, no names) ── */
   const handleCopyColumn = (col: CustomColumn) => {
     const lines = sortedStudents.map(s => grades[gradeKey(s.id, col.id)] ?? "");
+    const key = `c-${col.id}`;
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
-      setCopiedCol(col.id);
+      setCopiedColKey(key);
       toast.success(`تم نسخ عمود "${col.name}" — الصقه في الإكسل`);
-      setTimeout(() => setCopiedCol(null), 2000);
+      setTimeout(() => setCopiedColKey(null), 2000);
     });
   };
 
+  const handleCopyAssignmentColumn = (assignmentId: number, title: string) => {
+    const lines = sortedStudents.map(s => {
+      const sub = getSubmission(s.id, s.name, assignmentId);
+      return sub ? String(sub.teacherAdjustedPoints ?? sub.earnedPoints) : "";
+    });
+    const key = `a-${assignmentId}`;
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopiedColKey(key);
+      toast.success(lang === "ar" ? `تم نسخ عمود «${title}»` : `Copied "${title}" column`);
+      setTimeout(() => setCopiedColKey(null), 2000);
+    });
+  };
+
+  const handleHideAssignmentFromGradebook = async (assignmentId: number, title: string) => {
+    const msg =
+      lang === "ar"
+        ? `إخفاء عمود «${title}» من كشف الدرجات؟\n\nلن يُحذف الواجب. يمكنك إظهاره مرة أخرى من صفحة الواجب → تعديل → خيار «إظهار في كشف الدرجات».`
+        : `Hide "${title}" from the class grade sheet?\n\nThe assignment is not deleted. You can show it again from Edit assignment.`;
+    if (!confirm(msg)) return;
+    const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ hiddenFromGradebook: true }),
+    });
+    if (res.ok) {
+      toast.success(lang === "ar" ? "تم إخفاء العمود من الكشف" : "Hidden from grade sheet");
+      await refetchClassGrades();
+      await loadCustom();
+    } else {
+      toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
+    }
+  };
   /* ── Add column ── */
   const handleAddColumn = async () => {
     if (!newColName.trim()) return;
@@ -301,14 +347,7 @@ export default function ClassGrades() {
         toast.error(lang === "ar" ? "فشل الحفظ" : "Save failed");
         return;
       }
-      // Re-fetch the grade sheet so all cells refresh with the new ratio.
-      const r = await fetch(`${API_BASE}/api/class-grades/${encodeURIComponent(gradeLevel)}`, { credentials: "include" });
-      if (r.ok) {
-        const data = await r.json();
-        setStudents(data.students || []);
-        setAssignments(data.assignments || []);
-        setSubmissions(data.submissions || []);
-      }
+      await refetchClassGrades();
       setEditTotalFor(null);
       setEditTotalValue("");
       toast.success(
@@ -398,26 +437,78 @@ export default function ClassGrades() {
     }, 600);
   };
 
-  /* ── Fill entire column ── */
-  const handleFillAll = async (colId: number) => {
-    const val = fillValue;
-    const newGrades = { ...grades };
-    for (const s of sortedStudents) {
-      newGrades[gradeKey(s.id, colId)] = val;
-    }
-    setGrades(newGrades);
+  /* ── Fill entire column (custom text or assignment numeric grades) ── */
+  const closeFillModal = () => {
     setFillOpen(null);
     setFillValue("");
+  };
 
-    await Promise.all(sortedStudents.map(s =>
-      fetch(`${API_BASE}/api/custom-grades`, {
+  const applyFillAll = async () => {
+    if (!fillOpen) return;
+    if (fillOpen.kind === "custom") {
+      const colId = fillOpen.id;
+      const val = fillValue;
+      const newGrades = { ...grades };
+      for (const s of sortedStudents) {
+        newGrades[gradeKey(s.id, colId)] = val;
+      }
+      setGrades(newGrades);
+      closeFillModal();
+
+      await Promise.all(sortedStudents.map(s =>
+        fetch(`${API_BASE}/api/custom-grades`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ columnId: colId, studentId: s.id, value: val }),
+        })
+      ));
+      toast.success(lang === "ar" ? "تم تعبئة العمود بالكامل" : "Column filled");
+      return;
+    }
+
+    const assignmentId = fillOpen.id;
+    const trimmed = fillValue.trim();
+    if (trimmed === "") {
+      toast.error(lang === "ar" ? "أدخل درجة رقمية" : "Enter a numeric grade");
+      return;
+    }
+    const num = parseFloat(trimmed.replace(",", "."));
+    if (isNaN(num) || num < 0) {
+      toast.error(lang === "ar" ? "درجة غير صالحة" : "Invalid grade");
+      return;
+    }
+    const a = assignments.find(x => x.id === assignmentId);
+    const cap = a?.displayTotalPoints ?? a?.totalPoints ?? 0;
+    if (cap > 0 && num > cap) {
+      toast.error(lang === "ar" ? `الدرجة يجب ألا تتجاوز ${cap}` : `Grade must be ≤ ${cap}`);
+      return;
+    }
+    closeFillModal();
+
+    let updated = 0;
+    let skippedNoId = 0;
+    for (const s of sortedStudents) {
+      const sub = getSubmission(s.id, s.name, assignmentId);
+      if (!sub?.id) {
+        if (sub) skippedNoId++;
+        continue;
+      }
+      if (num > sub.totalPoints) continue;
+      const r = await fetch(`${API_BASE}/api/submissions/${sub.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ columnId: colId, studentId: s.id, value: val }),
-      })
-    ));
-    toast.success("تم تعبئة العمود بالكامل");
+        body: JSON.stringify({ teacherAdjustedPoints: num }),
+      });
+      if (r.ok) updated++;
+    }
+    await refetchClassGrades();
+    toast.success(
+      lang === "ar"
+        ? `تم تحديث ${updated} طالباً${skippedNoId ? ` (تُرك ${skippedNoId} بلا سجل تسليم محفوظ)` : ""}`
+        : `Updated ${updated} student(s).`
+    );
   };
 
   /* ── Loading state ── */
@@ -510,10 +601,10 @@ export default function ClassGrades() {
                       const effectiveTotal = a.displayTotalPoints ?? originalTotal;
                       const isOverridden = a.displayTotalPoints != null;
                       return (
-                        <th key={a.id} className="px-3 py-3 text-center font-semibold text-foreground whitespace-nowrap">
+                        <th key={a.id} className="px-2 py-2 text-center font-semibold text-foreground whitespace-nowrap border-r border-primary/15 bg-primary/5 dark:bg-primary/10 min-w-[110px]">
                           <div className="flex flex-col items-center gap-1">
                             <Link href={`/teacher/assignment/${a.id}`} className="hover:text-primary transition-colors">
-                              <span className="block text-xs leading-tight max-w-[100px] truncate mx-auto" title={a.title}>{a.title}</span>
+                              <span className="block text-xs font-bold leading-tight max-w-[100px] truncate mx-auto" title={a.title}>{a.title}</span>
                               {a.subject && <span className="block text-[10px] text-muted-foreground font-normal">{a.subject}</span>}
                             </Link>
                             <div className="flex items-center gap-1">
@@ -532,6 +623,7 @@ export default function ClassGrades() {
                                 {lang === "ar" ? "من" : "/"} {effectiveTotal}
                               </span>
                               <button
+                                type="button"
                                 onClick={() => {
                                   setEditTotalFor(a.id);
                                   setEditTotalValue(String(effectiveTotal));
@@ -540,6 +632,32 @@ export default function ClassGrades() {
                                 title={lang === "ar" ? "ضبط الدرجة المعروضة" : "Set displayed total"}
                               >
                                 <Pencil size={11} />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => { setFillOpen({ kind: "assignment", id: a.id }); setFillValue(""); }}
+                                className="p-1 rounded hover:bg-primary/15 text-primary hover:text-primary transition-colors"
+                                title={lang === "ar" ? "تعبئة العمود (درجة رقمية لمن لديهم تسليم)" : "Fill column (numeric, students with submissions)"}
+                              >
+                                <PaintBucket size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAssignmentColumn(a.id, a.title)}
+                                className="p-1 rounded hover:bg-primary/15 text-primary transition-colors"
+                                title={lang === "ar" ? "نسخ العمود" : "Copy column"}
+                              >
+                                {copiedColKey === `a-${a.id}` ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleHideAssignmentFromGradebook(a.id, a.title)}
+                                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-primary/70 hover:text-red-500 transition-colors"
+                                title={lang === "ar" ? "إخفاء العمود من الكشف" : "Hide column from sheet"}
+                              >
+                                <X size={11} />
                               </button>
                             </div>
                           </div>
@@ -559,7 +677,8 @@ export default function ClassGrades() {
                           <div className="flex items-center gap-1">
                             {/* Fill all button */}
                             <button
-                              onClick={() => { setFillOpen(col.id); setFillValue(""); }}
+                              type="button"
+                              onClick={() => { setFillOpen({ kind: "custom", id: col.id }); setFillValue(""); }}
                               className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-800/40 text-violet-500 hover:text-violet-700 transition-colors"
                               title="تعبئة العمود كله بنفس القيمة"
                             >
@@ -567,14 +686,16 @@ export default function ClassGrades() {
                             </button>
                             {/* Copy column button */}
                             <button
+                              type="button"
                               onClick={() => handleCopyColumn(col)}
                               className="p-1 rounded hover:bg-violet-100 dark:hover:bg-violet-800/40 text-violet-500 hover:text-violet-700 transition-colors"
                               title="نسخ العمود كاملاً"
                             >
-                              {copiedCol === col.id ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
+                              {copiedColKey === `c-${col.id}` ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
                             </button>
                             {/* Delete column button */}
                             <button
+                              type="button"
                               onClick={() => handleDeleteColumn(col.id)}
                               className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-violet-400 hover:text-red-500 transition-colors"
                               title="حذف العمود"
@@ -611,14 +732,20 @@ export default function ClassGrades() {
                         <td className="sticky start-8 z-10 bg-card px-4 py-2.5 font-semibold text-foreground whitespace-nowrap">{student.name}</td>
                         {assignments.map((a, ac) => {
                           const sub = getSubmission(student.id, student.name, a.id);
-                          if (!sub) return <td key={a.id} className="px-3 py-2.5 text-center"><span className="text-xs text-muted-foreground/50">—</span></td>;
+                          if (!sub) {
+                            return (
+                              <td key={a.id} className="px-3 py-2.5 text-center border-r border-primary/10 bg-primary/[0.03]">
+                                <span className="text-xs text-muted-foreground/50">—</span>
+                              </td>
+                            );
+                          }
                           const earned = sub.teacherAdjustedPoints ?? sub.earnedPoints;
                           const pct = sub.totalPoints > 0 ? Math.round((earned / sub.totalPoints) * 100) : 0;
                           const cellKey = `${student.id}_${a.id}`;
                           const isEditing = editingGrade === cellKey;
                           const navCol = ac;
                           return (
-                            <td key={a.id} className="px-1 py-1 text-center">
+                            <td key={a.id} className="px-1 py-1 text-center border-r border-primary/10 bg-primary/[0.03] dark:bg-primary/5">
                               {isEditing ? (
                                 <div className="flex items-center gap-1 justify-center">
                                   <input
@@ -804,39 +931,91 @@ export default function ClassGrades() {
 
       {/* ── Fill-All Modal ── */}
       {fillOpen !== null && (() => {
-        const col = customCols.find(c => c.id === fillOpen);
-        if (!col) return null;
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { setFillOpen(null); setFillValue(""); }}>
-            <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-violet-200 dark:border-violet-800" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center gap-2 mb-1">
-                <PaintBucket className="w-5 h-5 text-violet-500" />
-                <h2 className="text-base font-bold">تعبئة العمود كله</h2>
+        if (fillOpen.kind === "custom") {
+          const col = customCols.find(c => c.id === fillOpen.id);
+          if (!col) return null;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={closeFillModal}>
+              <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-violet-200 dark:border-violet-800" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 mb-1">
+                  <PaintBucket className="w-5 h-5 text-violet-500" />
+                  <h2 className="text-base font-bold">{lang === "ar" ? "تعبئة العمود كله" : "Fill entire column"}</h2>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  {lang === "ar" ? (
+                    <>ستُطبَّق هذه القيمة على جميع الطلاب في عمود <span className="font-bold text-violet-600">"{col.name}"</span> ({sortedStudents.length} طالب)</>
+                  ) : (
+                    <>Applied to all students in column <span className="font-bold text-violet-600">"{col.name}"</span>.</>
+                  )}
+                </p>
+                <input
+                  autoFocus
+                  value={fillValue}
+                  onChange={e => setFillValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") void applyFillAll(); if (e.key === "Escape") closeFillModal(); }}
+                  placeholder={lang === "ar" ? "أدخل القيمة... مثال: 10 أو ممتاز" : "Value..."}
+                  className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-violet-400/40 mb-4"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void applyFillAll()}
+                    className="flex-1 py-2 text-sm font-bold bg-violet-500 text-white rounded-xl hover:bg-violet-600 flex items-center justify-center gap-1"
+                  >
+                    <PaintBucket size={14} />
+                    {lang === "ar" ? "تعبئة الكل" : "Fill all"}
+                  </button>
+                  <button type="button" onClick={closeFillModal} className="flex-1 py-2 text-sm rounded-xl bg-muted text-muted-foreground hover:bg-muted/80">
+                    {lang === "ar" ? "إلغاء" : "Cancel"}
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
-                ستُطبَّق هذه القيمة على جميع الطلاب في عمود <span className="font-bold text-violet-600">"{col.name}"</span> ({sortedStudents.length} طالب)
+            </div>
+          );
+        }
+        const a = assignments.find(x => x.id === fillOpen.id);
+        if (!a) return null;
+        const eff = a.displayTotalPoints ?? a.totalPoints ?? 0;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={closeFillModal}>
+            <div className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 border border-primary/30" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-1">
+                <PaintBucket className="w-5 h-5 text-primary" />
+                <h2 className="text-base font-bold">{lang === "ar" ? "تعبئة درجات الواجب" : "Fill assignment grades"}</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                {lang === "ar" ? (
+                  <>
+                    واجب <span className="font-bold text-foreground">«{a.title}»</span> — درجة رقمية (0–{eff || "…"}) تُطبَّق كدرجة معدّلة لكل طالب <span className="font-semibold">لديه تسليم محفوظ</span>.
+                  </>
+                ) : (
+                  <>
+                    Assignment <span className="font-bold">"{a.title}"</span> — one numeric grade (0–{eff || "…"}) for each student with a stored submission.
+                  </>
+                )}
               </p>
               <input
                 autoFocus
+                type="number"
+                min={0}
+                max={eff || undefined}
+                step="0.5"
                 value={fillValue}
                 onChange={e => setFillValue(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") handleFillAll(col.id); if (e.key === "Escape") { setFillOpen(null); setFillValue(""); } }}
-                placeholder="أدخل القيمة... مثال: 10 أو ممتاز"
-                className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-violet-400/40 mb-4"
+                onKeyDown={e => { if (e.key === "Enter") void applyFillAll(); if (e.key === "Escape") closeFillModal(); }}
+                className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/40 mb-4"
               />
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleFillAll(col.id)}
-                  className="flex-1 py-2 text-sm font-bold bg-violet-500 text-white rounded-xl hover:bg-violet-600 flex items-center justify-center gap-1"
+                  type="button"
+                  onClick={() => void applyFillAll()}
+                  className="flex-1 py-2 text-sm font-bold bg-primary text-primary-foreground rounded-xl hover:opacity-90 flex items-center justify-center gap-1"
                 >
                   <PaintBucket size={14} />
-                  تعبئة الكل
+                  {lang === "ar" ? "تعبئة" : "Apply"}
                 </button>
-                <button
-                  onClick={() => { setFillOpen(null); setFillValue(""); }}
-                  className="flex-1 py-2 text-sm rounded-xl bg-muted text-muted-foreground hover:bg-muted/80"
-                >
-                  إلغاء
+                <button type="button" onClick={closeFillModal} className="flex-1 py-2 text-sm rounded-xl bg-muted text-muted-foreground hover:bg-muted/80">
+                  {lang === "ar" ? "إلغاء" : "Cancel"}
                 </button>
               </div>
             </div>

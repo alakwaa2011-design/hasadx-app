@@ -321,6 +321,8 @@ export interface AssignmentWithQuestions {
   aiGradingInstructions?: string | null;
   createdAt: string;
   questions: Question[];
+  /** When true, assignment is hidden from the class grade sheet (not deleted). */
+  hiddenFromGradebook?: boolean;
 }
 
 export interface AnswerBody {

@@ -30,6 +30,7 @@ const UpdateAssignmentBody = z.object({
   aiGradingInstructions: z.string().nullish(),
   isShared: z.boolean().optional(),
   displayTotalPoints: z.number().positive().nullish(),
+  hiddenFromGradebook: z.boolean().optional(),
   questions: z.array(
     z.object({
       id: z.number().optional(),
@@ -425,6 +426,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         isShareApproved: assignmentsTable.isShareApproved,
         isAdaptive: assignmentsTable.isAdaptive,
         adaptiveConfig: assignmentsTable.adaptiveConfig,
+        hiddenFromGradebook: assignmentsTable.hiddenFromGradebook,
       })
       .from(assignmentsTable)
       .innerJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
@@ -489,6 +491,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       resultsReleaseMode: assignment.resultsReleaseMode,
       isAdaptive: assignment.isAdaptive,
       adaptiveConfig: assignment.adaptiveConfig ? JSON.parse(assignment.adaptiveConfig) : null,
+      hiddenFromGradebook: assignment.hiddenFromGradebook,
       questions: questions.map((q) => ({
         id: q.id,
         text: q.text,
@@ -592,6 +595,7 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
       .from(assignmentsTable)
       .where(and(
         eq(assignmentsTable.teacherId, teacherId),
+        eq(assignmentsTable.hiddenFromGradebook, false),
         sql`(${assignmentsTable.targetClass} = ${gradeLevel} OR ${gradeLevel} = ANY(${assignmentsTable.targetClasses}))`
       ));
 
@@ -802,6 +806,7 @@ router.put("/assignments/:id", async (req, res) => {
       if (body.resultsReleaseMode !== undefined) updateData.resultsReleaseMode = body.resultsReleaseMode;
       if (body.aiGradingInstructions !== undefined) updateData.aiGradingInstructions = body.aiGradingInstructions;
       if (body.displayTotalPoints !== undefined) updateData.displayTotalPoints = body.displayTotalPoints;
+      if (body.hiddenFromGradebook !== undefined) updateData.hiddenFromGradebook = body.hiddenFromGradebook;
 
       if (body.questions !== undefined) {
         const totalPoints = body.questions.reduce((sum, q) => sum + (q.points ?? 1), 0);
