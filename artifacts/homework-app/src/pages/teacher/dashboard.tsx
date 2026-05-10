@@ -62,6 +62,7 @@ import {
   BookOpen,
   Monitor,
   Brain,
+  GraduationCap,
 } from "lucide-react";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -2259,6 +2260,15 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           desc: t.dashboard.toolStudentsDesc,
           accent: BRAND.green,
           href: "/teacher/students",
+        },
+        {
+          icon: <GraduationCap className="w-6 h-6" />,
+          title: isAr ? "Google Classroom" : "Google Classroom",
+          desc: isAr
+            ? "استيراد الطلاب ونشر الواجبات ومزامنة الدرجات"
+            : "Import students, publish assignments & sync grades",
+          accent: "#4285F4",
+          href: "/teacher/classroom",
         },
       ],
     },
