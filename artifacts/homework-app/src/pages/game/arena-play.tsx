@@ -375,32 +375,34 @@ export default function ArenaPlay() {
                 display: "flex",
                 flexDirection: "column",
                 height: "100%",
-                background: "rgba(248,246,242,0.97)",
-                border: "1px solid rgba(0,0,0,0.10)",
+                background: "rgba(22,27,34,0.95)",
+                border: `1.5px solid ${accentColor}33`,
                 borderRadius: "12px",
                 overflow: "hidden",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+                boxShadow: `0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)`,
               }}
             >
-              {/* Image */}
-              <div className="relative overflow-hidden" style={{ height: "clamp(72px, 16vw, 200px)", flexShrink: 0 }}>
+              {/* Image / icon area */}
+              <div className="relative overflow-hidden" style={{ height: "clamp(60px, 13vw, 160px)", flexShrink: 0 }}>
                 {imgUrl ? (
-                  <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center" }} />
+                  <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.85) saturate(0.9)" }} />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}44 100%)`, color: accentColor }}>
+                  <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ background: `linear-gradient(160deg, ${accentColor}18 0%, ${accentColor}35 100%)`, color: accentColor }}>
                     {sec?.emoji ?? "📚"}
                   </div>
                 )}
+                {/* Gradient overlay for text readability */}
+                <div className="absolute inset-x-0 bottom-0 h-1/3" style={{ background: "linear-gradient(to bottom, transparent, rgba(14,17,23,0.85))" }} />
               </div>
               {/* Name strip */}
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "7px 10px 8px", background: "linear-gradient(135deg, #1a3d2b 0%, #24522f 100%)", borderTop: "2px solid rgba(180,140,40,0.35)" }}>
-                {sec?.emoji && <span style={{ fontSize: "clamp(13px, 2.8vw, 18px)", lineHeight: 1 }}>{sec.emoji}</span>}
-                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(13px, 3vw, 19px)", color: "#ffffff", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.01em", textShadow: "0 1px 4px rgba(0,0,0,0.55)" }}>
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "5px 8px 6px", borderBottom: "1px solid rgba(255,255,255,0.06)", borderTop: `1px solid ${accentColor}33` }}>
+                {sec?.emoji && <span style={{ fontSize: "clamp(11px, 2.4vw, 15px)", lineHeight: 1 }}>{sec.emoji}</span>}
+                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(11px, 2.6vw, 16px)", color: "#f1f5f9", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {sub.name}
                 </span>
               </div>
               {/* Buttons grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", padding: "5px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px", padding: "4px" }}>
                 {POINT_VALUES.map(pts => {
                   const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
                   const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
@@ -409,22 +411,22 @@ export default function ArenaPlay() {
                   return (
                     <React.Fragment key={pts}>
                       <motion.button
-                        whileHover={!usedA && !activeQ ? { scale: 1.06, y: -1 } : undefined}
-                        whileTap={!usedA && !activeQ ? { scale: 0.93 } : undefined}
+                        whileHover={!usedA && !activeQ ? { scale: 1.05, y: -1 } : undefined}
+                        whileTap={!usedA && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
                         disabled={usedA || !!activeQ}
                         className="font-bold border transition-all flex items-center justify-center"
-                        style={{ height: "clamp(28px, 5.5vw, 36px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(12px, 2.8vw, 15px)", ...diffStyle(pts, usedA) }}
+                        style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedA) }}
                       >
                         {usedA ? "—" : pts}
                       </motion.button>
                       <motion.button
-                        whileHover={!usedB && !activeQ ? { scale: 1.06, y: -1 } : undefined}
-                        whileTap={!usedB && !activeQ ? { scale: 0.93 } : undefined}
+                        whileHover={!usedB && !activeQ ? { scale: 1.05, y: -1 } : undefined}
+                        whileTap={!usedB && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
                         disabled={usedB || !!activeQ}
                         className="font-bold border transition-all flex items-center justify-center"
-                        style={{ height: "clamp(28px, 5.5vw, 36px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(12px, 2.8vw, 15px)", ...diffStyle(pts, usedB) }}
+                        style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedB) }}
                       >
                         {usedB ? "—" : pts}
                       </motion.button>
@@ -722,103 +724,51 @@ export default function ArenaPlay() {
   const turnTeam = state.teams[state.currentTurn] ?? teamA;
 
   return (
-    <div dir="rtl" className="min-h-screen relative overflow-hidden flex flex-col" style={{
-      background: "linear-gradient(160deg, #ede8dc 0%, #e5ddd0 50%, #ddd5c5 100%)",
-    }}>
+    <div dir="rtl" className="h-screen overflow-hidden flex flex-col" style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}>
 
-      {/* ── Top header bar — no team-badge rectangles ───────────────── */}
-      <div className="relative px-3 sm:px-4 py-1.5 flex items-center gap-2 border-b border-black/8 bg-white/85 backdrop-blur-sm" style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+      {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
+      <header className="shrink-0" style={{ background: "rgba(16,20,28,0.98)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
 
-        {/* RIGHT (RTL first child): Current answering team — calm badge */}
-        {(() => {
-          const ct = state.teams[state.currentTurn];
-          if (!ct) return null;
-          return (
-            <motion.div
-              key={state.currentTurn}
-              initial={{ opacity: 0, x: 6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25 }}
-              className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border"
-              style={{
-                borderColor: `${ct.color}55`,
-                background: `${ct.color}0e`,
-                fontFamily: "'Tajawal', sans-serif",
-              }}
-            >
-              <span className="text-lg">{ct.emoji}</span>
-              <div className="leading-tight">
-                <div className="text-[8px] font-semibold text-gray-400">الدور الآن</div>
-                <div className="font-bold text-xs text-gray-700">{ct.name}</div>
-              </div>
-              <div className="text-base font-black ms-0.5" style={{ color: ct.color }}>{ct.score}</div>
-            </motion.div>
-          );
-        })()}
+        {/* Row 1 — scores */}
+        <div className="flex items-stretch gap-1.5 px-2 pt-2 pb-1">
 
-        {/* CENTER: title + all-team scores */}
-        <div className="flex-1 flex items-center justify-center gap-3 flex-wrap">
-          <div className="text-center leading-tight">
-            <div className="text-[8px] font-bold tracking-widest text-gray-400 uppercase">تحدّي</div>
-            <div className="text-base font-black text-gray-800">حصاد</div>
-            <div className="text-[9px] text-gray-400">{usedCount}/{totalCards}</div>
-          </div>
-          <div className="w-px h-8 bg-black/10 hidden sm:block" />
-          {state.teamOrder.map(teamId => {
+          {/* Teams (first two) */}
+          {state.teamOrder.slice(0, 2).map(teamId => {
             const t = state.teams[teamId];
             if (!t) return null;
             const isActive = state.currentTurn === teamId;
             return (
-              <div
+              <motion.div
                 key={teamId}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition"
+                animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.6 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 min-w-0 flex-1"
                 style={{
-                  background: `${t.color}${isActive ? "20" : "0d"}`,
-                  border: `1.5px solid ${t.color}${isActive ? "99" : "33"}`,
-                  opacity: isActive ? 1 : 0.7,
+                  background: isActive ? `${t.color}22` : "rgba(255,255,255,0.04)",
+                  border: `1.5px solid ${isActive ? t.color + "88" : "rgba(255,255,255,0.07)"}`,
+                  boxShadow: isActive ? `0 0 16px -4px ${t.color}66` : undefined,
                 }}
               >
-                <span className="text-base">{t.emoji}</span>
-                <span className="font-bold text-xs text-gray-700 hidden sm:inline">{t.name}</span>
-                <span className="font-black text-sm" style={{ color: t.color }}>{t.score}</span>
-              </div>
+                <span className="text-xl leading-none shrink-0">{t.emoji}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-black text-white text-xs truncate leading-tight">{t.name}</div>
+                  <div className="font-black text-base leading-tight" style={{ color: t.color }}>{t.score}</div>
+                  {isActive && (
+                    <div className="text-[9px] font-bold mt-0.5" style={{ color: t.color }}>● دوره الآن</div>
+                  )}
+                </div>
+              </motion.div>
             );
           })}
-        </div>
 
-        {/* LEFT (RTL last child): Control buttons — compact toolbar */}
-        <div className="shrink-0 flex items-center gap-0.5">
-          {[
-            { icon: soundOn ? <Volume2 className="w-[22px] h-[22px]"/> : <VolumeX className="w-[22px] h-[22px]"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت" },
-            { icon: isFullscreen ? <Minimize className="w-[22px] h-[22px]"/> : <Maximize className="w-[22px] h-[22px]"/>, action: toggleFullscreen, label: "شاشة" },
-            { icon: <BookOpen className="w-[22px] h-[22px]"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "قوانين" },
-            { icon: <Share2 className="w-[22px] h-[22px]"/>, action: () => setShowShare(true), label: "مشاركة" },
-            { icon: <RotateCcw className="w-[22px] h-[22px]"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
-            { icon: <Flag className="w-[22px] h-[22px]"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
-            { icon: <Home className="w-[22px] h-[22px]"/>, action: exitKeep, label: "خروج" },
-          ].map((btn, i) => (
-            <button
-              key={i}
-              onClick={btn.action}
-              className="flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg active:scale-95 transition-all min-w-[38px]"
-              title={btn.label}
-              style={{
-                fontFamily: "'Tajawal', sans-serif",
-                color: "#1a3d2b",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(26,61,43,0.09)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            >
-              {btn.icon}
-              <span className="text-[9px] font-bold leading-none">{btn.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+          {/* Center: logo + progress */}
+          <div className="flex flex-col items-center justify-center px-2 shrink-0">
+            <div className="text-[9px] font-black tracking-[0.2em] text-emerald-400/70">تحدّي</div>
+            <div className="text-sm font-black text-white leading-tight">حصاد 🌾</div>
+            <div className="text-[9px] text-white/30 mt-0.5">{usedCount}/{totalCards}</div>
+          </div>
 
-      {/* Extra-team score strip for 3+ teams */}
-      {state.teamOrder.length > 2 && (
-        <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-black/5 border-b border-black/10 overflow-x-auto">
+          {/* Extra teams (3+) */}
           {state.teamOrder.slice(2).map(teamId => {
             const t = state.teams[teamId];
             if (!t) return null;
@@ -826,23 +776,67 @@ export default function ArenaPlay() {
             return (
               <div
                 key={teamId}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-sm font-bold text-gray-800 transition shrink-0 ${isActive ? "scale-105" : "opacity-50"}`}
-                style={{ borderColor: `${t.color}${isActive ? "cc" : "55"}`, background: `${t.color}22` }}
+                className="flex items-center gap-1 rounded-xl px-2 py-1.5 flex-1"
+                style={{
+                  background: isActive ? `${t.color}22` : "rgba(255,255,255,0.04)",
+                  border: `1.5px solid ${isActive ? t.color + "66" : "rgba(255,255,255,0.07)"}`,
+                  opacity: isActive ? 1 : 0.6,
+                }}
               >
-                <span>{t.emoji}</span>
-                <span>{t.name}</span>
-                <span className="font-black" style={{ color: t.color }}>{t.score}</span>
-                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-current inline-block ms-0.5" />}
+                <span className="text-lg shrink-0">{t.emoji}</span>
+                <div className="font-black text-xs text-white truncate">{t.name}</div>
+                <div className="font-black text-sm ms-auto" style={{ color: t.color }}>{t.score}</div>
               </div>
             );
           })}
         </div>
-      )}
 
-      {/* Turn indicator */}
-      <TurnIndicator team={turnTeam} side={state.currentTurn} />
+        {/* Row 2 — turn pill + action buttons */}
+        <div className="flex items-center px-2 pb-2 gap-2">
+          {/* Turn pill */}
+          <motion.div
+            key={state.currentTurn}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-1.5 flex-1 min-w-0 rounded-lg px-2.5 py-1"
+            style={{ background: `${turnTeam.color}18`, border: `1px solid ${turnTeam.color}44` }}
+          >
+            <motion.span
+              animate={{ scale: [1, 1.15, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity }}
+              className="text-base leading-none shrink-0"
+            >
+              {turnTeam.emoji}
+            </motion.span>
+            <span className="text-[10px] text-white/50 shrink-0">الدور:</span>
+            <span className="font-black text-xs truncate" style={{ color: turnTeam.color }}>{turnTeam.name}</span>
+          </motion.div>
 
-      {/* ── Game board — memoized above early returns to keep hook order stable ── */}
+          {/* Action icon buttons */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {[
+              { icon: soundOn ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت" },
+              { icon: isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>, action: toggleFullscreen, label: "شاشة" },
+              { icon: <BookOpen className="w-4 h-4"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "قواعد" },
+              { icon: <Share2 className="w-4 h-4"/>, action: () => setShowShare(true), label: "مشاركة" },
+              { icon: <RotateCcw className="w-4 h-4"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
+              { icon: <Flag className="w-4 h-4"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
+              { icon: <Home className="w-4 h-4"/>, action: exitKeep, label: "خروج" },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={btn.action}
+                title={btn.label}
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-white/50 hover:text-white hover:bg-white/10 active:scale-90 transition-all"
+              >
+                {btn.icon}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* ══ BOARD ═══════════════════════════════════════════════════════════ */}
       {boardGrid}
 
 
@@ -1163,299 +1157,275 @@ function QuestionModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 backdrop-blur-none"
-      style={{ background: "rgba(0,0,0,0.85)" }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-none"
+      style={{ background: "rgba(0,0,0,0.88)" }}
     >
       <motion.div
-        initial={{ scale: 0.85, y: 30 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.85, y: 30 }}
-        transition={{ type: "spring", stiffness: 220, damping: 22 }}
-        className="w-full max-w-5xl rounded-3xl p-6 sm:p-10 border-4 shadow-2xl"
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 26 }}
+        className="w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl overflow-y-auto"
         style={{
-          background: "linear-gradient(160deg, #064e3b 0%, #022c22 100%)",
-          borderColor: "rgba(245,158,11,0.6)",
+          maxHeight: "96dvh",
+          background: "rgba(13,17,23,0.98)",
+          border: "1px solid rgba(255,255,255,0.09)",
+          borderBottom: "none",
+          boxShadow: "0 -8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
         }}
       >
-        {/* Top strip — minimal: category + difficulty (right), timer (left), close (far left) */}
-        <div className="flex items-center justify-between mb-3 gap-3">
-          <div className="text-right">
-            <div className="text-amber-200/80 text-xs sm:text-sm font-bold mb-0.5">
+        {/* ── Top strip ── */}
+        <div
+          className="flex items-center gap-2 px-4 pt-4 pb-3 sticky top-0 z-10"
+          style={{ background: "rgba(13,17,23,0.97)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold text-emerald-400/70 tracking-wide mb-0.5">
               {sec?.emoji} {sub?.name}
             </div>
-            <div className="text-2xl sm:text-3xl font-extrabold text-amber-300">
+            <div className="text-xl font-black text-amber-300 leading-none">
               {active.difficulty}
               {active.multiplier > 1 && <span className="text-emerald-300 ms-2">× {active.multiplier} 🌾</span>}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center">
-              <div className={`text-4xl sm:text-5xl font-extrabold leading-none ${active.timeLeft <= 5 && timerRunning ? "text-red-400 animate-pulse" : "text-white"}`}>
-                {active.timeLeft}
-              </div>
-              <div className="text-[10px] text-amber-200/60 flex items-center gap-1 mt-1"><Clock className="w-3 h-3" /> ثانية</div>
+          {/* Timer + close */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className={`text-3xl font-black leading-none tabular-nums ${active.timeLeft <= 5 && timerRunning ? "text-red-400 animate-pulse" : "text-white/90"}`}
+            >
+              {active.timeLeft}
             </div>
+            <span className="text-[10px] text-white/30">ث</span>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
-              title="إلغاء — لا يحسب الكرت كمستخدم"
+              className="ms-1 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
+              title="إغلاق"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* CENTERED, BOLD answering-team banner — fills the middle so audience reads instantly */}
-        <motion.div
-          key={`banner-${active.answeringTeam}-${active.transferUsed}-${active.trapUsed}`}
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 220, damping: 20 }}
-          className="rounded-2xl px-4 py-3 sm:py-4 mb-4 text-center border-2 relative overflow-hidden"
-          style={{
-            borderColor: answeringTeam.color,
-            background: `linear-gradient(120deg, ${answeringTeam.color}33 0%, ${answeringTeam.color}66 50%, ${answeringTeam.color}33 100%)`,
-            boxShadow: `0 0 50px -12px ${answeringTeam.color}, inset 0 0 0 1px ${answeringTeam.color}55`,
-          }}
-        >
-          <div className="text-[10px] sm:text-xs font-black tracking-[0.3em] text-white/80 mb-1">
-            يجيب الآن
-          </div>
-          <div
-            className="text-3xl sm:text-5xl md:text-6xl font-black text-white drop-shadow-lg"
-            style={{ textShadow: `0 2px 24px ${answeringTeam.color}, 0 1px 0 rgba(0,0,0,0.5)`, lineHeight: 1.1 }}
+        {/* ── Scrollable body ── */}
+        <div className="px-4 py-4 space-y-3">
+
+          {/* Answering team badge — compact */}
+          <motion.div
+            key={`banner-${active.answeringTeam}-${active.transferUsed}-${active.trapUsed}`}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border"
+            style={{
+              borderColor: `${answeringTeam.color}55`,
+              background: `${answeringTeam.color}18`,
+            }}
           >
-            {answeringTeam.emoji} {answeringTeam.name}
-          </div>
-        </motion.div>
-
-        {active.trapUsed && (
-          <div className="mb-3 px-4 py-2 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-100 text-sm font-bold text-center">
-            🪤 الفخ! تم إجبار {answeringTeam.name} على الإجابة — لا يمكن تحويل السؤال
-          </div>
-        )}
-        {active.transferUsed && !active.trapUsed && (
-          <div className="mb-3 px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-400/40 text-blue-100 text-sm font-bold text-center">
-            ↔️ تم تحويل السؤال — الفرصة الآن لـ {answeringTeam.name}
-          </div>
-        )}
-
-        {/* Question fills the central area — large display text + optional media */}
-        <div className="text-center py-6 sm:py-10 px-2 min-h-[180px] sm:min-h-[240px] flex flex-col justify-center rounded-2xl bg-black/25 border border-amber-300/15 mb-4">
-          <InteractiveActivity
-            key={`${active.question.type ?? "text"}::${active.question.q}`}
-            question={active.question}
-            revealed={active.revealed}
-          />
-          <AnimatePresence>
-            {active.revealed && (
-              <motion.div
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="mt-6 px-6 py-4 rounded-2xl bg-amber-300/15 border-2 border-amber-300/50"
-              >
-                <div className="text-amber-200 text-sm font-bold mb-1">الإجابة الصحيحة</div>
-                <div className="text-2xl sm:text-3xl font-extrabold text-amber-100">
-                  {active.question.a}
-                </div>
-              </motion.div>
+            <span className="text-2xl">{answeringTeam.emoji}</span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-white/45 tracking-wide">يجيب الآن</div>
+              <div className="font-black text-base text-white truncate leading-tight">{answeringTeam.name}</div>
+            </div>
+            {active.trapUsed && (
+              <span className="ms-auto text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-400/30">🪤 فخ</span>
             )}
-          </AnimatePresence>
+            {active.transferUsed && !active.trapUsed && (
+              <span className="ms-auto text-[10px] font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/30">↔️ محوّل</span>
+            )}
+          </motion.div>
+
+          {/* Question area */}
+          <div
+            className="rounded-xl px-3 py-4 text-center"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <InteractiveActivity
+              key={`${active.question.type ?? "text"}::${active.question.q}`}
+              question={active.question}
+              revealed={active.revealed}
+            />
+            <AnimatePresence>
+              {active.revealed && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: "spring", stiffness: 220 }}
+                  className="mt-4 px-4 py-3 rounded-xl text-center"
+                  style={{ background: "rgba(251,191,36,0.12)", border: "1.5px solid rgba(251,191,36,0.4)" }}
+                >
+                  <div className="text-amber-400/80 text-[10px] font-bold tracking-wide mb-1">الإجابة الصحيحة</div>
+                  <div className="text-xl sm:text-2xl font-extrabold text-amber-200">{active.question.a}</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Shura voting */}
           {active.shuraVisible && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-4 rounded-xl overflow-hidden border border-blue-400/40 bg-blue-500/10"
+              className="rounded-xl overflow-hidden border border-blue-400/30 bg-blue-500/08"
+              style={{ background: "rgba(59,130,246,0.08)" }}
             >
-              {/* Header */}
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 border-b border-blue-400/20">
-                <span className="text-base">🗣️</span>
-                <span className="text-blue-200 font-bold text-sm">تصويت الجمهور مفتوح</span>
-                <span className="text-blue-100/40 text-xs mr-auto">
-                  {shuraVotes.a + shuraVotes.b} صوت
-                </span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/12 border-b border-blue-400/15" style={{ background: "rgba(59,130,246,0.12)" }}>
+                <span>🗣️</span>
+                <span className="text-blue-200 font-bold text-xs">تصويت الجمهور</span>
+                <span className="text-blue-100/40 text-[10px] ms-auto">{shuraVotes.a + shuraVotes.b} صوت</span>
               </div>
-              {/* Vote bars */}
-              <div className="px-4 py-3 flex flex-col gap-2">
-                {(() => {
+              <div className="px-3 py-2.5 space-y-1.5">
+                {[
+                  { label: "خيار أ", votes: shuraVotes.a, color: "bg-blue-400" },
+                  { label: "خيار ب", votes: shuraVotes.b, color: "bg-violet-400" },
+                ].map(({ label, votes, color }) => {
                   const total = shuraVotes.a + shuraVotes.b;
-                  const pctA = total > 0 ? Math.round((shuraVotes.a / total) * 100) : 50;
-                  const pctB = 100 - pctA;
+                  const pct = total > 0 ? Math.round((votes / total) * 100) : 50;
                   return (
-                    <>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between text-xs font-bold text-blue-100/80">
-                          <span>خيار أ</span>
-                          <span>{shuraVotes.a} ({pctA}٪)</span>
-                        </div>
-                        <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full bg-blue-400"
-                            animate={{ width: `${pctA}%` }}
-                            transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                          />
-                        </div>
+                    <div key={label}>
+                      <div className="flex justify-between text-[10px] font-bold text-blue-100/70 mb-0.5">
+                        <span>{label}</span><span>{votes} ({pct}٪)</span>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex justify-between text-xs font-bold text-blue-100/80">
-                          <span>خيار ب</span>
-                          <span>{shuraVotes.b} ({pctB}٪)</span>
-                        </div>
-                        <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full bg-violet-400"
-                            animate={{ width: `${pctB}%` }}
-                            transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                          />
-                        </div>
+                      <div className="h-2 rounded-full bg-white/8 overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                        <motion.div className={`h-full rounded-full ${color}`} animate={{ width: `${pct}%` }} transition={{ type: "spring", stiffness: 80 }} />
                       </div>
-                      <div className="text-blue-100/40 text-xs mt-1">
-                        استخدم رمز QR أو رابط المشاركة لفتح صندوق التصويت على هواتف الحضور
-                      </div>
-                    </>
+                    </div>
                   );
-                })()}
+                })}
               </div>
             </motion.div>
           )}
-        </div>
 
-        {/* Subtle utility row — replace damaged question + report a problem */}
-        <div className="flex flex-wrap gap-2 justify-center mb-3">
-          <button
-            onClick={onReplaceQuestion}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-white/15 text-amber-200/90 border border-white/10 inline-flex items-center gap-1.5"
-            title="استبدال السؤال بسؤال آخر من نفس الفئة (مجاناً)"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            إلغاء السؤال واستبدال
-          </button>
-          <button
-            onClick={onReport}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 hover:bg-rose-500/20 text-rose-200/90 border border-white/10 inline-flex items-center gap-1.5"
-            title="الإبلاغ عن خطأ في السؤال"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            إبلاغ عن خطأ
-          </button>
-        </div>
-
-        {/* Helpers — color-coded per team, used ones stay visible but dimmed */}
-        <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          {state.teamOrder.map(side => {
-            const t = state.teams[side];
-            return (
-              <div
-                key={side}
-                className="rounded-xl p-2.5 border-2"
-                style={{ borderColor: `${t.color}88`, background: `${t.color}1a` }}
-              >
-                <div className="text-xs font-black mb-1.5 flex items-center gap-1.5" style={{ color: t.color }}>
-                  <span className="text-base">{t.emoji}</span>
-                  <span className="text-white">{t.name}</span>
-                  {side === active.answeringTeam && (
-                    <span className="text-[10px] text-amber-200 ms-auto px-1.5 py-0.5 rounded bg-amber-300/20">يجيب</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {t.helpers.length === 0 && (
-                    <div className="text-emerald-100/40 text-xs">لم يختر هذا الفريق وسائل</div>
-                  )}
-                  {t.helpers.map(hid => {
-                    const h = HELPERS.find(x => x.id === hid);
-                    if (!h) return null;
-                    const usable = canUseHelper(side, hid);
-                    const consumed = t.usedHelpers.includes(hid);
-                    return (
-                      <button
-                        key={hid}
-                        onClick={() => onUseHelper(side, hid)}
-                        disabled={!usable}
-                        title={consumed ? `${h.name} — تم استخدامه` : h.desc}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold border-2 transition ${
-                          consumed
-                            ? "opacity-30 grayscale cursor-not-allowed"
-                            : usable
-                            ? "text-white hover:brightness-125 cursor-pointer"
-                            : "opacity-50 cursor-not-allowed"
-                        }`}
-                        style={{
-                          background: consumed ? "rgba(255,255,255,0.05)" : `${t.color}55`,
-                          borderColor: consumed ? "rgba(255,255,255,0.15)" : t.color,
-                          color: "white",
-                        }}
-                      >
-                        <span className="text-base">{h.emoji}</span> {h.name}
-                        {consumed && <span className="ms-1">✓</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-center">
-          {!timerRunning && !active.revealed && (
-            <button
-              onClick={onStartTimer}
-              className="px-6 py-3 rounded-xl font-extrabold bg-emerald-500 text-white hover:bg-emerald-400 inline-flex items-center gap-2"
-            >
-              <Clock className="w-5 h-5" /> {active.timeLeft === 0 || active.timeLeft === state.timerSeconds ? "بدء المؤقت" : "متابعة المؤقت"}
-            </button>
-          )}
-          {timerRunning && (
-            <button
-              onClick={onStopTimer}
-              className="px-6 py-3 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20"
-            >
-              إيقاف المؤقت
-            </button>
-          )}
-          {!active.revealed && (
-            <button
-              onClick={onReveal}
-              className="px-6 py-3 rounded-xl font-extrabold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-2"
-            >
-              <Eye className="w-5 h-5" /> كشف الإجابة
-            </button>
-          )}
-          {active.revealed && (
-            <>
-              {state.teamOrder.map(teamId => {
-                const t = state.teams[teamId];
-                if (!t) return null;
+          {/* Helpers — compact single-row per team */}
+          {state.teamOrder.some(side => state.teams[side]?.helpers.length > 0) && (
+            <div className="space-y-1.5">
+              {state.teamOrder.map(side => {
+                const t = state.teams[side];
+                if (!t || t.helpers.length === 0) return null;
                 return (
-                  <button
-                    key={teamId}
-                    onClick={() => onResolve(teamId)}
-                    disabled={onlyAnsweringTeamCanWin && active.answeringTeam !== teamId}
-                    className="px-5 py-3 rounded-xl font-black text-white text-base sm:text-lg inline-flex items-center gap-2 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{ background: t.color }}
-                  >
-                    {t.emoji} {t.name} أجاب
-                  </button>
+                  <div key={side} className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className="text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded-md"
+                      style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}44` }}
+                    >
+                      {t.emoji}
+                    </span>
+                    {t.helpers.map(hid => {
+                      const h = HELPERS.find(x => x.id === hid);
+                      if (!h) return null;
+                      const usable = canUseHelper(side, hid);
+                      const consumed = t.usedHelpers.includes(hid);
+                      return (
+                        <button
+                          key={hid}
+                          onClick={() => onUseHelper(side, hid)}
+                          disabled={!usable}
+                          title={consumed ? `${h.name} — تم استخدامه` : h.desc}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition"
+                          style={{
+                            opacity: consumed ? 0.28 : usable ? 1 : 0.45,
+                            filter: consumed ? "grayscale(1)" : undefined,
+                            cursor: usable ? "pointer" : "not-allowed",
+                            background: consumed ? "rgba(255,255,255,0.04)" : `${t.color}28`,
+                            borderColor: consumed ? "rgba(255,255,255,0.10)" : `${t.color}55`,
+                            color: "white",
+                          }}
+                        >
+                          <span>{h.emoji}</span>
+                          <span className="hidden sm:inline">{h.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 );
               })}
-              {transferAvailable && (
-                <button
-                  onClick={onTransfer}
-                  className="px-5 py-3 rounded-xl font-bold bg-blue-500/30 text-blue-50 hover:bg-blue-500/50 border border-blue-300/40"
-                  title={`تحويل الفرصة إلى ${otherTeam.name}`}
-                >
-                  ↔️ تحويل إلى {otherTeam.name}
-                </button>
-              )}
-              <button
-                onClick={() => onResolve(null)}
-                className="px-5 py-3 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 border border-white/20"
-              >
-                لا أحد أجاب
-              </button>
-            </>
+            </div>
           )}
+
+          {/* Utility row */}
+          <div className="flex gap-1.5 flex-wrap">
+            <button
+              onClick={onReplaceQuestion}
+              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-white/12 text-amber-200/80 border border-white/08 inline-flex items-center gap-1.5"
+              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <RefreshCw className="w-3 h-3" /> استبدال السؤال
+            </button>
+            <button
+              onClick={onReport}
+              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-rose-500/15 text-rose-300/80 inline-flex items-center gap-1.5"
+              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <AlertTriangle className="w-3 h-3" /> إبلاغ
+            </button>
+          </div>
+
+          {/* Action buttons — timer + reveal + resolve */}
+          <div
+            className="flex flex-wrap gap-2 pt-1 pb-2"
+          >
+            {!timerRunning && !active.revealed && (
+              <button
+                onClick={onStartTimer}
+                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center justify-center gap-1.5"
+              >
+                <Clock className="w-4 h-4" />
+                {active.timeLeft === 0 || active.timeLeft === state.timerSeconds ? "بدء المؤقت" : "متابعة"}
+              </button>
+            )}
+            {timerRunning && (
+              <button
+                onClick={onStopTimer}
+                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm text-white inline-flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
+                إيقاف المؤقت
+              </button>
+            )}
+            {!active.revealed && (
+              <button
+                onClick={onReveal}
+                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm bg-amber-400 hover:bg-amber-300 text-slate-950 inline-flex items-center justify-center gap-1.5"
+              >
+                <Eye className="w-4 h-4" /> كشف الإجابة
+              </button>
+            )}
+            {active.revealed && (
+              <div className="w-full flex flex-wrap gap-2">
+                {state.teamOrder.map(teamId => {
+                  const t = state.teams[teamId];
+                  if (!t) return null;
+                  return (
+                    <button
+                      key={teamId}
+                      onClick={() => onResolve(teamId)}
+                      disabled={onlyAnsweringTeamCanWin && active.answeringTeam !== teamId}
+                      className="flex-1 min-w-[110px] py-3 rounded-xl font-black text-white text-sm inline-flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-25 disabled:cursor-not-allowed"
+                      style={{ background: t.color }}
+                    >
+                      {t.emoji} {t.name} ✓
+                    </button>
+                  );
+                })}
+                {transferAvailable && (
+                  <button
+                    onClick={onTransfer}
+                    className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-blue-200 inline-flex items-center justify-center gap-1.5"
+                    style={{ background: "rgba(59,130,246,0.18)", border: "1px solid rgba(147,197,253,0.3)" }}
+                  >
+                    ↔️ {otherTeam.name}
+                  </button>
+                )}
+                <button
+                  onClick={() => onResolve(null)}
+                  className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-white/70 inline-flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
+                >
+                  لا أحد
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </motion.div>
     </motion.div>
@@ -1772,37 +1742,36 @@ function RulesOverlay({
   return (
     <div
       dir="rtl"
-      className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8"
-      style={{ background: "radial-gradient(ellipse at top, #047857 0%, #022c22 65%, #000 100%)" }}
+      className="min-h-screen overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6"
+      style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-5xl rounded-3xl p-6 sm:p-10 border-4 shadow-2xl backdrop-blur-sm"
-        style={{
-          background: "linear-gradient(160deg, rgba(6,78,59,0.95), rgba(2,44,34,0.95))",
-          borderColor: "rgba(245,158,11,0.55)",
-        }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-3xl py-6"
       >
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/20 text-amber-200 text-xs font-bold mb-3 border border-amber-300/40">
-            <BookOpen className="w-4 h-4" />
+        {/* Header */}
+        <div className="text-center mb-5">
+          <div
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold mb-3"
+            style={{ background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.25)" }}
+          >
+            <BookOpen className="w-3 h-3" />
             قوانين تحدّي حصاد
           </div>
-          <h1
-            className="text-5xl sm:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-l from-amber-300 via-yellow-200 to-amber-400 mb-3"
-            style={{ lineHeight: 1.18, paddingBottom: "0.18em" }}
-          >
+          <h1 className="text-3xl sm:text-4xl font-black text-white mb-2" style={{ lineHeight: 1.2 }}>
             استعدّوا للتحدّي
           </h1>
-          <div className="flex items-center justify-center gap-3 text-xl sm:text-3xl">
+          <div className="flex items-center justify-center gap-2 text-lg">
             <span className="font-black" style={{ color: teamA.color }}>{teamA.emoji} {teamA.name}</span>
-            <span className="text-amber-200/60 text-2xl">×</span>
+            <span className="text-white/30">×</span>
             <span className="font-black" style={{ color: teamB.color }}>{teamB.emoji} {teamB.name}</span>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4 mb-6">
+        {/* Rules panels */}
+        <div className="grid sm:grid-cols-2 gap-3 mb-4">
           <RulesPanel
             title="طريقة اللعب"
             items={[
@@ -1825,21 +1794,26 @@ function RulesOverlay({
           />
         </div>
 
-        <div className="rounded-2xl p-5 bg-amber-300/10 border-2 border-amber-300/30 mb-6">
+        {/* Helpers — compact grid */}
+        <div
+          className="rounded-2xl p-4 mb-4"
+          style={{ background: "rgba(22,27,34,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-5 h-5 text-amber-300" />
-            <h2 className="text-xl font-extrabold text-amber-200">الوسائل المساعدة</h2>
+            <Sparkles className="w-4 h-4 text-amber-300/70" />
+            <h2 className="text-base font-extrabold text-amber-200/90">الوسائل المساعدة</h2>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 gap-2">
             {HELPERS.map(h => (
               <div
                 key={h.id}
-                className="rounded-xl p-3 bg-black/30 border border-white/10 flex items-start gap-3"
+                className="rounded-xl px-3 py-2.5 flex items-start gap-2.5"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <div className="text-3xl shrink-0">{h.emoji}</div>
+                <span className="text-2xl shrink-0 leading-none mt-0.5">{h.emoji}</span>
                 <div>
-                  <div className="font-extrabold text-white text-base">{h.name}</div>
-                  <div className="text-emerald-100/85 text-sm leading-relaxed">{h.desc}</div>
+                  <div className="font-bold text-white text-sm leading-tight">{h.name}</div>
+                  <div className="text-white/55 text-xs leading-relaxed mt-0.5">{h.desc}</div>
                 </div>
               </div>
             ))}
@@ -1848,9 +1822,10 @@ function RulesOverlay({
 
         <button
           onClick={onAck}
-          className="w-full py-5 rounded-2xl font-extrabold text-2xl transition shadow-2xl bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center justify-center gap-3"
+          className="w-full py-4 rounded-2xl font-bold text-lg transition inline-flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)", color: "#0c0f14" }}
         >
-          <Sparkles className="w-7 h-7" />
+          <Sparkles className="w-5 h-5" />
           فهمنا — ابدأ اللعبة
         </button>
       </motion.div>
@@ -1860,12 +1835,15 @@ function RulesOverlay({
 
 function RulesPanel({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-2xl p-4 bg-black/25 border border-white/10">
-      <h3 className="text-lg font-extrabold text-amber-200 mb-2">{title}</h3>
-      <ul className="space-y-1.5">
+    <div
+      className="rounded-xl p-3.5"
+      style={{ background: "rgba(22,27,34,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
+    >
+      <h3 className="text-sm font-black text-amber-300/90 mb-2">{title}</h3>
+      <ul className="space-y-1">
         {items.map((it, i) => (
-          <li key={i} className="text-emerald-50 text-sm sm:text-base leading-relaxed flex gap-2">
-            <span className="text-amber-300 shrink-0">•</span>
+          <li key={i} className="text-white/65 text-xs sm:text-sm leading-relaxed flex gap-2">
+            <span className="text-emerald-400/70 shrink-0 mt-0.5">•</span>
             <span>{it}</span>
           </li>
         ))}
@@ -1892,61 +1870,74 @@ function EndScreen({
   }, [winnerTeam, onWinSound]);
 
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{
-      background: "radial-gradient(ellipse at top, #047857 0%, #022c22 60%, #000 100%)",
-    }}>
+    <div
+      dir="rtl"
+      className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
+      style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}
+    >
       <ConfettiBurst active={!!winnerTeam} />
       <motion.div
-        initial={{ scale: 0.7, opacity: 0 }}
+        initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 18 }}
-        className="text-center z-10"
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
+        className="text-center z-10 w-full max-w-2xl"
       >
-        <div className="text-7xl mb-4 drop-shadow-2xl">
-          <Trophy className="w-32 h-32 inline text-amber-300" />
+        {/* Trophy / result */}
+        <div className="mb-5">
+          <Trophy className="w-20 h-20 inline text-amber-400/90 drop-shadow-xl" />
         </div>
         {winnerTeam ? (
           <>
-            <div className="text-2xl font-bold text-amber-200 mb-2">الفائز</div>
+            <div className="text-sm font-bold text-white/40 tracking-widest uppercase mb-1">الفائز</div>
             <div
-              className="text-6xl sm:text-8xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-l from-amber-200 via-yellow-300 to-amber-400"
-              style={{ lineHeight: 1.15, paddingBottom: "0.15em" }}
+              className="text-5xl sm:text-6xl font-black text-white mb-2 leading-tight"
+              style={{ textShadow: `0 0 40px ${winnerTeam.color}` }}
             >
               {winnerTeam.emoji} {winnerTeam.name}
             </div>
-            <div className="text-3xl font-bold text-emerald-100 mb-8">
+            <div className="text-2xl font-bold mb-8" style={{ color: winnerTeam.color }}>
               {winnerTeam.score} نقطة
             </div>
           </>
         ) : (
-          <div className="text-5xl font-extrabold text-amber-200 mb-6">تعادل!</div>
+          <div className="text-4xl font-extrabold text-amber-300 mb-6">تعادل!</div>
         )}
-        <div className={`grid gap-4 max-w-2xl mb-8 ${teamOrder.length <= 2 ? "grid-cols-2" : teamOrder.length <= 4 ? "grid-cols-2" : "grid-cols-3"}`}>
+
+        {/* Score cards */}
+        <div className={`grid gap-3 mb-8 ${teamOrder.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}>
           {teamOrder.map(side => {
             const t = teams[side];
             if (!t) return null;
             return (
-              <div key={side} className="rounded-2xl p-5 backdrop-blur-sm border-2"
-                style={{ background: `${t.color}33`, borderColor: `${t.color}88` }}
+              <div
+                key={side}
+                className="rounded-2xl p-4 border"
+                style={{ background: `${t.color}14`, borderColor: `${t.color}44` }}
               >
-                <div className="text-4xl mb-1">{t.emoji}</div>
-                <div className="font-black text-white text-xl mb-1">{t.name}</div>
-                <div className="text-3xl font-extrabold text-amber-200">{t.score}</div>
+                <div className="text-3xl mb-1">{t.emoji}</div>
+                <div className="font-black text-white text-base mb-0.5 truncate">{t.name}</div>
+                <div className="text-2xl font-extrabold" style={{ color: t.color }}>{t.score}</div>
               </div>
             );
           })}
         </div>
+
+        {/* Actions */}
         <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={onRestart}
-            className="px-8 py-4 rounded-2xl font-extrabold text-xl bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center gap-2 shadow-2xl"
+            className="px-7 py-3.5 rounded-2xl font-bold text-lg inline-flex items-center gap-2"
+            style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)", color: "#0c0f14" }}
           >
-            <RotateCcw className="w-6 h-6" />
+            <RotateCcw className="w-5 h-5" />
             إعادة اللعب
           </button>
           <Link href="/games">
-            <button className="px-8 py-4 rounded-2xl font-extrabold text-xl bg-white/10 hover:bg-white/20 text-white inline-flex items-center gap-2 backdrop-blur-sm border border-white/20">
-              <Home className="w-6 h-6" />
+            <button
+              className="px-7 py-3.5 rounded-2xl font-bold text-lg text-white inline-flex items-center gap-2"
+              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}
+            >
+              <Home className="w-5 h-5" />
               خروج
             </button>
           </Link>
