@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -68,6 +68,10 @@ export default function ArenaPlay() {
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncFingerprintRef = useRef<string>("");
   const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs so openCard callback stays stable across renders (no stale closures)
+  const stateRef = useRef<ArenaState | null>(null);
+  stateRef.current = state;
+  const allSectionsRef = useRef<ArenaSection[]>(ARENA_SECTIONS);
 
   const { data: teacherData, isLoading: teacherAuthLoading } =
     useGetCurrentTeacher({ query: { retry: false } as any });
@@ -134,8 +138,7 @@ export default function ArenaPlay() {
   }, [state]);
 
   useEffect(() => {
-    if (!timerRunning || !state?.active) return;
-    if (state.active.timeLeft <= 0) return;
+    if (!timerRunning) return;
     const t = setInterval(() => {
       setState(prev => {
         if (!prev || !prev.active) return prev;
@@ -150,7 +153,10 @@ export default function ArenaPlay() {
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [timerRunning, state?.active?.timeLeft]);
+  // Only recreate when timer starts/stops — NOT on every tick.
+  // setState functional form reads latest prev, so timeLeft dep is not needed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerRunning]);
 
   const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win") => {
     if (!soundOn) return;
@@ -189,7 +195,7 @@ export default function ArenaPlay() {
     }
   };
 
-  const orderedSubCategoryIds = useMemo(() => state?.subCategoryIds ?? [], [state]);
+  const orderedSubCategoryIds = useMemo(() => state?.subCategoryIds ?? [], [state?.subCategoryIds]);
 
   const allSections = useMemo<ArenaSection[]>(() => {
     if (!state) return ARENA_SECTIONS;
@@ -197,7 +203,50 @@ export default function ArenaPlay() {
     const db = state.dbSections ?? [];
     const merged = [...ARENA_SECTIONS, ...db];
     return custom ? [...merged, custom] : merged;
-  }, [state]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.customQuestions, state?.dbSections]);
+  allSectionsRef.current = allSections;
+
+  // Stable openCard — uses refs so board grid can be memoized without re-rendering on every timer tick
+  const openCard = useCallback((subCategoryId: string, difficulty: ArenaDifficulty, slot: ArenaCardSlot) => {
+    const s = stateRef.current;
+    if (!s) return;
+    const key = cardKey({ subCategoryId, difficulty, slot });
+    if (s.usedCards.includes(key)) return;
+    if (s.active) return;
+    const sections = allSectionsRef.current;
+    const sub = findSubCategory(subCategoryId, sections);
+    if (!sub) return;
+    const pool = sub.questions[difficulty];
+    if (pool.length === 0) return;
+    const bucketKey = pickKey(subCategoryId, difficulty);
+    const alreadyPicked = s.pickedQuestions[bucketKey] ?? [];
+    const seenAcrossGames = getSeenIndices(subCategoryId, difficulty);
+    const allIndices = pool.map((_, i) => i);
+    let candidates = allIndices.filter(i => !alreadyPicked.includes(i) && !seenAcrossGames.includes(i));
+    if (candidates.length === 0) {
+      candidates = allIndices.filter(i => !alreadyPicked.includes(i));
+      if (candidates.length > 0) clearSeenBucket(subCategoryId, difficulty);
+    }
+    if (candidates.length === 0) candidates = allIndices;
+    const qi = candidates[Math.floor(Math.random() * candidates.length)];
+    markQuestionSeen(subCategoryId, difficulty, qi);
+    const newActive: ArenaActiveQuestion = {
+      subCategoryId, difficulty, slot, questionIndex: qi,
+      question: pool[qi], multiplier: 1, answeringTeam: s.currentTurn,
+      trapUsed: false, transferUsed: false, ghaneemaUsed: false,
+      revealed: false, timeLeft: s.timerSeconds, helpersUsedThisQ: [], shuraVisible: false,
+    };
+    setState(prev => prev ? {
+      ...prev,
+      active: newActive,
+      pickedQuestions: { ...prev.pickedQuestions, [bucketKey]: [...alreadyPicked, qi] },
+    } : prev);
+    setTimerRunning(true);
+    playSound("click");
+  // stable — reads state via ref, never changes reference
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Phone-a-friend countdown — independent of main timer.
   // Must be declared before any early return to keep hook order stable.
@@ -288,62 +337,7 @@ export default function ArenaPlay() {
   const usedCount = state.usedCards.length;
   const active = state.active;
 
-  const openCard = (subCategoryId: string, difficulty: ArenaDifficulty, slot: ArenaCardSlot) => {
-    const key = cardKey({ subCategoryId, difficulty, slot });
-    if (state.usedCards.includes(key)) return;
-    if (state.active) return;
-    const sub = findSubCategory(subCategoryId, allSections);
-    if (!sub) return;
-    const pool = sub.questions[difficulty];
-    if (pool.length === 0) return;
-
-    // Pick an index that hasn't been used in the sibling slot of this row, so
-    // the two cards in the same difficulty don't reveal the same question.
-    const bucketKey = pickKey(subCategoryId, difficulty);
-    const alreadyPicked = state.pickedQuestions[bucketKey] ?? [];
-    const seenAcrossGames = getSeenIndices(subCategoryId, difficulty);
-    const allIndices = pool.map((_, i) => i);
-    // First: indices not used in THIS game and not seen in PREVIOUS games.
-    let candidates = allIndices.filter(
-      i => !alreadyPicked.includes(i) && !seenAcrossGames.includes(i),
-    );
-    // Fallback: just unused-in-this-game (player has seen them all).
-    if (candidates.length === 0) {
-      candidates = allIndices.filter(i => !alreadyPicked.includes(i));
-      // If we wrapped, reset the cross-game seen list so it stays useful next time.
-      if (candidates.length > 0) clearSeenBucket(subCategoryId, difficulty);
-    }
-    if (candidates.length === 0) candidates = allIndices;
-    const qi = candidates[Math.floor(Math.random() * candidates.length)];
-    markQuestionSeen(subCategoryId, difficulty, qi);
-
-    const newActive: ArenaActiveQuestion = {
-      subCategoryId,
-      difficulty,
-      slot,
-      questionIndex: qi,
-      question: pool[qi],
-      multiplier: 1,
-      answeringTeam: state.currentTurn,
-      trapUsed: false,
-      transferUsed: false,
-      ghaneemaUsed: false,
-      revealed: false,
-      timeLeft: state.timerSeconds,
-      helpersUsedThisQ: [],
-      shuraVisible: false,
-    };
-    setState(prev => prev ? {
-      ...prev,
-      active: newActive,
-      pickedQuestions: {
-        ...prev.pickedQuestions,
-        [bucketKey]: [...alreadyPicked, qi],
-      },
-    } : prev);
-    setTimerRunning(true);
-    playSound("click");
-  };
+  // openCard is now defined as useCallback above early returns (uses stateRef)
 
   const updateActive = (patch: Partial<ArenaActiveQuestion>) => {
     setState(prev => {
@@ -754,7 +748,8 @@ export default function ArenaPlay() {
       {/* Turn indicator */}
       <TurnIndicator team={turnTeam} side={state.currentTurn} />
 
-      {/* ── Game board — responsive grid ────────────────────────────── */}
+      {/* ── Game board — memoized: only re-renders when cards used or question opens/closes ── */}
+      {useMemo(() => (
       <div
         className="relative flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3"
         style={{
@@ -894,6 +889,8 @@ export default function ArenaPlay() {
           );
         })}
       </div>
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ), [orderedSubCategoryIds, allSections, state.usedCards, !!active, openCard])}
 
       <AnimatePresence>
         {active && (
@@ -1095,7 +1092,7 @@ function PlayerPickerOverlay({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
     >
       <motion.div
@@ -1181,7 +1178,7 @@ function QuestionModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 backdrop-blur-[2px]"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 backdrop-blur-none"
         style={{ background: "rgba(0,0,0,0.85)" }}
       >
         <div className="w-full max-w-md rounded-3xl p-8 border-2 border-amber-400/40 bg-emerald-950 text-white text-center">
@@ -1212,7 +1209,7 @@ function QuestionModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
     >
       <motion.div
@@ -1526,7 +1523,7 @@ function FriendCallOverlay({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.92)" }}
     >
       <motion.div
@@ -1604,7 +1601,7 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[65] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[65] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
     >
       <motion.div
@@ -1678,7 +1675,7 @@ function ReportDialog({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[65] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[65] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
     >
       <motion.div
@@ -1774,7 +1771,7 @@ function ConfirmDialog({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[68] flex items-center justify-center p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[68] flex items-center justify-center p-4 backdrop-blur-none"
       style={{ background: "rgba(0,0,0,0.85)" }}
       dir="rtl"
     >
