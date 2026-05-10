@@ -182,8 +182,9 @@ export default function ClassGrades() {
     let dCol = 0;
     if (key === "ArrowUp") dRow = -1;
     else if (key === "ArrowDown") dRow = 1;
-    else if (key === "ArrowLeft") dCol = -1;
-    else if (key === "ArrowRight") dCol = 1;
+    // In RTL (Arabic) the table’s visual column order is mirrored; swap horizontals so keys match what’s on screen.
+    else if (key === "ArrowLeft") dCol = lang === "ar" ? 1 : -1;
+    else if (key === "ArrowRight") dCol = lang === "ar" ? -1 : 1;
 
     const findNext = (): { r: number; c: number } | null => {
       let r = rowIdx + dRow;
