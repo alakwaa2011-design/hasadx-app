@@ -7,10 +7,6 @@ const router: IRouter = Router();
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const BASE_URL = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : process.env.APP_BASE_URL || "";
-const REDIRECT_URI = `${BASE_URL}/api/auth/google/classroom/callback`;
 
 const SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
@@ -19,8 +15,16 @@ const SCOPES = [
   "https://www.googleapis.com/auth/classroom.student-submissions.students.readonly",
 ];
 
-function makeOAuth2Client() {
-  return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+// Derive the redirect URI dynamically from the incoming request so it works
+// across dev domain, deployed domain, and custom domains without reconfiguration.
+function getRedirectUri(req: any): string {
+  const proto = (req.headers["x-forwarded-proto"] as string) || req.protocol || "https";
+  const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
+  return `${proto}://${host}/api/auth/google/classroom/callback`;
+}
+
+function makeOAuth2Client(redirectUri: string) {
+  return new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, redirectUri);
 }
 
 async function getAuthedClient(teacherId: number) {
@@ -36,7 +40,8 @@ async function getAuthedClient(teacherId: number) {
 
   if (!teacher?.accessToken || !teacher?.refreshToken) return null;
 
-  const oauth2 = makeOAuth2Client();
+  // Redirect URI not needed for refresh-only client
+  const oauth2 = makeOAuth2Client("https://localhost/api/auth/google/classroom/callback");
   oauth2.setCredentials({
     access_token: teacher.accessToken,
     refresh_token: teacher.refreshToken,
@@ -70,7 +75,7 @@ router.get("/classroom/connect", (req, res) => {
     return;
   }
 
-  const oauth2 = makeOAuth2Client();
+  const oauth2 = makeOAuth2Client(getRedirectUri(req));
   const url = oauth2.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
@@ -99,7 +104,7 @@ router.get("/auth/google/classroom/callback", async (req, res) => {
       return;
     }
 
-    const oauth2 = makeOAuth2Client();
+    const oauth2 = makeOAuth2Client(getRedirectUri(req));
     const { tokens } = await oauth2.getToken(code);
 
     await db

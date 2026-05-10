@@ -467883,16 +467883,19 @@ import { google } from "googleapis";
 var router56 = (0, import_express59.Router)();
 var CLIENT_ID2 = process.env.GOOGLE_CLIENT_ID;
 var CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-var BASE_URL = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : process.env.APP_BASE_URL || "";
-var REDIRECT_URI = `${BASE_URL}/api/auth/google/classroom/callback`;
 var SCOPES = [
   "https://www.googleapis.com/auth/classroom.courses.readonly",
   "https://www.googleapis.com/auth/classroom.rosters.readonly",
   "https://www.googleapis.com/auth/classroom.coursework.students",
   "https://www.googleapis.com/auth/classroom.student-submissions.students.readonly"
 ];
-function makeOAuth2Client() {
-  return new google.auth.OAuth2(CLIENT_ID2, CLIENT_SECRET, REDIRECT_URI);
+function getRedirectUri(req) {
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+  return `${proto}://${host}/api/auth/google/classroom/callback`;
+}
+function makeOAuth2Client(redirectUri) {
+  return new google.auth.OAuth2(CLIENT_ID2, CLIENT_SECRET, redirectUri);
 }
 async function getAuthedClient(teacherId) {
   const [teacher] = await db.select({
@@ -467901,7 +467904,7 @@ async function getAuthedClient(teacherId) {
     expiry: teachersTable.classroomTokenExpiry
   }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
   if (!teacher?.accessToken || !teacher?.refreshToken) return null;
-  const oauth2 = makeOAuth2Client();
+  const oauth2 = makeOAuth2Client("https://localhost/api/auth/google/classroom/callback");
   oauth2.setCredentials({
     access_token: teacher.accessToken,
     refresh_token: teacher.refreshToken,
@@ -467927,7 +467930,7 @@ router56.get("/classroom/connect", (req, res) => {
     res.status(503).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F Google Classroom \u0628\u0639\u062F" });
     return;
   }
-  const oauth2 = makeOAuth2Client();
+  const oauth2 = makeOAuth2Client(getRedirectUri(req));
   const url2 = oauth2.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
@@ -467949,7 +467952,7 @@ router56.get("/auth/google/classroom/callback", async (req, res) => {
       res.redirect("/teacher/classroom?error=invalid_state");
       return;
     }
-    const oauth2 = makeOAuth2Client();
+    const oauth2 = makeOAuth2Client(getRedirectUri(req));
     const { tokens } = await oauth2.getToken(code);
     await db.update(teachersTable).set({
       classroomAccessToken: tokens.access_token ?? null,
