@@ -331,6 +331,115 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, phase]);
 
+  /* ── difficulty colour tokens — defined before early returns so diffStyle is available in useMemo ── */
+  const TILE_R = "14px";
+  const TILE_SH = "0 1px 4px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12)";
+  const diffStyle = (pts: ArenaDifficulty, used: boolean): React.CSSProperties => {
+    if (used) return {
+      background: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.08)",
+      color: "rgba(0,0,0,0.18)", cursor: "not-allowed",
+      boxShadow: "none", borderRadius: TILE_R,
+    };
+    const base = { boxShadow: TILE_SH, borderRadius: TILE_R };
+    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2457a8,#1e408e)", borderColor: "#183270", color: "#cfe0ff" };
+    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5525a8,#421e88)", borderColor: "#311668", color: "#ddd5ff" };
+    return                  { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
+  };
+
+  /* ── Game board grid — memoized HERE (before early returns) to keep hook order stable ─────────
+     Rules of Hooks: useMemo must be called unconditionally. Placing it inside JSX after early
+     returns violates this rule and causes React error #310 on phase transitions.                  */
+  const boardGrid = useMemo(() => {
+    const usedCards = state?.usedCards ?? [];
+    const activeQ = state?.active ?? null;
+    return (
+      <div
+        className="relative flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3"
+        style={{
+          padding: "clamp(10px, 2.5vw, 32px)",
+          gap: "clamp(10px, 2.5vw, 32px)",
+          gridAutoRows: "1fr",
+        }}
+      >
+        {orderedSubCategoryIds.map(subId => {
+          const sub = findSubCategory(subId, allSections);
+          const sec = findSection(subId, allSections);
+          if (!sub) return null;
+          const imgUrl = sec ? getStaticCoverImage(sec.id, subId) : undefined;
+          const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
+
+          return (
+            <div
+              key={subId}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                background: "rgba(248,246,242,0.97)",
+                border: "1px solid rgba(0,0,0,0.10)",
+                borderRadius: "12px",
+                overflow: "hidden",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
+              }}
+            >
+              {/* Image */}
+              <div className="relative overflow-hidden" style={{ height: "clamp(72px, 16vw, 200px)", flexShrink: 0 }}>
+                {imgUrl ? (
+                  <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center" }} />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}44 100%)`, color: accentColor }}>
+                    {sec?.emoji ?? "📚"}
+                  </div>
+                )}
+              </div>
+              {/* Name strip */}
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", padding: "7px 10px 8px", background: "linear-gradient(135deg, #1a3d2b 0%, #24522f 100%)", borderTop: "2px solid rgba(180,140,40,0.35)" }}>
+                {sec?.emoji && <span style={{ fontSize: "clamp(13px, 2.8vw, 18px)", lineHeight: 1 }}>{sec.emoji}</span>}
+                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(13px, 3vw, 19px)", color: "#ffffff", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.01em", textShadow: "0 1px 4px rgba(0,0,0,0.55)" }}>
+                  {sub.name}
+                </span>
+              </div>
+              {/* Buttons grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", padding: "5px" }}>
+                {POINT_VALUES.map(pts => {
+                  const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
+                  const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
+                  const usedA = usedCards.includes(keyA);
+                  const usedB = usedCards.includes(keyB);
+                  return (
+                    <React.Fragment key={pts}>
+                      <motion.button
+                        whileHover={!usedA && !activeQ ? { scale: 1.06, y: -1 } : undefined}
+                        whileTap={!usedA && !activeQ ? { scale: 0.93 } : undefined}
+                        onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
+                        disabled={usedA || !!activeQ}
+                        className="font-bold border transition-all flex items-center justify-center"
+                        style={{ height: "clamp(28px, 5.5vw, 36px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(12px, 2.8vw, 15px)", ...diffStyle(pts, usedA) }}
+                      >
+                        {usedA ? "—" : pts}
+                      </motion.button>
+                      <motion.button
+                        whileHover={!usedB && !activeQ ? { scale: 1.06, y: -1 } : undefined}
+                        whileTap={!usedB && !activeQ ? { scale: 0.93 } : undefined}
+                        onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
+                        disabled={usedB || !!activeQ}
+                        className="font-bold border transition-all flex items-center justify-center"
+                        style={{ height: "clamp(28px, 5.5vw, 36px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(12px, 2.8vw, 15px)", ...diffStyle(pts, usedB) }}
+                      >
+                        {usedB ? "—" : pts}
+                      </motion.button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard]);
+
   if (!state) return null;
 
   const totalCards = orderedSubCategoryIds.length * POINT_VALUES.length * SLOTS.length;
@@ -612,21 +721,6 @@ export default function ArenaPlay() {
 
   const turnTeam = state.teams[state.currentTurn] ?? teamA;
 
-  /* ── difficulty colour tokens: calm slate/indigo palette ───────────────── */
-  const TILE_R = "14px";
-  const TILE_SH = "0 1px 4px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12)";
-  const diffStyle = (pts: ArenaDifficulty, used: boolean): React.CSSProperties => {
-    if (used) return {
-      background: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.08)",
-      color: "rgba(0,0,0,0.18)", cursor: "not-allowed",
-      boxShadow: "none", borderRadius: TILE_R,
-    };
-    const base = { boxShadow: TILE_SH, borderRadius: TILE_R };
-    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2457a8,#1e408e)", borderColor: "#183270", color: "#cfe0ff" };
-    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5525a8,#421e88)", borderColor: "#311668", color: "#ddd5ff" };
-    return                  { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
-  };
-
   return (
     <div dir="rtl" className="min-h-screen relative overflow-hidden flex flex-col" style={{
       background: "linear-gradient(160deg, #ede8dc 0%, #e5ddd0 50%, #ddd5c5 100%)",
@@ -748,149 +842,9 @@ export default function ArenaPlay() {
       {/* Turn indicator */}
       <TurnIndicator team={turnTeam} side={state.currentTurn} />
 
-      {/* ── Game board — memoized: only re-renders when cards used or question opens/closes ── */}
-      {useMemo(() => (
-      <div
-        className="relative flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3"
-        style={{
-          padding: "clamp(10px, 2.5vw, 32px)",
-          gap: "clamp(10px, 2.5vw, 32px)",
-          gridAutoRows: "1fr",
-        }}
-      >
-        {orderedSubCategoryIds.map(subId => {
-          const sub = findSubCategory(subId, allSections);
-          const sec = findSection(subId, allSections);
-          if (!sub) return null;
-          const imgUrl = sec ? getStaticCoverImage(sec.id, subId) : undefined;
-          const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
+      {/* ── Game board — memoized above early returns to keep hook order stable ── */}
+      {boardGrid}
 
-          return (
-            /* ── Category card — vertical layout, works at all widths ── */
-            <div
-              key={subId}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                background: "rgba(248,246,242,0.97)",
-                border: "1px solid rgba(0,0,0,0.10)",
-                borderRadius: "12px",
-                overflow: "hidden",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)",
-              }}
-            >
-              {/* ── Image — fixed consistent height ── */}
-              <div
-                className="relative overflow-hidden"
-                style={{ height: "clamp(72px, 16vw, 200px)", flexShrink: 0 }}
-              >
-                {imgUrl ? (
-                  <img
-                    src={imgUrl}
-                    alt={sub.name}
-                    className="absolute inset-0 w-full h-full"
-                    style={{ objectFit: "cover", objectPosition: "center" }}
-                  />
-                ) : (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center text-3xl"
-                    style={{
-                      background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}44 100%)`,
-                      color: accentColor,
-                    }}
-                  >
-                    {sec?.emoji ?? "📚"}
-                  </div>
-                )}
-              </div>
-
-              {/* ── Name strip ── */}
-              <div style={{
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                padding: "7px 10px 8px",
-                background: "linear-gradient(135deg, #1a3d2b 0%, #24522f 100%)",
-                borderTop: "2px solid rgba(180,140,40,0.35)",
-              }}>
-                {sec?.emoji && (
-                  <span style={{ fontSize: "clamp(13px, 2.8vw, 18px)", lineHeight: 1 }}>
-                    {sec.emoji}
-                  </span>
-                )}
-                <span style={{
-                  fontFamily: "'Tajawal', sans-serif",
-                  fontWeight: 900,
-                  fontSize: "clamp(13px, 3vw, 19px)",
-                  color: "#ffffff",
-                  lineHeight: 1.25,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  letterSpacing: "0.01em",
-                  textShadow: "0 1px 4px rgba(0,0,0,0.55)",
-                }}>
-                  {sub.name}
-                </span>
-              </div>
-
-              {/* ── Buttons — 2-col grid: [slot-A] [slot-B] × 3 rows ── */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "4px",
-                padding: "5px",
-              }}>
-                {POINT_VALUES.map(pts => {
-                  const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
-                  const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
-                  const usedA = state.usedCards.includes(keyA);
-                  const usedB = state.usedCards.includes(keyB);
-                  return (
-                    <React.Fragment key={pts}>
-                      <motion.button
-                        whileHover={!usedA && !active ? { scale: 1.06, y: -1 } : undefined}
-                        whileTap={!usedA && !active ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedA && !active && openCard(subId, pts, 1)}
-                        disabled={usedA || !!active}
-                        className="font-bold border transition-all flex items-center justify-center"
-                        style={{
-                          height: "clamp(28px, 5.5vw, 36px)",
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(12px, 2.8vw, 15px)",
-                          ...diffStyle(pts, usedA),
-                        }}
-                      >
-                        {usedA ? "—" : pts}
-                      </motion.button>
-                      <motion.button
-                        whileHover={!usedB && !active ? { scale: 1.06, y: -1 } : undefined}
-                        whileTap={!usedB && !active ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedB && !active && openCard(subId, pts, 2)}
-                        disabled={usedB || !!active}
-                        className="font-bold border transition-all flex items-center justify-center"
-                        style={{
-                          height: "clamp(28px, 5.5vw, 36px)",
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(12px, 2.8vw, 15px)",
-                          ...diffStyle(pts, usedB),
-                        }}
-                      >
-                        {usedB ? "—" : pts}
-                      </motion.button>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      ), [orderedSubCategoryIds, allSections, state.usedCards, !!active, openCard])}
 
       <AnimatePresence>
         {active && (
