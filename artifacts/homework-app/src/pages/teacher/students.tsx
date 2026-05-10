@@ -244,32 +244,39 @@ function ClassBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="mb-4">
-      {/* Class Card */}
-      <div className={`rounded-2xl border-2 overflow-hidden shadow-sm transition-all
-        ${isDragging ? `border-${color.ring} shadow-lg` : "border-border"}`}>
+    <div ref={setNodeRef} style={style} className="mb-3">
+      <div className={`rounded-2xl bg-card overflow-hidden transition-all duration-200
+        ${isDragging
+          ? "shadow-2xl ring-2 ring-primary/40 opacity-70 scale-[0.99]"
+          : "shadow-sm hover:shadow-md border border-border hover:border-border/80"}`}
+      >
+        {/* Colored accent bar at top */}
+        <div className={`h-1.5 ${color.bg}`} />
 
-        {/* Class Header */}
-        <div className={`${color.light} ${color.border} border-b`}>
-          <div className="flex items-center gap-2 px-4 py-3">
+        {/* Card body */}
+        <div className="px-5 py-4">
+
+          {/* Top row: drag + icon + name + toggle */}
+          <div className="flex items-center gap-3">
 
             {/* Drag handle */}
             {!isUngrouped && (
               <button
                 {...attributes}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none flex-shrink-0"
+                className="cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 touch-none flex-shrink-0 transition-colors"
+                title="اسحب لإعادة الترتيب"
               >
-                <GripVertical size={16} />
+                <GripVertical size={18} />
               </button>
             )}
 
-            {/* Color dot + class icon */}
-            <div className={`w-8 h-8 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0`}>
-              <BookOpen size={15} className="text-white" />
+            {/* Class icon */}
+            <div className={`w-11 h-11 rounded-xl ${color.bg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+              <BookOpen size={19} className="text-white" />
             </div>
 
-            {/* Class name (inline editable) */}
+            {/* Class name + count */}
             <div className="flex-1 min-w-0">
               {isRenaming ? (
                 <input
@@ -281,152 +288,174 @@ function ClassBlock({
                     if (e.key === "Escape") setIsRenaming(false);
                   }}
                   onBlur={submitRename}
-                  className={`w-full font-bold text-base bg-card text-foreground border-2 ${color.ring} ring-2 rounded-lg px-2 py-0.5 outline-none`}
+                  className={`w-full font-black text-lg bg-background text-foreground border-2 border-primary/60 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-primary/30`}
+                  autoFocus
                 />
               ) : (
-                <button
-                  onClick={onToggle}
-                  className="flex items-center gap-2 text-right w-full group/name"
-                >
-                  <span className={`font-bold text-base ${color.text} truncate`}>
-                    {isUngrouped ? "بلا صف" : folderName}
-                  </span>
-                  <span className={`text-xs font-semibold ${color.text} bg-background/80 rounded-full px-2 py-0.5 flex-shrink-0`}>
-                    {students.length} طالب
-                  </span>
-                  <span className={`mr-auto ${color.text} opacity-50`}>
-                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  </span>
-                </button>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`font-black text-lg leading-tight ${color.text}`}>
+                      {isUngrouped ? "بلا صف" : folderName}
+                    </span>
+                    {groupName && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800">
+                        <Layers size={10} />
+                        {groupName}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    <span className="font-semibold text-foreground">{students.length}</span> طالب
+                  </p>
+                </div>
               )}
             </div>
 
-            {/* Action buttons */}
-            {!isUngrouped && !isRenaming && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <Link
-                  href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-medium hover:opacity-90 transition-opacity`}
-                  title="كشف الدرجات من الواجبات"
-                >
-                  <ClipboardList size={13} />
-                  <span className="hidden sm:inline">الدرجات</span>
-                </Link>
+            {/* Toggle button */}
+            <button
+              onClick={onToggle}
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+              title={isExpanded ? "طيّ الصف" : "عرض الطلاب"}
+            >
+              {isExpanded ? <ChevronDown size={18} /> : <ChevronLeft size={18} />}
+            </button>
+          </div>
 
-                {/* Attendance */}
-                {onAttendance && (
-                  <button
-                    onClick={() => onAttendance(folderName)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-500 text-white text-xs font-medium hover:opacity-90 transition-opacity"
-                    title="تسجيل الحضور والغياب"
-                  >
-                    <UserCheck size={13} />
-                    <span className="hidden sm:inline">حضور</span>
-                  </button>
-                )}
+          {/* Action strip — separated by a divider */}
+          {!isUngrouped && !isRenaming && (
+            <div className="mt-3.5 pt-3.5 border-t border-border/60 flex flex-wrap items-center gap-2">
 
-                {/* Group assignment */}
-                {onAssignGroup && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowGroupMenu(v => !v)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium hover:opacity-90 transition-opacity
-                        ${groupName ? "bg-violet-500 text-white" : "bg-muted text-muted-foreground border border-border"}`}
-                      title="تعيين مجموعة/مرحلة"
-                    >
-                      <Layers size={13} />
-                      <span className="hidden sm:inline">{groupName || "مجموعة"}</span>
-                    </button>
-                    {showGroupMenu && (
-                      <div className="absolute left-0 bottom-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-44 py-1 text-sm max-h-64 overflow-y-auto">
-                        <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border sticky top-0 bg-card">تعيين إلى مجموعة:</p>
-                        {(allGroups ?? []).map(g => (
-                          <button key={g}
-                            onClick={() => { onAssignGroup(folderName, g); setShowGroupMenu(false); }}
-                            className={`w-full text-right px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2
-                              ${groupName === g ? "text-violet-600 font-bold" : "text-foreground"}`}
-                          >
-                            {groupName === g && <Check size={12} className="shrink-0" />}
-                            {g}
-                          </button>
-                        ))}
-                        {groupName && (
-                          <button
-                            onClick={() => { onAssignGroup(folderName, null); setShowGroupMenu(false); }}
-                            className="w-full text-right px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-xs"
-                          >
-                            إزالة من المجموعة
-                          </button>
-                        )}
-                        {(allGroups ?? []).length === 0 && (
-                          <p className="px-3 py-2 text-xs text-muted-foreground">لا توجد مجموعات — أنشئ مجموعة أولاً</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+              {/* Primary actions */}
+              <Link
+                href={`/teacher/class-grades/${encodeURIComponent(folderName)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                title="كشف الدرجات"
+              >
+                <ClipboardList size={13} />
+                الدرجات
+              </Link>
 
+              {onAttendance && (
                 <button
-                  onClick={() => onAddStudent(folderName)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg ${color.bg} text-white text-xs font-medium hover:opacity-90 transition-opacity`}
-                  title="إضافة طالب"
+                  onClick={() => onAttendance(folderName)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400 text-xs font-semibold border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
+                  title="تسجيل الحضور"
                 >
-                  <UserPlus size={13} />
-                  <span className="hidden sm:inline">إضافة</span>
+                  <UserCheck size={13} />
+                  حضور
                 </button>
+              )}
 
-                {/* Rename */}
+              {/* Group picker */}
+              {onAssignGroup && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowGroupMenu(v => !v)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors
+                      ${groupName
+                        ? "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/40"
+                        : "bg-muted text-muted-foreground border-border hover:bg-muted/80"}`}
+                    title="تعيين مجموعة"
+                  >
+                    <Layers size={13} />
+                    {groupName || "مجموعة"}
+                  </button>
+                  {showGroupMenu && (
+                    <div className="absolute start-0 top-10 z-[200] bg-card border border-border rounded-xl shadow-xl min-w-48 py-1 text-sm max-h-64 overflow-y-auto">
+                      <p className="px-3 py-1.5 text-xs text-muted-foreground font-semibold border-b border-border sticky top-0 bg-card">تعيين إلى مجموعة:</p>
+                      {(allGroups ?? []).map(g => (
+                        <button key={g}
+                          onClick={() => { onAssignGroup(folderName, g); setShowGroupMenu(false); }}
+                          className={`w-full text-right px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2
+                            ${groupName === g ? "text-violet-600 font-bold" : "text-foreground"}`}
+                        >
+                          {groupName === g && <Check size={12} className="shrink-0" />}
+                          {g}
+                        </button>
+                      ))}
+                      {groupName && (
+                        <button
+                          onClick={() => { onAssignGroup(folderName, null); setShowGroupMenu(false); }}
+                          className="w-full text-right px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-xs border-t border-border mt-1"
+                        >
+                          إزالة من المجموعة
+                        </button>
+                      )}
+                      {(allGroups ?? []).length === 0 && (
+                        <p className="px-3 py-2 text-xs text-muted-foreground">لا توجد مجموعات — أنشئ مجموعة أولاً</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Add student */}
+              <button
+                onClick={() => onAddStudent(folderName)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${color.light} ${color.text} ${color.border} hover:opacity-80`}
+                title="إضافة طالب"
+              >
+                <UserPlus size={13} />
+                إضافة طالب
+              </button>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Secondary: rename + delete */}
+              <div className="flex items-center gap-1">
                 <button
                   onClick={startRename}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-blue-600 transition-colors"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                   title="تغيير اسم الصف"
                 >
                   <Pencil size={14} />
                 </button>
 
-                {/* Delete class */}
                 {!showDeleteConfirm ? (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-red-600 transition-colors"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                     title="حذف الصف"
                   >
                     <Trash2 size={14} />
                   </button>
                 ) : (
-                  <div className="flex items-center gap-1 bg-card rounded-lg px-2 py-1 border border-red-200 dark:border-red-900 shadow-sm">
-                    <span className="text-xs text-red-500 font-medium">حذف الصف؟</span>
+                  <div className="flex items-center gap-1 bg-card rounded-xl px-2.5 py-1.5 border border-red-200 dark:border-red-900 shadow-sm">
+                    <span className="text-xs text-red-500 font-semibold">حذف الصف؟</span>
                     <button
                       onClick={() => { onDeleteClass(folderName); setShowDeleteConfirm(false); }}
-                      className="p-1 rounded bg-red-500 text-white hover:bg-red-600"
+                      className="p-1 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
                     >
                       <Check size={11} />
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="p-1 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+                      className="p-1 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
                     >
                       <X size={11} />
                     </button>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Ungrouped add */}
-            {isUngrouped && (
+          {/* Ungrouped quick add */}
+          {isUngrouped && (
+            <div className="mt-3 pt-3 border-t border-border/60 flex gap-2">
               <button
                 onClick={() => onAddStudent(UNGROUPED)}
-                className="p-1.5 rounded-lg text-teal-500 hover:bg-teal-500/10 hover:text-teal-700"
-                title="إضافة طالب"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 text-xs font-semibold border border-teal-200 dark:border-teal-800 hover:bg-teal-100 transition-colors"
               >
-                <UserPlus size={15} />
+                <UserPlus size={13} />
+                إضافة طالب
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Expanded Content */}
+        {/* Expanded student list */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -434,56 +463,57 @@ function ClassBlock({
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden bg-card"
+              className="overflow-hidden border-t border-border/50"
             >
               {(() => {
                 const sortedClassStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, "ar"));
                 return (
-                <SortableContext
-                  items={sortedClassStudents.map((s) => `student-${s.id}`)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="p-3 space-y-1.5">
-                    {sortedClassStudents.length === 0 ? (
-                      <div className="text-center py-6 text-muted-foreground text-sm">
-                        لا يوجد طلاب في هذا الصف بعد
-                      </div>
-                    ) : (
-                      sortedClassStudents.map((s, sIdx) => (
-                        <StudentRow
-                          key={s.id}
-                          student={s}
-                          idx={sIdx + 1}
-                          onEdit={onEditStudent}
-                          onDelete={onDeleteStudent}
-                          onMove={onMoveStudent}
-                          onResetPassword={onResetPassword}
-                          folders={allFolders}
-                          colorIdx={colorIdx}
-                        />
-                      ))
-                    )}
+                  <SortableContext
+                    items={sortedClassStudents.map((s) => `student-${s.id}`)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="px-5 py-4 space-y-2 bg-muted/20">
+                      {sortedClassStudents.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Users size={32} className="mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">لا يوجد طلاب في هذا الصف بعد</p>
+                        </div>
+                      ) : (
+                        sortedClassStudents.map((s, sIdx) => (
+                          <StudentRow
+                            key={s.id}
+                            student={s}
+                            idx={sIdx + 1}
+                            onEdit={onEditStudent}
+                            onDelete={onDeleteStudent}
+                            onMove={onMoveStudent}
+                            onResetPassword={onResetPassword}
+                            folders={allFolders}
+                            colorIdx={colorIdx}
+                          />
+                        ))
+                      )}
 
-                    {!isUngrouped && (
-                      <div className="flex gap-2 pt-1">
-                        <button
-                          onClick={() => onAddStudent(folderName)}
-                          className={`flex-1 py-2 text-xs font-medium ${color.text} hover:bg-muted rounded-xl border border-dashed ${color.border} hover:${color.light} transition-all flex items-center justify-center gap-1`}
-                        >
-                          <UserPlus size={13} />
-                          إضافة طالب
-                        </button>
-                        <button
-                          onClick={() => onBulkAdd(folderName)}
-                          className="flex-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl border border-dashed border-border transition-all flex items-center justify-center gap-1"
-                        >
-                          <ListPlus size={13} />
-                          إضافة بالجملة
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
+                      {!isUngrouped && (
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => onAddStudent(folderName)}
+                            className={`flex-1 py-2.5 text-xs font-semibold ${color.text} bg-card hover:bg-muted rounded-xl border-2 border-dashed ${color.border} transition-all flex items-center justify-center gap-1.5`}
+                          >
+                            <UserPlus size={14} />
+                            إضافة طالب
+                          </button>
+                          <button
+                            onClick={() => onBulkAdd(folderName)}
+                            className="flex-1 py-2.5 text-xs font-semibold text-muted-foreground bg-card hover:bg-muted rounded-xl border-2 border-dashed border-border transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <ListPlus size={14} />
+                            إضافة بالجملة
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </SortableContext>
                 );
               })()}
             </motion.div>
@@ -1111,89 +1141,109 @@ export default function StudentsPage() {
   return (
     <Layout>
       <div className="min-h-screen bg-background pb-16" dir="rtl">
-        <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
           {/* Hero — Hasad brand: deep green #1E4D35 + gold #E8A80E accent */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl text-white p-6 sm:p-7 shadow-lg mb-6"
-            style={{ background: "linear-gradient(135deg, #1E4D35 0%, #225739 55%, #1a4530 100%)" }}
+            className="relative overflow-hidden rounded-2xl text-white shadow-xl mb-6"
+            style={{ background: "linear-gradient(135deg, #1E4D35 0%, #225739 60%, #1a4530 100%)" }}
           >
-            {/* Gold corner glow */}
-            <div className="absolute -top-20 -end-20 w-64 h-64 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.28) 0%, rgba(232,168,14,0) 70%)" }} />
-            <div className="absolute -bottom-16 -start-16 w-56 h-56 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.10) 0%, rgba(232,168,14,0) 70%)" }} />
-            {/* Subtle decorative ring */}
-            <div className="absolute top-4 end-4 w-8 h-8 rounded-full pointer-events-none" style={{ border: "1.5px solid rgba(232,168,14,0.25)" }} />
-            <div className="relative flex items-start gap-3">
-              <button
-                onClick={() => setLocation("/teacher")}
-                className="p-2 rounded-xl transition-colors text-white"
-                style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.3)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.28)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.15)"; }}
-              >
-                <BackArrowIcon size={20} />
-              </button>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2 mb-2" style={{ letterSpacing: "-0.3px" }}>
-                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0" style={{ background: "#E8A80E", color: "#1E4D35", boxShadow: "0 4px 14px rgba(232,168,14,0.35)" }}>
-                    <Users size={20} />
-                  </span>
-                  إدارة الصفوف والطلاب
-                </h1>
-                <div className="flex flex-wrap items-center gap-2">
+            {/* Gold glows */}
+            <div className="absolute -top-24 -end-24 w-72 h-72 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.25) 0%, rgba(232,168,14,0) 70%)" }} />
+            <div className="absolute -bottom-20 -start-20 w-64 h-64 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.10) 0%, rgba(232,168,14,0) 70%)" }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 24px)" }} />
+
+            <div className="relative px-6 sm:px-8 py-6 sm:py-7">
+              <div className="flex items-center gap-4">
+                {/* Back button */}
+                <button
+                  onClick={() => setLocation("/teacher")}
+                  className="shrink-0 p-2.5 rounded-xl transition-all text-white"
+                  style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.3)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.28)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.15)"; }}
+                >
+                  <BackArrowIcon size={20} />
+                </button>
+
+                {/* Gold icon */}
+                <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: "#E8A80E", color: "#1E4D35", boxShadow: "0 4px 20px rgba(232,168,14,0.40)" }}>
+                  <Users size={24} />
+                </div>
+
+                {/* Title + subtitle */}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl font-black leading-tight" style={{ letterSpacing: "-0.5px" }}>
+                    إدارة الصفوف والطلاب
+                  </h1>
+                  <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>
+                    {namedFolders.length > 0 ? `${namedFolders.length} صف · ${totalCount} طالب` : "ابدأ بإنشاء صفك الأول"}
+                  </p>
+                </div>
+
+                {/* Stats chips — visible on sm+ */}
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
                   {namedFolders.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold" style={{ background: "rgba(232,168,14,0.18)", color: "#fde68a", border: "1px solid rgba(232,168,14,0.32)" }}>
-                      <BookOpen size={12} />
-                      {namedFolders.length} صف
-                    </span>
+                    <div className="flex flex-col items-center px-5 py-2.5 rounded-xl" style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.25)" }}>
+                      <span className="text-2xl font-black" style={{ color: "#E8A80E" }}>{namedFolders.length}</span>
+                      <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>صف</span>
+                    </div>
                   )}
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold" style={{ background: "rgba(255,255,255,0.10)", color: "#fff", border: "1px solid rgba(255,255,255,0.18)" }}>
-                    <Users size={12} />
-                    {totalCount} طالب
-                  </span>
+                  <div className="flex flex-col items-center px-5 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    <span className="text-2xl font-black text-white">{totalCount}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.65)" }}>طالب</span>
+                  </div>
                 </div>
               </div>
             </div>
           </motion.div>
 
           {/* Toolbar */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            <div className="flex-1 min-w-0 relative">
-              <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex flex-wrap gap-2.5 mb-6">
+            {/* Search */}
+            <div className="flex-1 min-w-[200px] relative">
+              <Search size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث عن طالب..."
-                className="w-full pr-9 pl-3 py-2 text-sm border border-border rounded-xl bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full pr-10 pl-4 py-2.5 text-sm border border-border rounded-xl bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
               />
             </div>
 
-            <button
-              onClick={() => setShowAddClass(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-md shadow-primary/20"
-            >
-              <Plus size={15} />
-              صف جديد
-            </button>
-
-            <button
-              onClick={() => setShowAddGroup(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-violet-500 text-white text-sm font-semibold rounded-xl hover:bg-violet-600 transition-colors shadow-md shadow-violet-200/50"
-            >
-              <Layers size={15} />
-              مجموعة
-            </button>
-
-            {totalCount > 0 && (
+            {/* Actions */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowDeleteAll(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-red-50 dark:bg-red-950/30 text-red-500 text-sm rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-900"
+                onClick={() => setShowAddClass(true)}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-md"
+                style={{ background: "#1E4D35", color: "#fff", boxShadow: "0 4px 14px rgba(30,77,53,0.30)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#163a28"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#1E4D35"; }}
               >
-                <Trash2 size={15} />
+                <Plus size={16} />
+                <span>صف جديد</span>
               </button>
-            )}
+
+              <button
+                onClick={() => setShowAddGroup(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-violet-500 text-white text-sm font-semibold rounded-xl hover:bg-violet-600 transition-colors shadow-md shadow-violet-200/40"
+              >
+                <Layers size={16} />
+                <span className="hidden sm:inline">مجموعة</span>
+              </button>
+
+              {totalCount > 0 && (
+                <button
+                  onClick={() => setShowDeleteAll(true)}
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-500 text-sm rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-900"
+                  title="حذف جميع الطلاب"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Loading */}
@@ -1245,16 +1295,22 @@ export default function StudentsPage() {
 
                   return (
                     <>
-                      {/* Groups with headers */}
+                      {/* Groups with headers — each group shows classes in 2-col grid on md+ */}
                       {groupedClasses.map(group => (
-                        <div key={group.name} className="mb-3">
-                          <div className="flex items-center gap-2 px-2 mb-2">
-                            <Layers size={13} className="text-violet-500 shrink-0" />
-                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{group.name}</span>
-                            <div className="flex-1 h-px bg-violet-200 dark:bg-violet-800/50" />
-                            <span className="text-[10px] text-muted-foreground">{group.classes.length} صف</span>
+                        <div key={group.name} className="mb-6">
+                          {/* Group header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                              <Layers size={15} className="text-violet-600 dark:text-violet-400" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-base text-foreground">{group.name}</span>
+                              <span className="mr-2 text-xs text-muted-foreground">{group.classes.length} صف · {group.classes.reduce((acc, f) => acc + studentsInFolder(f).length, 0)} طالب</span>
+                            </div>
+                            <div className="flex-1 h-px bg-border" />
                           </div>
-                          <div className="pr-3 border-r-2 border-violet-200 dark:border-violet-800/50 space-y-2">
+                          {/* 2-col grid on md+ */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {group.classes.map(folder => {
                               const idx = namedFolders.indexOf(folder);
                               return (
@@ -1287,37 +1343,42 @@ export default function StudentsPage() {
 
                       {/* Ungrouped classes */}
                       {ungroupedClasses.length > 0 && groupedClasses.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 mb-2 mt-2">
-                          <span className="text-xs font-medium text-muted-foreground">بدون مجموعة</span>
+                        <div className="flex items-center gap-3 mb-3 mt-4">
+                          <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                            <BookOpen size={14} className="text-muted-foreground" />
+                          </div>
+                          <span className="font-semibold text-sm text-muted-foreground">بدون مجموعة</span>
                           <div className="flex-1 h-px bg-border" />
                         </div>
                       )}
-                      {ungroupedClasses.map((folder) => {
-                        const idx = namedFolders.indexOf(folder);
-                        return (
-                          <ClassBlock
-                            key={folder}
-                            className={folder}
-                            students={studentsInFolder(folder)}
-                            allFolders={folders}
-                            isExpanded={expandedFolders.has(folder)}
-                            colorIdx={idx}
-                            groupName={classGroupMap[folder]}
-                            allGroups={allGroups}
-                            onAssignGroup={handleAssignGroup}
-                            onAttendance={openAttendance}
-                            onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
-                            onRename={handleRenameClass}
-                            onDeleteClass={handleDeleteClass}
-                            onEditStudent={openEditStudent}
-                            onDeleteStudent={handleDeleteStudent}
-                            onMoveStudent={handleMoveStudent}
-                            onAddStudent={openAddStudent}
-                            onBulkAdd={openBulkAdd}
-                            onResetPassword={openResetPassword}
-                          />
-                        );
-                      })}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {ungroupedClasses.map((folder) => {
+                          const idx = namedFolders.indexOf(folder);
+                          return (
+                            <ClassBlock
+                              key={folder}
+                              className={folder}
+                              students={studentsInFolder(folder)}
+                              allFolders={folders}
+                              isExpanded={expandedFolders.has(folder)}
+                              colorIdx={idx}
+                              groupName={classGroupMap[folder]}
+                              allGroups={allGroups}
+                              onAssignGroup={handleAssignGroup}
+                              onAttendance={openAttendance}
+                              onToggle={() => setExpandedFolders(prev => { const next = new Set(prev); next.has(folder) ? next.delete(folder) : next.add(folder); return next; })}
+                              onRename={handleRenameClass}
+                              onDeleteClass={handleDeleteClass}
+                              onEditStudent={openEditStudent}
+                              onDeleteStudent={handleDeleteStudent}
+                              onMoveStudent={handleMoveStudent}
+                              onAddStudent={openAddStudent}
+                              onBulkAdd={openBulkAdd}
+                              onResetPassword={openResetPassword}
+                            />
+                          );
+                        })}
+                      </div>
                     </>
                   );
                 })()}
