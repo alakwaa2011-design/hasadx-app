@@ -162,6 +162,7 @@ const GamesPage = lazy(() => import("@/pages/games"));
 const ArenaSetup = lazy(() => import("@/pages/game/arena-setup"));
 const ArenaPlay = lazy(() => import("@/pages/game/arena-play"));
 const ArenaAudience = lazy(() => import("@/pages/game/arena-audience"));
+const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const InstallTutorial = lazy(() => import("@/pages/install-tutorial"));
 const InstallPage = lazy(() => import("@/pages/install"));
 
@@ -230,6 +231,7 @@ function Router() {
         <Route path="/islamic/challenge/play/:pin" component={IslamicChallengePlay} />
         <Route path="/islamic/tournament/play/:pin" component={IslamicTournamentPlay} />
         <Route path="/islamic/tournament/host/:pin" component={IslamicTournamentHost} />
+        <Route path="/teacher/classroom" component={ClassroomPage} />
         <Route path="/teacher/students" component={StudentsPage} />
         <Route path="/teacher/library" component={TeacherLibraryPage} />
         <Route path="/teacher/profile" component={TeacherProfile} />

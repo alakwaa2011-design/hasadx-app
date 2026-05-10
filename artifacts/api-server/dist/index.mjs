@@ -24171,8 +24171,8 @@ var require_instrumentation18 = __commonJS({
        */
       _patchRouterDispatch(dispatchLayer) {
         api.diag.debug("Patching @koa/router dispatch");
-        const router57 = dispatchLayer.router;
-        const routesStack = router57?.stack ?? [];
+        const router58 = dispatchLayer.router;
+        const routesStack = router58?.stack ?? [];
         for (const pathLayer of routesStack) {
           const path4 = pathLayer.path;
           const pathStack = pathLayer.stack;
@@ -67163,27 +67163,27 @@ var require_router = __commonJS({
     var slice2 = Array.prototype.slice;
     var flatten4 = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router57;
+    module2.exports = Router58;
     module2.exports.Route = Route;
-    function Router57(options) {
-      if (!(this instanceof Router57)) {
-        return new Router57(options);
+    function Router58(options) {
+      if (!(this instanceof Router58)) {
+        return new Router58(options);
       }
       const opts = options || {};
-      function router57(req, res, next) {
-        router57.handle(req, res, next);
+      function router58(req, res, next) {
+        router58.handle(req, res, next);
       }
-      Object.setPrototypeOf(router57, this);
-      router57.caseSensitive = opts.caseSensitive;
-      router57.mergeParams = opts.mergeParams;
-      router57.params = {};
-      router57.strict = opts.strict;
-      router57.stack = [];
-      return router57;
+      Object.setPrototypeOf(router58, this);
+      router58.caseSensitive = opts.caseSensitive;
+      router58.mergeParams = opts.mergeParams;
+      router58.params = {};
+      router58.strict = opts.strict;
+      router58.stack = [];
+      return router58;
     }
-    Router57.prototype = function() {
+    Router58.prototype = function() {
     };
-    Router57.prototype.param = function param2(name2, fn) {
+    Router58.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -67203,7 +67203,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router57.prototype.handle = function handle(req, res, callback) {
+    Router58.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -67330,7 +67330,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router57.prototype.use = function use(handler) {
+    Router58.prototype.use = function use(handler) {
       let offset = 0;
       let path4 = "/";
       if (typeof handler !== "function") {
@@ -67363,7 +67363,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router57.prototype.route = function route(path4) {
+    Router58.prototype.route = function route(path4) {
       const route2 = new Route(path4);
       const layer = new Layer(path4, {
         sensitive: this.caseSensitive,
@@ -67378,7 +67378,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router57.prototype[method] = function(path4) {
+      Router58.prototype[method] = function(path4) {
         const route = this.route(path4);
         route[method].apply(route, slice2.call(arguments, 1));
         return this;
@@ -67561,13 +67561,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils24().compileTrust;
     var resolve3 = __require("node:path").resolve;
     var once = require_once();
-    var Router57 = require_router();
+    var Router58 = require_router();
     var slice2 = Array.prototype.slice;
     var flatten4 = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init3() {
-      var router57 = null;
+      var router58 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -67576,13 +67576,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router57 === null) {
-            router57 = new Router57({
+          if (router58 === null) {
+            router58 = new Router58({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router57;
+          return router58;
         }
       });
     };
@@ -67653,15 +67653,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router57 = this.router;
+      var router58 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router57.use(path4, fn2);
+          return router58.use(path4, fn2);
         }
         debug2(".use app under %s", path4);
         fn2.mountpath = path4;
         fn2.parent = this;
-        router57.use(path4, function mounted_app(req, res, next) {
+        router58.use(path4, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -69949,7 +69949,7 @@ var require_express = __commonJS({
     var EventEmitter2 = __require("node:events").EventEmitter;
     var mixin2 = require_merge_descriptors();
     var proto = require_application();
-    var Router57 = require_router();
+    var Router58 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -69971,8 +69971,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router57.Route;
-    exports2.Router = Router57;
+    exports2.Route = Router58.Route;
+    exports2.Router = Router58;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -102659,7 +102659,11 @@ var init_teachers = __esm({
       presentationsProEnabled: boolean("presentations_pro_enabled").notNull().default(false),
       lastLoginAt: timestamp("last_login_at"),
       createdAt: timestamp("created_at").defaultNow().notNull(),
-      preferences: jsonb("preferences").$type()
+      preferences: jsonb("preferences").$type(),
+      // Google Classroom OAuth2 tokens
+      classroomAccessToken: text("classroom_access_token"),
+      classroomRefreshToken: text("classroom_refresh_token"),
+      classroomTokenExpiry: timestamp("classroom_token_expiry")
     });
     insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });
   }
@@ -420247,9 +420251,9 @@ function patchExpressModule(optionsOrExports, maybeGetOptions) {
       "use",
       function appUseTrace(...args) {
         const route = originalApplicationUse.apply(this, args);
-        const router57 = isExpressWithRouterPrototype(express2) ? this.router : this._router;
-        if (router57) {
-          const layer = router57.stack[router57.stack.length - 1];
+        const router58 = isExpressWithRouterPrototype(express2) ? this.router : this._router;
+        if (router58) {
+          const layer = router58.stack[router58.stack.length - 1];
           if (layer) {
             patchLayer(getOptions, layer, getLayerPath(args));
           }
@@ -433261,7 +433265,7 @@ var import_dist = __toESM(require_dist2(), 1);
 var { Server, Namespace, Socket: Socket2 } = import_dist.default;
 
 // src/app.ts
-var import_express60 = __toESM(require_express2(), 1);
+var import_express61 = __toESM(require_express2(), 1);
 var import_compression = __toESM(require_compression(), 1);
 var import_cors = __toESM(require_lib(), 1);
 
@@ -433814,7 +433818,7 @@ var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 init_src();
 
 // src/routes/index.ts
-var import_express59 = __toESM(require_express2(), 1);
+var import_express60 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express4 = __toESM(require_express2(), 1);
@@ -467871,64 +467875,376 @@ router55.get("/students/:classStudentId/timeline", requireTeacher6, async (req, 
 });
 var student_timeline_default = router55;
 
-// src/routes/index.ts
+// src/routes/classroom.ts
+var import_express59 = __toESM(require_express2(), 1);
+init_src();
+init_drizzle_orm();
+import { google } from "googleapis";
 var router56 = (0, import_express59.Router)();
-router56.use(public_content_default);
-router56.use(quick_challenge_default);
-router56.use(health_default);
-router56.use(auth_default);
-router56.use(assignments_default);
-router56.use(submissions_default);
-router56.use(notifications_default);
-router56.use(ai_questions_default);
-router56.use(ai_mindmap_default);
-router56.use("/ai-chat", ai_chat_default);
-router56.use(students_default);
-router56.use(teacher_classes_default);
-router56.use(attendance_default);
-router56.use(import_students_default);
-router56.use(feedback_default);
-router56.use(admin_default);
-router56.use(question_bank_default);
-router56.use(game_history_default);
-router56.use(categories_default);
-router56.use(collections_default);
-router56.use(tug_templates_default);
-router56.use(rocket_templates_default);
-router56.use(wheel_default);
-router56.use(worksheets_default);
-router56.use(lesson_plans_default);
-router56.use(video_lessons_default);
-router56.use(storage_default);
-router56.use(color_scores_default);
-router56.use(flag_scores_default);
-router56.use(memory_default);
-router56.use(adaptive_default);
-router56.use(multiply_scores_default);
-router56.use(scramble_default);
-router56.use(sections_default);
-router56.use(student_auth_default);
-router56.use(capital_scores_default);
-router56.use(stroop_default);
-router56.use(maraqui_default);
-router56.use(million_game_default);
-router56.use(million_team_game_default);
-router56.use(million_class_session_default);
-router56.use(library_default);
-router56.use(custom_columns_default);
-router56.use(letrly_default);
-router56.use(tts_default);
-router56.use(islamic_competitions_default);
-router56.use(billing_default);
-router56.use(arena_content_default);
-router56.use(arena_session_default);
-router56.use(arena_save_default);
-router56.use(activity_default);
-router56.use(ai_presentations_default);
-router56.use(presentations_default);
-router56.use(presentation_sessions_default);
-router56.use(student_timeline_default);
-var routes_default = router56;
+var CLIENT_ID2 = process.env.GOOGLE_CLIENT_ID;
+var CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+var BASE_URL = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : process.env.APP_BASE_URL || "";
+var REDIRECT_URI = `${BASE_URL}/api/auth/google/classroom/callback`;
+var SCOPES = [
+  "https://www.googleapis.com/auth/classroom.courses.readonly",
+  "https://www.googleapis.com/auth/classroom.rosters.readonly",
+  "https://www.googleapis.com/auth/classroom.coursework.students",
+  "https://www.googleapis.com/auth/classroom.student-submissions.students.readonly"
+];
+function makeOAuth2Client() {
+  return new google.auth.OAuth2(CLIENT_ID2, CLIENT_SECRET, REDIRECT_URI);
+}
+async function getAuthedClient(teacherId) {
+  const [teacher] = await db.select({
+    accessToken: teachersTable.classroomAccessToken,
+    refreshToken: teachersTable.classroomRefreshToken,
+    expiry: teachersTable.classroomTokenExpiry
+  }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+  if (!teacher?.accessToken || !teacher?.refreshToken) return null;
+  const oauth2 = makeOAuth2Client();
+  oauth2.setCredentials({
+    access_token: teacher.accessToken,
+    refresh_token: teacher.refreshToken,
+    expiry_date: teacher.expiry ? teacher.expiry.getTime() : void 0
+  });
+  oauth2.on("tokens", async (tokens) => {
+    if (tokens.access_token) {
+      await db.update(teachersTable).set({
+        classroomAccessToken: tokens.access_token,
+        classroomTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null
+      }).where(eq(teachersTable.id, teacherId));
+    }
+  });
+  return oauth2;
+}
+router56.get("/classroom/connect", (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  if (!CLIENT_ID2 || !CLIENT_SECRET) {
+    res.status(503).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F Google Classroom \u0628\u0639\u062F" });
+    return;
+  }
+  const oauth2 = makeOAuth2Client();
+  const url2 = oauth2.generateAuthUrl({
+    access_type: "offline",
+    scope: SCOPES,
+    prompt: "consent",
+    state: String(teacherId)
+  });
+  res.redirect(url2);
+});
+router56.get("/auth/google/classroom/callback", async (req, res) => {
+  try {
+    const { code, state, error: error41 } = req.query;
+    if (error41) {
+      req.log.warn({ error: error41 }, "Google Classroom OAuth denied");
+      res.redirect("/teacher/classroom?error=denied");
+      return;
+    }
+    const teacherId = parseInt(state || "", 10);
+    if (!teacherId || isNaN(teacherId)) {
+      res.redirect("/teacher/classroom?error=invalid_state");
+      return;
+    }
+    const oauth2 = makeOAuth2Client();
+    const { tokens } = await oauth2.getToken(code);
+    await db.update(teachersTable).set({
+      classroomAccessToken: tokens.access_token ?? null,
+      classroomRefreshToken: tokens.refresh_token ?? null,
+      classroomTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null
+    }).where(eq(teachersTable.id, teacherId));
+    res.redirect("/teacher/classroom?connected=1");
+  } catch (err) {
+    req.log.error({ err }, "Google Classroom callback error");
+    res.redirect("/teacher/classroom?error=callback_failed");
+  }
+});
+router56.get("/classroom/status", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const [teacher] = await db.select({
+    accessToken: teachersTable.classroomAccessToken,
+    refreshToken: teachersTable.classroomRefreshToken
+  }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+  res.json({ connected: !!(teacher?.accessToken && teacher?.refreshToken) });
+});
+router56.delete("/classroom/disconnect", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (oauth2) {
+      const creds = oauth2.credentials;
+      if (creds.access_token) {
+        await oauth2.revokeToken(creds.access_token).catch(() => {
+        });
+      }
+    }
+  } catch {
+  }
+  await db.update(teachersTable).set({
+    classroomAccessToken: null,
+    classroomRefreshToken: null,
+    classroomTokenExpiry: null
+  }).where(eq(teachersTable.id, teacherId));
+  res.json({ message: "\u062A\u0645 \u0642\u0637\u0639 \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0640 Google Classroom" });
+});
+router56.get("/classroom/courses", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (!oauth2) {
+      res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Google Classroom \u0628\u0639\u062F" });
+      return;
+    }
+    const classroom = google.classroom({ version: "v1", auth: oauth2 });
+    const { data } = await classroom.courses.list({ teacherId: "me", courseStates: ["ACTIVE"] });
+    const courses = (data.courses || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      section: c.section,
+      room: c.room,
+      enrollmentCode: c.enrollmentCode
+    }));
+    res.json({ courses });
+  } catch (err) {
+    req.log.error({ err }, "Classroom courses fetch error");
+    if (err?.code === 401 || err?.status === 401) {
+      res.status(401).json({ message: "\u0627\u0646\u062A\u0647\u062A \u0635\u0644\u0627\u062D\u064A\u0629 \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0640 Google Classroom\u060C \u0623\u0639\u062F \u0627\u0644\u0631\u0628\u0637" });
+    } else {
+      res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0627\u0644\u0645\u0642\u0631\u0631\u0627\u062A \u0645\u0646 Google Classroom" });
+    }
+  }
+});
+router56.get("/classroom/courses/:courseId/students", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (!oauth2) {
+      res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Google Classroom \u0628\u0639\u062F" });
+      return;
+    }
+    const classroom = google.classroom({ version: "v1", auth: oauth2 });
+    const { data } = await classroom.courses.students.list({
+      courseId: req.params.courseId
+    });
+    const students = (data.students || []).map((s2) => ({
+      googleId: s2.userId,
+      name: s2.profile?.name?.fullName || s2.profile?.emailAddress || "\u0637\u0627\u0644\u0628",
+      email: s2.profile?.emailAddress
+    }));
+    res.json({ students });
+  } catch (err) {
+    req.log.error({ err }, "Classroom students fetch error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0627\u0644\u0637\u0644\u0627\u0628 \u0645\u0646 Google Classroom" });
+  }
+});
+router56.post("/classroom/courses/:courseId/students/import", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (!oauth2) {
+      res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Google Classroom \u0628\u0639\u062F" });
+      return;
+    }
+    const { targetClass } = req.body ?? {};
+    const classroom = google.classroom({ version: "v1", auth: oauth2 });
+    const { data } = await classroom.courses.students.list({
+      courseId: req.params.courseId
+    });
+    const googleStudents = (data.students || []).map((s2) => ({
+      name: s2.profile?.name?.fullName || s2.profile?.emailAddress || "\u0637\u0627\u0644\u0628",
+      gradeLevel: null,
+      studentClass: targetClass || null,
+      parentPhone: null,
+      notes: s2.profile?.emailAddress ? `Google: ${s2.profile.emailAddress}` : null,
+      teacherId
+    }));
+    if (googleStudents.length === 0) {
+      res.json({ imported: 0, message: "\u0644\u0627 \u064A\u0648\u062C\u062F \u0637\u0644\u0627\u0628 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0645\u0642\u0631\u0631" });
+      return;
+    }
+    const inserted = await db.insert(studentsTable).values(googleStudents).returning({ id: studentsTable.id });
+    res.json({ imported: inserted.length, message: `\u062A\u0645 \u0627\u0633\u062A\u064A\u0631\u0627\u062F ${inserted.length} \u0637\u0627\u0644\u0628 \u0628\u0646\u062C\u0627\u062D` });
+  } catch (err) {
+    req.log.error({ err }, "Classroom import students error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0627\u0644\u0637\u0644\u0627\u0628" });
+  }
+});
+router56.post("/classroom/courses/:courseId/coursework", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (!oauth2) {
+      res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Google Classroom \u0628\u0639\u062F" });
+      return;
+    }
+    const { title, description, dueDate, maxPoints, assignmentUrl } = req.body ?? {};
+    if (!title) {
+      res.status(400).json({ message: "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u0648\u0627\u062C\u0628 \u0645\u0637\u0644\u0648\u0628" });
+      return;
+    }
+    const classroom = google.classroom({ version: "v1", auth: oauth2 });
+    const coursework = {
+      title,
+      description: description || "",
+      workType: "ASSIGNMENT",
+      state: "PUBLISHED"
+    };
+    if (maxPoints) coursework.maxPoints = Number(maxPoints);
+    if (assignmentUrl) {
+      coursework.materials = [{
+        link: { url: assignmentUrl, title }
+      }];
+    }
+    if (dueDate) {
+      const d = new Date(dueDate);
+      coursework.dueDate = {
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        day: d.getDate()
+      };
+      coursework.dueTime = {
+        hours: d.getHours(),
+        minutes: d.getMinutes()
+      };
+    }
+    const { data } = await classroom.courses.courseWork.create({
+      courseId: req.params.courseId,
+      requestBody: coursework
+    });
+    res.json({
+      id: data.id,
+      title: data.title,
+      alternateLink: data.alternateLink,
+      message: "\u062A\u0645 \u0646\u0634\u0631 \u0627\u0644\u0648\u0627\u062C\u0628 \u0641\u064A Google Classroom \u0628\u0646\u062C\u0627\u062D"
+    });
+  } catch (err) {
+    req.log.error({ err }, "Classroom publish assignment error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0646\u0634\u0631 \u0627\u0644\u0648\u0627\u062C\u0628 \u0641\u064A Google Classroom" });
+  }
+});
+router56.get("/classroom/courses/:courseId/submissions", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const { courseWorkId } = req.query;
+  if (!courseWorkId) {
+    res.status(400).json({ message: "courseWorkId \u0645\u0637\u0644\u0648\u0628" });
+    return;
+  }
+  try {
+    const oauth2 = await getAuthedClient(teacherId);
+    if (!oauth2) {
+      res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Google Classroom \u0628\u0639\u062F" });
+      return;
+    }
+    const classroom = google.classroom({ version: "v1", auth: oauth2 });
+    const { data } = await classroom.courses.courseWork.studentSubmissions.list({
+      courseId: req.params.courseId,
+      courseWorkId
+    });
+    const submissions = (data.studentSubmissions || []).map((s2) => ({
+      id: s2.id,
+      userId: s2.userId,
+      state: s2.state,
+      assignedGrade: s2.assignedGrade,
+      draftGrade: s2.draftGrade
+    }));
+    res.json({ submissions });
+  } catch (err) {
+    req.log.error({ err }, "Classroom submissions fetch error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062F\u0631\u062C\u0627\u062A" });
+  }
+});
+var classroom_default = router56;
+
+// src/routes/index.ts
+var router57 = (0, import_express60.Router)();
+router57.use(public_content_default);
+router57.use(quick_challenge_default);
+router57.use(health_default);
+router57.use(auth_default);
+router57.use(assignments_default);
+router57.use(submissions_default);
+router57.use(notifications_default);
+router57.use(ai_questions_default);
+router57.use(ai_mindmap_default);
+router57.use("/ai-chat", ai_chat_default);
+router57.use(students_default);
+router57.use(teacher_classes_default);
+router57.use(attendance_default);
+router57.use(import_students_default);
+router57.use(feedback_default);
+router57.use(admin_default);
+router57.use(question_bank_default);
+router57.use(game_history_default);
+router57.use(categories_default);
+router57.use(collections_default);
+router57.use(tug_templates_default);
+router57.use(rocket_templates_default);
+router57.use(wheel_default);
+router57.use(worksheets_default);
+router57.use(lesson_plans_default);
+router57.use(video_lessons_default);
+router57.use(storage_default);
+router57.use(color_scores_default);
+router57.use(flag_scores_default);
+router57.use(memory_default);
+router57.use(adaptive_default);
+router57.use(multiply_scores_default);
+router57.use(scramble_default);
+router57.use(sections_default);
+router57.use(student_auth_default);
+router57.use(capital_scores_default);
+router57.use(stroop_default);
+router57.use(maraqui_default);
+router57.use(million_game_default);
+router57.use(million_team_game_default);
+router57.use(million_class_session_default);
+router57.use(library_default);
+router57.use(custom_columns_default);
+router57.use(letrly_default);
+router57.use(tts_default);
+router57.use(islamic_competitions_default);
+router57.use(billing_default);
+router57.use(arena_content_default);
+router57.use(arena_session_default);
+router57.use(arena_save_default);
+router57.use(activity_default);
+router57.use(ai_presentations_default);
+router57.use(presentations_default);
+router57.use(presentation_sessions_default);
+router57.use(student_timeline_default);
+router57.use(classroom_default);
+var routes_default = router57;
 
 // src/app.ts
 init_logger2();
@@ -467953,7 +468269,7 @@ if (!SESSION_SECRET || SESSION_SECRET === DEFAULT_SECRET) {
   );
 }
 var PgSession2 = (0, import_connect_pg_simple.default)(import_express_session.default);
-var app = (0, import_express60.default)();
+var app = (0, import_express61.default)();
 app.set("trust proxy", 1);
 app.set("etag", false);
 app.use((0, import_compression.default)());
@@ -468044,9 +468360,9 @@ var IMAGE_UPLOAD_PATHS = /* @__PURE__ */ new Set(["/api/ai/extract-questions-fro
 var IMAGE_UPLOAD_PATTERN = /^\/api\/assignments\/\d+\/(submit|submit-image)$/;
 app.use((req, res, next) => {
   const isImageUpload = IMAGE_UPLOAD_PATHS.has(req.path) || IMAGE_UPLOAD_PATTERN.test(req.path);
-  import_express60.default.json({ limit: isImageUpload ? "8mb" : "2mb" })(req, res, next);
+  import_express61.default.json({ limit: isImageUpload ? "8mb" : "2mb" })(req, res, next);
 });
-app.use(import_express60.default.urlencoded({ extended: true, limit: "2mb" }));
+app.use(import_express61.default.urlencoded({ extended: true, limit: "2mb" }));
 var STATE_MUTATING_METHODS = /* @__PURE__ */ new Set(["POST", "PUT", "DELETE", "PATCH"]);
 app.use((req, res, next) => {
   if (!STATE_MUTATING_METHODS.has(req.method)) return next();

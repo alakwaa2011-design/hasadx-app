@@ -260,6 +260,57 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
         }, {}, {
             $type: Record<string, unknown>;
         }>;
+        classroomAccessToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "classroom_access_token";
+            tableName: "teachers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        classroomRefreshToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "classroom_refresh_token";
+            tableName: "teachers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        classroomTokenExpiry: import("drizzle-orm/pg-core").PgColumn<{
+            name: "classroom_token_expiry";
+            tableName: "teachers";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
@@ -277,6 +328,9 @@ export declare const insertTeacherSchema: z.ZodObject<{
     presentationsProEnabled: z.ZodOptional<z.ZodBoolean>;
     lastLoginAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     preferences: z.ZodOptional<z.ZodNullable<z.ZodType<Record<string, unknown>, Record<string, unknown>, z.core.$ZodTypeInternals<Record<string, unknown>, Record<string, unknown>>>>>;
+    classroomAccessToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    classroomRefreshToken: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    classroomTokenExpiry: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
 }, {
     out: {};
     in: {};
