@@ -1,0 +1,1 @@
+{"version":3,"file":"registerAssetBody.d.ts","sourceRoot":"","sources":["../../../src/generated/types/registerAssetBody.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,qBAAqB,EAAE,MAAM,yBAAyB,CAAC;AAErE,MAAM,WAAW,iBAAiB;IAChC,IAAI,EAAE,qBAAqB,CAAC;IAC5B,mBAAmB;IACnB,GAAG,EAAE,MAAM,CAAC;IACZ,iBAAiB;IACjB,QAAQ,CAAC,EAAE,MAAM,CAAC;CACnB"}

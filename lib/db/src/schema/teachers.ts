@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -10,11 +10,18 @@ export const teachersTable = pgTable("teachers", {
   passwordHash: text("password_hash").notNull(),
   googleId: text("google_id").unique(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  // role: "teacher" | "organizer" | "admin"
+  // - teacher: classroom teacher (default)
+  // - organizer: events/competitions organizer; sees vibrant /organizer dashboard with teacher tools collapsed
+  // - admin: super-admin; sees all UIs with a switcher; mirrors isAdmin=true
+  role: text("role").notNull().default("teacher"),
   isBlocked: boolean("is_blocked").notNull().default(false),
   aiTier: text("ai_tier").notNull().default("standard"),
   hasProDesign: boolean("has_pro_design").notNull().default(false),
+  presentationsProEnabled: boolean("presentations_pro_enabled").notNull().default(false),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  preferences: jsonb("preferences").$type<Record<string, unknown>>(),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });

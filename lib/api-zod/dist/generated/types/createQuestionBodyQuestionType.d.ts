@@ -11,5 +11,7 @@ export declare const CreateQuestionBodyQuestionType: {
     readonly true_false: "true_false";
     readonly fill_blank: "fill_blank";
     readonly whiteboard: "whiteboard";
+    readonly dictation: "dictation";
+    readonly open: "open";
 };
 //# sourceMappingURL=createQuestionBodyQuestionType.d.ts.map

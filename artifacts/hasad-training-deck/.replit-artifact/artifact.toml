@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/training-deck/"
+title = "حصاد · دورة تدريبية"
+version = "1.0.0"
+id = "artifacts/hasad-training-deck"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/training-deck/" ]
+localPort = 22349
+
+[services.development]
+run = "pnpm --filter @workspace/hasad-training-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hasad-training-deck", "run", "build" ]
+publicDir = "artifacts/hasad-training-deck/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22349"
+BASE_PATH = "/training-deck/"

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoute, useLocation } from "wouter";
-import { useGetAssignment, useListSubmissions, useDeleteAssignment, useUpdateSubmission } from "@workspace/api-client-react";
+import { useGetAssignment, useListSubmissions, useDeleteAssignment, useUpdateSubmission, useGetSubmissionDetails, useUpdateAnswerGrade } from "@workspace/api-client-react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer } from "lucide-react";
+import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -43,6 +44,7 @@ export default function TeacherAssignmentDetail() {
   const [gameMode, setGameMode] = useState<"solo" | "teams">("solo");
   const [teamCount, setTeamCount] = useState(2);
   const [customTeamNames, setCustomTeamNames] = useState<string[]>(["", "", "", "", "", ""]);
+  const [gameTargetClass, setGameTargetClass] = useState<string>(() => getRememberedTargetClass());
 
   const { data: assignment, isLoading: isAssignmentLoading } = useGetAssignment(id);
   const { data: submissions, isLoading: isSubmissionsLoading } = useListSubmissions(id);
@@ -55,6 +57,12 @@ export default function TeacherAssignmentDetail() {
   const [adaptiveLoading, setAdaptiveLoading] = useState(false);
   const [questionStats, setQuestionStats] = useState<{ totalSubmissions: number; questions: Array<{ id: number; text: string; questionType: string; totalAnswers: number; correctCount: number; correctRate: number }> } | null>(null);
   const [questionStatsLoading, setQuestionStatsLoading] = useState(false);
+  /* Class roster — used to compute the "pending students" list (those
+     in the target classes who haven't submitted, or submitted with no
+     answers). Lives next to questionStats since both feed the
+     Results tab. */
+  const [classRoster, setClassRoster] = useState<Array<{ id: number; name: string; gradeLevel: string | null }> | null>(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
 
   useEffect(() => {
     if ((assignment as any)?.isShared !== undefined) setAssignmentShared((assignment as any).isShared);
@@ -69,6 +77,21 @@ export default function TeacherAssignmentDetail() {
       .catch(() => {})
       .finally(() => setQuestionStatsLoading(false));
   }, [id, activeDetailTab, submissions]);
+
+  /* Pull the class roster as soon as the page mounts so the PDF export
+     can include the pending-students section even when the teacher
+     exports without first opening the Results tab. */
+  useEffect(() => {
+    if (!id) return;
+    setRosterLoading(true);
+    fetch(`${BASE}/api/assignments/${id}/class-students`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ id: number; name: string; gradeLevel: string | null }>) => {
+        setClassRoster(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setClassRoster([]))
+      .finally(() => setRosterLoading(false));
+  }, [id]);
 
   useEffect(() => {
     if (!(assignment as any)?.isAdaptive || !id) return;
@@ -85,7 +108,6 @@ export default function TeacherAssignmentDetail() {
   const [editSubject, setEditSubject] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editTargetClass, setEditTargetClass] = useState("");
-  const [editShowInGradebook, setEditShowInGradebook] = useState(true);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [editQuestions, setEditQuestions] = useState<EditQuestion[]>([]);
   const deleteMutation = useDeleteAssignment({
@@ -101,6 +123,66 @@ export default function TeacherAssignmentDetail() {
       }
     }
   });
+
+  const [detailSubId, setDetailSubId] = useState<number | null>(null);
+  const detailQuery = useGetSubmissionDetails(detailSubId ?? 0, { query: { enabled: detailSubId !== null } } as any);
+  const updateAnswerGrade = useUpdateAnswerGrade({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: [`/api/submissions/${detailSubId}/details`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}/submissions`] });
+      }
+    }
+  });
+
+  /* Pending = students from the target-class roster who don't appear
+     in the submissions list at all. Students who submitted but scored
+     0 are still "submitters" — they show up in the regular results
+     table with a 0% pill, which is a more accurate signal than trying
+     to infer "answered nothing" from earned-points alone (a student
+     who answered everything wrong would also show 0/0, so we don't
+     conflate the two). The list-submissions endpoint does not return
+     studentId, so we match on a normalized student name — fine in
+     practice since a teacher's class roster has unique names. */
+  const pendingStudents = useMemo<Array<{ id: number; name: string; gradeLevel: string | null }>>(() => {
+    if (!classRoster || classRoster.length === 0) return [];
+    const subs = submissions || [];
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const submittedNames = new Set<string>();
+    for (const s of subs) {
+      if (s.studentName) submittedNames.add(norm(s.studentName));
+    }
+    const pending = classRoster.filter((stu) => !submittedNames.has(norm(stu.name)));
+    pending.sort((a, b) => a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en"));
+    return pending;
+  }, [classRoster, submissions, lang]);
+
+  const sortedFilteredSubmissions = useMemo(() => {
+    if (!submissions) return [];
+    const query = resultsSearch.trim().toLowerCase();
+    const filtered = submissions.filter((sub) => {
+      if (query) {
+        const hay = `${sub.studentName || ""} ${sub.studentClass || ""}`.toLowerCase();
+        if (!hay.includes(query)) return false;
+      }
+      if (resultsScoreFilter !== "all") {
+        const s = sub.score;
+        if (resultsScoreFilter === "below50" && !(s < 50)) return false;
+        if (resultsScoreFilter === "50to69" && !(s >= 50 && s < 70)) return false;
+        if (resultsScoreFilter === "70to84" && !(s >= 70 && s < 85)) return false;
+        if (resultsScoreFilter === "85to100" && !(s >= 85)) return false;
+      }
+      return true;
+    });
+    return [...filtered].sort((a, b) => a.studentName.localeCompare(b.studentName, "ar"));
+  }, [submissions, resultsSearch, resultsScoreFilter]);
+
+  const detailIndex = detailSubId !== null ? sortedFilteredSubmissions.findIndex(s => s.id === detailSubId) : -1;
+  const goToOffsetSub = (delta: number) => {
+    if (detailIndex < 0) return;
+    const next = sortedFilteredSubmissions[detailIndex + delta];
+    if (next) setDetailSubId(next.id);
+  };
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
@@ -222,7 +304,6 @@ export default function TeacherAssignmentDetail() {
     setEditSubject(assignment.subject ?? "");
     setEditDescription(assignment.description || "");
     setEditTargetClass(assignment.targetClass || "");
-    setEditShowInGradebook((assignment as { hiddenFromGradebook?: boolean }).hiddenFromGradebook !== true);
     fetch(`${BASE}/api/teacher/grade-levels`, { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
       .then(setGradeLevels)
@@ -309,7 +390,6 @@ export default function TeacherAssignmentDetail() {
       subject: editSubject.trim() || undefined,
       description: editDescription || undefined,
       targetClass: editTargetClass || null,
-      hiddenFromGradebook: !editShowInGradebook,
       questions: editQuestions.map((q) => ({
         id: q.id,
         text: q.text,
@@ -351,6 +431,35 @@ export default function TeacherAssignmentDetail() {
       const sb = b.totalPoints > 0 ? ((b.teacherAdjustedPoints ?? b.earnedPoints) / b.totalPoints) * 100 : 0;
       return sb - sa;
     });
+
+    /* Pending students section — only meaningful when a class roster
+       exists. We render an explicit "no pending" line if everyone in
+       the roster has submitted, so the report covers all students. */
+    const hasRoster = (classRoster?.length ?? 0) > 0;
+    const pendingRowsHtml = pendingStudents.map((p, i) => {
+      const statusLabel = t.assignmentDetail.pendingStatusNotSubmitted;
+      return `
+        <tr>
+          <td class="rank">${i + 1}</td>
+          <td class="name">${escapeHtml(p.name)}</td>
+          <td>${escapeHtml(p.gradeLevel || "—")}</td>
+          <td><span class="status-pill status-missing">${escapeHtml(statusLabel)}</span></td>
+        </tr>`;
+    }).join("");
+    const pendingHtml = !hasRoster ? "" : `
+      <h2 class="section">${escapeHtml(t.assignmentDetail.pdfPendingSection)} (${pendingStudents.length})</h2>
+      ${pendingStudents.length === 0 ? `<div class="empty">${escapeHtml(t.assignmentDetail.pdfPendingNone)}</div>` : `
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>${escapeHtml(t.assignmentDetail.pdfStudentName)}</th>
+            <th>${escapeHtml(t.assignmentDetail.pdfClass)}</th>
+            <th>${escapeHtml(t.assignmentDetail.pdfPendingStatus)}</th>
+          </tr>
+        </thead>
+        <tbody>${pendingRowsHtml}</tbody>
+      </table>`}`;
 
     const rowsHtml = sortedSubs.map((s, i) => {
       const pts = s.teacherAdjustedPoints !== null && s.teacherAdjustedPoints !== undefined ? s.teacherAdjustedPoints : s.earnedPoints;
@@ -412,6 +521,9 @@ export default function TeacherAssignmentDetail() {
   .score-good { background: #dcfce7; color: #15803d; }
   .score-mid { background: #fef3c7; color: #b45309; }
   .score-low { background: #fee2e2; color: #b91c1c; }
+  .status-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; }
+  .status-missing { background: #fee2e2; color: #b91c1c; }
+  .status-empty { background: #fef3c7; color: #b45309; }
   .empty { background: #fff; border: 1px dashed #d1d5db; padding: 40px; text-align: center; border-radius: 14px; color: #6b7280; font-weight: 600; }
   .footer { margin-top: 32px; text-align: center; font-size: 11px; color: #9ca3af; }
   @media print {
@@ -419,7 +531,7 @@ export default function TeacherAssignmentDetail() {
     .toolbar { display: none; }
     .page { padding: 0; max-width: 100%; }
     .header { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .stat, .pass-bar, table, .score-pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .stat, .pass-bar, table, .score-pill, .status-pill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     @page { size: A4; margin: 16mm; }
   }
 </style>
@@ -467,6 +579,8 @@ export default function TeacherAssignmentDetail() {
     </thead>
     <tbody>${rowsHtml}</tbody>
   </table>`}
+
+  ${pendingHtml}
 
   <div class="footer">${escapeHtml(assignment.title)} • ${today}</div>
 </div>
@@ -598,15 +712,6 @@ export default function TeacherAssignmentDetail() {
                   )}
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={editShowInGradebook}
-                  onChange={e => setEditShowInGradebook(e.target.checked)}
-                  className="rounded border-2"
-                />
-                {lang === "ar" ? "إظهار هذا الواجب في كشف درجات الصف" : "Show this assignment on the class grade sheet"}
-              </label>
             </Card>
 
             <div className="flex items-center justify-between">
@@ -1299,6 +1404,56 @@ export default function TeacherAssignmentDetail() {
                       )}
                     </Card>
                   )}
+                  {/* Pending students — those in the target classes who
+                      either haven't submitted at all or submitted with no
+                      answers. Mirrored in the PDF export so the report
+                      covers every assigned student, not just submitters. */}
+                  {rosterLoading ? (
+                    <Card className="p-4 mb-4 animate-pulse h-16 bg-muted/40" />
+                  ) : classRoster && classRoster.length === 0 ? (
+                    <Card className="p-4 mb-4 border-2 border-dashed border-border bg-muted/20">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <p className="text-xs text-muted-foreground font-medium">
+                          {t.assignmentDetail.pendingStudentsNoRoster}
+                        </p>
+                      </div>
+                    </Card>
+                  ) : classRoster && classRoster.length > 0 ? (
+                    <Card className={`p-4 mb-4 ${lang === "ar" ? "border-r-4" : "border-l-4"} ${pendingStudents.length > 0 ? "border-amber-400" : "border-emerald-400"}`}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <h3 className="font-bold flex items-center gap-2 text-foreground text-sm">
+                          <UserX className={`w-4 h-4 ${pendingStudents.length > 0 ? "text-amber-600" : "text-emerald-600"}`} />
+                          {t.assignmentDetail.pendingStudents}
+                          <span className="text-xs text-muted-foreground font-bold">
+                            ({pendingStudents.length}/{classRoster.length})
+                          </span>
+                        </h3>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mb-3">
+                        {t.assignmentDetail.pendingStudentsHint}
+                      </p>
+                      {pendingStudents.length === 0 ? (
+                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          ✓ {t.assignmentDetail.pendingStudentsNone}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {pendingStudents.map((p) => (
+                            <span
+                              key={`pending-${p.id}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+                              title={t.assignmentDetail.pendingStatusNotSubmitted}
+                            >
+                              {p.name}
+                              {p.gradeLevel ? <span className="opacity-60">· {p.gradeLevel}</span> : null}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
+                  ) : null}
+
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold flex items-center gap-2 text-foreground">
                       <Users className="w-4 h-4 text-primary" />
@@ -1331,43 +1486,21 @@ export default function TeacherAssignmentDetail() {
 
                   {isSubmissionsLoading ? (
                     <div className="animate-pulse h-20 bg-muted/50 rounded-xl" />
-                  ) : submissions && submissions.length > 0 ? (() => {
-                    const query = resultsSearch.trim().toLowerCase();
-                    const filtered = submissions.filter((sub) => {
-                      if (query) {
-                        const hay = `${sub.studentName || ""} ${sub.studentClass || ""}`.toLowerCase();
-                        if (!hay.includes(query)) return false;
-                      }
-                      if (resultsScoreFilter !== "all") {
-                        const s = sub.score;
-                        if (resultsScoreFilter === "below50" && !(s < 50)) return false;
-                        if (resultsScoreFilter === "50to69" && !(s >= 50 && s < 70)) return false;
-                        if (resultsScoreFilter === "70to84" && !(s >= 70 && s < 85)) return false;
-                        if (resultsScoreFilter === "85to100" && !(s >= 85)) return false;
-                      }
-                      return true;
-                    });
-                    if (filtered.length === 0) {
-                      return (
-                        <Card className="p-8 text-center">
-                          <p className="text-sm text-muted-foreground font-medium">
-                            {lang === "ar" ? "لا توجد نتائج مطابقة" : "No matching results"}
-                          </p>
-                          <button
-                            onClick={() => { setResultsSearch(""); setResultsScoreFilter("all"); }}
-                            className="mt-2 text-xs font-bold text-primary hover:underline"
-                          >
-                            {lang === "ar" ? "مسح عوامل التصفية" : "Clear filters"}
-                          </button>
-                        </Card>
-                      );
-                    }
-                    const sortedFiltered = [...filtered].sort((a, b) =>
-                      a.studentName.localeCompare(b.studentName, "ar")
-                    );
-                    return (
+                  ) : submissions && submissions.length > 0 ? (sortedFilteredSubmissions.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <p className="text-sm text-muted-foreground font-medium">
+                        {lang === "ar" ? "لا توجد نتائج مطابقة" : "No matching results"}
+                      </p>
+                      <button
+                        onClick={() => { setResultsSearch(""); setResultsScoreFilter("all"); }}
+                        className="mt-2 text-xs font-bold text-primary hover:underline"
+                      >
+                        {lang === "ar" ? "مسح عوامل التصفية" : "Clear filters"}
+                      </button>
+                    </Card>
+                  ) : (
                     <div className="grid gap-3">
-                      {sortedFiltered.map((sub) => {
+                      {sortedFilteredSubmissions.map((sub) => {
                         const isEditing = editingSubId === sub.id;
                         const finalPoints = sub.teacherAdjustedPoints !== null && sub.teacherAdjustedPoints !== undefined ? sub.teacherAdjustedPoints : sub.earnedPoints;
                         const scorePct = Math.round(sub.score);
@@ -1454,7 +1587,14 @@ export default function TeacherAssignmentDetail() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="mt-2.5 flex justify-end">
+                              <div className="mt-2.5 flex justify-end gap-2">
+                                <button
+                                  onClick={() => setDetailSubId(sub.id)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold text-foreground hover:bg-muted transition-colors flex items-center gap-1 border border-border"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  {lang === "ar" ? "عرض الإجابات" : "View answers"}
+                                </button>
                                 <button
                                   onClick={() => {
                                     setEditingSubId(sub.id);
@@ -1472,8 +1612,7 @@ export default function TeacherAssignmentDetail() {
                         );
                       })}
                     </div>
-                    );
-                  })() : (
+                  )) : (
                     <Card className="p-8 text-center border-dashed">
                       <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
                         <Users className="w-6 h-6 text-muted-foreground" />
@@ -1564,6 +1703,14 @@ export default function TeacherAssignmentDetail() {
                 </div>
               )}
 
+              <div className="mb-5">
+                <ClassSelector
+                  value={gameTargetClass}
+                  onChange={setGameTargetClass}
+                  accent="#a855f7"
+                />
+              </div>
+
               <div className="flex gap-3">
                 <button onClick={() => setShowGameSetup(false)}
                   className="flex-1 px-4 py-3 bg-muted text-muted-foreground rounded-xl font-bold hover:bg-muted/80 transition-colors">
@@ -1582,6 +1729,7 @@ export default function TeacherAssignmentDetail() {
                     gameMode,
                     teamCount: gameMode === "teams" ? teamCount : undefined,
                     customTeamNames: hasCustomNames ? validCustomNames : undefined,
+                    targetClass: gameTargetClass || undefined,
                   }, (res: { pin?: string; error?: string }) => {
                     setIsCreatingGame(false);
                     if (res.error) {
@@ -1597,6 +1745,190 @@ export default function TeacherAssignmentDetail() {
                   {t.teacherGame.startGame}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {detailSubId !== null && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+            onClick={() => setDetailSubId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-border"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {(() => {
+                const det: any = detailQuery.data;
+                const sub = det?.submission;
+                const answers: any[] = det?.answers || [];
+                const correctCnt = answers.filter(a => a.isCorrect).length;
+                const wrongCnt = answers.length - correctCnt;
+                const formatDur = (sec: number | null | undefined) => {
+                  if (!sec || sec <= 0) return lang === "ar" ? "غير متوفر" : "N/A";
+                  const m = Math.floor(sec / 60);
+                  const s = sec % 60;
+                  return m > 0 ? `${m}${lang === "ar" ? " د " : "m "}${s}${lang === "ar" ? " ث" : "s"}` : `${s}${lang === "ar" ? " ث" : "s"}`;
+                };
+                return (
+                  <>
+                    <div className="flex items-center justify-between gap-3 p-4 border-b border-border shrink-0">
+                      <button
+                        onClick={() => goToOffsetSub(lang === "ar" ? 1 : -1)}
+                        disabled={detailIndex < 0 || (lang === "ar" ? detailIndex >= sortedFilteredSubmissions.length - 1 : detailIndex <= 0)}
+                        className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title={lang === "ar" ? "السابق" : "Previous"}
+                      >
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                      <div className="text-center min-w-0 flex-1">
+                        <h3 className="font-black text-base truncate">{sub?.studentName || ""}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {sub?.studentClass ? `${sub.studentClass} · ` : ""}
+                          {detailIndex >= 0 ? `${detailIndex + 1} / ${sortedFilteredSubmissions.length}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => goToOffsetSub(lang === "ar" ? -1 : 1)}
+                        disabled={detailIndex < 0 || (lang === "ar" ? detailIndex <= 0 : detailIndex >= sortedFilteredSubmissions.length - 1)}
+                        className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title={lang === "ar" ? "التالي" : "Next"}
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => setDetailSubId(null)} className="p-2 rounded-lg hover:bg-muted transition-colors">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="overflow-y-auto p-4 space-y-4">
+                      {detailQuery.isLoading || !sub ? (
+                        <div className="animate-pulse space-y-3">
+                          <div className="h-16 bg-muted/50 rounded-xl" />
+                          <div className="h-32 bg-muted/50 rounded-xl" />
+                          <div className="h-32 bg-muted/50 rounded-xl" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 text-center">
+                              <p className="text-[11px] text-muted-foreground font-bold">{lang === "ar" ? "الدرجة" : "Score"}</p>
+                              <p className="font-black text-base text-primary">{Math.round(sub.score)}%</p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
+                              <p className="text-[11px] text-muted-foreground font-bold">{lang === "ar" ? "صحيحة" : "Correct"}</p>
+                              <p className="font-black text-base text-green-600">{correctCnt}</p>
+                            </div>
+                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-center">
+                              <p className="text-[11px] text-muted-foreground font-bold">{lang === "ar" ? "خاطئة" : "Wrong"}</p>
+                              <p className="font-black text-base text-red-600">{wrongCnt}</p>
+                            </div>
+                            <div className="bg-muted/40 border border-border rounded-xl p-3 text-center">
+                              <p className="text-[11px] text-muted-foreground font-bold">{lang === "ar" ? "الوقت" : "Time"}</p>
+                              <p className="font-black text-base">{formatDur(sub.durationSeconds)}</p>
+                            </div>
+                          </div>
+
+                          {answers.map((a, i) => {
+                            const isOpenResp = a.questionType === "fill_blank" || a.questionType === "whiteboard" || a.questionType === "dictation" || a.questionType === "open" || a.questionType === "listening_open";
+                            const optionsList = [a.optionA, a.optionB, a.optionC, a.optionD].filter(Boolean);
+                            const earnedPts = a.teacherPoints !== null && a.teacherPoints !== undefined ? a.teacherPoints : (a.isCorrect ? a.points : 0);
+                            return (
+                              <div key={a.id} className={`rounded-xl border-2 p-3 ${a.isCorrect ? "border-green-200 bg-green-50/50 dark:bg-green-900/10" : "border-red-200 bg-red-50/50 dark:bg-red-900/10"}`}>
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                                    <span className="shrink-0 w-6 h-6 rounded-lg bg-primary text-primary-foreground text-xs font-black flex items-center justify-center">{i + 1}</span>
+                                    <p className="text-sm font-bold leading-snug">{a.questionText}</p>
+                                  </div>
+                                  <span className={`shrink-0 text-[11px] font-black px-2 py-0.5 rounded-md ${a.isCorrect ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
+                                    {earnedPts}/{a.points}
+                                  </span>
+                                </div>
+
+                                {optionsList.length > 0 && !isOpenResp && (
+                                  <div className="grid gap-1.5 mb-2">
+                                    {optionsList.map((opt: string, idx: number) => {
+                                      const letter = ["A", "B", "C", "D"][idx];
+                                      const selected = a.selectedAnswer === letter || a.selectedAnswer === opt;
+                                      const isRight = a.correctAnswer === letter || a.correctAnswer === opt;
+                                      return (
+                                        <div key={idx} className={`text-xs rounded-lg px-2.5 py-1.5 flex items-center gap-2 ${isRight ? "bg-green-100 dark:bg-green-900/30 border border-green-300" : selected ? "bg-red-100 dark:bg-red-900/30 border border-red-300" : "bg-muted/30 border border-border"}`}>
+                                          <span className="font-black w-4">{letter}.</span>
+                                          <span className="flex-1">{opt}</span>
+                                          {selected && <span className="text-[10px] font-bold">{lang === "ar" ? "اختيار الطالب" : "student"}</span>}
+                                          {isRight && <CheckCircle className="w-3.5 h-3.5 text-green-600" />}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {isOpenResp && (
+                                  <div className="space-y-1.5 mb-2">
+                                    <div className="bg-background/60 border border-border rounded-lg px-2.5 py-2">
+                                      <p className="text-[10px] font-bold text-muted-foreground mb-0.5">{lang === "ar" ? "إجابة الطالب" : "Student answer"}</p>
+                                      <p className="text-sm whitespace-pre-wrap break-words">{a.selectedAnswer || <span className="text-muted-foreground italic">{lang === "ar" ? "(فارغة)" : "(empty)"}</span>}</p>
+                                    </div>
+                                    {a.correctAnswer && (
+                                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg px-2.5 py-2">
+                                        <p className="text-[10px] font-bold text-green-700 dark:text-green-300 mb-0.5">{lang === "ar" ? "الإجابة المرجعية" : "Reference"}</p>
+                                        <p className="text-sm whitespace-pre-wrap break-words">{a.correctAnswer}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div className="flex items-end gap-2 pt-2 border-t border-border/60">
+                                  <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-muted-foreground mb-1">{lang === "ar" ? "ضبط الدرجة" : "Adjust grade"}</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={a.points}
+                                      step="0.5"
+                                      defaultValue={String(earnedPts)}
+                                      onBlur={(e) => {
+                                        const v = parseFloat(e.target.value);
+                                        if (isNaN(v)) return;
+                                        if (v === earnedPts) return;
+                                        updateAnswerGrade.mutate({ answerId: a.id, data: { teacherPoints: v } });
+                                      }}
+                                      className="w-full px-2 py-1.5 rounded-lg bg-background border-2 border-border text-sm font-bold text-center focus:outline-none focus:border-primary transition-all"
+                                    />
+                                  </div>
+                                  <div className="flex-[2]">
+                                    <label className="block text-[10px] font-bold text-muted-foreground mb-1">{lang === "ar" ? "ملاحظة" : "Note"}</label>
+                                    <input
+                                      type="text"
+                                      defaultValue={a.teacherNote || ""}
+                                      onBlur={(e) => {
+                                        const v = e.target.value;
+                                        if (v === (a.teacherNote || "")) return;
+                                        updateAnswerGrade.mutate({ answerId: a.id, data: { teacherNote: v || null } });
+                                      }}
+                                      placeholder={lang === "ar" ? "اختياري" : "optional"}
+                                      className="w-full px-2 py-1.5 rounded-lg bg-background border-2 border-border text-xs focus:outline-none focus:border-primary transition-all"
+                                    />
+                                  </div>
+                                </div>
+                                {a.teacherPoints !== null && a.teacherPoints !== undefined && (
+                                  <p className="text-[10px] text-primary mt-1.5 flex items-center gap-1">
+                                    <Pencil className="w-2.5 h-2.5" /> {lang === "ar" ? "مُصححة يدوياً" : "Manually graded"}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}

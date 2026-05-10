@@ -12,11 +12,12 @@ import {
   teachersTable,
 } from "@workspace/db";
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
-import { HASAD_SYSTEM_PROMPT } from "../lib/ai-system-prompt";
+import { buildSystemPrompt } from "../lib/ai-system-prompt";
+import { logActivity } from "../lib/activity-logger";
 
 const router: Router = Router();
 
-const DAILY_LIMIT = 20;
+// Per-plan daily AI caps are the source of truth via @workspace/billing.
 const HISTORY_TURNS = 4; // last 4 user+assistant pairs
 
 function todayUtc(): string {
@@ -59,24 +60,20 @@ async function getTodayUsage(teacherId: number) {
   return rows[0] ?? null;
 }
 
-// Atomically reserve one message slot for the day. Returns the new message_count
-// if the increment succeeded (under DAILY_LIMIT), or null if the limit was reached.
-async function reserveSlot(teacherId: number): Promise<number | null> {
+// Hasad Guide is open to every teacher and organizer with no daily cap.
+// We still bump the per-day counter for stats/observability, but never deny.
+async function reserveSlot(teacherId: number): Promise<number> {
   const day = todayUtc();
-  const rows = await db.execute(sql`
+  const result = await db.execute(sql`
     INSERT INTO ai_usage_daily (teacher_id, day, message_count, tokens_in, tokens_out, cost_micro_usd)
     VALUES (${teacherId}, ${day}, 1, 0, 0, 0)
     ON CONFLICT (teacher_id, day) DO UPDATE
       SET message_count = ai_usage_daily.message_count + 1
-      WHERE ai_usage_daily.message_count < ${DAILY_LIMIT}
-    RETURNING message_count
+    RETURNING message_count AS new_count
   `);
-  const r: any = (rows as any).rows ?? rows;
-  if (Array.isArray(r) && r[0]) {
-    const c = Number((r[0] as any).message_count);
-    return Number.isFinite(c) ? c : null;
-  }
-  return null;
+  const rows = (result as any).rows ?? result;
+  const n = Array.isArray(rows) && rows[0] ? Number((rows[0] as any).new_count) : NaN;
+  return Number.isFinite(n) ? n : 1;
 }
 
 // Add token/cost data to today's row after the provider call completes.
@@ -100,21 +97,24 @@ async function addUsageStats(
 // Refund a slot if the provider call failed (so the user isn't charged a slot).
 async function refundSlot(teacherId: number) {
   const day = todayUtc();
-  await db
-    .update(aiUsageDaily)
-    .set({ messageCount: sql`GREATEST(${aiUsageDaily.messageCount} - 1, 0)` })
-    .where(and(eq(aiUsageDaily.teacherId, teacherId), eq(aiUsageDaily.day, day)));
+  await db.execute(sql`
+    UPDATE ai_usage_daily
+    SET message_count = GREATEST(message_count - 1, 0)
+    WHERE teacher_id = ${teacherId} AND day = ${day}
+  `);
 }
 
-// GET /api/ai-chat/usage — today's usage and limit
+// GET /api/ai-chat/usage — today's usage and plan-driven limit
 router.get("/usage", async (req, res) => {
   const teacherId = await getTeacherId(req, res);
   if (!teacherId) return;
+  // Daily cap removed for all teachers/organizers — return open quota so the
+  // UI does not display a usage counter or hit-limit warnings.
   const usage = await getTodayUsage(teacherId);
   res.json({
     used: usage?.messageCount ?? 0,
-    limit: DAILY_LIMIT,
-    remaining: Math.max(0, DAILY_LIMIT - (usage?.messageCount ?? 0)),
+    limit: null,
+    remaining: null,
     resetAt: `${todayUtc()}T23:59:59Z`,
   });
 });
@@ -191,6 +191,14 @@ router.post("/messages", async (req, res) => {
   }
   const { message } = parsed.data;
 
+  logActivity({
+    req,
+    userId: teacherId,
+    userRole: "teacher",
+    action: "ai_use",
+    details: { feature: "ai_chat", messageLength: message.length },
+  });
+
   // Find or create conversation FIRST so we can detect first-turn for cache lookup.
   let conversationId = parsed.data.conversationId ?? null;
   let isFirstTurn: boolean;
@@ -254,31 +262,21 @@ router.post("/messages", async (req, res) => {
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, conversationId!));
       const usageNow = await getTodayUsage(teacherId);
-      const usedNow = usageNow?.messageCount ?? 0;
-      // Cached hits do NOT consume a daily slot.
       return res.json({
         conversationId,
         reply: answer,
         cached: true,
         usage: {
-          used: usedNow,
-          limit: DAILY_LIMIT,
-          remaining: Math.max(0, DAILY_LIMIT - usedNow),
+          used: usageNow?.messageCount ?? 0,
+          limit: null,
+          remaining: null,
         },
       });
     }
   }
 
-  // Cache miss — atomically reserve a daily slot before calling the provider.
+  // No cap — bump the per-day counter for stats and continue.
   const newCount = await reserveSlot(teacherId);
-  if (newCount === null) {
-    return res.status(429).json({
-      error: "daily_limit_reached",
-      used: DAILY_LIMIT,
-      limit: DAILY_LIMIT,
-      message: "وصلت إلى الحد اليومي للمحادثات. يتجدد غداً.",
-    });
-  }
   const used = newCount - 1; // count BEFORE this slot was reserved
 
   // Materialize conversation now that we've reserved a slot.
@@ -315,10 +313,7 @@ router.post("/messages", async (req, res) => {
 
   // Load admin custom instructions (cached per request — one fast PK lookup)
   const customRows = await db.select().from(aiCustomInstructionsTable).limit(1);
-  const customContent = customRows[0]?.content?.trim() || "";
-  const fullSystemPrompt = customContent
-    ? `${HASAD_SYSTEM_PROMPT}\n\n## تعليمات إضافية من المسؤول\n${customContent}`
-    : HASAD_SYSTEM_PROMPT;
+  const fullSystemPrompt = buildSystemPrompt(customRows[0]?.content);
 
   try {
     const completion = await anthropic.messages.create({
@@ -376,14 +371,15 @@ router.post("/messages", async (req, res) => {
       .onConflictDoNothing();
   }
 
+  const finalUsage = await getTodayUsage(teacherId);
   res.json({
     conversationId,
     reply: assistantText,
     cached: false,
     usage: {
-      used: used + 1,
-      limit: DAILY_LIMIT,
-      remaining: Math.max(0, DAILY_LIMIT - (used + 1)),
+      used: finalUsage?.messageCount ?? 0,
+      limit: null,
+      remaining: null,
     },
   });
 });

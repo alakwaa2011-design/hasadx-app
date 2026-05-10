@@ -10,6 +10,7 @@ export const aiUsageDaily = pgTable(
       .references(() => teachersTable.id, { onDelete: "cascade" }),
     day: date("day").notNull(),
     messageCount: integer("message_count").default(0).notNull(),
+    outlineCount: integer("outline_count").default(0).notNull(),
     tokensIn: integer("tokens_in").default(0).notNull(),
     tokensOut: integer("tokens_out").default(0).notNull(),
     costMicroUsd: integer("cost_micro_usd").default(0).notNull(),

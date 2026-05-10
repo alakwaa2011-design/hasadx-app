@@ -74,12 +74,25 @@ export interface SubmitFeedbackBody {
   message: string;
 }
 
+/**
+ * Public registration role; admin role can only be granted internally.
+ */
+export type RegisterTeacherBodyRole =
+  (typeof RegisterTeacherBodyRole)[keyof typeof RegisterTeacherBodyRole];
+
+export const RegisterTeacherBodyRole = {
+  teacher: "teacher",
+  organizer: "organizer",
+} as const;
+
 export interface RegisterTeacherBody {
   name: string;
   email?: string;
   phone?: string;
   /** @minLength 6 */
   password: string;
+  /** Public registration role; admin role can only be granted internally. */
+  role?: RegisterTeacherBodyRole;
 }
 
 export interface LoginTeacherBody {
@@ -89,6 +102,18 @@ export interface LoginTeacherBody {
   rememberMe?: boolean;
 }
 
+/**
+ * User role: teacher (classroom), organizer (events), or admin (super-admin).
+ */
+export type TeacherProfileRole =
+  (typeof TeacherProfileRole)[keyof typeof TeacherProfileRole];
+
+export const TeacherProfileRole = {
+  teacher: "teacher",
+  organizer: "organizer",
+  admin: "admin",
+} as const;
+
 export interface TeacherProfile {
   id: number;
   name: string;
@@ -96,10 +121,102 @@ export interface TeacherProfile {
   phone?: string;
   isAdmin?: boolean;
   isBlocked?: boolean;
+  /** User role: teacher (classroom), organizer (events), or admin (super-admin). */
+  role?: TeacherProfileRole;
 }
 
 export interface AuthResponse {
   teacher: TeacherProfile;
+}
+
+export interface GoogleLoginBody {
+  /** Google ID token (credential) returned by the Google sign-in flow. */
+  credential: string;
+}
+
+export type BriefPreferencesLanguage =
+  (typeof BriefPreferencesLanguage)[keyof typeof BriefPreferencesLanguage];
+
+export const BriefPreferencesLanguage = {
+  ar: "ar",
+  en: "en",
+} as const;
+
+export type BriefPreferencesPresentationKind =
+  (typeof BriefPreferencesPresentationKind)[keyof typeof BriefPreferencesPresentationKind];
+
+export const BriefPreferencesPresentationKind = {
+  explain: "explain",
+  review: "review",
+  interactive: "interactive",
+  quick: "quick",
+  contest: "contest",
+} as const;
+
+export type BriefPreferencesDurationMinutes =
+  (typeof BriefPreferencesDurationMinutes)[keyof typeof BriefPreferencesDurationMinutes];
+
+export const BriefPreferencesDurationMinutes = {
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+  NUMBER_45: 45,
+  NUMBER_60: 60,
+} as const;
+
+export type BriefPreferencesLanguageLevel =
+  (typeof BriefPreferencesLanguageLevel)[keyof typeof BriefPreferencesLanguageLevel];
+
+export const BriefPreferencesLanguageLevel = {
+  simple: "simple",
+  medium: "medium",
+  advanced: "advanced",
+} as const;
+
+export type BriefPreferencesDensity =
+  (typeof BriefPreferencesDensity)[keyof typeof BriefPreferencesDensity];
+
+export const BriefPreferencesDensity = {
+  minimal: "minimal",
+  balanced: "balanced",
+  detailed: "detailed",
+} as const;
+
+/**
+ * Teacher's saved advanced brief form preferences, synced across devices.
+ */
+export interface BriefPreferences {
+  language?: BriefPreferencesLanguage;
+  presentationKind?: BriefPreferencesPresentationKind;
+  /**
+   * @minimum 5
+   * @maximum 30
+   */
+  slideCount?: number;
+  durationMinutes?: BriefPreferencesDurationMinutes;
+  languageLevel?: BriefPreferencesLanguageLevel;
+  density?: BriefPreferencesDensity;
+  activities?: boolean;
+  questions?: boolean;
+  poll?: boolean;
+  quiz?: boolean;
+  /** @maxLength 200 */
+  notes?: string;
+}
+
+/**
+ * New role for the current user. Admin role cannot be self-assigned.
+ */
+export type UpdateRoleBodyRole =
+  (typeof UpdateRoleBodyRole)[keyof typeof UpdateRoleBodyRole];
+
+export const UpdateRoleBodyRole = {
+  teacher: "teacher",
+  organizer: "organizer",
+} as const;
+
+export interface UpdateRoleBody {
+  /** New role for the current user. Admin role cannot be self-assigned. */
+  role: UpdateRoleBodyRole;
 }
 
 export type CreateAssignmentBodySubmissionMode =
@@ -137,6 +254,10 @@ export type CreateAssignmentBodyAdaptiveConfig = {
   skills?: string[];
 } | null;
 
+export type CreateAssignmentBodyListeningSettings = {
+  [key: string]: unknown;
+} | null;
+
 export type CreateQuestionBodyQuestionType =
   (typeof CreateQuestionBodyQuestionType)[keyof typeof CreateQuestionBodyQuestionType];
 
@@ -146,6 +267,7 @@ export const CreateQuestionBodyQuestionType = {
   fill_blank: "fill_blank",
   whiteboard: "whiteboard",
   dictation: "dictation",
+  open: "open",
 } as const;
 
 export interface CreateQuestionBody {
@@ -187,6 +309,12 @@ export interface CreateAssignmentBody {
   categoryId?: number | null;
   isAdaptive?: boolean;
   adaptiveConfig?: CreateAssignmentBodyAdaptiveConfig;
+  /** Marks special activity types (e.g. 'listening' for dictation/listening assignments). */
+  activityType?: string | null;
+  listeningAudioText?: string | null;
+  listeningVoice?: string | null;
+  listeningSpeed?: string | null;
+  listeningSettings?: CreateAssignmentBodyListeningSettings;
   questions: CreateQuestionBody[];
 }
 
@@ -273,6 +401,10 @@ export const AssignmentWithQuestionsResultsReleaseMode = {
   manual: "manual",
 } as const;
 
+export type AssignmentWithQuestionsListeningSettings = {
+  [key: string]: unknown;
+} | null;
+
 export type QuestionQuestionType =
   (typeof QuestionQuestionType)[keyof typeof QuestionQuestionType];
 
@@ -281,6 +413,8 @@ export const QuestionQuestionType = {
   true_false: "true_false",
   fill_blank: "fill_blank",
   whiteboard: "whiteboard",
+  dictation: "dictation",
+  open: "open",
 } as const;
 
 export interface Question {
@@ -295,8 +429,10 @@ export interface Question {
   points: number;
   imageUrl?: string | null;
   readAloud?: boolean;
-  repeatQuestion?: boolean;
+  difficulty?: number | null;
+  skill?: string | null;
   allowMultipleAnswers?: boolean;
+  repeatQuestion?: boolean;
 }
 
 export interface AssignmentWithQuestions {
@@ -319,10 +455,14 @@ export interface AssignmentWithQuestions {
   examDurationMinutes?: number | null;
   resultsReleaseMode?: AssignmentWithQuestionsResultsReleaseMode;
   aiGradingInstructions?: string | null;
+  /** Marks special activity types (e.g. 'listening' for dictation/listening assignments). */
+  activityType?: string | null;
+  listeningAudioText?: string | null;
+  listeningVoice?: string | null;
+  listeningSpeed?: string | null;
+  listeningSettings?: AssignmentWithQuestionsListeningSettings;
   createdAt: string;
   questions: Question[];
-  /** When true, assignment is hidden from the class grade sheet (not deleted). */
-  hiddenFromGradebook?: boolean;
 }
 
 export interface AnswerBody {
@@ -336,6 +476,7 @@ export interface SubmitAssignmentBody {
   deviceFingerprint: string;
   accessCode?: string;
   examSessionId?: number;
+  durationSeconds?: number | null;
   answers: AnswerBody[];
 }
 
@@ -369,7 +510,8 @@ export interface SubmissionResult {
   showResults: boolean;
   answers: AnswerResult[];
   aiFeedback?: string | null;
-  repeatEligibleIds?: number[];
+  /** IDs of questions answered incorrectly that the student may retry. */
+  repeatEligibleIds?: number[] | null;
 }
 
 export interface Submission {
@@ -384,11 +526,39 @@ export interface Submission {
   teacherAdjustedPoints?: number | null;
   teacherNote?: string | null;
   aiFeedback?: string | null;
+  durationSeconds?: number | null;
   submittedAt: string;
 }
 
 export interface UpdateSubmissionBody {
   teacherAdjustedPoints?: number | null;
+  teacherNote?: string | null;
+}
+
+export interface SubmissionAnswerDetail {
+  id: number;
+  questionId: number;
+  questionText: string;
+  questionType: string;
+  points: number;
+  selectedAnswer: string;
+  correctAnswer?: string | null;
+  optionA?: string | null;
+  optionB?: string | null;
+  optionC?: string | null;
+  optionD?: string | null;
+  isCorrect: boolean;
+  teacherPoints?: number | null;
+  teacherNote?: string | null;
+}
+
+export interface SubmissionDetail {
+  submission: Submission;
+  answers: SubmissionAnswerDetail[];
+}
+
+export interface UpdateAnswerBody {
+  teacherPoints?: number | null;
   teacherNote?: string | null;
 }
 
@@ -414,6 +584,666 @@ export interface AdminTeacherSummary {
   submissionCount: number;
 }
 
+export type PresentationStatus =
+  (typeof PresentationStatus)[keyof typeof PresentationStatus];
+
+export const PresentationStatus = {
+  draft: "draft",
+  published: "published",
+} as const;
+
+export type PresentationLanguage =
+  (typeof PresentationLanguage)[keyof typeof PresentationLanguage];
+
+export const PresentationLanguage = {
+  ar: "ar",
+  en: "en",
+} as const;
+
+export type SlideElementKind =
+  (typeof SlideElementKind)[keyof typeof SlideElementKind];
+
+export const SlideElementKind = {
+  text: "text",
+  image: "image",
+  icon: "icon",
+  shape: "shape",
+  activity: "activity",
+  "hasad-game": "hasad-game",
+  "video-embed": "video-embed",
+} as const;
+
+export type SlideElementAlign =
+  | (typeof SlideElementAlign)[keyof typeof SlideElementAlign]
+  | null;
+
+export const SlideElementAlign = {
+  start: "start",
+  center: "center",
+  end: "end",
+  justify: "justify",
+} as const;
+
+export type SlideElementShape =
+  | (typeof SlideElementShape)[keyof typeof SlideElementShape]
+  | null;
+
+export const SlideElementShape = {
+  rect: "rect",
+  circle: "circle",
+  line: "line",
+  arrow: "arrow",
+  divider: "divider",
+} as const;
+
+export type SlideElementActivityKind =
+  | (typeof SlideElementActivityKind)[keyof typeof SlideElementActivityKind]
+  | null;
+
+export const SlideElementActivityKind = {
+  mcq: "mcq",
+  true_false: "true_false",
+  open: "open",
+  poll: "poll",
+} as const;
+
+/**
+ * For `kind=hasad-game` — which Hasad live game to launch.
+ */
+export type SlideElementGameKind =
+  | (typeof SlideElementGameKind)[keyof typeof SlideElementGameKind]
+  | null;
+
+export const SlideElementGameKind = {
+  kahoot: "kahoot",
+  wheel: "wheel",
+  millionaire: "millionaire",
+  "flag-quiz": "flag-quiz",
+  capitals: "capitals",
+  letrly: "letrly",
+  rocket: "rocket",
+  tug: "tug",
+  maraqui: "maraqui",
+  hack: "hack",
+} as const;
+
+export type SlideElementQuestionsItem = {
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+};
+
+/**
+ * For `kind=image` — CSS object-fit applied to the image.
+ */
+export type SlideElementObjectFit =
+  | (typeof SlideElementObjectFit)[keyof typeof SlideElementObjectFit]
+  | null;
+
+export const SlideElementObjectFit = {
+  cover: "cover",
+  contain: "contain",
+  fill: "fill",
+  none: "none",
+} as const;
+
+/**
+ * For `kind=video-embed` — the source platform of the video.
+ */
+export type SlideElementVideoKind =
+  | (typeof SlideElementVideoKind)[keyof typeof SlideElementVideoKind]
+  | null;
+
+export const SlideElementVideoKind = {
+  youtube: "youtube",
+  "hasad-video": "hasad-video",
+} as const;
+
+/**
+ * Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).
+ */
+export interface SlideElement {
+  id: string;
+  kind: SlideElementKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rotation?: number | null;
+  zIndex?: number | null;
+  text?: string | null;
+  fontFamily?: string | null;
+  fontSize?: number | null;
+  fontWeight?: string | null;
+  align?: SlideElementAlign;
+  color?: string | null;
+  url?: string | null;
+  iconName?: string | null;
+  shape?: SlideElementShape;
+  bgColor?: string | null;
+  borderColor?: string | null;
+  borderWidth?: number | null;
+  activityKind?: SlideElementActivityKind;
+  questionId?: number | null;
+  prompt?: string | null;
+  options?: string[] | null;
+  correctIndex?: number | null;
+  accentColor?: string | null;
+  /** For `kind=hasad-game` — which Hasad live game to launch. */
+  gameKind?: SlideElementGameKind;
+  /** Optional topic/context string forwarded to the game setup page. */
+  topic?: string | null;
+  /** For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page. */
+  questions?: SlideElementQuestionsItem[] | null;
+  /** For `kind=image` — CSS object-fit applied to the image. */
+  objectFit?: SlideElementObjectFit;
+  /** For `kind=image` — CSS object-position, e.g. "center", "top", "50% 25%". */
+  objectPosition?: string | null;
+  /** For `kind=image` — opacity 0–1 (default 1). */
+  imageOpacity?: number | null;
+  /** For `kind=image` — border-radius in pixels (0–500). */
+  imageBorderRadius?: number | null;
+  /** For `kind=video-embed` — the source platform of the video. */
+  videoKind?: SlideElementVideoKind;
+  /** For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID). */
+  videoId?: string | null;
+  /** For `kind=video-embed` — optional display title shown in the editor preview. */
+  title?: string | null;
+}
+
+export interface Slide {
+  id: string;
+  layout?: string | null;
+  background?: string | null;
+  backgroundImage?: string | null;
+  notes?: string | null;
+  elements: SlideElement[];
+}
+
+export interface Presentation {
+  id: number;
+  teacherId: number;
+  title: string;
+  subject?: string | null;
+  gradeLevel?: string | null;
+  language: PresentationLanguage;
+  theme: string;
+  pattern: string;
+  coverEmoji?: string | null;
+  description?: string | null;
+  slides: Slide[];
+  status: PresentationStatus;
+  publishedAt?: string | null;
+  isShared: boolean;
+  lastPresentedAt?: string | null;
+  linkedActivityId?: string | null;
+  linkedActivityKind?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ownerName?: string | null;
+  isOwner?: boolean | null;
+}
+
+export interface PresentationSummary {
+  id: number;
+  teacherId: number;
+  title: string;
+  language: PresentationLanguage;
+  theme: string;
+  pattern: string;
+  coverEmoji?: string | null;
+  slideCount: number;
+  status: PresentationStatus;
+  publishedAt?: string | null;
+  isShared: boolean;
+  ownerName?: string | null;
+  ownerIsAdmin?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface CreatePresentationBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  language?: PresentationLanguage;
+  /** @maxLength 100 */
+  subject?: string | null;
+  /** @maxLength 50 */
+  gradeLevel?: string | null;
+  /** @maxLength 40 */
+  theme?: string;
+  /** @maxLength 40 */
+  pattern?: string;
+  /** @maxLength 8 */
+  coverEmoji?: string | null;
+}
+
+export interface UpdatePresentationBody {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title?: string;
+  language?: PresentationLanguage;
+  /** @maxLength 100 */
+  subject?: string | null;
+  /** @maxLength 50 */
+  gradeLevel?: string | null;
+  /** @maxLength 40 */
+  theme?: string;
+  /** @maxLength 40 */
+  pattern?: string;
+  /** @maxLength 8 */
+  coverEmoji?: string | null;
+  /** @maxLength 2000 */
+  description?: string | null;
+  /** @maxItems 200 */
+  slides?: Slide[];
+}
+
+export type PresentationAssetKind =
+  (typeof PresentationAssetKind)[keyof typeof PresentationAssetKind];
+
+export const PresentationAssetKind = {
+  image: "image",
+  file: "file",
+} as const;
+
+export interface PresentationAsset {
+  id: number;
+  presentationId: number;
+  kind: PresentationAssetKind;
+  url: string;
+  byteSize: number;
+  createdAt: string;
+}
+
+export type RegisterAssetBodyKind =
+  (typeof RegisterAssetBodyKind)[keyof typeof RegisterAssetBodyKind];
+
+export const RegisterAssetBodyKind = {
+  image: "image",
+  file: "file",
+} as const;
+
+export interface RegisterAssetBody {
+  kind: RegisterAssetBodyKind;
+  /** @minLength 1 */
+  url: string;
+  /** @minimum 0 */
+  byteSize?: number;
+}
+
+export interface PresentationLimits {
+  maxImagesRegular: number;
+  maxFilesRegular: number;
+  maxSlidesRegular: number;
+  maxSizeMbRegular: number;
+}
+
+export interface PresentationTier {
+  isPro: boolean;
+  limits: PresentationLimits;
+}
+
+export interface PresentationUsage {
+  slides: number;
+  images: number;
+  files: number;
+  sizeMb: number;
+}
+
+export interface PresentationTierWithUsage {
+  isPro: boolean;
+  limits: PresentationLimits;
+  usage: PresentationUsage;
+}
+
+export interface PresentationBriefToggles {
+  activities: boolean;
+  questions: boolean;
+  poll: boolean;
+  quiz: boolean;
+}
+
+export type PresentationBriefLanguage =
+  (typeof PresentationBriefLanguage)[keyof typeof PresentationBriefLanguage];
+
+export const PresentationBriefLanguage = {
+  ar: "ar",
+  en: "en",
+} as const;
+
+export type PresentationBriefPresentationKind =
+  (typeof PresentationBriefPresentationKind)[keyof typeof PresentationBriefPresentationKind];
+
+export const PresentationBriefPresentationKind = {
+  explain: "explain",
+  review: "review",
+  interactive: "interactive",
+  quick: "quick",
+  contest: "contest",
+} as const;
+
+export type PresentationBriefDurationMinutes =
+  (typeof PresentationBriefDurationMinutes)[keyof typeof PresentationBriefDurationMinutes];
+
+export const PresentationBriefDurationMinutes = {
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+  NUMBER_45: 45,
+  NUMBER_60: 60,
+} as const;
+
+export type PresentationBriefLanguageLevel =
+  (typeof PresentationBriefLanguageLevel)[keyof typeof PresentationBriefLanguageLevel];
+
+export const PresentationBriefLanguageLevel = {
+  simple: "simple",
+  medium: "medium",
+  advanced: "advanced",
+} as const;
+
+export type PresentationBriefDensity =
+  (typeof PresentationBriefDensity)[keyof typeof PresentationBriefDensity];
+
+export const PresentationBriefDensity = {
+  minimal: "minimal",
+  balanced: "balanced",
+  detailed: "detailed",
+} as const;
+
+export interface PresentationBrief {
+  language: PresentationBriefLanguage;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  subject: string;
+  /**
+   * @minLength 1
+   * @maxLength 50
+   */
+  gradeLevel: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  topic: string;
+  presentationKind: PresentationBriefPresentationKind;
+  /**
+   * @minimum 5
+   * @maximum 30
+   */
+  slideCount: number;
+  durationMinutes: PresentationBriefDurationMinutes;
+  languageLevel: PresentationBriefLanguageLevel;
+  density: PresentationBriefDensity;
+  toggles: PresentationBriefToggles;
+  /** @maxLength 200 */
+  notes?: string | null;
+}
+
+export type OutlineSlideKind =
+  (typeof OutlineSlideKind)[keyof typeof OutlineSlideKind];
+
+export const OutlineSlideKind = {
+  title: "title",
+  objectives: "objectives",
+  "concept-card": "concept-card",
+  comparison: "comparison",
+  "visual-hero": "visual-hero",
+  steps: "steps",
+  interactive: "interactive",
+  closure: "closure",
+  timeline: "timeline",
+  formula: "formula",
+  stat: "stat",
+  quote: "quote",
+  callout: "callout",
+} as const;
+
+export type OutlineVisualDirectionShape =
+  (typeof OutlineVisualDirectionShape)[keyof typeof OutlineVisualDirectionShape];
+
+export const OutlineVisualDirectionShape = {
+  rect: "rect",
+  circle: "circle",
+  line: "line",
+  arrow: "arrow",
+  divider: "divider",
+} as const;
+
+export interface OutlineVisualDirection {
+  /** @maxLength 40 */
+  icon?: string;
+  shape?: OutlineVisualDirectionShape;
+  /** @maxLength 40 */
+  layoutHint?: string;
+}
+
+export type OutlineSlideCardInteractionHint =
+  | (typeof OutlineSlideCardInteractionHint)[keyof typeof OutlineSlideCardInteractionHint]
+  | null;
+
+export const OutlineSlideCardInteractionHint = {
+  poll: "poll",
+  quiz: "quiz",
+  discussion: "discussion",
+  activity: "activity",
+} as const;
+
+export interface OutlineSlideCard {
+  /**
+   * @minimum 1
+   * @maximum 30
+   */
+  index: number;
+  kind: OutlineSlideKind;
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  title: string;
+  /** @maxLength 80 */
+  subtitle?: string;
+  /**
+   * @minLength 1
+   * @maxLength 140
+   */
+  purpose: string;
+  /**
+   * @minItems 1
+   * @maxItems 6
+   */
+  talkingPoints: string[];
+  interactionHint: OutlineSlideCardInteractionHint;
+  visualDirection: OutlineVisualDirection;
+  /** @maxLength 200 */
+  source?: string;
+}
+
+export type OutlineTeachingFlowStageStage =
+  (typeof OutlineTeachingFlowStageStage)[keyof typeof OutlineTeachingFlowStageStage];
+
+export const OutlineTeachingFlowStageStage = {
+  opener: "opener",
+  concept: "concept",
+  practice: "practice",
+  closure: "closure",
+} as const;
+
+export interface OutlineTeachingFlowStage {
+  stage: OutlineTeachingFlowStageStage;
+  /** @minItems 1 */
+  slideIndices: number[];
+  /**
+   * @minimum 1
+   * @maximum 240
+   */
+  estimatedMinutes: number;
+}
+
+export type PresentationOutlineLanguage =
+  (typeof PresentationOutlineLanguage)[keyof typeof PresentationOutlineLanguage];
+
+export const PresentationOutlineLanguage = {
+  ar: "ar",
+  en: "en",
+} as const;
+
+export type PresentationOutlineDensity =
+  (typeof PresentationOutlineDensity)[keyof typeof PresentationOutlineDensity];
+
+export const PresentationOutlineDensity = {
+  minimal: "minimal",
+  balanced: "balanced",
+  detailed: "detailed",
+} as const;
+
+export interface PresentationOutline {
+  language: PresentationOutlineLanguage;
+  density: PresentationOutlineDensity;
+  /**
+   * @minimum 1
+   * @maximum 240
+   */
+  totalEstimatedMinutes: number;
+  /**
+   * @minItems 2
+   * @maxItems 6
+   */
+  objectives: string[];
+  /**
+   * @minItems 4
+   * @maxItems 4
+   */
+  teachingFlow: OutlineTeachingFlowStage[];
+  /**
+   * @minItems 3
+   * @maxItems 30
+   */
+  slides: OutlineSlideCard[];
+}
+
+export type PresentationDraftStatus =
+  (typeof PresentationDraftStatus)[keyof typeof PresentationDraftStatus];
+
+export const PresentationDraftStatus = {
+  draft: "draft",
+  outline_ready: "outline_ready",
+  building: "building",
+  built: "built",
+  failed: "failed",
+} as const;
+
+export type PresentationDraftBuildProgress = {
+  current?: number;
+  total?: number;
+  warnings?: string[];
+  /** Outline indexes the materializer skipped (failed validation). */
+  skipped?: number[];
+} | null;
+
+export interface PresentationDraft {
+  id: number;
+  teacherId: number;
+  presentationId?: number | null;
+  brief: PresentationBrief;
+  outline: PresentationOutline;
+  status: PresentationDraftStatus;
+  modelUsed?: string | null;
+  tokensUsed: number;
+  costMicroUsd: number;
+  errorMessage?: string | null;
+  buildProgress?: PresentationDraftBuildProgress;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BuildPresentationRequest {
+  /**
+   * Slide theme key from SLIDE_THEMES; defaults to "harvest" if omitted or unknown.
+   * @maxLength 40
+   */
+  theme?: string;
+  /** @maxLength 40 */
+  pattern?: string;
+  /** @maxLength 8 */
+  coverEmoji?: string;
+}
+
+export interface BuildPresentationResponse {
+  presentationId: number;
+  warnings: string[];
+  /** Indexes of outline slides that failed validation and were not materialized. */
+  skipped?: number[];
+  /** True when the build returned early due to a cancel request. */
+  cancelled?: boolean;
+  alreadyBuilt: boolean;
+}
+
+export interface CancelBuildResponse {
+  ok: boolean;
+  /** True if a live in-memory build was found and flagged. */
+  wasActive: boolean;
+  /** Current draft status at cancel time. */
+  status?: string;
+}
+
+export type PresentationDraftWithGuardrailsGuardrails = {
+  feedback: string[];
+  usedCache: boolean;
+};
+
+export type PresentationDraftWithGuardrails = PresentationDraft & {
+  guardrails: PresentationDraftWithGuardrailsGuardrails;
+};
+
+export type UpdatePresentationDraftBodyStatus =
+  (typeof UpdatePresentationDraftBodyStatus)[keyof typeof UpdatePresentationDraftBodyStatus];
+
+export const UpdatePresentationDraftBodyStatus = {
+  draft: "draft",
+  outline_ready: "outline_ready",
+} as const;
+
+export interface UpdatePresentationDraftBody {
+  outline?: PresentationOutline;
+  status?: UpdatePresentationDraftBodyStatus;
+}
+
+export type PresentationAiLimitsTier =
+  (typeof PresentationAiLimitsTier)[keyof typeof PresentationAiLimitsTier];
+
+export const PresentationAiLimitsTier = {
+  standard: "standard",
+  pro: "pro",
+  claude: "claude",
+} as const;
+
+export type PresentationAiLimitsAllowedDensitiesItem =
+  (typeof PresentationAiLimitsAllowedDensitiesItem)[keyof typeof PresentationAiLimitsAllowedDensitiesItem];
+
+export const PresentationAiLimitsAllowedDensitiesItem = {
+  minimal: "minimal",
+  balanced: "balanced",
+  detailed: "detailed",
+} as const;
+
+export interface PresentationAiLimits {
+  tier: PresentationAiLimitsTier;
+  dailyOutlines: number;
+  used: number;
+  remaining: number;
+  maxSlides: number;
+  allowedDensities: PresentationAiLimitsAllowedDensitiesItem[];
+  allowClaude: boolean;
+}
+
 export type ListAssignmentsParams = {
   teacherId?: number;
   /**
@@ -428,3 +1258,26 @@ export type ListAssignmentsInclude =
 export const ListAssignmentsInclude = {
   shared: "shared",
 } as const;
+
+export type LinkPresentationActivityBody = {
+  activityId: number | null;
+  activityKind?: string;
+};
+
+export type LinkPresentationActivity200 = {
+  id: number;
+  linkedActivityId?: string | null;
+  linkedActivityKind?: string | null;
+};
+
+export type GetPresentationLinkedActivity200Activity = {
+  id: number;
+  title: string;
+} | null;
+
+export type GetPresentationLinkedActivity200 = {
+  kind: string | null;
+  activity: GetPresentationLinkedActivity200Activity;
+  /** Relative URL to open the linked activity, or null when there is no resolved link. */
+  link: string | null;
+};

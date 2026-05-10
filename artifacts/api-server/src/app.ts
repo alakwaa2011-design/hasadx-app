@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import * as Sentry from "@sentry/node";
 import compression from "compression";
 import cors from "cors";
 import helmet from "helmet";
@@ -8,6 +9,7 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { logActivity } from "./lib/activity-logger";
 
 export async function ensureSessionTable() {
   await pool.query(`
@@ -216,6 +218,38 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Auto-log unauthorized access attempts (401/403) on /api/* routes.
+// Lightweight: hooks res.end once per request without touching the body.
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) return next();
+  // Skip the page-view endpoint itself and known noisy paths.
+  if (req.path === "/api/activity/page-view" || req.path.startsWith("/api/health")) return next();
+  res.on("finish", () => {
+    try {
+      if (res.statusCode === 401 || res.statusCode === 403) {
+        const sess: any = (req as any).session;
+        const userId = sess?.teacherId ?? sess?.studentAccountId ?? null;
+        const userRole: "teacher" | "student" | "visitor" = sess?.teacherId
+          ? "teacher"
+          : (sess?.studentAccountId ? "student" : "visitor");
+        logActivity({
+          req,
+          userId,
+          userRole,
+          action: "unauthorized_access",
+          details: { method: req.method, path: req.path, status: res.statusCode },
+          pageUrl: req.originalUrl,
+        });
+      }
+    } catch {
+      // never let logging affect the response
+    }
+  });
+  next();
+});
+
 app.use("/api", router);
+
+Sentry.setupExpressErrorHandler(app);
 
 export default app;

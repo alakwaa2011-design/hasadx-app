@@ -24,7 +24,7 @@ export function AuthSideRail() {
   const isAr = lang === "ar";
 
   const { data: user, isLoading: tLoading } = useGetCurrentTeacher({
-    query: { retry: false },
+    query: { retry: false } as any,
   });
   const [student, setStudent] = useState<{ id: number } | null>(null);
   const [sLoading, setSLoading] = useState(true);

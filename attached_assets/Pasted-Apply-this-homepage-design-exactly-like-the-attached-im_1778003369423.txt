@@ -1,0 +1,127 @@
+Apply this homepage design exactly like the attached image.
+
+IMPORTANT:
+- Do NOT change backend or functionality.
+- Do NOT change routes or navigation.
+- Do NOT change the general layout, colors, cards, icons, spacing, or style.
+- Keep Arabic RTL.
+- Keep the same clean modern green/gold design.
+- Only update the visible text as specified below.
+
+====================================
+
+HEADER:
+Keep logo and buttons as they are:
+- "ابدأ مجاناً"
+- "دخول"
+
+====================================
+
+HERO SECTION:
+
+Replace the current title with:
+
+"أنشئ وشارك وتفاعل في
+تجربة تعليمية متكاملة"
+
+Subtitle:
+
+"أدوات ذكية للمعلمين، تجارب ممتعة للطلاب،
+ومسابقات تفاعلية للجميع"
+
+Keep the same style, font size, colors, and highlight effect.
+
+====================================
+
+MAIN CARDS:
+
+CARD 1:
+Title:
+"معلم"
+
+Description:
+"أنشئ دروساً تفاعلية، واجبات،
+اختبارات وخطط بسهولة"
+
+Button:
+"ابدأ كمعلم"
+
+------------------------
+
+CARD 2:
+Title:
+"منظم فعاليات"
+
+Description:
+"شغّل مسابقات حماسية في أي
+تجمع أو لقاء خلال ثوانٍ"
+
+Button:
+"ابدأ مسابقة"
+
+------------------------
+
+CARD 3:
+Title:
+"طالب / مشارك"
+
+Description:
+"العب، شارك في التحديات، واجمع
+نقاطك ونافس على الصدارة"
+
+Extra line:
+"🏆 تصدر الترتيب بين أصدقائك"
+
+Button:
+"ابدأ اللعب"
+
+====================================
+
+JOIN CODE SECTION:
+
+Title:
+"لديك كود مسابقة؟"
+
+Subtitle:
+"أدخل الكود للانضمام مباشرة"
+
+Button:
+"انضمام الآن"
+
+Bottom helper text:
+"ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم"
+
+====================================
+
+FEATURES SECTION:
+
+Feature 1:
+"آمن وسهل الاستخدام"
+"بيئة آمنة وبسيطة تناسب المعلمين والطلاب"
+
+Feature 2:
+"تقارير وتحليلات"
+"تابع التقدم والنتائج من خلال تقارير تفصيلية"
+
+Feature 3:
+"تفاعل وتحفيز"
+"تجارب تفاعلية تعزز التعلم وتحفز المشاركة"
+
+Feature 4:
+"كل شيء في مكان واحد"
+"أدوات متكاملة لإدارة التعليم والفعاليات بسهولة"
+
+====================================
+
+RESPONSIVE:
+- Desktop: keep 3 cards in one row.
+- Mobile: stack cards vertically.
+- Make buttons large and easy to tap.
+
+====================================
+
+DO NOT:
+- Do not add developer instructions inside the UI.
+- Do not add extra text.
+- Do not change the design direction.
+- Do not remove any existing feature.

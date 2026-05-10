@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, gameHistoryTable, studentsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
-import { getGame } from "../game/manager.js";
+import { getGame, findActiveGameByTeacher } from "../game/manager.js";
 
 interface AnswerDetail {
   questionIndex: number;
@@ -247,6 +247,42 @@ router.post("/game-history/save/:pin", async (req, res) => {
   } catch {
     res.status(500).json({ error: "Failed to save game results" });
   }
+});
+
+// ── Active game lookup for resume banner ──────────────────────────────────────
+// Returns the teacher's currently-active Wameed/Hack game, if any.
+// Used by the teacher dashboard to show a one-tap rejoin banner whenever a
+// game is still being held alive by the server (e.g. during the disconnect
+// grace period after a tab crash).
+router.get("/active-game", (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const game = findActiveGameByTeacher(teacherId);
+  if (!game) {
+    res.json({ active: false });
+    return;
+  }
+
+  let playerCount = 0;
+  for (const p of game.players.values()) {
+    if (!p.isBot) playerCount++;
+  }
+
+  res.json({
+    active: true,
+    pin: game.pin,
+    title: game.assignmentTitle,
+    state: game.state,
+    hackMode: !!game.hackMode,
+    gameMode: game.gameMode,
+    playerCount,
+    questionCount: game.questions.length,
+    currentQuestionIndex: game.currentQuestionIndex,
+  });
 });
 
 // ── Unified PIN lookup ─────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, rocketTemplatesTable, teachersTable } from "@workspace/db";
+import { db, rocketTemplatesTable, teachersTable, studentsTable } from "@workspace/db";
 import { eq, desc, and, or, ne } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -122,11 +122,33 @@ router.get("/rocket-game-info/:pin", async (req, res) => {
     res.json({ exists: false });
     return;
   }
-  res.json({
+  const info: {
+    exists: true;
+    targetClass: string | null;
+    state: string;
+    students?: { name: string }[];
+  } = {
     exists: true,
     targetClass: game.targetClass || null,
     state: game.state,
-  });
+  };
+  if (game.targetClass && game.teacherId) {
+    try {
+      const students = await db
+        .select({ name: studentsTable.name })
+        .from(studentsTable)
+        .where(
+          and(
+            eq(studentsTable.teacherId, game.teacherId),
+            eq(studentsTable.gradeLevel, game.targetClass),
+          ),
+        );
+      info.students = students.map((s) => ({ name: s.name }));
+    } catch {
+      info.students = [];
+    }
+  }
+  res.json(info);
 });
 
 export default router;

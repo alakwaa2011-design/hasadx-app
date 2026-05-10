@@ -11,6 +11,8 @@ import {
 import { z } from "zod";
 import { publicReadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
+import { featureAccess } from "@workspace/billing";
+import { logActivity } from "../lib/activity-logger";
 
 const UpdateAssignmentBody = z.object({
   title: z.string().min(1).optional(),
@@ -30,12 +32,16 @@ const UpdateAssignmentBody = z.object({
   aiGradingInstructions: z.string().nullish(),
   isShared: z.boolean().optional(),
   displayTotalPoints: z.number().positive().nullish(),
-  hiddenFromGradebook: z.boolean().optional(),
+  activityType: z.string().nullish(),
+  listeningAudioText: z.string().nullish(),
+  listeningVoice: z.string().nullish(),
+  listeningSpeed: z.union([z.string(), z.number()]).nullish().transform((v) => v == null ? v : String(v)),
+  listeningSettings: z.record(z.string(), z.any()).nullish(),
   questions: z.array(
     z.object({
       id: z.number().optional(),
       text: z.string().min(1),
-      questionType: z.enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"]).default("mcq"),
+      questionType: z.enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation", "open"]).default("mcq"),
       optionA: z.string().nullish(),
       optionB: z.string().nullish(),
       optionC: z.string().nullish(),
@@ -188,6 +194,21 @@ router.post("/assignments", async (req, res) => {
     return;
   }
 
+  // ── Subscription gate: enforce monthly homework limit. NULL = unlimited.
+  // We increment FIRST so concurrent requests can't both slip past a near-limit.
+  const teacherId = req.session.teacherId;
+  const gate = await featureAccess.increment(teacherId, "create_homework");
+  if (!gate.allowed) {
+    res.status(403).json({
+      message: "لقد وصلت إلى الحد الشهري للواجبات في باقتك الحالية. يرجى ترقية الاشتراك.",
+      reason: gate.reason,
+      limit: gate.limit,
+      used: gate.used,
+      remaining: gate.remaining,
+    });
+    return;
+  }
+
   try {
     const body = CreateAssignmentBody.parse(req.body);
 
@@ -257,6 +278,11 @@ router.post("/assignments", async (req, res) => {
         isShareApproved: (body.isShared || false) && await isAdminTeacher(req.session.teacherId),
         isAdaptive: body.isAdaptive || false,
         adaptiveConfig: body.adaptiveConfig ? JSON.stringify(body.adaptiveConfig) : null,
+        activityType: body.activityType || null,
+        listeningAudioText: body.listeningAudioText || null,
+        listeningVoice: body.listeningVoice || null,
+        listeningSpeed: body.listeningSpeed || null,
+        listeningSettings: body.listeningSettings ? JSON.stringify(body.listeningSettings) : null,
         teacherId: req.session.teacherId,
       })
       .returning();
@@ -312,7 +338,19 @@ router.post("/assignments", async (req, res) => {
       examDurationMinutes: assignment.examDurationMinutes,
       resultsReleaseMode: assignment.resultsReleaseMode,
     });
+
+    logActivity({
+      req,
+      userId: teacherId,
+      userName: teacher?.name ?? null,
+      userRole: "teacher",
+      action: "create_homework",
+      details: { assignmentId: assignment.id, title: assignment.title, subject: assignment.subject, questionCount: body.questions?.length || 0 },
+    });
   } catch (error: unknown) {
+    // Refund the slot we incremented at the top of the handler since the
+    // creation failed and no homework was actually persisted.
+    await featureAccess.refund(teacherId, "create_homework").catch(() => {});
     const isZodError = error instanceof z.ZodError;
     const message = error instanceof Error ? error.message : "خطأ في إنشاء الواجب";
     req.log.error({ err: error, isAdaptive: req.body?.isAdaptive, stage: isZodError ? "validation" : "db_insert" }, "Create assignment error");
@@ -426,7 +464,11 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         isShareApproved: assignmentsTable.isShareApproved,
         isAdaptive: assignmentsTable.isAdaptive,
         adaptiveConfig: assignmentsTable.adaptiveConfig,
-        hiddenFromGradebook: assignmentsTable.hiddenFromGradebook,
+        activityType: assignmentsTable.activityType,
+        listeningAudioText: assignmentsTable.listeningAudioText,
+        listeningVoice: assignmentsTable.listeningVoice,
+        listeningSpeed: assignmentsTable.listeningSpeed,
+        listeningSettings: assignmentsTable.listeningSettings,
       })
       .from(assignmentsTable)
       .innerJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
@@ -491,7 +533,30 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       resultsReleaseMode: assignment.resultsReleaseMode,
       isAdaptive: assignment.isAdaptive,
       adaptiveConfig: assignment.adaptiveConfig ? JSON.parse(assignment.adaptiveConfig) : null,
-      hiddenFromGradebook: assignment.hiddenFromGradebook,
+      activityType: assignment.activityType,
+      // The transcript is sensitive content for listening activities — students
+      // hear it via /api/assignments/:id/listening-audio. Only the owner teacher
+      // (or an approved-shared teacher) sees the raw text, plus students when
+      // the teacher explicitly enabled showTranscript.
+      listeningAudioText: (() => {
+        if (canSeeCorrectAnswer) return assignment.listeningAudioText;
+        if (assignment.activityType !== "listening") return assignment.listeningAudioText;
+        const parsed = (() => {
+          try {
+            return assignment.listeningSettings
+              ? (JSON.parse(assignment.listeningSettings as string) as { showTranscript?: boolean })
+              : null;
+          } catch {
+            return null;
+          }
+        })();
+        return parsed?.showTranscript === true ? assignment.listeningAudioText : null;
+      })(),
+      listeningVoice: assignment.listeningVoice,
+      listeningSpeed: assignment.listeningSpeed,
+      listeningSettings: assignment.listeningSettings
+        ? (() => { try { return JSON.parse(assignment.listeningSettings as string); } catch { return null; } })()
+        : null,
       questions: questions.map((q) => ({
         id: q.id,
         text: q.text,
@@ -595,12 +660,11 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
       .from(assignmentsTable)
       .where(and(
         eq(assignmentsTable.teacherId, teacherId),
-        eq(assignmentsTable.hiddenFromGradebook, false),
         sql`(${assignmentsTable.targetClass} = ${gradeLevel} OR ${gradeLevel} = ANY(${assignmentsTable.targetClasses}))`
       ));
 
     const assignmentIds = assignments.map(a => a.id);
-    let submissions: { id: number; assignmentId: number; studentName: string; studentId: number | null; earnedPoints: number; totalPoints: number; teacherAdjustedPoints: number | null; score: number; correctAnswers: number; totalQuestions: number }[] = [];
+    let submissions: { id?: number; assignmentId: number; studentName: string; studentId: number | null; earnedPoints: number; totalPoints: number; teacherAdjustedPoints: number | null; score: number; correctAnswers: number; totalQuestions: number }[] = [];
 
     // Helper: round to 2 decimal places to keep the gradebook clean.
     const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -806,7 +870,13 @@ router.put("/assignments/:id", async (req, res) => {
       if (body.resultsReleaseMode !== undefined) updateData.resultsReleaseMode = body.resultsReleaseMode;
       if (body.aiGradingInstructions !== undefined) updateData.aiGradingInstructions = body.aiGradingInstructions;
       if (body.displayTotalPoints !== undefined) updateData.displayTotalPoints = body.displayTotalPoints;
-      if (body.hiddenFromGradebook !== undefined) updateData.hiddenFromGradebook = body.hiddenFromGradebook;
+      if (body.activityType !== undefined) updateData.activityType = body.activityType;
+      if (body.listeningAudioText !== undefined) updateData.listeningAudioText = body.listeningAudioText;
+      if (body.listeningVoice !== undefined) updateData.listeningVoice = body.listeningVoice;
+      if (body.listeningSpeed !== undefined) updateData.listeningSpeed = body.listeningSpeed;
+      if (body.listeningSettings !== undefined) {
+        updateData.listeningSettings = body.listeningSettings ? JSON.stringify(body.listeningSettings) : null;
+      }
 
       if (body.questions !== undefined) {
         const totalPoints = body.questions.reduce((sum, q) => sum + (q.points ?? 1), 0);
@@ -877,6 +947,14 @@ router.put("/assignments/:id", async (req, res) => {
     });
 
     res.json({ message: "تم تحديث الواجب بنجاح" });
+
+    logActivity({
+      req,
+      userId: req.session.teacherId!,
+      userRole: "teacher",
+      action: "edit_homework",
+      details: { assignmentId: id },
+    });
   } catch (error: any) {
     req.log.error({ err: error }, "Update assignment error");
     if (error instanceof z.ZodError) {
@@ -1070,6 +1148,14 @@ router.delete("/assignments/:id", async (req, res) => {
     await db.delete(gameHistoryTable).where(eq(gameHistoryTable.assignmentId, id));
     await db.delete(assignmentsTable).where(eq(assignmentsTable.id, id));
     res.json({ message: "تم حذف الواجب بنجاح" });
+
+    logActivity({
+      req,
+      userId: req.session.teacherId!,
+      userRole: "teacher",
+      action: "delete_homework",
+      details: { assignmentId: id, title: assignment.title },
+    });
   } catch (error: any) {
     req.log.error({ err: error }, "Delete assignment error");
     res.status(500).json({ message: "خطأ في حذف الواجب" });

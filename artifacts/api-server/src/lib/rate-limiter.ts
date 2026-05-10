@@ -18,6 +18,19 @@ export const registerLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+// Throttles TTS audio generation to prevent abuse and cost overruns.
+// Each request hits the OpenAI audio model which is expensive. Sized so a
+// classroom of ~40 students from one NAT can each load a listening activity
+// 2-3 times within a minute, but blocks scripted enumeration.
+export const ttsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "طلبات صوت كثيرة جداً. يرجى الانتظار قليلاً ثم المحاولة." },
+  skip: (req) => !!req.session?.teacherId,
+});
+
 // Throttles unauthenticated/public reads of assignment metadata, class
 // rosters, and similar discovery endpoints so a single IP can't enumerate or
 // scrape large amounts of data. Caps are sized for school NAT — many students
@@ -43,6 +56,17 @@ export const imageUploadLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: { message: "تم تجاوز عدد عمليات رفع الصور المسموح بها. حاول بعد دقيقة." },
+});
+
+// Throttles presentation export endpoints (PPTX, future PDF). Generation
+// is heavy (large file build, image downloads). 5 / minute per IP is plenty
+// for a teacher exporting a deck or two while still blocking scripted abuse.
+export const presentationExportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "طلبات تصدير كثيرة جداً. يرجى الانتظار دقيقة ثم إعادة المحاولة." },
 });
 
 // Generic limiter for sensitive write actions that don't already have a

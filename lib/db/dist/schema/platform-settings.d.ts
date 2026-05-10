@@ -1,3 +1,10 @@
+export declare const DEFAULT_PRESENTATION_LIMITS: {
+    readonly maxImagesRegular: 5;
+    readonly maxFilesRegular: 1;
+    readonly maxSlidesRegular: 20;
+    readonly maxSizeMbRegular: 50;
+};
+export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
 export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "platform_settings";
     schema: undefined;
@@ -293,6 +300,103 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
         }, {}, {}>;
         proAiForAll: import("drizzle-orm/pg-core").PgColumn<{
             name: "pro_ai_for_all";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        presentationsProForAll: import("drizzle-orm/pg-core").PgColumn<{
+            name: "presentations_pro_for_all";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        presentationLimits: import("drizzle-orm/pg-core").PgColumn<{
+            name: "presentation_limits";
+            tableName: "platform_settings";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: {
+                readonly maxImagesRegular: 5;
+                readonly maxFilesRegular: 1;
+                readonly maxSlidesRegular: 20;
+                readonly maxSizeMbRegular: 50;
+            };
+            driverParam: unknown;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: {
+                readonly maxImagesRegular: 5;
+                readonly maxFilesRegular: 1;
+                readonly maxSlidesRegular: 20;
+                readonly maxSizeMbRegular: 50;
+            };
+        }>;
+        showQuranSection: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_quran_section";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        showGeneralCertificates: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_general_certificates";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        showMaraqui: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_maraqui";
             tableName: "platform_settings";
             dataType: "boolean";
             columnType: "PgBoolean";

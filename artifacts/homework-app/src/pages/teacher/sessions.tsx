@@ -112,7 +112,7 @@ export default function TeacherSessions() {
   const queryClient = useQueryClient();
 
   const { data: user, isLoading: loadingUser, error: userError } =
-    useGetCurrentTeacher({ query: { retry: false } });
+    useGetCurrentTeacher({ query: { retry: false } as any });
 
   useEffect(() => {
     if (userError) setLocation("/login");
@@ -126,7 +126,7 @@ export default function TeacherSessions() {
     query: {
       enabled: !!user,
       refetchOnWindowFocus: true,
-    },
+    } as any,
   });
 
   const sortedSessions = useMemo(() => {

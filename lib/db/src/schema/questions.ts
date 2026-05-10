@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, real, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, real, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { assignmentsTable } from "./assignments";
@@ -20,7 +20,9 @@ export const questionsTable = pgTable("questions", {
   skill: text("skill"),
   allowMultipleAnswers: boolean("allow_multiple_answers").notNull().default(false),
   repeatQuestion: boolean("repeat_question").notNull().default(false),
-});
+}, (t) => ({
+  assignmentIdx: index("questions_assignment_idx").on(t.assignmentId),
+}));
 
 export const insertQuestionSchema = createInsertSchema(questionsTable).omit({ id: true });
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;

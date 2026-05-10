@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, HelpCircle, ChevronDown } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
@@ -75,6 +76,21 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export default function FaqPage() {
   const { lang } = useI18n();
+  useSeo(
+    lang === "ar"
+      ? {
+          title: "الأسئلة الشائعة | منصة حصاد — HasadX",
+          description:
+            "أجوبة سريعة عن أكثر الأسئلة شيوعًا حول منصة حصاد التعليمية: العروض التفاعلية، المسابقات التعليمية، الواجبات، وإنشاء العروض بالذكاء الاصطناعي.",
+          canonicalPath: "/faq",
+        }
+      : {
+          title: "FAQ | HasadX — Arabic interactive teaching platform",
+          description:
+            "Common questions about HasadX: interactive presentations, quizzes, assignments and AI-generated lessons.",
+          canonicalPath: "/faq",
+        },
+  );
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   return (
@@ -102,6 +118,16 @@ export default function FaqPage() {
             ))}
           </div>
 
+          <div className="mt-10 p-5 rounded-xl border border-border/50 bg-muted/20 text-center">
+            <p className="text-sm text-muted-foreground mb-3">لم تجد إجابة لسؤالك؟</p>
+            <Link
+              href="/feedback"
+              className="inline-flex items-center gap-1.5 text-sm font-bold px-4 py-2 rounded-lg transition-colors text-white"
+              style={{ background: "#1a4731" }}
+            >
+              تواصل معنا
+            </Link>
+          </div>
         </div>
       </div>
     </Layout>

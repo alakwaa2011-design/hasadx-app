@@ -27,6 +27,11 @@ interface Player {
   finishRank?: number;
   streak: number;
   currentQuestionIdx: number;
+  currentPhase?: number;
+  boostAvailable?: number;
+  multiplierAvailable?: number;
+  boostArmed?: boolean;
+  multiplierArmed?: boolean;
 }
 
 function RocketIcon({ color, size = 30 }: { color: string; size?: number }) {
@@ -95,6 +100,18 @@ export default function RocketHost() {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
   const [hostQuestion, setHostQuestion] = useState<{ index: number; text: string } | null>(null);
+  // Race timer (seconds remaining). null = unknown / not started.
+  const [gameTimeLeft, setGameTimeLeft] = useState<number | null>(null);
+
+  // Race timer countdown (display only — server is authoritative).
+  useEffect(() => {
+    if (phase !== "racing" || gameTimeLeft === null) return;
+    if (gameTimeLeft <= 0) return;
+    const intv = setInterval(() => {
+      setGameTimeLeft((s) => (s === null ? null : Math.max(0, s - 1)));
+    }, 1000);
+    return () => clearInterval(intv);
+  }, [phase, gameTimeLeft === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sound (host)
   const playLaunchSound = () => {
@@ -175,10 +192,14 @@ export default function RocketHost() {
       (data: {
         advanceMode?: "per_player" | "host_sync";
         question?: { index: number; text: string };
+        gameDuration?: number;
+        totalDurationSecs?: number;
       }) => {
         setPhase("racing");
         if (data.advanceMode) setAdvanceMode(data.advanceMode);
         if (data.question) setHostQuestion({ index: data.question.index, text: data.question.text });
+        const dur = data.totalDurationSecs ?? data.gameDuration ?? null;
+        if (typeof dur === "number") setGameTimeLeft(dur);
       },
     );
     socket.on("rocket:sync-question", (q: { index: number; text: string }) => {
@@ -195,6 +216,7 @@ export default function RocketHost() {
       setPlayers(data.players);
       setAdvanceMode("per_player");
       setHostQuestion(null);
+      setGameTimeLeft(null);
     });
 
     return () => {
@@ -519,7 +541,7 @@ export default function RocketHost() {
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "minmax(360px, 480px) 1fr", gap: 16 }}>
-            {/* Race track */}
+            {/* Race track — camera follows the leader so the field always fits */}
             <div style={{
               position: "relative",
               height: "calc(100dvh - 100px)",
@@ -529,49 +551,73 @@ export default function RocketHost() {
               overflow: "hidden",
               padding: "16px 8px",
             }}>
+              {/* Race timer chip + leader-altitude label */}
               <div style={{
-                position: "absolute", top: 16, left: 0, right: 0, height: 4,
-                background: `repeating-linear-gradient(90deg, ${GOLD} 0 12px, #fff 12px 24px)`,
-                boxShadow: `0 0 16px ${GOLD}80`,
-              }} />
-              <div style={{ position: "absolute", top: 22, left: 0, right: 0, textAlign: "center", color: GOLD, fontSize: 11, fontWeight: 800, letterSpacing: 2 }}>
-                🏁 {ar ? "خط النهاية" : "FINISH"}
-              </div>
-
-              {sortedPlayers.map((p, idx) => {
-                const xPos = (idx / Math.max(1, sortedPlayers.length - 1)) * 80 + 10;
-                return (
-                  <motion.div
-                    key={p.name}
-                    animate={{ bottom: `${p.altitude}%`, left: `${xPos}%` }}
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 50, damping: 20 }}
-                    style={{
-                      position: "absolute",
-                      transform: "translateX(-50%)",
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                    }}
-                  >
-                    <span style={{
-                      fontSize: 9, fontWeight: 800, color: "#fff",
-                      background: "rgba(0,0,0,0.6)",
-                      padding: "1px 5px", borderRadius: 999,
-                      whiteSpace: "nowrap", maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis",
-                    }}>
-                      {p.avatar} {p.name}{p.finished && p.finishRank ? ` 🏆${p.finishRank}` : ""}
-                    </span>
-                    <RocketIcon color={p.rocketColor} size={26} />
-                  </motion.div>
-                );
-              })}
-
-              <div style={{
-                position: "absolute", left: 4, top: 16, bottom: 8, width: 16,
-                display: "flex", flexDirection: "column", justifyContent: "space-between",
-                color: "rgba(255,255,255,0.4)", fontSize: 9, fontWeight: 700,
+                position: "absolute", top: 12, left: 0, right: 0,
+                display: "flex", justifyContent: "center", alignItems: "center", gap: 10,
+                pointerEvents: "none",
               }}>
-                {[100, 75, 50, 25, 0].map(v => <span key={v}>{v}%</span>)}
+                {gameTimeLeft !== null && (() => {
+                  const t = gameTimeLeft;
+                  const danger = t <= 30;
+                  const warn = !danger && t <= 60;
+                  const bg = danger ? "rgba(220,38,38,0.95)" : warn ? "rgba(217,165,33,0.95)" : "rgba(0,0,0,0.55)";
+                  const mm = Math.floor(t / 60);
+                  const ss = t % 60;
+                  return (
+                    <span style={{
+                      padding: "4px 10px", borderRadius: 999,
+                      background: bg, color: "#fff",
+                      border: `1.5px solid ${danger ? "#ff4040" : warn ? GOLD : "rgba(255,255,255,0.2)"}`,
+                      fontSize: 13, fontWeight: 900, fontVariantNumeric: "tabular-nums",
+                      boxShadow: danger ? "0 0 14px rgba(255,40,40,0.5)" : "none",
+                    }}>
+                      ⏱️ {mm}:{String(ss).padStart(2, "0")}
+                    </span>
+                  );
+                })()}
               </div>
+
+              {(() => {
+                // Camera follows the leader; map each player's altitude relative
+                // to the leader so they sit between ~6%-92% on the visible track.
+                const leaderAlt = sortedPlayers.length > 0
+                  ? Math.max(...sortedPlayers.map(p => p.altitude))
+                  : 0;
+                const visibleSpan = 80; // altitude units that fit on screen
+                return sortedPlayers.map((p, idx) => {
+                  const xPos = (idx / Math.max(1, sortedPlayers.length - 1)) * 80 + 10;
+                  const diff = p.altitude - leaderAlt; // <= 0
+                  const bottomPct = Math.max(4, Math.min(92, 88 + (diff / visibleSpan) * 80));
+                  const powerBadgeCount = (p.boostAvailable ?? 0) + (p.multiplierAvailable ?? 0);
+                  return (
+                    <motion.div
+                      key={p.name}
+                      animate={{ bottom: `${bottomPct}%`, left: `${xPos}%` }}
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 50, damping: 20 }}
+                      style={{
+                        position: "absolute",
+                        transform: "translateX(-50%)",
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, color: "#fff",
+                        background: "rgba(0,0,0,0.6)",
+                        padding: "1px 5px", borderRadius: 999,
+                        whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis",
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                      }}>
+                        {p.avatar} {p.name}
+                        {powerBadgeCount > 0 && <span style={{ color: GOLD, fontWeight: 900 }}>⚡{powerBadgeCount}</span>}
+                        {p.finished && p.finishRank ? ` 🏆${p.finishRank}` : ""}
+                      </span>
+                      <RocketIcon color={p.rocketColor} size={26} />
+                    </motion.div>
+                  );
+                });
+              })()}
             </div>
 
             {/* Live leaderboard */}

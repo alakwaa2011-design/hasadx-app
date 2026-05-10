@@ -5,11 +5,14 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { RegisterTeacherBodyRole } from "./registerTeacherBodyRole";
 export interface RegisterTeacherBody {
     name: string;
     email?: string;
     phone?: string;
     /** @minLength 6 */
     password: string;
+    /** Public registration role; admin role can only be granted internally. */
+    role?: RegisterTeacherBodyRole;
 }
 //# sourceMappingURL=registerTeacherBody.d.ts.map

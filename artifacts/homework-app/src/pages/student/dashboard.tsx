@@ -33,6 +33,7 @@ import {
   CircleDot,
   DollarSign,
   Route,
+  Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -88,6 +89,7 @@ export default function StudentDashboard() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [recentScores, setRecentScores] = useState<RecentScore[]>([]);
+  const [activityDays, setActivityDays] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
@@ -96,6 +98,8 @@ export default function StudentDashboard() {
   const [startingGameId, setStartingGameId] = useState<number | null>(null);
   const [botDialogAssignment, setBotDialogAssignment] = useState<PublicAssignment | null>(null);
   const [botCount, setBotCount] = useState(4);
+  // Live "what's available right now" — open rooms count.
+  const [liveCount, setLiveCount] = useState<number | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/assignments`)
@@ -103,6 +107,27 @@ export default function StudentDashboard() {
       .then(a => setAssignments(Array.isArray(a) ? a.slice(0, 12) : []))
       .catch(() => {})
       .finally(() => setAssignmentsLoading(false));
+  }, []);
+
+  // Poll active-rooms count so students see what's available right now.
+  useEffect(() => {
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/public/active-games-count`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!cancelled) setLiveCount(typeof data?.count === "number" ? data.count : 0);
+      } catch {
+        // silent
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 20000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, []);
 
   useEffect(() => {
@@ -115,9 +140,14 @@ export default function StudentDashboard() {
         if (!r.ok) return [];
         return r.json();
       }).catch(() => []),
-    ]).then(([profileData, scoresData]) => {
+      fetch(`${API_BASE}/api/student-auth/activity-days`, { credentials: "include" }).then(async (r) => {
+        if (!r.ok) return { days: [] };
+        return r.json();
+      }).catch(() => ({ days: [] })),
+    ]).then(([profileData, scoresData, daysData]) => {
       if (profileData) setStudent(profileData);
       setRecentScores(Array.isArray(scoresData) ? scoresData : []);
+      setActivityDays(Array.isArray(daysData?.days) ? daysData.days : []);
     }).catch(() => setLocation("/student/login")).finally(() => setLoading(false));
   }, [setLocation]);
 
@@ -164,13 +194,39 @@ export default function StudentDashboard() {
     return (
       <Layout>
         <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1E4D35" }} />
         </div>
       </Layout>
     );
   }
 
   if (!student) return null;
+
+  // Compute daily streak from activity-days
+  const streakInfo = (() => {
+    const set = new Set(activityDays);
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+    const today = new Date();
+    const playedToday = set.has(fmt(today));
+    let streak = 0;
+    const cursor = new Date(today);
+    if (!playedToday) cursor.setDate(cursor.getDate() - 1);
+    for (let i = 0; i < 60; i++) {
+      if (set.has(fmt(cursor))) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return { streak, playedToday };
+  })();
+  const arDigit = (n: number) => n.toLocaleString(lang === "ar" ? "ar-EG" : "en");
 
   const games = [
     {
@@ -259,25 +315,68 @@ export default function StudentDashboard() {
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-blue-50 to-background dark:from-blue-950/30 dark:to-background">
+      <div className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-emerald-50/40 to-background dark:from-emerald-950/20 dark:to-background">
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-8 animate-in fade-in duration-300">
-            <Card className="p-6 sm:p-8 bg-gradient-to-br from-blue-600 to-cyan-600 text-white border-0 shadow-xl">
-              <div className="flex items-center justify-between">
+            <Card
+              className="p-6 sm:p-8 text-white border-0 shadow-xl relative overflow-hidden"
+              style={{ background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 60%,#1E4D35 100%)" }}
+            >
+              {/* gold accent corner */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  top: -40,
+                  [dir === "rtl" ? "left" : "right"]: -40,
+                  width: 160,
+                  height: 160,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(232,168,14,0.30) 0%, transparent 70%)",
+                }}
+              />
+              <div className="flex items-center justify-between relative">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <GraduationCap className="w-7 h-7" />
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}
+                  >
+                    <GraduationCap className="w-7 h-7" style={{ color: "#E8A80E" }} />
                   </div>
-                  <div>
-                    <h1 className="text-2xl font-extrabold">
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-extrabold truncate">
                       {lang === "ar" ? `مرحباً، ${student.displayName}!` : `Welcome, ${student.displayName}!`}
                     </h1>
-                    <p className="text-white/70 text-sm mt-0.5">@{student.username}</p>
+                    <p className="text-white/75 text-sm mt-0.5">@{student.username}</p>
+                    {/* Daily streak chip */}
+                    <div
+                      className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full"
+                      style={{
+                        background: streakInfo.streak > 0 ? "rgba(232,168,14,0.20)" : "rgba(255,255,255,0.10)",
+                        border: `1px solid ${streakInfo.streak > 0 ? "rgba(232,168,14,0.45)" : "rgba(255,255,255,0.18)"}`,
+                      }}
+                    >
+                      <Flame
+                        className="w-3.5 h-3.5"
+                        style={{ color: streakInfo.streak > 0 ? "#E8A80E" : "rgba(255,255,255,0.65)" }}
+                        fill={streakInfo.streak > 0 && streakInfo.playedToday ? "#E8A80E" : "none"}
+                      />
+                      <span className="text-xs font-bold text-white">
+                        {streakInfo.streak === 0
+                          ? (lang === "ar" ? "ابدأ سلسلتك اليوم!" : "Start your streak!")
+                          : streakInfo.playedToday
+                            ? (lang === "ar"
+                                ? `${arDigit(streakInfo.streak)} ${streakInfo.streak === 1 ? "يوم" : streakInfo.streak === 2 ? "يومان" : "أيام"} متتالية`
+                                : `${streakInfo.streak} day${streakInfo.streak === 1 ? "" : "s"} streak`)
+                            : (lang === "ar"
+                                ? `${arDigit(streakInfo.streak)} ${streakInfo.streak === 1 ? "يوم" : streakInfo.streak === 2 ? "يومان" : "أيام"} • العب اليوم!`
+                                : `${streakInfo.streak} day${streakInfo.streak === 1 ? "" : "s"} • play today!`)}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors shrink-0"
                   title={lang === "ar" ? "تسجيل الخروج" : "Logout"}
                 >
                   <LogOut className="w-5 h-5" />
@@ -290,37 +389,46 @@ export default function StudentDashboard() {
             <InstallAppButton variant="card" />
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-8 animate-in fade-in duration-300 delay-100">
-            <Card className="p-5 text-center">
-              <div className="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center mx-auto mb-3">
-                <Trophy className="w-6 h-6 text-yellow-600" />
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8 animate-in fade-in duration-300 delay-100">
+            <Card className="p-4 sm:p-5 text-center hover:shadow-md transition-shadow">
+              <div
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mx-auto mb-2.5 sm:mb-3"
+                style={{ background: "rgba(232,168,14,0.12)" }}
+              >
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: "#C9920A" }} />
               </div>
-              <p className="text-2xl font-extrabold text-foreground">
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground">
                 {student.totalScore.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 {lang === "ar" ? "إجمالي النقاط" : "Total Score"}
               </p>
             </Card>
-            <Card className="p-5 text-center">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mx-auto mb-3">
-                <Gamepad2 className="w-6 h-6 text-blue-600" />
+            <Card className="p-4 sm:p-5 text-center hover:shadow-md transition-shadow">
+              <div
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mx-auto mb-2.5 sm:mb-3"
+                style={{ background: "rgba(30,77,53,0.10)" }}
+              >
+                <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: "#1E4D35" }} />
               </div>
-              <p className="text-2xl font-extrabold text-foreground">
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground">
                 {student.gamesPlayed.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 {lang === "ar" ? "الألعاب المُنجزة" : "Games Played"}
               </p>
             </Card>
-            <Card className="p-5 text-center">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
-                <Medal className="w-6 h-6 text-amber-600" />
+            <Card className="p-4 sm:p-5 text-center hover:shadow-md transition-shadow">
+              <div
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center mx-auto mb-2.5 sm:mb-3"
+                style={{ background: "rgba(232,168,14,0.12)" }}
+              >
+                <Medal className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: "#E8A80E" }} />
               </div>
-              <p className="text-2xl font-extrabold text-foreground">
+              <p className="text-xl sm:text-2xl font-extrabold text-foreground">
                 #{student.rank.toLocaleString(lang === "ar" ? "ar-EG" : "en")}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 {lang === "ar" ? "الترتيب" : "Rank"}
               </p>
             </Card>
@@ -329,7 +437,7 @@ export default function StudentDashboard() {
           {recentScores.length > 0 && (
             <div className="mb-8 animate-in fade-in duration-300 delay-150">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-500" />
+                <Clock className="w-5 h-5" style={{ color: "#1E4D35" }} />
                 {lang === "ar" ? "آخر النتائج" : "Recent Results"}
               </h2>
               <Card className="divide-y divide-border">
@@ -360,9 +468,122 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* Live competitions available right now (open rooms + general quizzes) */}
+          <div className="animate-in fade-in duration-300 delay-100 mb-8">
+            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-500" />
+              {lang === "ar" ? "مسابقات متاحة الآن" : "Available Now"}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Open live rooms — join via PIN */}
+              <Link href="/game/join">
+                <Card
+                  className="p-5 cursor-pointer group h-full relative overflow-hidden border-0 text-white transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 60%,#1E4D35 100%)",
+                    boxShadow: "0 10px 30px -10px rgba(30,77,53,0.5)",
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="absolute pointer-events-none"
+                    style={{
+                      top: -40,
+                      [dir === "rtl" ? "left" : "right"]: -40,
+                      width: 140,
+                      height: 140,
+                      borderRadius: "50%",
+                      background:
+                        "radial-gradient(circle, rgba(232,168,14,0.30) 0%, transparent 70%)",
+                    }}
+                  />
+                  <div className="relative flex items-center gap-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative"
+                      style={{
+                        background: "rgba(232,168,14,0.22)",
+                        border: "1px solid rgba(232,168,14,0.45)",
+                      }}
+                    >
+                      <Users className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                      <span
+                        className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse"
+                        style={{ background: "#22c55e", boxShadow: "0 0 0 3px rgba(34,197,94,0.25)" }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-bold tracking-wide text-white/70 uppercase mb-0.5">
+                        {lang === "ar" ? "غرف مفتوحة الآن" : "Open rooms now"}
+                      </div>
+                      <div className="text-2xl font-black tabular-nums leading-tight">
+                        {liveCount === null
+                          ? "…"
+                          : (liveCount as number).toLocaleString(lang === "ar" ? "ar-EG" : "en")}
+                      </div>
+                      <div className="text-xs text-white/80 mt-0.5">
+                        {lang === "ar"
+                          ? "ادخل برمز PIN للانضمام لمسابقة"
+                          : "Enter a PIN to join a contest"}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+
+              {/* General Quizzes — ready quiz bank, always available */}
+              <Link href="/islamic">
+                <Card
+                  className="p-5 cursor-pointer group h-full relative overflow-hidden border-0 text-white transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: "linear-gradient(135deg,#064e3b 0%,#059669 100%)",
+                    boxShadow: "0 10px 30px -10px rgba(5,150,105,0.5)",
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="absolute pointer-events-none"
+                    style={{
+                      top: -40,
+                      [dir === "rtl" ? "left" : "right"]: -40,
+                      width: 140,
+                      height: 140,
+                      borderRadius: "50%",
+                      background:
+                        "radial-gradient(circle, rgba(255,255,255,0.22) 0%, transparent 70%)",
+                    }}
+                  />
+                  <div className="relative flex items-center gap-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "rgba(255,255,255,0.18)",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                      }}
+                    >
+                      <BookOpen className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-bold tracking-wide text-white/80 uppercase mb-0.5">
+                        {lang === "ar" ? "بنك مسابقات" : "Quiz bank"}
+                      </div>
+                      <div className="text-base font-extrabold leading-tight">
+                        {lang === "ar" ? "مسابقات عامة" : "General Quizzes"}
+                      </div>
+                      <div className="text-xs text-white/85 mt-0.5">
+                        {lang === "ar"
+                          ? "أسئلة جاهزة في مختلف المجالات"
+                          : "Ready questions across topics"}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            </div>
+          </div>
+
           <div className="animate-in fade-in duration-300 delay-200">
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500" />
+              <Star className="w-5 h-5" style={{ color: "#E8A80E" }} />
               {lang === "ar" ? "الألعاب المتاحة" : "Available Games"}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -370,13 +591,18 @@ export default function StudentDashboard() {
                 const Icon = game.icon;
                 return (
                   <Link key={game.href} href={game.href}>
-                    <Card className="p-5 hover:shadow-lg transition-all cursor-pointer group hover:border-blue-300 dark:hover:border-blue-700">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${game.color}`}>
-                          <Icon className="w-6 h-6" />
+                    <Card
+                      className="p-4 sm:p-5 hover:shadow-lg transition-all cursor-pointer group h-full"
+                      style={{ borderColor: "rgba(0,0,0,0.08)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(232,168,14,0.45)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; }}
+                    >
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 ${game.color}`}>
+                          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <div>
-                          <h3 className="font-bold text-foreground group-hover:text-blue-600 transition-colors">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-foreground text-sm sm:text-base leading-tight transition-colors group-hover:text-[#1E4D35]">
                             {game.title}
                           </h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -442,7 +668,8 @@ export default function StudentDashboard() {
                         <button
                           onClick={() => setBotDialogAssignment(a)}
                           disabled={startingGameId === a.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xs hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-white font-bold text-xs hover:opacity-90 transition-opacity shadow-sm disabled:opacity-60"
+                          style={{ background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 100%)" }}
                         >
                           {startingGameId === a.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -508,7 +735,10 @@ export default function StudentDashboard() {
               </button>
 
               <div className="flex flex-col items-center text-center gap-1 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2 shadow-lg">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-2 shadow-lg"
+                  style={{ background: "linear-gradient(135deg,#E8A80E 0%,#C9920A 100%)" }}
+                >
                   <Zap className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-lg font-extrabold text-foreground">
@@ -521,8 +751,11 @@ export default function StudentDashboard() {
 
               <div className="bg-muted/50 rounded-xl p-4 mb-5 border border-border/60">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
-                    <Bot className="w-5 h-5 text-blue-500" />
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(30,77,53,0.12)" }}
+                  >
+                    <Bot className="w-5 h-5" style={{ color: "#1E4D35" }} />
                   </div>
                   <p className="font-bold text-foreground text-sm">
                     {lang === "ar" ? "هل تريد منافسة لاعبين وهميين؟" : "Want to compete with bot players?"}
@@ -556,7 +789,8 @@ export default function StudentDashboard() {
                 <button
                   onClick={() => handleStartGame(botDialogAssignment.id, true, botCount)}
                   disabled={startingGameId === botDialogAssignment.id}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-60"
+                  style={{ background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 100%)" }}
                 >
                   {startingGameId === botDialogAssignment.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -568,7 +802,8 @@ export default function StudentDashboard() {
                 <button
                   onClick={() => handleStartGame(botDialogAssignment.id, false, 0)}
                   disabled={startingGameId === botDialogAssignment.id}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-60"
+                  style={{ background: "#E8A80E", color: "#1E4D35" }}
                 >
                   {startingGameId === botDialogAssignment.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

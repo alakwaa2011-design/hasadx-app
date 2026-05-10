@@ -8,6 +8,7 @@ import {
 import type { Assignment } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import { Link, useLocation } from "wouter";
 import {
   Plus,
@@ -53,11 +54,14 @@ import {
   Home,
   Star,
   X,
-  Presentation,
   Rocket,
   ChevronLeft,
   Lock,
   ExternalLink,
+  FileText,
+  BookOpen,
+  Monitor,
+  Brain,
 } from "lucide-react";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -92,6 +96,7 @@ type TabId =
   | "competitive"
   | "tools"
   | "presentations"
+  | "islamic"
   | "videos"
   | "stats"
   | "students";
@@ -128,6 +133,7 @@ export default function TeacherDashboard() {
   );
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [gameSetupModal, setGameSetupModal] = useState<number | null>(null);
+  const [gameTargetClass, setGameTargetClass] = useState<string>(() => getRememberedTargetClass());
   const [gameMode, setGameMode] = useState<GameMode>("solo");
   const [teamCount, setTeamCount] = useState(2);
   const [customTeamNames, setCustomTeamNames] = useState<string[]>([
@@ -138,7 +144,6 @@ export default function TeacherDashboard() {
     "",
     "",
   ]);
-  const [statsOpen, setStatsOpen] = useState(false);
   /** Assignment ID awaiting live-game choice (وميض default), then branch to setup / navigate */
   const [assignmentGamePickerId, setAssignmentGamePickerId] = useState<number | null>(
     null,
@@ -151,11 +156,11 @@ export default function TeacherDashboard() {
     data: user,
     isLoading: isUserLoading,
     error: userError,
-  } = useGetCurrentTeacher({ query: { retry: false } });
+  } = useGetCurrentTeacher({ query: { retry: false } as any });
 
   const { data: assignmentsRaw, isLoading: isAssignmentsLoading } =
     useListAssignments(user ? { teacherId: user.id } : undefined, {
-      query: { enabled: !!user },
+      query: { enabled: !!user } as any,
     });
   const assignments: Assignment[] = Array.isArray(assignmentsRaw)
     ? assignmentsRaw
@@ -200,6 +205,16 @@ export default function TeacherDashboard() {
     if (!user) return;
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const allowed = ["overview", "assignments", "shared", "competitive", "tools", "videos", "stats", "students"] as const;
+    type AllowedTab = typeof allowed[number];
+    if (tabParam && (allowed as readonly string[]).includes(tabParam)) {
+      setActiveTab(tabParam as AllowedTab);
+      params.delete("tab");
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+    }
     if (params.get("liveGame") !== "1") return;
     setActiveTab("competitive");
     setOpenWameethDeepLink(true);
@@ -301,9 +316,10 @@ export default function TeacherDashboard() {
     if (choice === "hack") {
       setCreatingGameForId(id);
       const socket = getSocket();
+      const remembered = getRememberedTargetClass();
       socket.emit(
         "teacher:create-game",
-        { assignmentId: id, hackMode: true, gameMode: "solo" },
+        { assignmentId: id, hackMode: true, gameMode: "solo", targetClass: remembered || undefined },
         (res: { pin?: string; error?: string }) => {
           setCreatingGameForId(null);
           if (res.error) {
@@ -336,6 +352,7 @@ export default function TeacherDashboard() {
         gameMode,
         teamCount: gameMode === "teams" ? teamCount : undefined,
         customTeamNames: hasCustomNames ? validCustomNames : undefined,
+        targetClass: gameTargetClass || undefined,
       },
       (res: { pin?: string; error?: string }) => {
         setCreatingGameForId(null);
@@ -418,7 +435,7 @@ export default function TeacherDashboard() {
     {
       id: "competitive",
       label: lang === "ar" ? "الألعاب التعليمية" : "Educational Games",
-      shortLabel: lang === "ar" ? "ألعاب" : "Games",
+      shortLabel: lang === "ar" ? "ابدأ مسابقة" : "Start Quiz",
       icon: <Trophy className="w-4 h-4" />,
     },
     {
@@ -431,7 +448,8 @@ export default function TeacherDashboard() {
       id: "presentations",
       label: lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
       shortLabel: lang === "ar" ? "العروض" : "Decks",
-      icon: <Presentation className="w-4 h-4" />,
+      icon: <Monitor className="w-4 h-4" />,
+      href: "/teacher/presentations",
     },
     {
       id: "videos",
@@ -480,18 +498,6 @@ export default function TeacherDashboard() {
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.18 }}
       >
-        {activeTab === "overview" && (
-          <DashboardOverview
-            user={user}
-            assignments={assignments}
-            isLoading={isAssignmentsLoading}
-            lang={lang}
-            setLocation={setLocation}
-            setActiveTab={setActiveTab}
-            startGame={openGameSetup}
-            creatingGameForId={creatingGameForId}
-          />
-        )}
         {activeTab === "assignments" && (
           <AssignmentsTab
             assignments={assignments}
@@ -535,6 +541,7 @@ export default function TeacherDashboard() {
             t={t}
             lang={lang}
             setLocation={setLocation}
+            user={user}
             mcqAssignments={mcqAssignments}
             creatingGameForId={creatingGameForId}
             startGame={openGameSetup}
@@ -559,9 +566,6 @@ export default function TeacherDashboard() {
             lang={lang}
           />
         )}
-        {activeTab === "presentations" && (
-          <PresentationsInlineTab lang={lang} setLocation={setLocation} />
-        )}
         {activeTab === "students" && (
           <StudentsInlineTab lang={lang} setLocation={setLocation} />
         )}
@@ -574,21 +578,38 @@ export default function TeacherDashboard() {
       {/* ── Desktop sidebar layout ── */}
       <div className="hidden lg:flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-56 shrink-0 border-e border-border/60 bg-card/60 backdrop-blur-sm flex flex-col py-6 px-3 sticky top-0 h-screen overflow-y-auto">
-          <div className="mb-6 px-2">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-              {isAr ? "مرحباً" : "Hello"}
-            </p>
-            <p className="font-black text-foreground text-sm truncate">
-              {user?.name}
-            </p>
-          </div>
+        <aside className="w-56 shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto" style={{background: "#1E4D35", borderInlineEnd: "none", paddingTop: 12}}>
+          {/* Logo intentionally removed — the main top header already shows the Hasad logo. */}
+          {/* User greeting + Create CTA — shown only on the main
+              "الرئيسية" (overview) tab so sub-tabs feel cleaner. */}
+          {activeTab === "overview" && (
+            <>
+              <div style={{padding: "10px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10}}>
+                <div style={{width: 30, height: 30, background: "rgba(255,255,255,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.2)"}}>
+                  {(user?.name || "?").charAt(0)}
+                </div>
+                <div style={{flex: 1, minWidth: 0}}>
+                  <p style={{fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
+                  <p style={{fontSize: 12, fontWeight: 800, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
+                </div>
+              </div>
+              <div style={{padding: "12px 12px 8px"}}>
+                <button
+                  onClick={() => setLocation("/teacher/new")}
+                  style={{width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 14px", background: "#E8A80E", color: "#1E4D35", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 3px 12px rgba(232,168,14,0.35)"}}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
+                </button>
+              </div>
+            </>
+          )}
           <nav className="flex-1 space-y-0.5">
             {/* ── Section: Main ── */}
-            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
               {isAr ? "الرئيسية" : "Main"}
             </p>
-            {tabs.filter(t => ["overview","assignments","shared","competitive","stats","students"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["overview","assignments","shared","competitive","islamic","stats","students"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -597,19 +618,16 @@ export default function TeacherDashboard() {
                     if (tab.href) setLocation(tab.href);
                     else setActiveTab(tab.id);
                   }}
-                  className={cn(
-                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
-                    active ? "text-white shadow-md" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  style={active ? { background: "#225739" } : undefined}
+                  className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
+                  style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
                 >
                   {!active && (
-                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
                   )}
                   {active && (
-                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
                   )}
-                  <span className={cn("relative [&_svg]:w-4 [&_svg]:h-4 shrink-0 transition-colors", active ? "text-white" : "text-muted-foreground group-hover:text-foreground")}>
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#fff" : "rgba(255,255,255,0.55)"}}>
                     {tab.icon}
                   </span>
                   <span className="relative truncate">{tab.label}</span>
@@ -621,10 +639,10 @@ export default function TeacherDashboard() {
             <div className="my-3 border-t border-border/50" />
 
             {/* ── Section: Content ── */}
-            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+            <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
               {isAr ? "المحتوى" : "Content"}
             </p>
-            {tabs.filter(t => ["presentations","videos","tools"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["tools","presentations","videos"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -633,19 +651,16 @@ export default function TeacherDashboard() {
                     if (tab.href) setLocation(tab.href);
                     else setActiveTab(tab.id);
                   }}
-                  className={cn(
-                    "relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group",
-                    active ? "text-white shadow-md" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  style={active ? { background: "#225739" } : undefined}
+                  className="relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all overflow-hidden group"
+                  style={active ? { background: "rgba(255,255,255,0.15)", color: "#fff" } : { color: "rgba(255,255,255,0.65)" }}
                 >
                   {!active && (
-                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(34,87,57,0.07)" }} />
+                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(255,255,255,0.07)" }} />
                   )}
                   {active && (
-                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#D9A521" }} />
+                    <span className={cn("absolute top-1/2 -translate-y-1/2 w-1 h-5 rounded-full", isAr ? "end-0" : "start-0")} style={{ background: "#E8A80E" }} />
                   )}
-                  <span className={cn("relative [&_svg]:w-4 [&_svg]:h-4 shrink-0 transition-colors", active ? "text-white" : "text-muted-foreground group-hover:text-foreground")}>
+                  <span className="relative [&_svg]:w-4 [&_svg]:h-4 shrink-0" style={{color: active ? "#fff" : "rgba(255,255,255,0.55)"}}>
                     {tab.icon}
                   </span>
                   <span className="relative truncate">{tab.label}</span>
@@ -653,30 +668,24 @@ export default function TeacherDashboard() {
               );
             })}
           </nav>
-          <div className="mt-4 pt-4 border-t border-border/50">
-            <button
-              onClick={() => setLocation("/teacher/new")}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all hover:opacity-90 hover:shadow-lg"
-              style={{ background: "linear-gradient(135deg, #225739 0%, #2d7050 100%)", color: "#FCFAF8" }}
-            >
-              <Plus className="w-4 h-4" />
-              {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
-            </button>
-          </div>
+
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 min-w-0 py-8 px-6 xl:px-10 2xl:px-14">
-          <div className="mb-6">
-            <GuestDraftImportBanner />
-          </div>
-          {/* Tab heading */}
-          <div className="mb-5">
-            <h1 className="text-2xl font-extrabold text-foreground">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h1>
-          </div>
-          {/* Prominent stat cards */}
+        <main className="flex-1 min-w-0" style={{display: activeTab === "overview" ? "flex" : "block", flexDirection: "column"}}>
+          {activeTab !== "overview" && (
+            <div className="py-8 px-6 xl:px-10 2xl:px-14">
+              <div className="mb-6">
+                <GuestDraftImportBanner />
+              </div>
+              {/* Tab heading */}
+              <div className="mb-5">
+                <h1 className="text-2xl font-extrabold text-foreground">
+                  {tabs.find((t) => t.id === activeTab)?.label}
+                </h1>
+              </div>
+          {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
+          {!["tools", "competitive", "students", "shared"].includes(activeTab) && (
           <div className="grid grid-cols-3 gap-3 mb-7">
             <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -720,182 +729,73 @@ export default function TeacherDashboard() {
               </div>
             </Link>
           </div>
+          )}
           {tabContent}
+            </div>
+          )}
+          {activeTab === "overview" && (
+            <DashboardOverview
+              user={user}
+              assignments={assignments}
+              isLoading={isAssignmentsLoading}
+              lang={lang}
+              setLocation={setLocation}
+              setActiveTab={setActiveTab}
+              startGame={openGameSetup}
+              creatingGameForId={creatingGameForId}
+            />
+          )}
         </main>
       </div>
 
-      {/* ── Mobile layout (< lg) ── */}
-      <div className="lg:hidden">
-        <div className="px-4 pt-5 pb-3">
-          <div className="mb-4">
+      {/* ── Mobile overview ── */}
+      {activeTab === "overview" && (
+        <div className="lg:hidden pb-28">
+          <DashboardOverview
+            user={user}
+            assignments={assignments}
+            isLoading={isAssignmentsLoading}
+            lang={lang}
+            setLocation={setLocation}
+            setActiveTab={setActiveTab}
+            startGame={openGameSetup}
+            creatingGameForId={creatingGameForId}
+          />
+        </div>
+      )}
+
+      {/* ── Mobile layout (< lg) — non-overview tabs ──
+          Header (logo + name + bell) is rendered in the global layout, and tab
+          switching happens via the fixed bottom nav, so this view only needs a
+          simple page title + the tab content. */}
+      <div className={activeTab === "overview" ? "hidden" : "lg:hidden"}>
+        <div className="px-4 pt-4 pb-2">
+          <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
-          {/* Compact mobile header */}
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium">
-                {isAr ? "مرحباً،" : "Hello,"}
-              </p>
-              <h1 className="text-xl font-extrabold text-foreground leading-tight">
-                {user?.name}
-              </h1>
-            </div>
-            <button
-              onClick={() => setLocation("/teacher/new")}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold text-sm shadow-md shadow-primary/25 hover:opacity-90 transition-all shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              {isAr ? "أنشئ نشاطًا" : "Create"}
-            </button>
-          </div>
-
-          {/* Collapsible stats */}
-          <button
-            onClick={() => setStatsOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-card border border-border/60 rounded-2xl mb-4 transition-colors hover:bg-muted/30"
-          >
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5">
-                <BookText className="w-3.5 h-3.5 text-primary" />
-                <span className="font-black text-foreground text-sm">
-                  {assignments?.length || 0}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isAr ? "واجب" : "assign."}
-                </span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-orange-500" />
-                <span className="font-black text-foreground text-sm">
-                  {totalSubmissions}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {isAr ? "تسليم" : "subm."}
-                </span>
-              </span>
-            </div>
-            <ChevronDown
-              className={cn(
-                "w-4 h-4 text-muted-foreground transition-transform",
-                statsOpen && "rotate-180",
-              )}
-            />
-          </button>
-
-          <AnimatePresence>
-            {statsOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden mb-4"
-              >
-                <div className="grid grid-cols-2 gap-2 pb-1">
-                  <Link href="/teacher/students" className="col-span-2">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-2xl hover:border-primary/40 transition-colors">
-                      <div className="p-2 bg-green-500/10 rounded-xl text-green-600 shrink-0">
-                        <Users className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-sm text-foreground">
-                          {isAr ? "إدارة الطلاب" : "Manage Students"}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {isAr ? "عرض وإضافة الطلاب" : "View & add students"}
-                        </p>
-                      </div>
-                      <BackArrow className="w-4 h-4 text-muted-foreground shrink-0" />
-                    </div>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setStatsOpen(false);
-                      setActiveTab("stats");
-                    }}
-                    className="flex items-center gap-2 px-3 py-2.5 bg-card border border-border/60 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    <BarChart3 className="w-4 h-4 text-blue-500" />
-                    {isAr ? "ملخص الأداء" : "Performance"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setStatsOpen(false);
-                      setActiveTab("tools");
-                    }}
-                    className="flex items-center gap-2 px-3 py-2.5 bg-card border border-border/60 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                  >
-                    <Sparkles className="w-4 h-4 text-violet-500" />
-                    {isAr ? "الأدوات" : "Tools"}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Mobile section picker — horizontal scrollable chip bar */}
-          <div className="-mx-4 px-4 mb-3">
-            <p className="text-[11px] font-bold text-muted-foreground mb-1.5">
-              {isAr ? "اختر القسم:" : "Choose section:"}
-            </p>
-            <div
-              className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x scrollbar-hide"
-              style={{ scrollbarWidth: "none" }}
-              dir={isAr ? "rtl" : "ltr"}
-            >
-              {tabs.map((tab) => {
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => {
-                      if (tab.href) setLocation(tab.href);
-                      else setActiveTab(tab.id);
-                    }}
-                    className={cn(
-                      "shrink-0 snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold border transition-all",
-                      active
-                        ? "text-white border-transparent shadow-md"
-                        : "bg-card text-muted-foreground border-border/50 hover:text-foreground",
-                    )}
-                    style={active ? { background: "#225739", borderColor: "#225739" } : undefined}
-                  >
-                    <span className="[&_svg]:w-3.5 [&_svg]:h-3.5">
-                      {tab.icon}
-                    </span>
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-extrabold text-base text-foreground flex items-center gap-2">
-              <span className="[&_svg]:w-4 [&_svg]:h-4 text-primary">
-                {tabs.find((t) => t.id === activeTab)?.icon}
-              </span>
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h2>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-muted/40"
-            >
-              <Home className="w-3.5 h-3.5" />
-              {isAr ? "الرئيسية" : "Home"}
-            </Link>
-          </div>
+          <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
+            <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
+              {tabs.find((t) => t.id === activeTab)?.icon}
+            </span>
+            {tabs.find((t) => t.id === activeTab)?.label}
+          </h1>
         </div>
 
         {/* Tab content */}
         <div className="px-4 pb-28">{tabContent}</div>
+      </div>
 
-        {/* Fixed mobile bottom nav */}
-        <nav
-          className="fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/60 flex items-stretch"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-          dir={isAr ? "rtl" : "ltr"}
-        >
-          {tabs.map((tab) => {
+      {/* Fixed mobile bottom nav — visible on all teacher dashboard tabs (< lg) */}
+      <nav
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-card/95 backdrop-blur-md border-t border-border/60 flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        dir={isAr ? "rtl" : "ltr"}
+      >
+        {tabs
+          .filter((tab) =>
+            ["overview", "assignments", "competitive", "tools", "islamic"].includes(tab.id),
+          )
+          .map((tab) => {
             const active = activeTab === tab.id;
             return (
               <button
@@ -904,29 +804,42 @@ export default function TeacherDashboard() {
                   if (tab.href) setLocation(tab.href);
                   else setActiveTab(tab.id);
                 }}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-1 transition-all relative",
-                  active ? "text-white" : "text-muted-foreground hover:text-foreground",
+                  "flex-1 flex flex-col items-center justify-center gap-1 py-3 px-0.5 transition-all relative",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {/* Active indicator dot at top */}
                 {active && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full" style={{ background: "#D9A521" }} />
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-7 h-[3px] rounded-full"
+                    style={{ background: "#D9A521" }}
+                  />
                 )}
                 <span
-                  className="flex items-center justify-center w-9 h-9 rounded-xl transition-all [&_svg]:w-4 [&_svg]:h-4"
+                  className={cn(
+                    "flex items-center justify-center w-12 h-12 rounded-xl transition-all [&_svg]:w-6 [&_svg]:h-6",
+                    active ? "text-white" : "",
+                  )}
                   style={active ? { background: "#225739" } : undefined}
                 >
                   {tab.icon}
                 </span>
-                <span className="text-[10px] font-semibold leading-none">
+                <span
+                  className={cn(
+                    "text-[11px] leading-none",
+                    active ? "font-bold" : "font-semibold",
+                  )}
+                >
                   {tab.shortLabel}
                 </span>
               </button>
             );
           })}
-        </nav>
-      </div>
+      </nav>
 
       {/* ── Modal: اختيار لعبة من الواجب ── */}
       <AnimatePresence>
@@ -1209,6 +1122,14 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
               )}
+              <div className="mb-5">
+                <ClassSelector
+                  value={gameTargetClass}
+                  onChange={setGameTargetClass}
+                  accent="#a855f7"
+                />
+              </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setGameSetupModal(null)}
@@ -1534,32 +1455,30 @@ function CompetitiveTab({
   t,
   lang,
   setLocation,
+  user,
   mcqAssignments,
   creatingGameForId,
   startGame,
   initialOpenWameeth,
   onConsumeWameethDeepLink,
 }: any) {
-  const [gameHistory, setGameHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
   const [showKnowledgeRace, setShowKnowledgeRace] = useState(false);
   const [showWameethModal, setShowWameethModal] = useState(false);
   const wameethPickerRef = useRef<HTMLDivElement | null>(null);
-  const [expandedGameId, setExpandedGameId] = useState<number | null>(null);
-  const [detailsById, setDetailsById] = useState<Record<number, any>>({});
-  const [loadingDetail, setLoadingDetail] = useState(false);
-  const [showAllGames, setShowAllGames] = useState(false);
+  const [showMaraquiPublic, setShowMaraquiPublic] = useState(false);
   const BASE = import.meta.env.VITE_API_URL || "";
 
+  const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
+  const maraquiVisible = isAdmin || showMaraquiPublic;
+
   useEffect(() => {
-    fetch(`${BASE}/api/game-history`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setGameHistory(data);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingHistory(false));
-  }, []);
+    fetch(`${BASE}/api/public/settings`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d) => {
+        if (d?.showMaraqui !== undefined) setShowMaraquiPublic(Boolean(d.showMaraqui));
+      });
+  }, [BASE]);
 
   useEffect(() => {
     if (!initialOpenWameeth) return;
@@ -1579,10 +1498,12 @@ function CompetitiveTab({
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
     else if (type === "rocket_race") setLocation("/game/rocket/create");
+    else if (type === "wheel_of_fortune") setLocation("/game/wheel/create");
     else if (type === "hotseat") setLocation("/game/hotseat/create");
     else if (type === "video_lesson")
       setLocation("/teacher/video-lesson/new");
     else if (type === "flag_quiz") setLocation("/game/flags");
+    else if (type === "capitals") setLocation("/game/capitals");
     else if (type === "color_game") setLocation("/game/color");
     else if (type === "memory_match") setLocation("/game/memory");
     else if (type === "multiplication") setLocation("/game/multiply");
@@ -1594,10 +1515,23 @@ function CompetitiveTab({
       setLocation("/game/million/team-setup");
     else if (type === "hack") setLocation("/game/hack");
     else if (type === "letrly") setLocation("/game/letrly");
+    else if (type === "arena") setLocation("/game/arena");
   };
 
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
+    {
+      icon: "⚔️",
+      title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
+      desc:
+        lang === "ar"
+          ? "مسابقة فريقين على شاشة كبيرة — 6 فئات، 6 بطاقات لكل فئة (200 و 400 و 600)، وسائل مساعدة استراتيجية، ومناسبة للكبار والمؤسسات والصفوف."
+          : "Two-team big-screen quiz — 6 categories with 6 cards each (200/400/600), strategic helpers, suitable for adults, institutions, and classrooms.",
+      color: "from-emerald-700 to-amber-600",
+      type: "arena",
+      available: true,
+      pill: lang === "ar" ? "شاشة كبيرة · جديد" : "Big screen · New",
+    },
     {
       icon: "⚡",
       title:
@@ -1625,6 +1559,18 @@ function CompetitiveTab({
       type: "tug_of_war",
       available: true,
       pill: lang === "ar" ? "جماعي" : "Team play",
+    },
+    {
+      icon: "🎡",
+      title: lang === "ar" ? "عجلة الحظ" : "Wheel of Fortune",
+      desc:
+        lang === "ar"
+          ? "أدر العجلة على شاشة الفصل، اقرأ السؤال، ومنح النقاط للفرق — أسئلة جاهزة بالذكاء الاصطناعي."
+          : "Spin the wheel on the class display, read the question, and award team points — AI-generated segments.",
+      color: "from-emerald-700 to-yellow-600",
+      type: "wheel_of_fortune",
+      available: true,
+      pill: lang === "ar" ? "عرض صفّي" : "Class display",
     },
     {
       icon: "🚀",
@@ -1702,7 +1648,7 @@ function CompetitiveTab({
   ];
 
   /** تحديات فردية — للتمرّن أو مسابقات الزوار بدون غرفة صفّية مباشرة */
-  const soloGames = [
+  const soloGamesAll = [
     {
       icon: "🪜",
       title: lang === "ar" ? "مَراقي" : "Maraqui",
@@ -1714,6 +1660,7 @@ function CompetitiveTab({
       type: "maraqui",
       available: true,
       pill: lang === "ar" ? "مراحل" : "Stages",
+      _gated: "maraqui" as const,
     },
     {
       icon: "🎨",
@@ -1736,6 +1683,18 @@ function CompetitiveTab({
           : "Geography recall — match flags to countries against the clock.",
       color: "from-sky-500 to-indigo-600",
       type: "flag_quiz",
+      available: true,
+      pill: lang === "ar" ? "جغرافيا" : "Geo",
+    },
+    {
+      icon: "🌍",
+      title: lang === "ar" ? "عواصم البلدان" : "World Capitals",
+      desc:
+        lang === "ar"
+          ? "اختبر معلوماتك الجغرافية بتحديد عواصم دول العالم — منافردة أو مع الآخرين."
+          : "Test your geography knowledge by naming world capitals — solo or multiplayer.",
+      color: "from-teal-500 to-cyan-600",
+      type: "capitals",
       available: true,
       pill: lang === "ar" ? "جغرافيا" : "Geo",
     },
@@ -1800,6 +1759,10 @@ function CompetitiveTab({
       pill: lang === "ar" ? "كلمة يومية" : "Daily word",
     },
   ];
+
+  const soloGames = soloGamesAll.filter(
+    (g) => !("_gated" in g) || g._gated !== "maraqui" || maraquiVisible,
+  );
 
   const GameCatalogSection = ({
     title,
@@ -1908,6 +1871,31 @@ function CompetitiveTab({
             : "A structured game library: live class modes like leading platforms, plus solo brain challenges."}
         </p>
       </div>
+
+      {/* مسابقات عامة — بطاقة وصول سريع في أعلى التبويب */}
+      <Card
+        onClick={() => setLocation("/islamic")}
+        className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-primary/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-teal-500/10 via-card to-cyan-500/5"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shrink-0">
+            <Globe className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg font-black text-foreground">
+              {lang === "ar" ? "مسابقات عامة" : "Public Quizzes"}
+            </h3>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
+              {lang === "ar"
+                ? "مكتبة مسابقات جاهزة للزوار والطلاب — شاركها برابط أو رمز."
+                : "Ready-made quizzes for visitors and students — share by link or PIN."}
+            </p>
+          </div>
+          <ChevronLeft
+            className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+          />
+        </div>
+      </Card>
 
       <GameCatalogSection
         title={
@@ -2141,207 +2129,6 @@ function CompetitiveTab({
         delayOffset={liveGames.length}
       />
 
-      {gameHistory.length > 0 && (
-        <div>
-          <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-purple-600" />
-            {t.dashboard.recentGames}
-          </h3>
-          <div className="space-y-3">
-            {(showAllGames ? gameHistory : gameHistory.slice(0, 5)).map((g: any, i: number) => (
-              <motion.div
-                key={g.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card
-                  className={`p-4 cursor-pointer transition-all ${expandedGameId === g.id ? "border-purple-400 shadow-lg" : "hover:border-purple-400/50"}`}
-                  onClick={() => {
-                    if (expandedGameId === g.id) {
-                      setExpandedGameId(null);
-                    } else {
-                      setExpandedGameId(g.id);
-                      if (!detailsById[g.id]) {
-                        setLoadingDetail(true);
-                        fetch(`${BASE}/api/game-history/${g.id}`, {
-                          credentials: "include",
-                        })
-                          .then((r) => r.json())
-                          .then((d) =>
-                            setDetailsById((prev) => ({ ...prev, [g.id]: d })),
-                          )
-                          .catch(() => {})
-                          .finally(() => setLoadingDetail(false));
-                      }
-                    }
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 shrink-0">
-                        <Gamepad2 className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-foreground text-sm truncate">
-                          {g.assignmentTitle}
-                        </h4>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                          <span className="inline-flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {g.playerCount} {t.dashboard.gameHistoryPlayers}
-                          </span>
-                          <span>•</span>
-                          <span>
-                            {g.questionCount} {t.dashboard.gameHistoryQuestions}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-end shrink-0">
-                      {g.winnerName ? (
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            {t.dashboard.gameHistoryWinner}
-                          </p>
-                          <p className="font-bold text-sm text-foreground flex items-center gap-1 justify-end">
-                            {g.winnerAvatar && <span>{g.winnerAvatar}</span>}
-                            {g.winnerName}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          {t.dashboard.gameHistoryNoWinner}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-2 text-[10px] text-muted-foreground/60">
-                    {new Date(g.createdAt).toLocaleDateString(
-                      lang === "ar" ? "ar-KW" : "en-US",
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    )}
-                  </div>
-                  <AnimatePresence>
-                    {expandedGameId === g.id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="mt-4 pt-4 border-t border-border">
-                          {loadingDetail && !detailsById[g.id] ? (
-                            <div className="flex items-center justify-center py-6">
-                              <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
-                            </div>
-                          ) : detailsById[g.id]?.detailedResults ? (
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                                <BarChart3 className="w-4 h-4 text-purple-600" />
-                                {lang === "ar"
-                                  ? "نتائج اللاعبين"
-                                  : "Player Results"}
-                              </h4>
-                              <div className="space-y-2">
-                                {(
-                                  detailsById[g.id].detailedResults as any[]
-                                ).map((p: any, idx: number) => (
-                                  <div
-                                    key={idx}
-                                    className="bg-muted/50 rounded-xl p-3"
-                                  >
-                                    <div className="flex items-center justify-between mb-2">
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${idx === 0 ? "bg-yellow-400 text-yellow-900" : idx === 1 ? "bg-gray-300 dark:bg-slate-600 text-gray-800 dark:text-slate-100" : idx === 2 ? "bg-orange-400 text-orange-900" : "bg-muted text-muted-foreground"}`}
-                                        >
-                                          {p.rank}
-                                        </span>
-                                        <span className="text-lg">
-                                          {p.avatar}
-                                        </span>
-                                        <span className="font-bold text-sm">
-                                          {p.name}
-                                        </span>
-                                        {p.teamName && (
-                                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold">
-                                            {p.teamName}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-end">
-                                        <span className="font-black text-purple-600">
-                                          {p.score}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground mx-1">
-                                          |
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                          {p.totalCorrect}/{p.totalQuestions}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    {p.answers && p.answers.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-1">
-                                        {p.answers.map(
-                                          (a: any, aIdx: number) => (
-                                            <span
-                                              key={aIdx}
-                                              className={`w-5 h-5 rounded text-[10px] flex items-center justify-center font-bold ${a.correct ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}
-                                            >
-                                              {a.correct ? "✓" : "✗"}
-                                            </span>
-                                          ),
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              {lang === "ar"
-                                ? "لا توجد نتائج تفصيلية لهذه اللعبة"
-                                : "No detailed results for this game"}
-                            </p>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Card>
-              </motion.div>
-            ))}
-            {!showAllGames && gameHistory.length > 5 && (
-              <button
-                onClick={() => setShowAllGames(true)}
-                className="w-full py-2.5 bg-muted/40 border border-border/60 rounded-xl text-xs font-semibold text-primary hover:bg-muted/70 hover:border-primary/40 transition-all mt-1"
-              >
-                {lang === "ar"
-                  ? `عرض الكل (${gameHistory.length})`
-                  : `View all (${gameHistory.length})`}
-              </button>
-            )}
-            {showAllGames && gameHistory.length > 5 && (
-              <button
-                onClick={() => setShowAllGames(false)}
-                className="w-full py-2.5 bg-muted/30 border border-border/40 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-              >
-                {lang === "ar" ? "عرض أقل" : "Show less"}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2354,8 +2141,11 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
 
   const toolGroups = [
     {
-      groupId: "content",
-      groupTitle: isAr ? "إنشاء المحتوى" : "Content Creation",
+      // AI generators grouped at the top so the teacher sees every
+      // "create something with AI" entry point side-by-side. Renders
+      // in the same 4-up grid as the other groups so the cards line up.
+      groupId: "ai-tools",
+      groupTitle: isAr ? "أدوات الذكاء الاصطناعي" : "AI Tools",
       groupIcon: <Sparkles className="w-4 h-4" />,
       tools: [
         {
@@ -2363,8 +2153,60 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           title: t.dashboard.toolAiGenerator,
           desc: t.dashboard.toolAiGeneratorDesc,
           accent: BRAND.gold,
-          href: "/teacher/new",
+          href: "/teacher/new/assignment",
         },
+        {
+          icon: <BookOpen className="w-6 h-6" />,
+          title: isAr ? "مولّد خطط الدروس" : "Lesson Plan Generator",
+          desc: isAr
+            ? "خطّط حصّة كاملة بأهداف وأنشطة وتقويم بمساعدة الذكاء الاصطناعي"
+            : "Plan a full class with objectives, activities, and assessment using AI",
+          accent: BRAND.gold,
+          href: "/teacher/lesson-plans/create",
+        },
+        {
+          icon: <FileText className="w-6 h-6" />,
+          title: isAr ? "مولّد ورقة العمل" : "Worksheet Generator",
+          desc: isAr
+            ? "صمّم ورقة عمل احترافية للطباعة بمساعدة الذكاء الاصطناعي"
+            : "Design a print-ready worksheet with AI assistance",
+          accent: BRAND.gold,
+          href: "/teacher/worksheets/create",
+        },
+        {
+          icon: <Brain className="w-6 h-6" />,
+          title: isAr ? "مولّد الخرائط الذهنية" : "Mind Map Generator",
+          desc: isAr
+            ? "حوّل أي موضوع أو درس إلى خريطة ذهنية بصرية رائعة بضغطة واحدة"
+            : "Turn any topic or lesson into a stunning visual mind map in one click",
+          accent: BRAND.gold,
+          href: "/teacher/mindmap/create",
+        },
+        {
+          icon: <Video className="w-6 h-6" />,
+          title: isAr ? "درس فيديو تفاعلي" : "Interactive Video Lesson",
+          desc: isAr
+            ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
+            : "Create a lesson with auto-pausing questions during the video",
+          accent: BRAND.green,
+          href: "/teacher/video-lesson/new",
+        },
+        {
+          icon: <Monitor className="w-6 h-6" />,
+          title: isAr ? "العروض التفاعلية" : "Interactive Presentations",
+          desc: isAr
+            ? "أنشئ عروضاً تقديمية تفاعلية لطلابك في الفصل"
+            : "Build interactive slide decks for your classroom",
+          accent: BRAND.green,
+          href: "/teacher/presentations",
+        },
+      ],
+    },
+    {
+      groupId: "content",
+      groupTitle: isAr ? "تنظيم المحتوى" : "Content Library",
+      groupIcon: <Database className="w-4 h-4" />,
+      tools: [
         {
           icon: <Database className="w-6 h-6" />,
           title: t.dashboard.toolQuestionBank,
@@ -2386,28 +2228,12 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           accent: BRAND.green,
           href: "/teacher/categories",
         },
-      ],
-    },
-    {
-      groupId: "teaching",
-      groupTitle: isAr ? "أدوات التدريس" : "Teaching Tools",
-      groupIcon: <Video className="w-4 h-4" />,
-      tools: [
-        {
-          icon: <Video className="w-6 h-6" />,
-          title: isAr ? "درس فيديو تفاعلي" : "Interactive Video Lesson",
-          desc: isAr
-            ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
-            : "Create a lesson with auto-pausing questions during the video",
-          accent: BRAND.green,
-          href: "/teacher/video-lesson/new",
-        },
         {
           icon: <Library className="w-6 h-6" />,
           title: isAr ? "مكتبة المعلم" : "Teacher Library",
           desc: isAr
-            ? "ارفع وأدر كتبك وعروضك ووثائقك المهمة"
-            : "Upload and manage your books, presentations & docs",
+            ? "ارفع وأدر كتبك وأوراق عملك وخطط دروسك"
+            : "Upload and manage your books, worksheets & lesson plans",
           accent: BRAND.green,
           href: "/teacher/library",
         },
@@ -2441,6 +2267,13 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
       groupTitle: isAr ? "أخرى" : "Other",
       groupIcon: <MessageSquarePlus className="w-4 h-4" />,
       tools: [
+        {
+          icon: <MessageSquarePlus className="w-6 h-6" />,
+          title: t.dashboard.toolFeedback,
+          desc: t.dashboard.toolFeedbackDesc,
+          accent: BRAND.green,
+          href: "/feedback",
+        },
         ...(user?.isAdmin
           ? [
               {
@@ -2494,7 +2327,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
             <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {group.tools.map((tool) => {
               const delay = globalIdx++ * 0.04;
               const isGold = tool.accent === "#D9A521";
@@ -2540,7 +2373,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
                         e.stopPropagation();
                         tool.href && setLocation(tool.href);
                       }}
-                      className="relative w-full py-1.5 rounded-lg text-xs font-bold transition-all duration-200 hover:opacity-90"
+                      className="relative w-full py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm sm:text-xs font-bold transition-all duration-200 hover:opacity-90"
                       style={{
                         background: tool.accent,
                         color: isGold ? "#1a3020" : "#FCFAF8",
@@ -2555,81 +2388,6 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-// ─── Presentations Inline Tab ────────────────────────────
-function PresentationsInlineTab({ lang, setLocation }: { lang: string; setLocation: (p: string) => void }) {
-  const isAr = lang === "ar";
-  const BASE = (import.meta as any).env?.VITE_API_URL || "";
-  const [presentations, setPresentations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`${BASE}/api/presentations`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : { presentations: [] })
-      .then((d) => {
-        const list = Array.isArray(d) ? d : (d?.presentations ?? []);
-        setPresentations(list.slice(0, 8));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
-            <Presentation className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="font-extrabold text-foreground text-base">{isAr ? "العروض التفاعلية" : "Interactive Presentations"}</h2>
-            <p className="text-xs text-muted-foreground">{isAr ? "أنشئ عروضاً درسية بالذكاء الاصطناعي" : "Create AI-powered lesson decks"}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setLocation("/teacher/presentations/new")}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
-          style={{ background: "#225739", color: "#FCFAF8" }}
-        >
-          <Plus className="w-4 h-4" />
-          {isAr ? "عرض جديد" : "New"}
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-muted/40 animate-pulse" />)}
-        </div>
-      ) : presentations.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl">
-          <Presentation className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="font-bold text-foreground mb-1">{isAr ? "لا توجد عروض بعد" : "No presentations yet"}</p>
-          <p className="text-sm text-muted-foreground mb-4">{isAr ? "أنشئ أول عرض تفاعلي بالذكاء الاصطناعي" : "Create your first AI presentation"}</p>
-          <button onClick={() => setLocation("/teacher/presentations/new")} className="px-5 py-2 rounded-xl text-sm font-bold text-white" style={{ background: "#225739" }}>
-            {isAr ? "ابدأ الآن" : "Get started"}
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {presentations.map((p: any) => (
-            <button key={p.id} onClick={() => setLocation(`/teacher/presentations/${p.id}`)}
-              className="group text-start p-4 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden relative"
-            >
-              <div className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl" style={{ background: "#225739" }} />
-              <Presentation className="w-6 h-6 mb-2" style={{ color: "#225739" }} />
-              <p className="font-bold text-xs text-foreground line-clamp-2">{p.title || (isAr ? "بدون عنوان" : "Untitled")}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{p.slideCount || 0} {isAr ? "شريحة" : "slides"}</p>
-            </button>
-          ))}
-        </div>
-      )}
-
-      <button onClick={() => setLocation("/teacher/presentations")} className="w-full py-2.5 rounded-xl border border-border/60 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all">
-        {isAr ? "← عرض كل العروض وإدارتها" : "View & manage all presentations →"}
-      </button>
     </div>
   );
 }
@@ -2650,19 +2408,19 @@ function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
             <Users className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="font-extrabold text-foreground text-base">{isAr ? "صفوفي وطلابي" : "My Classes & Students"}</h2>
-            <p className="text-xs text-muted-foreground">{isAr ? "إدارة الصفوف والطلاب" : "Manage classes and students"}</p>
+          <div className="min-w-0">
+            <h2 className="font-extrabold text-foreground text-base truncate">{isAr ? "صفوفي وطلابي" : "My Classes & Students"}</h2>
+            <p className="text-xs text-muted-foreground truncate">{isAr ? "إدارة الصفوف والطلاب" : "Manage classes and students"}</p>
           </div>
         </div>
         <button
           onClick={() => setLocation("/teacher/students")}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+          className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold transition-all hover:opacity-90 shrink-0"
           style={{ background: "#225739", color: "#FCFAF8" }}
         >
           <Users className="w-4 h-4" />
@@ -2671,22 +2429,22 @@ function StudentsInlineTab({ lang, setLocation }: { lang: string; setLocation: (
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[1,2,3,4].map(i => <div key={i} className="h-20 rounded-xl bg-muted/40 animate-pulse" />)}
         </div>
       ) : classes.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl">
           <Users className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
           <p className="font-bold text-foreground mb-1">{isAr ? "لا توجد صفوف بعد" : "No classes yet"}</p>
-          <button onClick={() => setLocation("/teacher/students")} className="px-5 py-2 rounded-xl text-sm font-bold text-white mt-2" style={{ background: "#225739" }}>
+          <button onClick={() => setLocation("/teacher/students")} className="px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white mt-2" style={{ background: "#225739" }}>
             {isAr ? "أضف صفاً جديداً" : "Add class"}
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {classes.map((cls: any) => (
             <button key={cls.name} onClick={() => setLocation(`/teacher/students?class=${encodeURIComponent(cls.name)}`)}
-              className="group text-start p-4 rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden relative"
+              className="group text-start p-4 min-h-[44px] rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden relative"
             >
               <div className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl" style={{ background: "#225739" }} />
               <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}>
@@ -2806,7 +2564,7 @@ function StatsTab({
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8">
         {statCards.map((card, i) => (
           <motion.div
             key={i}
@@ -3242,7 +3000,7 @@ function SharedTab({
                     <button
                       onClick={(e) => startGame(a.id, e)}
                       disabled={creatingGameForId === a.id}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-xs shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 whitespace-nowrap"
+                      className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-xs shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 whitespace-nowrap"
                     >
                       <Gamepad2 className="w-3.5 h-3.5" />
                       {creatingGameForId === a.id
@@ -3257,7 +3015,7 @@ function SharedTab({
                   <button
                     onClick={(e) => importAssignment(a.id, e)}
                     disabled={importingIds.has(a.id) || importedIds.has(a.id)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs border-2 transition-all whitespace-nowrap ${importedIds.has(a.id) ? "border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" : "border-primary/40 hover:border-primary text-primary hover:bg-primary/5"} disabled:opacity-60`}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] rounded-xl font-bold text-xs border-2 transition-all whitespace-nowrap ${importedIds.has(a.id) ? "border-green-400 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" : "border-primary/40 hover:border-primary text-primary hover:bg-primary/5"} disabled:opacity-60`}
                   >
                     {importingIds.has(a.id) ? (
                       <>
@@ -3303,7 +3061,7 @@ function Section({
     <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4 hover:bg-muted/40 transition-colors min-h-[44px]"
       >
         <div className="flex items-center gap-2.5">
           <span className="font-semibold text-foreground text-sm">{title}</span>
@@ -3327,7 +3085,7 @@ function Section({
             className="overflow-hidden"
           >
             <div className="border-t border-border/60" />
-            <div className="px-5 py-4">{children}</div>
+            <div className="px-3 py-3 sm:px-5 sm:py-4">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3392,9 +3150,9 @@ function AssignmentRow({
       onDragStart={onDragStart}
       className={`rounded-xl border transition-all duration-150 ${isExpanded ? "border-border bg-muted/30" : "border-border/60 hover:border-border"} cursor-grab active:cursor-grabbing`}
     >
-      <div className="w-full flex items-center gap-2 px-3 py-2.5">
+      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 min-h-[56px]">
         <span
-          className="shrink-0 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors"
+          className="hidden sm:inline-flex shrink-0 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors p-2 -m-2"
           title={lang === "ar" ? "اسحب إلى مجموعة" : "Drag to group"}
         >
           <GripVertical className="w-3.5 h-3.5" />
@@ -3402,7 +3160,7 @@ function AssignmentRow({
         <button
           type="button"
           onClick={onToggleFavorite}
-          className="shrink-0 transition-all hover:scale-110 active:scale-95"
+          className="shrink-0 transition-all hover:scale-110 active:scale-95 inline-flex items-center justify-center min-w-[44px] min-h-[44px]"
           title={
             lang === "ar"
               ? isFavorite
@@ -3414,12 +3172,12 @@ function AssignmentRow({
           }
         >
           <Star
-            className={`w-3.5 h-3.5 transition-colors ${isFavorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30 hover:text-amber-400"}`}
+            className={`w-4 h-4 transition-colors ${isFavorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30 hover:text-amber-400"}`}
           />
         </button>
         <button
           onClick={onToggle}
-          className="flex-1 min-w-0 flex items-center gap-2 text-start"
+          className="flex-1 min-w-0 min-h-[44px] flex items-center gap-2 text-start"
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -3456,7 +3214,7 @@ function AssignmentRow({
               startGame(assignment.id, e);
             }}
             disabled={creatingGameForId === assignment.id}
-            className="shrink-0 text-xs font-bold px-3 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm"
+            className="shrink-0 text-xs font-bold px-3 py-2 min-h-[44px] min-w-[44px] bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-sm"
             title={t.dashboard.liveGame}
           >
             <Gamepad2 className="w-3.5 h-3.5" />
@@ -3469,7 +3227,7 @@ function AssignmentRow({
         )}
         <button
           onClick={onToggle}
-          className="shrink-0 p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
+          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-muted/60 transition-colors"
           aria-label="toggle"
         >
           <ChevronDown
@@ -3487,12 +3245,12 @@ function AssignmentRow({
             className="overflow-hidden"
           >
             <div className="border-t border-border/60" />
-            <div className="px-4 py-3 flex flex-wrap gap-2">
+            <div className="px-3 py-3 sm:px-4 flex flex-wrap gap-2">
               <button
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}`)
                 }
-                className="text-xs font-medium px-3 py-1.5 bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 {lang === "ar" ? "تعديل" : "Edit"}
@@ -3501,7 +3259,7 @@ function AssignmentRow({
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}`)
                 }
-                className="text-xs font-medium px-3 py-1.5 bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 {lang === "ar" ? "النتائج" : "Results"}
@@ -3520,14 +3278,14 @@ function AssignmentRow({
                     toast.error(lang === "ar" ? "تعذر النسخ" : "Copy failed");
                   }
                 }}
-                className="text-xs font-medium px-3 py-1.5 bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5" />
                 {lang === "ar" ? "نسخ رابط الواجب" : "Copy assignment link"}
               </button>
               <button
                 onClick={() => onShare(assignment.id)}
-                className="text-xs font-medium px-3 py-1.5 bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 {lang === "ar" ? "مشاركة" : "Share"}
@@ -3560,7 +3318,7 @@ function AssignmentRow({
                     );
                   }
                 }}
-                className="text-xs font-medium px-3 py-1.5 bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
               >
                 <Copy className="w-3.5 h-3.5" />
                 {lang === "ar" ? "تكرار" : "Duplicate"}
@@ -3571,7 +3329,7 @@ function AssignmentRow({
                   e.stopPropagation();
                   openGroupMenu();
                 }}
-                className={`text-xs font-medium px-3 py-1.5 border rounded-lg transition-colors inline-flex items-center gap-1.5 ${
+                className={`text-xs font-medium px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 ${
                   collections?.some((c: any) =>
                     c.assignmentIds?.includes(assignment.id),
                   )
@@ -3654,7 +3412,7 @@ function AssignmentRow({
                         <button
                           onClick={() => createGroupAndAdd(assignment.id)}
                           disabled={!creatingGroupName?.trim() || savingGroup}
-                          className="p-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-50 shrink-0"
+                          className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors disabled:opacity-50 shrink-0"
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
@@ -3665,7 +3423,7 @@ function AssignmentRow({
                 )}
               <button
                 onClick={() => deleteAssignment(assignment.id)}
-                className="text-xs font-medium px-3 py-1.5 bg-card text-red-500 border border-border rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
+                className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-red-500 border border-border rounded-lg hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex items-center gap-1.5 ms-auto"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {lang === "ar" ? "حذف" : "Delete"}
@@ -4049,40 +3807,11 @@ function AssignmentsTabRender({
 
   return (
     <div className="space-y-4">
-      {/* ── AI Presentations promo card ── */}
-      <button
-        onClick={() => setLocation("/teacher/presentations")}
-        className="group relative overflow-hidden w-full text-start rounded-2xl bg-gradient-to-r from-emerald-500 via-green-600 to-amber-500 p-4 sm:p-5 shadow-lg hover:shadow-2xl hover:scale-[1.01] transition-all"
-      >
-        <div className="absolute -top-8 -end-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-8 -start-8 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none" />
-        <div className="relative flex items-center gap-4">
-          <div className="text-4xl sm:text-5xl drop-shadow-lg shrink-0">🎬</div>
-          <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur px-2 py-0.5 rounded-full text-white text-[10px] font-bold mb-1">
-              ✨ {lang === "ar" ? "جديد · ذكاء اصطناعي" : "New · AI"}
-            </div>
-            <div className="text-white font-extrabold text-base sm:text-lg leading-tight">
-              {lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations"}
-            </div>
-            <div className="text-white/90 text-xs sm:text-sm mt-0.5 line-clamp-2">
-              {lang === "ar"
-                ? "أنشئ عرضاً درسياً كاملاً بالذكاء الاصطناعي مع ألعاب حصاد التفاعلية في ثوانٍ."
-                : "Generate a complete lesson deck with Hasad games in seconds."}
-            </div>
-          </div>
-          <div className="hidden sm:flex shrink-0 bg-white text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-bold group-hover:scale-105 transition-transform">
-            {lang === "ar" ? "ابدأ" : "Start"}
-          </div>
-        </div>
-      </button>
-
       {/* ── Assignments Section with create button in header ── */}
-      <div className="flex items-center justify-between mb-0">
-        <div />
+      <div className="flex items-center justify-end mb-0">
         <button
           onClick={() => setLocation("/teacher/new")}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[44px] bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-xl transition-colors shadow-sm"
         >
           <Plus className="w-3.5 h-3.5" />
           {lang === "ar" ? "إنشاء واجب / نشاط" : "New Assignment"}
@@ -4311,7 +4040,7 @@ function AssignmentsTabRender({
               key={f.key}
               onClick={() => setStatusFilter(f.key as any)}
               className={cn(
-                "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                "px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all border",
                 statusFilter === f.key
                   ? "bg-primary text-primary-foreground border-primary shadow-sm"
                   : "bg-muted/40 text-muted-foreground border-border/60 hover:border-foreground/30 hover:text-foreground",
@@ -4440,14 +4169,14 @@ function AssignmentsTabRender({
           <p className="text-xs font-semibold text-muted-foreground mb-3">
             {lang === "ar" ? "الألعاب والمسابقات" : "Games & Competitions"}
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {games.map((game, i) => {
               const Icon = game.icon;
               return (
                 <button
                   key={i}
                   onClick={() => launchGame(game.type)}
-                  className="flex items-start gap-2.5 p-3 bg-muted/40 border border-border/60 rounded-xl hover:bg-card hover:border-border hover:shadow-sm transition-all text-start"
+                  className="flex items-start gap-2.5 p-3 min-h-[56px] bg-muted/40 border border-border/60 rounded-xl hover:bg-card hover:border-border hover:shadow-sm transition-all text-start"
                 >
                   <div className="p-1.5 rounded-lg bg-card text-foreground/70 shrink-0">
                     <Icon className="w-3.5 h-3.5" />
@@ -4523,16 +4252,16 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-red-500/10">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="p-2 rounded-xl bg-red-500/10 shrink-0">
             <Video className="w-5 h-5 text-red-500" />
           </div>
-          <div>
-            <h2 className="text-base font-extrabold text-foreground">
+          <div className="min-w-0">
+            <h2 className="text-base font-extrabold text-foreground truncate">
               {isAr ? "الفيديو التفاعلي" : "Interactive Video"}
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {lessons.length}{" "}
               {isAr ? "فيديو" : lessons.length === 1 ? "video" : "videos"}
             </p>
@@ -4540,7 +4269,7 @@ function VideoLessonsTab({ lang, setLocation, user }: any) {
         </div>
         <button
           onClick={() => setLocation("/teacher/video-lesson/new")}
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl transition-colors shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" />
           {isAr ? "فيديو جديد" : "New Video"}

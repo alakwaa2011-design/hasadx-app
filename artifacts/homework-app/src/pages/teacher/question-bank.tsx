@@ -29,10 +29,10 @@ export default function QuestionBankPage() {
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
-  const { data: user, error: userError } = useGetCurrentTeacher({ query: { retry: false } });
+  const { data: user, error: userError } = useGetCurrentTeacher({ query: { retry: false } as any });
   const { data: assignments } = useListAssignments(
     user ? { teacherId: user.id } : undefined,
-    { query: { enabled: !!user } }
+    { query: { enabled: !!user } as any }
   );
 
   const [questions, setQuestions] = useState<BankQuestion[]>([]);

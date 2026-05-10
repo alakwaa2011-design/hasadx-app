@@ -14,25 +14,25 @@ import {
   MessageSquarePlus,
   Menu,
   X,
-  Settings,
   Home,
   ChevronDown,
   ChevronRight,
   GraduationCap,
   LayoutDashboard,
-  Star,
   LogIn,
   Sparkles,
   Sun,
   Moon,
   Monitor,
   Zap,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationBell } from "./notification-bell";
-import { AiAssistant } from "./ai-assistant";
 import { AuthSideRail } from "./auth-side-rail";
+import { AdminUiSwitcher } from "./admin-ui-switcher";
+import { AdminPreviewBanner } from "./admin-preview-banner";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-provider";
 import { useDarkMode } from "@/lib/dark-mode";
@@ -80,7 +80,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { data: user, isLoading: teacherLoading } = useGetCurrentTeacher({
-    query: { retry: false },
+    query: { retry: false } as any,
   });
   const { student, loading: studentLoading } = useStudentSession();
   const isLoading = teacherLoading || studentLoading;
@@ -125,31 +125,38 @@ export function Layout({ children, noHeader }: LayoutProps) {
       dir={dir}
     >
       {!noHeader && (
-        <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center justify-between h-12 sm:h-14">
+              {/* Compact brand: logo + name only. The subtitle was removed
+                  to free vertical space on dashboards where every pixel
+                  counts; the name itself anchors the brand. */}
               <Link
-                href={user ? "/teacher" : "/"}
-                className="flex items-center gap-2 group"
+                href={
+                  user
+                    ? location.startsWith("/organizer")
+                      ? "/organizer"
+                      : "/teacher"
+                    : "/"
+                }
+                className="flex items-center gap-2 group rounded-lg px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
               >
                 {theme.logoUrl ? (
                   <img
                     src={theme.logoUrl}
                     alt="logo"
-                    className="w-8 h-8 rounded-lg object-cover"
+                    className="w-8 h-8 rounded-lg object-cover ring-1 ring-border/60"
                   />
                 ) : (
                   <img
                     src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
                     alt="حصاد"
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg object-cover"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover"
                   />
                 )}
-                {!theme.logoUrl && (
-                  <span className="font-extrabold text-xl sm:text-2xl tracking-tight">
-                    حصاد
-                  </span>
-                )}
+                <span className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+                  {lang === "ar" ? "حصاد" : "Hasad"}
+                </span>
               </Link>
 
               <nav className="hidden md:flex items-center gap-2.5">
@@ -165,19 +172,78 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 ) : user ? (
                   <div className="flex items-center gap-1.5">
-                    <Link
-                      href="/teacher"
-                      className={cn(
-                        "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                        location === "/teacher" ||
-                          location.startsWith("/teacher/")
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                      )}
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                    </Link>
+                    {/* Context-aware Dashboard link.
+                        On /organizer*, the button stays on the organizer
+                        dashboard so it doesn't kick the user back to the
+                        teacher screen. A separate "as Teacher" link lets
+                        them jump to the teacher view on demand. */}
+                    {location.startsWith("/organizer") ? (
+                      <>
+                        <Link
+                          href="/organizer"
+                          className={cn(
+                            "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
+                            location === "/organizer"
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          {lang === "ar" ? "لوحة المنظّم" : "Organizer Dashboard"}
+                        </Link>
+                        <Link
+                          href="/teacher"
+                          className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-md text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+                        >
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "كمعلّم" : "As Teacher"}
+                        </Link>
+                      </>
+                    ) : location.startsWith("/teacher") &&
+                      !location.startsWith("/teacher/admin") &&
+                      (Boolean(user.isAdmin) || user.role === "admin") ? (
+                      <>
+                        <Link
+                          href="/teacher"
+                          className={cn(
+                            "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
+                            location === "/teacher" ||
+                              location.startsWith("/teacher/")
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
+                        </Link>
+                        {/* Symmetric "as Organizer" jump link so an admin who
+                            entered the teacher view from the organizer page
+                            can return in one tap. Same amber styling as the
+                            "as Teacher" link on /organizer. */}
+                        <Link
+                          href="/organizer"
+                          className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-md text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "كمنظّم" : "As Organizer"}
+                        </Link>
+                      </>
+                    ) : (
+                      <Link
+                        href="/teacher"
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
+                          location === "/teacher" ||
+                            location.startsWith("/teacher/")
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                        )}
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
+                      </Link>
+                    )}
+                    <AdminUiSwitcher />
                     <NotificationBell />
                     <div className="h-5 w-px bg-border mx-1" />
 
@@ -207,14 +273,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             transition={{ duration: 0.12 }}
                             className="absolute end-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-lg py-1.5 z-50"
                           >
-                            <Link
-                              href="/teacher/settings"
-                              onClick={() => setUserMenuOpen(false)}
-                              className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                            >
-                              <Settings className="w-4 h-4 text-muted-foreground" />
-                              {lang === "ar" ? "الإعدادات" : "Settings"}
-                            </Link>
                             <button
                               onClick={() => {
                                 cycleColorScheme();
@@ -348,68 +406,95 @@ export function Layout({ children, noHeader }: LayoutProps) {
               </nav>
 
               <div className="flex md:hidden items-center gap-1.5">
-                {location !== "/" && (
+                {/* When the teacher is on /teacher* the mobile header is intentionally
+                    minimal: only the brand (left) + teacher name + notifications bell.
+                    Tab switching lives in the fixed bottom nav, so back/home/lang/menu
+                    chrome would just create duplication and clutter. */}
+                {user &&
+                (location.startsWith("/teacher") ||
+                  location.startsWith("/organizer")) ? (
                   <>
+                    <span className="text-sm font-extrabold text-foreground max-w-[34vw] truncate">
+                      {user.name}
+                    </span>
+                    <AdminUiSwitcher variant="compact" />
+                    <NotificationBell />
                     <button
-                      onClick={() => window.history.back()}
-                      title={lang === "ar" ? "رجوع" : "Back"}
-                      className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors"
+                      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                      className="p-2.5 text-foreground hover:bg-muted rounded-lg transition-colors"
+                      aria-label={lang === "ar" ? "القائمة" : "Menu"}
                     >
-                      <ChevronRight
-                        className={cn("w-5 h-5", lang !== "ar" && "rotate-180")}
-                      />
-                    </button>
-                    <Link
-                      href="/"
-                      title={lang === "ar" ? "الرئيسية" : "Home"}
-                      className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors"
-                    >
-                      <Home className="w-5 h-5" />
-                    </Link>
-                    <button
-                      onClick={toggleLang}
-                      className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <Languages className="w-4 h-4" />
+                      <motion.div
+                        key={mobileMenuOpen ? "close" : "menu"}
+                        initial={{ rotate: -90, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {mobileMenuOpen ? (
+                          <X className="w-5 h-5" />
+                        ) : (
+                          <Menu className="w-5 h-5" />
+                        )}
+                      </motion.div>
                     </button>
                   </>
-                )}
-                {user && <NotificationBell />}
-                {!isLoading && !user && !student && (
+                ) : (
                   <>
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-1 px-3.5 py-2 text-sm font-bold border-2 border-[hsl(145,45%,32%)]/70 rounded-lg text-[hsl(145,45%,28%)] hover:bg-[hsl(145,45%,32%)]/8 transition-colors"
-                    >
-                      <LogIn className="w-3.5 h-3.5" />
-                      {lang === "ar" ? "دخول" : "Login"}
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="px-3.5 py-2 text-sm font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors flex items-center gap-1 shadow-sm"
-                    >
-                      <Zap className="w-3.5 h-3.5 fill-current" />
-                      {lang === "ar" ? "ابدأ مجاناً" : "Free"}
-                    </Link>
-                  </>
-                )}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="p-2.5 text-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                  <motion.div
-                    key={mobileMenuOpen ? "close" : "menu"}
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {mobileMenuOpen ? (
-                      <X className="w-5 h-5" />
-                    ) : (
-                      <Menu className="w-5 h-5" />
+                    {location !== "/" && (
+                      <>
+                        <button
+                          onClick={() => window.history.back()}
+                          title={lang === "ar" ? "رجوع" : "Back"}
+                          className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors"
+                        >
+                          <ChevronRight
+                            className={cn("w-5 h-5", lang !== "ar" && "rotate-180")}
+                          />
+                        </button>
+                        <Link
+                          href="/"
+                          title={lang === "ar" ? "الرئيسية" : "Home"}
+                          className="p-2 text-foreground hover:bg-muted rounded-lg transition-colors"
+                        >
+                          <Home className="w-5 h-5" />
+                        </Link>
+                        <button
+                          onClick={toggleLang}
+                          className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <Languages className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
-                  </motion.div>
-                </button>
+                    {user && <NotificationBell />}
+                    {!isLoading && !user && !student && (
+                      <Link
+                        href="/login"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-[hsl(145,45%,32%)] text-white rounded-lg hover:bg-[hsl(145,45%,27%)] transition-colors shadow-sm"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        {lang === "ar" ? "تسجيل الدخول" : "Login"}
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                      className="p-2.5 text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                      <motion.div
+                        key={mobileMenuOpen ? "close" : "menu"}
+                        initial={{ rotate: -90, opacity: 0 }}
+                        animate={{ rotate: 0, opacity: 1 }}
+                        transition={{ duration: 0.15 }}
+                      >
+                        {mobileMenuOpen ? (
+                          <X className="w-5 h-5" />
+                        ) : (
+                          <Menu className="w-5 h-5" />
+                        )}
+                      </motion.div>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -443,33 +528,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                           </p>
                         </div>
                       </div>
-                      <Link
-                        href="/teacher"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                          location === "/teacher" ||
-                            location.startsWith("/teacher/")
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-muted active:bg-muted/80",
-                        )}
-                      >
-                        <Home className="w-5 h-5" />
-                        {lang === "ar" ? "الرئيسية" : "Home"}
-                      </Link>
-                      <Link
-                        href="/teacher/settings"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                          location === "/teacher/settings"
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-muted active:bg-muted/80",
-                        )}
-                      >
-                        <Settings className="w-5 h-5" />
-                        {lang === "ar" ? "الإعدادات" : "Settings"}
-                      </Link>
                       <button
                         onClick={() => cycleColorScheme()}
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 w-full transition-colors"
@@ -616,6 +674,8 @@ export function Layout({ children, noHeader }: LayoutProps) {
         </header>
       )}
 
+      {!noHeader && <AdminPreviewBanner />}
+
       <main className="flex-1">{children}</main>
 
       <AuthSideRail />
@@ -631,13 +691,24 @@ export function Layout({ children, noHeader }: LayoutProps) {
               />
               <span className="font-semibold text-sm opacity-70">حصاد</span>
             </div>
+            <Link
+              href="/feedback"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-primary/10 hover:bg-primary/15 text-primary border border-primary/25 hover:border-primary/40 text-xs font-bold transition-all shadow-sm hover:shadow min-h-[44px] sm:min-h-0"
+              title={t.footer.feedbackHint}
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              <span>{t.footer.feedback}</span>
+              <span className="hidden sm:inline text-[10px] font-medium opacity-75">· {t.footer.feedbackHint}</span>
+            </Link>
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} {t.footer.copyright}
             </p>
           </div>
         </div>
       </footer>
-      <AiAssistant enabled={!!user} lang={lang} />
+      {/* Hasad Guide is now mounted globally in App.tsx (<GlobalAiAssistant />)
+          so it appears on every teacher/organizer page, including those that
+          don't use this Layout (mobile flows hit those a lot). */}
     </div>
   );
 }

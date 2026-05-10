@@ -12,13 +12,13 @@ export interface GroupPreset {
 export const GROUP_PRESETS: GroupPreset[] = [
   {
     id: "islamic",
-    name: "مسابقات إسلامية",
-    nameEn: "Islamic Competitions",
+    name: "مسابقات عامة",
+    nameEn: "General Quizzes",
     keywords: ["إسلام", "إسلامية", "إسلامي", "قرآن", "قرآنية", "حديث", "نبوي", "سيرة", "فقه", "عقيدة", "صلاة", "رمضان", "islamic", "quran", "muslim", "ramadan"],
     gradient: "from-emerald-600 via-emerald-700 to-teal-900",
     emoji: "🕌",
     coverImageUrl: "https://images.unsplash.com/photo-1564769625392-651b2c3a3a76?auto=format&fit=crop&w=600&q=80",
-    description: "مسابقات وأنشطة في القرآن الكريم والسنة النبوية والثقافة الإسلامية",
+    description: "مسابقات عامة وأنشطة في الثقافة، القرآن، التاريخ والمعلومات العامة",
   },
   {
     id: "math",

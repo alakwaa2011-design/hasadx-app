@@ -106,6 +106,35 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
+  /* Server-side direct upload of a Buffer (used for AI-generated images). The
+     blob is stored under the same private dir as user uploads, then marked
+     PUBLIC via the ACL so any teacher viewing the deck can fetch it via
+     GET /objects/:entityId. Returns the normalised /objects/... path. */
+  async uploadBufferAsPublic(opts: {
+    buffer: Buffer;
+    contentType: string;
+    extension?: string;
+  }): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const objectId = randomUUID();
+    const ext = opts.extension ? (opts.extension.startsWith(".") ? opts.extension : `.${opts.extension}`) : "";
+    const fullPath = `${privateObjectDir}/uploads/${objectId}${ext}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    await file.save(opts.buffer, {
+      contentType: opts.contentType,
+      resumable: false,
+      metadata: { cacheControl: "public, max-age=86400" },
+    });
+    /* Mark public so GET /objects/:id can serve without auth checks. */
+    const rawUrl = `https://storage.googleapis.com/${bucketName}/${objectName}`;
+    return await this.trySetObjectEntityAclPolicy(rawUrl, {
+      owner: "system",
+      visibility: "public",
+    });
+  }
+
   async getObjectEntityUploadURL(): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import {
   DndContext,
   closestCenter,
@@ -51,7 +51,7 @@ const COLOR_PRIMARY = "#14532D";
 const COLOR_AMBER = "#D97706";
 const COLOR_CARD_BORDER = "#E5E7EB";
 
-const MAX_CHARS = 1500;
+const MAX_CHARS = 5000;
 const MAX_QUESTION_CHARS = 300;
 
 // ===================== Types =====================
@@ -65,7 +65,7 @@ interface GradingOpts {
   tolerancePercent: number;
 }
 
-type QuestionType = "dictation" | "mcq" | "open";
+type QuestionType = "dictation" | "mcq" | "open" | "true_false";
 
 interface QuestionItem {
   id: string;
@@ -76,10 +76,11 @@ interface QuestionItem {
   optionB: string;
   optionC: string;
   optionD: string;
-  correctAnswer: string; // "A" | "B" | "C" | "D"
+  correctAnswer: string; // mcq: A/B/C/D · true_false: "true"/"false" · open/dictation: free text
   // Dictation grading
   grading: GradingOpts;
   points: number;
+  serverId?: number;
 }
 
 interface ListeningSettings {
@@ -102,7 +103,13 @@ const DEFAULT_SETTINGS: ListeningSettings = {
   maxListens: 0,
   allowSpeedControl: true,
   allowSeek: true,
-  showTranscript: true,
+  showTranscript: false,
+};
+
+const defaultCorrectFor = (type: QuestionType): string => {
+  if (type === "mcq") return "A";
+  if (type === "true_false") return "true";
+  return "";
 };
 
 const newQuestion = (type: QuestionType = "open"): QuestionItem => ({
@@ -113,7 +120,7 @@ const newQuestion = (type: QuestionType = "open"): QuestionItem => ({
   optionB: "",
   optionC: "",
   optionD: "",
-  correctAnswer: "A",
+  correctAnswer: defaultCorrectFor(type),
   grading: { ...DEFAULT_GRADING },
   points: 1,
 });
@@ -273,6 +280,7 @@ function QuestionTypeBadge({ type }: { type: QuestionType }) {
     mcq: { label: "اختيار متعدد", color: "bg-blue-50 text-blue-700 border-blue-200", icon: <ListChecks className="w-3.5 h-3.5" /> },
     dictation: { label: "إملاء", color: "bg-amber-50 text-amber-700 border-amber-200", icon: <Mic className="w-3.5 h-3.5" /> },
     open: { label: "إجابة مفتوحة", color: "bg-purple-50 text-purple-700 border-purple-200", icon: <AlignLeft className="w-3.5 h-3.5" /> },
+    true_false: { label: "صح / خطأ", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <Check className="w-3.5 h-3.5" /> },
   };
   const { label, color, icon } = map[type];
   return (
@@ -287,6 +295,16 @@ function QuestionTypeBadge({ type }: { type: QuestionType }) {
 export default function DictationCreate() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
+  // ?edit=<assignmentId> — when set we hydrate state from the API and PUT on save.
+  const editId = (() => {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search).get("edit");
+    const n = p ? parseInt(p, 10) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const isEditing = editId !== null;
+  const [hydrated, setHydrated] = useState(!isEditing);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState("");
@@ -308,6 +326,92 @@ export default function DictationCreate() {
 
   const [isShared, setIsShared] = useState(false);
   const [accessMode, setAccessMode] = useState<"public" | "private">("public");
+
+  useEffect(() => {
+    if (!isEditing || hydrated) return;
+    let cancelled = false;
+    type RemoteQuestion = {
+      id?: number;
+      text?: string;
+      questionType?: string;
+      optionA?: string | null;
+      optionB?: string | null;
+      optionC?: string | null;
+      optionD?: string | null;
+      correctAnswer?: string | null;
+      points?: number;
+    };
+    type RemoteAssignment = {
+      title?: string;
+      targetClass?: string | null;
+      targetClasses?: string[] | null;
+      listeningAudioText?: string | null;
+      listeningVoice?: string | null;
+      listeningSpeed?: string | null;
+      listeningSettings?: Partial<ListeningSettings> | null;
+      isShared?: boolean;
+      accessMode?: string;
+      questions?: RemoteQuestion[];
+    };
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assignments/${editId}`, { credentials: "include" });
+        if (!res.ok) throw new Error("fetch failed");
+        const a = (await res.json()) as RemoteAssignment;
+        if (cancelled) return;
+        setTitle(a.title || "");
+        const tc: string[] = Array.isArray(a.targetClasses) && a.targetClasses.length > 0
+          ? a.targetClasses
+          : (a.targetClass ? [a.targetClass] : []);
+        setTargetClasses(tc);
+        setAudioText(a.listeningAudioText || "");
+        setAudioVoice(a.listeningVoice || "shimmer");
+        const sp = parseFloat(a.listeningSpeed || "0.9");
+        setAudioSpeed(Number.isFinite(sp) ? sp : 0.9);
+        if (a.listeningSettings && typeof a.listeningSettings === "object") {
+          setSettings({ ...DEFAULT_SETTINGS, ...a.listeningSettings });
+        }
+        setIsShared(!!a.isShared);
+        setAccessMode(a.accessMode === "private" ? "private" : "public");
+        const qs: QuestionItem[] = (a.questions || []).map((q) => {
+          const t = (q.questionType || "open") as QuestionType;
+          let grading = { ...DEFAULT_GRADING };
+          if (t === "dictation" && q.optionD) {
+            try {
+              const parsed = JSON.parse(q.optionD);
+              grading = {
+                ignoreDiacritics: parsed.ignoreDiacritics ?? grading.ignoreDiacritics,
+                ignoreTanween: parsed.ignoreTanween ?? grading.ignoreTanween,
+                ignoreShadda: parsed.ignoreShadda ?? grading.ignoreShadda,
+                ignorePunctuation: parsed.ignorePunctuation ?? grading.ignorePunctuation,
+                allowErrors: q.optionC === "true",
+                tolerancePercent: parsed.tolerancePercent ?? grading.tolerancePercent,
+              };
+            } catch { /* keep defaults */ }
+          }
+          return {
+            id: crypto.randomUUID(),
+            serverId: q.id,
+            type: t,
+            text: q.text || "",
+            optionA: t === "mcq" ? (q.optionA || "") : "",
+            optionB: t === "mcq" ? (q.optionB || "") : "",
+            optionC: t === "mcq" ? (q.optionC || "") : "",
+            optionD: t === "mcq" ? (q.optionD || "") : "",
+            correctAnswer: q.correctAnswer || (t === "mcq" ? "A" : t === "true_false" ? "true" : ""),
+            grading,
+            points: q.points || 1,
+          };
+        });
+        setQuestions(qs.length > 0 ? qs : [newQuestion("open")]);
+        setHydrated(true);
+      } catch {
+        toast.error("تعذّر تحميل الواجب للتعديل");
+        setLocation("/teacher");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [editId, isEditing, hydrated, setLocation]);
 
   const { speakingId, progress, play: previewTts, seek, setSpeed } = useTtsPreview();
 
@@ -373,20 +477,25 @@ export default function DictationCreate() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: object) => {
-      const res = await fetch(`${API_BASE}/api/assignments`, {
-        method: "POST",
+      const url = isEditing
+        ? `${API_BASE}/api/assignments/${editId}`
+        : `${API_BASE}/api/assignments`;
+      const res = await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "خطأ في الحفظ");
-      return data;
+      const id: number = isEditing ? Number(editId) : Number(data.id);
+      return { id };
     },
-    onSuccess: (data) => {
+    onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["assignments"] });
-      toast.success("تم نشر نشاط الاستماع بنجاح 🎉");
-      setLocation(`/teacher/assignment/${data.id}`);
+      queryClient.invalidateQueries({ queryKey: [`/api/assignments/${id}`] });
+      toast.success(isEditing ? "تم تحديث نشاط الاستماع بنجاح" : "تم نشر نشاط الاستماع بنجاح 🎉");
+      setLocation(`/teacher/assignment/${id}`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -433,9 +542,10 @@ export default function DictationCreate() {
       activityType: "listening",
       listeningAudioText: audioText.trim(),
       listeningVoice: audioVoice,
-      listeningSpeed: audioSpeed,
+      listeningSpeed: String(audioSpeed),
       listeningSettings: settings,
       questions: questions.map((q, i) => ({
+        ...(q.serverId ? { id: q.serverId } : {}),
         text: q.text.trim(),
         questionType: q.type,
         optionA: q.type === "mcq" ? q.optionA : q.type === "dictation" ? audioText.trim() : "",
@@ -457,7 +567,11 @@ export default function DictationCreate() {
               showTranscript: settings.showTranscript,
             })
           : "",
-        correctAnswer: q.type === "mcq" ? q.correctAnswer : "",
+        correctAnswer: q.type === "mcq"
+          ? q.correctAnswer
+          : q.type === "true_false"
+          ? (q.correctAnswer === "false" ? "false" : "true")
+          : (q.correctAnswer || "").trim(),
         points: q.points,
         order: i + 1,
       })),
@@ -819,13 +933,21 @@ export default function DictationCreate() {
                             {/* تغيير النوع */}
                             <select
                               value={q.type}
-                              onChange={(e) => updateQuestion(q.id, { type: e.target.value as QuestionType })}
+                              onChange={(e) => {
+                                const newType = e.target.value as QuestionType;
+                                const patch: Partial<QuestionItem> = { type: newType };
+                                if (newType === "true_false") patch.correctAnswer = q.correctAnswer === "false" ? "false" : "true";
+                                else if (newType === "mcq") patch.correctAnswer = ["A","B","C","D"].includes(q.correctAnswer) ? q.correctAnswer : "A";
+                                else patch.correctAnswer = "";
+                                updateQuestion(q.id, patch);
+                              }}
                               onClick={(e) => e.stopPropagation()}
                               className="text-xs px-2 py-1 rounded-lg border bg-white text-[#374151] focus:outline-none"
                               style={{ borderColor: COLOR_CARD_BORDER }}
                             >
                               <option value="open">إجابة مفتوحة</option>
                               <option value="mcq">اختيار متعدد</option>
+                              <option value="true_false">صح / خطأ</option>
                               <option value="dictation">إملاء</option>
                             </select>
                             {questions.length > 1 && (
@@ -892,6 +1014,52 @@ export default function DictationCreate() {
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+
+                        {/* صح / خطأ — اختيار الإجابة الصحيحة */}
+                        {q.type === "true_false" && (
+                          <div className="mb-4 grid grid-cols-2 gap-3" dir="rtl">
+                            {[
+                              { value: "true", label: "صح", icon: "✓" },
+                              { value: "false", label: "خطأ", icon: "✗" },
+                            ].map((opt) => {
+                              const isCorrect = q.correctAnswer === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); updateQuestion(q.id, { correctAnswer: opt.value }); }}
+                                  className={`py-3 rounded-xl border-2 font-black text-sm flex flex-col items-center gap-1 transition-colors ${
+                                    isCorrect
+                                      ? "border-[#14532D] bg-[#ecfdf5] text-[#14532D]"
+                                      : "border-[#E5E7EB] bg-white text-[#64748B] hover:border-[#14532D]/40"
+                                  }`}
+                                >
+                                  <span className="text-xl">{opt.icon}</span>
+                                  <span>{opt.label}</span>
+                                </button>
+                              );
+                            })}
+                            <p className="col-span-2 text-[11px] text-[#64748B] text-right">حدد الإجابة الصحيحة التي ستُستخدم في التصحيح التلقائي.</p>
+                          </div>
+                        )}
+
+                        {/* إجابة مفتوحة / إملاء — إجابة المعلم المرجعية */}
+                        {(q.type === "open" || q.type === "dictation") && (
+                          <div className="mb-4" dir="rtl">
+                            <label className="block text-xs font-bold text-[#64748B] mb-1.5">
+                              الإجابة النموذجية (اختياري — للمراجعة فقط)
+                            </label>
+                            <textarea
+                              value={q.correctAnswer}
+                              onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
+                              onClick={(e) => e.stopPropagation()}
+                              rows={2}
+                              placeholder={q.type === "dictation" ? "النص الصحيح كما يجب أن يُكتب…" : "إجابة مرجعية تساعدك عند المراجعة…"}
+                              className="w-full px-3 py-2 rounded-[10px] bg-[#fdfdfd] border text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#14532D]/30 resize-none text-[#111827]"
+                              style={{ borderColor: COLOR_CARD_BORDER }}
+                            />
                           </div>
                         )}
 
@@ -968,10 +1136,11 @@ export default function DictationCreate() {
 
             {/* أزرار إضافة سؤال */}
             <div className="mt-5 flex flex-wrap gap-3 justify-center">
-              {(["open", "mcq", "dictation"] as QuestionType[]).map((type) => {
+              {(["open", "mcq", "true_false", "dictation"] as QuestionType[]).map((type) => {
                 const labels: Record<QuestionType, string> = {
                   open: "+ إجابة مفتوحة",
                   mcq: "+ اختيار متعدد",
+                  true_false: "+ صح / خطأ",
                   dictation: "+ إملاء",
                 };
                 return (
@@ -1066,7 +1235,7 @@ export default function DictationCreate() {
             style={{ backgroundColor: COLOR_PRIMARY }}
           >
             {step === 3 ? (
-              createMutation.isPending ? "جارٍ النشر..." : "نشر النشاط"
+              createMutation.isPending ? "جارٍ النشر..." : "نشر النشاط 🎉"
             ) : (
               <>
                 التالي <ChevronLeft className="w-4 h-4" />

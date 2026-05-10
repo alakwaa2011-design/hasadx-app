@@ -1,0 +1,72 @@
+Scan the entire project and understand the full platform structure.
+
+I want you to automatically generate a complete Arabic AI knowledge system for my assistant "مساعد حصاد الذكي" based on the actual code, pages, components, features, and games موجودة في المشروع.
+
+Tasks:
+
+1. Analyze all files (frontend, backend, components, routes, UI).
+2. Detect all features, pages, buttons, actions, and games.
+3. Do NOT invent anything that does not exist in the code.
+
+4. Generate a full knowledge base file:
+   hasad_knowledge_base.md
+
+Include for EACH feature/page/game:
+- What it is (شرح بسيط)
+- Why it exists (الفائدة)
+- How to use it (خطوات واضحة)
+- Example usage (مثال عملي)
+- Tips (نصائح)
+- Common issues if possible (مشاكل شائعة)
+
+5. Generate a FAQ file:
+   hasad_faq.json
+
+Include at least 50+ questions like:
+- كيف أبدأ مسابقة؟
+- كيف أضيف أسئلة؟
+- ما هو تحدي حصاد؟
+- كيف تعمل النقاط؟
+- كيف ألعب وميض؟
+- كيف ألعب سباق الصواريخ؟
+- كيف ألعب الكرسي الساخن؟
+- كيف أشارك المسابقة؟
+- كيف أعدل مسابقة؟
+- لماذا لا يدخل اللاعب؟
+
+6. Use Arabic language (Modern Standard Arabic, simple and clear).
+7. Make answers friendly, helpful, and beginner-friendly.
+8. Structure answers in steps (numbered when needed).
+
+9. Add a section:
+   "معلومات تحتاج تأكيد من صاحب المنصة"
+   for anything unclear.
+
+10. Update the chatbot backend:
+- Make it read from hasad_knowledge_base.md + hasad_faq.json
+- Answer ONLY from these sources
+- If no answer found, reply:
+  "لا أملك هذه المعلومة حالياً، تواصل مع الدعم."
+
+11. Improve assistant behavior:
+- Friendly tone
+- Clear steps
+- Short but useful answers
+- Encourage user to try features
+
+12. Add suggested questions in the UI:
+- كيف أبدأ أول مسابقة؟
+- ما الفرق بين الألعاب الجماعية والفردية؟
+- كيف تعمل النقاط؟
+- كيف أشارك المسابقة؟
+- اشرح لي تحدي حصاد
+- كيف أستخدم بنك الأسئلة؟
+
+13. After finishing, give me a summary:
+- Number of pages documented
+- Number of features explained
+- Number of games explained
+- Number of FAQ generated
+- Missing information that needs confirmation
+
+Build everything clean, structured, and production-ready.

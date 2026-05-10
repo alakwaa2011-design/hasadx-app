@@ -3,6 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import { db, assignmentsTable, questionsTable, millionBankQuestionsTable } from "@workspace/db";
 import { eq, and, notInArray } from "drizzle-orm";
 import { createClassSession, getClassSession, setCachedQuestions } from "../game/million-class-handlers";
+import { logActivity } from "../lib/activity-logger";
 
 const router = Router();
 
@@ -71,7 +72,15 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       return res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
     }
 
-    const { questionSource, assignmentId, bankLevel, bankCategory, autoAdvance, mode, teamAName, teamBName, teamAMembers, teamBMembers, questionCount, pointsScheme, basePoints } = req.body as {
+    logActivity({
+      req,
+      userId: req.session.teacherId,
+      userRole: "teacher",
+      action: "start_game",
+      details: { gameType: "million" },
+    });
+
+    const { questionSource, assignmentId, bankLevel, bankCategory, autoAdvance, mode, teamAName, teamBName, teamAMembers, teamBMembers, questionCount, pointsScheme, basePoints, targetClass } = req.body as {
       questionSource?: string;
       assignmentId?: number;
       bankLevel?: string;
@@ -85,6 +94,7 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       questionCount?: number;
       pointsScheme?: "even" | "progressive" | "stages" | "millionaire-ladder";
       basePoints?: number;
+      targetClass?: string;
     };
 
     const safeMode: "individual" | "broadcast" | "team-control" =
@@ -183,6 +193,7 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       questionCount: safeQuestionCount,
       pointsScheme: safePointsScheme,
       basePoints: safeBasePoints,
+      targetClass: typeof targetClass === "string" ? targetClass.trim() : undefined,
     });
 
     res.status(201).json(result);

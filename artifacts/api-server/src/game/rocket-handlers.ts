@@ -34,6 +34,31 @@ export interface RocketPlayer {
   streak: number;
   /** In host_sync: last syncQuestionIdx this player answered (prevent double submit). */
   lastAnsweredSyncIdx?: number;
+  /** ─── Phase progression (linear, tied to question pool, never resets) ─── */
+  /** Current phase index 0=Space, 1=Asteroids, 2=Crystal. */
+  currentPhase: 0 | 1 | 2;
+  /** Count of unique questions cleared (correctly) in current segment. Mirrors clearedInPhase.size. */
+  phaseProgress: number;
+  /** Set of unique question indices the player has CORRECTLY cleared in the current phase segment. */
+  clearedInPhase: Set<number>;
+  /** ─── Power-ups ─── */
+  /** Pending boost charges (max 1 typical). Boost = 2× altitude on next correct. */
+  boostAvailable: number;
+  /** Pending multiplier charges (max 1). Multiplier = 2× score on next correct. */
+  multiplierAvailable: number;
+  /** True when player has armed boost (consumed on next correct answer). */
+  boostArmed: boolean;
+  /** True when player has armed multiplier. */
+  multiplierArmed: boolean;
+  /** How many 3-streak milestones we've already turned into a power-up. */
+  streakRewardsClaimed: number;
+  /** Alternates boost/multiplier on each milestone reward. */
+  nextRewardKind: "boost" | "multiplier";
+  /** ─── Continuous cruise (rocket never stops moving) ─── */
+  /** Current cruise velocity multiplier. 1 = base cruise; spikes to 4× on correct answers and decays back. */
+  velocity: number;
+  /** Timestamp (ms) until which velocity is held at peak before it begins decaying. */
+  velocityBoostUntil: number;
 }
 
 interface PendingPlayer {
@@ -52,8 +77,10 @@ interface RocketGame {
   pendingPlayers: Record<string, PendingPlayer>;
   startedAt?: number;
   duration: number;           // per-question duration in seconds
-  totalDurationSecs: number;  // total game timer (default 300s = 5 min)
+  totalDurationSecs: number;  // total game timer in seconds (60-900 = 1-15 min)
   raceTimer?: ReturnType<typeof setTimeout>;
+  /** Cruise loop: ticks every second to give every player passive forward motion. */
+  cruiseTimer?: ReturnType<typeof setInterval>;
   finishOrder: string[];      // socketIds in finish order
   targetClass?: string;
   teacherId?: number;
@@ -62,6 +89,8 @@ interface RocketGame {
   advanceMode: "per_player" | "host_sync";
   /** Authoritative question index while racing in host_sync (all players answer the same prompt). */
   syncQuestionIdx: number;
+  /** Pre-computed contiguous segments of `questions` for the 3 phases (0/1/2). */
+  phaseSegments: { start: number; end: number }[];
 }
 
 /** Tracks delayed `next-question` jobs so we cancel them when the race stops. */
@@ -133,7 +162,65 @@ function getPlayerList(game: RocketGame) {
     finishRank: p.finishRank,
     streak: p.streak,
     currentQuestionIdx: p.currentQuestionIdx,
+    phase: p.currentPhase,
+    boostAvailable: p.boostAvailable,
+    multiplierAvailable: p.multiplierAvailable,
+    boostArmed: p.boostArmed,
+    multiplierArmed: p.multiplierArmed,
+    velocity: Number(p.velocity.toFixed(2)),
   }));
+}
+
+/**
+ * Split the question pool into up to 3 NON-EMPTY contiguous segments tied to
+ * game phases. Returns 1 segment for total<=2/3 (or fewer than 3 questions),
+ * 2 segments when only 2 are possible, otherwise 3 roughly equal segments.
+ * Guarantees: every returned segment has end > start, and the union covers
+ * exactly [0, total).
+ */
+function computePhaseSegments(totalQs: number): { start: number; end: number }[] {
+  const total = Math.max(1, totalQs);
+  const phaseCount = Math.min(3, total);
+  const segs: { start: number; end: number }[] = [];
+  let cursor = 0;
+  for (let i = 0; i < phaseCount; i++) {
+    const remaining = total - cursor;
+    const slotsLeft = phaseCount - i;
+    // ceil-divide so earlier segments absorb the remainder; every slot ≥ 1.
+    const size = Math.max(1, Math.ceil(remaining / slotsLeft));
+    segs.push({ start: cursor, end: cursor + size });
+    cursor += size;
+  }
+  return segs;
+}
+
+/** Reset all per-race fields on a player back to a fresh state. */
+function resetPlayerForRace(p: RocketPlayer, game: RocketGame) {
+  p.altitude = 0;
+  p.score = 0;
+  p.correctCount = 0;
+  p.wrongCount = 0;
+  p.totalAnswered = 0;
+  p.streak = 0;
+  p.wrongIndices = [];
+  p.questionStartTime = undefined;
+  p.lastAnsweredSyncIdx = undefined;
+  p.finished = false;
+  p.finishRank = undefined;
+  p.finishedAt = undefined;
+  p.currentPhase = 0;
+  p.phaseProgress = 0;
+  p.clearedInPhase = new Set();
+  p.boostAvailable = 0;
+  p.multiplierAvailable = 0;
+  p.boostArmed = false;
+  p.multiplierArmed = false;
+  p.streakRewardsClaimed = 0;
+  p.nextRewardKind = "boost";
+  p.velocity = 1;
+  p.velocityBoostUntil = 0;
+  p.currentQuestionIdx =
+    game.advanceMode === "host_sync" ? game.syncQuestionIdx : game.phaseSegments[0].start;
 }
 
 // Rocket altitude calculation: base 100/N per correct answer + speed bonus
@@ -144,11 +231,6 @@ function altitudeForAnswer(timeMs: number, durationSecs: number, totalQuestions:
   // Faster = up to +60% more altitude (rewards speed significantly)
   const bonus = baseStep * 0.6 * speedRatio;
   return baseStep + bonus;
-}
-
-function altitudePenalty(totalQuestions: number): number {
-  // Penalty = 60% of a normal base step (going wrong hurts but doesn't ruin the game)
-  return (100 / totalQuestions) * 0.6;
 }
 
 function scoreForAnswer(correct: boolean, timeMs: number, durationSecs: number, streak: number): number {
@@ -164,21 +246,101 @@ function scoreForAnswer(correct: boolean, timeMs: number, durationSecs: number, 
 function cleanupGame(pin: string) {
   const game = rocketGames.get(pin);
   if (game?.raceTimer) clearTimeout(game.raceTimer);
+  if (game?.cruiseTimer) clearInterval(game.cruiseTimer);
   clearPendingQuestionTimers(pin);
   rocketGames.delete(pin);
 }
 
-// Helper: get next question index for a player.
-// Always advances sequentially — wrong questions come back naturally in the
-// next cycle (we never immediately re-show the question just answered wrong).
+/**
+ * Cruise loop: ticks every second while the race is running and gives every
+ * rocket passive forward motion. Velocity decays toward 1 (base cruise) once
+ * a player's boost window has elapsed, so a correct answer feels like a
+ * sustained burst rather than an instant jump. Phase is also recomputed each
+ * tick from elapsed time so all players experience the same adventure.
+ */
+const CRUISE_TICK_MS = 1000;
+const CRUISE_BASE_RATE = 0.35; // altitude per second at velocity = 1
+function startCruiseLoop(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
+  if (game.cruiseTimer) clearInterval(game.cruiseTimer);
+  game.cruiseTimer = setInterval(() => {
+    const g = rocketGames.get(game.pin);
+    if (!g || g.state !== "racing") return;
+    const now = Date.now();
+    const newPhase = computeTimePhase(g);
+    let phaseChanged = false;
+    for (const p of Object.values(g.players)) {
+      if (now >= p.velocityBoostUntil && p.velocity > 1) {
+        p.velocity = Math.max(1, p.velocity - 0.5);
+      }
+      const tickGain = CRUISE_BASE_RATE * (CRUISE_TICK_MS / 1000) * p.velocity;
+      p.altitude += tickGain;
+      if (p.currentPhase !== newPhase) {
+        p.currentPhase = newPhase;
+        phaseChanged = true;
+      }
+    }
+    rocketNs.to(`rocket:${g.pin}`).emit("rocket:cruise", {
+      players: getPlayerList(g),
+      phase: newPhase,
+      phaseChanged,
+    });
+  }, CRUISE_TICK_MS);
+}
+
+/**
+ * Pick the next question for a player. Phases are now time-driven (not
+ * gated by question clearance) so the player draws from the FULL question
+ * pool: prefer any question they have not yet answered correctly; once
+ * every question is cleared, cycle through them using totalAnswered. This
+ * keeps the rocket adventure flowing endlessly — even slow students keep
+ * seeing fresh questions and progressing through phases.
+ *
+ * Note: `clearedInPhase` Set is now used as a global "questions cleared"
+ * tracker (never reset mid-race) — name kept for backward compatibility.
+ */
 function nextQuestionIdx(game: RocketGame, player: RocketPlayer): number {
-  return player.totalAnswered % game.questions.length;
+  const total = game.questions.length;
+  if (total === 0) return 0;
+  for (let i = 0; i < total; i++) {
+    if (!player.clearedInPhase.has(i)) return i;
+  }
+  return player.totalAnswered % total;
+}
+
+/**
+ * Phase is purely a function of elapsed game time so every student
+ * experiences the full Space → Asteroid → Crystal adventure regardless
+ * of accuracy. Boundaries: 0–34% Space, 34–67% Asteroid, 67–100% Crystal.
+ */
+function computeTimePhase(game: RocketGame): 0 | 1 | 2 {
+  if (!game.startedAt || game.totalDurationSecs <= 0) return 0;
+  const frac = (Date.now() - game.startedAt) / (game.totalDurationSecs * 1000);
+  if (frac < 0.34) return 0;
+  if (frac < 0.67) return 1;
+  return 2;
+}
+
+/** Whenever streak hits a new multiple of 3, grant the next alternating power-up. */
+function maybeGrantPowerUp(player: RocketPlayer): "boost" | "multiplier" | null {
+  if (player.streak <= 0) return null;
+  const milestone = Math.floor(player.streak / 3);
+  if (milestone <= player.streakRewardsClaimed) return null;
+  player.streakRewardsClaimed = milestone;
+  const granted = player.nextRewardKind;
+  if (granted === "boost") {
+    player.boostAvailable = Math.min(3, player.boostAvailable + 1);
+  } else {
+    player.multiplierAvailable = Math.min(3, player.multiplierAvailable + 1);
+  }
+  player.nextRewardKind = granted === "boost" ? "multiplier" : "boost";
+  return granted;
 }
 
 function endGame(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
   if (game.state === "finished") return;
   game.state = "finished";
   if (game.raceTimer) clearTimeout(game.raceTimer);
+  if (game.cruiseTimer) { clearInterval(game.cruiseTimer); game.cruiseTimer = undefined; }
   clearPendingQuestionTimers(game.pin);
 
   // Rank all players by score (fastest ties resolved by correctCount then wrongCount)
@@ -216,19 +378,17 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
     game.syncQuestionIdx = 0;
     game.startedAt = Date.now();
 
-    // Init each player for looping mode (or synced single-question mode)
+    // Init each player for fresh phase progression
     for (const p of Object.values(game.players)) {
-      p.currentQuestionIdx = game.advanceMode === "host_sync" ? game.syncQuestionIdx : 0;
-      p.totalAnswered = 0;
-      p.wrongIndices = [];
+      resetPlayerForRace(p, game);
       p.questionStartTime = Date.now();
-      p.lastAnsweredSyncIdx = undefined;
     }
 
     const q = game.questions[game.syncQuestionIdx];
     rocketNs.to(`rocket:${game.pin}`).emit("rocket:race-start", {
       total: game.questions.length,
       gameDuration: game.totalDurationSecs,
+      totalDurationSecs: game.totalDurationSecs,
       advanceMode: game.advanceMode,
       question: {
         index: game.syncQuestionIdx,
@@ -239,9 +399,16 @@ function startRace(rocketNs: ReturnType<Server["of"]>, game: RocketGame) {
       },
     });
 
-    // Game ends when total timer expires
+    // Restore game-duration timer: race auto-ends when totalDurationSecs elapses.
     if (game.raceTimer) clearTimeout(game.raceTimer);
-    game.raceTimer = setTimeout(() => endGame(rocketNs, game), game.totalDurationSecs * 1000);
+    game.raceTimer = setTimeout(() => {
+      const g = rocketGames.get(game.pin);
+      if (!g || g.state !== "racing") return;
+      endGame(rocketNs, g);
+    }, game.totalDurationSecs * 1000);
+
+    // Kick off the cruise loop so every rocket starts moving immediately.
+    startCruiseLoop(rocketNs, game);
   }, 4000);
 }
 
@@ -308,7 +475,8 @@ export function setupRocketSocket(io: Server) {
 
           const pin = generatePin();
           const duration = Math.max(5, Math.min(60, data.duration ?? 20));
-          const totalDurationSecs = Math.max(60, Math.min(3600, data.totalDurationSecs ?? 300));
+          // Race timer: teacher selects 1-15 minutes (clamped). Default 5 min.
+          const totalDurationSecs = Math.max(60, Math.min(900, data.totalDurationSecs ?? 300));
           const creatorToken = randomBytes(16).toString("hex");
 
           const questions: RocketQuestion[] = data.questions.map((q) => ({
@@ -339,6 +507,7 @@ export function setupRocketSocket(io: Server) {
             title: data.title || undefined,
             advanceMode,
             syncQuestionIdx: 0,
+            phaseSegments: computePhaseSegments(questions.length),
           };
 
           rocketGames.set(pin, game);
@@ -421,6 +590,17 @@ export function setupRocketSocket(io: Server) {
             wrongIndices: [],
             finished: false,
             streak: 0,
+            currentPhase: 0,
+            phaseProgress: 0,
+            clearedInPhase: new Set<number>(),
+            boostAvailable: 0,
+            multiplierAvailable: 0,
+            boostArmed: false,
+            multiplierArmed: false,
+            streakRewardsClaimed: 0,
+            nextRewardKind: "boost",
+            velocity: 1,
+            velocityBoostUntil: 0,
           };
           game.players[socket.id] = player;
           socket.join(`rocket:${game.pin}`);
@@ -521,6 +701,12 @@ export function setupRocketSocket(io: Server) {
               : null,
             finished: false,
             finishRank: existing.finishRank,
+            phase: existing.currentPhase,
+            boostAvailable: existing.boostAvailable,
+            multiplierAvailable: existing.multiplierAvailable,
+            boostArmed: existing.boostArmed,
+            multiplierArmed: existing.multiplierArmed,
+            velocity: Number(existing.velocity.toFixed(2)),
           });
 
           rocketNs.to(`rocket:${game.pin}`).emit("rocket:players-updated", {
@@ -549,6 +735,17 @@ export function setupRocketSocket(io: Server) {
           wrongIndices: [],
           finished: false,
           streak: 0,
+          clearedInPhase: new Set<number>(),
+          currentPhase: 0,
+          phaseProgress: 0,
+          boostAvailable: 0,
+          multiplierAvailable: 0,
+          boostArmed: false,
+          multiplierArmed: false,
+          streakRewardsClaimed: 0,
+          nextRewardKind: "boost",
+          velocity: 1,
+          velocityBoostUntil: 0,
         };
         player.questionStartTime = game.state === "racing" ? Date.now() : undefined;
         game.players[socket.id] = player;
@@ -611,15 +808,19 @@ export function setupRocketSocket(io: Server) {
     socket.on(
       "rocket:answer",
       (
-        data: { pin: string; answerIndex: number; answerText?: string; skipToNext?: boolean },
+        data: {
+          pin: string;
+          answerIndex: number;
+          answerText?: string;
+          skipToNext?: boolean;
+          questionIdx?: number;
+        },
         cb: (r: object) => void,
       ) => {
         const game = rocketGames.get(data.pin);
         if (!game) return cb({ error: "الغرفة غير موجودة." });
         if (game.state !== "racing") return cb({ error: "السباق ليس نشطاً." });
-        if (game.startedAt && Date.now() >= game.startedAt + game.totalDurationSecs * 1000) {
-          return cb({ error: "انتهى وقت السباق." });
-        }
+        // Endless mode: no time-based rejection. Race ends only on teacher action or cleanup.
 
         const player = game.players[socket.id];
         if (!player) return cb({ error: "أنت غير مسجل." });
@@ -641,6 +842,17 @@ export function setupRocketSocket(io: Server) {
           return cb({ error: "تم تسجيل إجابة لهذا السؤال بالفعل." });
         }
 
+        // Per-question idempotency for per_player mode: if the client tells us which question
+        // it is answering, reject submissions that don't match the player's current question.
+        // This prevents a rapid double-emit from accidentally counting against the next question.
+        if (
+          game.advanceMode === "per_player" &&
+          typeof data.questionIdx === "number" &&
+          data.questionIdx !== qIdx
+        ) {
+          return cb({ success: true, skipped: true });
+        }
+
         const elapsedMs = player.questionStartTime ? Date.now() - player.questionStartTime : 0;
         let correct = false;
 
@@ -656,19 +868,60 @@ export function setupRocketSocket(io: Server) {
         }
 
         let altitudeChange = 0;
+        // Snapshot armed power-ups so we know what to consume on a correct answer.
+        const usingBoost = correct && player.boostArmed && player.boostAvailable > 0;
+        const usingMultiplier = correct && player.multiplierArmed && player.multiplierAvailable > 0;
 
         if (correct) {
           player.correctCount += 1;
           player.streak += 1;
           altitudeChange = altitudeForAnswer(elapsedMs, q.duration, game.questions.length);
+          if (usingBoost) altitudeChange *= 2;
           player.altitude = player.altitude + altitudeChange;
-          player.score += scoreForAnswer(true, elapsedMs, q.duration, player.streak);
+          let earned = scoreForAnswer(true, elapsedMs, q.duration, player.streak);
+          if (usingMultiplier) earned *= 2;
+          player.score += earned;
+          // Continuous-cruise boost: rocket sustains 4× velocity for 6s after a
+          // correct answer, then decays back to base via the cruise loop.
+          player.velocity = usingBoost ? 6 : 4;
+          player.velocityBoostUntil = Date.now() + 6000;
         } else {
           player.wrongCount += 1;
           player.streak = 0;
-          altitudeChange = -altitudePenalty(game.questions.length);
-          player.altitude = Math.max(0, player.altitude + altitudeChange);
+          // No backward motion — rockets keep cruising. Wrong answers only
+          // break the streak; the player still drifts forward at base velocity.
+          altitudeChange = 0;
         }
+
+        // Consume any armed power-ups on a correct answer (wrong answers preserve them).
+        let consumedBoost: "boost" | null = null;
+        let consumedMultiplier: "multiplier" | null = null;
+        if (usingBoost) {
+          player.boostAvailable = Math.max(0, player.boostAvailable - 1);
+          player.boostArmed = false;
+          consumedBoost = "boost";
+        }
+        if (usingMultiplier) {
+          player.multiplierAvailable = Math.max(0, player.multiplierAvailable - 1);
+          player.multiplierArmed = false;
+          consumedMultiplier = "multiplier";
+        }
+
+        // Maybe grant a new power-up for hitting a 3-streak milestone.
+        const grantedPower = correct ? maybeGrantPowerUp(player) : null;
+
+        // Track globally cleared questions (used by `nextQuestionIdx` to draw
+        // fresh content from the full pool until everything has been answered
+        // correctly at least once, then cycles).
+        if (correct) {
+          player.clearedInPhase.add(qIdx);
+          player.phaseProgress = player.clearedInPhase.size;
+        }
+        // Phase is now driven purely by elapsed game time; sync the player's
+        // cached phase from the cruise clock and report whether it changed.
+        const prevPhase = player.currentPhase;
+        player.currentPhase = computeTimePhase(game);
+        const phaseAdvanced = player.currentPhase !== prevPhase;
 
         if (game.advanceMode === "host_sync") {
           player.lastAnsweredSyncIdx = game.syncQuestionIdx;
@@ -690,6 +943,15 @@ export function setupRocketSocket(io: Server) {
           score: player.score,
           streak: player.streak,
           finished: false,
+          phase: player.currentPhase,
+          phaseAdvanced,
+          boostAvailable: player.boostAvailable,
+          multiplierAvailable: player.multiplierAvailable,
+          boostArmed: player.boostArmed,
+          multiplierArmed: player.multiplierArmed,
+          grantedPower,
+          consumedBoost,
+          consumedMultiplier,
         });
 
         rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
@@ -710,6 +972,7 @@ export function setupRocketSocket(io: Server) {
           if (nextQ) {
             socket.emit("rocket:next-question", {
               index: p.currentQuestionIdx,
+              phase: p.currentPhase,
               text: nextQ.text,
               type: nextQ.type,
               options: nextQ.options,
@@ -753,6 +1016,45 @@ export function setupRocketSocket(io: Server) {
       });
       cb({ success: true });
     });
+
+    // ── Player arms / disarms a power-up (server confirms availability) ─
+    socket.on(
+      "rocket:use-power",
+      (data: { pin: string; kind: "boost" | "multiplier" }, cb: (r: object) => void) => {
+        const game = rocketGames.get(data.pin);
+        if (!game) return cb({ error: "الغرفة غير موجودة." });
+        if (game.state !== "racing") return cb({ error: "السباق ليس نشطاً." });
+        const player = game.players[socket.id];
+        if (!player) return cb({ error: "أنت غير مسجل." });
+
+        if (data.kind === "boost") {
+          if (player.boostAvailable < 1 && !player.boostArmed) {
+            return cb({ error: "لا يوجد دفع متاح." });
+          }
+          player.boostArmed = !player.boostArmed;
+        } else if (data.kind === "multiplier") {
+          if (player.multiplierAvailable < 1 && !player.multiplierArmed) {
+            return cb({ error: "لا يوجد مضاعف متاح." });
+          }
+          player.multiplierArmed = !player.multiplierArmed;
+        } else {
+          return cb({ error: "نوع غير معروف." });
+        }
+
+        cb({
+          success: true,
+          boostAvailable: player.boostAvailable,
+          multiplierAvailable: player.multiplierAvailable,
+          boostArmed: player.boostArmed,
+          multiplierArmed: player.multiplierArmed,
+        });
+
+        rocketNs.to(`rocket:${game.pin}`).emit("rocket:leaderboard", {
+          players: getPlayerList(game),
+        });
+      },
+    );
+
     socket.on("rocket:end", (data: { pin: string }, cb: (r: object) => void) => {
       const game = rocketGames.get(data.pin);
       if (!game) return cb({ error: "الغرفة غير موجودة." });
@@ -774,21 +1076,14 @@ export function setupRocketSocket(io: Server) {
         clearTimeout(game.raceTimer);
         game.raceTimer = undefined;
       }
+      if (game.cruiseTimer) {
+        clearInterval(game.cruiseTimer);
+        game.cruiseTimer = undefined;
+      }
       game.startedAt = undefined;
       clearPendingQuestionTimers(game.pin);
       for (const p of Object.values(game.players)) {
-        p.altitude = 0;
-        p.score = 0;
-        p.correctCount = 0;
-        p.wrongCount = 0;
-        p.currentQuestionIdx = 0;
-        p.totalAnswered = 0;
-        p.finished = false;
-        p.finishRank = undefined;
-        p.streak = 0;
-        p.questionStartTime = undefined;
-        p.finishedAt = undefined;
-        p.lastAnsweredSyncIdx = undefined;
+        resetPlayerForRace(p, game);
       }
       rocketNs.to(`rocket:${game.pin}`).emit("rocket:replay", {
         players: getPlayerList(game),

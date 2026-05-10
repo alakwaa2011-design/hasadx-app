@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, jsonb, index } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 
@@ -17,4 +17,7 @@ export const gameHistoryTable = pgTable("game_history", {
   gameMode: text("game_mode").notNull().default("solo"),
   detailedResults: jsonb("detailed_results"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  teacherCreatedIdx: index("game_history_teacher_created_idx").on(t.teacherId, t.createdAt),
+  assignmentIdx: index("game_history_assignment_idx").on(t.assignmentId),
+}));

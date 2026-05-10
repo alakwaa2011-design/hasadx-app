@@ -124,9 +124,11 @@ export default function SharedContentPage() {
   const launchAsGame = (id: number) => {
     setLaunchingIds((s) => new Set(s).add(id));
     const socket = getSocket();
+    let remembered = "";
+    try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
     socket.emit(
       "teacher:create-game",
-      { assignmentId: id, gameMode: "solo" },
+      { assignmentId: id, gameMode: "solo", targetClass: remembered || undefined },
       (res: { pin?: string; error?: string }) => {
         setLaunchingIds((s) => { const n = new Set(s); n.delete(id); return n; });
         if (res?.error || !res?.pin) {

@@ -1,0 +1,35 @@
+الواجهة التي بنيتها جيدة. الآن أضف قاعدة البيانات والمنطق الكامل لقسم المسابقات الإسلامية.
+أولاً — أضف 6 جداول جديدة في schema:
+islamic_sections: id, name, description, is_visible (default false), order, created_at
+islamic_categories: id, section_id, name, description, level, is_visible (default false), order, created_at
+islamic_questions: id, category_id, question_text, option_a, option_b, option_c, option_d, correct_answer ('a'/'b'/'c'/'d'), difficulty, audio_url (nullable), points (default 10), created_at
+islamic_user_progress: id, user_id, category_id, questions_answered, questions_correct, stars_earned, completed (boolean), completed_at, streak_days, last_active_date, created_at
+islamic_challenges: id, creator_id, opponent_id, category_id, status (pending/active/completed), creator_score, opponent_score, winner_id, created_at, completed_at
+islamic_permissions: id, teacher_id, granted_by, granted_at, is_active
+ثانياً — أضف بيانات افتراضية (seed):
+4 أقسام (كلها is_visible = false):
+"ماذا بعد؟" / "أين وردت؟" / "من القارئ؟" / "غريب القرآن"
+فئات "ماذا بعد؟": جزء عمّ / المفصّل / ربع يس / المصحف كاملاً
+أضف 9 أسئلة حقيقية من القرآن لفئة "جزء عمّ" (اختيار متعدد 4 خيارات، مثال: "عَمَّ يَتَسَاءَلُونَ..." الإجابة: "عَنِ النَّبَإِ الْعَظِيمِ")
+ثالثاً — أضف API endpoints:
+GET /api/islamic/sections — الأقسام المرئية
+GET /api/islamic/sections/:id/categories — فئات القسم
+GET /api/islamic/categories/:id/questions — أسئلة الفئة (عشوائية)
+POST /api/islamic/progress — حفظ تقدم اللاعب
+GET /api/islamic/leaderboard — لوحة المتصدرين
+POST /api/admin/islamic/sections — إضافة قسم (أدمن)
+POST /api/admin/islamic/questions — إضافة سؤال (أدمن)
+POST /api/admin/islamic/permissions — منح إذن لمعلم (أدمن)
+رابعاً — اربط الواجهة الموجودة بقاعدة البيانات:
+الصفحة الرئيسية تجلب الأقسام من API وتعرضها (بدل النص الثابت "لا توجد أقسام")
+عند الضغط على قسم → تظهر الفئات
+عند الضغط على فئة → تبدأ جلسة الأسئلة
+شريط وقت 30 ثانية لكل سؤال يتغير لونه (أخضر → أصفر → أحمر)
+النجوم: أقل من 5 ثوانٍ = 3 نجوم، 5-15 ثانية = 2 نجوم، أكثر = 1 نجمة
+كل إجابة تُحفظ تلقائياً في islamic_user_progress
+خامساً — اربط لوحة التحكم:
+زر "+ قسم جديد" يضيف قسماً حقيقياً في قاعدة البيانات
+تبويب "المحتوى" يعرض الأقسام والفئات والأسئلة الحقيقية
+تبويب "الأذونات" يعرض المعلمين ويمنح/يسحب الإذن
+ملاحظة: القسم مخفي تماماً عن الجميع إلا الأدمن — لا تضيفه في الـ navigation العامة.
+ابدأ بقاعدة البيانات أولاً ثم الـ API ثم ربط الواجهة.

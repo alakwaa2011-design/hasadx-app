@@ -15,4 +15,5 @@ export const CreateQuestionBodyQuestionType = {
   fill_blank: "fill_blank",
   whiteboard: "whiteboard",
   dictation: "dictation",
+  open: "open",
 } as const;

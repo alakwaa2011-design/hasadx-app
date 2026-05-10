@@ -49,6 +49,11 @@ import {
   Square,
   Ban,
   StopCircle,
+  Folder,
+  BookOpen,
+  Play,
+  Copy,
+  Layers,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -87,6 +92,8 @@ interface UsageInfo {
   quotaBytes: number | null;
   unlimited: boolean;
 }
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const ALLOWED_ACCEPT = ".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip";
 
@@ -997,6 +1004,14 @@ export default function TeacherLibraryPage() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <Button
+              variant="outline"
+              onClick={() => setLocation("/teacher/presentations")}
+              data-testid="btn-go-presentations"
+            >
+              <Presentation className="w-4 h-4 me-1.5" />
+              {isAr ? "العروض التفاعلية" : "Presentations"}
+            </Button>
+            <Button
               variant={selectionMode ? "default" : "outline"}
               onClick={() => {
                 if (selectionMode) exitSelectionMode();
@@ -1064,6 +1079,40 @@ export default function TeacherLibraryPage() {
           </Card>
         )}
 
+        {/* Top-level tabs — switch between uploaded files, generated
+            worksheets, and lesson plans. Each tab is a separate listing
+            against its own backing API; only the active tab fetches. */}
+        <Tabs defaultValue="worksheets" className="w-full">
+          {/* Stylized tab bar — DOM order is RTL-friendly: in Arabic the
+              first item appears on the right. Active tab gets a soft
+              primary tint, an underline accent and a subtle shadow. */}
+          <TabsList
+            className="h-auto p-1.5 bg-muted/50 border border-border/60 rounded-2xl gap-1 w-full grid grid-cols-2 sm:grid-cols-4 max-w-3xl shadow-sm"
+          >
+            <TabsTrigger
+              value="worksheets"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+            >
+              <ClipboardList className="w-4 h-4" />
+              {isAr ? "أوراق العمل" : "Worksheets"}
+            </TabsTrigger>
+            <TabsTrigger
+              value="files"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+            >
+              <Folder className="w-4 h-4" />
+              {isAr ? "الملفات" : "Files"}
+            </TabsTrigger>
+            <TabsTrigger
+              value="lesson-plans"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/20 transition-all"
+            >
+              <BookOpen className="w-4 h-4" />
+              {isAr ? "تحضير الدروس" : "Lesson plans"}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="files" className="pt-4">
         <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
           {/* Group sidebar */}
           <Card className="p-2 h-fit">
@@ -1262,6 +1311,17 @@ export default function TeacherLibraryPage() {
             )}
           </div>
         </div>
+          </TabsContent>
+
+          <TabsContent value="worksheets" className="pt-4">
+            <SavedDocsList kind="worksheets" isAr={isAr} />
+          </TabsContent>
+
+          <TabsContent value="lesson-plans" className="pt-4">
+            <SavedDocsList kind="lesson-plans" isAr={isAr} />
+          </TabsContent>
+
+        </Tabs>
       </div>
 
       {/* Add group dialog */}
@@ -2081,3 +2141,220 @@ export default function TeacherLibraryPage() {
     </Layout>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// SavedDocsList
+// ─────────────────────────────────────────────────────────────────────────
+// Lightweight listing for generated documents that live in their own
+// tables (worksheets and lesson_plans) rather than the file-storage
+// backend used by the main "Files" tab. Each row links out to the
+// dedicated print/edit pages so this component stays tab-scoped and
+// doesn't have to know about the rich editor state.
+type SavedDoc = {
+  id: number;
+  title: string;
+  subject?: string | null;
+  gradeLevel?: string | null;
+  language?: "ar" | "en";
+  updatedAt?: string;
+  isShared?: boolean;
+  ownerName?: string | null;
+  ownerIsAdmin?: boolean;
+};
+
+function SavedDocsList({
+  kind,
+  isAr,
+}: {
+  kind: "worksheets" | "lesson-plans";
+  isAr: boolean;
+}) {
+  const [, setLocation] = useLocation();
+  const [rows, setRows] = useState<SavedDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<SavedDoc | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Endpoint and route prefixes are derived from `kind` so we have one
+  // component for both document types instead of two near-identical ones.
+  const apiPath = kind === "worksheets" ? "/api/worksheets" : "/api/lesson-plans";
+  // The dedicated detail route for both kinds lives under `/<id>/print` —
+  // there is no plain `/<id>` view route registered in App.tsx. Sending
+  // teachers there directly avoids 404s when they click "Open".
+  const viewSuffix = "/print";
+  const viewPrefix = kind === "worksheets" ? "/teacher/worksheets" : "/teacher/lesson-plans";
+  const createPath =
+    kind === "worksheets" ? "/teacher/worksheets/create" : "/teacher/lesson-plans/create";
+
+  const T = {
+    search: isAr ? "ابحث بالعنوان..." : "Search by title...",
+    empty: isAr
+      ? kind === "worksheets"
+        ? "لا توجد أوراق عمل محفوظة بعد."
+        : "لا توجد خطط دروس محفوظة بعد."
+      : kind === "worksheets"
+      ? "No saved worksheets yet."
+      : "No saved lesson plans yet.",
+    open: isAr ? "فتح" : "Open",
+    edit: isAr ? "تعديل" : "Edit",
+    delete: isAr ? "حذف" : "Delete",
+    create: isAr
+      ? kind === "worksheets"
+        ? "إنشاء ورقة عمل"
+        : "إنشاء خطة درس"
+      : kind === "worksheets"
+      ? "Create worksheet"
+      : "Create lesson plan",
+    confirm: isAr ? "تأكيد الحذف؟" : "Confirm delete?",
+    cancel: isAr ? "إلغاء" : "Cancel",
+    sharedByAdmin: isAr ? "مُشارك من الإدارة" : "Shared by admin",
+    deleted: isAr ? "تم الحذف" : "Deleted",
+    deleteFailed: isAr ? "تعذّر الحذف" : "Delete failed",
+  };
+
+  const refresh = () => {
+    setLoading(true);
+    fetch(apiPath, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      const r = await fetch(`${apiPath}/${confirmDelete.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!r.ok) throw new Error("delete failed");
+      toast.success(T.deleted);
+      setConfirmDelete(null);
+      refresh();
+    } catch {
+      toast.error(T.deleteFailed);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const filtered = rows.filter(
+    (r) => !search.trim() || r.title.toLowerCase().includes(search.toLowerCase().trim())
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={T.search}
+            className="ps-9"
+          />
+        </div>
+        <Button onClick={() => setLocation(createPath)} data-testid={`btn-create-${kind}`}>
+          <Plus className="w-4 h-4 me-1.5" />
+          {T.create}
+        </Button>
+      </div>
+
+      {loading ? (
+        <Card className="p-8 text-center text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="p-10 text-center text-muted-foreground">
+          <Library className="w-10 h-10 mx-auto mb-3 opacity-50" />
+          <div>{T.empty}</div>
+        </Card>
+      ) : (
+        <Card className="divide-y">
+          {filtered.map((row) => (
+            <div
+              key={row.id}
+              className="flex items-center gap-3 p-3 hover:bg-muted/40 flex-wrap"
+              data-testid={`saved-doc-${kind}-${row.id}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold truncate">{row.title || (isAr ? "(بدون عنوان)" : "(untitled)")}</span>
+                  {row.isShared && row.ownerIsAdmin && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      {T.sharedByAdmin}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                  {row.subject && <span>{row.subject}</span>}
+                  {row.gradeLevel && <span>· {row.gradeLevel}</span>}
+                  {row.language && <span className="uppercase">· {row.language}</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLocation(`${viewPrefix}/${row.id}${viewSuffix}`)}
+                  data-testid={`btn-open-${kind}-${row.id}`}
+                >
+                  {T.open}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLocation(`${createPath}?edit=${row.id}`)}
+                  data-testid={`btn-edit-${kind}-${row.id}`}
+                >
+                  <Pencil className="w-3.5 h-3.5 me-1" />
+                  {T.edit}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirmDelete(row)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  data-testid={`btn-delete-${kind}-${row.id}`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <DialogContent dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{T.confirm}</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm font-semibold">{confirmDelete?.title}</div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelete(null)}
+              disabled={deleting}
+            >
+              {T.cancel}
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <Loader2 className="w-4 h-4 me-1.5 animate-spin" /> : null}
+              {T.delete}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+

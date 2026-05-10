@@ -57,7 +57,15 @@ export default function RocketJoin() {
         .then(r => r.json())
         .then(data => {
           if (data.exists) {
-            setGameTargetClass(data.targetClass || null);
+            if (data.targetClass) {
+              setGameTargetClass(data.targetClass);
+              setGameStudents(data.students || []);
+              // Reset name so the student picks from the roster, not a stale value.
+              setName("");
+            } else {
+              setGameTargetClass(null);
+              setGameStudents([]);
+            }
             setPinValid(true);
           } else {
             setGameTargetClass(null);
@@ -65,7 +73,11 @@ export default function RocketJoin() {
             setPinValid(false);
           }
         })
-        .catch(() => { setPinValid(false); });
+        .catch(() => {
+          setPinValid(false);
+          setGameTargetClass(null);
+          setGameStudents([]);
+        });
     }
     if (trimmed.length < 6) {
       setCheckedPin("");
@@ -201,39 +213,79 @@ export default function RocketJoin() {
                   {ar ? "رمز غير صحيح أو السباق لم يبدأ بعد" : "Invalid code or race not started"}
                 </p>
               )}
-              {gameTargetClass && (
-                <p style={{ margin: "6px 0 0", fontSize: 12, color: GREEN, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Users size={13} />
-                  {ar ? `الصف المستهدف: ${gameTargetClass}` : `Target: ${gameTargetClass}`}
-                </p>
-              )}
+              {/* Target class label intentionally hidden when teacher restricts to a specific class —
+                  the student only needs to enter their name; the server enforces the restriction. */}
             </div>
 
-            {/* Name */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
-                {ar ? "اسمك" : "Your Name"}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && canJoin && handleJoin()}
-                placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
-                maxLength={30}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  fontSize: 16, fontWeight: 700,
-                  padding: "12px 16px",
-                  borderRadius: 14,
-                  border: `2px solid ${name.trim() ? GREEN : "#d1d5db"}`,
-                  outline: "none",
-                  background: "#fafafa",
-                  color: "#111827",
-                  textAlign: "center",
-                }}
-              />
-            </div>
+            {/* Name / Student picker */}
+            <AnimatePresence mode="wait">
+              {gameTargetClass ? (
+                <motion.div
+                  key="class-picker"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                    <Users size={14} color={GREEN} />
+                    {ar ? "اختر اسمك" : "Select your name"}
+                    <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 12 }}>({gameTargetClass})</span>
+                  </label>
+                  {gameStudents.length > 0 ? (
+                    <select
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      style={{
+                        width: "100%", boxSizing: "border-box",
+                        fontSize: 16, fontWeight: 700,
+                        padding: "12px 16px",
+                        borderRadius: 14,
+                        border: `2px solid ${name ? GREEN : "#d1d5db"}`,
+                        outline: "none",
+                        background: "#fafafa",
+                        color: "#111827",
+                        textAlign: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="">{ar ? "— اختر اسمك —" : "— Select your name —"}</option>
+                      {gameStudents.map(s => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p style={{ textAlign: "center", fontSize: 13, color: "#9ca3af", padding: "10px 0" }}>
+                      {ar ? "لا توجد أسماء في هذا الصف بعد" : "No students in this class yet"}
+                    </p>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div key="free-input" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
+                    {ar ? "اسمك" : "Your Name"}
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && canJoin && handleJoin()}
+                    placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
+                    maxLength={30}
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      fontSize: 16, fontWeight: 700,
+                      padding: "12px 16px",
+                      borderRadius: 14,
+                      border: `2px solid ${name.trim() ? GREEN : "#d1d5db"}`,
+                      outline: "none",
+                      background: "#fafafa",
+                      color: "#111827",
+                      textAlign: "center",
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Avatar */}
             <div>

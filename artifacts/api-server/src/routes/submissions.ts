@@ -10,6 +10,7 @@ import {
   SubmitAssignmentImageBody,
   ListSubmissionsParams,
   UpdateSubmissionBody,
+  UpdateAnswerGradeBody,
   StartExamSessionBody,
   StartExamSessionParams,
 } from "@workspace/api-zod";
@@ -240,8 +241,16 @@ router.post("/assignments/:id/submit", async (req, res) => {
       const qType = question.questionType || "mcq";
       let isCorrect = false;
       let needsAiGrading = false;
+      // For listening assignments, dictation + open answers are reviewed
+      // manually by the teacher (no auto-compare, no AI grading). They count
+      // as pending review. Other assignment types keep their previous grading.
+      const needsManualReview =
+        assignment.activityType === "listening" &&
+        (qType === "dictation" || qType === "open");
 
-      if (qType === "whiteboard" || qType === "fill_blank") {
+      if (needsManualReview) {
+        // skip — leave isCorrect=false, earnedPoints=0
+      } else if (qType === "whiteboard" || qType === "fill_blank") {
         needsAiGrading = true;
       } else if (qType === "true_false") {
         isCorrect = answer.selectedAnswer === question.correctAnswer;
@@ -254,8 +263,8 @@ router.post("/assignments/:id/submit", async (req, res) => {
       }
 
       const qPoints = question.points || 1;
-      const qEarned = needsAiGrading ? 0 : (isCorrect ? qPoints : 0);
-      if (isCorrect && !needsAiGrading) correctCount++;
+      const qEarned = (needsAiGrading || needsManualReview) ? 0 : (isCorrect ? qPoints : 0);
+      if (isCorrect && !needsAiGrading && !needsManualReview) correctCount++;
       earnedPoints += qEarned;
 
       const resultIndex = answerResults.length;
@@ -404,6 +413,11 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
       req.log.error({ err: e }, "AI feedback error");
     }
 
+    const durationSec = typeof body.durationSeconds === "number" && body.durationSeconds > 0
+      ? Math.min(Math.floor(body.durationSeconds), 60 * 60 * 24)
+      : null;
+    const startedAtVal = durationSec !== null ? new Date(Date.now() - durationSec * 1000) : null;
+
     const [submission] = await db
       .insert(submissionsTable)
       .values({
@@ -418,6 +432,8 @@ ${assignment.aiGradingInstructions ? `\nتعليمات التصحيح من ال�
         earnedPoints,
         totalPoints: totalPointsVal,
         aiFeedback,
+        startedAt: startedAtVal,
+        durationSeconds: durationSec,
       })
       .returning();
 
@@ -1010,6 +1026,7 @@ router.get("/assignments/:id/submissions", async (req, res) => {
         teacherAdjustedPoints: s.teacherAdjustedPoints,
         teacherNote: s.teacherNote,
         aiFeedback: s.aiFeedback,
+        durationSeconds: s.durationSeconds,
         submittedAt: s.submittedAt.toISOString(),
       })),
     );
@@ -1351,7 +1368,7 @@ router.get("/teacher/stats", async (req, res) => {
         score: Math.round(rest.score),
       }))
       .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
+      .slice(0, 5);
 
     res.json({
       gradeDistribution: gradeRanges,
@@ -1431,6 +1448,252 @@ router.get("/assignments/:id/question-stats", async (req, res) => {
   } catch (error: any) {
     req.log.error({ err: error }, "Question stats error");
     res.status(500).json({ message: "خطأ في جلب إحصائيات الأسئلة" });
+  }
+});
+
+router.get("/submissions/:submissionId/details", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
+    return;
+  }
+  try {
+    const submissionId = parseInt(req.params.submissionId, 10);
+    if (isNaN(submissionId)) {
+      res.status(400).json({ message: "معرف غير صالح" });
+      return;
+    }
+
+    const [submission] = await db
+      .select()
+      .from(submissionsTable)
+      .where(eq(submissionsTable.id, submissionId))
+      .limit(1);
+    if (!submission) {
+      res.status(404).json({ message: "الإجابة غير موجودة" });
+      return;
+    }
+
+    const [assignment] = await db
+      .select({ teacherId: assignmentsTable.teacherId })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, submission.assignmentId))
+      .limit(1);
+    if (!assignment || assignment.teacherId !== req.session.teacherId) {
+      res.status(403).json({ message: "غير مصرح" });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        id: answersTable.id,
+        questionId: answersTable.questionId,
+        selectedAnswer: answersTable.selectedAnswer,
+        isCorrect: answersTable.isCorrect,
+        teacherPoints: answersTable.teacherPoints,
+        teacherNote: answersTable.teacherNote,
+        questionText: questionsTable.text,
+        questionType: questionsTable.questionType,
+        points: questionsTable.points,
+        correctAnswer: questionsTable.correctAnswer,
+        optionA: questionsTable.optionA,
+        optionB: questionsTable.optionB,
+        optionC: questionsTable.optionC,
+        optionD: questionsTable.optionD,
+      })
+      .from(answersTable)
+      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
+      .where(eq(answersTable.submissionId, submissionId))
+      .orderBy(answersTable.id);
+
+    res.json({
+      submission: {
+        id: submission.id,
+        studentName: submission.studentName,
+        studentClass: submission.studentClass,
+        score: submission.score,
+        totalQuestions: submission.totalQuestions,
+        correctAnswers: submission.correctAnswers,
+        earnedPoints: submission.earnedPoints,
+        totalPoints: submission.totalPoints,
+        teacherAdjustedPoints: submission.teacherAdjustedPoints,
+        teacherNote: submission.teacherNote,
+        aiFeedback: submission.aiFeedback,
+        durationSeconds: submission.durationSeconds,
+        submittedAt: submission.submittedAt.toISOString(),
+      },
+      answers: rows.map(r => ({
+        id: r.id,
+        questionId: r.questionId,
+        questionText: r.questionText,
+        questionType: r.questionType,
+        points: r.points || 1,
+        selectedAnswer: r.selectedAnswer,
+        correctAnswer: r.correctAnswer,
+        optionA: r.optionA,
+        optionB: r.optionB,
+        optionC: r.optionC,
+        optionD: r.optionD,
+        isCorrect: r.isCorrect,
+        teacherPoints: r.teacherPoints,
+        teacherNote: r.teacherNote,
+      })),
+    });
+  } catch (error: any) {
+    req.log.error({ err: error }, "Get submission details error");
+    res.status(500).json({ message: "خطأ في جلب التفاصيل" });
+  }
+});
+
+router.patch("/submission-answers/:answerId", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول كمعلم" });
+    return;
+  }
+  try {
+    const answerId = parseInt(req.params.answerId, 10);
+    if (isNaN(answerId)) {
+      res.status(400).json({ message: "معرف غير صالح" });
+      return;
+    }
+    const body = UpdateAnswerGradeBody.parse(req.body);
+
+    const [row] = await db
+      .select({
+        answerId: answersTable.id,
+        submissionId: answersTable.submissionId,
+        assignmentId: submissionsTable.assignmentId,
+        teacherId: assignmentsTable.teacherId,
+        questionPoints: questionsTable.points,
+      })
+      .from(answersTable)
+      .innerJoin(submissionsTable, eq(answersTable.submissionId, submissionsTable.id))
+      .innerJoin(assignmentsTable, eq(submissionsTable.assignmentId, assignmentsTable.id))
+      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
+      .where(eq(answersTable.id, answerId))
+      .limit(1);
+
+    if (!row) {
+      res.status(404).json({ message: "الإجابة غير موجودة" });
+      return;
+    }
+    if (row.teacherId !== req.session.teacherId) {
+      res.status(403).json({ message: "غير مصرح" });
+      return;
+    }
+
+    const maxPts = row.questionPoints || 1;
+    if (body.teacherPoints !== undefined && body.teacherPoints !== null) {
+      if (body.teacherPoints < 0 || body.teacherPoints > maxPts) {
+        res.status(400).json({ message: `الدرجة يجب أن تكون بين 0 و ${maxPts}` });
+        return;
+      }
+    }
+
+    const updateData: Record<string, any> = {};
+    if (body.teacherPoints !== undefined) updateData.teacherPoints = body.teacherPoints;
+    if (body.teacherNote !== undefined) updateData.teacherNote = body.teacherNote;
+    if (body.teacherPoints !== undefined && body.teacherPoints !== null) {
+      updateData.isCorrect = body.teacherPoints >= maxPts;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(answersTable).set(updateData).where(eq(answersTable.id, answerId));
+    }
+
+    const subAnswers = await db
+      .select({
+        isCorrect: answersTable.isCorrect,
+        teacherPoints: answersTable.teacherPoints,
+        questionPoints: questionsTable.points,
+      })
+      .from(answersTable)
+      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
+      .where(eq(answersTable.submissionId, row.submissionId));
+
+    let earned = 0;
+    let total = 0;
+    let correctCnt = 0;
+    for (const a of subAnswers) {
+      const qp = a.questionPoints || 1;
+      total += qp;
+      if (a.teacherPoints !== null) {
+        earned += a.teacherPoints;
+        if (a.teacherPoints >= qp) correctCnt += 1;
+      } else if (a.isCorrect) {
+        earned += qp;
+        correctCnt += 1;
+      }
+    }
+    const score = total > 0 ? (earned / total) * 100 : 0;
+
+    const [updatedSub] = await db
+      .update(submissionsTable)
+      .set({ earnedPoints: earned, correctAnswers: correctCnt, score })
+      .where(eq(submissionsTable.id, row.submissionId))
+      .returning();
+
+    const detailRows = await db
+      .select({
+        id: answersTable.id,
+        questionId: answersTable.questionId,
+        selectedAnswer: answersTable.selectedAnswer,
+        isCorrect: answersTable.isCorrect,
+        teacherPoints: answersTable.teacherPoints,
+        teacherNote: answersTable.teacherNote,
+        questionText: questionsTable.text,
+        questionType: questionsTable.questionType,
+        points: questionsTable.points,
+        correctAnswer: questionsTable.correctAnswer,
+        optionA: questionsTable.optionA,
+        optionB: questionsTable.optionB,
+        optionC: questionsTable.optionC,
+        optionD: questionsTable.optionD,
+      })
+      .from(answersTable)
+      .innerJoin(questionsTable, eq(answersTable.questionId, questionsTable.id))
+      .where(eq(answersTable.submissionId, row.submissionId))
+      .orderBy(answersTable.id);
+
+    res.json({
+      submission: {
+        id: updatedSub.id,
+        studentName: updatedSub.studentName,
+        studentClass: updatedSub.studentClass,
+        score: updatedSub.score,
+        totalQuestions: updatedSub.totalQuestions,
+        correctAnswers: updatedSub.correctAnswers,
+        earnedPoints: updatedSub.earnedPoints,
+        totalPoints: updatedSub.totalPoints,
+        teacherAdjustedPoints: updatedSub.teacherAdjustedPoints,
+        teacherNote: updatedSub.teacherNote,
+        aiFeedback: updatedSub.aiFeedback,
+        durationSeconds: updatedSub.durationSeconds,
+        submittedAt: updatedSub.submittedAt.toISOString(),
+      },
+      answers: detailRows.map(r => ({
+        id: r.id,
+        questionId: r.questionId,
+        questionText: r.questionText,
+        questionType: r.questionType,
+        points: r.points || 1,
+        selectedAnswer: r.selectedAnswer,
+        correctAnswer: r.correctAnswer,
+        optionA: r.optionA,
+        optionB: r.optionB,
+        optionC: r.optionC,
+        optionD: r.optionD,
+        isCorrect: r.isCorrect,
+        teacherPoints: r.teacherPoints,
+        teacherNote: r.teacherNote,
+      })),
+    });
+  } catch (error: any) {
+    if (error?.name === "ZodError") {
+      res.status(400).json({ message: "بيانات غير صالحة" });
+      return;
+    }
+    req.log.error({ err: error }, "Update answer grade error");
+    res.status(500).json({ message: "خطأ في تعديل الدرجة" });
   }
 });
 

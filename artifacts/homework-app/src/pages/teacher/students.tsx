@@ -17,7 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
-  Layers, UserCheck,
+  Layers, UserCheck, TrendingUp,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -136,6 +136,14 @@ function StudentRow({
             )}
           </div>
         )}
+        <Link
+          href={`/teacher/students/${student.id}/timeline`}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 inline-flex items-center"
+          title="سجل التطور"
+          aria-label="سجل التطور"
+        >
+          <TrendingUp size={13} />
+        </Link>
         <button
           onClick={() => onResetPassword(student)}
           className="p-1.5 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-500/10"
@@ -1105,34 +1113,43 @@ export default function StudentsPage() {
       <div className="min-h-screen bg-background pb-16" dir="rtl">
         <div className="max-w-2xl mx-auto px-4 py-6">
 
-          {/* Hero */}
+          {/* Hero — Hasad brand: deep green #1E4D35 + gold #E8A80E accent */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-emerald-700 text-white p-6 sm:p-7 shadow-lg mb-6"
+            className="relative overflow-hidden rounded-2xl text-white p-6 sm:p-7 shadow-lg mb-6"
+            style={{ background: "linear-gradient(135deg, #1E4D35 0%, #225739 55%, #1a4530 100%)" }}
           >
-            <div className="absolute -top-16 -end-16 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-amber-300/15 blur-2xl pointer-events-none" />
+            {/* Gold corner glow */}
+            <div className="absolute -top-20 -end-20 w-64 h-64 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.28) 0%, rgba(232,168,14,0) 70%)" }} />
+            <div className="absolute -bottom-16 -start-16 w-56 h-56 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(232,168,14,0.10) 0%, rgba(232,168,14,0) 70%)" }} />
+            {/* Subtle decorative ring */}
+            <div className="absolute top-4 end-4 w-8 h-8 rounded-full pointer-events-none" style={{ border: "1.5px solid rgba(232,168,14,0.25)" }} />
             <div className="relative flex items-start gap-3">
               <button
                 onClick={() => setLocation("/teacher")}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white backdrop-blur-sm"
+                className="p-2 rounded-xl transition-colors text-white"
+                style={{ background: "rgba(232,168,14,0.15)", border: "1px solid rgba(232,168,14,0.3)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.28)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(232,168,14,0.15)"; }}
               >
                 <BackArrowIcon size={20} />
               </button>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2 mb-2">
-                  <Users size={22} className="text-amber-200" />
+                <h1 className="text-xl sm:text-2xl font-black flex items-center gap-2 mb-2" style={{ letterSpacing: "-0.3px" }}>
+                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0" style={{ background: "#E8A80E", color: "#1E4D35", boxShadow: "0 4px 14px rgba(232,168,14,0.35)" }}>
+                    <Users size={20} />
+                  </span>
                   إدارة الصفوف والطلاب
                 </h1>
                 <div className="flex flex-wrap items-center gap-2">
                   {namedFolders.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-xs font-bold">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold" style={{ background: "rgba(232,168,14,0.18)", color: "#fde68a", border: "1px solid rgba(232,168,14,0.32)" }}>
                       <BookOpen size={12} />
                       {namedFolders.length} صف
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-xs font-bold">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold" style={{ background: "rgba(255,255,255,0.10)", color: "#fff", border: "1px solid rgba(255,255,255,0.18)" }}>
                     <Users size={12} />
                     {totalCount} طالب
                   </span>

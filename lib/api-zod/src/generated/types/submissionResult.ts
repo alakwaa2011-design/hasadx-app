@@ -19,5 +19,6 @@ export interface SubmissionResult {
   showResults: boolean;
   answers: AnswerResult[];
   aiFeedback?: string | null;
-  repeatEligibleIds?: number[];
+  /** IDs of questions answered incorrectly that the student may retry. */
+  repeatEligibleIds?: number[] | null;
 }

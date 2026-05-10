@@ -1,0 +1,1 @@
+import{aa as c}from"./index-kaFqwHJT.js";const e=[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}]],l=c("circle",e);const i=[["circle",{cx:"12",cy:"12",r:"1",key:"41hilf"}],["circle",{cx:"12",cy:"5",r:"1",key:"gxeob9"}],["circle",{cx:"12",cy:"19",r:"1",key:"lyex9k"}]],o=c("ellipsis-vertical",i);export{l as C,o as E};

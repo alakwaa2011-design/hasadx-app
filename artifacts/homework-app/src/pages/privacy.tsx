@@ -2,9 +2,23 @@ import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, Shield } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 
 export default function PrivacyPage() {
   const { lang } = useI18n();
+  useSeo(
+    lang === "ar"
+      ? {
+          title: "سياسة الخصوصية | منصة حصاد — HasadX",
+          description: "سياسة الخصوصية في منصة حصاد التعليمية: كيفية جمع البيانات وحمايتها وحقوق المستخدم.",
+          canonicalPath: "/privacy",
+        }
+      : {
+          title: "Privacy Policy | HasadX",
+          description: "How HasadX collects, protects, and uses your data — and your rights as a user.",
+          canonicalPath: "/privacy",
+        },
+  );
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   return (

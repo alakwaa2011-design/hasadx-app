@@ -1,0 +1,44 @@
+[
+  {
+    "id": "title",
+    "position": 1,
+    "filepath": "src/pages/slides/Title.tsx",
+    "title": "منصة حصاد · الدورة التدريبية",
+    "description": "شريحة الافتتاح: تعريف بالدورة وموضوعاتها للمعلمين."
+  },
+  {
+    "id": "overview",
+    "position": 2,
+    "filepath": "src/pages/slides/Overview.tsx",
+    "title": "ما هي منصة حصاد؟",
+    "description": "نظرة عامة على المنصة وثلاث ركائز رئيسية: الواجبات والمسابقات والذكاء."
+  },
+  {
+    "id": "homework",
+    "position": 3,
+    "filepath": "src/pages/slides/Homework.tsx",
+    "title": "إنشاء واجب في أربع خطوات",
+    "description": "خطوات إنشاء الواجب: فتح الصف، كتابة التعليمات، الاستعانة بالذكاء، النشر."
+  },
+  {
+    "id": "quizzes",
+    "position": 4,
+    "filepath": "src/pages/slides/Quizzes.tsx",
+    "title": "مسابقات وميض التفاعلية",
+    "description": "كيفية إنشاء مسابقة وميض ومشاركتها مع الطلاب ومتابعة النتائج لحظيًا."
+  },
+  {
+    "id": "ai",
+    "position": 5,
+    "filepath": "src/pages/slides/AI.tsx",
+    "title": "الذكاء الاصطناعي · ثلاث مستويات",
+    "description": "شرح مستويات المساعد الذكي الثلاثة: القياسي والمتقدم والمتميز."
+  },
+  {
+    "id": "closing",
+    "position": 6,
+    "filepath": "src/pages/slides/Closing.tsx",
+    "title": "ابدأ صفّك الأول",
+    "description": "دعوة لبدء استخدام المنصة وكلمة شكر للمعلمين."
+  }
+]

@@ -373,6 +373,15 @@ export function getGame(pin: string): Game | undefined {
   return games.get(pin);
 }
 
+export function findActiveGameByTeacher(teacherId: number): Game | undefined {
+  for (const game of games.values()) {
+    if (game.teacherId === teacherId && game.state !== "finished") {
+      return game;
+    }
+  }
+  return undefined;
+}
+
 export function deleteGame(pin: string): void {
   const game = games.get(pin);
   if (game?.currentTimeoutId) {

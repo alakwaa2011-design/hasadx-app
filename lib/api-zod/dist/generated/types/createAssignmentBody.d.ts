@@ -7,6 +7,7 @@
  */
 import type { CreateAssignmentBodyAccessMode } from "./createAssignmentBodyAccessMode";
 import type { CreateAssignmentBodyAdaptiveConfig } from "./createAssignmentBodyAdaptiveConfig";
+import type { CreateAssignmentBodyListeningSettings } from "./createAssignmentBodyListeningSettings";
 import type { CreateAssignmentBodyResultsReleaseMode } from "./createAssignmentBodyResultsReleaseMode";
 import type { CreateAssignmentBodySubmissionMode } from "./createAssignmentBodySubmissionMode";
 import type { CreateQuestionBody } from "./createQuestionBody";
@@ -30,6 +31,12 @@ export interface CreateAssignmentBody {
     categoryId?: number | null;
     isAdaptive?: boolean;
     adaptiveConfig?: CreateAssignmentBodyAdaptiveConfig;
+    /** Marks special activity types (e.g. 'listening' for dictation/listening assignments). */
+    activityType?: string | null;
+    listeningAudioText?: string | null;
+    listeningVoice?: string | null;
+    listeningSpeed?: string | null;
+    listeningSettings?: CreateAssignmentBodyListeningSettings;
     questions: CreateQuestionBody[];
 }
 //# sourceMappingURL=createAssignmentBody.d.ts.map

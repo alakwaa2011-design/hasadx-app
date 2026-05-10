@@ -1,0 +1,1 @@
+{"version":3,"file":"buildPresentationRequest.d.ts","sourceRoot":"","sources":["../../../src/generated/types/buildPresentationRequest.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,wBAAwB;IACvC;;;OAGG;IACH,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,oBAAoB;IACpB,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,mBAAmB;IACnB,UAAU,CAAC,EAAE,MAAM,CAAC;CACrB"}

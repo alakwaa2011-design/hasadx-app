@@ -13,5 +13,6 @@ export interface SubmitAssignmentBody {
   deviceFingerprint: string;
   accessCode?: string;
   examSessionId?: number;
+  durationSeconds?: number | null;
   answers: AnswerBody[];
 }

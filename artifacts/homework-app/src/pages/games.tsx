@@ -1,10 +1,13 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
 import {
-  Globe, Brain, Shuffle, Landmark, Sparkles, Calculator, ArrowRight, ArrowLeft, Gamepad2, Trophy, Terminal, Type,
+  Globe, Brain, Shuffle, Landmark, Sparkles, Calculator, ArrowRight, ArrowLeft, Gamepad2, Trophy, Terminal, Type, Swords,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 interface GameCard {
   href: string;
@@ -20,6 +23,20 @@ export default function GamesPage() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackIcon = lang === "ar" ? ArrowRight : ArrowLeft;
   const ChevronIcon = lang === "ar" ? ArrowLeft : ArrowRight;
+
+  const [maraquiVisible, setMaraquiVisible] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      fetch(`${API_BASE}/api/me`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`${API_BASE}/api/public/settings`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([me, ps]) => {
+      if (cancelled) return;
+      const isAdmin = Boolean(me?.isAdmin) || me?.role === "admin";
+      setMaraquiVisible(isAdmin || Boolean(ps?.showMaraqui));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const games: GameCard[] = [
     {
@@ -98,7 +115,7 @@ export default function GamesPage() {
       iconBg: "bg-red-500/10",
       iconColor: "text-red-600",
     },
-    {
+    ...(maraquiVisible ? [{
       href: "/game/maraqui",
       icon: Landmark,
       title: lang === "ar" ? "مَراقي" : "Maraqui",
@@ -107,7 +124,7 @@ export default function GamesPage() {
         : "Progress through stages and master the content — graded MCQ questions",
       iconBg: "bg-teal-500/10",
       iconColor: "text-teal-600",
-    },
+    }] : []),
     {
       href: "/game/million",
       icon: Trophy,
@@ -154,6 +171,51 @@ export default function GamesPage() {
                 ? "ألعاب يمكنك الاستمتاع بها فوراً بدون تسجيل"
                 : "Games you can enjoy instantly without registration"}
             </p>
+          </motion.div>
+
+          {/* Featured Hero Card — Hasad Arena */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <Link href="/game/arena">
+              <div
+                className="group relative overflow-hidden rounded-3xl p-6 sm:p-8 cursor-pointer hover:-translate-y-1 transition-all duration-200 shadow-2xl hover:shadow-emerald-900/40"
+                style={{
+                  background: "linear-gradient(135deg, #064e3b 0%, #022c22 60%, #064e3b 100%)",
+                  border: "2px solid rgba(245,158,11,0.4)",
+                }}
+              >
+                <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
+                  style={{ background: "radial-gradient(circle, #fbbf24 0%, transparent 70%)" }} />
+                <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-15 blur-3xl"
+                  style={{ background: "radial-gradient(circle, #16a34a 0%, transparent 70%)" }} />
+                <div className="relative flex flex-col sm:flex-row items-center gap-5">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center shadow-xl bg-gradient-to-br from-amber-300 to-yellow-500 text-emerald-950">
+                    <Swords className="w-10 h-10 sm:w-12 sm:h-12" />
+                  </div>
+                  <div className="flex-1 text-center sm:text-right">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-300/20 text-amber-200 text-[10px] font-bold mb-2 border border-amber-300/30">
+                      <Sparkles className="w-3 h-3" />
+                      {lang === "ar" ? "جديد · لعبة الشاشة الكبيرة" : "New · Big Screen Game"}
+                    </div>
+                    <h2 className="text-2xl sm:text-4xl font-extrabold mb-1 text-transparent bg-clip-text bg-gradient-to-l from-amber-200 via-yellow-300 to-amber-400">
+                      {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
+                    </h2>
+                    <p className="text-emerald-100/80 text-sm sm:text-base mb-3">
+                      {lang === "ar"
+                        ? "مسابقة معرفة بين فريقين على شاشة كبيرة — 6 فئات، أسئلة بقيم متصاعدة، ووسائل مساعدة استراتيجية"
+                        : "Two-team knowledge battle on a big screen — 6 categories, escalating points, and strategic helpers"}
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-400 text-emerald-950 font-extrabold text-sm group-hover:gap-3 transition-all">
+                      {lang === "ar" ? "ابدأ التحدي" : "Start Challenge"}
+                      <ChevronIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
           </motion.div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">

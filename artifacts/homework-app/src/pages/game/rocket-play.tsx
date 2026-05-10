@@ -50,6 +50,8 @@ interface Player {
   finishRank?: number;
   streak: number;
   currentQuestionIdx: number;
+  /** Server-driven cruise velocity (1 = base, peaks at ~4-6 right after a correct answer). */
+  velocity?: number;
 }
 
 /** من هذا العدد فما فوق نعرض مسارًا أفقيًا قابلًا للتمرير (صفوف طويلة) */
@@ -775,8 +777,8 @@ function HorizontalRocketLanesStrip({
         const isMe = p.name === queryName;
         const isMega = isMe && gamePhase === 2;
         const medals = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "";
-        const alt = displayAltitude(p); // 0-99 from modulo, no cap needed
-        const orbit = Math.floor(p.altitude / 100);
+        const alt = displayAltitude(p); // raw altitude (continuous)
+        const orbit = 0;
         const rz =
           isMega ? (variant === "mobile" ? 36 : 40)
           : laneW <= 38 ? (isMe ? 26 : 20)
@@ -917,6 +919,106 @@ function HorizontalRocketLanesStrip({
   );
 }
 
+// ─── Power-up tray (boost + multiplier) ───────────────────────────────────────
+function PowerUpTray({
+  ar,
+  boostAvailable,
+  multiplierAvailable,
+  boostArmed,
+  multiplierArmed,
+  onUse,
+}: {
+  ar: boolean;
+  boostAvailable: number;
+  multiplierAvailable: number;
+  boostArmed: boolean;
+  multiplierArmed: boolean;
+  onUse: (kind: "boost" | "multiplier") => void;
+}) {
+  // Hide the tray entirely until the player has earned at least one power-up.
+  if (boostAvailable === 0 && multiplierAvailable === 0 && !boostArmed && !multiplierArmed) return null;
+  return (
+    <div
+      style={{
+        display: "flex", justifyContent: "center", gap: 10,
+        padding: "8px 12px",
+        background: "rgba(0,0,0,0.35)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      <PowerButton
+        kind="boost"
+        ar={ar}
+        count={boostAvailable}
+        armed={boostArmed}
+        onClick={() => onUse("boost")}
+      />
+      <PowerButton
+        kind="multiplier"
+        ar={ar}
+        count={multiplierAvailable}
+        armed={multiplierArmed}
+        onClick={() => onUse("multiplier")}
+      />
+    </div>
+  );
+}
+
+function PowerButton({
+  kind, ar, count, armed, onClick,
+}: { kind: "boost" | "multiplier"; ar: boolean; count: number; armed: boolean; onClick: () => void }) {
+  const disabled = count === 0 && !armed;
+  const label = kind === "boost"
+    ? (ar ? "دفع ×٢ ارتفاع" : "Boost ×2 altitude")
+    : (ar ? "مضاعف ×٢ نقاط" : "Multiplier ×2 score");
+  const icon = kind === "boost" ? "🚀" : "⭐";
+  const accent = kind === "boost" ? "#3aa3ff" : "#D9A521";
+  return (
+    <motion.button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      whileTap={disabled ? undefined : { scale: 0.94 }}
+      animate={armed ? { boxShadow: [`0 0 0 0 ${accent}80`, `0 0 14px 6px ${accent}40`, `0 0 0 0 ${accent}80`] } : {}}
+      transition={{ repeat: armed ? Infinity : 0, duration: 1.1 }}
+      style={{
+        position: "relative",
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "6px 12px", borderRadius: 999,
+        background: armed ? `${accent}` : disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
+        color: armed ? "#fff" : disabled ? "rgba(255,255,255,0.35)" : "#fff",
+        border: `1.5px solid ${armed ? "#fff" : disabled ? "rgba(255,255,255,0.08)" : `${accent}80`}`,
+        fontWeight: 800, fontSize: 12, lineHeight: 1,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.55 : 1,
+        whiteSpace: "nowrap",
+      }}
+      aria-pressed={armed}
+      aria-label={label}
+    >
+      <span style={{ fontSize: 16 }}>{icon}</span>
+      <span>{label}</span>
+      {count > 0 && (
+        <span style={{
+          background: armed ? "rgba(255,255,255,0.25)" : `${accent}30`,
+          color: armed ? "#fff" : accent,
+          padding: "2px 7px", borderRadius: 999,
+          fontSize: 11, fontWeight: 900, fontVariantNumeric: "tabular-nums",
+        }}>×{count}</span>
+      )}
+      {armed && (
+        <span style={{
+          position: "absolute", top: -6, insetInlineEnd: -6,
+          background: "#fff", color: accent,
+          fontSize: 9, fontWeight: 900,
+          padding: "2px 6px", borderRadius: 999,
+          border: `1.5px solid ${accent}`,
+        }}>{ar ? "جاهز" : "ARMED"}</span>
+      )}
+    </motion.button>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function RocketPlay() {
   const params = useParams<{ pin: string }>();
@@ -955,6 +1057,8 @@ export default function RocketPlay() {
   const [fillAnswer, setFillAnswer] = useState("");
   const [boostFlash, setBoostFlash] = useState(false);
   const [penaltyFlash, setPenaltyFlash] = useState(false);
+  /** Live cruise velocity for the local player (1 = base, peaks ~4× after a correct answer). */
+  const [myVelocity, setMyVelocity] = useState(1);
   const [chosenWrongIdx, setChosenWrongIdx] = useState<number | null>(null); // display index of wrong choice
   const questionArrivalCountRef = useRef(0); // increments every time a new question arrives
 
@@ -967,12 +1071,18 @@ export default function RocketPlay() {
   const [myRank, setMyRank] = useState(0);
   const [title, setTitle] = useState("");
   const [encouragement, setEncouragement] = useState<string | null>(null);
-  const [gameTimeLeft, setGameTimeLeft] = useState(0);
-  const [gameTimeMax, setGameTimeMax] = useState(300);
-  const gameTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const gameEndTimeRef = useRef<number>(0);
 
-  // ─── Game Phase (0=Space, 1=Asteroids, 2=Crystal) ─────────────────────────
+  // Race timer (1-15 min, set by teacher; race auto-ends at 0)
+  const [gameTimeLeft, setGameTimeLeft] = useState<number | null>(null);
+
+  // Power-ups (server-validated): boost = ×2 altitude, multiplier = ×2 score on next correct answer
+  const [boostAvailable, setBoostAvailable] = useState(0);
+  const [multiplierAvailable, setMultiplierAvailable] = useState(0);
+  const [boostArmed, setBoostArmed] = useState(false);
+  const [multiplierArmed, setMultiplierArmed] = useState(false);
+  const [powerToast, setPowerToast] = useState<{ kind: "boost" | "multiplier"; action: "earned" | "used"; key: number } | null>(null);
+
+  // ─── Game Phase (0=Space, 1=Asteroids, 2=Crystal) — server-driven, monotonic ─
   const [gamePhase, setGamePhase] = useState(0);
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
   const prevGamePhaseRef = useRef(0);
@@ -1002,10 +1112,8 @@ export default function RocketPlay() {
   /** per_player vs host_sync — same question for all until teacher advances */
   const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
   const phaseRef = useRef(phase);
-  const gameTimeLeftRef = useRef(gameTimeLeft);
   const advanceModeRef = useRef(advanceMode);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
-  useEffect(() => { gameTimeLeftRef.current = gameTimeLeft; }, [gameTimeLeft]);
   useEffect(() => { advanceModeRef.current = advanceMode; }, [advanceMode]);
   useEffect(() => {
     if (!currentQ || currentQ.type === "fill_blank") {
@@ -1022,41 +1130,17 @@ export default function RocketPlay() {
     setOptionMapping(indices);
   }, [shuffleTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Game timer countdown (client-side)
-  const startGameTimer = useCallback((durationSecs: number) => {
-    const endTime = Date.now() + durationSecs * 1000;
-    gameEndTimeRef.current = endTime;
-    setGameTimeMax(durationSecs);
-    setGameTimeLeft(durationSecs);
-    if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-    gameTimerRef.current = setInterval(() => {
-      const rem = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      setGameTimeLeft(rem);
-      if (rem <= 10 && rem > 0) soundRef.current?.playTick();
-      if (rem === 0) {
-        if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-      }
-    }, 500);
-  }, []);
-
-  useEffect(() => () => { if (gameTimerRef.current) clearInterval(gameTimerRef.current); }, []);
-
-  // Detect phase transitions based on altitude
+  // Race timer — counts down once gameTimeLeft is set; race auto-ends server-side at 0.
   useEffect(() => {
-    if (phase !== "racing") return;
-    const posInOrbit = myAltitude % 100;
-    const newPhase = posInOrbit >= 67 ? 2 : posInOrbit >= 34 ? 1 : 0;
-    if (newPhase !== prevGamePhaseRef.current) {
-      prevGamePhaseRef.current = newPhase;
-      setGamePhase(newPhase);
-      setShowPhaseTransition(true);
-      setTimeout(() => setShowPhaseTransition(false), 1800);
-      soundRef.current?.playPhaseTransition();
-      const modes = ["race1", "race2", "race3"] as const;
-      soundRef.current?.startBackground(modes[newPhase]);
-    }
-  }, [myAltitude, phase]);
+    if (phase !== "racing" || gameTimeLeft === null) return;
+    if (gameTimeLeft <= 0) return;
+    const intv = setInterval(() => {
+      setGameTimeLeft((s) => (s === null ? null : Math.max(0, s - 1)));
+    }, 1000);
+    return () => clearInterval(intv);
+  }, [phase, gameTimeLeft === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // (Phase derivation moved to server — driven by `phase` field on socket events.)
   // Connect & join
   useEffect(() => {
     if (!pin || !queryName) { setLocation(`/game/rocket/join/${pin}`); return; }
@@ -1070,6 +1154,9 @@ export default function RocketPlay() {
         finished?: boolean; finishRank?: number; title?: string;
         totalDurationSecs?: number;
         advanceMode?: "per_player" | "host_sync";
+        phase?: number;
+        boostAvailable?: number; multiplierAvailable?: number;
+        boostArmed?: boolean; multiplierArmed?: boolean;
       }) => {
         if (res.error) { toast.error(res.error); setLocation(`/game/rocket/join/${pin}`); return; }
         if (res.success) {
@@ -1079,6 +1166,17 @@ export default function RocketPlay() {
           if (res.title) setTitle(res.title);
           setMyAltitude(res.altitude ?? 0);
           setMyScore(res.score ?? 0);
+          if (typeof res.phase === "number") {
+            setGamePhase(res.phase);
+            prevGamePhaseRef.current = res.phase;
+          }
+          if (typeof (res as { velocity?: number }).velocity === "number") {
+            setMyVelocity((res as { velocity: number }).velocity);
+          }
+          setBoostAvailable(res.boostAvailable ?? 0);
+          setMultiplierAvailable(res.multiplierAvailable ?? 0);
+          setBoostArmed(!!res.boostArmed);
+          setMultiplierArmed(!!res.multiplierArmed);
           const st = res.state;
           if (st === "countdown") {
             setPhase("countdown");
@@ -1087,12 +1185,12 @@ export default function RocketPlay() {
           } else if (st === "racing") {
             setPhase("racing");
             soundRef.current?.startBackground("race1");
+            if (typeof res.totalDurationSecs === "number") setGameTimeLeft(res.totalDurationSecs);
             if (res.activeQuestion) {
               setCurrentQ(res.activeQuestion);
               setQuestionStartTime(Date.now());
               setShuffleTick(c => c + 1);
             }
-            if (res.totalDurationSecs !== undefined) startGameTimer(res.totalDurationSecs);
           } else if (st === "finished") {
             setPhase("finished");
           } else {
@@ -1116,9 +1214,10 @@ export default function RocketPlay() {
 
     socket.on("rocket:race-start", (data: {
       total: number;
-      gameDuration?: number;
       question: Question;
       advanceMode?: "per_player" | "host_sync";
+      gameDuration?: number;
+      totalDurationSecs?: number;
     }) => {
       setPhase("racing");
       setAdvanceMode(data.advanceMode ?? "per_player");
@@ -1128,11 +1227,21 @@ export default function RocketPlay() {
       setQuestionStartTime(Date.now());
       setFeedback(null);
       setShuffleTick(c => c + 1);
+      // Initialize race timer (race-wide). Server is authoritative; this is a UI countdown.
+      const dur = data.totalDurationSecs ?? data.gameDuration ?? null;
+      if (typeof dur === "number") setGameTimeLeft(dur);
+      // Reset phase + power-ups for a fresh race.
+      setGamePhase(0);
+      prevGamePhaseRef.current = 0;
+      setBoostAvailable(0);
+      setMultiplierAvailable(0);
+      setBoostArmed(false);
+      setMultiplierArmed(false);
+      setMyVelocity(1);
       soundRef.current?.playLaunch();
-      if (data.gameDuration) startGameTimer(data.gameDuration);
     });
 
-    socket.on("rocket:next-question", (q: Question) => {
+    socket.on("rocket:next-question", (q: Question & { phase?: number }) => {
       questionArrivalCountRef.current += 1;
       setCurrentQ(q);
       setQuestionStartTime(Date.now());
@@ -1141,6 +1250,19 @@ export default function RocketPlay() {
       setEncouragement(null);
       setChosenWrongIdx(null);
       setShuffleTick(c => c + 1);
+      // Allow the player to answer again — even if the server re-served the
+      // same question idx after a wrong answer (per_player phase replay).
+      submittedQuestionIdxRef.current = null;
+      submittingRef.current = false;
+      if (typeof q.phase === "number" && q.phase !== prevGamePhaseRef.current) {
+        prevGamePhaseRef.current = q.phase;
+        setGamePhase(q.phase);
+        setShowPhaseTransition(true);
+        setTimeout(() => setShowPhaseTransition(false), 1800);
+        soundRef.current?.playPhaseTransition();
+        const modes = ["race1", "race2", "race3"] as const;
+        soundRef.current?.startBackground(modes[Math.min(2, q.phase)]);
+      }
     });
 
     socket.on("rocket:sync-question", (q: Question) => {
@@ -1152,25 +1274,55 @@ export default function RocketPlay() {
       setEncouragement(null);
       setChosenWrongIdx(null);
       setShuffleTick(c => c + 1);
+      submittedQuestionIdxRef.current = null;
+      submittingRef.current = false;
     });
 
     socket.on("rocket:leaderboard", (data: { players: Player[] }) => setPlayers(data.players));
 
+    // Continuous cruise: server tick (every 1s) gives every rocket passive forward
+    // motion. We update the leaderboard, our own altitude, and react to the
+    // time-driven phase progression that all players share.
+    socket.on("rocket:cruise", (data: { players: Player[]; phase: number; phaseChanged: boolean }) => {
+      setPlayers(data.players);
+      const me = data.players.find((p) => p.name === queryName);
+      if (me) {
+        setMyAltitude(me.altitude);
+        if (typeof me.velocity === "number") setMyVelocity(me.velocity);
+      }
+      if (data.phase !== prevGamePhaseRef.current) {
+        prevGamePhaseRef.current = data.phase;
+        setGamePhase(data.phase);
+        if (data.phaseChanged) {
+          setShowPhaseTransition(true);
+          setTimeout(() => setShowPhaseTransition(false), 1800);
+          soundRef.current?.playPhaseTransition();
+          const modes = ["race1", "race2", "race3"] as const;
+          soundRef.current?.startBackground(modes[Math.min(2, data.phase)]);
+        }
+      }
+    });
+
     socket.on("rocket:game-end", (data: { players: Player[] }) => {
       setPhase("finished");
+      setGameTimeLeft(0);
       if (data.players) setPlayers(data.players);
       soundRef.current?.stopBackground();
       soundRef.current?.playWin();
-      if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-      setGameTimeLeft(0);
     });
 
     socket.on("rocket:replay", () => {
       setMyAltitude(0); setMyScore(0); setMyStreak(0);
       setPhase("lobby");
       setAdvanceMode("per_player");
-      if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-      setGameTimeLeft(0);
+      setGamePhase(0);
+      prevGamePhaseRef.current = 0;
+      setBoostAvailable(0);
+      setMultiplierAvailable(0);
+      setBoostArmed(false);
+      setMultiplierArmed(false);
+      setMyVelocity(1);
+      setGameTimeLeft(null);
     });
 
     return () => {
@@ -1180,11 +1332,12 @@ export default function RocketPlay() {
       socket.off("rocket:next-question");
       socket.off("rocket:sync-question");
       socket.off("rocket:leaderboard");
+      socket.off("rocket:cruise");
       socket.off("rocket:game-end");
       socket.off("rocket:replay");
       socket.off("connect", joinFlow);
     };
-  }, [pin, queryName, queryAvatar, setLocation, startGameTimer]);
+  }, [pin, queryName, queryAvatar, setLocation]);
 
   // Countdown
   useEffect(() => {
@@ -1200,24 +1353,68 @@ export default function RocketPlay() {
     return () => clearInterval(intv);
   }, [phase]);
 
+  const submittingRef = useRef(false);
+  const submittedQuestionIdxRef = useRef<number | null>(null);
+
   const submitAnswer = useCallback((answerIndex: number, answerText?: string) => {
     if (!currentQ) return;
     if (phaseRef.current !== "racing") return;
-    if (gameTimeLeftRef.current <= 0) return;
+    // Per-question idempotency: ignore double clicks / late timer fires for the same question.
+    if (submittingRef.current) return;
+    if (submittedQuestionIdxRef.current === currentQ.index) return;
+    submittingRef.current = true;
+    const submittingFor = currentQ.index;
     const socket = getRocketSocket();
-    socket.emit("rocket:answer", { pin, answerIndex, answerText }, (res: {
+    socket.emit("rocket:answer", {
+      pin, answerIndex, answerText,
+      questionIdx: currentQ.index,
+    }, (res: {
       success?: boolean; error?: string; skipped?: boolean;
       correct?: boolean; altitudeChange?: number;
       correctIndex?: number; correctText?: string;
       altitude?: number; score?: number; streak?: number;
+      phase?: number; phaseAdvanced?: boolean;
+      boostAvailable?: number; multiplierAvailable?: number;
+      boostArmed?: boolean; multiplierArmed?: boolean;
+      grantedPower?: "boost" | "multiplier" | null;
+      consumedBoost?: "boost" | null;
+      consumedMultiplier?: "multiplier" | null;
     }) => {
+      submittingRef.current = false;
       if (res.error) { toast.error(res.error); return; }
       if (!res.success || res.skipped) return;
+      submittedQuestionIdxRef.current = submittingFor;
 
       setFeedback({ correct: !!res.correct, correctIndex: res.correctIndex, correctText: res.correctText });
       if (typeof res.altitude === "number") setMyAltitude(res.altitude);
       if (typeof res.score === "number") setMyScore(res.score);
       if (typeof res.streak === "number") setMyStreak(res.streak);
+
+      // Sync power-up state from server.
+      if (typeof res.boostAvailable === "number") setBoostAvailable(res.boostAvailable);
+      if (typeof res.multiplierAvailable === "number") setMultiplierAvailable(res.multiplierAvailable);
+      if (typeof res.boostArmed === "boolean") setBoostArmed(res.boostArmed);
+      if (typeof res.multiplierArmed === "boolean") setMultiplierArmed(res.multiplierArmed);
+
+      // Show a brief toast when a new power-up is earned, or when one fires.
+      const fired = res.consumedBoost ?? res.consumedMultiplier ?? null;
+      if (res.grantedPower) {
+        const k = Date.now();
+        setPowerToast({ kind: res.grantedPower, action: "earned", key: k });
+        setTimeout(() => setPowerToast((cur) => (cur && cur.key === k ? null : cur)), 1800);
+      } else if (fired) {
+        const k = Date.now();
+        setPowerToast({ kind: fired, action: "used", key: k });
+        setTimeout(() => setPowerToast((cur) => (cur && cur.key === k ? null : cur)), 1500);
+      }
+
+      // Phase changes are now broadcast by the server cruise loop — we only
+      // sync the cached value here so it stays current without firing a
+      // duplicate transition overlay/sound.
+      if (typeof res.phase === "number" && res.phase !== prevGamePhaseRef.current) {
+        prevGamePhaseRef.current = res.phase;
+        setGamePhase(res.phase);
+      }
 
       if (res.correct) {
         soundRef.current?.playCorrect();
@@ -1258,38 +1455,32 @@ export default function RocketPlay() {
         setTimeLeft(Math.max(0, qDur - elapsed));
         return;
       }
-      if (gameTimeLeftRef.current <= 0) {
-        setTimeLeft(0);
-        return;
-      }
       const elapsed = Math.floor((Date.now() - startMs) / 1000);
       const remaining = Math.max(0, qDur - elapsed);
       setTimeLeft(remaining);
       if (remaining <= 3 && remaining > 0) soundRef.current?.playTick();
       if (remaining === 0) {
         clearInterval(intv);
-        if (
-          feedbackRef.current
-          || !(gameTimeLeftRef.current > 0 && phaseRef.current === "racing")
-        ) return;
+        if (feedbackRef.current || phaseRef.current !== "racing") return;
         submitAnswer(-1);
       }
     }, 1000);
     return () => clearInterval(intv);
   }, [currentQ?.index, phase, advanceMode, submitAnswer]);
 
-  /** Live altitude on track — uses modulo so rockets loop 0→100 continuously with no finish line */
+  /** Live altitude on track — raw value (no modulo, track scrolls continuously). */
   const displayAltitude = (p: Player) => {
-    const raw = p.name === queryName ? myAltitude : p.altitude;
-    return raw % 100;
+    return p.name === queryName ? myAltitude : p.altitude;
   };
   /**
-   * Desktop vertical track: rockets climb from bottom (0%) to near-top (88%).
-   * Caps at 88 so rockets never loop back — orbit counter shows extra laps.
+   * Desktop vertical track: camera follows the player so they sit ~30% from the
+   * bottom; rivals are offset by their altitude difference. Track scrolls
+   * continuously without a visual ceiling.
    */
   const trackBottomPct = (p: Player) => {
     const rawP = p.name === queryName ? myAltitude : p.altitude;
-    return Math.min(88, rawP);
+    const diff = rawP - myAltitude;
+    return Math.max(2, Math.min(94, 30 + diff * 1.2));
   };
   /**
    * Mobile horizontal track: camera follows player so they're always at 30%
@@ -1321,12 +1512,6 @@ export default function RocketPlay() {
   const trackPlayers = sortedPlayers;
   const crowdedRocketLanes =
     phase === "racing" && trackPlayers.length >= ROCKET_HORIZONTAL_LANES_MIN;
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  };
 
   // ─── Connecting ─────────────────────────────────────────────────────────
   if (phase === "connecting") {
@@ -1406,18 +1591,69 @@ export default function RocketPlay() {
           )}
         </div>
 
-        {/* Game timer */}
-        {phase === "racing" && gameTimeMax > 0 && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "6px 14px",
-            borderRadius: 999,
-            background: gameTimeLeft <= 30 ? "rgba(220,38,38,0.35)" : gameTimeLeft <= 60 ? "rgba(217,165,33,0.3)" : "rgba(255,255,255,0.1)",
-            border: `1.5px solid ${gameTimeLeft <= 30 ? "#ef4444" : gameTimeLeft <= 60 ? GOLD : "rgba(255,255,255,0.2)"}`,
-            color: "#fff", fontWeight: 800, fontSize: 15,
-          }}>
-            {gameTimeLeft <= 30 ? "⚠️" : "🕐"} {formatTime(gameTimeLeft)}
-          </div>
+        {/* Speedometer + distance HUD — visible during the race so the player
+            always feels their forward momentum, even between questions. */}
+        {phase === "racing" && (
+          <motion.div
+            animate={myVelocity > 1.2 ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ repeat: myVelocity > 1.2 ? Infinity : 0, duration: 0.7 }}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "5px 12px", borderRadius: 999,
+              background: myVelocity > 1.2
+                ? "linear-gradient(135deg, rgba(58,163,255,0.35), rgba(217,165,33,0.35))"
+                : "rgba(255,255,255,0.10)",
+              border: `1.5px solid ${myVelocity > 1.2 ? "#3aa3ff" : "rgba(255,255,255,0.18)"}`,
+              color: "#fff", fontWeight: 800, fontSize: 12,
+              fontVariantNumeric: "tabular-nums",
+              boxShadow: myVelocity > 1.2 ? "0 0 14px rgba(58,163,255,0.45)" : "none",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+            }}
+            aria-label={ar ? "لوحة السرعة" : "Speedometer"}
+          >
+            <span style={{ fontSize: 14 }}>🛰️</span>
+            <span style={{ color: GOLD, fontWeight: 900 }}>
+              {Math.round(myAltitude * 12).toLocaleString(ar ? "ar-EG" : "en-US")}
+            </span>
+            <span style={{ opacity: 0.75 }}>{ar ? "كم" : "km"}</span>
+            <span style={{ opacity: 0.4, padding: "0 2px" }}>·</span>
+            <span style={{ color: myVelocity > 1.2 ? "#3aa3ff" : "rgba(255,255,255,0.85)", fontWeight: 900 }}>
+              ×{myVelocity.toFixed(1)}
+            </span>
+          </motion.div>
+        )}
+
+        {/* Race timer — appears once race is running */}
+        {phase === "racing" && gameTimeLeft !== null && (
+          (() => {
+            const t = gameTimeLeft;
+            const danger = t <= 30;
+            const warn = !danger && t <= 60;
+            const bg = danger ? "rgba(220,38,38,0.95)" : warn ? "rgba(217,165,33,0.95)" : "rgba(255,255,255,0.12)";
+            const color = danger || warn ? "#fff" : "#fff";
+            const mm = Math.floor(t / 60);
+            const ss = t % 60;
+            return (
+              <motion.div
+                animate={danger ? { scale: [1, 1.08, 1] } : {}}
+                transition={{ repeat: danger ? Infinity : 0, duration: 0.6 }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", borderRadius: 999,
+                  background: bg, color,
+                  border: `1.5px solid ${danger ? "#ff4040" : warn ? "#D9A521" : "rgba(255,255,255,0.2)"}`,
+                  fontWeight: 900, fontSize: 14, fontVariantNumeric: "tabular-nums",
+                  boxShadow: danger ? "0 0 18px rgba(255,40,40,0.5)" : warn ? "0 0 14px rgba(217,165,33,0.4)" : "none",
+                  flexShrink: 0,
+                }}
+                aria-label={ar ? `الوقت المتبقي ${mm}:${String(ss).padStart(2,"0")}` : `Time left ${mm}:${String(ss).padStart(2,"0")}`}
+              >
+                <span style={{ fontSize: 16 }}>⏱️</span>
+                <span>{mm}:{String(ss).padStart(2, "0")}</span>
+              </motion.div>
+            );
+          })()
         )}
 
         {/* Mute */}
@@ -1508,11 +1744,70 @@ export default function RocketPlay() {
         </div>
       )}
 
+      {/* Floating power-up toast (earned / used). */}
+      {phase === "racing" && powerToast && (
+        <div
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: "calc(env(safe-area-inset-top, 0px) + 64px)",
+            left: 0, right: 0,
+            display: "flex", justifyContent: "center",
+            pointerEvents: "none",
+            zIndex: 60,
+          }}
+        >
+          <motion.div
+            key={powerToast.key}
+            initial={{ y: -20, opacity: 0, scale: 0.9 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 400, damping: 22 }}
+            style={{
+              background: powerToast.kind === "boost" ? "rgba(34,87,57,0.96)" : "rgba(217,165,33,0.96)",
+              color: "#fff",
+              padding: "8px 16px", borderRadius: 999,
+              fontWeight: 900, fontSize: 14, letterSpacing: 0.2,
+              boxShadow: "0 6px 24px rgba(0,0,0,0.4), 0 0 24px rgba(217,165,33,0.35)",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 18 }}>{powerToast.kind === "boost" ? "🚀" : "⭐"}</span>
+            <span>
+              {powerToast.action === "earned"
+                ? (ar
+                    ? (powerToast.kind === "boost" ? "حصلت على دفعة!" : "حصلت على مضاعف نقاط!")
+                    : (powerToast.kind === "boost" ? "Boost earned!" : "Multiplier earned!"))
+                : (ar
+                    ? (powerToast.kind === "boost" ? "دفعة ×٢ ارتفاع!" : "مضاعف ×٢ نقاط!")
+                    : (powerToast.kind === "boost" ? "×2 altitude!" : "×2 score!"))}
+            </span>
+          </motion.div>
+        </div>
+      )}
+
       {/* ── Racing ── */}
       {phase === "racing" && (
         isMobile ? (
           // MOBILE: question panel on top, compact rocket leaderboard at bottom
           <div style={{ position: "relative", zIndex: 5, display: "flex", flexDirection: "column", height: "calc(100dvh - 56px)" }}>
+            {/* Power-up tray */}
+            <PowerUpTray
+              ar={ar}
+              boostAvailable={boostAvailable}
+              multiplierAvailable={multiplierAvailable}
+              boostArmed={boostArmed}
+              multiplierArmed={multiplierArmed}
+              onUse={(kind) => {
+                const socket = getRocketSocket();
+                socket.emit("rocket:use-power", { pin, kind }, (r: { error?: string; boostArmed?: boolean; multiplierArmed?: boolean }) => {
+                  if (r?.error) { toast.error(r.error); return; }
+                  if (typeof r?.boostArmed === "boolean") setBoostArmed(r.boostArmed);
+                  if (typeof r?.multiplierArmed === "boolean") setMultiplierArmed(r.multiplierArmed);
+                });
+              }}
+            />
             {/* Question + answers (top, takes most space) */}
             <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
               {currentQ && <QuestionPanel
@@ -1782,6 +2077,21 @@ export default function RocketPlay() {
 
             {/* Question */}
             <div style={{ overflowY: "auto", maxHeight: "100%" }}>
+              <PowerUpTray
+                ar={ar}
+                boostAvailable={boostAvailable}
+                multiplierAvailable={multiplierAvailable}
+                boostArmed={boostArmed}
+                multiplierArmed={multiplierArmed}
+                onUse={(kind) => {
+                  const socket = getRocketSocket();
+                  socket.emit("rocket:use-power", { pin, kind }, (r: { error?: string; boostArmed?: boolean; multiplierArmed?: boolean }) => {
+                    if (r?.error) { toast.error(r.error); return; }
+                    if (typeof r?.boostArmed === "boolean") setBoostArmed(r.boostArmed);
+                    if (typeof r?.multiplierArmed === "boolean") setMultiplierArmed(r.multiplierArmed);
+                  });
+                }}
+              />
               {currentQ && <QuestionPanel
                 currentQ={currentQ}
                 timeLeft={timeLeft}

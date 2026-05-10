@@ -746,6 +746,57 @@ function HackInstructionsScreen({
   );
 }
 
+function ReconnectingBanner({
+  show,
+  message,
+  hint,
+  dir,
+}: {
+  show: boolean;
+  message: string;
+  hint: string;
+  dir: string;
+}) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          key="reconnecting-banner"
+          initial={{ y: -80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: -80, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 240, damping: 24 }}
+          dir={dir}
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 rounded-full shadow-2xl backdrop-blur"
+            style={{
+              background: "rgba(20, 24, 28, 0.92)",
+              border: "1px solid rgba(245, 158, 11, 0.45)",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+            }}
+          >
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }}
+              className="inline-block w-4 h-4 rounded-full border-2 border-amber-300 border-t-transparent"
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-bold text-amber-200">
+                {message}
+              </span>
+              <span className="text-[11px] text-amber-100/70">{hint}</span>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function GamePlay() {
   const [, params] = useRoute("/game/play/:pin");
   const pin = params?.pin || "";
@@ -761,6 +812,7 @@ export default function GamePlay() {
 
   const [phase, setPhase] = useState<Phase>("connecting");
   const [error, setError] = useState("");
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [gameTitle, setGameTitle] = useState("");
   const [players, setPlayers] = useState<
     { name: string; score: number; avatar?: string }[]
@@ -887,6 +939,7 @@ export default function GamePlay() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const joinedRef = useRef(false);
+  const hasJoinedOnceRef = useRef(false);
   const tickPlayedRef = useRef(false);
   const pendingQuestionRef = useRef<any>(null);
   const myPasswordRef = useRef<string | null>(null);
@@ -969,10 +1022,20 @@ export default function GamePlay() {
         },
         (res: any) => {
           if (res.error) {
-            setError(res.error);
+            const isMissingGameError =
+              res.error === "كود اللعبة غير صحيح" ||
+              res.error === "اللعبة انتهت بالفعل";
+            const friendlyError =
+              hasJoinedOnceRef.current && isMissingGameError
+                ? t.gamePlay.gameEndedByTeacher
+                : res.error;
+            setError(friendlyError);
             setPhase("error");
+            setIsReconnecting(false);
             return;
           }
+          hasJoinedOnceRef.current = true;
+          setIsReconnecting(false);
           setGameTitle(res.title);
           setPlayers(res.players);
           if (res.gameMode) setGameMode(res.gameMode);
@@ -1043,6 +1106,19 @@ export default function GamePlay() {
     doJoin();
 
     socket.on("connect", doJoin);
+
+    const handleDisconnect = (reason: string) => {
+      if (!hasJoinedOnceRef.current) return;
+      if (reason === "io client disconnect") return;
+      setIsReconnecting(true);
+    };
+
+    const handleReconnect = () => {
+      setIsReconnecting(true);
+    };
+
+    socket.on("disconnect", handleDisconnect);
+    socket.io.on("reconnect_attempt", handleReconnect);
 
     socket.on("game:players-updated", (data: any) => {
       setPlayers(data.players);
@@ -1516,6 +1592,8 @@ export default function GamePlay() {
       if (hackNotifTimerRef.current) clearTimeout(hackNotifTimerRef.current);
       if (teacherMsgTimerRef.current) clearTimeout(teacherMsgTimerRef.current);
       socket.off("connect", doJoin);
+      socket.off("disconnect", handleDisconnect);
+      socket.io.off("reconnect_attempt", handleReconnect);
       socket.off("game:players-updated");
       socket.off("game:question");
       socket.off("game:answer-result");
@@ -1852,53 +1930,68 @@ export default function GamePlay() {
     </div>
   );
 
+  const reconnectBanner = (
+    <ReconnectingBanner
+      show={isReconnecting && phase !== "error" && phase !== "connecting"}
+      message={t.gamePlay.reconnecting}
+      hint={t.gamePlay.reconnectingHint}
+      dir={dir}
+    />
+  );
+
   if (phase === "error") {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
-        dir={dir}
-      >
-        <motion.div
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          className="text-center"
+      <>
+        {reconnectBanner}
+        <div
+          className="min-h-screen flex items-center justify-center p-4"
+          style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+          dir={dir}
         >
-          <XCircle className="w-20 h-20 text-red-500 dark:text-red-400 mx-auto mb-4" />
-          <h1 className="text-3xl font-black text-white mb-2">
-            {error}
-          </h1>
-          <button
-            onClick={() => setLocation("/game/join")}
-            className="mt-4 px-6 py-3 bg-white/10 text-gray-700 dark:text-white rounded-xl font-bold hover:bg-white/20 transition-colors"
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="text-center"
           >
-            {t.gamePlay.goBack}
-          </button>
-        </motion.div>
-      </div>
+            <XCircle className="w-20 h-20 text-red-500 dark:text-red-400 mx-auto mb-4" />
+            <h1 className="text-3xl font-black text-white mb-2">
+              {error}
+            </h1>
+            <button
+              onClick={() => setLocation("/game/join")}
+              className="mt-4 px-6 py-3 bg-white/10 text-gray-700 dark:text-white rounded-xl font-bold hover:bg-white/20 transition-colors"
+            >
+              {t.gamePlay.goBack}
+            </button>
+          </motion.div>
+        </div>
+      </>
     );
   }
 
   if (phase === "connecting") {
     return (
-      <div
-        className={`min-h-screen flex items-center justify-center ${hackMode ? "bg-black" : ""}`}
-        style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
-        dir={dir}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+      <>
+        {reconnectBanner}
+        <div
+          className={`min-h-screen flex items-center justify-center ${hackMode ? "bg-black" : ""}`}
+          style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+          dir={dir}
         >
-          {hackMode ? (
-            <span className="text-5xl font-black text-green-400 font-mono">
-              [..]
-            </span>
-          ) : (
-            <Gamepad2 className="w-16 h-16 text-amber-300" />
-          )}
-        </motion.div>
-      </div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          >
+            {hackMode ? (
+              <span className="text-5xl font-black text-green-400 font-mono">
+                [..]
+              </span>
+            ) : (
+              <Gamepad2 className="w-16 h-16 text-amber-300" />
+            )}
+          </motion.div>
+        </div>
+      </>
     );
   }
 
@@ -1916,6 +2009,7 @@ export default function GamePlay() {
   ) {
     return (
       <>
+        {reconnectBanner}
         <MuteButton />
         <SoundPickerButton />
         <HackPasswordPickerScreen
@@ -1942,6 +2036,7 @@ export default function GamePlay() {
     if (hackMode) {
       return (
         <>
+          {reconnectBanner}
           <MuteButton />
           <SoundPickerButton />
           <HackInstructionsScreen
@@ -1959,6 +2054,8 @@ export default function GamePlay() {
     }
 
     return (
+      <>
+        {reconnectBanner}
       <div
         className="min-h-screen flex items-center justify-center p-4"
         style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -2029,54 +2126,58 @@ export default function GamePlay() {
           </div>
         </motion.div>
       </div>
+      </>
     );
   }
 
   if (phase === "countdown") {
     const info = pendingQuestion;
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center"
-        style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
-        dir={dir}
-      >
-        <MuteButton />
-        <SoundPickerButton />
-        <div className="text-center">
-          {info && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
-            >
-              <span className="text-gray-500 dark:text-white/50 font-bold text-lg">
-                {(info.index ?? 0) + 1} / {info.total}
-              </span>
-            </motion.div>
-          )}
-          <AnimatePresence mode="wait">
-            {countdownVal !== null && countdownVal > 0 && (
+      <>
+        {reconnectBanner}
+        <div
+          className="min-h-screen flex flex-col items-center justify-center"
+          style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+          dir={dir}
+        >
+          <MuteButton />
+          <SoundPickerButton />
+          <div className="text-center">
+            {info && (
               <motion.div
-                key={countdownVal}
-                initial={{ scale: 2, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`text-[140px] font-black leading-none select-none ${
-                  countdownVal === 3
-                    ? "text-yellow-400"
-                    : countdownVal === 2
-                      ? "text-orange-400"
-                      : "text-red-400"
-                }`}
-                style={{ textShadow: "0 0 40px currentColor" }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8"
               >
-                {countdownVal}
+                <span className="text-gray-500 dark:text-white/50 font-bold text-lg">
+                  {(info.index ?? 0) + 1} / {info.total}
+                </span>
               </motion.div>
             )}
-          </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {countdownVal !== null && countdownVal > 0 && (
+                <motion.div
+                  key={countdownVal}
+                  initial={{ scale: 2, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.5, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`text-[140px] font-black leading-none select-none ${
+                    countdownVal === 3
+                      ? "text-yellow-400"
+                      : countdownVal === 2
+                        ? "text-orange-400"
+                        : "text-red-400"
+                  }`}
+                  style={{ textShadow: "0 0 40px currentColor" }}
+                >
+                  {countdownVal}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -2085,6 +2186,8 @@ export default function GamePlay() {
   // so we skip this separate "answered" full-screen view.
   if (phase === "answered" && !showMysteryBoxes && !hackMode) {
     return (
+      <>
+        {reconnectBanner}
       <div
         className={`min-h-screen flex flex-col items-center justify-center p-6 ${hackMode ? "bg-black" : ""}`}
         style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -2183,6 +2286,7 @@ export default function GamePlay() {
           </motion.div>
         )}
       </div>
+      </>
     );
   }
 
@@ -2211,6 +2315,8 @@ export default function GamePlay() {
     const isUrgent = timeLeft <= 5;
 
     return (
+      <>
+        {reconnectBanner}
       <div
         className={`min-h-screen flex flex-col ${hackMode ? "bg-black" : ""}`}
         style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -3375,6 +3481,7 @@ export default function GamePlay() {
           </div>
         )}
       </div>
+      </>
     );
   }
 
@@ -3414,6 +3521,8 @@ export default function GamePlay() {
     };
 
     return (
+      <>
+        {reconnectBanner}
       <div
         className={`min-h-screen flex flex-col items-center justify-center p-4 ${hackMode ? "bg-black" : ""}`}
         style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -3571,11 +3680,14 @@ export default function GamePlay() {
           )}
         </motion.div>
       </div>
+      </>
     );
   }
 
   if (phase === "leaderboard" && showMysteryBoxes) {
     return (
+      <>
+        {reconnectBanner}
       <div
         className={`min-h-screen ${hackMode ? "bg-black" : ""}`}
         {...(hackMode ? {} : { style: { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" } })}
@@ -3799,12 +3911,15 @@ export default function GamePlay() {
           </motion.div>
         </AnimatePresence>
       </div>
+      </>
     );
   }
 
   if (phase === "leaderboard") {
     if (hackMode) {
       return (
+        <>
+          {reconnectBanner}
         <div
           className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden"
           dir={dir}
@@ -3922,10 +4037,13 @@ export default function GamePlay() {
             {">"} AWAITING_NEXT_ROUND...
           </motion.p>
         </div>
+        </>
       );
     }
 
     return (
+      <>
+        {reconnectBanner}
       <div
         className="min-h-screen flex flex-col items-center justify-center p-4"
         style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -4023,6 +4141,7 @@ export default function GamePlay() {
           {t.gamePlay.waitingNextQuestion}
         </p>
       </div>
+      </>
     );
   }
 
@@ -4033,6 +4152,8 @@ export default function GamePlay() {
     const third = top3[2];
 
     return (
+      <>
+        {reconnectBanner}
       <div
         className="min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
         style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
@@ -4561,6 +4682,7 @@ export default function GamePlay() {
           </button>
         </motion.div>
       </div>
+      </>
     );
   }
 

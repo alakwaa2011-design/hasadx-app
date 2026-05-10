@@ -56,6 +56,7 @@ import {
   type GameMode,
 } from "./manager";
 import { logger } from "../lib/logger";
+import { logActivity } from "../lib/activity-logger";
 
 interface CreateGameData {
   assignmentId: number;
@@ -69,6 +70,9 @@ interface CreateGameData {
   bankSubject?: string;
   bankLevel?: string;
   bankQuestionCount?: number;
+  // Teacher-selected target class (overrides the assignment's stored class
+  // when supplied). Used by Wameedh/Hack live-game flows.
+  targetClass?: string;
 }
 
 // Map Arabic / friendly subject labels to bank category enum values
@@ -802,7 +806,15 @@ export function setupGameSocket(io: Server) {
           return;
         }
 
-        const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount } = data;
+        logActivity({
+          userId: teacherId,
+          userRole: "teacher",
+          action: "start_game",
+          details: { gameType: data.gameMode || "wameedh", assignmentId: data.assignmentId ?? null },
+        });
+
+        const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount, targetClass: clientTargetClass } = data;
+        const trimmedClientClass = typeof clientTargetClass === "string" ? clientTargetClass.trim() : "";
 
         let questions: GameQuestion[];
         let resolvedAssignmentId = assignmentId;
@@ -918,6 +930,14 @@ export function setupGameSocket(io: Server) {
             : (assignment.targetClass ? [assignment.targetClass] : null);
         }
 
+        // Teacher-supplied class on the live-game setup page wins over whatever
+        // the assignment carried (they may be launching the same assignment for
+        // a different class today).
+        if (trimmedClientClass) {
+          resolvedTargetClass = trimmedClientClass;
+          resolvedTargetClasses = [trimmedClientClass];
+        }
+
         const game = createGame(
           resolvedAssignmentId,
           resolvedTitle,
@@ -958,6 +978,14 @@ export function setupGameSocket(io: Server) {
         callback?.({ error: "كود اللعبة غير صحيح" });
         return;
       }
+
+      logActivity({
+        userId: studentAccountId ?? studentId ?? null,
+        userName: name?.toString().slice(0, 100) ?? null,
+        userRole: "student",
+        action: "join_game",
+        details: { pin, gameType: "wameedh" },
+      });
       if (game.state === "finished") {
         callback?.({ error: "اللعبة انتهت بالفعل" });
         return;
@@ -1234,27 +1262,58 @@ export function setupGameSocket(io: Server) {
         hackMode: game.hackMode,
         roomLocked: game.roomLocked,
         lockedTeams: Array.from(game.lockedTeams),
+        targetClass: game.targetClass,
+        targetClasses: game.targetClasses,
       };
 
       if (game.state === "question") {
-        const q = game.questions[game.currentQuestionIndex];
-        const elapsed = (Date.now() - game.questionStartTime) / 1000;
-        const opts = game.currentShuffledOptions ?? { optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD };
-        response.currentQuestion = {
-          index: game.currentQuestionIndex,
-          total: game.questions.length,
-          text: q.text,
-          questionType: q.questionType,
-          optionA: opts.optionA,
-          optionB: opts.optionB,
-          optionC: opts.optionC,
-          optionD: opts.optionD,
-          points: q.points,
-          duration: game.questionDuration,
-          timeRemaining: Math.max(0, game.questionDuration - elapsed),
-        };
-        response.answeredCount = game.answeredCount;
-        response.totalPlayers = getActivePlayerCount(game);
+        if (game.hackMode) {
+          // Hack-mode marathon: there is no single "current question" on the
+          // host screen — players each race through their own personal
+          // sequence. Surface the marathon deadline so the rejoined host can
+          // restore the monitoring view with the correct countdown.
+          response.hackMarathon = {
+            active: true,
+            deadline: game.hackDeadline,
+            remainingMs: game.hackDeadline ? Math.max(0, game.hackDeadline - Date.now()) : null,
+            durationMs: game.hackDurationMs,
+            totalUnique: game.questions.length,
+          };
+          // Snapshot of accumulated per-student stats so the monitor view
+          // is populated immediately on reconnect, instead of waiting for
+          // the next live `hack:student-stats` event for each student.
+          response.hackStudentStats = Array.from(game.players.values())
+            .filter((p) => !p.isBot)
+            .map((p) => ({
+              name: p.name,
+              avatar: p.avatar,
+              correct: p.totalCorrect,
+              wrong: p.hackWrongCount ?? 0,
+              score: p.score,
+              personalAnsweredCount: p.personalAnsweredCount ?? 0,
+              personalCycle: p.personalCycle ?? 0,
+              personalQuestionIndex: p.personalQuestionIndex ?? 0,
+            }));
+        } else {
+          const q = game.questions[game.currentQuestionIndex];
+          const elapsed = (Date.now() - game.questionStartTime) / 1000;
+          const opts = game.currentShuffledOptions ?? { optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD };
+          response.currentQuestion = {
+            index: game.currentQuestionIndex,
+            total: game.questions.length,
+            text: q.text,
+            questionType: q.questionType,
+            optionA: opts.optionA,
+            optionB: opts.optionB,
+            optionC: opts.optionC,
+            optionD: opts.optionD,
+            points: q.points,
+            duration: game.questionDuration,
+            timeRemaining: Math.max(0, game.questionDuration - elapsed),
+          };
+          response.answeredCount = game.answeredCount;
+          response.totalPlayers = getActivePlayerCount(game);
+        }
       } else if (game.state === "leaderboard") {
         const q = game.questions[game.currentQuestionIndex];
         response.correctAnswer = game.currentShuffledCorrectAnswer ?? q.correctAnswer;
@@ -1852,6 +1911,29 @@ export function setupGameSocket(io: Server) {
 
       callback?.({ success: true, kickedPlayer: kicked.name });
       logger.info({ pin: data.pin, kicked: kicked.name }, "Teacher kicked player");
+    });
+
+    // Allows the teacher to change (or clear) the target class of an active
+    // game from the host screen — useful when they jumped straight into the
+    // game without picking a class on the setup page, or want to re-target it
+    // mid-lobby. The change takes effect immediately for subsequent
+    // student-class checks.
+    socket.on("teacher:set-target-class", (data: PinData & { targetClass?: string | null }, callback?: (res: any) => void) => {
+      const game = getGame(data.pin);
+      if (!game || game.teacherSocketId !== socket.id) {
+        callback?.({ error: "غير مصرح" });
+        return;
+      }
+      const teacherId = getTeacherIdFromSocket(socket);
+      if (!teacherId || teacherId !== game.teacherId) {
+        callback?.({ error: "غير مصرح" });
+        return;
+      }
+      const trimmed = typeof data.targetClass === "string" ? data.targetClass.trim().slice(0, 60) : "";
+      game.targetClass = trimmed || null;
+      game.targetClasses = trimmed ? [trimmed] : null;
+      callback?.({ success: true, targetClass: game.targetClass, targetClasses: game.targetClasses });
+      logger.info({ pin: data.pin, targetClass: game.targetClass }, "Teacher updated game target class");
     });
 
     socket.on("teacher:toggle-room-lock", (data: PinData & { locked: boolean }, callback?: (res: any) => void) => {

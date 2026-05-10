@@ -21,17 +21,37 @@ import type {
   Assignment,
   AssignmentWithQuestions,
   AuthResponse,
+  BriefPreferences,
+  BuildPresentationRequest,
+  BuildPresentationResponse,
+  CancelBuildResponse,
   CreateAssignmentBody,
+  CreatePresentationBody,
   ErrorResponse,
   ExamSessionResponse,
+  GetPresentationLinkedActivity200,
+  GoogleLoginBody,
   HealthStatus,
+  LinkPresentationActivity200,
+  LinkPresentationActivityBody,
   ListAssignmentsParams,
   LoginTeacherBody,
+  Presentation,
+  PresentationAiLimits,
+  PresentationAsset,
+  PresentationBrief,
+  PresentationDraft,
+  PresentationDraftWithGuardrails,
+  PresentationSummary,
+  PresentationTier,
+  PresentationTierWithUsage,
+  RegisterAssetBody,
   RegisterTeacherBody,
   RevokeSessionResponse,
   RevokeSessionsResponse,
   StartExamBody,
   Submission,
+  SubmissionDetail,
   SubmissionResult,
   SubmitAssignmentBody,
   SubmitFeedbackBody,
@@ -39,7 +59,11 @@ import type {
   SuccessResponse,
   TeacherProfile,
   TeacherSession,
+  UpdateAnswerBody,
+  UpdatePresentationBody,
+  UpdatePresentationDraftBody,
   UpdateProfileBody,
+  UpdateRoleBody,
   UpdateSubmissionBody,
 } from "./api.schemas";
 
@@ -76,11 +100,11 @@ export const getHealthCheckQueryOptions = <
   TData = Awaited<ReturnType<typeof healthCheck>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof healthCheck>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
@@ -111,11 +135,11 @@ export function useHealthCheck<
   TData = Awaited<ReturnType<typeof healthCheck>>,
   TError = ErrorType<unknown>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof healthCheck>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
@@ -323,11 +347,11 @@ export const getGetCurrentTeacherQueryOptions = <
   TData = Awaited<ReturnType<typeof getCurrentTeacher>>,
   TError = ErrorType<ErrorResponse>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof getCurrentTeacher>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
@@ -358,11 +382,11 @@ export function useGetCurrentTeacher<
   TData = Awaited<ReturnType<typeof getCurrentTeacher>>,
   TError = ErrorType<ErrorResponse>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof getCurrentTeacher>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCurrentTeacherQueryOptions(options);
@@ -461,6 +485,92 @@ export const useUpdateTeacherProfile = <
 };
 
 /**
+ * @summary Change current user's role (teacher ↔ organizer)
+ */
+export const getUpdateTeacherRoleUrl = () => {
+  return `/api/auth/role`;
+};
+
+export const updateTeacherRole = async (
+  updateRoleBody: UpdateRoleBody,
+  options?: RequestInit,
+): Promise<TeacherProfile> => {
+  return customFetch<TeacherProfile>(getUpdateTeacherRoleUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateRoleBody),
+  });
+};
+
+export const getUpdateTeacherRoleMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTeacherRole>>,
+    TError,
+    { data: BodyType<UpdateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTeacherRole>>,
+  TError,
+  { data: BodyType<UpdateRoleBody> },
+  TContext
+> => {
+  const mutationKey = ["updateTeacherRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTeacherRole>>,
+    { data: BodyType<UpdateRoleBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateTeacherRole(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTeacherRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTeacherRole>>
+>;
+export type UpdateTeacherRoleMutationBody = BodyType<UpdateRoleBody>;
+export type UpdateTeacherRoleMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Change current user's role (teacher ↔ organizer)
+ */
+export const useUpdateTeacherRole = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTeacherRole>>,
+    TError,
+    { data: BodyType<UpdateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateTeacherRole>>,
+  TError,
+  { data: BodyType<UpdateRoleBody> },
+  TContext
+> => {
+  return useMutation(getUpdateTeacherRoleMutationOptions(options));
+};
+
+/**
  * @summary Logout teacher
  */
 export const getLogoutTeacherUrl = () => {
@@ -542,6 +652,253 @@ export const useLogoutTeacher = <
 };
 
 /**
+ * @summary Login or register a teacher using a Google ID token
+ */
+export const getLoginTeacherWithGoogleUrl = () => {
+  return `/api/auth/google`;
+};
+
+export const loginTeacherWithGoogle = async (
+  googleLoginBody: GoogleLoginBody,
+  options?: RequestInit,
+): Promise<AuthResponse> => {
+  return customFetch<AuthResponse>(getLoginTeacherWithGoogleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(googleLoginBody),
+  });
+};
+
+export const getLoginTeacherWithGoogleMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginTeacherWithGoogle>>,
+    TError,
+    { data: BodyType<GoogleLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginTeacherWithGoogle>>,
+  TError,
+  { data: BodyType<GoogleLoginBody> },
+  TContext
+> => {
+  const mutationKey = ["loginTeacherWithGoogle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginTeacherWithGoogle>>,
+    { data: BodyType<GoogleLoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginTeacherWithGoogle(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginTeacherWithGoogleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginTeacherWithGoogle>>
+>;
+export type LoginTeacherWithGoogleMutationBody = BodyType<GoogleLoginBody>;
+export type LoginTeacherWithGoogleMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Login or register a teacher using a Google ID token
+ */
+export const useLoginTeacherWithGoogle = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginTeacherWithGoogle>>,
+    TError,
+    { data: BodyType<GoogleLoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginTeacherWithGoogle>>,
+  TError,
+  { data: BodyType<GoogleLoginBody> },
+  TContext
+> => {
+  return useMutation(getLoginTeacherWithGoogleMutationOptions(options));
+};
+
+/**
+ * @summary Get the teacher's saved brief preferences
+ */
+export const getGetBriefPreferencesUrl = () => {
+  return `/api/auth/preferences`;
+};
+
+export const getBriefPreferences = async (
+  options?: RequestInit,
+): Promise<BriefPreferences> => {
+  return customFetch<BriefPreferences>(getGetBriefPreferencesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBriefPreferencesQueryKey = () => {
+  return [`/api/auth/preferences`] as const;
+};
+
+export const getGetBriefPreferencesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBriefPreferences>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBriefPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBriefPreferencesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBriefPreferences>>
+  > = ({ signal }) => getBriefPreferences({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBriefPreferences>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBriefPreferencesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBriefPreferences>>
+>;
+export type GetBriefPreferencesQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get the teacher's saved brief preferences
+ */
+
+export function useGetBriefPreferences<
+  TData = Awaited<ReturnType<typeof getBriefPreferences>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBriefPreferences>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBriefPreferencesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Persist the teacher's brief preferences server-side
+ */
+export const getUpdateBriefPreferencesUrl = () => {
+  return `/api/auth/preferences`;
+};
+
+export const updateBriefPreferences = async (
+  briefPreferences: BriefPreferences,
+  options?: RequestInit,
+): Promise<BriefPreferences> => {
+  return customFetch<BriefPreferences>(getUpdateBriefPreferencesUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(briefPreferences),
+  });
+};
+
+export const getUpdateBriefPreferencesMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBriefPreferences>>,
+    TError,
+    { data: BodyType<BriefPreferences> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBriefPreferences>>,
+  TError,
+  { data: BodyType<BriefPreferences> },
+  TContext
+> => {
+  const mutationKey = ["updateBriefPreferences"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBriefPreferences>>,
+    { data: BodyType<BriefPreferences> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateBriefPreferences(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBriefPreferencesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBriefPreferences>>
+>;
+export type UpdateBriefPreferencesMutationBody = BodyType<BriefPreferences>;
+export type UpdateBriefPreferencesMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Persist the teacher's brief preferences server-side
+ */
+export const useUpdateBriefPreferences = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBriefPreferences>>,
+    TError,
+    { data: BodyType<BriefPreferences> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBriefPreferences>>,
+  TError,
+  { data: BodyType<BriefPreferences> },
+  TContext
+> => {
+  return useMutation(getUpdateBriefPreferencesMutationOptions(options));
+};
+
+/**
  * @summary List active sessions for the current teacher
  */
 export const getListTeacherSessionsUrl = () => {
@@ -565,11 +922,11 @@ export const getListTeacherSessionsQueryOptions = <
   TData = Awaited<ReturnType<typeof listTeacherSessions>>,
   TError = ErrorType<void>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTeacherSessions>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
@@ -600,11 +957,11 @@ export function useListTeacherSessions<
   TData = Awaited<ReturnType<typeof listTeacherSessions>>,
   TError = ErrorType<void>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof listTeacherSessions>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListTeacherSessionsQueryOptions(options);
@@ -808,11 +1165,11 @@ export const getListAllTeachersQueryOptions = <
   TData = Awaited<ReturnType<typeof listAllTeachers>>,
   TError = ErrorType<void>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof listAllTeachers>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
@@ -843,11 +1200,11 @@ export function useListAllTeachers<
   TData = Awaited<ReturnType<typeof listAllTeachers>>,
   TError = ErrorType<void>,
 >(options?: {
-  query?: Partial<UseQueryOptions<
+  query?: UseQueryOptions<
     Awaited<ReturnType<typeof listAllTeachers>>,
     TError,
     TData
-  >>;
+  >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListAllTeachersQueryOptions(options);
@@ -898,11 +1255,11 @@ export const getListAssignmentsQueryOptions = <
 >(
   params?: ListAssignmentsParams,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof listAssignments>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
@@ -936,11 +1293,11 @@ export function useListAssignments<
 >(
   params?: ListAssignmentsParams,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof listAssignments>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1066,11 +1423,11 @@ export const getGetAssignmentQueryOptions = <
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof getAssignment>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
@@ -1109,11 +1466,11 @@ export function useGetAssignment<
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof getAssignment>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1498,11 +1855,11 @@ export const getListSubmissionsQueryOptions = <
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof listSubmissions>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
@@ -1541,11 +1898,11 @@ export function useListSubmissions<
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof listSubmissions>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1585,11 +1942,11 @@ export const getExportSubmissionsCsvQueryOptions = <
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof exportSubmissionsCsv>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
@@ -1629,11 +1986,11 @@ export function useExportSubmissionsCsv<
 >(
   id: number,
   options?: {
-    query?: Partial<UseQueryOptions<
+    query?: UseQueryOptions<
       Awaited<ReturnType<typeof exportSubmissionsCsv>>,
       TError,
       TData
-    >>;
+    >;
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1734,6 +2091,188 @@ export const useUpdateSubmission = <
 };
 
 /**
+ * @summary Get full submission with per-answer details (teacher only)
+ */
+export const getGetSubmissionDetailsUrl = (submissionId: number) => {
+  return `/api/submissions/${submissionId}/details`;
+};
+
+export const getSubmissionDetails = async (
+  submissionId: number,
+  options?: RequestInit,
+): Promise<SubmissionDetail> => {
+  return customFetch<SubmissionDetail>(
+    getGetSubmissionDetailsUrl(submissionId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSubmissionDetailsQueryKey = (submissionId: number) => {
+  return [`/api/submissions/${submissionId}/details`] as const;
+};
+
+export const getGetSubmissionDetailsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSubmissionDetails>>,
+  TError = ErrorType<unknown>,
+>(
+  submissionId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSubmissionDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSubmissionDetailsQueryKey(submissionId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSubmissionDetails>>
+  > = ({ signal }) =>
+    getSubmissionDetails(submissionId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!submissionId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSubmissionDetails>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSubmissionDetailsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSubmissionDetails>>
+>;
+export type GetSubmissionDetailsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get full submission with per-answer details (teacher only)
+ */
+
+export function useGetSubmissionDetails<
+  TData = Awaited<ReturnType<typeof getSubmissionDetails>>,
+  TError = ErrorType<unknown>,
+>(
+  submissionId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSubmissionDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSubmissionDetailsQueryOptions(
+    submissionId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Manually grade a single answer (teacher only)
+ */
+export const getUpdateAnswerGradeUrl = (answerId: number) => {
+  return `/api/submission-answers/${answerId}`;
+};
+
+export const updateAnswerGrade = async (
+  answerId: number,
+  updateAnswerBody: UpdateAnswerBody,
+  options?: RequestInit,
+): Promise<SubmissionDetail> => {
+  return customFetch<SubmissionDetail>(getUpdateAnswerGradeUrl(answerId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateAnswerBody),
+  });
+};
+
+export const getUpdateAnswerGradeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAnswerGrade>>,
+    TError,
+    { answerId: number; data: BodyType<UpdateAnswerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAnswerGrade>>,
+  TError,
+  { answerId: number; data: BodyType<UpdateAnswerBody> },
+  TContext
+> => {
+  const mutationKey = ["updateAnswerGrade"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAnswerGrade>>,
+    { answerId: number; data: BodyType<UpdateAnswerBody> }
+  > = (props) => {
+    const { answerId, data } = props ?? {};
+
+    return updateAnswerGrade(answerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAnswerGradeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAnswerGrade>>
+>;
+export type UpdateAnswerGradeMutationBody = BodyType<UpdateAnswerBody>;
+export type UpdateAnswerGradeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually grade a single answer (teacher only)
+ */
+export const useUpdateAnswerGrade = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAnswerGrade>>,
+    TError,
+    { answerId: number; data: BodyType<UpdateAnswerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAnswerGrade>>,
+  TError,
+  { answerId: number; data: BodyType<UpdateAnswerBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAnswerGradeMutationOptions(options));
+};
+
+/**
  * @summary Submit feedback or suggestion
  */
 export const getSubmitFeedbackUrl = () => {
@@ -1817,4 +2356,1988 @@ export const useSubmitFeedback = <
   TContext
 > => {
   return useMutation(getSubmitFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Get the effective presentations tier and limits for the caller
+ */
+export const getGetPresentationsLimitsUrl = () => {
+  return `/api/presentations/limits`;
+};
+
+export const getPresentationsLimits = async (
+  options?: RequestInit,
+): Promise<PresentationTier> => {
+  return customFetch<PresentationTier>(getGetPresentationsLimitsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPresentationsLimitsQueryKey = () => {
+  return [`/api/presentations/limits`] as const;
+};
+
+export const getGetPresentationsLimitsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentationsLimits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationsLimits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPresentationsLimitsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPresentationsLimits>>
+  > = ({ signal }) => getPresentationsLimits({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationsLimits>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationsLimitsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentationsLimits>>
+>;
+export type GetPresentationsLimitsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the effective presentations tier and limits for the caller
+ */
+
+export function useGetPresentationsLimits<
+  TData = Awaited<ReturnType<typeof getPresentationsLimits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationsLimits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationsLimitsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get tier limits + per-deck usage for a single presentation
+ */
+export const getGetPresentationUsageUrl = (id: number) => {
+  return `/api/presentations/${id}/usage`;
+};
+
+export const getPresentationUsage = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PresentationTierWithUsage> => {
+  return customFetch<PresentationTierWithUsage>(
+    getGetPresentationUsageUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPresentationUsageQueryKey = (id: number) => {
+  return [`/api/presentations/${id}/usage`] as const;
+};
+
+export const getGetPresentationUsageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentationUsage>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationUsage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPresentationUsageQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPresentationUsage>>
+  > = ({ signal }) => getPresentationUsage(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationUsage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationUsageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentationUsage>>
+>;
+export type GetPresentationUsageQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get tier limits + per-deck usage for a single presentation
+ */
+
+export function useGetPresentationUsage<
+  TData = Awaited<ReturnType<typeof getPresentationUsage>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationUsage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationUsageQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List own presentations + admin-shared
+ */
+export const getListPresentationsUrl = () => {
+  return `/api/presentations`;
+};
+
+export const listPresentations = async (
+  options?: RequestInit,
+): Promise<PresentationSummary[]> => {
+  return customFetch<PresentationSummary[]>(getListPresentationsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPresentationsQueryKey = () => {
+  return [`/api/presentations`] as const;
+};
+
+export const getListPresentationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPresentations>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPresentationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPresentations>>
+  > = ({ signal }) => listPresentations({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPresentationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPresentations>>
+>;
+export type ListPresentationsQueryError = ErrorType<void>;
+
+/**
+ * @summary List own presentations + admin-shared
+ */
+
+export function useListPresentations<
+  TData = Awaited<ReturnType<typeof listPresentations>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentations>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPresentationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new presentation
+ */
+export const getCreatePresentationUrl = () => {
+  return `/api/presentations`;
+};
+
+export const createPresentation = async (
+  createPresentationBody: CreatePresentationBody,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getCreatePresentationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPresentationBody),
+  });
+};
+
+export const getCreatePresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPresentation>>,
+    TError,
+    { data: BodyType<CreatePresentationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPresentation>>,
+  TError,
+  { data: BodyType<CreatePresentationBody> },
+  TContext
+> => {
+  const mutationKey = ["createPresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPresentation>>,
+    { data: BodyType<CreatePresentationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPresentation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPresentation>>
+>;
+export type CreatePresentationMutationBody = BodyType<CreatePresentationBody>;
+export type CreatePresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new presentation
+ */
+export const useCreatePresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPresentation>>,
+    TError,
+    { data: BodyType<CreatePresentationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPresentation>>,
+  TError,
+  { data: BodyType<CreatePresentationBody> },
+  TContext
+> => {
+  return useMutation(getCreatePresentationMutationOptions(options));
+};
+
+/**
+ * @summary Get a presentation (owner or admin-shared)
+ */
+export const getGetPresentationUrl = (id: number) => {
+  return `/api/presentations/${id}`;
+};
+
+export const getPresentation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getGetPresentationUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPresentationQueryKey = (id: number) => {
+  return [`/api/presentations/${id}`] as const;
+};
+
+export const getGetPresentationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentation>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPresentationQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPresentation>>> = ({
+    signal,
+  }) => getPresentation(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentation>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentation>>
+>;
+export type GetPresentationQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a presentation (owner or admin-shared)
+ */
+
+export function useGetPresentation<
+  TData = Awaited<ReturnType<typeof getPresentation>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentation>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a presentation (owner only)
+ */
+export const getUpdatePresentationUrl = (id: number) => {
+  return `/api/presentations/${id}`;
+};
+
+export const updatePresentation = async (
+  id: number,
+  updatePresentationBody: UpdatePresentationBody,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getUpdatePresentationUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePresentationBody),
+  });
+};
+
+export const getUpdatePresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePresentation>>,
+    TError,
+    { id: number; data: BodyType<UpdatePresentationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePresentation>>,
+  TError,
+  { id: number; data: BodyType<UpdatePresentationBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePresentation>>,
+    { id: number; data: BodyType<UpdatePresentationBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePresentation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePresentation>>
+>;
+export type UpdatePresentationMutationBody = BodyType<UpdatePresentationBody>;
+export type UpdatePresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a presentation (owner only)
+ */
+export const useUpdatePresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePresentation>>,
+    TError,
+    { id: number; data: BodyType<UpdatePresentationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePresentation>>,
+  TError,
+  { id: number; data: BodyType<UpdatePresentationBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePresentationMutationOptions(options));
+};
+
+/**
+ * @summary Delete a presentation (owner only)
+ */
+export const getDeletePresentationUrl = (id: number) => {
+  return `/api/presentations/${id}`;
+};
+
+export const deletePresentation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getDeletePresentationUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePresentation>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePresentation(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePresentation>>
+>;
+
+export type DeletePresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a presentation (owner only)
+ */
+export const useDeletePresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePresentationMutationOptions(options));
+};
+
+/**
+ * @summary Publish a presentation (owner only)
+ */
+export const getPublishPresentationUrl = (id: number) => {
+  return `/api/presentations/${id}/publish`;
+};
+
+export const publishPresentation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getPublishPresentationUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPublishPresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishPresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof publishPresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["publishPresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof publishPresentation>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return publishPresentation(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PublishPresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof publishPresentation>>
+>;
+
+export type PublishPresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Publish a presentation (owner only)
+ */
+export const usePublishPresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishPresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof publishPresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPublishPresentationMutationOptions(options));
+};
+
+/**
+ * @summary Move a presentation back to draft (owner only)
+ */
+export const getUnpublishPresentationUrl = (id: number) => {
+  return `/api/presentations/${id}/unpublish`;
+};
+
+export const unpublishPresentation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getUnpublishPresentationUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUnpublishPresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unpublishPresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unpublishPresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["unpublishPresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unpublishPresentation>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return unpublishPresentation(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnpublishPresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unpublishPresentation>>
+>;
+
+export type UnpublishPresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Move a presentation back to draft (owner only)
+ */
+export const useUnpublishPresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unpublishPresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unpublishPresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUnpublishPresentationMutationOptions(options));
+};
+
+/**
+ * @summary Link or unlink the presentation to a teacher activity (assignment)
+ */
+export const getLinkPresentationActivityUrl = (id: number) => {
+  return `/api/presentations/${id}/link-activity`;
+};
+
+export const linkPresentationActivity = async (
+  id: number,
+  linkPresentationActivityBody: LinkPresentationActivityBody,
+  options?: RequestInit,
+): Promise<LinkPresentationActivity200> => {
+  return customFetch<LinkPresentationActivity200>(
+    getLinkPresentationActivityUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(linkPresentationActivityBody),
+    },
+  );
+};
+
+export const getLinkPresentationActivityMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkPresentationActivity>>,
+    TError,
+    { id: number; data: BodyType<LinkPresentationActivityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof linkPresentationActivity>>,
+  TError,
+  { id: number; data: BodyType<LinkPresentationActivityBody> },
+  TContext
+> => {
+  const mutationKey = ["linkPresentationActivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof linkPresentationActivity>>,
+    { id: number; data: BodyType<LinkPresentationActivityBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return linkPresentationActivity(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LinkPresentationActivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof linkPresentationActivity>>
+>;
+export type LinkPresentationActivityMutationBody =
+  BodyType<LinkPresentationActivityBody>;
+export type LinkPresentationActivityMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Link or unlink the presentation to a teacher activity (assignment)
+ */
+export const useLinkPresentationActivity = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof linkPresentationActivity>>,
+    TError,
+    { id: number; data: BodyType<LinkPresentationActivityBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof linkPresentationActivity>>,
+  TError,
+  { id: number; data: BodyType<LinkPresentationActivityBody> },
+  TContext
+> => {
+  return useMutation(getLinkPresentationActivityMutationOptions(options));
+};
+
+/**
+ * @summary Resolve the linked activity (or null if none / dangling)
+ */
+export const getGetPresentationLinkedActivityUrl = (id: number) => {
+  return `/api/presentations/${id}/linked-activity`;
+};
+
+export const getPresentationLinkedActivity = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GetPresentationLinkedActivity200> => {
+  return customFetch<GetPresentationLinkedActivity200>(
+    getGetPresentationLinkedActivityUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPresentationLinkedActivityQueryKey = (id: number) => {
+  return [`/api/presentations/${id}/linked-activity`] as const;
+};
+
+export const getGetPresentationLinkedActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentationLinkedActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationLinkedActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPresentationLinkedActivityQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPresentationLinkedActivity>>
+  > = ({ signal }) =>
+    getPresentationLinkedActivity(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationLinkedActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationLinkedActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentationLinkedActivity>>
+>;
+export type GetPresentationLinkedActivityQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Resolve the linked activity (or null if none / dangling)
+ */
+
+export function useGetPresentationLinkedActivity<
+  TData = Awaited<ReturnType<typeof getPresentationLinkedActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationLinkedActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationLinkedActivityQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Duplicate a presentation (owner or admin-shared)
+ */
+export const getDuplicatePresentationUrl = (id: number) => {
+  return `/api/presentations/${id}/duplicate`;
+};
+
+export const duplicatePresentation = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Presentation> => {
+  return customFetch<Presentation>(getDuplicatePresentationUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getDuplicatePresentationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicatePresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof duplicatePresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["duplicatePresentation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof duplicatePresentation>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return duplicatePresentation(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DuplicatePresentationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof duplicatePresentation>>
+>;
+
+export type DuplicatePresentationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Duplicate a presentation (owner or admin-shared)
+ */
+export const useDuplicatePresentation = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof duplicatePresentation>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof duplicatePresentation>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDuplicatePresentationMutationOptions(options));
+};
+
+/**
+ * @summary List uploaded assets for a presentation
+ */
+export const getListPresentationAssetsUrl = (id: number) => {
+  return `/api/presentations/${id}/assets`;
+};
+
+export const listPresentationAssets = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PresentationAsset[]> => {
+  return customFetch<PresentationAsset[]>(getListPresentationAssetsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPresentationAssetsQueryKey = (id: number) => {
+  return [`/api/presentations/${id}/assets`] as const;
+};
+
+export const getListPresentationAssetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPresentationAssets>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPresentationAssets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPresentationAssetsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPresentationAssets>>
+  > = ({ signal }) => listPresentationAssets(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentationAssets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPresentationAssetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPresentationAssets>>
+>;
+export type ListPresentationAssetsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List uploaded assets for a presentation
+ */
+
+export function useListPresentationAssets<
+  TData = Awaited<ReturnType<typeof listPresentationAssets>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPresentationAssets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPresentationAssetsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Register an uploaded asset URL on a presentation
+ */
+export const getRegisterPresentationAssetUrl = (id: number) => {
+  return `/api/presentations/${id}/assets`;
+};
+
+export const registerPresentationAsset = async (
+  id: number,
+  registerAssetBody: RegisterAssetBody,
+  options?: RequestInit,
+): Promise<PresentationAsset> => {
+  return customFetch<PresentationAsset>(getRegisterPresentationAssetUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerAssetBody),
+  });
+};
+
+export const getRegisterPresentationAssetMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerPresentationAsset>>,
+    TError,
+    { id: number; data: BodyType<RegisterAssetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerPresentationAsset>>,
+  TError,
+  { id: number; data: BodyType<RegisterAssetBody> },
+  TContext
+> => {
+  const mutationKey = ["registerPresentationAsset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerPresentationAsset>>,
+    { id: number; data: BodyType<RegisterAssetBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return registerPresentationAsset(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterPresentationAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerPresentationAsset>>
+>;
+export type RegisterPresentationAssetMutationBody = BodyType<RegisterAssetBody>;
+export type RegisterPresentationAssetMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Register an uploaded asset URL on a presentation
+ */
+export const useRegisterPresentationAsset = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerPresentationAsset>>,
+    TError,
+    { id: number; data: BodyType<RegisterAssetBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerPresentationAsset>>,
+  TError,
+  { id: number; data: BodyType<RegisterAssetBody> },
+  TContext
+> => {
+  return useMutation(getRegisterPresentationAssetMutationOptions(options));
+};
+
+/**
+ * @summary Tier-driven limits for AI outline generation
+ */
+export const getGetPresentationAiLimitsUrl = () => {
+  return `/api/presentations/ai/limits`;
+};
+
+export const getPresentationAiLimits = async (
+  options?: RequestInit,
+): Promise<PresentationAiLimits> => {
+  return customFetch<PresentationAiLimits>(getGetPresentationAiLimitsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPresentationAiLimitsQueryKey = () => {
+  return [`/api/presentations/ai/limits`] as const;
+};
+
+export const getGetPresentationAiLimitsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentationAiLimits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationAiLimits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPresentationAiLimitsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPresentationAiLimits>>
+  > = ({ signal }) => getPresentationAiLimits({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationAiLimits>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationAiLimitsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentationAiLimits>>
+>;
+export type GetPresentationAiLimitsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Tier-driven limits for AI outline generation
+ */
+
+export function useGetPresentationAiLimits<
+  TData = Awaited<ReturnType<typeof getPresentationAiLimits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationAiLimits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationAiLimitsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
+ */
+export const getGeneratePresentationOutlineUrl = () => {
+  return `/api/presentations/ai/outline`;
+};
+
+export const generatePresentationOutline = async (
+  presentationBrief: PresentationBrief,
+  options?: RequestInit,
+): Promise<PresentationDraftWithGuardrails> => {
+  return customFetch<PresentationDraftWithGuardrails>(
+    getGeneratePresentationOutlineUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(presentationBrief),
+    },
+  );
+};
+
+export const getGeneratePresentationOutlineMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePresentationOutline>>,
+    TError,
+    { data: BodyType<PresentationBrief> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePresentationOutline>>,
+  TError,
+  { data: BodyType<PresentationBrief> },
+  TContext
+> => {
+  const mutationKey = ["generatePresentationOutline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePresentationOutline>>,
+    { data: BodyType<PresentationBrief> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generatePresentationOutline(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GeneratePresentationOutlineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePresentationOutline>>
+>;
+export type GeneratePresentationOutlineMutationBody =
+  BodyType<PresentationBrief>;
+export type GeneratePresentationOutlineMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
+ */
+export const useGeneratePresentationOutline = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePresentationOutline>>,
+    TError,
+    { data: BodyType<PresentationBrief> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generatePresentationOutline>>,
+  TError,
+  { data: BodyType<PresentationBrief> },
+  TContext
+> => {
+  return useMutation(getGeneratePresentationOutlineMutationOptions(options));
+};
+
+/**
+ * Per-slide materialization with skip-on-failure semantics. Failed
+slides are reported in `skipped` so the teacher can author them
+manually. Progress is persisted on the draft row after every
+slide so a parallel poll on `GET /presentations/drafts/{id}`
+can drive a real progress bar without SSE plumbing.
+
+ * @summary Phase 1B — materialize an approved outline into a real deck
+ */
+export const getBuildPresentationFromDraftUrl = (draftId: number) => {
+  return `/api/presentations/ai/build/${draftId}`;
+};
+
+export const buildPresentationFromDraft = async (
+  draftId: number,
+  buildPresentationRequest?: BuildPresentationRequest,
+  options?: RequestInit,
+): Promise<BuildPresentationResponse> => {
+  return customFetch<BuildPresentationResponse>(
+    getBuildPresentationFromDraftUrl(draftId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(buildPresentationRequest),
+    },
+  );
+};
+
+export const getBuildPresentationFromDraftMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof buildPresentationFromDraft>>,
+    TError,
+    { draftId: number; data: BodyType<BuildPresentationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof buildPresentationFromDraft>>,
+  TError,
+  { draftId: number; data: BodyType<BuildPresentationRequest> },
+  TContext
+> => {
+  const mutationKey = ["buildPresentationFromDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof buildPresentationFromDraft>>,
+    { draftId: number; data: BodyType<BuildPresentationRequest> }
+  > = (props) => {
+    const { draftId, data } = props ?? {};
+
+    return buildPresentationFromDraft(draftId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BuildPresentationFromDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof buildPresentationFromDraft>>
+>;
+export type BuildPresentationFromDraftMutationBody =
+  BodyType<BuildPresentationRequest>;
+export type BuildPresentationFromDraftMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Phase 1B — materialize an approved outline into a real deck
+ */
+export const useBuildPresentationFromDraft = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof buildPresentationFromDraft>>,
+    TError,
+    { draftId: number; data: BodyType<BuildPresentationRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof buildPresentationFromDraft>>,
+  TError,
+  { draftId: number; data: BodyType<BuildPresentationRequest> },
+  TContext
+> => {
+  return useMutation(getBuildPresentationFromDraftMutationOptions(options));
+};
+
+/**
+ * Server-Sent Events feed: emits `progress` events on each
+polling tick and a terminal `done` event when the build
+finishes (status `built` or `failed`). Consumed via the
+browser's `EventSource`. Polling on the draft row remains
+available as a fallback driver.
+
+ * @summary Phase 1B — SSE stream of build progress
+ */
+export const getStreamPresentationBuildUrl = (draftId: number) => {
+  return `/api/presentations/ai/build/${draftId}/stream`;
+};
+
+export const streamPresentationBuild = async (
+  draftId: number,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getStreamPresentationBuildUrl(draftId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getStreamPresentationBuildQueryKey = (draftId: number) => {
+  return [`/api/presentations/ai/build/${draftId}/stream`] as const;
+};
+
+export const getStreamPresentationBuildQueryOptions = <
+  TData = Awaited<ReturnType<typeof streamPresentationBuild>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  draftId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof streamPresentationBuild>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getStreamPresentationBuildQueryKey(draftId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof streamPresentationBuild>>
+  > = ({ signal }) =>
+    streamPresentationBuild(draftId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!draftId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof streamPresentationBuild>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StreamPresentationBuildQueryResult = NonNullable<
+  Awaited<ReturnType<typeof streamPresentationBuild>>
+>;
+export type StreamPresentationBuildQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Phase 1B — SSE stream of build progress
+ */
+
+export function useStreamPresentationBuild<
+  TData = Awaited<ReturnType<typeof streamPresentationBuild>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  draftId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof streamPresentationBuild>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStreamPresentationBuildQueryOptions(draftId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Sets an in-memory cancel flag the build loop checks once per
+slide. Idempotent. Slides validated before the cancel arrived
+are still persisted into the resulting deck.
+
+ * @summary Phase 1B — request cancellation of an in-flight build
+ */
+export const getCancelPresentationBuildUrl = (draftId: number) => {
+  return `/api/presentations/ai/build/${draftId}/cancel`;
+};
+
+export const cancelPresentationBuild = async (
+  draftId: number,
+  options?: RequestInit,
+): Promise<CancelBuildResponse> => {
+  return customFetch<CancelBuildResponse>(
+    getCancelPresentationBuildUrl(draftId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCancelPresentationBuildMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelPresentationBuild>>,
+    TError,
+    { draftId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelPresentationBuild>>,
+  TError,
+  { draftId: number },
+  TContext
+> => {
+  const mutationKey = ["cancelPresentationBuild"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelPresentationBuild>>,
+    { draftId: number }
+  > = (props) => {
+    const { draftId } = props ?? {};
+
+    return cancelPresentationBuild(draftId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelPresentationBuildMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelPresentationBuild>>
+>;
+
+export type CancelPresentationBuildMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Phase 1B — request cancellation of an in-flight build
+ */
+export const useCancelPresentationBuild = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelPresentationBuild>>,
+    TError,
+    { draftId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof cancelPresentationBuild>>,
+  TError,
+  { draftId: number },
+  TContext
+> => {
+  return useMutation(getCancelPresentationBuildMutationOptions(options));
+};
+
+/**
+ * @summary List the current teacher's saved outline drafts
+ */
+export const getListPresentationDraftsUrl = () => {
+  return `/api/presentations/drafts`;
+};
+
+export const listPresentationDrafts = async (
+  options?: RequestInit,
+): Promise<PresentationDraft[]> => {
+  return customFetch<PresentationDraft[]>(getListPresentationDraftsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPresentationDraftsQueryKey = () => {
+  return [`/api/presentations/drafts`] as const;
+};
+
+export const getListPresentationDraftsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPresentationDrafts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentationDrafts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPresentationDraftsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPresentationDrafts>>
+  > = ({ signal }) => listPresentationDrafts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentationDrafts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPresentationDraftsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPresentationDrafts>>
+>;
+export type ListPresentationDraftsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the current teacher's saved outline drafts
+ */
+
+export function useListPresentationDrafts<
+  TData = Awaited<ReturnType<typeof listPresentationDrafts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPresentationDrafts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPresentationDraftsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Read one draft (owner only)
+ */
+export const getGetPresentationDraftUrl = (id: number) => {
+  return `/api/presentations/drafts/${id}`;
+};
+
+export const getPresentationDraft = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PresentationDraft> => {
+  return customFetch<PresentationDraft>(getGetPresentationDraftUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPresentationDraftQueryKey = (id: number) => {
+  return [`/api/presentations/drafts/${id}`] as const;
+};
+
+export const getGetPresentationDraftQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPresentationDraft>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationDraft>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPresentationDraftQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPresentationDraft>>
+  > = ({ signal }) => getPresentationDraft(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPresentationDraft>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPresentationDraftQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPresentationDraft>>
+>;
+export type GetPresentationDraftQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Read one draft (owner only)
+ */
+
+export function useGetPresentationDraft<
+  TData = Awaited<ReturnType<typeof getPresentationDraft>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPresentationDraft>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPresentationDraftQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update outline or status (owner only)
+ */
+export const getUpdatePresentationDraftUrl = (id: number) => {
+  return `/api/presentations/drafts/${id}`;
+};
+
+export const updatePresentationDraft = async (
+  id: number,
+  updatePresentationDraftBody: UpdatePresentationDraftBody,
+  options?: RequestInit,
+): Promise<PresentationDraft> => {
+  return customFetch<PresentationDraft>(getUpdatePresentationDraftUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePresentationDraftBody),
+  });
+};
+
+export const getUpdatePresentationDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePresentationDraft>>,
+    TError,
+    { id: number; data: BodyType<UpdatePresentationDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePresentationDraft>>,
+  TError,
+  { id: number; data: BodyType<UpdatePresentationDraftBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePresentationDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePresentationDraft>>,
+    { id: number; data: BodyType<UpdatePresentationDraftBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePresentationDraft(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePresentationDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePresentationDraft>>
+>;
+export type UpdatePresentationDraftMutationBody =
+  BodyType<UpdatePresentationDraftBody>;
+export type UpdatePresentationDraftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update outline or status (owner only)
+ */
+export const useUpdatePresentationDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePresentationDraft>>,
+    TError,
+    { id: number; data: BodyType<UpdatePresentationDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePresentationDraft>>,
+  TError,
+  { id: number; data: BodyType<UpdatePresentationDraftBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePresentationDraftMutationOptions(options));
+};
+
+/**
+ * @summary Delete a draft (owner only)
+ */
+export const getDeletePresentationDraftUrl = (id: number) => {
+  return `/api/presentations/drafts/${id}`;
+};
+
+export const deletePresentationDraft = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePresentationDraftUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePresentationDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePresentationDraft>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePresentationDraft>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePresentationDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePresentationDraft>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePresentationDraft(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePresentationDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePresentationDraft>>
+>;
+
+export type DeletePresentationDraftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a draft (owner only)
+ */
+export const useDeletePresentationDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePresentationDraft>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePresentationDraft>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePresentationDraftMutationOptions(options));
 };

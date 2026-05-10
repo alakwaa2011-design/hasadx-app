@@ -1,0 +1,1 @@
+{"version":3,"file":"submissionDetail.d.ts","sourceRoot":"","sources":["../../../src/generated/types/submissionDetail.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAC/C,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,0BAA0B,CAAC;AAEvE,MAAM,WAAW,gBAAgB;IAC/B,UAAU,EAAE,UAAU,CAAC;IACvB,OAAO,EAAE,sBAAsB,EAAE,CAAC;CACnC"}

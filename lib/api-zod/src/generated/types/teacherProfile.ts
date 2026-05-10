@@ -5,6 +5,7 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { TeacherProfileRole } from "./teacherProfileRole";
 
 export interface TeacherProfile {
   id: number;
@@ -13,4 +14,6 @@ export interface TeacherProfile {
   phone?: string;
   isAdmin?: boolean;
   isBlocked?: boolean;
+  /** User role: teacher (classroom), organizer (events), or admin (super-admin). */
+  role?: TeacherProfileRole;
 }

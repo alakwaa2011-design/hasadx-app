@@ -88,6 +88,8 @@ interface TeamSession {
   questions: TeamQuestion[];
   currentIndex: number;
   status: GameStatus;
+  /** Optional teacher-selected target class — metadata for display only. */
+  targetClass: string | null;
   teamNames: { A: string; B: string };
   timerInterval: ReturnType<typeof setInterval> | null;
   timerSeconds: number;
@@ -453,7 +455,7 @@ export function setupMillionTeamSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
 
     socket.on("million-team:create", (
-      data: { questions: TeamQuestion[]; teamNames?: { A: string; B: string } },
+      data: { questions: TeamQuestion[]; teamNames?: { A: string; B: string }; targetClass?: string },
       cb?: (res: { pin?: string; hostToken?: string; error?: string }) => void
     ) => {
       try {
@@ -464,6 +466,7 @@ export function setupMillionTeamSocket(io: Server) {
 
         const pin = generatePin();
         const hostToken = generateToken();
+        const targetClass = typeof data.targetClass === "string" ? data.targetClass.trim().slice(0, 60) : "";
 
         const session: TeamSession = {
           pin,
@@ -472,6 +475,7 @@ export function setupMillionTeamSocket(io: Server) {
           questions: data.questions.slice(0, 40),
           currentIndex: 0,
           status: "waiting",
+          targetClass: targetClass || null,
           teamNames: {
             A: data.teamNames?.A?.trim() || "الفريق أ",
             B: data.teamNames?.B?.trim() || "الفريق ب",

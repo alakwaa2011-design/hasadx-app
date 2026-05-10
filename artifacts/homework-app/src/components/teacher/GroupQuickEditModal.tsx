@@ -200,7 +200,7 @@ export default function GroupQuickEditModal({ open, collection, isAdmin, lang, o
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background"
-                  placeholder={lang === "ar" ? "مثال: مسابقات إسلامية" : "e.g. Islamic Competitions"}
+                  placeholder={lang === "ar" ? "مثال: مسابقات عامة" : "e.g. General Quizzes"}
                   autoFocus
                 />
                 {suggested && !presetActive(suggested) && (

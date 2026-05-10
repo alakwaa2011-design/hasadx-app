@@ -1,4 +1,17 @@
-import { pgTable, serial, text, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+
+/* Default caps for the regular (free) tier of the interactive
+   presentations feature. Admins can override these from the admin
+   panel; the values are persisted in the `presentation_limits` JSONB
+   column. T7 wires up the resolver and the admin UI. */
+export const DEFAULT_PRESENTATION_LIMITS = {
+  maxImagesRegular: 5,
+  maxFilesRegular: 1,
+  maxSlidesRegular: 20,
+  maxSizeMbRegular: 50,
+} as const;
+
+export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
 
 export const platformSettingsTable = pgTable("platform_settings", {
   id: serial("id").primaryKey(),
@@ -19,4 +32,9 @@ export const platformSettingsTable = pgTable("platform_settings", {
   showTugGame: boolean("show_tug_game").notNull().default(false),
   showCapitalsGame: boolean("show_capitals_game").notNull().default(true),
   proAiForAll: boolean("pro_ai_for_all").notNull().default(false),
+  presentationsProForAll: boolean("presentations_pro_for_all").notNull().default(false),
+  presentationLimits: jsonb("presentation_limits").$type<PresentationLimits>().notNull().default(DEFAULT_PRESENTATION_LIMITS),
+  showQuranSection: boolean("show_quran_section").notNull().default(false),
+  showGeneralCertificates: boolean("show_general_certificates").notNull().default(false),
+  showMaraqui: boolean("show_maraqui").notNull().default(false),
 });

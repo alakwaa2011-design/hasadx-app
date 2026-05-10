@@ -280,6 +280,12 @@ function SortableQuestionWrapper({
 export default function CreateAssignment() {
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
+  // When the organizer enters this page from the "Create Contest" entry
+  // (`/teacher/new/assignment?contest=1`), we re-skin the hero so the copy
+  // talks about "contest questions" instead of generic assignment language.
+  const isContestMode =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("contest") === "1";
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   // ── Wizard state ──
@@ -945,13 +951,19 @@ export default function CreateAssignment() {
               </span>
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl sm:text-2xl font-black leading-tight">
-                  {t.createAssignment.wizardHeroTitle}
+                  {isContestMode
+                    ? (lang === "ar" ? "أنشئ أسئلة مسابقتك" : "Create your contest questions")
+                    : t.createAssignment.wizardHeroTitle}
                 </h1>
                 <p className="text-white/85 text-xs sm:text-sm mt-1">
-                  {t.createAssignment.wizardStepProgress
-                    .replace("{current}", String(wizardStep))
-                    .replace("{total}", String(STEPS.length))
-                    .replace("{label}", STEPS[wizardStep - 1].label)}
+                  {isContestMode
+                    ? (lang === "ar"
+                        ? "اكتب أسئلتك يدويًا أو ولِّدها بالذكاء الاصطناعي، ثم استخدمها في أي لعبة."
+                        : "Write questions yourself or generate them with AI, then use them in any game.")
+                    : t.createAssignment.wizardStepProgress
+                        .replace("{current}", String(wizardStep))
+                        .replace("{total}", String(STEPS.length))
+                        .replace("{label}", STEPS[wizardStep - 1].label)}
                 </p>
               </div>
             </div>

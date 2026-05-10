@@ -4,7 +4,8 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
-import { Gamepad2, Trophy, Users, Play, SkipForward, StopCircle, Crown, Medal, Award, BarChart3, Copy, CheckCircle, XCircle, Clock, Zap, Gift, Link2, User, UsersRound, Ban, ToggleLeft, ToggleRight, Pause, Save, Loader2, Activity, Share2, Home, Languages, DoorOpen, PlayCircle, Mic, Lock, Unlock, ArrowRightLeft } from "lucide-react";
+import { Gamepad2, Trophy, Users, Play, SkipForward, StopCircle, Crown, Medal, Award, BarChart3, Copy, CheckCircle, XCircle, Clock, Zap, Gift, Link2, User, UsersRound, Ban, ToggleLeft, ToggleRight, Pause, Save, Loader2, Activity, Share2, Home, Languages, DoorOpen, PlayCircle, Mic, Lock, Unlock, ArrowRightLeft, GraduationCap } from "lucide-react";
+import { ClassSelector } from "@/components/teacher/class-selector";
 import RaceTrack from "@/components/race-track";
 import { playVictoryFanfare, playClapSound, playFireworkSound, playGameStartSound, playTimeUpSound, playHackMarathonLoop, stopHackMarathonLoop, toggleHackMusicMuted, getIsHackMusicMuted, getIsMuted } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
@@ -80,6 +81,8 @@ export default function TeacherGame() {
   const [players, setPlayers] = useState<{ name: string; score: number; avatar?: string; teamName?: string | null; isBot?: boolean; hasPassword?: boolean }[]>([]);
   const [roomLocked, setRoomLocked] = useState(false);
   const [lockedTeams, setLockedTeams] = useState<string[]>([]);
+  const [targetClass, setTargetClass] = useState<string>("");
+  const [targetClassEditing, setTargetClassEditing] = useState(false);
   const [teamNames, setTeamNames] = useState<string[]>([]);
   const [question, setQuestion] = useState<Question | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -133,6 +136,9 @@ export default function TeacherGame() {
           if (Array.isArray(res.teamNames)) setTeamNames(res.teamNames);
           if (typeof res.roomLocked === "boolean") setRoomLocked(res.roomLocked);
           if (Array.isArray(res.lockedTeams)) setLockedTeams(res.lockedTeams);
+          if (typeof res.targetClass === "string" || res.targetClass === null) {
+            setTargetClass(res.targetClass || "");
+          }
           if (res.leaderboard) setLeaderboard(res.leaderboard);
           if (res.teamLeaderboard) setTeamLeaderboard(res.teamLeaderboard);
           if (res.pointsEnabled !== undefined) setPointsEnabled(res.pointsEnabled);
@@ -142,7 +148,28 @@ export default function TeacherGame() {
 
           if (res.state === "question") {
             setPhase("question");
-            if (res.currentQuestion) {
+            // Hack-mode marathon: restore the host monitoring view (countdown
+            // + per-student stats) instead of the generic question UI.
+            if (res.hackMode && res.hackMarathon?.active) {
+              setHackMarathonActive(true);
+              if (typeof res.hackMarathon.deadline === "number") {
+                setHackMarathonDeadline(res.hackMarathon.deadline);
+                setHackMarathonRemainingMs(
+                  res.hackMarathon.remainingMs ??
+                    Math.max(0, res.hackMarathon.deadline - Date.now()),
+                );
+              }
+              if (Array.isArray(res.hackStudentStats)) {
+                const snapshot = new Map<string, { name: string; avatar: string; correct: number; wrong: number; score: number; personalAnsweredCount?: number; personalCycle?: number; personalQuestionIndex?: number }>();
+                for (const s of res.hackStudentStats) {
+                  snapshot.set(s.name, s);
+                }
+                setStudentStats(snapshot);
+              }
+              if (!getIsMuted() && !getIsHackMusicMuted()) {
+                playHackMarathonLoop();
+              }
+            } else if (res.currentQuestion) {
               setQuestion(res.currentQuestion);
               setAnsweredCount(res.answeredCount || 0);
               setTotalPlayers(res.totalPlayers || res.players?.length || 0);
@@ -161,6 +188,8 @@ export default function TeacherGame() {
             setPhase("leaderboard");
             if (res.distribution) setDistribution(res.distribution);
             if (res.correctAnswer) setCorrectAnswer(res.correctAnswer);
+          } else if (res.state === "gift-round") {
+            setPhase("gift-round");
           } else if (res.state === "finished") {
             setPhase("finished");
           }
@@ -459,6 +488,29 @@ export default function TeacherGame() {
         });
       }
     });
+  };
+
+  const updateTargetClass = (next: string) => {
+    setTargetClass(next);
+    const socket = getSocket();
+    const ar = lang === "ar";
+    socket.emit(
+      "teacher:set-target-class",
+      { pin, targetClass: next || null },
+      (res: { success?: boolean; error?: string; targetClass?: string | null }) => {
+        import("@/components/ui/sonner").then(({ toast }) => {
+          if (res?.error) {
+            toast.error(res.error);
+            return;
+          }
+          toast.success(
+            res?.targetClass
+              ? (ar ? `تم تحديد الصف: ${res.targetClass}` : `Class set: ${res.targetClass}`)
+              : (ar ? "تم إزالة تحديد الصف" : "Class targeting cleared"),
+          );
+        });
+      },
+    );
   };
 
   const toggleRoomLock = () => {
@@ -938,6 +990,43 @@ export default function TeacherGame() {
               >
                 <Toggle on={ttsEnabled} onClick={() => setTtsEnabled(v => !v)} />
               </ToggleRow>
+
+              <ToggleRow
+                icon={<GraduationCap className="w-4 h-4" style={{ color: "#1A3A28" }} />}
+                label={isAr ? "الصف المستهدف" : "Target Class"}
+                desc={isAr ? "حدّد صفًا لقصر اللعبة على طلابه" : "Restrict the game to one class"}
+              >
+                <button
+                  onClick={() => setTargetClassEditing((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:opacity-90 active:scale-95"
+                  style={{
+                    background: targetClass ? "#1A3A28" : "#F0F4F1",
+                    color: targetClass ? "white" : "#7A9A85",
+                    border: "1px solid #E2E8E3",
+                  }}
+                >
+                  {targetClass || (isAr ? "أي صف" : "Any class")}
+                </button>
+              </ToggleRow>
+              {targetClassEditing && (
+                <div className="px-4 py-3 border-t" style={{ borderColor: "#E2E8E3", background: "#FAFBFA" }}>
+                  <ClassSelector
+                    value={targetClass}
+                    onChange={updateTargetClass}
+                    accent="#1A3A28"
+                    label={isAr ? "اختر الصف المستهدف" : "Choose target class"}
+                  />
+                  {targetClass && (
+                    <button
+                      onClick={() => updateTargetClass("")}
+                      className="mt-2 text-xs font-bold underline"
+                      style={{ color: "#7A9A85" }}
+                    >
+                      {isAr ? "إزالة تحديد الصف" : "Clear class targeting"}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <ToggleRow
                 icon={roomLocked

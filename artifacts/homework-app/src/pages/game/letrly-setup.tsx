@@ -240,7 +240,7 @@ function PlayPanel() {
 
 export default function LetrlySetup() {
   const [, setLocation] = useLocation();
-  const { data: teacher } = useGetCurrentTeacher({ query: { retry: false } });
+  const { data: teacher } = useGetCurrentTeacher({ query: { retry: false } as any });
   const isTeacher = !!teacher?.id;
   const [tab, setTab] = useState<"play" | "create">("play");
 

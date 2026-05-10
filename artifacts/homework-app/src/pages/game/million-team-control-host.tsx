@@ -138,7 +138,7 @@ export default function MillionTeamControlHost() {
   const joinedRef = useRef(false);
   const audio = useGameAudio();
   const bgStartedRef = useRef(false);
-  const joinUrl = pin ? `${typeof window !== "undefined" ? window.location.origin : ""}/game/million/join/${pin}` : "";
+  const joinUrl = pin ? `${typeof window !== "undefined" ? window.location.origin : ""}${import.meta.env.BASE_URL}game/million/join/${pin}` : "";
 
   useEffect(() => {
     if (!pin || bgStartedRef.current) return;

@@ -88,6 +88,7 @@ export default function RocketCreate() {
 
   const [questions, setQuestions] = useState<RocketQuestion[]>([]);
   const [duration, setDuration] = useState(20);
+  // Race timer: 1-15 minutes; defaults to 5. Race auto-ends when timer hits zero.
   const [gameDurationMins, setGameDurationMins] = useState(5);
   const [advanceMode, setAdvanceMode] = useState<"per_player" | "host_sync">("per_player");
   const [creating, setCreating] = useState(false);
@@ -163,7 +164,8 @@ export default function RocketCreate() {
     const socket = getRocketSocket();
     socket.emit("rocket:create", {
       questions, duration,
-      totalDurationSecs: gameDurationMins * 60,
+      // Race timer in seconds (1-15 min selectable on this screen).
+      totalDurationSecs: Math.max(1, Math.min(15, gameDurationMins)) * 60,
       targetClass: targetClass || undefined,
       title: title.trim() || undefined,
       advanceMode,
@@ -582,35 +584,40 @@ export default function RocketCreate() {
             </div>
           </Card>
 
-          {/* Total game duration */}
+          {/* Race timer — teacher picks 1-15 minutes */}
           <Card className="p-4 mb-3">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⏳</span>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl">⏱️</span>
               <div className="flex-1">
-                <p className="font-bold text-sm">{ar ? "مدة اللعبة الكلية" : "Total Game Duration"}</p>
+                <p className="font-bold text-sm" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "مدة السباق" : "Race duration"}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {ar ? "الأسئلة تتكرر حتى انتهاء الوقت، والأخطاء تُعاد أولاً" : "Questions loop until time ends, wrong answers repeat first"}
+                  {ar
+                    ? "السباق ينتهي تلقائياً عند انتهاء الوقت. التحذير الذهبي عند ٦٠ ث، الأحمر عند ٣٠ ث."
+                    : "Race auto-ends when time runs out. Gold warning at 60s, red at 30s."}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setGameDurationMins(m => Math.max(1, m - 1))}
-                  className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-lg hover:bg-muted transition-colors"
-                  style={{ borderColor: BRAND_PRIMARY, color: BRAND_PRIMARY }}
-                >
-                  −
-                </button>
-                <span className="font-black text-xl min-w-[72px] text-center" style={{ color: BRAND_PRIMARY }}>
-                  {gameDurationMins} {ar ? "دق" : "min"}
-                </span>
-                <button
-                  onClick={() => setGameDurationMins(m => Math.min(30, m + 1))}
-                  className="w-9 h-9 rounded-full border-2 flex items-center justify-center font-black text-lg hover:bg-muted transition-colors"
-                  style={{ borderColor: BRAND_PRIMARY, color: BRAND_PRIMARY }}
-                >
-                  +
-                </button>
+              <div
+                className="px-3 py-1.5 rounded-lg font-black text-lg tabular-nums"
+                style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY, minWidth: 60, textAlign: "center" }}
+              >
+                {gameDurationMins} {ar ? "د" : "m"}
               </div>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={15}
+              step={1}
+              value={gameDurationMins}
+              onChange={(e) => setGameDurationMins(parseInt(e.target.value, 10))}
+              className="w-full accent-current"
+              style={{ accentColor: BRAND_PRIMARY }}
+              aria-label={ar ? "مدة السباق بالدقائق" : "Race duration in minutes"}
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground mt-1 tabular-nums px-1">
+              <span>1</span><span>5</span><span>10</span><span>15</span>
             </div>
           </Card>
 

@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useGetCurrentTeacher, useUpdateTeacherProfile } from "@workspace/api-client-react";
+import {
+  useGetCurrentTeacher,
+  useUpdateTeacherProfile,
+  type TeacherProfileRole,
+} from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, User, Mail, Phone, Save, ArrowRight, ArrowLeft,
   Shield, Lock, Eye, EyeOff, Settings, Sun, Moon, Monitor,
+  BookOpen, Crown, GraduationCap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -25,7 +30,7 @@ export default function TeacherSettings() {
   const { colorScheme, setColorScheme } = useDarkMode();
 
   const { data: user, isLoading, error } = useGetCurrentTeacher({
-    query: { retry: false },
+    query: { retry: false } as any,
   });
 
   const [name, setName] = useState("");
@@ -37,6 +42,40 @@ export default function TeacherSettings() {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+  const currentRole: TeacherProfileRole = user?.role ?? "teacher";
+  const isAdminUser = Boolean(user?.isAdmin);
+  // Treat any user with isAdmin=true as admin in the UI even if the legacy
+  // `role` column hasn't been backfilled yet.
+  const isAdminView = isAdminUser || currentRole === "admin";
+  const [savingRole, setSavingRole] = useState(false);
+
+  const handleChangeRole = async (newRole: "teacher" | "organizer") => {
+    if (newRole === currentRole) return;
+    setSavingRole(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update role");
+      toast.success(
+        lang === "ar" ? "تم تحديث نوع الحساب" : "Account type updated",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Land on the right home for the new role.
+      setLocation(newRole === "organizer" ? "/organizer" : "/teacher");
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (lang === "ar" ? "تعذّر تحديث نوع الحساب" : "Failed to update role"),
+      );
+    } finally {
+      setSavingRole(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -187,6 +226,145 @@ export default function TeacherSettings() {
                 </button>
               ))}
             </div>
+          </Card>
+
+          {/* Role Section — admins see (read-only) badge; teacher/organizer can switch */}
+          <Card className="p-6 sm:p-8 shadow-xl border-t-4 border-t-amber-400 mb-6">
+            <h2 className="text-lg font-extrabold text-foreground mb-4 flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-500" />
+              {lang === "ar" ? "نوع الحساب" : "Account Type"}
+            </h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              {isAdminView
+                ? lang === "ar"
+                  ? "حسابك مسؤول وله صلاحيات الوصول لجميع الواجهات."
+                  : "You're an admin with access to every UI."
+                : lang === "ar"
+                  ? "بدّل بين واجهة المعلّم وواجهة المنظّم في أي وقت."
+                  : "Switch between the teacher and organizer experience anytime."}
+            </p>
+            {isAdminView ? (
+              <div className="space-y-4">
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+                  style={{
+                    background: "rgba(232,168,14,0.12)",
+                    border: "1px solid rgba(232,168,14,0.45)",
+                    color: "#9a6b04",
+                  }}
+                >
+                  <Shield className="w-4 h-4" />
+                  {lang === "ar" ? "مسؤول (Admin)" : "Admin"}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-2.5 uppercase tracking-wide">
+                    {lang === "ar" ? "افتح كأي واجهة" : "Open any interface"}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/teacher")}
+                      className="flex items-start gap-3 p-3.5 rounded-xl border-2 border-border bg-muted/30 hover:border-primary/60 hover:bg-primary/5 transition-all text-start"
+                    >
+                      <BookOpen className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-extrabold text-sm text-foreground">
+                          {lang === "ar" ? "واجهة المعلّم" : "Teacher UI"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {lang === "ar" ? "صفوف وواجبات" : "Classes & assignments"}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/organizer")}
+                      className="flex items-start gap-3 p-3.5 rounded-xl border-2 border-border bg-muted/30 hover:border-amber-400/60 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all text-start"
+                    >
+                      <Crown className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-extrabold text-sm text-foreground">
+                          {lang === "ar" ? "واجهة المنظّم" : "Organizer UI"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {lang === "ar" ? "مسابقات وفعاليات" : "Contests & events"}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/student/dashboard")}
+                      className="flex items-start gap-3 p-3.5 rounded-xl border-2 border-border bg-muted/30 hover:border-emerald-400/60 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all text-start"
+                    >
+                      <GraduationCap className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-extrabold text-sm text-foreground">
+                          {lang === "ar" ? "واجهة الطالب" : "Student UI"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {lang === "ar" ? "ألعاب وتحديات" : "Games & challenges"}
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole("teacher")}
+                  disabled={savingRole}
+                  className={cn(
+                    "flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all text-start font-semibold text-sm disabled:opacity-60",
+                    currentRole === "teacher"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50",
+                  )}
+                >
+                  <BookOpen className="w-5 h-5" />
+                  <div>
+                    <p className="font-extrabold">
+                      {lang === "ar" ? "معلّم" : "Teacher"}
+                    </p>
+                    <p className="text-xs opacity-80 font-normal mt-0.5">
+                      {lang === "ar"
+                        ? "صفوف، واجبات، عروض"
+                        : "Classes, assignments, decks"}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeRole("organizer")}
+                  disabled={savingRole}
+                  className={cn(
+                    "flex flex-col items-start gap-2 p-4 rounded-xl border-2 transition-all text-start font-semibold text-sm disabled:opacity-60",
+                    currentRole === "organizer"
+                      ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-amber-300",
+                  )}
+                >
+                  <Crown className="w-5 h-5" />
+                  <div>
+                    <p className="font-extrabold">
+                      {lang === "ar" ? "منظّم فعاليات" : "Event Organizer"}
+                    </p>
+                    <p className="text-xs opacity-80 font-normal mt-0.5">
+                      {lang === "ar"
+                        ? "مسابقات حية وفعاليات"
+                        : "Live contests & events"}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
+            {savingRole && (
+              <div className="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {lang === "ar" ? "جارٍ التحديث..." : "Updating..."}
+              </div>
+            )}
           </Card>
 
           {/* Account Section */}

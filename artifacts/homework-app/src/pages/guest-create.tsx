@@ -118,7 +118,7 @@ export default function GuestCreatePage() {
   const [saved, setSaved] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
 
-  const { data: currentUser, isLoading: userLoading } = useGetCurrentTeacher({ query: { retry: false } });
+  const { data: currentUser, isLoading: userLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
   const [autoResumed, setAutoResumed] = useState(false);
 
   useEffect(() => {

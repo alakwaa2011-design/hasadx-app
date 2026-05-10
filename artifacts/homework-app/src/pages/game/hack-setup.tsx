@@ -7,6 +7,10 @@ import { Terminal, ShieldAlert, Lock, ArrowLeft, ArrowRight, Search, Loader2, Bo
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
+import {
+  ClassSelector,
+  getRememberedTargetClass,
+} from "@/components/teacher/class-selector";
 
 interface Assignment {
   id: number;
@@ -20,7 +24,7 @@ interface Assignment {
 // each label to a bank category enum value.
 const BANK_SUBJECTS: { value: string; ar: string; en: string }[] = [
   { value: "all", ar: "كل المواد", en: "All subjects" },
-  { value: "إسلاميات", ar: "إسلاميات", en: "Religion" },
+  { value: "إسلاميات", ar: "ثقافة دينية", en: "Religion" },
   { value: "علوم", ar: "علوم", en: "Science" },
   { value: "رياضيات", ar: "رياضيات", en: "Math" },
   { value: "لغة عربية", ar: "لغة عربية", en: "Arabic" },
@@ -57,7 +61,7 @@ export default function HackSetup() {
   const { data: user } = useGetCurrentTeacher();
   const { data: assignments, isLoading } = useListAssignments(
     user ? { teacherId: user.id } : undefined,
-    { query: { enabled: !!user } }
+    { query: { enabled: !!user } as any }
   );
 
   const [source, setSource] = useState<Source>("assignments");
@@ -66,6 +70,9 @@ export default function HackSetup() {
   const [bankSubject, setBankSubject] = useState<string>("إسلاميات");
   const [bankLevel, setBankLevel] = useState<string>("all");
   const [bankCount, setBankCount] = useState<number>(20);
+  const [targetClass, setTargetClass] = useState<string>(() =>
+    getRememberedTargetClass(),
+  );
 
   const filtered = (assignments || []).filter((a: Assignment) => {
     if (!search) return true;
@@ -78,7 +85,7 @@ export default function HackSetup() {
     const socket = getSocket();
     socket.emit(
       "teacher:create-game",
-      { assignmentId, hackMode: true, gameMode: "solo" },
+      { assignmentId, hackMode: true, gameMode: "solo", targetClass: targetClass || undefined },
       (res: { pin?: string; error?: string }) => {
         setCreating(false);
         if (res.error) {
@@ -104,6 +111,7 @@ export default function HackSetup() {
         bankSubject,
         bankLevel,
         bankQuestionCount: bankCount,
+        targetClass: targetClass || undefined,
       },
       (res: { pin?: string; error?: string }) => {
         setCreating(false);
@@ -218,6 +226,17 @@ export default function HackSetup() {
                     <span className="text-green-600">{">"}</span>
                     {lang === "ar" ? "إعدادات الاختراق" : "HACK_CONFIG"}
                   </h2>
+                </div>
+
+                {/* Class selector — also rendered for any future shareable game */}
+                <div className="mb-4">
+                  <ClassSelector
+                    value={targetClass}
+                    onChange={setTargetClass}
+                    accent="#4ade80"
+                    mono
+                    label={lang === "ar" ? "الصف المستهدف" : "TARGET_CLASS"}
+                  />
                 </div>
 
                 {/* Source segmented control */}

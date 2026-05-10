@@ -1,15 +1,25 @@
 import { useState, useEffect, useRef, ReactNode } from "react";
 import { useLocation, Link } from "wouter";
-import { useRegisterTeacher, useLoginTeacher, useGetCurrentTeacher } from "@workspace/api-client-react";
+import {
+  useRegisterTeacher,
+  useLoginTeacher,
+  useGetCurrentTeacher,
+  useLoginTeacherWithGoogle,
+  type AuthResponse,
+  type TeacherProfileRole,
+} from "@workspace/api-client-react";
 import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, Mail, Lock, User, AlertCircle, Eye, EyeOff,
   ChevronDown, Shield, BookOpen, BarChart2, Trophy, Users, ArrowLeft,
+  GraduationCap, Crown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 import { toast } from "@/components/ui/sonner";
 import { GoogleLogin } from "@react-oauth/google";
+import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -334,6 +344,7 @@ function LoginForm({
   gulfCountries, arabCountries, worldCountries, filteredCountries,
   t, lang, dir,
 }: LoginFormProps) {
+  const loginTeacherWithGoogleMutation = useLoginTeacherWithGoogle();
   return (
     <>
       {/* Error */}
@@ -376,26 +387,32 @@ function LoginForm({
                   return;
                 }
                 try {
-                  const r = await fetch(`${API_BASE}/api/auth/google`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ credential: resp.credential }),
+                  const data: AuthResponse = await loginTeacherWithGoogleMutation.mutateAsync({
+                    data: { credential: resp.credential },
                   });
-                  const data = await r.json();
-                  if (!r.ok) {
-                    toast.error(data.message || (lang === "ar" ? "تعذّر تسجيل الدخول" : "Login failed"));
-                    return;
-                  }
                   toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
-                  {
-                    let pendingPublish = false;
-                    try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
-                    const target = pendingPublish ? "guest/create" : "teacher";
-                    window.location.href = `${import.meta.env.BASE_URL}${target}`;
+                  let pendingPublish = false;
+                  try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
+                  // Route by role so organizers land on /organizer.
+                  // Admins are sent to their last-used surface when remembered.
+                  const role = data.teacher.role;
+                  const isAdmin = data.teacher.isAdmin;
+                  let target: string;
+                  if (pendingPublish) {
+                    target = "guest/create";
+                  } else if (isAdmin || role === "admin") {
+                    const lastPath = getAdminLastSurfacePath();
+                    // Strip leading slash because BASE_URL already ends with one.
+                    target = (lastPath ?? "/teacher").replace(/^\//, "");
+                  } else if (role === "organizer") {
+                    target = "organizer";
+                  } else {
+                    target = "teacher";
                   }
-                } catch {
-                  toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+                  window.location.href = `${import.meta.env.BASE_URL}${target}`;
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : "";
+                  toast.error(message || (lang === "ar" ? "تعذّر تسجيل الدخول" : "Login failed"));
                 }
               }}
               onError={() => {
@@ -702,6 +719,27 @@ export default function Auth() {
   const isLogin = location === "/login" || location === "/auth";
   const { t, lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
+  useSeo(
+    isLogin
+      ? {
+          title: lang === "ar" ? "تسجيل الدخول | منصة حصاد — HasadX" : "Sign in | HasadX",
+          description:
+            lang === "ar"
+              ? "سجّل الدخول إلى منصة حصاد التعليمية لإدارة الفصول والعروض التفاعلية والمسابقات والواجبات."
+              : "Sign in to HasadX to manage classes, interactive presentations, quizzes and assignments.",
+          canonicalPath: "/login",
+          noindex: true,
+        }
+      : {
+          title: lang === "ar" ? "إنشاء حساب جديد | منصة حصاد — HasadX" : "Create account | HasadX",
+          description:
+            lang === "ar"
+              ? "أنشئ حساب معلم في منصة حصاد التعليمية وابدأ ببناء عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة بالذكاء الاصطناعي."
+              : "Create a teacher account on HasadX and start building interactive presentations, quizzes and AI-powered lessons.",
+          canonicalPath: "/register",
+          noindex: true,
+        },
+  );
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -714,6 +752,16 @@ export default function Auth() {
   const [usePhone, setUsePhone] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // For the registration flow we first ask the user to pick a role:
+  //   student → /student/register, teacher → form, organizer → form (role passed to API).
+  // When isLogin is true, the role picker is bypassed entirely.
+  // The home page can also pre-select the role via `?role=teacher|organizer`,
+  // skipping the picker step so the chosen card opens the matching form directly.
+  const [registerRole, setRegisterRole] = useState<"teacher" | "organizer" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const r = new URLSearchParams(window.location.search).get("role");
+    return r === "teacher" || r === "organizer" ? r : null;
+  });
 
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -730,26 +778,43 @@ export default function Auth() {
   }, [showCountryPicker]);
 
   const { data: currentUser, isLoading: isCheckingSession } = useGetCurrentTeacher({
-    query: { retry: false, staleTime: 0 }
+    query: { retry: false, staleTime: 0 } as any
   });
 
-  useEffect(() => {
-    if (currentUser && !isCheckingSession) {
-      let pendingPublish = false;
-      try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
-      setLocation(pendingPublish ? "/guest/create" : "/teacher");
-    }
-  }, [currentUser, isCheckingSession, setLocation]);
-
-  const postAuthRedirect = () => {
+  // Centralized role-aware post-auth redirect.
+  // pendingPublish always wins; otherwise role decides the home page.
+  // Admins are sent to their last-used surface (organizer / admin / teacher)
+  // when one is remembered in localStorage; otherwise default to /teacher.
+  const redirectByRole = (
+    role: TeacherProfileRole | null | undefined,
+    isAdmin?: boolean | null,
+  ) => {
     let pendingPublish = false;
     try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
     if (pendingPublish) {
       setLocation("/guest/create");
       return;
     }
-    setLocation("/teacher");
+    if (isAdmin || role === "admin") {
+      const lastPath = getAdminLastSurfacePath();
+      setLocation(lastPath ?? "/teacher");
+      return;
+    }
+    setLocation(role === "organizer" ? "/organizer" : "/teacher");
   };
+
+  useEffect(() => {
+    if (currentUser && !isCheckingSession) {
+      redirectByRole(currentUser.role, currentUser.isAdmin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, isCheckingSession]);
+
+  // Backwards-compat shim used by login flow (will read role from response).
+  const postAuthRedirect = (
+    role?: TeacherProfileRole | null,
+    isAdmin?: boolean | null,
+  ) => redirectByRole(role, isAdmin);
 
   const isPendingPublish = () => {
     try { return localStorage.getItem("pending_publish_after_auth") === "1"; } catch { return false; }
@@ -757,9 +822,10 @@ export default function Auth() {
 
   const loginMutation = useLoginTeacher({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
-        postAuthRedirect();
+        // Login response shape: { teacher: { ..., role, isAdmin } }
+        postAuthRedirect(data.teacher.role ?? null, data.teacher.isAdmin ?? null);
       },
       onError: (err: Error & { message?: string }) => setErrorMsg(err.message || t.auth.loginError)
     }
@@ -767,9 +833,23 @@ export default function Auth() {
 
   const registerMutation = useRegisterTeacher({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast.success(lang === "ar" ? "تم إنشاء الحساب بنجاح" : "Account created successfully");
-        postAuthRedirect();
+        // Route by selected role so organizers land on /organizer immediately.
+        // Newly-registered admins (rare) honor any saved last-surface.
+        const role: TeacherProfileRole | null = data.teacher.role ?? registerRole;
+        const isAdmin = data.teacher.isAdmin ?? false;
+        let pendingPublish = false;
+        try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
+        if (pendingPublish) {
+          setLocation("/guest/create");
+        } else if (isAdmin || role === "admin") {
+          setLocation(getAdminLastSurfacePath() ?? "/teacher");
+        } else if (role === "organizer") {
+          setLocation("/organizer");
+        } else {
+          setLocation("/teacher");
+        }
       },
       onError: (err: Error & { message?: string }) => setErrorMsg(err.message || t.auth.registerError)
     }
@@ -806,6 +886,8 @@ export default function Auth() {
           name,
           ...(usePhone ? { phone: fullPhone } : { email }),
           password,
+          // Send selected role; defaults to teacher when picker was skipped.
+          role: registerRole === "organizer" ? "organizer" : "teacher",
         }
       });
     }
@@ -842,9 +924,139 @@ export default function Auth() {
     return null;
   }
 
+  // For new registrations we present a 3-button role picker (student / teacher / organizer)
+  // before showing the actual form. Login flows skip this entirely.
+  if (!isLogin && registerRole === null) {
+    return (
+      <LoginLayout dir={dir}>
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="w-full max-w-md bg-white rounded-3xl shadow-lg border p-7 sm:p-9"
+            style={{ borderColor: "hsl(40 20% 88%)" }}
+          >
+            <div className="text-center mb-7">
+              <h1 className="text-[1.65rem] font-black mb-2 leading-tight" style={{ color: "#1a4731" }}>
+                {lang === "ar" ? "كيف ستستخدم حصاد؟" : "How will you use Hasad?"}
+              </h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {lang === "ar"
+                  ? "اختر نوع حسابك للمتابعة"
+                  : "Choose your account type to continue"}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Student — go straight to PIN entry. The /game/join page also
+                  links to "create a student account" for those who want one. */}
+              <button
+                type="button"
+                onClick={() => setLocation("/game/join")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 100%)",
+                  color: "#fff",
+                  boxShadow: "0 10px 28px -10px rgba(30,77,53,0.55)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
+                    <GraduationCap className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا طالب / مشارك" : "I'm a student / participant"}
+                    </p>
+                    <p className="text-white/80 text-xs mt-0.5">
+                      {lang === "ar" ? "انضم بـ PIN واحصد نقاطك" : "Join with a PIN and collect points"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+
+              {/* Teacher */}
+              <button
+                type="button"
+                onClick={() => setRegisterRole("teacher")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-md"
+                style={{
+                  background: "#fff",
+                  border: "2px solid #1a7a45",
+                  color: "#1a4731",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(26,71,49,0.10)" }}>
+                    <BookOpen className="w-6 h-6" style={{ color: "#1a4731" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا معلّم" : "I'm a teacher"}
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {lang === "ar" ? "صفوف، واجبات، عروض، وألعاب صفّية" : "Classes, assignments, decks & class games"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+
+              {/* Organizer */}
+              <button
+                type="button"
+                onClick={() => setRegisterRole("organizer")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#0a1628 0%,#1e3a5f 100%)",
+                  color: "#fff",
+                  boxShadow: "0 10px 28px -10px rgba(30,58,95,0.55)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
+                    <Crown className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا منظّم فعاليات" : "I'm an event organizer"}
+                    </p>
+                    <p className="text-white/80 text-xs mt-0.5">
+                      {lang === "ar" ? "مسابقات حية، تحدّيات، وفعاليات كبرى" : "Live contests, challenges & big events"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+            </div>
+
+            <Link
+              href="/login"
+              className="mt-6 flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 font-bold text-sm transition-all hover:bg-primary/5"
+              style={{ borderColor: "#1a7a45", color: "#1a7a45" }}
+            >
+              <span style={{ fontSize: "1.1em" }}>←</span>
+              {t.auth.hasAccount} {t.auth.loginNow}
+            </Link>
+
+            <TrustLinks />
+          </motion.div>
+        </div>
+      </LoginLayout>
+    );
+  }
+
+  const isOrganizerRegister = !isLogin && registerRole === "organizer";
   const ctaLabel = isLogin
     ? (lang === "ar" ? "الدخول إلى لوحة المعلم" : "Sign in to Teacher Dashboard")
-    : t.auth.createAccountBtn;
+    : isOrganizerRegister
+      ? (lang === "ar" ? "إنشاء حساب منظّم" : "Create Organizer Account")
+      : t.auth.createAccountBtn;
 
   return (
     <LoginLayout dir={dir}>
@@ -867,13 +1079,28 @@ export default function Auth() {
               className="bg-white rounded-3xl shadow-lg border p-7 sm:p-9"
               style={{ borderColor: "hsl(40 20% 88%)" }}
             >
-              {/* Role Tabs */}
-              <RoleTabs onSelectStudent={() => setLocation("/student/login")} />
+              {/* Role Tabs (login flow only — register has its own picker step) */}
+              {isLogin && (
+                <RoleTabs onSelectStudent={() => setLocation("/student/login")} />
+              )}
+
+              {/* For register flow, show a small "back" link to switch role. */}
+              {!isLogin && registerRole && (
+                <button
+                  type="button"
+                  onClick={() => setRegisterRole(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold mb-5 transition-colors hover:opacity-80"
+                  style={{ color: "#1a4731" }}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                  {lang === "ar" ? "تغيير نوع الحساب" : "Change account type"}
+                </button>
+              )}
 
               {/* Heading */}
               <AnimatePresence mode="wait">
                 <motion.div
-                  key={isLogin ? "login-heading" : "register-heading"}
+                  key={isLogin ? "login-heading" : `register-heading-${registerRole}`}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
@@ -883,12 +1110,16 @@ export default function Auth() {
                   <h1 className="text-[1.65rem] font-black mb-1.5 leading-tight" style={{ color: "#1a4731" }}>
                     {isLogin
                       ? (lang === "ar" ? "مرحباً بك مجدداً" : "Welcome Back")
-                      : (lang === "ar" ? "إنشاء حساب معلم" : "Create Teacher Account")}
+                      : isOrganizerRegister
+                        ? (lang === "ar" ? "إنشاء حساب منظّم" : "Create Organizer Account")
+                        : (lang === "ar" ? "إنشاء حساب معلم" : "Create Teacher Account")}
                   </h1>
                   <p className="text-muted-foreground text-sm leading-relaxed">
                     {isLogin
                       ? (lang === "ar" ? "ادخل إلى لوحة تحكمك وتابع مع طلابك." : "Access your dashboard and continue with your students.")
-                      : (lang === "ar" ? "أنشئ حسابك وابدأ رحلة التدريس التفاعلي." : "Create your account and start your interactive teaching journey.")}
+                      : isOrganizerRegister
+                        ? (lang === "ar" ? "أنشئ حسابك لإدارة المسابقات والفعاليات." : "Create your account to run contests and events.")
+                        : (lang === "ar" ? "أنشئ حسابك وابدأ رحلة التدريس التفاعلي." : "Create your account and start your interactive teaching journey.")}
                   </p>
                 </motion.div>
               </AnimatePresence>

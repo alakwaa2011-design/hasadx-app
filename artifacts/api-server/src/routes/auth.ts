@@ -7,10 +7,55 @@ import {
   RegisterTeacherBody,
   LoginTeacherBody,
 } from "@workspace/api-zod";
+import { z } from "zod";
+
+const PHONE_REGEX = /^\+\d{7,15}$/;
+const LEGACY_PHONE_REGEX = /^\d{7,15}$/;
+
+const UpdateProfileSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    email: z.string().email().max(320).optional().or(z.literal("")),
+    phone: z
+      .string()
+      .max(20)
+      .regex(/^(\+\d{7,15}|\d{7,15})$/)
+      .optional()
+      .or(z.literal("")),
+  })
+  .strict();
+
+const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(200),
+    newPassword: z.string().min(6).max(200),
+  })
+  .strict();
+
+const ForgotPasswordSchema = z
+  .object({
+    identifier: z.string().min(1).max(320),
+  })
+  .strict();
+
+const ResetPasswordSchema = z
+  .object({
+    token: z.string().min(1).max(500),
+    newPassword: z.string().min(6).max(200),
+  })
+  .strict();
+
+const RevokeDeviceSchema = z
+  .object({
+    token: z.string().min(1).max(500).optional(),
+  })
+  .partial();
 import { authLimiter, registerLimiter } from "../lib/rate-limiter";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { isSmsConfigured, sendSms } from "../lib/sms";
 import { parseUserAgent, lookupIpLocations } from "../lib/device-info";
+import { logIslamicEvent } from "../lib/islamicEvents";
+import { logActivity } from "../lib/activity-logger";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_GENERIC_RESPONSE = {
@@ -421,6 +466,9 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(body.password, 10);
+    // Public registration only allows teacher|organizer roles. Admin must be granted internally.
+    const requestedRole =
+      body.role === "organizer" ? "organizer" : "teacher";
     const [teacher] = await db
       .insert(teachersTable)
       .values({
@@ -428,6 +476,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         email: body.email || null,
         phone: body.phone || null,
         passwordHash,
+        role: requestedRole,
       })
       .returning();
 
@@ -435,12 +484,19 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     req.session.teacherId = teacher.id;
     stampTeacherSession(req);
 
+    void logIslamicEvent({
+      userId: teacher.id,
+      eventType: "login",
+      metadata: { method: "register" },
+    });
+
     res.status(201).json({
       teacher: {
         id: teacher.id,
         name: teacher.name,
         email: teacher.email,
         phone: teacher.phone,
+        role: teacher.role,
       },
     });
   } catch (error: any) {
@@ -513,6 +569,21 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     req.session.teacherId = teacher.id;
     stampTeacherSession(req);
 
+    void logIslamicEvent({
+      userId: teacher.id,
+      eventType: "login",
+      metadata: { method: "password" },
+    });
+
+    logActivity({
+      req,
+      userId: teacher.id,
+      userName: teacher.name,
+      userRole: teacher.isAdmin ? "admin" : (teacher.role === "organizer" ? "organizer" : "teacher"),
+      action: "login",
+      details: { method: "password" },
+    });
+
     if (body.rememberMe) {
       req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
     }
@@ -528,6 +599,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
         email: teacher.email,
         phone: teacher.phone,
         isAdmin: teacher.isAdmin,
+        role: teacher.role,
       },
     });
   } catch (error: any) {
@@ -559,8 +631,57 @@ router.get("/auth/me", async (req, res) => {
     email: teacher.email,
     phone: teacher.phone,
     isAdmin: teacher.isAdmin,
+    role: teacher.role,
     aiTier: teacher.aiTier,
     hasProDesign: teacher.hasProDesign,
+  });
+});
+
+// Allow the current user to switch their role between teacher and organizer.
+// Admin role is reserved and cannot be self-assigned, and admins themselves
+// cannot demote/switch their admin role from this endpoint either.
+router.patch("/auth/role", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "غير مسجل الدخول" });
+    return;
+  }
+  const { role } = req.body ?? {};
+  if (role !== "teacher" && role !== "organizer") {
+    res.status(400).json({ message: "دور غير صالح" });
+    return;
+  }
+  // Look up the current user first so admins are protected from self-demotion.
+  const [current] = await db
+    .select()
+    .from(teachersTable)
+    .where(eq(teachersTable.id, req.session.teacherId))
+    .limit(1);
+  if (!current) {
+    res.status(401).json({ message: "المستخدم غير موجود" });
+    return;
+  }
+  if (current.isAdmin || current.role === "admin") {
+    res.status(403).json({
+      message: "لا يمكن تغيير نوع حساب المسؤول",
+    });
+    return;
+  }
+  const [updated] = await db
+    .update(teachersTable)
+    .set({ role })
+    .where(eq(teachersTable.id, req.session.teacherId))
+    .returning();
+  if (!updated) {
+    res.status(401).json({ message: "المستخدم غير موجود" });
+    return;
+  }
+  res.json({
+    id: updated.id,
+    name: updated.name,
+    email: updated.email,
+    phone: updated.phone,
+    isAdmin: updated.isAdmin,
+    role: updated.role,
   });
 });
 
@@ -571,13 +692,12 @@ router.patch("/auth/profile", async (req, res) => {
   }
 
   try {
-    const { name, email, phone } = req.body;
-
-    // Accept new international format (+\d{7,15}) OR legacy plain digits for existing users
-    if (phone && !/^\+\d{7,15}$/.test(phone) && !/^\d{7,15}$/.test(phone)) {
-      res.status(400).json({ message: "رقم الهاتف غير صحيح" });
+    const parsed = UpdateProfileSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ message: "بيانات غير صحيحة" });
       return;
     }
+    const { name, email, phone } = parsed.data;
 
     if (email) {
       const [existing] = await db
@@ -632,15 +752,12 @@ router.patch("/auth/change-password", async (req, res) => {
     return;
   }
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      res.status(400).json({ message: "يجب إدخال كلمة السر الحالية والجديدة" });
-      return;
-    }
-    if (newPassword.length < 6) {
+    const parsed = ChangePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
       res.status(400).json({ message: "كلمة السر الجديدة يجب أن تكون 6 أحرف على الأقل" });
       return;
     }
+    const { currentPassword, newPassword } = parsed.data;
     const [teacher] = await db
       .select()
       .from(teachersTable)
@@ -686,12 +803,14 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
   // Always return a generic success message to avoid account enumeration,
   // regardless of whether the identifier matches an account or delivery succeeds.
   try {
-    const identifier =
-      typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
-    if (!identifier) {
+    const parsed = ForgotPasswordSchema.safeParse({
+      identifier: typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "",
+    });
+    if (!parsed.success) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
       return;
     }
+    const identifier = parsed.data.identifier;
     const isEmail = identifier.includes("@");
 
     let teacher: typeof teachersTable.$inferSelect | undefined;
@@ -829,17 +948,20 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
 
 router.post("/auth/reset-password", authLimiter, async (req, res) => {
   try {
-    const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
-    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
-
-    if (!token) {
-      res.status(400).json({ message: "رمز الاستعادة مفقود" });
+    const parsed = ResetPasswordSchema.safeParse({
+      token: typeof req.body?.token === "string" ? req.body.token.trim() : "",
+      newPassword: typeof req.body?.newPassword === "string" ? req.body.newPassword : "",
+    });
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]?.path[0];
+      const message =
+        issue === "newPassword"
+          ? "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل"
+          : "رمز الاستعادة مفقود";
+      res.status(400).json({ message });
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      res.status(400).json({ message: "كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل" });
-      return;
-    }
+    const { token, newPassword } = parsed.data;
 
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const newHash = await bcrypt.hash(newPassword, 10);
@@ -998,12 +1120,14 @@ router.get("/auth/devices/revoke", async (req, res) => {
 router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
   const baseUrl = getAppBaseUrl();
   try {
-    const token =
+    const rawToken =
       typeof req.body?.token === "string"
         ? req.body.token.trim()
         : typeof req.query.token === "string"
         ? req.query.token.trim()
         : "";
+    const parsed = RevokeDeviceSchema.safeParse({ token: rawToken || undefined });
+    const token = parsed.success ? parsed.data.token ?? "" : "";
     if (!token) {
       renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
       return;
@@ -1198,7 +1322,68 @@ router.delete("/auth/sessions/:sid", async (req, res) => {
   }
 });
 
+const BriefPreferencesSchema = z
+  .object({
+    language: z.enum(["ar", "en"]).optional(),
+    presentationKind: z.enum(["explain", "review", "interactive", "quick", "contest"]).optional(),
+    slideCount: z.number().int().min(5).max(30).optional(),
+    durationMinutes: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)]).optional(),
+    languageLevel: z.enum(["simple", "medium", "advanced"]).optional(),
+    density: z.enum(["minimal", "balanced", "detailed"]).optional(),
+    activities: z.boolean().optional(),
+    questions: z.boolean().optional(),
+    poll: z.boolean().optional(),
+    quiz: z.boolean().optional(),
+    notes: z.string().max(200).optional(),
+  })
+  .strict();
+
+router.get("/auth/preferences", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "غير مسجل الدخول" });
+    return;
+  }
+  try {
+    const [teacher] = await db
+      .select({ preferences: teachersTable.preferences })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .limit(1);
+    res.json(teacher?.preferences ?? {});
+  } catch (error: any) {
+    req.log.error({ err: error }, "Get brief preferences error");
+    res.status(500).json({ message: "خطأ في تحميل الإعدادات" });
+  }
+});
+
+router.put("/auth/preferences", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "غير مسجل الدخول" });
+    return;
+  }
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: "بيانات غير صالحة", errors: parsed.error.issues });
+    return;
+  }
+  try {
+    await db
+      .update(teachersTable)
+      .set({ preferences: parsed.data as Record<string, unknown> })
+      .where(eq(teachersTable.id, req.session.teacherId));
+    res.json(parsed.data);
+  } catch (error: any) {
+    req.log.error({ err: error }, "Update brief preferences error");
+    res.status(500).json({ message: "خطأ في حفظ الإعدادات" });
+  }
+});
+
 router.post("/auth/logout", (req, res) => {
+  const sess: any = req.session;
+  const teacherId = sess?.teacherId ?? null;
+  if (teacherId) {
+    logActivity({ req, userId: teacherId, userRole: "teacher", action: "logout" });
+  }
   req.session.destroy(() => {
     res.json({ message: "تم تسجيل الخروج بنجاح" });
   });
@@ -1289,6 +1474,12 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       .set({ lastLoginAt: new Date() })
       .where(eq(teachersTable.id, teacher.id));
 
+    void logIslamicEvent({
+      userId: teacher.id,
+      eventType: "login",
+      metadata: { method: "google" },
+    });
+
     void trackLoginDevice(req, teacher, req.log);
 
     res.json({
@@ -1298,6 +1489,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
         email: teacher.email,
         phone: teacher.phone,
         isAdmin: teacher.isAdmin,
+        role: teacher.role,
       },
     });
   } catch (error: any) {

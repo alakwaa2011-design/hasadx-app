@@ -79,8 +79,14 @@ export function setupFlagSocket(io: Server) {
           cb?.({ error: "Game not found" });
           return;
         }
-        if (game.state !== "lobby") {
-          cb?.({ error: "Game already started" });
+        /* Late-join policy: only block once the game has fully ended.
+           A student who joins during countdown / mid-question /
+           leaderboard is added with a fresh 0-score and immediately
+           catches up to the live question. This matches the user's
+           classroom flow ("any student can join even if everyone is
+           already playing"). */
+        if (game.state === "finished") {
+          cb?.({ error: "Game already finished" });
           return;
         }
         const player = addFlagPlayer(data.pin, socket.id, data.name.trim());
@@ -91,13 +97,31 @@ export function setupFlagSocket(io: Server) {
         socket.join(`flag:${data.pin}`);
         const players = getFlagPlayerList(data.pin);
         io.to(`flag:${data.pin}`).emit("flag:player-joined", { players, name: data.name.trim() });
-        logger.info(`Player ${data.name} joined flag game ${data.pin}`);
+        logger.info(`Player ${data.name} joined flag game ${data.pin} (state=${game.state})`);
         cb?.({
           success: true,
           questionCount: game.questions.length,
           tier: game.tier,
           players,
         });
+        /* Catch-up: if a question is currently on screen, send it
+           directly to the joining socket only. Pre-existing players
+           already received it via the room broadcast. We compute the
+           remaining duration so the late-joiner's timer matches what
+           everyone else sees. */
+        if (game.state === "question" && game.currentQuestionIdx >= 0) {
+          const q = game.questions[game.currentQuestionIdx];
+          if (q) {
+            const elapsedMs = Date.now() - game.questionStartTime;
+            const remaining = Math.max(1, Math.ceil((game.questionDuration * 1000 - elapsedMs) / 1000));
+            socket.emit("flag:question", {
+              questionIdx: game.currentQuestionIdx,
+              totalQuestions: game.questions.length,
+              question: q,
+              duration: remaining,
+            });
+          }
+        }
       } catch (err) {
         logger.error({ err }, "Error joining flag game:");
         cb?.({ error: "Failed to join" });

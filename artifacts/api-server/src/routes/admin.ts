@@ -1,9 +1,27 @@
 import { Router, type IRouter } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS } from "@workspace/db";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { z } from "zod";
 
 const adminObjectStorage = new ObjectStorageService();
+
+const TeacherIdParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+const BlockTeacherSchema = z.object({ blocked: z.boolean() }).strict();
+const AdminFlagSchema = z.object({ isAdmin: z.boolean() }).strict();
+const AiTierSchema = z
+  .object({ aiTier: z.enum(["standard", "pro", "claude"]) })
+  .strict();
+const ProDesignSchema = z.object({ hasProDesign: z.boolean() }).strict();
+const PresentationsProSchema = z.object({ presentationsProEnabled: z.boolean() }).strict();
+const PresentationLimitsSchema = z.object({
+  maxImagesRegular: z.number().int().min(0).max(1000),
+  maxFilesRegular: z.number().int().min(0).max(1000),
+  maxSlidesRegular: z.number().int().min(1).max(500),
+  maxSizeMbRegular: z.number().int().min(1).max(10240),
+}).strict();
 
 const router: IRouter = Router();
 
@@ -54,11 +72,11 @@ router.get("/admin/teachers", async (req, res) => {
         name: teachersTable.name,
         email: teachersTable.email,
         phone: teachersTable.phone,
-        passwordHash: teachersTable.passwordHash,
         isAdmin: teachersTable.isAdmin,
         isBlocked: teachersTable.isBlocked,
         aiTier: teachersTable.aiTier,
         hasProDesign: teachersTable.hasProDesign,
+        presentationsProEnabled: teachersTable.presentationsProEnabled,
         lastLoginAt: teachersTable.lastLoginAt,
         createdAt: teachersTable.createdAt,
         assignmentCount: sql<number>`(SELECT COUNT(*) FROM assignments WHERE assignments.teacher_id = teachers.id)::int`,
@@ -260,15 +278,19 @@ router.get("/admin/full-stats", async (req, res) => {
 router.patch("/admin/teachers/:id/block", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const id = parseInt(req.params.id);
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const id = idParse.data.id;
     if (id === req.session.teacherId) {
       res.status(400).json({ message: "لا يمكنك حظر نفسك" });
       return;
     }
-    const { blocked } = req.body;
+    const bodyParse = BlockTeacherSchema.safeParse(req.body);
+    if (!bodyParse.success) { res.status(400).json({ message: "بيانات غير صحيحة" }); return; }
+    const { blocked } = bodyParse.data;
     const [updated] = await db
       .update(teachersTable)
-      .set({ isBlocked: !!blocked })
+      .set({ isBlocked: blocked })
       .where(eq(teachersTable.id, id))
       .returning();
     if (!updated) {
@@ -285,18 +307,35 @@ router.patch("/admin/teachers/:id/block", async (req, res) => {
 router.patch("/admin/teachers/:id/admin", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const id = parseInt(req.params.id);
-    const { isAdmin } = req.body;
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const id = idParse.data.id;
+    const bodyParse = AdminFlagSchema.safeParse(req.body);
+    if (!bodyParse.success) { res.status(400).json({ message: "بيانات غير صحيحة" }); return; }
+    const { isAdmin } = bodyParse.data;
+    // Keep `role` in sync with `isAdmin` so role-based UI routing stays correct.
+    // Granting admin sets role='admin'; revoking admin falls back to 'teacher'
+    // unless the user already had a meaningful non-admin role (e.g. organizer).
+    const [existing] = await db
+      .select({ role: teachersTable.role })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, id))
+      .limit(1);
+    const nextRole = isAdmin
+      ? "admin"
+      : existing?.role === "admin"
+        ? "teacher"
+        : (existing?.role ?? "teacher");
     const [updated] = await db
       .update(teachersTable)
-      .set({ isAdmin: !!isAdmin })
+      .set({ isAdmin, role: nextRole })
       .where(eq(teachersTable.id, id))
       .returning();
     if (!updated) {
       res.status(404).json({ message: "المعلم غير موجود" });
       return;
     }
-    res.json({ id: updated.id, isAdmin: updated.isAdmin });
+    res.json({ id: updated.id, isAdmin: updated.isAdmin, role: updated.role });
   } catch (err) {
     req.log.error(err, "Failed to toggle admin");
     res.status(500).json({ message: "حدث خطأ" });
@@ -306,11 +345,11 @@ router.patch("/admin/teachers/:id/admin", async (req, res) => {
 router.patch("/admin/teachers/:id/ai-tier", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const id = parseInt(req.params.id);
-    const tier =
-      req.body?.aiTier === "claude" ? "claude"
-      : req.body?.aiTier === "pro" ? "pro"
-      : "standard";
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const id = idParse.data.id;
+    const bodyParse = AiTierSchema.safeParse(req.body);
+    const tier = bodyParse.success ? bodyParse.data.aiTier : "standard";
     const [updated] = await db
       .update(teachersTable)
       .set({ aiTier: tier })
@@ -330,8 +369,12 @@ router.patch("/admin/teachers/:id/ai-tier", async (req, res) => {
 router.patch("/admin/teachers/:id/pro-design", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const id = parseInt(req.params.id);
-    const hasProDesign = Boolean(req.body?.hasProDesign);
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const id = idParse.data.id;
+    const bodyParse = ProDesignSchema.safeParse(req.body);
+    if (!bodyParse.success) { res.status(400).json({ message: "بيانات غير صحيحة" }); return; }
+    const { hasProDesign } = bodyParse.data;
     const [updated] = await db
       .update(teachersTable)
       .set({ hasProDesign })
@@ -344,6 +387,35 @@ router.patch("/admin/teachers/:id/pro-design", async (req, res) => {
     res.json({ id: updated.id, hasProDesign: updated.hasProDesign });
   } catch (err) {
     req.log.error(err, "Failed to update pro design");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
+/* Toggle the Pro tier of interactive presentations for a single teacher.
+   Independent of `hasProDesign` so admins can grant the Pro feature
+   set (uncapped slides/assets) to a specific teacher before flipping
+   it on globally via /admin/platform-settings. */
+router.patch("/admin/teachers/:id/presentations-pro", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
+    const id = idParse.data.id;
+    const bodyParse = PresentationsProSchema.safeParse(req.body);
+    if (!bodyParse.success) { res.status(400).json({ message: "بيانات غير صحيحة" }); return; }
+    const { presentationsProEnabled } = bodyParse.data;
+    const [updated] = await db
+      .update(teachersTable)
+      .set({ presentationsProEnabled })
+      .where(eq(teachersTable.id, id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ message: "المعلم غير موجود" });
+      return;
+    }
+    res.json({ id: updated.id, presentationsProEnabled: updated.presentationsProEnabled });
+  } catch (err) {
+    req.log.error(err, "Failed to update presentations pro");
     res.status(500).json({ message: "حدث خطأ" });
   }
 });
@@ -413,6 +485,11 @@ async function getPlatformSettings() {
     showTugGame: row?.showTugGame ?? false,
     showCapitalsGame: row?.showCapitalsGame ?? true,
     proAiForAll: row?.proAiForAll ?? false,
+    presentationsProForAll: row?.presentationsProForAll ?? false,
+    presentationLimits: row?.presentationLimits ?? DEFAULT_PRESENTATION_LIMITS,
+    showQuranSection: row?.showQuranSection ?? false,
+    showGeneralCertificates: row?.showGeneralCertificates ?? false,
+    showMaraqui: row?.showMaraqui ?? false,
   };
 }
 
@@ -435,7 +512,7 @@ router.get("/admin/platform-settings", async (req, res) => {
 router.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll } = req.body;
+    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui } = req.body;
 
     const update: Record<string, unknown> = {};
 
@@ -469,6 +546,17 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (showTugGame !== undefined) update.showTugGame = Boolean(showTugGame);
     if (showCapitalsGame !== undefined) update.showCapitalsGame = Boolean(showCapitalsGame);
     if (proAiForAll !== undefined) update.proAiForAll = Boolean(proAiForAll);
+    if (presentationsProForAll !== undefined) update.presentationsProForAll = Boolean(presentationsProForAll);
+    if (presentationLimits !== undefined) {
+      const parsed = PresentationLimitsSchema.safeParse(presentationLimits);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "presentationLimits غير صالح" });
+      }
+      update.presentationLimits = parsed.data;
+    }
+    if (showQuranSection !== undefined) update.showQuranSection = Boolean(showQuranSection);
+    if (showGeneralCertificates !== undefined) update.showGeneralCertificates = Boolean(showGeneralCertificates);
+    if (showMaraqui !== undefined) update.showMaraqui = Boolean(showMaraqui);
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });
     }

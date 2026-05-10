@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, Search, User, Copy, Check,
   Play, Globe, BookOpen, Loader2, Share2,
-  FileText, Tag, Gamepad2, Zap, Bot, Users, X, Terminal, Home,
+  FileText, Tag, Gamepad2, Zap, Bot, Users, X, Terminal,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -31,7 +31,6 @@ export default function PublicGamesPage() {
   const dir = lang === "ar" ? "rtl" : "ltr";
   const [, setLocation] = useLocation();
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
-  const ForwardArrow = lang === "ar" ? ArrowLeft : ArrowRight;
 
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,10 +101,29 @@ export default function PublicGamesPage() {
   return (
     <Layout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl" dir={dir}>
-        <Link href="/" className="text-primary hover:underline font-bold flex items-center gap-1 mb-6 w-fit">
-          <BackArrow className="w-4 h-4" />
-          {t.publicGames.backHome}
-        </Link>
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else setLocation("/");
+            }}
+            className="inline-flex items-center gap-1 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <BackArrow className="w-4 h-4" />
+            {lang === "ar" ? "رجوع" : "Back"}
+          </button>
+          <span className="text-muted-foreground/40">·</span>
+          <Link href="/" className="text-primary hover:underline font-bold flex items-center gap-1 w-fit">
+            <BackArrow className="w-4 h-4" />
+            {lang === "ar" ? "القائمة الرئيسية" : "Main Menu"}
+          </Link>
+          <span className="text-muted-foreground/40">·</span>
+          <Link href="/teacher" className="text-primary hover:underline font-bold flex items-center gap-1 w-fit">
+            <BackArrow className="w-4 h-4" />
+            {lang === "ar" ? "لوحة التحكم" : "Teacher Dashboard"}
+          </Link>
+        </div>
 
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">

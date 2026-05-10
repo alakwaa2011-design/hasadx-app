@@ -20,14 +20,17 @@ export declare const HealthCheckResponse: zod.ZodObject<{
  * @summary Register a new teacher
  */
 export declare const registerTeacherBodyPasswordMin = 6;
+export declare const registerTeacherBodyRoleDefault = "teacher";
 export declare const RegisterTeacherBody: zod.ZodObject<{
     name: zod.ZodString;
     email: zod.ZodOptional<zod.ZodString>;
     phone: zod.ZodOptional<zod.ZodString>;
     password: zod.ZodString;
+    role: zod.ZodDefault<zod.ZodEnum<["teacher", "organizer"]>>;
 }, "strip", zod.ZodTypeAny, {
     name: string;
     password: string;
+    role: "teacher" | "organizer";
     email?: string | undefined;
     phone?: string | undefined;
 }, {
@@ -35,6 +38,7 @@ export declare const RegisterTeacherBody: zod.ZodObject<{
     password: string;
     email?: string | undefined;
     phone?: string | undefined;
+    role?: "teacher" | "organizer" | undefined;
 }>;
 /**
  * @summary Teacher login
@@ -63,11 +67,13 @@ export declare const LoginTeacherResponse: zod.ZodObject<{
         phone: zod.ZodOptional<zod.ZodString>;
         isAdmin: zod.ZodOptional<zod.ZodBoolean>;
         isBlocked: zod.ZodOptional<zod.ZodBoolean>;
+        role: zod.ZodOptional<zod.ZodEnum<["teacher", "organizer", "admin"]>>;
     }, "strip", zod.ZodTypeAny, {
         name: string;
         id: number;
         email?: string | undefined;
         phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }, {
@@ -75,6 +81,7 @@ export declare const LoginTeacherResponse: zod.ZodObject<{
         id: number;
         email?: string | undefined;
         phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     }>;
@@ -84,6 +91,7 @@ export declare const LoginTeacherResponse: zod.ZodObject<{
         id: number;
         email?: string | undefined;
         phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -93,6 +101,7 @@ export declare const LoginTeacherResponse: zod.ZodObject<{
         id: number;
         email?: string | undefined;
         phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
         isAdmin?: boolean | undefined;
         isBlocked?: boolean | undefined;
     };
@@ -107,11 +116,13 @@ export declare const GetCurrentTeacherResponse: zod.ZodObject<{
     phone: zod.ZodOptional<zod.ZodString>;
     isAdmin: zod.ZodOptional<zod.ZodBoolean>;
     isBlocked: zod.ZodOptional<zod.ZodBoolean>;
+    role: zod.ZodOptional<zod.ZodEnum<["teacher", "organizer", "admin"]>>;
 }, "strip", zod.ZodTypeAny, {
     name: string;
     id: number;
     email?: string | undefined;
     phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }, {
@@ -119,6 +130,7 @@ export declare const GetCurrentTeacherResponse: zod.ZodObject<{
     id: number;
     email?: string | undefined;
     phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }>;
@@ -145,11 +157,13 @@ export declare const UpdateTeacherProfileResponse: zod.ZodObject<{
     phone: zod.ZodOptional<zod.ZodString>;
     isAdmin: zod.ZodOptional<zod.ZodBoolean>;
     isBlocked: zod.ZodOptional<zod.ZodBoolean>;
+    role: zod.ZodOptional<zod.ZodEnum<["teacher", "organizer", "admin"]>>;
 }, "strip", zod.ZodTypeAny, {
     name: string;
     id: number;
     email?: string | undefined;
     phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }, {
@@ -157,6 +171,42 @@ export declare const UpdateTeacherProfileResponse: zod.ZodObject<{
     id: number;
     email?: string | undefined;
     phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
+    isAdmin?: boolean | undefined;
+    isBlocked?: boolean | undefined;
+}>;
+/**
+ * @summary Change current user's role (teacher ↔ organizer)
+ */
+export declare const UpdateTeacherRoleBody: zod.ZodObject<{
+    role: zod.ZodEnum<["teacher", "organizer"]>;
+}, "strip", zod.ZodTypeAny, {
+    role: "teacher" | "organizer";
+}, {
+    role: "teacher" | "organizer";
+}>;
+export declare const UpdateTeacherRoleResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    name: zod.ZodString;
+    email: zod.ZodOptional<zod.ZodString>;
+    phone: zod.ZodOptional<zod.ZodString>;
+    isAdmin: zod.ZodOptional<zod.ZodBoolean>;
+    isBlocked: zod.ZodOptional<zod.ZodBoolean>;
+    role: zod.ZodOptional<zod.ZodEnum<["teacher", "organizer", "admin"]>>;
+}, "strip", zod.ZodTypeAny, {
+    name: string;
+    id: number;
+    email?: string | undefined;
+    phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
+    isAdmin?: boolean | undefined;
+    isBlocked?: boolean | undefined;
+}, {
+    name: string;
+    id: number;
+    email?: string | undefined;
+    phone?: string | undefined;
+    role?: "teacher" | "organizer" | "admin" | undefined;
     isAdmin?: boolean | undefined;
     isBlocked?: boolean | undefined;
 }>;
@@ -169,6 +219,189 @@ export declare const LogoutTeacherResponse: zod.ZodObject<{
     message: string;
 }, {
     message: string;
+}>;
+/**
+ * @summary Login or register a teacher using a Google ID token
+ */
+export declare const LoginTeacherWithGoogleBody: zod.ZodObject<{
+    credential: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    credential: string;
+}, {
+    credential: string;
+}>;
+export declare const LoginTeacherWithGoogleResponse: zod.ZodObject<{
+    teacher: zod.ZodObject<{
+        id: zod.ZodNumber;
+        name: zod.ZodString;
+        email: zod.ZodOptional<zod.ZodString>;
+        phone: zod.ZodOptional<zod.ZodString>;
+        isAdmin: zod.ZodOptional<zod.ZodBoolean>;
+        isBlocked: zod.ZodOptional<zod.ZodBoolean>;
+        role: zod.ZodOptional<zod.ZodEnum<["teacher", "organizer", "admin"]>>;
+    }, "strip", zod.ZodTypeAny, {
+        name: string;
+        id: number;
+        email?: string | undefined;
+        phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
+        isAdmin?: boolean | undefined;
+        isBlocked?: boolean | undefined;
+    }, {
+        name: string;
+        id: number;
+        email?: string | undefined;
+        phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
+        isAdmin?: boolean | undefined;
+        isBlocked?: boolean | undefined;
+    }>;
+}, "strip", zod.ZodTypeAny, {
+    teacher: {
+        name: string;
+        id: number;
+        email?: string | undefined;
+        phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
+        isAdmin?: boolean | undefined;
+        isBlocked?: boolean | undefined;
+    };
+}, {
+    teacher: {
+        name: string;
+        id: number;
+        email?: string | undefined;
+        phone?: string | undefined;
+        role?: "teacher" | "organizer" | "admin" | undefined;
+        isAdmin?: boolean | undefined;
+        isBlocked?: boolean | undefined;
+    };
+}>;
+/**
+ * @summary Get the teacher's saved brief preferences
+ */
+export declare const getBriefPreferencesResponseSlideCountMin = 5;
+export declare const getBriefPreferencesResponseSlideCountMax = 30;
+export declare const getBriefPreferencesResponseNotesMax = 200;
+export declare const GetBriefPreferencesResponse: zod.ZodObject<{
+    language: zod.ZodOptional<zod.ZodEnum<["ar", "en"]>>;
+    presentationKind: zod.ZodOptional<zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>>;
+    slideCount: zod.ZodOptional<zod.ZodNumber>;
+    durationMinutes: zod.ZodOptional<zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>>;
+    languageLevel: zod.ZodOptional<zod.ZodEnum<["simple", "medium", "advanced"]>>;
+    density: zod.ZodOptional<zod.ZodEnum<["minimal", "balanced", "detailed"]>>;
+    activities: zod.ZodOptional<zod.ZodBoolean>;
+    questions: zod.ZodOptional<zod.ZodBoolean>;
+    poll: zod.ZodOptional<zod.ZodBoolean>;
+    quiz: zod.ZodOptional<zod.ZodBoolean>;
+    notes: zod.ZodOptional<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
+}, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
+}>;
+/**
+ * @summary Persist the teacher's brief preferences server-side
+ */
+export declare const updateBriefPreferencesBodySlideCountMin = 5;
+export declare const updateBriefPreferencesBodySlideCountMax = 30;
+export declare const updateBriefPreferencesBodyNotesMax = 200;
+export declare const UpdateBriefPreferencesBody: zod.ZodObject<{
+    language: zod.ZodOptional<zod.ZodEnum<["ar", "en"]>>;
+    presentationKind: zod.ZodOptional<zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>>;
+    slideCount: zod.ZodOptional<zod.ZodNumber>;
+    durationMinutes: zod.ZodOptional<zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>>;
+    languageLevel: zod.ZodOptional<zod.ZodEnum<["simple", "medium", "advanced"]>>;
+    density: zod.ZodOptional<zod.ZodEnum<["minimal", "balanced", "detailed"]>>;
+    activities: zod.ZodOptional<zod.ZodBoolean>;
+    questions: zod.ZodOptional<zod.ZodBoolean>;
+    poll: zod.ZodOptional<zod.ZodBoolean>;
+    quiz: zod.ZodOptional<zod.ZodBoolean>;
+    notes: zod.ZodOptional<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
+}, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
+}>;
+export declare const updateBriefPreferencesResponseSlideCountMin = 5;
+export declare const updateBriefPreferencesResponseSlideCountMax = 30;
+export declare const updateBriefPreferencesResponseNotesMax = 200;
+export declare const UpdateBriefPreferencesResponse: zod.ZodObject<{
+    language: zod.ZodOptional<zod.ZodEnum<["ar", "en"]>>;
+    presentationKind: zod.ZodOptional<zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>>;
+    slideCount: zod.ZodOptional<zod.ZodNumber>;
+    durationMinutes: zod.ZodOptional<zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>>;
+    languageLevel: zod.ZodOptional<zod.ZodEnum<["simple", "medium", "advanced"]>>;
+    density: zod.ZodOptional<zod.ZodEnum<["minimal", "balanced", "detailed"]>>;
+    activities: zod.ZodOptional<zod.ZodBoolean>;
+    questions: zod.ZodOptional<zod.ZodBoolean>;
+    poll: zod.ZodOptional<zod.ZodBoolean>;
+    quiz: zod.ZodOptional<zod.ZodBoolean>;
+    notes: zod.ZodOptional<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
+}, {
+    language?: "ar" | "en" | undefined;
+    presentationKind?: "explain" | "review" | "interactive" | "quick" | "contest" | undefined;
+    slideCount?: number | undefined;
+    durationMinutes?: 30 | 15 | 45 | 60 | undefined;
+    languageLevel?: "simple" | "medium" | "advanced" | undefined;
+    density?: "minimal" | "balanced" | "detailed" | undefined;
+    activities?: boolean | undefined;
+    questions?: boolean | undefined;
+    poll?: boolean | undefined;
+    quiz?: boolean | undefined;
+    notes?: string | undefined;
 }>;
 /**
  * @summary List active sessions for the current teacher
@@ -559,9 +792,14 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         questionsPerSession?: number | undefined;
         skills?: string[] | undefined;
     }>>>;
+    activityType: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningAudioText: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningVoice: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningSpeed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningSettings: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
     questions: zod.ZodArray<zod.ZodObject<{
         text: zod.ZodString;
-        questionType: zod.ZodDefault<zod.ZodEnum<["mcq", "true_false", "fill_blank", "whiteboard"]>>;
+        questionType: zod.ZodDefault<zod.ZodEnum<["mcq", "true_false", "fill_blank", "whiteboard", "dictation", "open"]>>;
         optionA: zod.ZodOptional<zod.ZodString>;
         optionB: zod.ZodOptional<zod.ZodString>;
         optionC: zod.ZodOptional<zod.ZodString>;
@@ -574,7 +812,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         skill: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     }, "strip", zod.ZodTypeAny, {
         text: string;
-        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
+        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
         points: number;
         optionA?: string | undefined;
         optionB?: string | undefined;
@@ -587,7 +825,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         skill?: string | null | undefined;
     }, {
         text: string;
-        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | undefined;
+        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
         optionC?: string | undefined;
@@ -600,17 +838,9 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         skill?: string | null | undefined;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
-    title: string;
-    submissionMode: "electronic" | "paper" | "both";
-    accessMode: "public" | "private";
-    showResults: boolean;
-    examMode: boolean;
-    resultsReleaseMode: "immediate" | "after_deadline" | "manual";
-    isShared: boolean;
-    isAdaptive: boolean;
     questions: {
         text: string;
-        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
+        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
         points: number;
         optionA?: string | undefined;
         optionB?: string | undefined;
@@ -622,6 +852,14 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }[];
+    title: string;
+    submissionMode: "electronic" | "paper" | "both";
+    accessMode: "public" | "private";
+    showResults: boolean;
+    examMode: boolean;
+    resultsReleaseMode: "immediate" | "after_deadline" | "manual";
+    isShared: boolean;
+    isAdaptive: boolean;
     subject?: string | undefined;
     description?: string | undefined;
     accessCode?: string | null | undefined;
@@ -636,11 +874,15 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         questionsPerSession?: number | undefined;
         skills?: string[] | undefined;
     } | null | undefined;
+    activityType?: string | null | undefined;
+    listeningAudioText?: string | null | undefined;
+    listeningVoice?: string | null | undefined;
+    listeningSpeed?: string | null | undefined;
+    listeningSettings?: Record<string, unknown> | null | undefined;
 }, {
-    title: string;
     questions: {
         text: string;
-        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | undefined;
+        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | undefined;
         optionB?: string | undefined;
         optionC?: string | undefined;
@@ -652,6 +894,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         difficulty?: number | null | undefined;
         skill?: string | null | undefined;
     }[];
+    title: string;
     subject?: string | undefined;
     description?: string | undefined;
     submissionMode?: "electronic" | "paper" | "both" | undefined;
@@ -673,6 +916,11 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
         questionsPerSession?: number | undefined;
         skills?: string[] | undefined;
     } | null | undefined;
+    activityType?: string | null | undefined;
+    listeningAudioText?: string | null | undefined;
+    listeningVoice?: string | null | undefined;
+    listeningSpeed?: string | null | undefined;
+    listeningSettings?: Record<string, unknown> | null | undefined;
 }>;
 /**
  * @summary Get assignment with questions
@@ -685,6 +933,9 @@ export declare const GetAssignmentParams: zod.ZodObject<{
     id: number;
 }>;
 export declare const getAssignmentResponseQuestionsItemQuestionTypeDefault = "mcq";
+export declare const getAssignmentResponseQuestionsItemReadAloudDefault = false;
+export declare const getAssignmentResponseQuestionsItemAllowMultipleAnswersDefault = false;
+export declare const getAssignmentResponseQuestionsItemRepeatQuestionDefault = false;
 export declare const GetAssignmentResponse: zod.ZodObject<{
     id: zod.ZodNumber;
     title: zod.ZodString;
@@ -705,11 +956,16 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
     examDurationMinutes: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     resultsReleaseMode: zod.ZodOptional<zod.ZodEnum<["immediate", "after_deadline", "manual"]>>;
     aiGradingInstructions: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    activityType: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningAudioText: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningVoice: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningSpeed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    listeningSettings: zod.ZodOptional<zod.ZodNullable<zod.ZodRecord<zod.ZodString, zod.ZodUnknown>>>;
     createdAt: zod.ZodDate;
     questions: zod.ZodArray<zod.ZodObject<{
         id: zod.ZodNumber;
         text: zod.ZodString;
-        questionType: zod.ZodDefault<zod.ZodEnum<["mcq", "true_false", "fill_blank", "whiteboard"]>>;
+        questionType: zod.ZodDefault<zod.ZodEnum<["mcq", "true_false", "fill_blank", "whiteboard", "dictation", "open"]>>;
         optionA: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         optionB: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         optionC: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
@@ -717,31 +973,63 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
         correctAnswer: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         points: zod.ZodNumber;
         imageUrl: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        readAloud: zod.ZodDefault<zod.ZodBoolean>;
+        difficulty: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        skill: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        allowMultipleAnswers: zod.ZodDefault<zod.ZodBoolean>;
+        repeatQuestion: zod.ZodDefault<zod.ZodBoolean>;
     }, "strip", zod.ZodTypeAny, {
         id: number;
         text: string;
-        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
+        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
         points: number;
+        readAloud: boolean;
+        allowMultipleAnswers: boolean;
+        repeatQuestion: boolean;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
         optionC?: string | null | undefined;
         optionD?: string | null | undefined;
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
+        difficulty?: number | null | undefined;
+        skill?: string | null | undefined;
     }, {
         id: number;
         text: string;
         points: number;
-        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | undefined;
+        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
         optionA?: string | null | undefined;
         optionB?: string | null | undefined;
         optionC?: string | null | undefined;
         optionD?: string | null | undefined;
         correctAnswer?: string | null | undefined;
         imageUrl?: string | null | undefined;
+        readAloud?: boolean | undefined;
+        difficulty?: number | null | undefined;
+        skill?: string | null | undefined;
+        allowMultipleAnswers?: boolean | undefined;
+        repeatQuestion?: boolean | undefined;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
     id: number;
+    questions: {
+        id: number;
+        text: string;
+        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open";
+        points: number;
+        readAloud: boolean;
+        allowMultipleAnswers: boolean;
+        repeatQuestion: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        imageUrl?: string | null | undefined;
+        difficulty?: number | null | undefined;
+        skill?: string | null | undefined;
+    }[];
     createdAt: Date;
     teacherId: number;
     title: string;
@@ -751,18 +1039,6 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
     teacherName: string;
     totalPoints: number;
     hasModelImage: boolean;
-    questions: {
-        id: number;
-        text: string;
-        questionType: "mcq" | "true_false" | "fill_blank" | "whiteboard";
-        points: number;
-        optionA?: string | null | undefined;
-        optionB?: string | null | undefined;
-        optionC?: string | null | undefined;
-        optionD?: string | null | undefined;
-        correctAnswer?: string | null | undefined;
-        imageUrl?: string | null | undefined;
-    }[];
     subject?: string | undefined;
     description?: string | null | undefined;
     accessCode?: string | null | undefined;
@@ -773,8 +1049,30 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
     examDurationMinutes?: number | null | undefined;
     resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
     aiGradingInstructions?: string | null | undefined;
+    activityType?: string | null | undefined;
+    listeningAudioText?: string | null | undefined;
+    listeningVoice?: string | null | undefined;
+    listeningSpeed?: string | null | undefined;
+    listeningSettings?: Record<string, unknown> | null | undefined;
 }, {
     id: number;
+    questions: {
+        id: number;
+        text: string;
+        points: number;
+        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | "dictation" | "open" | undefined;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        imageUrl?: string | null | undefined;
+        readAloud?: boolean | undefined;
+        difficulty?: number | null | undefined;
+        skill?: string | null | undefined;
+        allowMultipleAnswers?: boolean | undefined;
+        repeatQuestion?: boolean | undefined;
+    }[];
     createdAt: Date;
     teacherId: number;
     title: string;
@@ -784,18 +1082,6 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
     teacherName: string;
     totalPoints: number;
     hasModelImage: boolean;
-    questions: {
-        id: number;
-        text: string;
-        points: number;
-        questionType?: "mcq" | "true_false" | "fill_blank" | "whiteboard" | undefined;
-        optionA?: string | null | undefined;
-        optionB?: string | null | undefined;
-        optionC?: string | null | undefined;
-        optionD?: string | null | undefined;
-        correctAnswer?: string | null | undefined;
-        imageUrl?: string | null | undefined;
-    }[];
     subject?: string | undefined;
     description?: string | null | undefined;
     accessCode?: string | null | undefined;
@@ -806,6 +1092,11 @@ export declare const GetAssignmentResponse: zod.ZodObject<{
     examDurationMinutes?: number | null | undefined;
     resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
     aiGradingInstructions?: string | null | undefined;
+    activityType?: string | null | undefined;
+    listeningAudioText?: string | null | undefined;
+    listeningVoice?: string | null | undefined;
+    listeningSpeed?: string | null | undefined;
+    listeningSettings?: Record<string, unknown> | null | undefined;
 }>;
 /**
  * @summary Delete an assignment
@@ -876,6 +1167,7 @@ export declare const SubmitAssignmentBody: zod.ZodObject<{
     deviceFingerprint: zod.ZodString;
     accessCode: zod.ZodOptional<zod.ZodString>;
     examSessionId: zod.ZodOptional<zod.ZodNumber>;
+    durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     answers: zod.ZodArray<zod.ZodObject<{
         questionId: zod.ZodNumber;
         selectedAnswer: zod.ZodString;
@@ -896,6 +1188,7 @@ export declare const SubmitAssignmentBody: zod.ZodObject<{
     }[];
     accessCode?: string | undefined;
     examSessionId?: number | undefined;
+    durationSeconds?: number | null | undefined;
 }, {
     studentName: string;
     studentClass: string;
@@ -906,6 +1199,7 @@ export declare const SubmitAssignmentBody: zod.ZodObject<{
     }[];
     accessCode?: string | undefined;
     examSessionId?: number | undefined;
+    durationSeconds?: number | null | undefined;
 }>;
 export declare const SubmitAssignmentResponse: zod.ZodObject<{
     id: zod.ZodNumber;
@@ -943,6 +1237,7 @@ export declare const SubmitAssignmentResponse: zod.ZodObject<{
         correctAnswer?: string | null | undefined;
     }>, "many">;
     aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    repeatEligibleIds: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodNumber, "many">>>;
 }, "strip", zod.ZodTypeAny, {
     id: number;
     showResults: boolean;
@@ -963,6 +1258,7 @@ export declare const SubmitAssignmentResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     aiFeedback?: string | null | undefined;
+    repeatEligibleIds?: number[] | null | undefined;
 }, {
     id: number;
     showResults: boolean;
@@ -983,6 +1279,7 @@ export declare const SubmitAssignmentResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     aiFeedback?: string | null | undefined;
+    repeatEligibleIds?: number[] | null | undefined;
 }>;
 /**
  * @summary Submit assignment via uploaded image
@@ -1049,6 +1346,7 @@ export declare const SubmitAssignmentImageResponse: zod.ZodObject<{
         correctAnswer?: string | null | undefined;
     }>, "many">;
     aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    repeatEligibleIds: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodNumber, "many">>>;
 }, "strip", zod.ZodTypeAny, {
     id: number;
     showResults: boolean;
@@ -1069,6 +1367,7 @@ export declare const SubmitAssignmentImageResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     aiFeedback?: string | null | undefined;
+    repeatEligibleIds?: number[] | null | undefined;
 }, {
     id: number;
     showResults: boolean;
@@ -1089,6 +1388,7 @@ export declare const SubmitAssignmentImageResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     aiFeedback?: string | null | undefined;
+    repeatEligibleIds?: number[] | null | undefined;
 }>;
 /**
  * @summary List submissions for an assignment
@@ -1112,6 +1412,7 @@ export declare const ListSubmissionsResponseItem: zod.ZodObject<{
     teacherAdjustedPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     submittedAt: zod.ZodDate;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -1123,6 +1424,7 @@ export declare const ListSubmissionsResponseItem: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
@@ -1136,6 +1438,7 @@ export declare const ListSubmissionsResponseItem: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
@@ -1152,6 +1455,7 @@ export declare const ListSubmissionsResponse: zod.ZodArray<zod.ZodObject<{
     teacherAdjustedPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     submittedAt: zod.ZodDate;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -1163,6 +1467,7 @@ export declare const ListSubmissionsResponse: zod.ZodArray<zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
@@ -1176,6 +1481,7 @@ export declare const ListSubmissionsResponse: zod.ZodArray<zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
@@ -1222,6 +1528,7 @@ export declare const UpdateSubmissionResponse: zod.ZodObject<{
     teacherAdjustedPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
     aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
     submittedAt: zod.ZodDate;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -1233,6 +1540,7 @@ export declare const UpdateSubmissionResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
@@ -1246,9 +1554,350 @@ export declare const UpdateSubmissionResponse: zod.ZodObject<{
     score: number;
     earnedPoints: number;
     submittedAt: Date;
+    durationSeconds?: number | null | undefined;
     aiFeedback?: string | null | undefined;
     teacherAdjustedPoints?: number | null | undefined;
     teacherNote?: string | null | undefined;
+}>;
+/**
+ * @summary Get full submission with per-answer details (teacher only)
+ */
+export declare const GetSubmissionDetailsParams: zod.ZodObject<{
+    submissionId: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    submissionId: number;
+}, {
+    submissionId: number;
+}>;
+export declare const GetSubmissionDetailsResponse: zod.ZodObject<{
+    submission: zod.ZodObject<{
+        id: zod.ZodNumber;
+        studentName: zod.ZodString;
+        studentClass: zod.ZodString;
+        score: zod.ZodNumber;
+        totalQuestions: zod.ZodNumber;
+        correctAnswers: zod.ZodNumber;
+        earnedPoints: zod.ZodNumber;
+        totalPoints: zod.ZodNumber;
+        teacherAdjustedPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        submittedAt: zod.ZodDate;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    }, {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    }>;
+    answers: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodNumber;
+        questionId: zod.ZodNumber;
+        questionText: zod.ZodString;
+        questionType: zod.ZodString;
+        points: zod.ZodNumber;
+        selectedAnswer: zod.ZodString;
+        correctAnswer: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionA: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionB: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionC: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionD: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        isCorrect: zod.ZodBoolean;
+        teacherPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }, {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }>, "many">;
+}, "strip", zod.ZodTypeAny, {
+    answers: {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }[];
+    submission: {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    };
+}, {
+    answers: {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }[];
+    submission: {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    };
+}>;
+/**
+ * @summary Manually grade a single answer (teacher only)
+ */
+export declare const UpdateAnswerGradeParams: zod.ZodObject<{
+    answerId: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    answerId: number;
+}, {
+    answerId: number;
+}>;
+export declare const UpdateAnswerGradeBody: zod.ZodObject<{
+    teacherPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+    teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    teacherNote?: string | null | undefined;
+    teacherPoints?: number | null | undefined;
+}, {
+    teacherNote?: string | null | undefined;
+    teacherPoints?: number | null | undefined;
+}>;
+export declare const UpdateAnswerGradeResponse: zod.ZodObject<{
+    submission: zod.ZodObject<{
+        id: zod.ZodNumber;
+        studentName: zod.ZodString;
+        studentClass: zod.ZodString;
+        score: zod.ZodNumber;
+        totalQuestions: zod.ZodNumber;
+        correctAnswers: zod.ZodNumber;
+        earnedPoints: zod.ZodNumber;
+        totalPoints: zod.ZodNumber;
+        teacherAdjustedPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        aiFeedback: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        durationSeconds: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        submittedAt: zod.ZodDate;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    }, {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    }>;
+    answers: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodNumber;
+        questionId: zod.ZodNumber;
+        questionText: zod.ZodString;
+        questionType: zod.ZodString;
+        points: zod.ZodNumber;
+        selectedAnswer: zod.ZodString;
+        correctAnswer: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionA: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionB: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionC: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        optionD: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        isCorrect: zod.ZodBoolean;
+        teacherPoints: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+        teacherNote: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }, {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }>, "many">;
+}, "strip", zod.ZodTypeAny, {
+    answers: {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }[];
+    submission: {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    };
+}, {
+    answers: {
+        id: number;
+        questionType: string;
+        points: number;
+        questionId: number;
+        selectedAnswer: string;
+        questionText: string;
+        isCorrect: boolean;
+        optionA?: string | null | undefined;
+        optionB?: string | null | undefined;
+        optionC?: string | null | undefined;
+        optionD?: string | null | undefined;
+        correctAnswer?: string | null | undefined;
+        teacherNote?: string | null | undefined;
+        teacherPoints?: number | null | undefined;
+    }[];
+    submission: {
+        id: number;
+        totalPoints: number;
+        studentName: string;
+        studentClass: string;
+        totalQuestions: number;
+        correctAnswers: number;
+        score: number;
+        earnedPoints: number;
+        submittedAt: Date;
+        durationSeconds?: number | null | undefined;
+        aiFeedback?: string | null | undefined;
+        teacherAdjustedPoints?: number | null | undefined;
+        teacherNote?: string | null | undefined;
+    };
 }>;
 /**
  * @summary Submit feedback or suggestion
@@ -1268,5 +1917,4252 @@ export declare const SubmitFeedbackBody: zod.ZodObject<{
     type: "suggestion" | "bug" | "feature";
     name: string;
     email?: string | undefined;
+}>;
+/**
+ * @summary Get the effective presentations tier and limits for the caller
+ */
+export declare const GetPresentationsLimitsResponse: zod.ZodObject<{
+    isPro: zod.ZodBoolean;
+    limits: zod.ZodObject<{
+        maxImagesRegular: zod.ZodNumber;
+        maxFilesRegular: zod.ZodNumber;
+        maxSlidesRegular: zod.ZodNumber;
+        maxSizeMbRegular: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    }, {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    }>;
+}, "strip", zod.ZodTypeAny, {
+    isPro: boolean;
+    limits: {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    };
+}, {
+    isPro: boolean;
+    limits: {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    };
+}>;
+/**
+ * @summary Get tier limits + per-deck usage for a single presentation
+ */
+export declare const GetPresentationUsageParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetPresentationUsageResponse: zod.ZodObject<{
+    isPro: zod.ZodBoolean;
+    limits: zod.ZodObject<{
+        maxImagesRegular: zod.ZodNumber;
+        maxFilesRegular: zod.ZodNumber;
+        maxSlidesRegular: zod.ZodNumber;
+        maxSizeMbRegular: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    }, {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    }>;
+    usage: zod.ZodObject<{
+        slides: zod.ZodNumber;
+        images: zod.ZodNumber;
+        files: zod.ZodNumber;
+        sizeMb: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        slides: number;
+        images: number;
+        files: number;
+        sizeMb: number;
+    }, {
+        slides: number;
+        images: number;
+        files: number;
+        sizeMb: number;
+    }>;
+}, "strip", zod.ZodTypeAny, {
+    isPro: boolean;
+    limits: {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    };
+    usage: {
+        slides: number;
+        images: number;
+        files: number;
+        sizeMb: number;
+    };
+}, {
+    isPro: boolean;
+    limits: {
+        maxImagesRegular: number;
+        maxFilesRegular: number;
+        maxSlidesRegular: number;
+        maxSizeMbRegular: number;
+    };
+    usage: {
+        slides: number;
+        images: number;
+        files: number;
+        sizeMb: number;
+    };
+}>;
+/**
+ * @summary List own presentations + admin-shared
+ */
+export declare const ListPresentationsResponseItem: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slideCount: zod.ZodNumber;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    ownerIsAdmin: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+    updatedAt: zod.ZodDate;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    slideCount: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    ownerIsAdmin?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    slideCount: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    ownerIsAdmin?: boolean | null | undefined;
+}>;
+export declare const ListPresentationsResponse: zod.ZodArray<zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slideCount: zod.ZodNumber;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    ownerIsAdmin: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+    updatedAt: zod.ZodDate;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    slideCount: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    ownerIsAdmin?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    slideCount: number;
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    ownerIsAdmin?: boolean | null | undefined;
+}>, "many">;
+/**
+ * @summary Create a new presentation
+ */
+export declare const createPresentationBodyTitleMax = 200;
+export declare const createPresentationBodySubjectMax = 100;
+export declare const createPresentationBodyGradeLevelMax = 50;
+export declare const createPresentationBodyThemeMax = 40;
+export declare const createPresentationBodyPatternMax = 40;
+export declare const createPresentationBodyCoverEmojiMax = 8;
+export declare const CreatePresentationBody: zod.ZodObject<{
+    title: zod.ZodString;
+    language: zod.ZodOptional<zod.ZodEnum<["ar", "en"]>>;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    theme: zod.ZodOptional<zod.ZodString>;
+    pattern: zod.ZodOptional<zod.ZodString>;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    title: string;
+    language?: "ar" | "en" | undefined;
+    subject?: string | null | undefined;
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+}, {
+    title: string;
+    language?: "ar" | "en" | undefined;
+    subject?: string | null | undefined;
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+}>;
+/**
+ * @summary Get a presentation (owner or admin-shared)
+ */
+export declare const GetPresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetPresentationResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    description: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slides: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        layout: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        background: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        backgroundImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        elements: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            x: zod.ZodNumber;
+            y: zod.ZodNumber;
+            w: zod.ZodNumber;
+            h: zod.ZodNumber;
+            rotation: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            zIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            text: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontFamily: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontSize: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            fontWeight: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            align: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["start", "center", "end", "justify"]>>>;
+            color: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            url: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            iconName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            shape: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>>;
+            bgColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderWidth: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            activityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["mcq", "true_false", "open", "poll"]>>>;
+            questionId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            prompt: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            options: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>>;
+            correctIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            accentColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            gameKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["kahoot", "wheel", "millionaire", "flag-quiz", "capitals", "letrly", "rocket", "tug", "maraqui", "hack"]>>>;
+            topic: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            questions: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodObject<{
+                prompt: zod.ZodString;
+                options: zod.ZodArray<zod.ZodString, "many">;
+                correctIndex: zod.ZodNumber;
+            }, "strip", zod.ZodTypeAny, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }>, "many">>>;
+            objectFit: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["cover", "contain", "fill", "none"]>>>;
+            objectPosition: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            imageOpacity: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            imageBorderRadius: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
+            videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }>, "many">;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    lastPresentedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    linkedActivityId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    linkedActivityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    isOwner: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}>;
+/**
+ * @summary Update a presentation (owner only)
+ */
+export declare const UpdatePresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const updatePresentationBodyTitleMax = 200;
+export declare const updatePresentationBodySubjectMax = 100;
+export declare const updatePresentationBodyGradeLevelMax = 50;
+export declare const updatePresentationBodyThemeMax = 40;
+export declare const updatePresentationBodyPatternMax = 40;
+export declare const updatePresentationBodyCoverEmojiMax = 8;
+export declare const updatePresentationBodyDescriptionMax = 2000;
+export declare const updatePresentationBodySlidesMax = 200;
+export declare const UpdatePresentationBody: zod.ZodObject<{
+    title: zod.ZodOptional<zod.ZodString>;
+    language: zod.ZodOptional<zod.ZodEnum<["ar", "en"]>>;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    theme: zod.ZodOptional<zod.ZodString>;
+    pattern: zod.ZodOptional<zod.ZodString>;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    description: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slides: zod.ZodOptional<zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        layout: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        background: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        backgroundImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        elements: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            x: zod.ZodNumber;
+            y: zod.ZodNumber;
+            w: zod.ZodNumber;
+            h: zod.ZodNumber;
+            rotation: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            zIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            text: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontFamily: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontSize: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            fontWeight: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            align: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["start", "center", "end", "justify"]>>>;
+            color: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            url: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            iconName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            shape: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>>;
+            bgColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderWidth: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            activityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["mcq", "true_false", "open", "poll"]>>>;
+            questionId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            prompt: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            options: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>>;
+            correctIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            accentColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            gameKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["kahoot", "wheel", "millionaire", "flag-quiz", "capitals", "letrly", "rocket", "tug", "maraqui", "hack"]>>>;
+            topic: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            questions: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodObject<{
+                prompt: zod.ZodString;
+                options: zod.ZodArray<zod.ZodString, "many">;
+                correctIndex: zod.ZodNumber;
+            }, "strip", zod.ZodTypeAny, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }>, "many">>>;
+            objectFit: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["cover", "contain", "fill", "none"]>>>;
+            objectPosition: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            imageOpacity: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            imageBorderRadius: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
+            videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }>, "many">>;
+}, "strip", zod.ZodTypeAny, {
+    language?: "ar" | "en" | undefined;
+    title?: string | undefined;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    slides?: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[] | undefined;
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+}, {
+    language?: "ar" | "en" | undefined;
+    title?: string | undefined;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    slides?: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[] | undefined;
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | null | undefined;
+    gradeLevel?: string | null | undefined;
+}>;
+export declare const UpdatePresentationResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    description: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slides: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        layout: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        background: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        backgroundImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        elements: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            x: zod.ZodNumber;
+            y: zod.ZodNumber;
+            w: zod.ZodNumber;
+            h: zod.ZodNumber;
+            rotation: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            zIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            text: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontFamily: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontSize: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            fontWeight: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            align: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["start", "center", "end", "justify"]>>>;
+            color: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            url: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            iconName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            shape: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>>;
+            bgColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderWidth: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            activityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["mcq", "true_false", "open", "poll"]>>>;
+            questionId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            prompt: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            options: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>>;
+            correctIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            accentColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            gameKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["kahoot", "wheel", "millionaire", "flag-quiz", "capitals", "letrly", "rocket", "tug", "maraqui", "hack"]>>>;
+            topic: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            questions: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodObject<{
+                prompt: zod.ZodString;
+                options: zod.ZodArray<zod.ZodString, "many">;
+                correctIndex: zod.ZodNumber;
+            }, "strip", zod.ZodTypeAny, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }>, "many">>>;
+            objectFit: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["cover", "contain", "fill", "none"]>>>;
+            objectPosition: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            imageOpacity: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            imageBorderRadius: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
+            videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }>, "many">;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    lastPresentedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    linkedActivityId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    linkedActivityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    isOwner: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}>;
+/**
+ * @summary Delete a presentation (owner only)
+ */
+export declare const DeletePresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const DeletePresentationResponse: zod.ZodObject<{
+    message: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    message: string;
+}, {
+    message: string;
+}>;
+/**
+ * @summary Publish a presentation (owner only)
+ */
+export declare const PublishPresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const PublishPresentationResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    description: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slides: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        layout: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        background: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        backgroundImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        elements: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            x: zod.ZodNumber;
+            y: zod.ZodNumber;
+            w: zod.ZodNumber;
+            h: zod.ZodNumber;
+            rotation: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            zIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            text: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontFamily: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontSize: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            fontWeight: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            align: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["start", "center", "end", "justify"]>>>;
+            color: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            url: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            iconName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            shape: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>>;
+            bgColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderWidth: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            activityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["mcq", "true_false", "open", "poll"]>>>;
+            questionId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            prompt: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            options: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>>;
+            correctIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            accentColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            gameKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["kahoot", "wheel", "millionaire", "flag-quiz", "capitals", "letrly", "rocket", "tug", "maraqui", "hack"]>>>;
+            topic: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            questions: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodObject<{
+                prompt: zod.ZodString;
+                options: zod.ZodArray<zod.ZodString, "many">;
+                correctIndex: zod.ZodNumber;
+            }, "strip", zod.ZodTypeAny, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }>, "many">>>;
+            objectFit: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["cover", "contain", "fill", "none"]>>>;
+            objectPosition: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            imageOpacity: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            imageBorderRadius: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
+            videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }>, "many">;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    lastPresentedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    linkedActivityId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    linkedActivityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    isOwner: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}>;
+/**
+ * @summary Move a presentation back to draft (owner only)
+ */
+export declare const UnpublishPresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const UnpublishPresentationResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    title: zod.ZodString;
+    subject: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    gradeLevel: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    language: zod.ZodEnum<["ar", "en"]>;
+    theme: zod.ZodString;
+    pattern: zod.ZodString;
+    coverEmoji: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    description: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    slides: zod.ZodArray<zod.ZodObject<{
+        id: zod.ZodString;
+        layout: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        background: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        backgroundImage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        elements: zod.ZodArray<zod.ZodObject<{
+            id: zod.ZodString;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            x: zod.ZodNumber;
+            y: zod.ZodNumber;
+            w: zod.ZodNumber;
+            h: zod.ZodNumber;
+            rotation: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            zIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            text: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontFamily: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            fontSize: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            fontWeight: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            align: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["start", "center", "end", "justify"]>>>;
+            color: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            url: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            iconName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            shape: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>>;
+            bgColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            borderWidth: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            activityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["mcq", "true_false", "open", "poll"]>>>;
+            questionId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            prompt: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            options: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodString, "many">>>;
+            correctIndex: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            accentColor: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            gameKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["kahoot", "wheel", "millionaire", "flag-quiz", "capitals", "letrly", "rocket", "tug", "maraqui", "hack"]>>>;
+            topic: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            questions: zod.ZodOptional<zod.ZodNullable<zod.ZodArray<zod.ZodObject<{
+                prompt: zod.ZodString;
+                options: zod.ZodArray<zod.ZodString, "many">;
+                correctIndex: zod.ZodNumber;
+            }, "strip", zod.ZodTypeAny, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }, {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }>, "many">>>;
+            objectFit: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["cover", "contain", "fill", "none"]>>>;
+            objectPosition: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            imageOpacity: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            imageBorderRadius: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
+            videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+        }, "strip", zod.ZodTypeAny, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }, {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }, {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }>, "many">;
+    status: zod.ZodEnum<["draft", "published"]>;
+    publishedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    isShared: zod.ZodBoolean;
+    lastPresentedAt: zod.ZodOptional<zod.ZodNullable<zod.ZodDate>>;
+    linkedActivityId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    linkedActivityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+    ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    isOwner: zod.ZodOptional<zod.ZodNullable<zod.ZodBoolean>>;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}, {
+    status: "draft" | "published";
+    id: number;
+    language: "ar" | "en";
+    createdAt: Date;
+    teacherId: number;
+    title: string;
+    isShared: boolean;
+    slides: {
+        id: string;
+        elements: {
+            id: string;
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            options?: string[] | null | undefined;
+            questions?: {
+                options: string[];
+                prompt: string;
+                correctIndex: number;
+            }[] | null | undefined;
+            title?: string | null | undefined;
+            text?: string | null | undefined;
+            questionId?: number | null | undefined;
+            shape?: "rect" | "circle" | "line" | "arrow" | "divider" | null | undefined;
+            rotation?: number | null | undefined;
+            zIndex?: number | null | undefined;
+            fontFamily?: string | null | undefined;
+            fontSize?: number | null | undefined;
+            fontWeight?: string | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
+            color?: string | null | undefined;
+            url?: string | null | undefined;
+            iconName?: string | null | undefined;
+            bgColor?: string | null | undefined;
+            borderColor?: string | null | undefined;
+            borderWidth?: number | null | undefined;
+            activityKind?: "poll" | "mcq" | "true_false" | "open" | null | undefined;
+            prompt?: string | null | undefined;
+            correctIndex?: number | null | undefined;
+            accentColor?: string | null | undefined;
+            gameKind?: "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | null | undefined;
+            topic?: string | null | undefined;
+            objectFit?: "fill" | "cover" | "contain" | "none" | null | undefined;
+            objectPosition?: string | null | undefined;
+            imageOpacity?: number | null | undefined;
+            imageBorderRadius?: number | null | undefined;
+            videoKind?: "youtube" | "hasad-video" | null | undefined;
+            videoId?: string | null | undefined;
+        }[];
+        notes?: string | null | undefined;
+        layout?: string | null | undefined;
+        background?: string | null | undefined;
+        backgroundImage?: string | null | undefined;
+    }[];
+    theme: string;
+    pattern: string;
+    updatedAt: Date;
+    subject?: string | null | undefined;
+    description?: string | null | undefined;
+    ownerName?: string | null | undefined;
+    coverEmoji?: string | null | undefined;
+    publishedAt?: Date | null | undefined;
+    gradeLevel?: string | null | undefined;
+    lastPresentedAt?: Date | null | undefined;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+    isOwner?: boolean | null | undefined;
+}>;
+/**
+ * @summary Link or unlink the presentation to a teacher activity (assignment)
+ */
+export declare const LinkPresentationActivityParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const linkPresentationActivityBodyActivityKindDefault = "assignment";
+export declare const LinkPresentationActivityBody: zod.ZodObject<{
+    activityId: zod.ZodNullable<zod.ZodNumber>;
+    activityKind: zod.ZodDefault<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    activityKind: string;
+    activityId: number | null;
+}, {
+    activityId: number | null;
+    activityKind?: string | undefined;
+}>;
+export declare const LinkPresentationActivityResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    linkedActivityId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    linkedActivityKind: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+}, {
+    id: number;
+    linkedActivityId?: string | null | undefined;
+    linkedActivityKind?: string | null | undefined;
+}>;
+/**
+ * @summary Resolve the linked activity (or null if none / dangling)
+ */
+export declare const GetPresentationLinkedActivityParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const GetPresentationLinkedActivityResponse: zod.ZodObject<{
+    kind: zod.ZodNullable<zod.ZodString>;
+    activity: zod.ZodNullable<zod.ZodObject<{
+        id: zod.ZodNumber;
+        title: zod.ZodString;
+    }, "strip", zod.ZodTypeAny, {
+        id: number;
+        title: string;
+    }, {
+        id: number;
+        title: string;
+    }>>;
+    link: zod.ZodNullable<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    kind: string | null;
+    activity: {
+        id: number;
+        title: string;
+    } | null;
+    link: string | null;
+}, {
+    kind: string | null;
+    activity: {
+        id: number;
+        title: string;
+    } | null;
+    link: string | null;
+}>;
+/**
+ * @summary Duplicate a presentation (owner or admin-shared)
+ */
+export declare const DuplicatePresentationParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+/**
+ * @summary List uploaded assets for a presentation
+ */
+export declare const ListPresentationAssetsParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const ListPresentationAssetsResponseItem: zod.ZodObject<{
+    id: zod.ZodNumber;
+    presentationId: zod.ZodNumber;
+    kind: zod.ZodEnum<["image", "file"]>;
+    url: zod.ZodString;
+    byteSize: zod.ZodNumber;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    kind: "image" | "file";
+    url: string;
+    presentationId: number;
+    byteSize: number;
+}, {
+    id: number;
+    createdAt: Date;
+    kind: "image" | "file";
+    url: string;
+    presentationId: number;
+    byteSize: number;
+}>;
+export declare const ListPresentationAssetsResponse: zod.ZodArray<zod.ZodObject<{
+    id: zod.ZodNumber;
+    presentationId: zod.ZodNumber;
+    kind: zod.ZodEnum<["image", "file"]>;
+    url: zod.ZodString;
+    byteSize: zod.ZodNumber;
+    createdAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    createdAt: Date;
+    kind: "image" | "file";
+    url: string;
+    presentationId: number;
+    byteSize: number;
+}, {
+    id: number;
+    createdAt: Date;
+    kind: "image" | "file";
+    url: string;
+    presentationId: number;
+    byteSize: number;
+}>, "many">;
+/**
+ * @summary Register an uploaded asset URL on a presentation
+ */
+export declare const RegisterPresentationAssetParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const registerPresentationAssetBodyByteSizeMin = 0;
+export declare const RegisterPresentationAssetBody: zod.ZodObject<{
+    kind: zod.ZodEnum<["image", "file"]>;
+    url: zod.ZodString;
+    byteSize: zod.ZodOptional<zod.ZodNumber>;
+}, "strip", zod.ZodTypeAny, {
+    kind: "image" | "file";
+    url: string;
+    byteSize?: number | undefined;
+}, {
+    kind: "image" | "file";
+    url: string;
+    byteSize?: number | undefined;
+}>;
+/**
+ * @summary Tier-driven limits for AI outline generation
+ */
+export declare const GetPresentationAiLimitsResponse: zod.ZodObject<{
+    tier: zod.ZodEnum<["standard", "pro", "claude"]>;
+    dailyOutlines: zod.ZodNumber;
+    used: zod.ZodNumber;
+    remaining: zod.ZodNumber;
+    maxSlides: zod.ZodNumber;
+    allowedDensities: zod.ZodArray<zod.ZodEnum<["minimal", "balanced", "detailed"]>, "many">;
+    allowClaude: zod.ZodBoolean;
+}, "strip", zod.ZodTypeAny, {
+    tier: "standard" | "pro" | "claude";
+    dailyOutlines: number;
+    used: number;
+    remaining: number;
+    maxSlides: number;
+    allowedDensities: ("minimal" | "balanced" | "detailed")[];
+    allowClaude: boolean;
+}, {
+    tier: "standard" | "pro" | "claude";
+    dailyOutlines: number;
+    used: number;
+    remaining: number;
+    maxSlides: number;
+    allowedDensities: ("minimal" | "balanced" | "detailed")[];
+    allowClaude: boolean;
+}>;
+/**
+ * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
+ */
+export declare const generatePresentationOutlineBodySubjectMax = 100;
+export declare const generatePresentationOutlineBodyGradeLevelMax = 50;
+export declare const generatePresentationOutlineBodyTopicMax = 120;
+export declare const generatePresentationOutlineBodySlideCountMin = 5;
+export declare const generatePresentationOutlineBodySlideCountMax = 30;
+export declare const generatePresentationOutlineBodyNotesMax = 200;
+export declare const GeneratePresentationOutlineBody: zod.ZodObject<{
+    language: zod.ZodEnum<["ar", "en"]>;
+    subject: zod.ZodString;
+    gradeLevel: zod.ZodString;
+    topic: zod.ZodString;
+    presentationKind: zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>;
+    slideCount: zod.ZodNumber;
+    durationMinutes: zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>;
+    languageLevel: zod.ZodEnum<["simple", "medium", "advanced"]>;
+    density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+    toggles: zod.ZodObject<{
+        activities: zod.ZodBoolean;
+        questions: zod.ZodBoolean;
+        poll: zod.ZodBoolean;
+        quiz: zod.ZodBoolean;
+    }, "strip", zod.ZodTypeAny, {
+        activities: boolean;
+        questions: boolean;
+        poll: boolean;
+        quiz: boolean;
+    }, {
+        activities: boolean;
+        questions: boolean;
+        poll: boolean;
+        quiz: boolean;
+    }>;
+    notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    language: "ar" | "en";
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 30 | 15 | 45 | 60;
+    languageLevel: "simple" | "medium" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
+    subject: string;
+    gradeLevel: string;
+    topic: string;
+    toggles: {
+        activities: boolean;
+        questions: boolean;
+        poll: boolean;
+        quiz: boolean;
+    };
+    notes?: string | null | undefined;
+}, {
+    language: "ar" | "en";
+    presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+    slideCount: number;
+    durationMinutes: 30 | 15 | 45 | 60;
+    languageLevel: "simple" | "medium" | "advanced";
+    density: "minimal" | "balanced" | "detailed";
+    subject: string;
+    gradeLevel: string;
+    topic: string;
+    toggles: {
+        activities: boolean;
+        questions: boolean;
+        poll: boolean;
+        quiz: boolean;
+    };
+    notes?: string | null | undefined;
+}>;
+/**
+ * Per-slide materialization with skip-on-failure semantics. Failed
+slides are reported in `skipped` so the teacher can author them
+manually. Progress is persisted on the draft row after every
+slide so a parallel poll on `GET /presentations/drafts/{id}`
+can drive a real progress bar without SSE plumbing.
+
+ * @summary Phase 1B — materialize an approved outline into a real deck
+ */
+export declare const BuildPresentationFromDraftParams: zod.ZodObject<{
+    draftId: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    draftId: number;
+}, {
+    draftId: number;
+}>;
+export declare const buildPresentationFromDraftBodyThemeMax = 40;
+export declare const buildPresentationFromDraftBodyPatternMax = 40;
+export declare const buildPresentationFromDraftBodyCoverEmojiMax = 8;
+export declare const BuildPresentationFromDraftBody: zod.ZodObject<{
+    theme: zod.ZodOptional<zod.ZodString>;
+    pattern: zod.ZodOptional<zod.ZodString>;
+    coverEmoji: zod.ZodOptional<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | undefined;
+}, {
+    theme?: string | undefined;
+    pattern?: string | undefined;
+    coverEmoji?: string | undefined;
+}>;
+export declare const BuildPresentationFromDraftResponse: zod.ZodObject<{
+    presentationId: zod.ZodNumber;
+    warnings: zod.ZodArray<zod.ZodString, "many">;
+    skipped: zod.ZodOptional<zod.ZodArray<zod.ZodNumber, "many">>;
+    cancelled: zod.ZodOptional<zod.ZodBoolean>;
+    alreadyBuilt: zod.ZodBoolean;
+}, "strip", zod.ZodTypeAny, {
+    presentationId: number;
+    warnings: string[];
+    alreadyBuilt: boolean;
+    skipped?: number[] | undefined;
+    cancelled?: boolean | undefined;
+}, {
+    presentationId: number;
+    warnings: string[];
+    alreadyBuilt: boolean;
+    skipped?: number[] | undefined;
+    cancelled?: boolean | undefined;
+}>;
+/**
+ * Server-Sent Events feed: emits `progress` events on each
+polling tick and a terminal `done` event when the build
+finishes (status `built` or `failed`). Consumed via the
+browser's `EventSource`. Polling on the draft row remains
+available as a fallback driver.
+
+ * @summary Phase 1B — SSE stream of build progress
+ */
+export declare const StreamPresentationBuildParams: zod.ZodObject<{
+    draftId: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    draftId: number;
+}, {
+    draftId: number;
+}>;
+/**
+ * Sets an in-memory cancel flag the build loop checks once per
+slide. Idempotent. Slides validated before the cancel arrived
+are still persisted into the resulting deck.
+
+ * @summary Phase 1B — request cancellation of an in-flight build
+ */
+export declare const CancelPresentationBuildParams: zod.ZodObject<{
+    draftId: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    draftId: number;
+}, {
+    draftId: number;
+}>;
+export declare const CancelPresentationBuildResponse: zod.ZodObject<{
+    ok: zod.ZodBoolean;
+    wasActive: zod.ZodBoolean;
+    status: zod.ZodOptional<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    ok: boolean;
+    wasActive: boolean;
+    status?: string | undefined;
+}, {
+    ok: boolean;
+    wasActive: boolean;
+    status?: string | undefined;
+}>;
+/**
+ * @summary List the current teacher's saved outline drafts
+ */
+export declare const listPresentationDraftsResponseBriefSubjectMax = 100;
+export declare const listPresentationDraftsResponseBriefGradeLevelMax = 50;
+export declare const listPresentationDraftsResponseBriefTopicMax = 120;
+export declare const listPresentationDraftsResponseBriefSlideCountMin = 5;
+export declare const listPresentationDraftsResponseBriefSlideCountMax = 30;
+export declare const listPresentationDraftsResponseBriefNotesMax = 200;
+export declare const listPresentationDraftsResponseOutlineTotalEstimatedMinutesMax = 240;
+export declare const listPresentationDraftsResponseOutlineObjectivesItemMax = 140;
+export declare const listPresentationDraftsResponseOutlineObjectivesMin = 2;
+export declare const listPresentationDraftsResponseOutlineObjectivesMax = 6;
+export declare const listPresentationDraftsResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+export declare const listPresentationDraftsResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+export declare const listPresentationDraftsResponseOutlineTeachingFlowMin = 4;
+export declare const listPresentationDraftsResponseOutlineTeachingFlowMax = 4;
+export declare const listPresentationDraftsResponseOutlineSlidesItemIndexMax = 30;
+export declare const listPresentationDraftsResponseOutlineSlidesItemTitleMax = 80;
+export declare const listPresentationDraftsResponseOutlineSlidesItemSubtitleMax = 80;
+export declare const listPresentationDraftsResponseOutlineSlidesItemPurposeMax = 140;
+export declare const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export declare const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsMax = 6;
+export declare const listPresentationDraftsResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+export declare const listPresentationDraftsResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+export declare const listPresentationDraftsResponseOutlineSlidesItemSourceMax = 200;
+export declare const listPresentationDraftsResponseOutlineSlidesMin = 3;
+export declare const listPresentationDraftsResponseOutlineSlidesMax = 30;
+export declare const ListPresentationDraftsResponseItem: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    presentationId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+    brief: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        subject: zod.ZodString;
+        gradeLevel: zod.ZodString;
+        topic: zod.ZodString;
+        presentationKind: zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>;
+        slideCount: zod.ZodNumber;
+        durationMinutes: zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>;
+        languageLevel: zod.ZodEnum<["simple", "medium", "advanced"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        toggles: zod.ZodObject<{
+            activities: zod.ZodBoolean;
+            questions: zod.ZodBoolean;
+            poll: zod.ZodBoolean;
+            quiz: zod.ZodBoolean;
+        }, "strip", zod.ZodTypeAny, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }>;
+    outline: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        totalEstimatedMinutes: zod.ZodNumber;
+        objectives: zod.ZodArray<zod.ZodString, "many">;
+        teachingFlow: zod.ZodArray<zod.ZodObject<{
+            stage: zod.ZodEnum<["opener", "concept", "practice", "closure"]>;
+            slideIndices: zod.ZodArray<zod.ZodNumber, "many">;
+            estimatedMinutes: zod.ZodNumber;
+        }, "strip", zod.ZodTypeAny, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }>, "many">;
+        slides: zod.ZodArray<zod.ZodObject<{
+            index: zod.ZodNumber;
+            kind: zod.ZodEnum<["title", "objectives", "concept-card", "comparison", "visual-hero", "steps", "interactive", "closure", "timeline", "formula", "stat", "quote", "callout"]>;
+            title: zod.ZodString;
+            subtitle: zod.ZodOptional<zod.ZodString>;
+            purpose: zod.ZodString;
+            talkingPoints: zod.ZodArray<zod.ZodString, "many">;
+            interactionHint: zod.ZodNullable<zod.ZodEnum<["poll", "quiz", "discussion", "activity"]>>;
+            visualDirection: zod.ZodObject<{
+                icon: zod.ZodOptional<zod.ZodString>;
+                shape: zod.ZodOptional<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>;
+                layoutHint: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }>;
+            source: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }>;
+    status: zod.ZodEnum<["draft", "outline_ready", "building", "built", "failed"]>;
+    modelUsed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    tokensUsed: zod.ZodNumber;
+    costMicroUsd: zod.ZodNumber;
+    errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    buildProgress: zod.ZodOptional<zod.ZodNullable<zod.ZodObject<{
+        current: zod.ZodOptional<zod.ZodNumber>;
+        total: zod.ZodOptional<zod.ZodNumber>;
+        warnings: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        skipped: zod.ZodOptional<zod.ZodArray<zod.ZodNumber, "many">>;
+    }, "strip", zod.ZodTypeAny, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }>>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}>;
+export declare const ListPresentationDraftsResponse: zod.ZodArray<zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    presentationId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+    brief: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        subject: zod.ZodString;
+        gradeLevel: zod.ZodString;
+        topic: zod.ZodString;
+        presentationKind: zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>;
+        slideCount: zod.ZodNumber;
+        durationMinutes: zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>;
+        languageLevel: zod.ZodEnum<["simple", "medium", "advanced"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        toggles: zod.ZodObject<{
+            activities: zod.ZodBoolean;
+            questions: zod.ZodBoolean;
+            poll: zod.ZodBoolean;
+            quiz: zod.ZodBoolean;
+        }, "strip", zod.ZodTypeAny, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }>;
+    outline: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        totalEstimatedMinutes: zod.ZodNumber;
+        objectives: zod.ZodArray<zod.ZodString, "many">;
+        teachingFlow: zod.ZodArray<zod.ZodObject<{
+            stage: zod.ZodEnum<["opener", "concept", "practice", "closure"]>;
+            slideIndices: zod.ZodArray<zod.ZodNumber, "many">;
+            estimatedMinutes: zod.ZodNumber;
+        }, "strip", zod.ZodTypeAny, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }>, "many">;
+        slides: zod.ZodArray<zod.ZodObject<{
+            index: zod.ZodNumber;
+            kind: zod.ZodEnum<["title", "objectives", "concept-card", "comparison", "visual-hero", "steps", "interactive", "closure", "timeline", "formula", "stat", "quote", "callout"]>;
+            title: zod.ZodString;
+            subtitle: zod.ZodOptional<zod.ZodString>;
+            purpose: zod.ZodString;
+            talkingPoints: zod.ZodArray<zod.ZodString, "many">;
+            interactionHint: zod.ZodNullable<zod.ZodEnum<["poll", "quiz", "discussion", "activity"]>>;
+            visualDirection: zod.ZodObject<{
+                icon: zod.ZodOptional<zod.ZodString>;
+                shape: zod.ZodOptional<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>;
+                layoutHint: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }>;
+            source: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }>;
+    status: zod.ZodEnum<["draft", "outline_ready", "building", "built", "failed"]>;
+    modelUsed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    tokensUsed: zod.ZodNumber;
+    costMicroUsd: zod.ZodNumber;
+    errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    buildProgress: zod.ZodOptional<zod.ZodNullable<zod.ZodObject<{
+        current: zod.ZodOptional<zod.ZodNumber>;
+        total: zod.ZodOptional<zod.ZodNumber>;
+        warnings: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        skipped: zod.ZodOptional<zod.ZodArray<zod.ZodNumber, "many">>;
+    }, "strip", zod.ZodTypeAny, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }>>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}>, "many">;
+/**
+ * @summary Read one draft (owner only)
+ */
+export declare const GetPresentationDraftParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const getPresentationDraftResponseBriefSubjectMax = 100;
+export declare const getPresentationDraftResponseBriefGradeLevelMax = 50;
+export declare const getPresentationDraftResponseBriefTopicMax = 120;
+export declare const getPresentationDraftResponseBriefSlideCountMin = 5;
+export declare const getPresentationDraftResponseBriefSlideCountMax = 30;
+export declare const getPresentationDraftResponseBriefNotesMax = 200;
+export declare const getPresentationDraftResponseOutlineTotalEstimatedMinutesMax = 240;
+export declare const getPresentationDraftResponseOutlineObjectivesItemMax = 140;
+export declare const getPresentationDraftResponseOutlineObjectivesMin = 2;
+export declare const getPresentationDraftResponseOutlineObjectivesMax = 6;
+export declare const getPresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+export declare const getPresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+export declare const getPresentationDraftResponseOutlineTeachingFlowMin = 4;
+export declare const getPresentationDraftResponseOutlineTeachingFlowMax = 4;
+export declare const getPresentationDraftResponseOutlineSlidesItemIndexMax = 30;
+export declare const getPresentationDraftResponseOutlineSlidesItemTitleMax = 80;
+export declare const getPresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
+export declare const getPresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
+export declare const getPresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export declare const getPresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
+export declare const getPresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+export declare const getPresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+export declare const getPresentationDraftResponseOutlineSlidesItemSourceMax = 200;
+export declare const getPresentationDraftResponseOutlineSlidesMin = 3;
+export declare const getPresentationDraftResponseOutlineSlidesMax = 30;
+export declare const GetPresentationDraftResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    presentationId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+    brief: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        subject: zod.ZodString;
+        gradeLevel: zod.ZodString;
+        topic: zod.ZodString;
+        presentationKind: zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>;
+        slideCount: zod.ZodNumber;
+        durationMinutes: zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>;
+        languageLevel: zod.ZodEnum<["simple", "medium", "advanced"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        toggles: zod.ZodObject<{
+            activities: zod.ZodBoolean;
+            questions: zod.ZodBoolean;
+            poll: zod.ZodBoolean;
+            quiz: zod.ZodBoolean;
+        }, "strip", zod.ZodTypeAny, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }>;
+    outline: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        totalEstimatedMinutes: zod.ZodNumber;
+        objectives: zod.ZodArray<zod.ZodString, "many">;
+        teachingFlow: zod.ZodArray<zod.ZodObject<{
+            stage: zod.ZodEnum<["opener", "concept", "practice", "closure"]>;
+            slideIndices: zod.ZodArray<zod.ZodNumber, "many">;
+            estimatedMinutes: zod.ZodNumber;
+        }, "strip", zod.ZodTypeAny, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }>, "many">;
+        slides: zod.ZodArray<zod.ZodObject<{
+            index: zod.ZodNumber;
+            kind: zod.ZodEnum<["title", "objectives", "concept-card", "comparison", "visual-hero", "steps", "interactive", "closure", "timeline", "formula", "stat", "quote", "callout"]>;
+            title: zod.ZodString;
+            subtitle: zod.ZodOptional<zod.ZodString>;
+            purpose: zod.ZodString;
+            talkingPoints: zod.ZodArray<zod.ZodString, "many">;
+            interactionHint: zod.ZodNullable<zod.ZodEnum<["poll", "quiz", "discussion", "activity"]>>;
+            visualDirection: zod.ZodObject<{
+                icon: zod.ZodOptional<zod.ZodString>;
+                shape: zod.ZodOptional<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>;
+                layoutHint: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }>;
+            source: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }>;
+    status: zod.ZodEnum<["draft", "outline_ready", "building", "built", "failed"]>;
+    modelUsed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    tokensUsed: zod.ZodNumber;
+    costMicroUsd: zod.ZodNumber;
+    errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    buildProgress: zod.ZodOptional<zod.ZodNullable<zod.ZodObject<{
+        current: zod.ZodOptional<zod.ZodNumber>;
+        total: zod.ZodOptional<zod.ZodNumber>;
+        warnings: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        skipped: zod.ZodOptional<zod.ZodArray<zod.ZodNumber, "many">>;
+    }, "strip", zod.ZodTypeAny, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }>>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}>;
+/**
+ * @summary Update outline or status (owner only)
+ */
+export declare const UpdatePresentationDraftParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const updatePresentationDraftBodyOutlineTotalEstimatedMinutesMax = 240;
+export declare const updatePresentationDraftBodyOutlineObjectivesItemMax = 140;
+export declare const updatePresentationDraftBodyOutlineObjectivesMin = 2;
+export declare const updatePresentationDraftBodyOutlineObjectivesMax = 6;
+export declare const updatePresentationDraftBodyOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+export declare const updatePresentationDraftBodyOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+export declare const updatePresentationDraftBodyOutlineTeachingFlowMin = 4;
+export declare const updatePresentationDraftBodyOutlineTeachingFlowMax = 4;
+export declare const updatePresentationDraftBodyOutlineSlidesItemIndexMax = 30;
+export declare const updatePresentationDraftBodyOutlineSlidesItemTitleMax = 80;
+export declare const updatePresentationDraftBodyOutlineSlidesItemSubtitleMax = 80;
+export declare const updatePresentationDraftBodyOutlineSlidesItemPurposeMax = 140;
+export declare const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsItemMax = 140;
+export declare const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsMax = 6;
+export declare const updatePresentationDraftBodyOutlineSlidesItemVisualDirectionIconMax = 40;
+export declare const updatePresentationDraftBodyOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+export declare const updatePresentationDraftBodyOutlineSlidesItemSourceMax = 200;
+export declare const updatePresentationDraftBodyOutlineSlidesMin = 3;
+export declare const updatePresentationDraftBodyOutlineSlidesMax = 30;
+export declare const UpdatePresentationDraftBody: zod.ZodObject<{
+    outline: zod.ZodOptional<zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        totalEstimatedMinutes: zod.ZodNumber;
+        objectives: zod.ZodArray<zod.ZodString, "many">;
+        teachingFlow: zod.ZodArray<zod.ZodObject<{
+            stage: zod.ZodEnum<["opener", "concept", "practice", "closure"]>;
+            slideIndices: zod.ZodArray<zod.ZodNumber, "many">;
+            estimatedMinutes: zod.ZodNumber;
+        }, "strip", zod.ZodTypeAny, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }>, "many">;
+        slides: zod.ZodArray<zod.ZodObject<{
+            index: zod.ZodNumber;
+            kind: zod.ZodEnum<["title", "objectives", "concept-card", "comparison", "visual-hero", "steps", "interactive", "closure", "timeline", "formula", "stat", "quote", "callout"]>;
+            title: zod.ZodString;
+            subtitle: zod.ZodOptional<zod.ZodString>;
+            purpose: zod.ZodString;
+            talkingPoints: zod.ZodArray<zod.ZodString, "many">;
+            interactionHint: zod.ZodNullable<zod.ZodEnum<["poll", "quiz", "discussion", "activity"]>>;
+            visualDirection: zod.ZodObject<{
+                icon: zod.ZodOptional<zod.ZodString>;
+                shape: zod.ZodOptional<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>;
+                layoutHint: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }>;
+            source: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }>>;
+    status: zod.ZodOptional<zod.ZodEnum<["draft", "outline_ready"]>>;
+}, "strip", zod.ZodTypeAny, {
+    status?: "draft" | "outline_ready" | undefined;
+    outline?: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    } | undefined;
+}, {
+    status?: "draft" | "outline_ready" | undefined;
+    outline?: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    } | undefined;
+}>;
+export declare const updatePresentationDraftResponseBriefSubjectMax = 100;
+export declare const updatePresentationDraftResponseBriefGradeLevelMax = 50;
+export declare const updatePresentationDraftResponseBriefTopicMax = 120;
+export declare const updatePresentationDraftResponseBriefSlideCountMin = 5;
+export declare const updatePresentationDraftResponseBriefSlideCountMax = 30;
+export declare const updatePresentationDraftResponseBriefNotesMax = 200;
+export declare const updatePresentationDraftResponseOutlineTotalEstimatedMinutesMax = 240;
+export declare const updatePresentationDraftResponseOutlineObjectivesItemMax = 140;
+export declare const updatePresentationDraftResponseOutlineObjectivesMin = 2;
+export declare const updatePresentationDraftResponseOutlineObjectivesMax = 6;
+export declare const updatePresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+export declare const updatePresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+export declare const updatePresentationDraftResponseOutlineTeachingFlowMin = 4;
+export declare const updatePresentationDraftResponseOutlineTeachingFlowMax = 4;
+export declare const updatePresentationDraftResponseOutlineSlidesItemIndexMax = 30;
+export declare const updatePresentationDraftResponseOutlineSlidesItemTitleMax = 80;
+export declare const updatePresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
+export declare const updatePresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
+export declare const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export declare const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
+export declare const updatePresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+export declare const updatePresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+export declare const updatePresentationDraftResponseOutlineSlidesItemSourceMax = 200;
+export declare const updatePresentationDraftResponseOutlineSlidesMin = 3;
+export declare const updatePresentationDraftResponseOutlineSlidesMax = 30;
+export declare const UpdatePresentationDraftResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    teacherId: zod.ZodNumber;
+    presentationId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+    brief: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        subject: zod.ZodString;
+        gradeLevel: zod.ZodString;
+        topic: zod.ZodString;
+        presentationKind: zod.ZodEnum<["explain", "review", "interactive", "quick", "contest"]>;
+        slideCount: zod.ZodNumber;
+        durationMinutes: zod.ZodUnion<[zod.ZodLiteral<15>, zod.ZodLiteral<30>, zod.ZodLiteral<45>, zod.ZodLiteral<60>]>;
+        languageLevel: zod.ZodEnum<["simple", "medium", "advanced"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        toggles: zod.ZodObject<{
+            activities: zod.ZodBoolean;
+            questions: zod.ZodBoolean;
+            poll: zod.ZodBoolean;
+            quiz: zod.ZodBoolean;
+        }, "strip", zod.ZodTypeAny, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }, {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        }>;
+        notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }, {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    }>;
+    outline: zod.ZodObject<{
+        language: zod.ZodEnum<["ar", "en"]>;
+        density: zod.ZodEnum<["minimal", "balanced", "detailed"]>;
+        totalEstimatedMinutes: zod.ZodNumber;
+        objectives: zod.ZodArray<zod.ZodString, "many">;
+        teachingFlow: zod.ZodArray<zod.ZodObject<{
+            stage: zod.ZodEnum<["opener", "concept", "practice", "closure"]>;
+            slideIndices: zod.ZodArray<zod.ZodNumber, "many">;
+            estimatedMinutes: zod.ZodNumber;
+        }, "strip", zod.ZodTypeAny, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }, {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }>, "many">;
+        slides: zod.ZodArray<zod.ZodObject<{
+            index: zod.ZodNumber;
+            kind: zod.ZodEnum<["title", "objectives", "concept-card", "comparison", "visual-hero", "steps", "interactive", "closure", "timeline", "formula", "stat", "quote", "callout"]>;
+            title: zod.ZodString;
+            subtitle: zod.ZodOptional<zod.ZodString>;
+            purpose: zod.ZodString;
+            talkingPoints: zod.ZodArray<zod.ZodString, "many">;
+            interactionHint: zod.ZodNullable<zod.ZodEnum<["poll", "quiz", "discussion", "activity"]>>;
+            visualDirection: zod.ZodObject<{
+                icon: zod.ZodOptional<zod.ZodString>;
+                shape: zod.ZodOptional<zod.ZodEnum<["rect", "circle", "line", "arrow", "divider"]>>;
+                layoutHint: zod.ZodOptional<zod.ZodString>;
+            }, "strip", zod.ZodTypeAny, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }, {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            }>;
+            source: zod.ZodOptional<zod.ZodString>;
+        }, "strip", zod.ZodTypeAny, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }, {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }>, "many">;
+    }, "strip", zod.ZodTypeAny, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }, {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    }>;
+    status: zod.ZodEnum<["draft", "outline_ready", "building", "built", "failed"]>;
+    modelUsed: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    tokensUsed: zod.ZodNumber;
+    costMicroUsd: zod.ZodNumber;
+    errorMessage: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    buildProgress: zod.ZodOptional<zod.ZodNullable<zod.ZodObject<{
+        current: zod.ZodOptional<zod.ZodNumber>;
+        total: zod.ZodOptional<zod.ZodNumber>;
+        warnings: zod.ZodOptional<zod.ZodArray<zod.ZodString, "many">>;
+        skipped: zod.ZodOptional<zod.ZodArray<zod.ZodNumber, "many">>;
+    }, "strip", zod.ZodTypeAny, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }, {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    }>>>;
+    createdAt: zod.ZodDate;
+    updatedAt: zod.ZodDate;
+}, "strip", zod.ZodTypeAny, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}, {
+    status: "draft" | "outline_ready" | "building" | "built" | "failed";
+    id: number;
+    createdAt: Date;
+    teacherId: number;
+    updatedAt: Date;
+    brief: {
+        language: "ar" | "en";
+        presentationKind: "explain" | "review" | "interactive" | "quick" | "contest";
+        slideCount: number;
+        durationMinutes: 30 | 15 | 45 | 60;
+        languageLevel: "simple" | "medium" | "advanced";
+        density: "minimal" | "balanced" | "detailed";
+        subject: string;
+        gradeLevel: string;
+        topic: string;
+        toggles: {
+            activities: boolean;
+            questions: boolean;
+            poll: boolean;
+            quiz: boolean;
+        };
+        notes?: string | null | undefined;
+    };
+    outline: {
+        language: "ar" | "en";
+        density: "minimal" | "balanced" | "detailed";
+        slides: {
+            title: string;
+            kind: "interactive" | "title" | "objectives" | "closure" | "concept-card" | "comparison" | "visual-hero" | "steps" | "timeline" | "formula" | "stat" | "quote" | "callout";
+            index: number;
+            purpose: string;
+            talkingPoints: string[];
+            interactionHint: "poll" | "quiz" | "activity" | "discussion" | null;
+            visualDirection: {
+                icon?: string | undefined;
+                shape?: "rect" | "circle" | "line" | "arrow" | "divider" | undefined;
+                layoutHint?: string | undefined;
+            };
+            subtitle?: string | undefined;
+            source?: string | undefined;
+        }[];
+        totalEstimatedMinutes: number;
+        objectives: string[];
+        teachingFlow: {
+            stage: "opener" | "concept" | "practice" | "closure";
+            slideIndices: number[];
+            estimatedMinutes: number;
+        }[];
+    };
+    tokensUsed: number;
+    costMicroUsd: number;
+    presentationId?: number | null | undefined;
+    modelUsed?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    buildProgress?: {
+        warnings?: string[] | undefined;
+        skipped?: number[] | undefined;
+        current?: number | undefined;
+        total?: number | undefined;
+    } | null | undefined;
+}>;
+/**
+ * @summary Delete a draft (owner only)
+ */
+export declare const DeletePresentationDraftParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
 }>;
 //# sourceMappingURL=api.d.ts.map

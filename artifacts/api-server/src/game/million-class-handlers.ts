@@ -56,6 +56,8 @@ interface ClassSession {
   assignmentId?: number;
   bankLevel?: string;
   bankCategory?: string;
+  /** Optional teacher-selected target class — metadata for display only. */
+  targetClass: string | null;
   autoAdvance: boolean;
   mode: SessionMode;
   // Broadcast state
@@ -626,6 +628,7 @@ export async function createClassSession(opts: {
   assignmentId?: number;
   bankLevel?: string;
   bankCategory?: string;
+  targetClass?: string;
   autoAdvance?: boolean;
   mode?: SessionMode;
   teamAName?: string;
@@ -668,6 +671,7 @@ export async function createClassSession(opts: {
     assignmentId: opts.assignmentId,
     bankLevel: opts.bankLevel,
     bankCategory: opts.bankCategory,
+    targetClass: typeof opts.targetClass === "string" && opts.targetClass.trim() ? opts.targetClass.trim().slice(0, 60) : null,
     autoAdvance: opts.autoAdvance ?? true,
     mode,
     currentQuestionIdx: 0,

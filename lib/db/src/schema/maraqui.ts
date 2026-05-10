@@ -17,6 +17,7 @@ export const maraquiGroupsTable = pgTable("maraqui_groups", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 60 }).notNull(),
   teacherId: integer("teacher_id").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
 export const maraquiPathsTable = pgTable("maraqui_paths", {
@@ -30,6 +31,7 @@ export const maraquiPathsTable = pgTable("maraqui_paths", {
   isPublic: boolean("is_public").notNull().default(false),
   isApproved: boolean("is_approved").notNull().default(false),
   groupId: integer("group_id"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
 export const maraquiProgressTable = pgTable("maraqui_progress", {
@@ -41,7 +43,7 @@ export const maraquiProgressTable = pgTable("maraqui_progress", {
   attempts: integer("attempts").notNull().default(1),
   isComplete: boolean("is_complete").notNull().default(false),
   completedAt: timestamp("completed_at", { mode: "date" }),
-  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
 
 export type MaraquiPath = typeof maraquiPathsTable.$inferSelect;

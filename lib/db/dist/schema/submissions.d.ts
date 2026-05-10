@@ -258,6 +258,40 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        startedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "started_at";
+            tableName: "submissions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        durationSeconds: import("drizzle-orm/pg-core").PgColumn<{
+            name: "duration_seconds";
+            tableName: "submissions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         submittedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "submitted_at";
             tableName: "submissions";
@@ -281,8 +315,8 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
 export declare const insertSubmissionSchema: z.ZodObject<{
     totalPoints: z.ZodOptional<z.ZodNumber>;
     assignmentId: z.ZodInt;
-    studentName: z.ZodString;
     studentClass: z.ZodOptional<z.ZodString>;
+    studentName: z.ZodString;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     deviceFingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     score: z.ZodNumber;
@@ -293,6 +327,8 @@ export declare const insertSubmissionSchema: z.ZodObject<{
     teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     aiFeedback: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     repeatAttempted: z.ZodOptional<z.ZodBoolean>;
+    startedAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    durationSeconds: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
 }, {
     out: {};
     in: {};

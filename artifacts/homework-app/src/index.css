@@ -577,3 +577,16 @@
     radial-gradient(ellipse 55% 40% at 88% 22%, rgba(215,165,29,0.08), transparent 65%),
     radial-gradient(ellipse 60% 45% at 50% 95%, rgba(127,191,156,0.06), transparent 60%);
 }
+
+/* Organizer dashboard cards: hover border picks up --accent. */
+.organizer-card {
+  --accent: rgba(232,168,14,1);
+}
+.organizer-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  background: rgba(255,255,255,0.055) !important;
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 40px -22px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) inset;
+}

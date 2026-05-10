@@ -53,6 +53,23 @@ export declare const aiUsageDaily: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        outlineCount: import("drizzle-orm/pg-core").PgColumn<{
+            name: "outline_count";
+            tableName: "ai_usage_daily";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         tokensIn: import("drizzle-orm/pg-core").PgColumn<{
             name: "tokens_in";
             tableName: "ai_usage_daily";

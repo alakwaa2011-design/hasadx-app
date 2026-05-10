@@ -1,0 +1,2 @@
+ALTER TABLE platform_settings
+  ADD COLUMN IF NOT EXISTS show_maraqui BOOLEAN NOT NULL DEFAULT FALSE;

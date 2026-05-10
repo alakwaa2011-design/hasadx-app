@@ -5,10 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, ArrowRight, ArrowLeft, Users, BookText, FileCheck,
   Shield, ShieldOff, Trash2, Ban, CheckCircle2, GraduationCap, Phone,
-  Mail, BarChart3, HelpCircle, UserX, Crown, Eye, EyeOff, ChevronDown, Lock, Copy,
+  Mail, BarChart3, HelpCircle, UserX, Crown, Eye, ChevronDown, Copy,
   Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2, ToggleLeft, ToggleRight,
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
+  CreditCard, Activity, Reply, Send, Loader2, AtSign,
 } from "lucide-react";
+import { BillingTab } from "@/components/admin/billing-tab";
+import { ActivityTab } from "@/components/admin/activity-tab";
 import { useThemeUpdater } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -21,11 +24,11 @@ interface TeacherData {
   name: string;
   email: string | null;
   phone: string | null;
-  passwordHash: string | null;
   isAdmin: boolean;
   isBlocked: boolean;
   aiTier?: "standard" | "pro" | "claude";
   hasProDesign?: boolean;
+  presentationsProEnabled?: boolean;
   lastLoginAt: string | null;
   createdAt: string;
   assignmentCount: number;
@@ -57,7 +60,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log";
 
 interface FeedbackItem {
   id: number;
@@ -67,6 +70,9 @@ interface FeedbackItem {
   message: string;
   status: string;
   createdAt: string;
+  adminResponse?: string | null;
+  respondedAt?: string | null;
+  responseEmailStatus?: string | null;
 }
 
 interface OnlineTeacher {
@@ -170,6 +176,178 @@ interface ContentAssignment {
 }
 
 
+interface FeedbackCardProps {
+  fb: FeedbackItem;
+  i: number;
+  lang: "ar" | "en";
+  tl: { ar: string; en: string; color: string };
+  sl: { ar: string; en: string; color: string };
+  formatDate: (d: string | null) => string;
+  onMarkStatus: (id: number, status: string) => void;
+  onDelete: (id: number) => void;
+  onRespond: (id: number, message: string, sendByEmail: boolean) => Promise<boolean>;
+}
+
+function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete, onRespond }: FeedbackCardProps) {
+  const [open, setOpen] = useState(false);
+  const [reply, setReply] = useState("");
+  const [sendByEmail, setSendByEmail] = useState(true);
+  const [sending, setSending] = useState(false);
+  const hasResponse = !!fb.adminResponse;
+  const emailStatus = fb.responseEmailStatus;
+
+  async function handleSend() {
+    if (reply.trim().length < 2) return;
+    setSending(true);
+    const ok = await onRespond(fb.id, reply.trim(), sendByEmail);
+    setSending(false);
+    if (ok) {
+      setReply("");
+      setOpen(false);
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+      <Card className={`p-4 ${fb.status === "new" ? "border-yellow-300 dark:border-yellow-700" : ""}`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tl.color}`}>
+                {lang === "ar" ? tl.ar : tl.en}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sl.color}`}>
+                {lang === "ar" ? sl.ar : sl.en}
+              </span>
+              <span className="text-xs text-muted-foreground font-bold">{fb.name}</span>
+              {fb.email && <span className="text-xs text-muted-foreground">{fb.email}</span>}
+              <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(fb.createdAt)}
+              </span>
+            </div>
+            <p className="text-sm text-foreground whitespace-pre-wrap">{fb.message}</p>
+
+            {hasResponse && (
+              <div className="mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/60 dark:bg-emerald-900/10 dark:border-emerald-900/40">
+                <div className="flex items-center gap-2 mb-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <Reply className="w-3.5 h-3.5" />
+                  <span>{lang === "ar" ? "ردّ المسؤول" : "Admin reply"}</span>
+                  {fb.respondedAt && (
+                    <span className="text-[10px] text-muted-foreground/70 font-normal">
+                      • {formatDate(fb.respondedAt)}
+                    </span>
+                  )}
+                  {emailStatus === "sent" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-bold">
+                      {lang === "ar" ? "أُرسل بالبريد" : "Emailed"}
+                    </span>
+                  )}
+                  {emailStatus?.startsWith("failed") && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold" title={emailStatus}>
+                      {lang === "ar" ? "فشل البريد" : "Email failed"}
+                    </span>
+                  )}
+                  {emailStatus === "no_email" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 font-bold">
+                      {lang === "ar" ? "لا يوجد بريد" : "No email"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{fb.adminResponse}</p>
+              </div>
+            )}
+
+            {open && (
+              <div className="mt-3 p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-2">
+                <textarea
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  rows={4}
+                  maxLength={4000}
+                  placeholder={lang === "ar" ? "اكتب ردّك هنا…" : "Write your reply…"}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  disabled={sending}
+                />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={sendByEmail}
+                      onChange={(e) => setSendByEmail(e.target.checked)}
+                      disabled={sending || !fb.email}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <AtSign className="w-3.5 h-3.5" />
+                    {fb.email
+                      ? (lang === "ar" ? `إرسال بالبريد إلى ${fb.email}` : `Send by email to ${fb.email}`)
+                      : (lang === "ar" ? "لا يوجد بريد للمستخدم" : "No user email on file")}
+                  </label>
+                  <div className="flex items-center gap-2 ms-auto">
+                    <button
+                      type="button"
+                      onClick={() => { setOpen(false); setReply(""); }}
+                      disabled={sending}
+                      className="px-3 py-1.5 text-xs font-bold rounded-md border border-input hover:bg-muted"
+                    >
+                      {lang === "ar" ? "إلغاء" : "Cancel"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={sending || reply.trim().length < 2}
+                      className="px-3 py-1.5 text-xs font-bold rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                      {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      {lang === "ar" ? "إرسال الرد" : "Send reply"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => { setOpen(o => !o); if (!hasResponse) setReply(""); else setReply(fb.adminResponse || ""); }}
+              className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-muted-foreground hover:text-emerald-600 transition-colors"
+              title={hasResponse
+                ? (lang === "ar" ? "تعديل الرد" : "Edit reply")
+                : (lang === "ar" ? "ردّ" : "Reply")}
+            >
+              <Reply className="w-4 h-4" />
+            </button>
+            {fb.status === "new" && (
+              <button
+                onClick={() => onMarkStatus(fb.id, "read")}
+                className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-muted-foreground hover:text-blue-600 transition-colors"
+                title={lang === "ar" ? "تحديد كمقروء" : "Mark as read"}
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            )}
+            {fb.status !== "resolved" && (
+              <button
+                onClick={() => onMarkStatus(fb.id, "resolved")}
+                className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-muted-foreground hover:text-green-600 transition-colors"
+                title={lang === "ar" ? "تم الرد" : "Mark as resolved"}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={() => onDelete(fb.id)}
+              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
+              title={lang === "ar" ? "حذف" : "Delete"}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
+  );
+}
+
 export default function AdminPage() {
   const { t, lang } = useI18n();
   const updateTheme = useThemeUpdater();
@@ -185,7 +363,6 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [expandedTeacher, setExpandedTeacher] = useState<number | null>(null);
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
-  const [shownPasswords, setShownPasswords] = useState<Set<number>>(new Set());
   const [publicVisibility, setPublicVisibility] = useState<"all" | "none" | "selective">("selective");
   const [contentAssignments, setContentAssignments] = useState<ContentAssignment[]>([]);
   const [contentTugTemplates, setContentTugTemplates] = useState<{ id: number; title: string; duration: number; isShared: boolean; teacherName: string | null; teacherIsAdmin: boolean | null; createdAt: string }[]>([]);
@@ -195,6 +372,15 @@ export default function AdminPage() {
   const [guestLimitInput, setGuestLimitInput] = useState(1);
   const [savingGuestLimit, setSavingGuestLimit] = useState(false);
   const [proAiForAll, setProAiForAll] = useState(false);
+  const [presentationsProForAll, setPresentationsProForAll] = useState(false);
+  const [presentationLimits, setPresentationLimits] = useState({
+    maxImagesRegular: 10,
+    maxFilesRegular: 5,
+    maxSlidesRegular: 20,
+    maxSizeMbRegular: 50,
+  });
+  const [presentationLimitsInput, setPresentationLimitsInput] = useState(presentationLimits);
+  const [savingPresentationLimits, setSavingPresentationLimits] = useState(false);
 
   const [showAdventureGamesHome, setShowAdventureGamesHome] = useState(false);
   const [showSpaceRaceGamesHome, setShowSpaceRaceGamesHome] = useState(false);
@@ -205,6 +391,9 @@ export default function AdminPage() {
   const [showScrambleGame, setShowScrambleGame] = useState(true);
   const [showTugGame, setShowTugGame] = useState(false);
   const [showCapitalsGame, setShowCapitalsGame] = useState(true);
+  const [showQuranSection, setShowQuranSection] = useState(false);
+  const [showGeneralCertificates, setShowGeneralCertificates] = useState(false);
+  const [showMaraqui, setShowMaraqui] = useState(false);
   const [savingGameVisibility, setSavingGameVisibility] = useState(false);
 
   // Appearance
@@ -486,14 +675,6 @@ export default function AdminPage() {
     } catch { toast.error(lang === "ar" ? "خطأ" : "Error"); }
   };
 
-  const togglePassword = (id: number) => {
-    setShownPasswords(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`تم نسخ ${label}`);
@@ -535,7 +716,15 @@ export default function AdminPage() {
           setShowScrambleGame(ps.showScrambleGame ?? true);
           setShowTugGame(ps.showTugGame ?? false);
           setShowCapitalsGame(ps.showCapitalsGame ?? true);
+          setShowQuranSection(ps.showQuranSection ?? false);
+          setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
+          setShowMaraqui(ps.showMaraqui ?? false);
           setProAiForAll(ps.proAiForAll ?? false);
+          setPresentationsProForAll(ps.presentationsProForAll ?? false);
+          if (ps.presentationLimits) {
+            setPresentationLimits(ps.presentationLimits);
+            setPresentationLimitsInput(ps.presentationLimits);
+          }
         }
         if (cRes.ok) { const c = await cRes.json(); setContentAssignments(c.assignments ?? []); setContentTugTemplates(c.tugTemplates ?? []); }
       } catch {} finally { setLoading(false); }
@@ -618,6 +807,32 @@ export default function AdminPage() {
       const updated = await r.json();
       setFeedbackItems(prev => prev.map(f => f.id === id ? { ...f, status: updated.status } : f));
     }
+  }
+
+  async function respondToFeedback(id: number, message: string, sendByEmail: boolean) {
+    const r = await fetch(`${API_BASE}/api/admin/feedback/${id}/respond`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, sendByEmail }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      toast.error(err.message || (lang === "ar" ? "تعذّر إرسال الرد" : "Failed to send reply"));
+      return false;
+    }
+    const updated = await r.json();
+    setFeedbackItems(prev => prev.map(f => f.id === id ? { ...f, ...updated } : f));
+    const status = updated.responseEmailStatus as string | null;
+    if (status === "sent") {
+      toast.success(lang === "ar" ? "تم إرسال الرد بالبريد الإلكتروني" : "Reply sent via email");
+    } else if (status?.startsWith("failed")) {
+      toast.warning(lang === "ar" ? "تم حفظ الرد لكن فشل إرساله بالبريد" : "Reply saved but email failed");
+    } else if (status === "no_email") {
+      toast.success(lang === "ar" ? "تم حفظ الرد (لا يوجد بريد للمستخدم)" : "Reply saved (no user email)");
+    } else {
+      toast.success(lang === "ar" ? "تم حفظ الرد" : "Reply saved");
+    }
+    return true;
   }
 
   async function deleteFeedback(id: number) {
@@ -708,6 +923,59 @@ export default function AdminPage() {
     }
   };
 
+  const handleTogglePresentationsPro = async (id: number, current: boolean | undefined) => {
+    const next = !current;
+    const res = await fetch(`${API_BASE}/api/admin/teachers/${id}/presentations-pro`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+      body: JSON.stringify({ presentationsProEnabled: next }),
+    });
+    if (res.ok) {
+      setTeachers(prev => prev.map(t => t.id === id ? { ...t, presentationsProEnabled: next } : t));
+      toast.success(
+        next
+          ? (lang === "ar" ? "تم تفعيل الباقة الاحترافية للعروض" : "Pro presentations enabled")
+          : (lang === "ar" ? "تم إلغاء الباقة الاحترافية للعروض" : "Pro presentations disabled"),
+      );
+    } else {
+      toast.error(lang === "ar" ? "تعذّر التحديث" : "Update failed");
+    }
+  };
+
+  const handleTogglePresentationsProForAll = async (next: boolean) => {
+    const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+      body: JSON.stringify({ presentationsProForAll: next }),
+    });
+    if (res.ok) {
+      setPresentationsProForAll(next);
+      toast.success(
+        next
+          ? (lang === "ar" ? "تم تفعيل الباقة الاحترافية للجميع" : "Pro presentations enabled for everyone")
+          : (lang === "ar" ? "تم إيقاف الباقة الاحترافية للجميع" : "Pro presentations disabled for everyone"),
+      );
+    } else {
+      toast.error(lang === "ar" ? "تعذّر التحديث" : "Update failed");
+    }
+  };
+
+  const handleSavePresentationLimits = async () => {
+    setSavingPresentationLimits(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ presentationLimits: presentationLimitsInput }),
+      });
+      if (res.ok) {
+        setPresentationLimits(presentationLimitsInput);
+        toast.success(lang === "ar" ? "تم حفظ حدود العروض" : "Presentation limits saved");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر الحفظ" : "Save failed");
+      }
+    } finally {
+      setSavingPresentationLimits(false);
+    }
+  };
+
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(lang === "ar" ? `حذف المعلم "${name}" وجميع بياناته؟ لا يمكن التراجع!` : `Delete "${name}" and all their data? This cannot be undone!`)) return;
     const res = await fetch(`${API_BASE}/api/admin/teachers/${id}`, { method: "DELETE", credentials: "include" });
@@ -727,6 +995,11 @@ export default function AdminPage() {
       setPublicVisibility(ps.publicVisibility ?? "selective");
       if (ps.guestLimit !== undefined) { setGuestLimit(ps.guestLimit); setGuestLimitInput(ps.guestLimit); }
       setProAiForAll(ps.proAiForAll ?? false);
+      setPresentationsProForAll(ps.presentationsProForAll ?? false);
+      if (ps.presentationLimits) {
+        setPresentationLimits(ps.presentationLimits);
+        setPresentationLimitsInput(ps.presentationLimits);
+      }
     }
     if (cRes.ok) { const c = await cRes.json(); setContentAssignments(c.assignments ?? []); setContentTugTemplates(c.tugTemplates ?? []); }
   };
@@ -941,35 +1214,75 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mb-6 border-b border-border pb-0 overflow-x-auto scrollbar-none">
-          {([
-            { key: "online" as Tab, label: lang === "ar" ? "المتصلون" : "Online", icon: Zap },
-            { key: "stats" as Tab, label: t.admin.tabStats, icon: BarChart3 },
-            { key: "activities" as Tab, label: lang === "ar" ? "الأنشطة" : "Activities", icon: BookText },
-            { key: "teachers" as Tab, label: t.admin.tabTeachers, icon: Users },
-            { key: "students" as Tab, label: t.admin.tabStudents, icon: GraduationCap },
-            { key: "content" as Tab, label: t.admin.tabPublicContent, icon: Globe },
-            { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: MessageSquare },
-            { key: "organize" as Tab, label: lang === "ar" ? "تنظيم" : "Organize", icon: FolderTree },
-            { key: "maraqui" as Tab, label: lang === "ar" ? "مَراقي" : "Maraqui", icon: Gamepad2 },
-            { key: "appearance" as Tab, label: t.admin.tabAppearance, icon: Palette },
-            { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
-            { key: "letrly" as Tab, label: lang === "ar" ? "تحدي الكلمة" : "Word Challenge", icon: Type },
-          ]).map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => { setActiveTab(tab.key); setSearch(""); }}
-              className={`px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all -mb-px ${
-                activeTab === tab.key
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
+        <div className="mb-6 border-b border-border overflow-x-auto scrollbar-none">
+          <div className="flex items-stretch gap-0 min-w-max">
+            {([
+              {
+                title: lang === "ar" ? "نظرة عامة" : "Overview",
+                tabs: [
+                  { key: "online" as Tab, label: lang === "ar" ? "المتصلون" : "Online", icon: Zap },
+                  { key: "stats" as Tab, label: t.admin.tabStats, icon: BarChart3 },
+                  { key: "activities" as Tab, label: lang === "ar" ? "الأنشطة" : "Activities", icon: BookText },
+                ],
+              },
+              {
+                title: lang === "ar" ? "المستخدمون" : "Users",
+                tabs: [
+                  { key: "teachers" as Tab, label: t.admin.tabTeachers, icon: Users },
+                  { key: "students" as Tab, label: t.admin.tabStudents, icon: GraduationCap },
+                ],
+              },
+              {
+                title: lang === "ar" ? "الاشتراكات" : "Billing",
+                tabs: [
+                  { key: "billing" as Tab, label: lang === "ar" ? "الباقات والإيرادات" : "Plans & Revenue", icon: CreditCard },
+                ],
+              },
+              {
+                title: lang === "ar" ? "المحتوى" : "Content",
+                tabs: [
+                  { key: "content" as Tab, label: t.admin.tabPublicContent, icon: Globe },
+                  { key: "organize" as Tab, label: lang === "ar" ? "تنظيم" : "Organize", icon: FolderTree },
+                  { key: "maraqui" as Tab, label: lang === "ar" ? "مَراقي" : "Maraqui", icon: Gamepad2 },
+                  { key: "letrly" as Tab, label: lang === "ar" ? "تحدي الكلمة" : "Word Challenge", icon: Type },
+                ],
+              },
+              {
+                title: lang === "ar" ? "النظام" : "System",
+                tabs: [
+                  { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: MessageSquare },
+                  { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
+                  { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط" : "Activity Log", icon: Activity },
+                  { key: "appearance" as Tab, label: t.admin.tabAppearance, icon: Palette },
+                ],
+              },
+            ]).map((group, gi, arr) => (
+              <div key={group.title} className={`flex flex-col ${gi > 0 ? "border-s border-border ps-2 ms-2" : ""}`}>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 px-2 mb-0.5">
+                  {group.title}
+                </span>
+                <div className="flex items-center">
+                  {group.tabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => { setActiveTab(tab.key); setSearch(""); }}
+                      className={`px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all -mb-px whitespace-nowrap ${
+                        activeTab === tab.key
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {activeTab === "billing" && <BillingTab />}
 
         {activeTab === "online" && (
           <div className="space-y-4">
@@ -1613,24 +1926,6 @@ export default function AdminPage() {
                                   </button>
                                 </div>
                               )}
-                              {/* Password hash */}
-                              {teacher.passwordHash && (
-                                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                                  <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
-                                  <span className="text-muted-foreground min-w-16">كلمة المرور:</span>
-                                  <span className="font-mono flex-1 text-xs truncate" dir="ltr">
-                                    {shownPasswords.has(teacher.id) ? teacher.passwordHash : "••••••••••••••••••••"}
-                                  </span>
-                                  <button onClick={() => togglePassword(teacher.id)} className="p-1 hover:bg-muted rounded shrink-0">
-                                    {shownPasswords.has(teacher.id) ? <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> : <Eye className="w-3.5 h-3.5 text-muted-foreground" />}
-                                  </button>
-                                  {shownPasswords.has(teacher.id) && (
-                                    <button onClick={() => copyToClipboard(teacher.passwordHash!, "كلمة المرور")} className="p-1 hover:bg-muted rounded shrink-0">
-                                      <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
                               {/* Dates */}
                               <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 text-xs text-muted-foreground">
                                 <span><strong>تاريخ التسجيل:</strong> {formatDate(teacher.createdAt)}</span>
@@ -1694,6 +1989,19 @@ export default function AdminPage() {
                                     {teacher.hasProDesign
                                       ? (lang === "ar" ? "إلغاء تصاميم احترافية" : "Remove Pro Design")
                                       : (lang === "ar" ? "تفعيل تصاميم احترافية" : "Enable Pro Design")}
+                                  </Button>
+                                )}
+                                {!teacher.isAdmin && (
+                                  <Button
+                                    variant={teacher.presentationsProEnabled ? "outline" : "default"}
+                                    onClick={() => handleTogglePresentationsPro(teacher.id, teacher.presentationsProEnabled)}
+                                    className={`gap-1.5 text-xs py-1.5 px-3 h-auto ${teacher.presentationsProEnabled ? "border-fuchsia-300 text-fuchsia-700 dark:text-fuchsia-300 dark:border-fuchsia-700" : ""}`}
+                                    title={lang === "ar" ? "تفعيل الباقة الاحترافية للعروض" : "Toggle Pro presentations"}
+                                  >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    {teacher.presentationsProEnabled
+                                      ? (lang === "ar" ? "إلغاء الباقة الاحترافية" : "Remove Pro")
+                                      : (lang === "ar" ? "تفعيل الباقة الاحترافية" : "Enable Pro")}
                                   </Button>
                                 )}
                                 <Button
@@ -1809,6 +2117,79 @@ export default function AdminPage() {
               </label>
             </Card>
 
+            {/* Pro presentations tier + limits */}
+            <Card className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <Sparkles className="w-5 h-5 text-fuchsia-600 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-foreground">
+                    {lang === "ar" ? "الباقة الاحترافية للعروض التفاعلية" : "Pro tier for interactive presentations"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "الباقة العادية محدودة بعدد الشرائح والصور والملفات والحجم. الباقة الاحترافية بلا حدود. يمكنك تفعيل الباقة لكل المعلمين أو لمعلم محدد من قسم المعلمين."
+                      : "The regular tier is capped on slides, images, files, and total size per deck. The Pro tier removes all caps. Enable globally here, or per teacher in the Teachers tab."}
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/30 px-4 py-3 cursor-pointer mb-4">
+                <div>
+                  <div className="font-bold text-foreground text-sm">
+                    {lang === "ar" ? "تفعيل الباقة الاحترافية للجميع" : "Enable Pro tier for everyone"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "عند التفعيل، كل المعلمين يستفيدون من الباقة الاحترافية بلا حدود."
+                      : "When on, every teacher gets the uncapped Pro tier."}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={presentationsProForAll}
+                  onChange={(e) => handleTogglePresentationsProForAll(e.target.checked)}
+                  className="w-5 h-5 accent-fuchsia-600 cursor-pointer"
+                />
+              </label>
+
+              <div className="space-y-3">
+                <div className="text-sm font-bold text-foreground">
+                  {lang === "ar" ? "حدود الباقة العادية لكل عرض" : "Regular tier per-deck limits"}
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {([
+                    ["maxSlidesRegular", lang === "ar" ? "عدد الشرائح" : "Slides", 1, 500],
+                    ["maxImagesRegular", lang === "ar" ? "عدد الصور" : "Images", 0, 1000],
+                    ["maxFilesRegular", lang === "ar" ? "عدد الملفات" : "Files", 0, 1000],
+                    ["maxSizeMbRegular", lang === "ar" ? "الحجم (MB)" : "Size (MB)", 1, 10240],
+                  ] as const).map(([key, label, min, max]) => (
+                    <label key={key} className="flex flex-col gap-1">
+                      <span className="text-xs font-bold text-muted-foreground">{label}</span>
+                      <input
+                        type="number"
+                        min={min}
+                        max={max}
+                        value={presentationLimitsInput[key]}
+                        onChange={(e) => {
+                          const v = Math.max(min, Math.min(max, parseInt(e.target.value, 10) || 0));
+                          setPresentationLimitsInput(prev => ({ ...prev, [key]: v }));
+                        }}
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-fuchsia-300"
+                      />
+                    </label>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSavePresentationLimits}
+                    disabled={savingPresentationLimits || JSON.stringify(presentationLimitsInput) === JSON.stringify(presentationLimits)}
+                    className="py-1.5 px-4 h-auto rounded-lg bg-fuchsia-600 text-white text-sm font-bold disabled:opacity-50 hover:bg-fuchsia-700 transition-colors"
+                  >
+                    {savingPresentationLimits ? (lang === "ar" ? "جارٍ الحفظ…" : "Saving…") : (lang === "ar" ? "حفظ الحدود" : "Save limits")}
+                  </button>
+                </div>
+              </div>
+            </Card>
+
             {/* Guest limit */}
             <Card className="p-5">
               <div className="flex items-start gap-3 mb-4">
@@ -1922,6 +2303,60 @@ export default function AdminPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">{game.desc}</p>
                     </div>
                     {game.value
+                      ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
+                      : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                  </button>
+                ))}
+
+                <div className="border-t border-border/40 my-2" />
+                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "مسابقات عامة" : "General Quizzes"}</p>
+
+                {([
+                  {
+                    key: "showQuranSection",
+                    value: showQuranSection,
+                    set: setShowQuranSection,
+                    label: lang === "ar" ? "إظهار قسم المسابقات القرآنية" : "Show Quranic quizzes section",
+                    desc: lang === "ar" ? "افتراضياً مخفي. فعّله لإظهار قسم «مسابقات قرآنية» وفئاته لكل المستخدمين." : "Hidden by default. Enable to show the Quranic section to everyone.",
+                  },
+                  {
+                    key: "showGeneralCertificates",
+                    value: showGeneralCertificates,
+                    set: setShowGeneralCertificates,
+                    label: lang === "ar" ? "إظهار شهادات مسابقات عامة" : "Show general quiz certificates",
+                    desc: lang === "ar" ? "افتراضياً مخفي. فعّله لتمكين منح وعرض شهادات الإتمام." : "Hidden by default. Enable to grant and display completion certificates.",
+                  },
+                  {
+                    key: "showMaraqui",
+                    value: showMaraqui,
+                    set: setShowMaraqui,
+                    label: lang === "ar" ? "إظهار لعبة مَراقي للجميع" : "Show Maraqui game to everyone",
+                    desc: lang === "ar" ? "مخفية افتراضياً لجميع المستخدمين (تظل ظاهرة لك دائماً كمسؤول). فعّلها لإظهارها للمعلمين والطلاب." : "Hidden by default for all users (always visible to you as admin). Enable to show it to teachers and students.",
+                  },
+                ] as const).map(t2 => (
+                  <button
+                    key={t2.key}
+                    onClick={async () => {
+                      const next = !t2.value;
+                      t2.set(next);
+                      setSavingGameVisibility(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                          method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+                          body: JSON.stringify({ [t2.key]: next }),
+                        });
+                        if (res.ok) toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+                        else t2.set(!next);
+                      } catch { t2.set(!next); } finally { setSavingGameVisibility(false); }
+                    }}
+                    disabled={savingGameVisibility}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3 hover:bg-muted/30 transition-colors text-start disabled:opacity-60"
+                  >
+                    <div>
+                      <p className="font-bold text-sm text-foreground">{t2.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t2.desc}</p>
+                    </div>
+                    {t2.value
                       ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
                       : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
                   </button>
@@ -2181,56 +2616,18 @@ export default function AdminPage() {
                   const tl = typeLabels[fb.type] || typeLabels.other;
                   const sl = statusLabels[fb.status] || statusLabels.new;
                   return (
-                    <motion.div key={fb.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                      <Card className={`p-4 ${fb.status === "new" ? "border-yellow-300 dark:border-yellow-700" : ""}`}>
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tl.color}`}>
-                                {lang === "ar" ? tl.ar : tl.en}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${sl.color}`}>
-                                {lang === "ar" ? sl.ar : sl.en}
-                              </span>
-                              <span className="text-xs text-muted-foreground font-bold">{fb.name}</span>
-                              {fb.email && <span className="text-xs text-muted-foreground">{fb.email}</span>}
-                              <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {formatDate(fb.createdAt)}
-                              </span>
-                            </div>
-                            <p className="text-sm text-foreground whitespace-pre-wrap">{fb.message}</p>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {fb.status === "new" && (
-                              <button
-                                onClick={() => updateFeedbackStatus(fb.id, "read")}
-                                className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-muted-foreground hover:text-blue-600 transition-colors"
-                                title={lang === "ar" ? "تحديد كمقروء" : "Mark as read"}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            )}
-                            {fb.status !== "resolved" && (
-                              <button
-                                onClick={() => updateFeedbackStatus(fb.id, "resolved")}
-                                className="p-1.5 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 text-muted-foreground hover:text-green-600 transition-colors"
-                                title={lang === "ar" ? "تم الرد" : "Mark as resolved"}
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => deleteFeedback(fb.id)}
-                              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
-                              title={lang === "ar" ? "حذف" : "Delete"}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </Card>
-                    </motion.div>
+                    <FeedbackCard
+                      key={fb.id}
+                      fb={fb}
+                      i={i}
+                      lang={lang}
+                      tl={tl}
+                      sl={sl}
+                      formatDate={formatDate}
+                      onMarkStatus={updateFeedbackStatus}
+                      onDelete={deleteFeedback}
+                      onRespond={respondToFeedback}
+                    />
                   );
                 })}
               </div>
@@ -2712,6 +3109,8 @@ export default function AdminPage() {
         )}
 
         {activeTab === "ai-chat" && <AdminAiChatTab lang={lang} />}
+
+        {activeTab === "activity-log" && <ActivityTab lang={lang} />}
 
         {activeTab === "letrly" && <AdminLetrlyTab lang={lang} />}
 

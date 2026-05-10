@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, studentsTable, studentAccountsTable } from "@workspace/db";
 import { eq, and, isNull, or } from "drizzle-orm";
 import { z } from "zod/v4";
+import { featureAccess } from "@workspace/billing";
 
 const router: IRouter = Router();
 
@@ -66,6 +67,16 @@ router.post("/students", async (req, res) => {
     const parsed = CreateStudentBody.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
 
+    // Subscription gate: enforce maxStudents cap (NULL = unlimited).
+    const gate = await featureAccess.check(teacherId, "add_student");
+    if (!gate.allowed) {
+      res.status(403).json({
+        message: "وصلت إلى الحد الأقصى لعدد الطلاب في باقتك الحالية. يرجى ترقية الاشتراك.",
+        reason: gate.reason, limit: gate.limit, used: gate.used, remaining: gate.remaining,
+      });
+      return;
+    }
+
     const { accountUsername, ...rest } = parsed.data;
     const accountLink = await resolveAccountUsername(accountUsername);
     if (accountLink && "error" in accountLink) {
@@ -77,6 +88,9 @@ router.post("/students", async (req, res) => {
       teacherId,
       ...(accountLink ? { accountUsername: accountLink.accountUsername, studentAccountId: accountLink.studentAccountId } : {}),
     }).returning();
+
+    // Increment the (informational) monthly counter — limit enforcement is on totals.
+    await featureAccess.increment(teacherId, "add_student").catch(() => {});
 
     res.status(201).json(student);
   } catch (err: unknown) {
@@ -94,6 +108,16 @@ router.post("/students/bulk", async (req, res) => {
 
     const parsed = BulkCreateBody.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
+
+    // Subscription gate: ensure the bulk insert won't exceed the maxStudents limit.
+    const gate = await featureAccess.check(teacherId, "add_student");
+    if (gate.limit !== null && gate.used + parsed.data.students.length > gate.limit) {
+      res.status(403).json({
+        message: `لا يمكنك إضافة ${parsed.data.students.length} طلاب — يتبقى لك ${gate.remaining ?? 0} فقط في باقتك الحالية.`,
+        reason: "limit_reached", limit: gate.limit, used: gate.used, remaining: gate.remaining,
+      });
+      return;
+    }
 
     const values = parsed.data.students.map((s) => ({ ...s, teacherId }));
     const inserted = await db.insert(studentsTable).values(values).returning();

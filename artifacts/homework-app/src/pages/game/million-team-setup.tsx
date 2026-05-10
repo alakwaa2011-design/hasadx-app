@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Play, ArrowRight, ArrowLeft, BookOpen, Shuffle,
-  Users, Pencil, Hash, Swords, LogIn, CheckCircle2,
+  Users, Pencil, Hash, Swords, LogIn, CheckCircle2, Upload, X,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
@@ -40,6 +40,30 @@ interface GameQuestion {
 const STORAGE_KEY_NAME = "millionPlayerName";
 const STORAGE_KEY_TEAM = "millionPlayerTeam";
 
+const TEAM_EMOJIS = [
+  "🔵","🔴","🟢","🟡","🟣","🟠",
+  "⚽","🏀","🎯","🦁","🐯","🦅",
+  "🌟","⚡","🔥","❄️","🏆","🛡️",
+  "💎","🚀","🦊","🎭","🌈","🎖️",
+];
+
+async function resizeImageToDataUrl(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = url;
+  });
+}
+
 export default function MillionTeamSetup() {
   const { lang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -50,17 +74,26 @@ export default function MillionTeamSetup() {
   const [tab, setTab] = useState<Tab>("create");
   const [isTeacher, setIsTeacher] = useState<boolean | null>(null);
 
-  // Teacher create
   const [questionSource, setQuestionSource] = useState<"random" | "assignment">("random");
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<PublicAssignment | null>(null);
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const [competitionTitle, setCompetitionTitle] = useState("");
   const [teamNameA, setTeamNameA] = useState(ar ? "الفريق أ" : "Team A");
   const [teamNameB, setTeamNameB] = useState(ar ? "الفريق ب" : "Team B");
+  const [teamEmojiA, setTeamEmojiA] = useState("🔵");
+  const [teamEmojiB, setTeamEmojiB] = useState("🔴");
+  const [teamImageA, setTeamImageA] = useState<string>("");
+  const [teamImageB, setTeamImageB] = useState<string>("");
+  const [showEmojiA, setShowEmojiA] = useState(false);
+  const [showEmojiB, setShowEmojiB] = useState(false);
 
-  // Student join
+  const fileInputA = useRef<HTMLInputElement>(null);
+  const fileInputB = useRef<HTMLInputElement>(null);
+
   const [pinInput, setPinInput] = useState("");
   const [nameInput, setNameInput] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY_NAME) || ""; } catch { return ""; }
@@ -94,6 +127,20 @@ export default function MillionTeamSetup() {
       .catch(() => setAssignments([]))
       .finally(() => setLoadingAssignments(false));
   }, [questionSource, isTeacher]);
+
+  const handleImageUpload = useCallback(async (team: "A" | "B", file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error(ar ? "يجب أن يكون الملف صورة" : "File must be an image");
+      return;
+    }
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      if (team === "A") setTeamImageA(dataUrl);
+      else setTeamImageB(dataUrl);
+    } catch {
+      toast.error(ar ? "تعذّر قراءة الصورة" : "Could not read image");
+    }
+  }, [ar]);
 
   const handleCreate = useCallback(async () => {
     if (creating) return;
@@ -129,14 +176,21 @@ export default function MillionTeamSetup() {
           setCreating(false);
           return;
         }
-        try { sessionStorage.setItem(`millionTeamHostToken:${res.pin}`, res.hostToken); } catch { /* ignore */ }
+        try {
+          sessionStorage.setItem(`millionTeamHostToken:${res.pin}`, res.hostToken);
+          sessionStorage.setItem(`millionTeamTitle:${res.pin}`, competitionTitle.trim());
+          sessionStorage.setItem(`millionTeamEmojiA:${res.pin}`, teamEmojiA);
+          sessionStorage.setItem(`millionTeamEmojiB:${res.pin}`, teamEmojiB);
+          if (teamImageA) sessionStorage.setItem(`millionTeamImgA:${res.pin}`, teamImageA);
+          if (teamImageB) sessionStorage.setItem(`millionTeamImgB:${res.pin}`, teamImageB);
+        } catch { /* ignore */ }
         setLocation(`/game/million/team-host/${res.pin}?token=${encodeURIComponent(res.hostToken)}`);
       });
     } catch {
       toast.error(ar ? "حدث خطأ" : "An error occurred");
       setCreating(false);
     }
-  }, [creating, questionSource, selectedAssignmentId, ar, setLocation, teamNameA, teamNameB]);
+  }, [creating, questionSource, selectedAssignmentId, ar, setLocation, teamNameA, teamNameB, competitionTitle, teamEmojiA, teamEmojiB, teamImageA, teamImageB]);
 
   const handleJoin = useCallback(() => {
     const name = nameInput.trim();
@@ -161,6 +215,119 @@ export default function MillionTeamSetup() {
       </Layout>
     );
   }
+
+  const TeamCard = ({ team }: { team: "A" | "B" }) => {
+    const isA = team === "A";
+    const name = isA ? teamNameA : teamNameB;
+    const setName = isA ? setTeamNameA : setTeamNameB;
+    const emoji = isA ? teamEmojiA : teamEmojiB;
+    const setEmoji = isA ? setTeamEmojiA : setTeamEmojiB;
+    const image = isA ? teamImageA : teamImageB;
+    const setImage = isA ? setTeamImageA : setTeamImageB;
+    const showEmoji = isA ? showEmojiA : showEmojiB;
+    const setShowEmoji = isA ? setShowEmojiA : setShowEmojiB;
+    const fileRef = isA ? fileInputA : fileInputB;
+
+    const accent = isA
+      ? { bg: "bg-sky-50 border-sky-200", label: "text-sky-700", badge: "bg-sky-100 text-sky-700", ring: "focus:ring-sky-300", inputBg: "bg-white border-sky-200" }
+      : { bg: "bg-rose-50 border-rose-200", label: "text-rose-700", badge: "bg-rose-100 text-rose-700", ring: "focus:ring-rose-300", inputBg: "bg-white border-rose-200" };
+
+    return (
+      <div className={`rounded-2xl border p-4 ${accent.bg}`}>
+        <div className={`text-xs font-black mb-3 ${accent.label}`}>
+          {isA ? (ar ? "الفريق الأول" : "Team A") : (ar ? "الفريق الثاني" : "Team B")}
+        </div>
+
+        {/* Team name */}
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          maxLength={20}
+          placeholder={isA ? (ar ? "الفريق أ" : "Team A") : (ar ? "الفريق ب" : "Team B")}
+          className={`w-full px-3 py-2 rounded-xl text-sm font-bold border focus:outline-none focus:ring-2 ${accent.inputBg} ${accent.ring} text-gray-800 placeholder-gray-400 mb-3`}
+        />
+
+        {/* Logo row: emoji + image */}
+        <div className="flex items-center gap-2 mb-2">
+          {/* Emoji picker trigger */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => { setShowEmoji(v => !v); }}
+              className={`w-10 h-10 rounded-xl text-xl flex items-center justify-center border-2 transition-all hover:scale-110 ${accent.inputBg} border-gray-200`}
+              title={ar ? "شعار الفريق (اختياري)" : "Team logo (optional)"}
+            >
+              {emoji}
+            </button>
+            <AnimatePresence>
+              {showEmoji && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                  className="absolute z-50 top-12 start-0 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 w-52"
+                >
+                  <div className="text-[10px] font-bold text-gray-400 mb-2 text-center">
+                    {ar ? "اختر شعاراً (اختياري)" : "Pick a logo (optional)"}
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {TEAM_EMOJIS.map(e => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => { setEmoji(e); setShowEmoji(false); }}
+                        className={`text-lg p-1 rounded-lg hover:bg-gray-100 transition-all ${emoji === e ? "bg-gray-100 ring-2 ring-blue-400" : ""}`}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Image upload */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async e => {
+              const f = e.target.files?.[0];
+              if (f) await handleImageUpload(team, f);
+              if (fileRef.current) fileRef.current.value = "";
+            }}
+          />
+          {image ? (
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-gray-200 shrink-0">
+              <img src={image} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setImage("")}
+                className="absolute top-0 end-0 w-4 h-4 bg-red-500 text-white rounded-bl-lg flex items-center justify-center"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all hover:scale-105 ${accent.inputBg} border-dashed border-gray-300 text-gray-500`}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              {ar ? "صورة الفريق" : "Team photo"}
+            </button>
+          )}
+          <span className={`text-[10px] font-medium ${accent.label} opacity-60`}>
+            {ar ? "اختياري" : "optional"}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Layout>
@@ -205,9 +372,7 @@ export default function MillionTeamSetup() {
             <button
               onClick={() => setTab("create")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-black transition-all ${
-                tab === "create"
-                  ? "text-white"
-                  : "text-blue-300/60 hover:text-blue-200"
+                tab === "create" ? "text-white" : "text-blue-300/60 hover:text-blue-200"
               }`}
               style={tab === "create" ? { background: "linear-gradient(135deg, #1d4ed8, #2563eb)" } : {}}
             >
@@ -217,9 +382,7 @@ export default function MillionTeamSetup() {
             <button
               onClick={() => setTab("join")}
               className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-black transition-all ${
-                tab === "join"
-                  ? "text-white"
-                  : "text-blue-300/60 hover:text-blue-200"
+                tab === "join" ? "text-white" : "text-blue-300/60 hover:text-blue-200"
               }`}
               style={tab === "join" ? { background: "linear-gradient(135deg, #059669, #10b981)" } : {}}
             >
@@ -243,43 +406,32 @@ export default function MillionTeamSetup() {
                   </div>
                 ) : (
                   <>
-                    {/* Team Names */}
-                    <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                    {/* Competition Title */}
+                    <div className="rounded-2xl p-5 bg-white/95 border border-amber-200 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Trophy className="w-4 h-4 text-amber-500" />
+                        <h3 className="text-gray-800 font-black text-sm">{ar ? "عنوان المسابقة" : "Competition Title"}</h3>
+                        <span className="text-[10px] text-gray-400 font-medium">{ar ? "(اختياري)" : "(optional)"}</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={competitionTitle}
+                        onChange={e => setCompetitionTitle(e.target.value)}
+                        maxLength={60}
+                        placeholder={ar ? "مثال: مسابقة نهاية الفصل — الفيزياء" : "e.g. End of Term Quiz — Science"}
+                        className="w-full px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-gray-800 font-bold text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      />
+                    </div>
+
+                    {/* Team Cards */}
+                    <div className="rounded-2xl p-5 bg-white/95 border border-gray-200 shadow-sm">
                       <div className="flex items-center gap-2 mb-4">
-                        <Pencil className="w-4 h-4 text-amber-400" />
-                        <h3 className="text-white font-black text-sm">{ar ? "أسماء الفريقين" : "Team Names"}</h3>
+                        <Pencil className="w-4 h-4 text-indigo-500" />
+                        <h3 className="text-gray-800 font-black text-sm">{ar ? "الفريقان" : "The Two Teams"}</h3>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <div className="w-3 h-3 rounded-full bg-blue-400" />
-                            <span className="text-blue-300 text-xs font-bold">{ar ? "الفريق الأول" : "Team A"}</span>
-                          </div>
-                          <input
-                            type="text"
-                            value={teamNameA}
-                            onChange={e => setTeamNameA(e.target.value)}
-                            maxLength={20}
-                            placeholder={ar ? "الفريق أ" : "Team A"}
-                            className="w-full px-3 py-2 rounded-xl text-white text-sm font-bold placeholder-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            style={{ background: "rgba(59,130,246,0.12)", border: "1.5px solid rgba(59,130,246,0.4)" }}
-                          />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            <div className="w-3 h-3 rounded-full bg-red-400" />
-                            <span className="text-red-300 text-xs font-bold">{ar ? "الفريق الثاني" : "Team B"}</span>
-                          </div>
-                          <input
-                            type="text"
-                            value={teamNameB}
-                            onChange={e => setTeamNameB(e.target.value)}
-                            maxLength={20}
-                            placeholder={ar ? "الفريق ب" : "Team B"}
-                            className="w-full px-3 py-2 rounded-xl text-white text-sm font-bold placeholder-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
-                            style={{ background: "rgba(239,68,68,0.12)", border: "1.5px solid rgba(239,68,68,0.4)" }}
-                          />
-                        </div>
+                        <TeamCard team="A" />
+                        <TeamCard team="B" />
                       </div>
                     </div>
 
@@ -411,25 +563,24 @@ export default function MillionTeamSetup() {
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                 className="space-y-5"
               >
-                <div className="rounded-2xl p-5 space-y-4" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                <div className="rounded-2xl p-5 space-y-4 bg-white/95 border border-gray-200 shadow-sm">
 
                   {/* Name */}
                   <div>
-                    <label className="text-blue-300 text-xs font-bold block mb-1.5">{ar ? "اسمك" : "Your Name"}</label>
+                    <label className="text-gray-700 text-xs font-bold block mb-1.5">{ar ? "اسمك" : "Your Name"}</label>
                     <input
                       type="text"
                       value={nameInput}
                       onChange={e => { setNameInput(e.target.value); setJoinError(""); }}
                       maxLength={40}
                       placeholder={ar ? "أدخل اسمك..." : "Enter your name..."}
-                      className="w-full px-3 py-3 rounded-xl text-white text-sm font-bold placeholder-blue-600 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      style={{ background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(255,255,255,0.2)" }}
+                      className="w-full px-3 py-3 rounded-xl text-gray-800 text-sm font-bold placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-gray-50 border border-gray-200"
                     />
                   </div>
 
                   {/* PIN */}
                   <div>
-                    <label className="text-blue-300 text-xs font-bold block mb-1.5 flex items-center gap-1.5">
+                    <label className="text-gray-700 text-xs font-bold block mb-1.5 flex items-center gap-1.5">
                       <Hash className="w-3 h-3" />
                       {ar ? "رمز الغرفة (PIN)" : "Room PIN"}
                     </label>
@@ -441,47 +592,44 @@ export default function MillionTeamSetup() {
                       maxLength={6}
                       inputMode="numeric"
                       placeholder="123456"
-                      className="w-full px-3 py-3 rounded-xl text-white text-center text-2xl font-black tracking-widest placeholder-blue-600 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      style={{ background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(255,255,255,0.2)" }}
+                      className="w-full px-3 py-3 rounded-xl text-gray-800 text-center text-2xl font-black tracking-widest placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-gray-50 border border-gray-200"
                       dir="ltr"
                     />
                   </div>
 
                   {/* Team Choice */}
                   <div>
-                    <label className="text-blue-300 text-xs font-bold block mb-2">{ar ? "اختر فريقك" : "Choose Your Team"}</label>
+                    <label className="text-gray-700 text-xs font-bold block mb-2">{ar ? "اختر فريقك" : "Choose Your Team"}</label>
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setSelectedTeam("A")}
-                        className={`py-4 rounded-xl font-black text-sm transition-all ${
-                          selectedTeam === "A" ? "border-2 border-blue-400" : "border border-white/15 hover:border-blue-400/50"
+                        className={`py-5 rounded-2xl font-black text-sm transition-all border-2 ${
+                          selectedTeam === "A"
+                            ? "border-sky-500 bg-sky-500 text-white shadow-lg shadow-sky-200"
+                            : "border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-400 hover:bg-sky-100"
                         }`}
-                        style={selectedTeam === "A"
-                          ? { background: "rgba(59,130,246,0.25)" }
-                          : { background: "rgba(59,130,246,0.08)" }}
                       >
-                        <div className="text-2xl mb-1">🔵</div>
-                        <div className="text-white text-xs">{ar ? "الفريق أ" : "Team A"}</div>
-                        {selectedTeam === "A" && <div className="text-blue-300 text-[10px] mt-1">✓ {ar ? "محدد" : "Selected"}</div>}
+                        <div className="text-3xl mb-1.5">🔵</div>
+                        <div className="text-sm font-black">{ar ? "الفريق أ" : "Team A"}</div>
+                        {selectedTeam === "A" && <div className="text-sky-100 text-[10px] mt-1">✓ {ar ? "محدد" : "Selected"}</div>}
                       </button>
                       <button
                         onClick={() => setSelectedTeam("B")}
-                        className={`py-4 rounded-xl font-black text-sm transition-all ${
-                          selectedTeam === "B" ? "border-2 border-red-400" : "border border-white/15 hover:border-red-400/50"
+                        className={`py-5 rounded-2xl font-black text-sm transition-all border-2 ${
+                          selectedTeam === "B"
+                            ? "border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200"
+                            : "border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-400 hover:bg-rose-100"
                         }`}
-                        style={selectedTeam === "B"
-                          ? { background: "rgba(239,68,68,0.25)" }
-                          : { background: "rgba(239,68,68,0.08)" }}
                       >
-                        <div className="text-2xl mb-1">🔴</div>
-                        <div className="text-white text-xs">{ar ? "الفريق ب" : "Team B"}</div>
-                        {selectedTeam === "B" && <div className="text-red-300 text-[10px] mt-1">✓ {ar ? "محدد" : "Selected"}</div>}
+                        <div className="text-3xl mb-1.5">🔴</div>
+                        <div className="text-sm font-black">{ar ? "الفريق ب" : "Team B"}</div>
+                        {selectedTeam === "B" && <div className="text-rose-100 text-[10px] mt-1">✓ {ar ? "محدد" : "Selected"}</div>}
                       </button>
                     </div>
                   </div>
 
                   {joinError && (
-                    <p className="text-red-400 text-xs text-center font-bold">{joinError}</p>
+                    <p className="text-red-500 text-xs text-center font-bold">{joinError}</p>
                   )}
 
                   <motion.button

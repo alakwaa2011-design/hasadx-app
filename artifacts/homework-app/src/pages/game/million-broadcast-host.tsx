@@ -66,7 +66,7 @@ export default function MillionBroadcastHost() {
   const joinedRef = useRef(false);
   const audio = useGameAudio();
   const bgStartedRef = useRef(false);
-  const joinUrl = pin ? `${typeof window !== "undefined" ? window.location.origin : ""}/game/million/join/${pin}` : "";
+  const joinUrl = pin ? `${typeof window !== "undefined" ? window.location.origin : ""}${import.meta.env.BASE_URL}game/million/join/${pin}` : "";
 
   // Start background music after first user interaction (browser autoplay policy)
   useEffect(() => {

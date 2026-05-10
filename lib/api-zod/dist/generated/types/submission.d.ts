@@ -17,6 +17,7 @@ export interface Submission {
     teacherAdjustedPoints?: number | null;
     teacherNote?: string | null;
     aiFeedback?: string | null;
+    durationSeconds?: number | null;
     submittedAt: Date;
 }
 //# sourceMappingURL=submission.d.ts.map

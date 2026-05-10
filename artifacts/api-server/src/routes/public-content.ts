@@ -201,6 +201,9 @@ router.get("/public/settings", async (req, res) => {
         showScrambleGame: platformSettingsTable.showScrambleGame,
         showTugGame: platformSettingsTable.showTugGame,
         showCapitalsGame: platformSettingsTable.showCapitalsGame,
+        showQuranSection: platformSettingsTable.showQuranSection,
+        showGeneralCertificates: platformSettingsTable.showGeneralCertificates,
+        showMaraqui: platformSettingsTable.showMaraqui,
       })
       .from(platformSettingsTable)
       .limit(1);
@@ -220,6 +223,9 @@ router.get("/public/settings", async (req, res) => {
       showScrambleGame: row?.showScrambleGame ?? true,
       showTugGame: row?.showTugGame ?? false,
       showCapitalsGame: row?.showCapitalsGame ?? true,
+      showQuranSection: row?.showQuranSection ?? false,
+      showGeneralCertificates: row?.showGeneralCertificates ?? false,
+      showMaraqui: row?.showMaraqui ?? false,
     });
   } catch (err) {
     req.log.error(err, "Public settings error");

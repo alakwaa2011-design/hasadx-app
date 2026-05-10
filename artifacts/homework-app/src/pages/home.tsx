@@ -39,17 +39,23 @@ import {
   Smartphone,
   Download,
   GraduationCap,
+  Crown,
   Presentation,
   BarChart3,
   ShieldCheck,
   Lightbulb,
   Puzzle,
+  Swords,
+  ArrowUpRight,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Card } from "@/components/ui-elements";
 import { InstallAppButton } from "@/components/install-app-button";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 import { hasSavedDraft } from "@/lib/guest-draft";
 import { getSocket, disconnectSocket } from "@/lib/socket";
+import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const GUEST_COUNT_KEY = "guestUsageCount";
@@ -515,9 +521,11 @@ function WameethQuickStartModal({
     setLoading(true);
     setError(null);
     const socket = getSocket();
+    let remembered = "";
+    try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
     socket.emit(
       "teacher:create-game",
-      { assignmentId: selected, gameMode: "classic" },
+      { assignmentId: selected, gameMode: "classic", targetClass: remembered || undefined },
       (res: { pin?: string; error?: string }) => {
         setLoading(false);
         if (res.error || !res.pin) {
@@ -983,6 +991,23 @@ export default function Home() {
   const { t, lang, setLang } = useI18n();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const isRtl = lang === "ar";
+  useSeo(
+    isRtl
+      ? {
+          title: "منصة حصاد | HasadX — عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة",
+          description:
+            "منصة حصاد (HasadX) للتعليم التفاعلي العربي: أنشئ عروضًا تفاعلية ومسابقات تعليمية وواجبات وأنشطة، وأنشئ عروضًا بالذكاء الاصطناعي. ابدأ الآن مجانًا.",
+          canonicalPath: "/",
+          ogImage: "/opengraph.jpg",
+        }
+      : {
+          title: "HasadX — Interactive presentations, quizzes & AI-built lessons for Arabic classrooms",
+          description:
+            "HasadX is the Arabic interactive teaching platform: build live presentations, quizzes, assignments and AI-generated lessons in minutes.",
+          canonicalPath: "/",
+          ogImage: "/opengraph.jpg",
+        },
+  );
   const prefersReducedMotion = useReducedMotion();
   const [, setLocation] = useLocation();
   const [pin, setPin] = useState("");
@@ -1006,7 +1031,7 @@ export default function Home() {
   const stats = usePublicStats();
   const { assignments, loading: contentLoading } = usePublicContent();
   const { data: teacherData, isLoading: teacherAuthLoading } =
-    useGetCurrentTeacher({ query: { retry: false } });
+    useGetCurrentTeacher({ query: { retry: false } as any });
   const isLoggedIn: boolean | null = teacherAuthLoading
     ? null
     : teacherData
@@ -1017,6 +1042,46 @@ export default function Home() {
     name: teacherData?.name ?? null,
     id: teacherData?.id ?? null,
   };
+
+  // Auto-route logged-in users by role:
+  //  - admin   → last-used surface (organizer / admin / teacher) when remembered, else /teacher
+  //  - organizer → /organizer (vibrant organizer dashboard)
+  //  - teacher → /teacher (default classroom dashboard)
+  useEffect(() => {
+    if (!teacher.isLoggedIn) return;
+    const isAdmin =
+      Boolean(teacherData?.isAdmin) || teacherData?.role === "admin";
+    if (isAdmin) {
+      setLocation(getAdminLastSurfacePath() ?? "/teacher");
+    } else if (teacherData?.role === "organizer") {
+      setLocation("/organizer");
+    } else {
+      setLocation("/teacher");
+    }
+  }, [teacher.isLoggedIn, teacherData, setLocation]);
+
+  // Logged-in *student account* sessions skip the public landing and go
+  // straight to their dashboard. Guests / PIN-only visitors stay on the
+  // home page so they can see the marketing landing and the role chooser.
+  useEffect(() => {
+    if (teacher.isLoggedIn !== false) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/student-auth/me`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data && typeof data === "object" && (data as { id?: number }).id) {
+          setLocation("/student/dashboard");
+        }
+      })
+      .catch(() => {
+        // ignore — guest visitor stays on home
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teacher.isLoggedIn, setLocation]);
+
   const { ownAssignments, ownLoading } = useTeacherAssignments(teacher.id);
   const [teacherTab, setTeacherTab] = useState<"mine" | "shared">("mine");
   const [showGuestGate, setShowGuestGate] = useState(false);
@@ -1036,6 +1101,7 @@ export default function Home() {
     showScrambleGame: true,
     showTugGame: false,
     showCapitalsGame: true,
+    showMaraqui: false,
   });
   const {
     guestLimit,
@@ -1089,6 +1155,9 @@ export default function Home() {
             : {}),
           ...(d?.showCapitalsGame !== undefined
             ? { showCapitalsGame: d.showCapitalsGame }
+            : {}),
+          ...(d?.showMaraqui !== undefined
+            ? { showMaraqui: d.showMaraqui }
             : {}),
         }));
       });
@@ -1149,9 +1218,11 @@ export default function Home() {
   const handleStartWithBots = (assignmentId: number) => {
     setBotGameLoading(assignmentId);
     const socket = getSocket();
+    let remembered = "";
+    try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
     socket.emit(
       "teacher:create-game",
-      { assignmentId, gameMode: "solo" },
+      { assignmentId, gameMode: "solo", targetClass: remembered || undefined },
       (res: { pin?: string; error?: string }) => {
         if (res.error) {
           setBotGameLoading(null);
@@ -1319,7 +1390,21 @@ export default function Home() {
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight;
 
+  // Note: the role-aware redirect above (using teacherData.role) handles
+  // routing for logged-in users. We intentionally do NOT add a second
+  // unconditional redirect here — that would override the organizer route.
+
   if (isLoggedIn === true) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (false) {
     const activeList = teacherTab === "mine" ? ownAssignments : assignments;
     const activeLoading = teacherTab === "mine" ? ownLoading : contentLoading;
 
@@ -1755,7 +1840,10 @@ export default function Home() {
           : "Progress through stages and master the content — graded MCQ questions",
       iconBg: "bg-teal-500/10",
       iconColor: "text-teal-600",
-      visible: true,
+      visible:
+        Boolean(teacherData?.isAdmin) ||
+        teacherData?.role === "admin" ||
+        Boolean(platformSettings.showMaraqui),
     },
     {
       href: "/game/million",
@@ -1959,27 +2047,16 @@ export default function Home() {
                 delay: 0.6,
               },
             ].map((d, i) => (
+              /* Perf fix: dropped the infinite y-axis animation. Eight
+                 background icons re-painting at 60 fps were combining
+                 with the header's backdrop-blur to choke mouse moves
+                 over the hero. Decorations now fade in once and stay
+                 still — visually identical at rest. */
               <motion.div
                 key={i}
                 initial={{ opacity: 0 }}
-                animate={
-                  prefersReducedMotion
-                    ? { opacity: 0.1 }
-                    : { opacity: 0.1, y: [0, -14, 0] }
-                }
-                transition={
-                  prefersReducedMotion
-                    ? { opacity: { duration: 1.2, delay: d.delay } }
-                    : {
-                        opacity: { duration: 1.2, delay: d.delay },
-                        y: {
-                          duration: d.dur,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: d.delay,
-                        },
-                      }
-                }
+                animate={{ opacity: 0.1 }}
+                transition={{ duration: 1.2, delay: d.delay }}
                 style={{
                   position: "absolute",
                   top: d.top,
@@ -2061,7 +2138,7 @@ export default function Home() {
                   maxWidth: "820px",
                 }}
               >
-                حوّل لقاءاتك وأنشطتك إلى
+                أنشئ وشارك وتفاعل في
                 <br />
                 <span
                   style={{
@@ -2070,7 +2147,7 @@ export default function Home() {
                     display: "inline-block",
                   }}
                 >
-                  تجربة تفاعلية
+                  تجربة تعليمية متكاملة
                   <span
                     style={{
                       position: "absolute",
@@ -2082,8 +2159,7 @@ export default function Home() {
                       borderRadius: "999px",
                     }}
                   />
-                </span>{" "}
-                لا تُنسى
+                </span>
               </motion.h1>
 
               {/* Subtitle */}
@@ -2095,12 +2171,187 @@ export default function Home() {
                 style={{
                   fontSize: "clamp(13px,1.8vw,20px)",
                   color: "#1b6b3f",
-                  margin: "0 0 clamp(16px,3vh,24px)",
+                  margin: "0 auto clamp(16px,3vh,24px)",
                   fontWeight: 600,
+                  maxWidth: "640px",
+                  lineHeight: 1.7,
                 }}
               >
-                أنشئ، شارك، وتفاعل — في ثوانٍ
+                أدوات ذكية للمعلمين، تجارب ممتعة للطلاب،
+                <br />
+                ومسابقات تفاعلية للجميع
               </motion.p>
+            </motion.section>
+
+            {/* ===== WHO IS THIS FOR ===== */}
+            <motion.section
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              dir="rtl"
+              style={{
+                maxWidth: "900px",
+                margin: "clamp(32px,5vh,56px) auto clamp(22px,3.5vh,32px)",
+                padding: "0 clamp(12px,3vw,20px)",
+              }}
+            >
+              {/* Three role cards — Teacher / Organizer / Student.
+                  Mobile: compact 3-column grid so all three fit above the fold.
+                  Desktop (sm+): full-height vertical card layout with description. */}
+              <div className="grid grid-cols-3 gap-2.5 sm:gap-5 items-stretch">
+                {(() => {
+                  const roleCards = [
+                    {
+                      key: "teacher",
+                      href: "/register?role=teacher",
+                      Icon: GraduationCap,
+                      title: "معلم",
+                      desc: "أنشئ دروساً تفاعلية، واجبات،\nاختبارات وخطط بسهولة",
+                      extra: null as string | null,
+                      cta: "ابدأ كمعلم",
+                      bg: "linear-gradient(180deg,#f1f9ec 0%,#e6f3dd 100%)",
+                      border: "rgba(27,107,63,0.18)",
+                      iconBg: "rgba(27,107,63,0.14)",
+                      iconColor: "#1b6b3f",
+                      titleColor: "#13502e",
+                      descColor: "#3a6a4d",
+                      btnBg: "linear-gradient(180deg,#1f8246,#16693a)",
+                      btnShadow: "0 6px 18px -6px rgba(27,107,63,0.55)",
+                      delay: 0.05,
+                    },
+                    {
+                      key: "organizer",
+                      href: "/register?role=organizer",
+                      Icon: Trophy,
+                      title: "منظم فعاليات",
+                      desc: "شغّل مسابقات حماسية في أي\nتجمع أو لقاء خلال ثوانٍ",
+                      extra: null as string | null,
+                      cta: "ابدأ مسابقة",
+                      bg: "linear-gradient(180deg,#fff8e6 0%,#fff1cf 100%)",
+                      border: "rgba(215,165,29,0.40)",
+                      iconBg: "rgba(215,165,29,0.18)",
+                      iconColor: "#b88712",
+                      titleColor: "#9a6f0c",
+                      descColor: "#7a5a14",
+                      btnBg: "linear-gradient(180deg,#f0a929,#d18a14)",
+                      btnShadow: "0 6px 18px -6px rgba(215,165,29,0.55)",
+                      delay: 0.10,
+                    },
+                    {
+                      key: "student",
+                      href: "/student/login",
+                      Icon: Gamepad2,
+                      title: "طالب / مشارك",
+                      desc: "العب، شارك في التحديات، واجمع\nنقاطك ونافس على الصدارة",
+                      extra: "🏆 تصدر الترتيب بين أصدقائك",
+                      cta: "ابدأ اللعب",
+                      bg: "linear-gradient(180deg,#eef4ff 0%,#dfeaff 100%)",
+                      border: "rgba(37,99,235,0.22)",
+                      iconBg: "rgba(37,99,235,0.14)",
+                      iconColor: "#2563eb",
+                      titleColor: "#1d4ed8",
+                      descColor: "#3a4f7a",
+                      btnBg: "linear-gradient(180deg,#2f6ff0,#1d50c8)",
+                      btnShadow: "0 6px 18px -6px rgba(37,99,235,0.55)",
+                      delay: 0.15,
+                    },
+                  ];
+                  return roleCards.map((c) => {
+                    const Icon = c.Icon;
+                    return (
+                      <motion.div
+                        key={c.key}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          duration: 0.45,
+                          ease: "easeOut",
+                          delay: c.delay,
+                        }}
+                        style={{ height: "100%" }}
+                      >
+                        <Link
+                          href={c.href}
+                          className="group hover:-translate-y-1 transition-transform duration-200 flex flex-col items-center text-center h-full"
+                          style={{
+                            padding: "14px 10px 12px",
+                            background: c.bg,
+                            border: `1.5px solid ${c.border}`,
+                            borderRadius: "18px",
+                            textDecoration: "none",
+                            boxShadow: "0 6px 20px rgba(15,55,32,0.07)",
+                            gap: "8px",
+                          }}
+                        >
+                          {/* Circle icon */}
+                          <div
+                            className="w-11 h-11 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full flex items-center justify-center shrink-0"
+                            style={{
+                              background: c.iconBg,
+                              color: c.iconColor,
+                              boxShadow: `0 4px 12px -6px ${c.iconColor}66`,
+                            }}
+                          >
+                            <Icon
+                              strokeWidth={1.75}
+                              className="w-5 h-5 sm:w-8 sm:h-8 lg:w-10 lg:h-10"
+                            />
+                          </div>
+                          {/* Title */}
+                          <h4
+                            className="text-[13px] sm:text-xl lg:text-2xl font-black leading-tight"
+                            style={{ margin: 0, color: c.titleColor, letterSpacing: "-0.01em" }}
+                          >
+                            {c.title}
+                          </h4>
+                          {/* Description — hidden on mobile, shown on sm+ */}
+                          <p
+                            className="hidden sm:block text-[13px] lg:text-sm font-medium leading-relaxed"
+                            style={{
+                              margin: 0,
+                              color: c.descColor,
+                              whiteSpace: "pre-line",
+                              minHeight: "3em",
+                            }}
+                          >
+                            {c.desc}
+                          </p>
+                          {/* Optional extra line — hidden on mobile */}
+                          {c.extra && (
+                            <p
+                              className="hidden sm:block text-[11px] lg:text-[13px] font-bold"
+                              style={{ margin: 0, color: c.iconColor }}
+                            >
+                              {c.extra}
+                            </p>
+                          )}
+                          {/* Spacer — desktop only */}
+                          <span className="hidden sm:flex flex-1" />
+                          {/* CTA button */}
+                          <div
+                            className="w-full flex items-center justify-center gap-1 sm:gap-2 group-hover:brightness-110 transition-all"
+                            style={{
+                              padding: "7px 6px",
+                              borderRadius: "10px",
+                              background: c.btnBg,
+                              color: "#fff",
+                              fontWeight: 900,
+                              fontSize: "11px",
+                              boxShadow: c.btnShadow,
+                              marginTop: "auto",
+                            }}
+                          >
+                            <Icon className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" strokeWidth={2.25} />
+                            <span className="sm:text-base sm:leading-none">{c.cta}</span>
+                          </div>
+                        </Link>
+                      </motion.div>
+                    );
+                  });
+                })()}
+              </div>
             </motion.section>
 
             {/* ===== JOIN CARD ===== */}
@@ -2167,7 +2418,7 @@ export default function Home() {
                         letterSpacing: "-0.01em",
                       }}
                     >
-                      ادخل كود المسابقة
+                      لديك كود مسابقة؟
                     </h2>
                     <p
                       style={{
@@ -2178,7 +2429,7 @@ export default function Home() {
                         fontWeight: 600,
                       }}
                     >
-                      انضم بسرعة — بدون تسجيل
+                      أدخل الكود للانضمام مباشرة
                     </p>
 
                     {/* 6 individual digit boxes — bigger, more prominent */}
@@ -2314,7 +2565,7 @@ export default function Home() {
                         marginBottom: "clamp(12px,2.5vw,20px)",
                       }}
                     >
-                      ← ابدأ بالكود
+                      ← انضمام الآن
                     </button>
                     <p
                       style={{
@@ -2325,7 +2576,7 @@ export default function Home() {
                         fontWeight: 600,
                       }}
                     >
-                      بدون تسجيل
+                      ليس لديك كود؟ استكشف الفعاليات أو تواصل مع المعلم
                     </p>
                   </>
                 ) : (
@@ -2550,168 +2801,6 @@ export default function Home() {
               </div>
             </motion.section>
 
-            {/* ===== WHO IS THIS FOR ===== */}
-            <motion.section
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              dir="rtl"
-              style={{
-                maxWidth: "900px",
-                margin: "clamp(32px,5vh,56px) auto clamp(22px,3.5vh,32px)",
-                padding: "0 clamp(12px,3vw,20px)",
-              }}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Teacher card — direct to register */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
-                >
-                  <Link
-                    href="/register"
-                    className="group hover:-translate-y-0.5 transition-all"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "clamp(14px,2.2vw,20px)",
-                      padding: "clamp(18px,3vw,26px) clamp(18px,3vw,26px)",
-                      background: "linear-gradient(180deg,#ffffff,#f6fbf3)",
-                      border: "1.5px solid rgba(27,107,63,0.20)",
-                      borderRadius: "clamp(18px,3vw,24px)",
-                      textDecoration: "none",
-                      boxShadow: "0 8px 24px rgba(27,107,63,0.10)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "clamp(48px,7.5vw,60px)",
-                        height: "clamp(48px,7.5vw,60px)",
-                        borderRadius: "14px",
-                        background: "rgba(27,107,63,0.10)",
-                        color: "#1b6b3f",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Presentation strokeWidth={1.75} className="w-7 h-7" />
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4
-                        style={{
-                          margin: "0 0 4px",
-                          fontSize: "clamp(16px,2.3vw,21px)",
-                          color: "#103d2a",
-                          fontWeight: 900,
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        معلم / منظم
-                      </h4>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "clamp(12px,1.4vw,14px)",
-                          color: "#1b6b3f",
-                          lineHeight: 1.55,
-                          fontWeight: 500,
-                        }}
-                      >
-                        أنشئ مسابقاتك وأدر صفوفك بسهولة
-                      </p>
-                    </div>
-                    <ChevronLeft
-                      className="group-hover:-translate-x-1 transition-transform"
-                      style={{
-                        flexShrink: 0,
-                        color: "#1b6b3f",
-                        width: "22px",
-                        height: "22px",
-                      }}
-                    />
-                  </Link>
-                </motion.div>
-
-                {/* Student card — login as student */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.45, ease: "easeOut", delay: 0.15 }}
-                >
-                  <Link
-                    href="/student/login"
-                    className="group hover:-translate-y-0.5 transition-all"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "clamp(14px,2.2vw,20px)",
-                      padding: "clamp(18px,3vw,26px) clamp(18px,3vw,26px)",
-                      background: "linear-gradient(180deg,#ffffff,#fffaec)",
-                      border: "1.5px solid rgba(215,165,29,0.35)",
-                      borderRadius: "clamp(18px,3vw,24px)",
-                      textDecoration: "none",
-                      boxShadow: "0 8px 24px rgba(215,165,29,0.14)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "clamp(48px,7.5vw,60px)",
-                        height: "clamp(48px,7.5vw,60px)",
-                        borderRadius: "14px",
-                        background: "rgba(215,165,29,0.14)",
-                        color: "#b88712",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <GraduationCap strokeWidth={1.75} className="w-7 h-7" />
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4
-                        style={{
-                          margin: "0 0 4px",
-                          fontSize: "clamp(16px,2.3vw,21px)",
-                          color: "#103d2a",
-                          fontWeight: 900,
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        طالب / مشارك
-                      </h4>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "clamp(12px,1.4vw,14px)",
-                          color: "#b88712",
-                          lineHeight: 1.55,
-                          fontWeight: 500,
-                        }}
-                      >
-                        ابدأ التحدي وشارك في المسابقات
-                      </p>
-                    </div>
-                    <ChevronLeft
-                      className="group-hover:-translate-x-1 transition-transform"
-                      style={{
-                        flexShrink: 0,
-                        color: "#b88712",
-                        width: "22px",
-                        height: "22px",
-                      }}
-                    />
-                  </Link>
-                </motion.div>
-              </div>
-            </motion.section>
-
             {/* ===== FEATURES GRID ===== */}
             <motion.section
               initial={{ opacity: 0, y: 28 }}
@@ -2737,32 +2826,32 @@ export default function Home() {
               >
                 {[
                   {
-                    Icon: Users,
+                    Icon: ShieldCheck,
                     tint: "#1b6b3f",
                     tintBg: "rgba(27,107,63,0.10)",
-                    title: "تفاعل حي",
-                    desc: "نتائج فورية للجميع",
-                  },
-                  {
-                    Icon: Trophy,
-                    tint: "#b88712",
-                    tintBg: "rgba(215,165,29,0.12)",
-                    title: "تعلم ممتع",
-                    desc: "مسابقات تحفّز المشاركين",
+                    title: "آمن وسهل الاستخدام",
+                    desc: "بيئة آمنة وبسيطة تناسب المعلمين والطلاب",
                   },
                   {
                     Icon: BarChart3,
-                    tint: "#1b6b3f",
-                    tintBg: "rgba(27,107,63,0.10)",
-                    title: "تقارير ذكية",
-                    desc: "تحليلات أداء تفصيلية",
+                    tint: "#7c3aed",
+                    tintBg: "rgba(124,58,237,0.10)",
+                    title: "تقارير وتحليلات",
+                    desc: "تابع التقدم والنتائج من خلال تقارير تفصيلية",
                   },
                   {
-                    Icon: ShieldCheck,
+                    Icon: Sparkles,
                     tint: "#b88712",
                     tintBg: "rgba(215,165,29,0.12)",
-                    title: "أمن وسهل",
-                    desc: "آمن وسهل لجميع الأعمار",
+                    title: "تفاعل وتحفيز",
+                    desc: "تجارب تفاعلية تعزز التعلم وتحفز المشاركة",
+                  },
+                  {
+                    Icon: Puzzle,
+                    tint: "#2563eb",
+                    tintBg: "rgba(37,99,235,0.10)",
+                    title: "كل شيء في مكان واحد",
+                    desc: "أدوات متكاملة لإدارة التعليم والفعاليات بسهولة",
                   },
                 ].map((f, idx) => (
                   <motion.div
@@ -2907,6 +2996,185 @@ export default function Home() {
                 );
               })}
             </div>
+          </div>
+        </section>
+
+        {/* ============== HASAD CHALLENGE (group / audience competition) ============== */}
+        <section
+          className="border-t border-border/60"
+          dir="rtl"
+          style={{
+            background:
+              "linear-gradient(135deg,#1E4D35 0%,#265E42 55%,#2d7050 100%)",
+          }}
+        >
+          <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="grid items-center gap-8 lg:grid-cols-[1fr_0.85fr] lg:gap-12"
+            >
+              {/* Copy + CTA */}
+              <div className="text-white">
+                <div
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-4"
+                  style={{
+                    background: "rgba(232,168,14,0.18)",
+                    color: "#E8A80E",
+                    border: "1px solid rgba(232,168,14,0.45)",
+                  }}
+                >
+                  <Swords className="w-3.5 h-3.5" />
+                  للحفلات والملتقيات · ليست للواجبات
+                </div>
+                <h2 className="font-display-display text-[2rem] sm:text-[2.6rem] font-black leading-tight">
+                  <span style={{ color: "#E8A80E" }}>تحدي حصاد</span>
+                  <span className="block text-white/95 mt-1">
+                    مسابقة جماعية بين فريقين أمام الجمهور
+                  </span>
+                </h2>
+                <p className="mt-4 text-[1rem] sm:text-[1.05rem] leading-8 text-white/85 max-w-xl">
+                  جرّب تجربة مسابقة حماسية: فريقان متنافسان، أسئلة مباشرة،
+                  ونتائج تظهر للجميع لحظة بلحظة. مناسب للحفلات المدرسية،
+                  الملتقيات العائلية، والفعاليات.
+                </p>
+
+                {/* Feature chips */}
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {[
+                    { icon: Users, text: "فريقان متنافسان" },
+                    { icon: Trophy, text: "نتائج لحظية" },
+                    { icon: Sparkles, text: "أجواء حماسية" },
+                  ].map((f) => (
+                    <span
+                      key={f.text}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+                      style={{
+                        background: "rgba(255,255,255,0.10)",
+                        color: "#fff",
+                        border: "1px solid rgba(255,255,255,0.18)",
+                      }}
+                    >
+                      <f.icon className="w-3.5 h-3.5" style={{ color: "#E8A80E" }} />
+                      {f.text}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <Link href="/game/arena">
+                    <button
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black shadow-lg transition-all hover:scale-[1.02]"
+                      style={{
+                        background: "#E8A80E",
+                        color: "#1E4D35",
+                        boxShadow: "0 10px 28px rgba(232,168,14,0.35)",
+                      }}
+                    >
+                      <Swords className="w-5 h-5" />
+                      ابدأ التحدي الآن
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                  </Link>
+                  <Link href="/game/arena">
+                    <button
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:bg-white/10"
+                      style={{
+                        background: "transparent",
+                        color: "#fff",
+                        border: "1.5px solid rgba(255,255,255,0.35)",
+                      }}
+                    >
+                      اعرف أكثر
+                    </button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Visual mock */}
+              <div className="relative">
+                <div
+                  className="relative aspect-[4/3] rounded-[26px] overflow-hidden"
+                  style={{
+                    background:
+                      "linear-gradient(160deg,#103d2a 0%,#1E4D35 50%,#265E42 100%)",
+                    border: "1px solid rgba(232,168,14,0.30)",
+                    boxShadow: "0 30px 70px rgba(0,0,0,0.35)",
+                  }}
+                >
+                  {/* Decorative crossed swords */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.08]">
+                    <Swords className="w-[70%] h-[70%]" style={{ color: "#E8A80E" }} />
+                  </div>
+
+                  {/* VS scoreboard mock */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+                    <div className="text-[11px] font-bold tracking-widest opacity-80 mb-3">
+                      تحدي حصاد · مباشر
+                    </div>
+                    <div className="flex items-center gap-4 sm:gap-8 w-full max-w-md">
+                      {/* Team A */}
+                      <div className="flex-1 text-center">
+                        <div
+                          className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-2"
+                          style={{ background: "rgba(232,168,14,0.20)", border: "2px solid #E8A80E" }}
+                        >
+                          <span className="text-2xl sm:text-3xl font-black" style={{ color: "#E8A80E" }}>أ</span>
+                        </div>
+                        <div className="text-xs font-bold opacity-80">الفريق الأول</div>
+                        <div className="text-3xl sm:text-4xl font-black mt-1" style={{ color: "#E8A80E" }}>
+                          7
+                        </div>
+                      </div>
+
+                      <div
+                        className="text-xl sm:text-2xl font-black px-3 py-1 rounded-lg"
+                        style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
+                      >
+                        VS
+                      </div>
+
+                      {/* Team B */}
+                      <div className="flex-1 text-center">
+                        <div
+                          className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-2"
+                          style={{ background: "rgba(255,255,255,0.10)", border: "2px solid rgba(255,255,255,0.40)" }}
+                        >
+                          <span className="text-2xl sm:text-3xl font-black text-white">ب</span>
+                        </div>
+                        <div className="text-xs font-bold opacity-80">الفريق الثاني</div>
+                        <div className="text-3xl sm:text-4xl font-black mt-1 text-white">
+                          5
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      className="mt-5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+                      style={{ background: "rgba(232,168,14,0.18)", color: "#E8A80E", border: "1px solid rgba(232,168,14,0.35)" }}
+                    >
+                      السؤال 8 من 12
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating badge */}
+                <div
+                  className="absolute -bottom-3 -start-3 sm:-bottom-4 sm:-start-4 rounded-xl px-3 py-2 flex items-center gap-2"
+                  style={{
+                    background: "#fff",
+                    boxShadow: "0 14px 32px rgba(0,0,0,0.18)",
+                  }}
+                >
+                  <Trophy className="w-5 h-5" style={{ color: "#E8A80E" }} />
+                  <div>
+                    <div className="text-[10px] font-bold" style={{ color: "#737373" }}>الفائز</div>
+                    <div className="text-xs font-black" style={{ color: "#1E4D35" }}>الفريق الأول 🏆</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
@@ -3569,6 +3837,15 @@ export default function Home() {
             <p className="text-xs text-white/35">
               © {new Date().getFullYear()} حصاد — جميع الحقوق محفوظة
             </p>
+            <Link
+              href="/feedback"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white border border-white/20 hover:border-white/40 text-xs font-bold transition-all"
+              title="شاركنا اقتراحك أو ملاحظتك — سنردّ عليك"
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              <span>اقتراحاتكم وملاحظاتكم</span>
+              <span className="hidden sm:inline text-[10px] opacity-80 font-medium">· نقرأ كل رسالة ونردّ</span>
+            </Link>
           </div>
         </div>
       </footer>

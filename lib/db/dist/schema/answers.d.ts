@@ -88,14 +88,50 @@ export declare const answersTable: import("drizzle-orm/pg-core").PgTableWithColu
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        teacherPoints: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_points";
+            tableName: "answers";
+            dataType: "number";
+            columnType: "PgReal";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        teacherNote: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_note";
+            tableName: "answers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
 export declare const insertAnswerSchema: z.ZodObject<{
+    teacherNote: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     submissionId: z.ZodInt;
     questionId: z.ZodInt;
     selectedAnswer: z.ZodString;
     isCorrect: z.ZodBoolean;
+    teacherPoints: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, {
     out: {};
     in: {};

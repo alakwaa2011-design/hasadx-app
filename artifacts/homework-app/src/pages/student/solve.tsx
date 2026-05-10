@@ -8,7 +8,7 @@ import type { AnswerBody, SubmissionResult } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Input, Button, Label } from "@/components/ui-elements";
 import { fileToBase64 } from "@/lib/utils";
-import { Camera, MousePointerClick, Send, BrainCircuit, CheckCircle2, XCircle, ChevronLeft, ChevronRight, FileText, Star, GraduationCap, Lock, AlertCircle, EyeOff, Clock, Users, Volume2, VolumeX, Wheat, Sparkles } from "lucide-react";
+import { Camera, MousePointerClick, Send, BrainCircuit, CheckCircle2, XCircle, ChevronLeft, ChevronRight, FileText, Star, GraduationCap, Lock, AlertCircle, EyeOff, Clock, Users, Volume2, VolumeX, Sparkles, Headphones, Play, Pause, Loader2, Gauge, RotateCcw, RotateCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -33,9 +33,270 @@ const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 const OPTION_COLORS = [
   "from-blue-500 to-blue-600",
   "from-violet-500 to-violet-600",
-  "from-amber-500 to-amber-600",
+  "from-primary to-primary/80",
   "from-emerald-500 to-emerald-600",
 ];
+
+type ListeningSettings = {
+  maxListens?: number;
+  allowSpeedControl?: boolean;
+  allowSeek?: boolean;
+  showTranscript?: boolean;
+};
+
+function ListeningPlayer({
+  assignmentId,
+  audioText,
+  defaultSpeed,
+  settings,
+  lang,
+  accessCode,
+}: {
+  assignmentId: number;
+  audioText: string | null;
+  defaultSpeed: string;
+  settings: ListeningSettings;
+  lang: "ar" | "en";
+  accessCode?: string;
+}) {
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [listensUsed, setListensUsed] = useState(0);
+  const [speed, setSpeed] = useState<number>(parseFloat(defaultSpeed) || 1);
+  const [showText, setShowText] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const maxListens = settings.maxListens ?? 0;
+  const unlimited = !maxListens || maxListens <= 0;
+  const remaining = unlimited ? Infinity : Math.max(0, maxListens - listensUsed);
+  const exhausted = !unlimited && remaining <= 0;
+
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = speed;
+  }, [speed, audioUrl]);
+
+  const fetchAudio = async (): Promise<string | null> => {
+    if (audioUrl) return audioUrl;
+    setLoading(true);
+    setError(null);
+    try {
+      const headers: Record<string, string> = {};
+      if (accessCode) headers["X-Access-Code"] = accessCode;
+      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}/listening-audio`, {
+        method: "GET",
+        credentials: "include",
+        headers,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+      // Assign directly so we don't have to wait for a re-render before play().
+      if (audioRef.current) {
+        audioRef.current.src = url;
+        audioRef.current.load();
+      }
+      return url;
+    } catch (e) {
+      setError(lang === "ar" ? "تعذر تحميل الصوت، حاول مرة أخرى" : "Failed to load audio, try again");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlayPause = async () => {
+    if (exhausted && !isPlaying) {
+      toast.error(lang === "ar" ? "لقد استنفدت عدد مرات الاستماع المسموحة" : "You have used all allowed listens");
+      return;
+    }
+    let url = audioUrl;
+    if (!url) {
+      url = await fetchAudio();
+      if (!url) return;
+    }
+    const el = audioRef.current;
+    if (!el) return;
+    if (!el.src) el.src = url;
+    if (isPlaying) {
+      el.pause();
+    } else {
+      el.playbackRate = speed;
+      try {
+        await el.play();
+      } catch {
+        // ignore autoplay/race errors
+      }
+    }
+  };
+
+  const seekBy = (delta: number) => {
+    const el = audioRef.current;
+    if (!el) return;
+    const dur = isFinite(el.duration) ? el.duration : (duration || el.currentTime + Math.abs(delta));
+    el.currentTime = Math.max(0, Math.min(dur, el.currentTime + delta));
+  };
+
+  const canRewind = currentTime > 0.5;
+  const canForward = duration === 0 || currentTime < duration - 0.5;
+
+  const onEnded = () => {
+    setIsPlaying(false);
+    setListensUsed((n) => n + 1);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border-2 border-emerald-300/60 dark:border-emerald-700/50 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/50 dark:from-emerald-950/30 dark:via-background dark:to-emerald-950/20 p-5 md:p-6 shadow-sm"
+    >
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-11 h-11 shrink-0 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
+          <Headphones className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-black text-lg leading-tight">
+            {lang === "ar" ? "نشاط استماع" : "Listening activity"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {lang === "ar"
+              ? "اضغط زر التشغيل للاستماع للنص ثم أجب على الأسئلة"
+              : "Press play to listen, then answer the questions"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          type="button"
+          onClick={handlePlayPause}
+          disabled={loading || (exhausted && !isPlaying)}
+          className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-black text-base shadow-md transition-all ${
+            exhausted && !isPlaying
+              ? "bg-muted text-muted-foreground cursor-not-allowed"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white"
+          }`}
+        >
+          {loading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-5 h-5" />
+          ) : (
+            <Play className="w-5 h-5" />
+          )}
+          <span>
+            {loading
+              ? (lang === "ar" ? "جاري التحميل…" : "Loading…")
+              : isPlaying
+              ? (lang === "ar" ? "إيقاف" : "Pause")
+              : (lang === "ar" ? "استمع" : "Listen")}
+          </span>
+        </motion.button>
+
+        {!unlimited && (
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 text-sm font-bold">
+            <Volume2 className="w-4 h-4" />
+            {lang === "ar"
+              ? `المتبقي: ${remaining} من ${maxListens}`
+              : `Remaining: ${remaining} of ${maxListens}`}
+          </div>
+        )}
+
+        {settings.allowSpeedControl && (
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800">
+            <Gauge className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(parseFloat(e.target.value))}
+              className="bg-transparent text-sm font-bold focus:outline-none"
+            >
+              {[0.75, 1, 1.25, 1.5].map((s) => (
+                <option key={s} value={s}>{s}x</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {settings.showTranscript && (
+          <button
+            type="button"
+            onClick={() => setShowText((v) => !v)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30"
+          >
+            <FileText className="w-4 h-4" />
+            {showText
+              ? (lang === "ar" ? "إخفاء النص" : "Hide text")
+              : (lang === "ar" ? "عرض النص" : "Show text")}
+          </button>
+        )}
+      </div>
+
+      {showText && settings.showTranscript && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mt-4 p-4 rounded-xl bg-white/70 dark:bg-card/60 border border-emerald-200 dark:border-emerald-800 text-sm leading-relaxed whitespace-pre-wrap"
+        >
+          {audioText}
+        </motion.div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4" /> {error}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 mt-4">
+        <button
+          type="button"
+          onClick={() => seekBy(-10)}
+          disabled={!audioUrl || !canRewind}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+          aria-label={lang === "ar" ? "إرجاع 10 ثوانٍ" : "Back 10 seconds"}
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>{lang === "ar" ? "−10ث" : "−10s"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => seekBy(10)}
+          disabled={!audioUrl || !canForward}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-card border-2 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
+          aria-label={lang === "ar" ? "تقديم 10 ثوانٍ" : "Forward 10 seconds"}
+        >
+          <RotateCw className="w-4 h-4" />
+          <span>{lang === "ar" ? "+10ث" : "+10s"}</span>
+        </button>
+      </div>
+      <audio
+        ref={audioRef}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={onEnded}
+        onTimeUpdate={(e) => setCurrentTime((e.target as HTMLAudioElement).currentTime || 0)}
+        onLoadedMetadata={(e) => {
+          const d = (e.target as HTMLAudioElement).duration;
+          setDuration(isFinite(d) ? d : 0);
+        }}
+        controls={settings.allowSeek === true && !!audioUrl}
+        className={settings.allowSeek === true && audioUrl ? "w-full mt-3" : "hidden"}
+      />
+    </motion.div>
+  );
+}
 
 function ScoreRing({ score, size = 140 }: { score: number; size?: number }) {
   const r = (size - 16) / 2;
@@ -68,7 +329,7 @@ function ScoreStars({ score }: { score: number }) {
           animate={{ scale: i <= stars ? 1 : 0.7, rotate: 0 }}
           transition={{ delay: 0.3 + i * 0.15, type: "spring", stiffness: 260 }}
         >
-          <Star className={`w-8 h-8 ${i <= stars ? "text-amber-400 fill-amber-400" : "text-muted/30"}`} />
+          <Star className={`w-8 h-8 ${i <= stars ? "text-primary fill-primary" : "text-muted/30"}`} />
         </motion.div>
       ))}
     </div>
@@ -101,7 +362,7 @@ export default function StudentSolve() {
       retry: false,
     },
   });
-  const { data: currentTeacher } = useGetCurrentTeacher({ query: { retry: false } });
+  const { data: currentTeacher } = useGetCurrentTeacher({ query: { retry: false } as any });
   const [launchingShared, setLaunchingShared] = useState(false);
   const [pendingAccessCode, setPendingAccessCode] = useState("");
   const [accessCodePromptError, setAccessCodePromptError] = useState("");
@@ -275,6 +536,7 @@ export default function StudentSolve() {
   const [examStarted, setExamStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const autoSubmitRef = useRef(false);
+  const startTimeRef = useRef<number>(Date.now());
   const [examSessionId, setExamSessionId] = useState<number | null>(null);
 
   const startExam = useStartExamSession({
@@ -552,7 +814,7 @@ export default function StudentSolve() {
 
     return (
       <Layout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50/60 to-background dark:from-amber-950/20">
+        <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background dark:from-primary/10">
           <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border shadow-sm">
             <div className="container mx-auto px-4 max-w-3xl py-3 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -563,12 +825,12 @@ export default function StudentSolve() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                <div className="text-sm font-bold text-primary">
                   {answeredCount} / {wrongRepeatQuestions.length}
                 </div>
                 <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-amber-500 rounded-full"
+                    className="h-full bg-primary rounded-full"
                     animate={{ width: `${(answeredCount / wrongRepeatQuestions.length) * 100}%` }}
                     transition={{ type: "spring", stiffness: 100 }}
                   />
@@ -589,16 +851,16 @@ export default function StudentSolve() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.08 }}
                   >
-                    <div className={`bg-card rounded-2xl border-2 shadow-sm overflow-hidden transition-all duration-300 ${isAnswered ? 'border-amber-400 shadow-amber-100 dark:shadow-amber-900/20' : 'border-border'}`}>
+                    <div className={`bg-card rounded-2xl border-2 shadow-sm overflow-hidden transition-all duration-300 ${isAnswered ? 'border-primary shadow-primary/10' : 'border-border'}`}>
                       <div className="p-5 pb-0">
                         <div className="flex gap-3 items-start mb-4">
-                          <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center font-black text-sm ${isAnswered ? 'bg-amber-500 text-white' : 'bg-muted text-muted-foreground'}`}>
+                          <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center font-black text-sm ${isAnswered ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>
                             {isAnswered ? <CheckCircle2 className="w-5 h-5" /> : i + 1}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-base font-bold leading-snug">{q.text}</p>
                           </div>
-                          <span className="shrink-0 text-xs font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2.5 py-1 rounded-lg">
+                          <span className="shrink-0 text-xs font-black bg-primary/15 text-primary dark:text-primary/80 px-2.5 py-1 rounded-lg">
                             {q.points} {t.solve.gradeUnit}
                           </span>
                         </div>
@@ -627,7 +889,7 @@ export default function StudentSolve() {
                                 <motion.label
                                   key={opt}
                                   whileTap={{ scale: 0.98 }}
-                                  className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20' : 'border-border bg-background hover:border-amber-300 hover:bg-muted/40'}`}
+                                  className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${isSelected ? 'border-primary bg-primary/10' : 'border-border bg-background hover:border-primary/50 hover:bg-muted/40'}`}
                                 >
                                   <span className={`w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-sm font-black transition-all duration-200 ${isSelected ? `bg-gradient-to-br ${OPTION_COLORS[oi]} text-white` : 'bg-muted text-muted-foreground'}`}>
                                     {opt}
@@ -647,7 +909,7 @@ export default function StudentSolve() {
                                       className="sr-only" />
                                   )}
                                   <span className="font-medium text-sm flex-1">{optText}</span>
-                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-amber-500 shrink-0" />}
+                                  {isSelected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
                                 </motion.label>
                               );
                             })}
@@ -686,7 +948,7 @@ export default function StudentSolve() {
                               value={repeatAnswers[q.id] || ""}
                               onChange={e => setRepeatAnswers({ ...repeatAnswers, [q.id]: e.target.value })}
                               placeholder={t.solve.fillBlankPlaceholder}
-                              className="text-base py-3 pr-4 border-2 rounded-xl focus:border-amber-400"
+                              className="text-base py-3 pr-4 border-2 rounded-xl focus:border-primary"
                             />
                           </div>
                         )}
@@ -708,7 +970,7 @@ export default function StudentSolve() {
               <Button
                 onClick={handleRepeatSubmit}
                 disabled={!canSubmitRepeat || repeatSubmitting}
-                className="w-full py-4 text-base font-bold bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50"
+                className="w-full py-4 text-base font-bold bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
               >
                 {repeatSubmitting
                   ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -748,8 +1010,6 @@ export default function StudentSolve() {
                 "radial-gradient(circle at 14% 20%, hsl(145 55% 32% / 0.10) 0, transparent 32%), radial-gradient(circle at 86% 12%, hsl(43 74% 49% / 0.10) 0, transparent 30%)",
             }}
           />
-          <Wheat aria-hidden className="hidden md:block absolute top-10 left-8 w-20 h-20 text-primary/10 -rotate-12" strokeWidth={1.4} />
-          <Wheat aria-hidden className="hidden md:block absolute top-32 right-10 w-14 h-14 text-amber-500/15 rotate-12" strokeWidth={1.4} />
           <div className="container relative z-10 mx-auto px-4 py-10 max-w-3xl">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -757,7 +1017,7 @@ export default function StudentSolve() {
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
               <div className="soft-card rounded-[28px] overflow-hidden mb-6">
-                <div className={`h-2 w-full ${isGreat ? 'bg-gradient-to-r from-green-400 to-emerald-500' : isOk ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-red-400 to-rose-500'}`} />
+                <div className={`h-2 w-full ${isGreat ? 'bg-gradient-to-r from-green-400 to-emerald-500' : isOk ? 'bg-gradient-to-r from-primary to-primary/70' : 'bg-gradient-to-r from-red-400 to-rose-500'}`} />
                 <div className="p-8 text-center">
                   <motion.p
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -784,7 +1044,21 @@ export default function StudentSolve() {
                     </p>
                   )}
 
-                  {canSeeResults ? (
+                  {canSeeResults && assignment.activityType === "listening" ? (
+                    <div className="mt-4 mb-2">
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-6 text-center">
+                        <Headphones className="w-10 h-10 text-emerald-600 mx-auto mb-3" />
+                        <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300 mb-1">
+                          {lang === "ar" ? "تم استلام إجاباتك بنجاح" : "Your answers were received"}
+                        </p>
+                        <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80">
+                          {lang === "ar"
+                            ? "سيظهر التقييم النهائي بعد مراجعة معلمك"
+                            : "Your final grade will appear after teacher review"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : canSeeResults ? (
                     <>
                       <div className="flex items-center justify-center my-6">
                         <div className="relative inline-flex items-center justify-center">
@@ -794,7 +1068,7 @@ export default function StudentSolve() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: 0.8 }}
-                              className={`text-4xl font-black ${isGreat ? 'text-green-500' : isOk ? 'text-amber-500' : 'text-red-500'}`}
+                              className={`text-4xl font-black ${isGreat ? 'text-green-500' : isOk ? 'text-primary' : 'text-red-500'}`}
                             >
                               {score}%
                             </motion.p>
@@ -819,7 +1093,7 @@ export default function StudentSolve() {
                         </div>
                         <div className="col-span-2 sm:col-span-1 bg-muted/40 rounded-2xl p-4 text-center">
                           <p className="text-xs font-bold text-muted-foreground mb-1">{t.solve.percentageLabel}</p>
-                          <p className={`text-2xl font-black ${isGreat ? 'text-green-500' : isOk ? 'text-amber-500' : 'text-red-500'}`}>{score}%</p>
+                          <p className={`text-2xl font-black ${isGreat ? 'text-green-500' : isOk ? 'text-primary' : 'text-red-500'}`}>{score}%</p>
                           <p className="text-xs text-muted-foreground">&nbsp;</p>
                         </div>
                       </div>
@@ -836,17 +1110,57 @@ export default function StudentSolve() {
                     </>
                   ) : (
                     <div className="mt-4 mb-2">
-                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center">
-                        <EyeOff className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-                        <p className="text-lg font-bold text-amber-700 dark:text-amber-300 mb-1">{t.solve.submissionReceived}</p>
-                        <p className="text-sm text-amber-600 dark:text-amber-400">{t.solve.resultsLater}</p>
+                      <div className="bg-primary/10 border border-primary/30 rounded-2xl p-6 text-center">
+                        <EyeOff className="w-10 h-10 text-primary mx-auto mb-3" />
+                        <p className="text-lg font-bold text-primary dark:text-primary/80 mb-1">{t.solve.submissionReceived}</p>
+                        <p className="text-sm text-primary">{t.solve.resultsLater}</p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {canSeeResults && result.answers.length > 0 && (
+              {canSeeResults && result.answers.length > 0 && assignment.activityType === "listening" && (() => {
+                const autoTypes = new Set(["mcq", "true_false"]);
+                const qById = new Map(assignment.questions.map(q => [q.id, q] as const));
+                let autoCount = 0;
+                let autoCorrect = 0;
+                let pendingCount = 0;
+                for (const ans of result.answers) {
+                  const q = qById.get(ans.questionId);
+                  const t = q?.questionType || "mcq";
+                  if (autoTypes.has(t)) {
+                    autoCount++;
+                    if (ans.isCorrect) autoCorrect++;
+                  } else {
+                    pendingCount++;
+                  }
+                }
+                const sentence = lang === "ar"
+                  ? (() => {
+                      const parts: string[] = [];
+                      if (autoCount > 0) parts.push(`أجبت بشكل صحيح عن ${autoCorrect} من ${autoCount}`);
+                      if (pendingCount > 0) parts.push(`وهناك ${pendingCount} ${pendingCount === 1 ? "إجابة سيراجعها معلمك" : "إجابات سيراجعها معلمك"}`);
+                      return parts.join("، ") || "تم استلام إجاباتك بنجاح";
+                    })()
+                  : (() => {
+                      const parts: string[] = [];
+                      if (autoCount > 0) parts.push(`You answered ${autoCorrect} of ${autoCount} correctly`);
+                      if (pendingCount > 0) parts.push(`and ${pendingCount} ${pendingCount === 1 ? "answer is" : "answers are"} pending teacher review`);
+                      return parts.join(", ") || "Your answers were received";
+                    })();
+                return (
+                  <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background p-5 text-right">
+                    <h2 className="text-lg font-black mb-2 flex items-center gap-2">
+                      <Headphones className="w-5 h-5 text-emerald-600" />
+                      {lang === "ar" ? "ملخص نشاط الاستماع" : "Listening activity summary"}
+                    </h2>
+                    <p className="text-sm text-foreground/85">{sentence}.</p>
+                  </div>
+                );
+              })()}
+
+              {canSeeResults && result.answers.length > 0 && assignment.activityType !== "listening" && (
                 <div className="space-y-3">
                   <h2 className="text-lg font-black mb-3 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-primary" />
@@ -901,7 +1215,7 @@ export default function StudentSolve() {
   const isSubmitting = submitMcq.isPending || submitImg.isPending;
   const hasElectronicQuestions = assignment.questions.some(q => {
     const qt = q.questionType || "mcq";
-    return qt === "true_false" || qt === "fill_blank" || qt === "whiteboard" || q.optionA;
+    return qt === "true_false" || qt === "fill_blank" || qt === "whiteboard" || qt === "dictation" || qt === "open" || q.optionA;
   });
   const nonWhiteboardCount = assignment.questions.filter(q => q.questionType !== "whiteboard").length;
   const multiAnswerQuestions = assignment.questions.filter(q => (q.questionType || "mcq") === "mcq" && q.allowMultipleAnswers && q.optionA);
@@ -946,7 +1260,8 @@ export default function StudentSolve() {
       selectedAnswer: ans
     }));
     const deviceFingerprint = getDeviceFingerprint();
-    submitMcq.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, answers: formattedAnswers, accessCode: accessCode || undefined, deviceFingerprint, examSessionId: examSessionId || undefined } } as any);
+    const durationSeconds = Math.max(1, Math.floor((Date.now() - startTimeRef.current) / 1000));
+    submitMcq.mutate({ id, data: { studentName, studentClass, studentId: studentId || undefined, answers: formattedAnswers, accessCode: accessCode || undefined, deviceFingerprint, examSessionId: examSessionId || undefined, durationSeconds } } as any);
   };
 
   const handleImgSubmit = () => {
@@ -1012,9 +1327,7 @@ export default function StudentSolve() {
           <div aria-hidden className="absolute inset-0 pointer-events-none">
             <div className="absolute -top-24 -right-20 w-[28rem] h-[28rem] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.18)_0%,transparent_60%)]" />
             <div className="absolute -bottom-32 -left-16 w-[22rem] h-[22rem] rounded-full bg-[radial-gradient(circle,rgba(43,74,49,0.45)_0%,transparent_55%)]" />
-            <Wheat className="absolute top-6 left-6 w-20 h-20 text-amber-200/20 -rotate-12" strokeWidth={1.4} />
-            <Wheat className="absolute bottom-8 right-10 w-14 h-14 text-amber-200/25 rotate-12" strokeWidth={1.4} />
-            <Sparkles className="absolute top-10 right-1/3 w-6 h-6 text-amber-200/40 animate-float-slow" />
+            <Sparkles className="absolute top-10 right-1/3 w-6 h-6 text-primary/30 animate-float-slow" />
             <div
               className="absolute inset-0 opacity-[0.07]"
               style={{
@@ -1040,7 +1353,7 @@ export default function StudentSolve() {
                 {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
             </div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-300/15 border border-amber-200/30 text-amber-100 text-xs font-bold mb-4 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary-foreground/90 text-xs font-bold mb-4 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5" />
               {lang === "ar" ? "واجب من حصاد" : "A Hasad Assignment"}
             </div>
@@ -1065,7 +1378,7 @@ export default function StudentSolve() {
                 <FileText className="w-4 h-4" /> {assignment.questions.length} {t.solve.questionsCount}
               </span>
               <span className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md ring-1 ring-white/10 px-3 py-1.5 rounded-lg">
-                <Star className="w-4 h-4 text-amber-300" /> {assignment.totalPoints} {t.solve.gradeUnit}
+                <Star className="w-4 h-4 text-primary/80" /> {assignment.totalPoints} {t.solve.gradeUnit}
               </span>
               {assignment.targetClass && (
                 <span className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md ring-1 ring-white/10 px-3 py-1.5 rounded-lg">
@@ -1073,7 +1386,7 @@ export default function StudentSolve() {
                 </span>
               )}
               {assignment.deadline && (
-                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg backdrop-blur-md ring-1 ${isExpired ? 'bg-red-500/40 ring-red-200/30' : 'bg-amber-400/30 ring-amber-200/30'}`}>
+                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg backdrop-blur-md ring-1 ${isExpired ? 'bg-red-500/40 ring-red-200/30' : 'bg-primary/30 ring-primary/30'}`}>
                   <AlertCircle className="w-4 h-4" />
                   {isExpired ? t.solve.deadlineExpired : `${t.solve.deadline} ${new Date(assignment.deadline).toLocaleString(locale)}`}
                 </span>
@@ -1324,6 +1637,16 @@ export default function StudentSolve() {
                     </button>
                   </motion.div>
                 )}
+                {assignment.activityType === "listening" && (
+                  <ListeningPlayer
+                    assignmentId={assignment.id}
+                    audioText={assignment.listeningAudioText ?? null}
+                    defaultSpeed={assignment.listeningSpeed || "1"}
+                    settings={(assignment.listeningSettings as ListeningSettings) || {}}
+                    lang={lang}
+                    accessCode={verifiedAccessCode || undefined}
+                  />
+                )}
                 {assignment.questions.map((q, i) => {
                   const qType = q.questionType || "mcq";
                   const isAnswered = qType === "whiteboard" || (answers[q.id] !== undefined && answers[q.id] !== "");
@@ -1531,6 +1854,32 @@ export default function StudentSolve() {
                                 socket.emit("whiteboard:student-clear", { assignmentId: id, questionId: q.id });
                               }}
                             />
+                          )}
+
+                          {(qType === "dictation" || qType === "open") && (
+                            <div className="relative">
+                              <textarea
+                                value={answers[q.id] || ""}
+                                onChange={(e) => setAnswers({ ...answers, [q.id]: e.target.value })}
+                                placeholder={
+                                  qType === "dictation"
+                                    ? (lang === "ar" ? "اكتب ما تسمعه هنا…" : "Write what you hear here…")
+                                    : (lang === "ar" ? "اكتب إجابتك هنا…" : "Write your answer here…")
+                                }
+                                rows={qType === "dictation" ? 3 : 5}
+                                dir="rtl"
+                                className="w-full rounded-xl border-2 border-input bg-background p-3 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-y"
+                              />
+                              {answers[q.id] && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.5 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className={`absolute top-3 ${lang === "ar" ? "left-3" : "right-3"}`}
+                                >
+                                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                </motion.div>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { db, studentAccountsTable, flagScoresTable, colorScoresTable, memoryScoresTable, multiplicationScoresTable, scrambleScoresTable, capitalScoresTable, wameethScoresTable, stroopScoresTable, studentsTable } from "@workspace/db";
-import { eq, desc, gt, sql, count, and } from "drizzle-orm";
+import { eq, desc, gt, gte, sql, count, and } from "drizzle-orm";
 import { authLimiter, registerLimiter } from "../lib/rate-limiter";
+import { logActivity } from "../lib/activity-logger";
 
 const router: IRouter = Router();
 
@@ -103,6 +104,15 @@ router.post("/student-auth/login", authLimiter, async (req, res) => {
     delete req.session.teacherId;
     req.session.studentAccountId = student.id;
 
+    logActivity({
+      req,
+      userId: student.id,
+      userName: student.displayName || student.username,
+      userRole: "student",
+      action: "login",
+      details: { method: "password" },
+    });
+
     res.json({
       student: {
         id: student.id,
@@ -197,6 +207,49 @@ router.get("/student-auth/recent-scores", async (req, res) => {
   } catch (error: unknown) {
     req.log.error({ err: error }, "Failed to fetch student scores");
     res.status(500).json({ message: "خطأ في جلب النتائج" });
+  }
+});
+
+// Returns the distinct YYYY-MM-DD activity days for the last 60 days.
+// Used by the student dashboard to compute the daily streak chip.
+router.get("/student-auth/activity-days", async (req, res) => {
+  if (!req.session.studentAccountId) {
+    res.status(401).json({ message: "غير مسجل الدخول" });
+    return;
+  }
+  const sid = req.session.studentAccountId;
+  const since = new Date();
+  since.setDate(since.getDate() - 60);
+  since.setHours(0, 0, 0, 0);
+
+  try {
+    const tables = [
+      flagScoresTable, colorScoresTable, memoryScoresTable,
+      multiplicationScoresTable, scrambleScoresTable, capitalScoresTable,
+      wameethScoresTable, stroopScoresTable,
+    ] as const;
+    const results = await Promise.all(
+      tables.map(t =>
+        db.select({ createdAt: t.createdAt })
+          .from(t)
+          .where(and(eq(t.studentAccountId, sid), gte(t.createdAt, since)))
+      )
+    );
+    const days = new Set<string>();
+    for (const rows of results) {
+      for (const r of rows) {
+        if (!r.createdAt) continue;
+        const d = new Date(r.createdAt);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        days.add(`${y}-${m}-${day}`);
+      }
+    }
+    res.json({ days: Array.from(days).sort().reverse() });
+  } catch (error: unknown) {
+    req.log.error({ err: error }, "Failed to fetch activity days");
+    res.status(500).json({ message: "خطأ" });
   }
 });
 
@@ -309,6 +362,11 @@ router.post("/student-auth/google", authLimiter, async (req, res) => {
 });
 
 router.post("/student-auth/logout", (req, res) => {
+  const sess: any = req.session;
+  const sid = sess?.studentAccountId ?? null;
+  if (sid) {
+    logActivity({ req, userId: sid, userRole: "student", action: "logout" });
+  }
   req.session.destroy(() => {
     res.json({ message: "تم تسجيل الخروج بنجاح" });
   });

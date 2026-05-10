@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import {
   Bot,
   ChevronDown,
@@ -9,6 +10,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useGetCurrentTeacher } from "@workspace/api-client-react";
+import { useI18n } from "@/lib/i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const STORAGE_MINIMIZED = "hasad-guide-launcher-minimized";
@@ -34,8 +37,13 @@ interface ConversationListItem {
 
 interface UsageInfo {
   used: number;
-  limit: number;
-  remaining: number;
+  limit: number | null;
+  remaining: number | null;
+}
+
+/** True only when the server reports a finite, positive daily cap. */
+function hasDailyCap(u: UsageInfo | null): u is UsageInfo & { limit: number; remaining: number } {
+  return !!u && typeof u.limit === "number" && u.limit > 0 && typeof u.remaining === "number";
 }
 
 function copy(lang: string) {
@@ -57,8 +65,22 @@ function copy(lang: string) {
       ? "اسأل عن ميزات المنصة، أو اطلب صياغة أسئلة لموضوع درسك."
       : "Ask about platform features, or request quiz questions for your topic.",
     suggestions: isAr
-      ? ["كيف أنشئ مسابقة هاك؟", "اعمل لي ٥ أسئلة عن الكسور", "ما الفرق بين الواجب والاختبار؟"]
-      : ["How do I create a Hack quiz?", "Write 5 fraction questions", "Assignment vs exam?"],
+      ? [
+          "كيف أبدأ أول مسابقة؟",
+          "ما الفرق بين الألعاب الجماعية والفردية؟",
+          "كيف تعمل النقاط؟",
+          "كيف أشارك المسابقة؟",
+          "اشرح لي تحدّي حصاد",
+          "كيف أستخدم بنك الأسئلة؟",
+        ]
+      : [
+          "How do I start my first contest?",
+          "Live vs solo games — what's the difference?",
+          "How do points work?",
+          "How do I share a contest?",
+          "Explain Hasad Arena",
+          "How do I use the question bank?",
+        ],
     noHistory: isAr ? "لا توجد محادثات سابقة" : "No past conversations",
     placeholder: isAr ? "اكتب سؤالك…" : "Type your question…",
     cached: isAr ? "⚡ من الذاكرة" : "⚡ From cache",
@@ -224,6 +246,10 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
 
   return (
     <>
+      {/* NOTE: rendered globally by <GlobalAiAssistant /> in App.tsx so it
+          appears on every authenticated teacher/organizer page (mobile +
+          desktop), regardless of whether the page wraps itself in
+          `<Layout>`. Do not also mount inside layouts. */}
       {/* Compact pill launcher — green / white only, low visual weight */}
       {!launcherMinimized && (
         <div className="fixed bottom-3 end-3 z-40 pointer-events-none [&>*]:pointer-events-auto">
@@ -301,7 +327,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                   <div className="font-semibold text-xs leading-tight truncate text-white/95">
                     {t.brand}
                   </div>
-                  {usage && (
+                  {hasDailyCap(usage) && (
                     <div className="text-[10px] text-white/60 truncate">
                       {t.usageLine(usage.remaining, usage.limit)}
                     </div>
@@ -443,20 +469,20 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                     }}
                     rows={1}
                     placeholder={t.placeholder}
-                    disabled={sending || (usage?.remaining ?? 1) <= 0}
+                    disabled={sending || (hasDailyCap(usage) && usage.remaining <= 0)}
                     className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1f5a3e]/35 max-h-32"
                   />
                   <button
                     type="button"
                     onClick={send}
-                    disabled={sending || !input.trim() || (usage?.remaining ?? 1) <= 0}
+                    disabled={sending || !input.trim() || (hasDailyCap(usage) && usage.remaining <= 0)}
                     className="w-10 h-10 rounded-xl bg-[#1f5a3e] hover:bg-[#153d2c] text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
                     aria-label={t.send}
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
-                {usage && usage.remaining <= 0 && (
+                {hasDailyCap(usage) && usage.remaining <= 0 && (
                   <div className="text-xs text-red-500 text-center mt-2">{t.dailyLimit}</div>
                 )}
               </div>
@@ -466,4 +492,55 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
       )}
     </>
   );
+}
+
+/**
+ * Mounts the Hasad Guide once at the app root so it shows up on every
+ * teacher/organizer page (mobile + desktop) — including pages that don't
+ * wrap themselves in `<Layout>` (e.g. teacher/profile, teacher/new-activity,
+ * teacher/categories, teacher/collections, presentations/present, etc.).
+ *
+ * Hidden on student-facing routes and visitor/auth screens to keep the
+ * launcher out of the way for non-teacher flows.
+ */
+export function GlobalAiAssistant() {
+  const { lang } = useI18n();
+  const [location] = useLocation();
+  const { data: user } = useGetCurrentTeacher({
+    query: { retry: false } as any,
+  });
+
+  // Routes where the assistant must not appear, even if a teacher session
+  // happens to exist. These are student-facing, auth-only screens, or
+  // full-screen surfaces where the floating launcher would overlap the
+  // primary content (presentation present/print mode, the public viewer,
+  // and live-control / live-show / live-play screens).
+  const HIDDEN_PREFIXES = [
+    "/student",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/game/play",
+    "/game/join",
+    "/p/control",
+    "/p/show",
+    "/p/play",
+    "/p/join",
+    "/p/results",
+    "/p", // public viewer `/p/:id` — full-screen, no chrome
+  ];
+  // Path-segment-based suffix matches for routes that don't fit a single
+  // prefix (e.g. `/teacher/presentations/:id/present`). We normalize off
+  // any query string / hash before testing — wouter's `useLocation`
+  // returns just the pathname today, but guarding makes the assistant
+  // stay hidden even if a query like `?slide=2` is appended.
+  const HIDDEN_SUFFIXES = ["/present", "/print"];
+  const pathOnly = location.split("?")[0].split("#")[0];
+  const hidden =
+    HIDDEN_PREFIXES.some((p) => pathOnly === p || pathOnly.startsWith(p + "/")) ||
+    HIDDEN_SUFFIXES.some((s) => pathOnly.endsWith(s));
+
+  if (hidden) return null;
+  return <AiAssistant enabled={!!user} lang={lang} />;
 }

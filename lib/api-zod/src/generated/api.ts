@@ -19,11 +19,19 @@ export const HealthCheckResponse = zod.object({
  */
 export const registerTeacherBodyPasswordMin = 6;
 
+export const registerTeacherBodyRoleDefault = `teacher`;
+
 export const RegisterTeacherBody = zod.object({
   name: zod.string(),
   email: zod.string().email().optional(),
   phone: zod.string().optional(),
   password: zod.string().min(registerTeacherBodyPasswordMin),
+  role: zod
+    .enum(["teacher", "organizer"])
+    .default(registerTeacherBodyRoleDefault)
+    .describe(
+      "Public registration role; admin role can only be granted internally.",
+    ),
 });
 
 /**
@@ -44,6 +52,12 @@ export const LoginTeacherResponse = zod.object({
     phone: zod.string().optional(),
     isAdmin: zod.boolean().optional(),
     isBlocked: zod.boolean().optional(),
+    role: zod
+      .enum(["teacher", "organizer", "admin"])
+      .optional()
+      .describe(
+        "User role: teacher (classroom), organizer (events), or admin (super-admin).",
+      ),
   }),
 });
 
@@ -57,6 +71,12 @@ export const GetCurrentTeacherResponse = zod.object({
   phone: zod.string().optional(),
   isAdmin: zod.boolean().optional(),
   isBlocked: zod.boolean().optional(),
+  role: zod
+    .enum(["teacher", "organizer", "admin"])
+    .optional()
+    .describe(
+      "User role: teacher (classroom), organizer (events), or admin (super-admin).",
+    ),
 });
 
 /**
@@ -75,6 +95,38 @@ export const UpdateTeacherProfileResponse = zod.object({
   phone: zod.string().optional(),
   isAdmin: zod.boolean().optional(),
   isBlocked: zod.boolean().optional(),
+  role: zod
+    .enum(["teacher", "organizer", "admin"])
+    .optional()
+    .describe(
+      "User role: teacher (classroom), organizer (events), or admin (super-admin).",
+    ),
+});
+
+/**
+ * @summary Change current user's role (teacher ↔ organizer)
+ */
+export const UpdateTeacherRoleBody = zod.object({
+  role: zod
+    .enum(["teacher", "organizer"])
+    .describe(
+      "New role for the current user. Admin role cannot be self-assigned.",
+    ),
+});
+
+export const UpdateTeacherRoleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  isAdmin: zod.boolean().optional(),
+  isBlocked: zod.boolean().optional(),
+  role: zod
+    .enum(["teacher", "organizer", "admin"])
+    .optional()
+    .describe(
+      "User role: teacher (classroom), organizer (events), or admin (super-admin).",
+    ),
 });
 
 /**
@@ -83,6 +135,148 @@ export const UpdateTeacherProfileResponse = zod.object({
 export const LogoutTeacherResponse = zod.object({
   message: zod.string(),
 });
+
+/**
+ * @summary Login or register a teacher using a Google ID token
+ */
+export const LoginTeacherWithGoogleBody = zod.object({
+  credential: zod
+    .string()
+    .describe(
+      "Google ID token (credential) returned by the Google sign-in flow.",
+    ),
+});
+
+export const LoginTeacherWithGoogleResponse = zod.object({
+  teacher: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    email: zod.string().optional(),
+    phone: zod.string().optional(),
+    isAdmin: zod.boolean().optional(),
+    isBlocked: zod.boolean().optional(),
+    role: zod
+      .enum(["teacher", "organizer", "admin"])
+      .optional()
+      .describe(
+        "User role: teacher (classroom), organizer (events), or admin (super-admin).",
+      ),
+  }),
+});
+
+/**
+ * @summary Get the teacher's saved brief preferences
+ */
+export const getBriefPreferencesResponseSlideCountMin = 5;
+export const getBriefPreferencesResponseSlideCountMax = 30;
+
+export const getBriefPreferencesResponseNotesMax = 200;
+
+export const GetBriefPreferencesResponse = zod
+  .object({
+    language: zod.enum(["ar", "en"]).optional(),
+    presentationKind: zod
+      .enum(["explain", "review", "interactive", "quick", "contest"])
+      .optional(),
+    slideCount: zod
+      .number()
+      .min(getBriefPreferencesResponseSlideCountMin)
+      .max(getBriefPreferencesResponseSlideCountMax)
+      .optional(),
+    durationMinutes: zod
+      .union([
+        zod.literal(15),
+        zod.literal(30),
+        zod.literal(45),
+        zod.literal(60),
+      ])
+      .optional(),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]).optional(),
+    density: zod.enum(["minimal", "balanced", "detailed"]).optional(),
+    activities: zod.boolean().optional(),
+    questions: zod.boolean().optional(),
+    poll: zod.boolean().optional(),
+    quiz: zod.boolean().optional(),
+    notes: zod.string().max(getBriefPreferencesResponseNotesMax).optional(),
+  })
+  .describe(
+    "Teacher's saved advanced brief form preferences, synced across devices.",
+  );
+
+/**
+ * @summary Persist the teacher's brief preferences server-side
+ */
+export const updateBriefPreferencesBodySlideCountMin = 5;
+export const updateBriefPreferencesBodySlideCountMax = 30;
+
+export const updateBriefPreferencesBodyNotesMax = 200;
+
+export const UpdateBriefPreferencesBody = zod
+  .object({
+    language: zod.enum(["ar", "en"]).optional(),
+    presentationKind: zod
+      .enum(["explain", "review", "interactive", "quick", "contest"])
+      .optional(),
+    slideCount: zod
+      .number()
+      .min(updateBriefPreferencesBodySlideCountMin)
+      .max(updateBriefPreferencesBodySlideCountMax)
+      .optional(),
+    durationMinutes: zod
+      .union([
+        zod.literal(15),
+        zod.literal(30),
+        zod.literal(45),
+        zod.literal(60),
+      ])
+      .optional(),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]).optional(),
+    density: zod.enum(["minimal", "balanced", "detailed"]).optional(),
+    activities: zod.boolean().optional(),
+    questions: zod.boolean().optional(),
+    poll: zod.boolean().optional(),
+    quiz: zod.boolean().optional(),
+    notes: zod.string().max(updateBriefPreferencesBodyNotesMax).optional(),
+  })
+  .describe(
+    "Teacher's saved advanced brief form preferences, synced across devices.",
+  );
+
+export const updateBriefPreferencesResponseSlideCountMin = 5;
+export const updateBriefPreferencesResponseSlideCountMax = 30;
+
+export const updateBriefPreferencesResponseNotesMax = 200;
+
+export const UpdateBriefPreferencesResponse = zod
+  .object({
+    language: zod.enum(["ar", "en"]).optional(),
+    presentationKind: zod
+      .enum(["explain", "review", "interactive", "quick", "contest"])
+      .optional(),
+    slideCount: zod
+      .number()
+      .min(updateBriefPreferencesResponseSlideCountMin)
+      .max(updateBriefPreferencesResponseSlideCountMax)
+      .optional(),
+    durationMinutes: zod
+      .union([
+        zod.literal(15),
+        zod.literal(30),
+        zod.literal(45),
+        zod.literal(60),
+      ])
+      .optional(),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]).optional(),
+    density: zod.enum(["minimal", "balanced", "detailed"]).optional(),
+    activities: zod.boolean().optional(),
+    questions: zod.boolean().optional(),
+    poll: zod.boolean().optional(),
+    quiz: zod.boolean().optional(),
+    notes: zod.string().max(updateBriefPreferencesResponseNotesMax).optional(),
+  })
+  .describe(
+    "Teacher's saved advanced brief form preferences, synced across devices.",
+  );
 
 /**
  * @summary List active sessions for the current teacher
@@ -243,11 +437,28 @@ export const CreateAssignmentBody = zod.object({
       skills: zod.array(zod.string()).optional(),
     })
     .nullish(),
+  activityType: zod
+    .string()
+    .nullish()
+    .describe(
+      "Marks special activity types (e.g. 'listening' for dictation\/listening assignments).",
+    ),
+  listeningAudioText: zod.string().nullish(),
+  listeningVoice: zod.string().nullish(),
+  listeningSpeed: zod.string().nullish(),
+  listeningSettings: zod.record(zod.string(), zod.unknown()).nullish(),
   questions: zod.array(
     zod.object({
       text: zod.string(),
       questionType: zod
-        .enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"])
+        .enum([
+          "mcq",
+          "true_false",
+          "fill_blank",
+          "whiteboard",
+          "dictation",
+          "open",
+        ])
         .default(createAssignmentBodyQuestionsItemQuestionTypeDefault),
       optionA: zod.string().optional(),
       optionB: zod.string().optional(),
@@ -277,6 +488,9 @@ export const GetAssignmentParams = zod.object({
 });
 
 export const getAssignmentResponseQuestionsItemQuestionTypeDefault = `mcq`;
+export const getAssignmentResponseQuestionsItemReadAloudDefault = false;
+export const getAssignmentResponseQuestionsItemAllowMultipleAnswersDefault = false;
+export const getAssignmentResponseQuestionsItemRepeatQuestionDefault = false;
 
 export const GetAssignmentResponse = zod.object({
   id: zod.number(),
@@ -300,13 +514,30 @@ export const GetAssignmentResponse = zod.object({
     .enum(["immediate", "after_deadline", "manual"])
     .optional(),
   aiGradingInstructions: zod.string().nullish(),
+  activityType: zod
+    .string()
+    .nullish()
+    .describe(
+      "Marks special activity types (e.g. 'listening' for dictation\/listening assignments).",
+    ),
+  listeningAudioText: zod.string().nullish(),
+  listeningVoice: zod.string().nullish(),
+  listeningSpeed: zod.string().nullish(),
+  listeningSettings: zod.record(zod.string(), zod.unknown()).nullish(),
   createdAt: zod.coerce.date(),
   questions: zod.array(
     zod.object({
       id: zod.number(),
       text: zod.string(),
       questionType: zod
-        .enum(["mcq", "true_false", "fill_blank", "whiteboard", "dictation"])
+        .enum([
+          "mcq",
+          "true_false",
+          "fill_blank",
+          "whiteboard",
+          "dictation",
+          "open",
+        ])
         .default(getAssignmentResponseQuestionsItemQuestionTypeDefault),
       optionA: zod.string().nullish(),
       optionB: zod.string().nullish(),
@@ -315,6 +546,17 @@ export const GetAssignmentResponse = zod.object({
       correctAnswer: zod.string().nullish(),
       points: zod.number(),
       imageUrl: zod.string().nullish(),
+      readAloud: zod
+        .boolean()
+        .default(getAssignmentResponseQuestionsItemReadAloudDefault),
+      difficulty: zod.number().nullish(),
+      skill: zod.string().nullish(),
+      allowMultipleAnswers: zod
+        .boolean()
+        .default(getAssignmentResponseQuestionsItemAllowMultipleAnswersDefault),
+      repeatQuestion: zod
+        .boolean()
+        .default(getAssignmentResponseQuestionsItemRepeatQuestionDefault),
     }),
   ),
 });
@@ -362,6 +604,7 @@ export const SubmitAssignmentBody = zod.object({
   deviceFingerprint: zod.string(),
   accessCode: zod.string().optional(),
   examSessionId: zod.number().optional(),
+  durationSeconds: zod.number().nullish(),
   answers: zod.array(
     zod.object({
       questionId: zod.number(),
@@ -392,6 +635,12 @@ export const SubmitAssignmentResponse = zod.object({
     }),
   ),
   aiFeedback: zod.string().nullish(),
+  repeatEligibleIds: zod
+    .array(zod.number())
+    .nullish()
+    .describe(
+      "IDs of questions answered incorrectly that the student may retry.",
+    ),
 });
 
 /**
@@ -431,6 +680,12 @@ export const SubmitAssignmentImageResponse = zod.object({
     }),
   ),
   aiFeedback: zod.string().nullish(),
+  repeatEligibleIds: zod
+    .array(zod.number())
+    .nullish()
+    .describe(
+      "IDs of questions answered incorrectly that the student may retry.",
+    ),
 });
 
 /**
@@ -452,6 +707,7 @@ export const ListSubmissionsResponseItem = zod.object({
   teacherAdjustedPoints: zod.number().nullish(),
   teacherNote: zod.string().nullish(),
   aiFeedback: zod.string().nullish(),
+  durationSeconds: zod.number().nullish(),
   submittedAt: zod.coerce.date(),
 });
 export const ListSubmissionsResponse = zod.array(ListSubmissionsResponseItem);
@@ -487,7 +743,99 @@ export const UpdateSubmissionResponse = zod.object({
   teacherAdjustedPoints: zod.number().nullish(),
   teacherNote: zod.string().nullish(),
   aiFeedback: zod.string().nullish(),
+  durationSeconds: zod.number().nullish(),
   submittedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get full submission with per-answer details (teacher only)
+ */
+export const GetSubmissionDetailsParams = zod.object({
+  submissionId: zod.coerce.number(),
+});
+
+export const GetSubmissionDetailsResponse = zod.object({
+  submission: zod.object({
+    id: zod.number(),
+    studentName: zod.string(),
+    studentClass: zod.string(),
+    score: zod.number(),
+    totalQuestions: zod.number(),
+    correctAnswers: zod.number(),
+    earnedPoints: zod.number(),
+    totalPoints: zod.number(),
+    teacherAdjustedPoints: zod.number().nullish(),
+    teacherNote: zod.string().nullish(),
+    aiFeedback: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    submittedAt: zod.coerce.date(),
+  }),
+  answers: zod.array(
+    zod.object({
+      id: zod.number(),
+      questionId: zod.number(),
+      questionText: zod.string(),
+      questionType: zod.string(),
+      points: zod.number(),
+      selectedAnswer: zod.string(),
+      correctAnswer: zod.string().nullish(),
+      optionA: zod.string().nullish(),
+      optionB: zod.string().nullish(),
+      optionC: zod.string().nullish(),
+      optionD: zod.string().nullish(),
+      isCorrect: zod.boolean(),
+      teacherPoints: zod.number().nullish(),
+      teacherNote: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Manually grade a single answer (teacher only)
+ */
+export const UpdateAnswerGradeParams = zod.object({
+  answerId: zod.coerce.number(),
+});
+
+export const UpdateAnswerGradeBody = zod.object({
+  teacherPoints: zod.number().nullish(),
+  teacherNote: zod.string().nullish(),
+});
+
+export const UpdateAnswerGradeResponse = zod.object({
+  submission: zod.object({
+    id: zod.number(),
+    studentName: zod.string(),
+    studentClass: zod.string(),
+    score: zod.number(),
+    totalQuestions: zod.number(),
+    correctAnswers: zod.number(),
+    earnedPoints: zod.number(),
+    totalPoints: zod.number(),
+    teacherAdjustedPoints: zod.number().nullish(),
+    teacherNote: zod.string().nullish(),
+    aiFeedback: zod.string().nullish(),
+    durationSeconds: zod.number().nullish(),
+    submittedAt: zod.coerce.date(),
+  }),
+  answers: zod.array(
+    zod.object({
+      id: zod.number(),
+      questionId: zod.number(),
+      questionText: zod.string(),
+      questionType: zod.string(),
+      points: zod.number(),
+      selectedAnswer: zod.string(),
+      correctAnswer: zod.string().nullish(),
+      optionA: zod.string().nullish(),
+      optionB: zod.string().nullish(),
+      optionC: zod.string().nullish(),
+      optionD: zod.string().nullish(),
+      isCorrect: zod.boolean(),
+      teacherPoints: zod.number().nullish(),
+      teacherNote: zod.string().nullish(),
+    }),
+  ),
 });
 
 /**
@@ -498,4 +846,2004 @@ export const SubmitFeedbackBody = zod.object({
   name: zod.string(),
   email: zod.string().optional(),
   message: zod.string(),
+});
+
+/**
+ * @summary Get the effective presentations tier and limits for the caller
+ */
+export const GetPresentationsLimitsResponse = zod.object({
+  isPro: zod.boolean(),
+  limits: zod.object({
+    maxImagesRegular: zod.number(),
+    maxFilesRegular: zod.number(),
+    maxSlidesRegular: zod.number(),
+    maxSizeMbRegular: zod.number(),
+  }),
+});
+
+/**
+ * @summary Get tier limits + per-deck usage for a single presentation
+ */
+export const GetPresentationUsageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPresentationUsageResponse = zod.object({
+  isPro: zod.boolean(),
+  limits: zod.object({
+    maxImagesRegular: zod.number(),
+    maxFilesRegular: zod.number(),
+    maxSlidesRegular: zod.number(),
+    maxSizeMbRegular: zod.number(),
+  }),
+  usage: zod.object({
+    slides: zod.number(),
+    images: zod.number(),
+    files: zod.number(),
+    sizeMb: zod.number(),
+  }),
+});
+
+/**
+ * @summary List own presentations + admin-shared
+ */
+export const ListPresentationsResponseItem = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  title: zod.string(),
+  language: zod.enum(["ar", "en"]),
+  theme: zod.string(),
+  pattern: zod.string(),
+  coverEmoji: zod.string().nullish(),
+  slideCount: zod.number(),
+  status: zod.enum(["draft", "published"]),
+  publishedAt: zod.coerce.date().nullish(),
+  isShared: zod.boolean(),
+  ownerName: zod.string().nullish(),
+  ownerIsAdmin: zod.boolean().nullish(),
+  updatedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
+});
+export const ListPresentationsResponse = zod.array(
+  ListPresentationsResponseItem,
+);
+
+/**
+ * @summary Create a new presentation
+ */
+export const createPresentationBodyTitleMax = 200;
+
+export const createPresentationBodySubjectMax = 100;
+
+export const createPresentationBodyGradeLevelMax = 50;
+
+export const createPresentationBodyThemeMax = 40;
+
+export const createPresentationBodyPatternMax = 40;
+
+export const createPresentationBodyCoverEmojiMax = 8;
+
+export const CreatePresentationBody = zod.object({
+  title: zod.string().min(1).max(createPresentationBodyTitleMax),
+  language: zod.enum(["ar", "en"]).optional(),
+  subject: zod.string().max(createPresentationBodySubjectMax).nullish(),
+  gradeLevel: zod.string().max(createPresentationBodyGradeLevelMax).nullish(),
+  theme: zod.string().max(createPresentationBodyThemeMax).optional(),
+  pattern: zod.string().max(createPresentationBodyPatternMax).optional(),
+  coverEmoji: zod.string().max(createPresentationBodyCoverEmojiMax).nullish(),
+});
+
+/**
+ * @summary Get a presentation (owner or admin-shared)
+ */
+export const GetPresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPresentationResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  title: zod.string(),
+  subject: zod.string().nullish(),
+  gradeLevel: zod.string().nullish(),
+  language: zod.enum(["ar", "en"]),
+  theme: zod.string(),
+  pattern: zod.string(),
+  coverEmoji: zod.string().nullish(),
+  description: zod.string().nullish(),
+  slides: zod.array(
+    zod.object({
+      id: zod.string(),
+      layout: zod.string().nullish(),
+      background: zod.string().nullish(),
+      backgroundImage: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      elements: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            kind: zod.enum([
+              "text",
+              "image",
+              "icon",
+              "shape",
+              "activity",
+              "hasad-game",
+              "video-embed",
+            ]),
+            x: zod.number(),
+            y: zod.number(),
+            w: zod.number(),
+            h: zod.number(),
+            rotation: zod.number().nullish(),
+            zIndex: zod.number().nullish(),
+            text: zod.string().nullish(),
+            fontFamily: zod.string().nullish(),
+            fontSize: zod.number().nullish(),
+            fontWeight: zod.string().nullish(),
+            align: zod.enum(["start", "center", "end", "justify"]).nullish(),
+            color: zod.string().nullish(),
+            url: zod.string().nullish(),
+            iconName: zod.string().nullish(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .nullish(),
+            bgColor: zod.string().nullish(),
+            borderColor: zod.string().nullish(),
+            borderWidth: zod.number().nullish(),
+            activityKind: zod
+              .enum(["mcq", "true_false", "open", "poll"])
+              .nullish(),
+            questionId: zod.number().nullish(),
+            prompt: zod.string().nullish(),
+            options: zod.array(zod.string()).nullish(),
+            correctIndex: zod.number().nullish(),
+            accentColor: zod.string().nullish(),
+            gameKind: zod
+              .enum([
+                "kahoot",
+                "wheel",
+                "millionaire",
+                "flag-quiz",
+                "capitals",
+                "letrly",
+                "rocket",
+                "tug",
+                "maraqui",
+                "hack",
+              ])
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — which Hasad live game to launch.",
+              ),
+            topic: zod
+              .string()
+              .nullish()
+              .describe(
+                "Optional topic\/context string forwarded to the game setup page.",
+              ),
+            questions: zod
+              .array(
+                zod.object({
+                  prompt: zod.string(),
+                  options: zod.array(zod.string()),
+                  correctIndex: zod.number(),
+                }),
+              )
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.",
+              ),
+            objectFit: zod
+              .enum(["cover", "contain", "fill", "none"])
+              .nullish()
+              .describe(
+                "For `kind=image` — CSS object-fit applied to the image.",
+              ),
+            objectPosition: zod
+              .string()
+              .nullish()
+              .describe(
+                'For `kind=image` — CSS object-position, e.g. \"center\", \"top\", \"50% 25%\".',
+              ),
+            imageOpacity: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — opacity 0–1 (default 1)."),
+            imageBorderRadius: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — border-radius in pixels (0–500)."),
+            videoKind: zod
+              .enum(["youtube", "hasad-video"])
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — the source platform of the video.",
+              ),
+            videoId: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).",
+              ),
+            title: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — optional display title shown in the editor preview.",
+              ),
+          })
+          .describe(
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+          ),
+      ),
+    }),
+  ),
+  status: zod.enum(["draft", "published"]),
+  publishedAt: zod.coerce.date().nullish(),
+  isShared: zod.boolean(),
+  lastPresentedAt: zod.coerce.date().nullish(),
+  linkedActivityId: zod.string().nullish(),
+  linkedActivityKind: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  ownerName: zod.string().nullish(),
+  isOwner: zod.boolean().nullish(),
+});
+
+/**
+ * @summary Update a presentation (owner only)
+ */
+export const UpdatePresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updatePresentationBodyTitleMax = 200;
+
+export const updatePresentationBodySubjectMax = 100;
+
+export const updatePresentationBodyGradeLevelMax = 50;
+
+export const updatePresentationBodyThemeMax = 40;
+
+export const updatePresentationBodyPatternMax = 40;
+
+export const updatePresentationBodyCoverEmojiMax = 8;
+
+export const updatePresentationBodyDescriptionMax = 2000;
+
+export const updatePresentationBodySlidesMax = 200;
+
+export const UpdatePresentationBody = zod.object({
+  title: zod.string().min(1).max(updatePresentationBodyTitleMax).optional(),
+  language: zod.enum(["ar", "en"]).optional(),
+  subject: zod.string().max(updatePresentationBodySubjectMax).nullish(),
+  gradeLevel: zod.string().max(updatePresentationBodyGradeLevelMax).nullish(),
+  theme: zod.string().max(updatePresentationBodyThemeMax).optional(),
+  pattern: zod.string().max(updatePresentationBodyPatternMax).optional(),
+  coverEmoji: zod.string().max(updatePresentationBodyCoverEmojiMax).nullish(),
+  description: zod.string().max(updatePresentationBodyDescriptionMax).nullish(),
+  slides: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        layout: zod.string().nullish(),
+        background: zod.string().nullish(),
+        backgroundImage: zod.string().nullish(),
+        notes: zod.string().nullish(),
+        elements: zod.array(
+          zod
+            .object({
+              id: zod.string(),
+              kind: zod.enum([
+                "text",
+                "image",
+                "icon",
+                "shape",
+                "activity",
+                "hasad-game",
+                "video-embed",
+              ]),
+              x: zod.number(),
+              y: zod.number(),
+              w: zod.number(),
+              h: zod.number(),
+              rotation: zod.number().nullish(),
+              zIndex: zod.number().nullish(),
+              text: zod.string().nullish(),
+              fontFamily: zod.string().nullish(),
+              fontSize: zod.number().nullish(),
+              fontWeight: zod.string().nullish(),
+              align: zod.enum(["start", "center", "end", "justify"]).nullish(),
+              color: zod.string().nullish(),
+              url: zod.string().nullish(),
+              iconName: zod.string().nullish(),
+              shape: zod
+                .enum(["rect", "circle", "line", "arrow", "divider"])
+                .nullish(),
+              bgColor: zod.string().nullish(),
+              borderColor: zod.string().nullish(),
+              borderWidth: zod.number().nullish(),
+              activityKind: zod
+                .enum(["mcq", "true_false", "open", "poll"])
+                .nullish(),
+              questionId: zod.number().nullish(),
+              prompt: zod.string().nullish(),
+              options: zod.array(zod.string()).nullish(),
+              correctIndex: zod.number().nullish(),
+              accentColor: zod.string().nullish(),
+              gameKind: zod
+                .enum([
+                  "kahoot",
+                  "wheel",
+                  "millionaire",
+                  "flag-quiz",
+                  "capitals",
+                  "letrly",
+                  "rocket",
+                  "tug",
+                  "maraqui",
+                  "hack",
+                ])
+                .nullish()
+                .describe(
+                  "For `kind=hasad-game` — which Hasad live game to launch.",
+                ),
+              topic: zod
+                .string()
+                .nullish()
+                .describe(
+                  "Optional topic\/context string forwarded to the game setup page.",
+                ),
+              questions: zod
+                .array(
+                  zod.object({
+                    prompt: zod.string(),
+                    options: zod.array(zod.string()),
+                    correctIndex: zod.number(),
+                  }),
+                )
+                .nullish()
+                .describe(
+                  "For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.",
+                ),
+              objectFit: zod
+                .enum(["cover", "contain", "fill", "none"])
+                .nullish()
+                .describe(
+                  "For `kind=image` — CSS object-fit applied to the image.",
+                ),
+              objectPosition: zod
+                .string()
+                .nullish()
+                .describe(
+                  'For `kind=image` — CSS object-position, e.g. \"center\", \"top\", \"50% 25%\".',
+                ),
+              imageOpacity: zod
+                .number()
+                .nullish()
+                .describe("For `kind=image` — opacity 0–1 (default 1)."),
+              imageBorderRadius: zod
+                .number()
+                .nullish()
+                .describe(
+                  "For `kind=image` — border-radius in pixels (0–500).",
+                ),
+              videoKind: zod
+                .enum(["youtube", "hasad-video"])
+                .nullish()
+                .describe(
+                  "For `kind=video-embed` — the source platform of the video.",
+                ),
+              videoId: zod
+                .string()
+                .nullish()
+                .describe(
+                  "For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).",
+                ),
+              title: zod
+                .string()
+                .nullish()
+                .describe(
+                  "For `kind=video-embed` — optional display title shown in the editor preview.",
+                ),
+            })
+            .describe(
+              "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+            ),
+        ),
+      }),
+    )
+    .max(updatePresentationBodySlidesMax)
+    .optional(),
+});
+
+export const UpdatePresentationResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  title: zod.string(),
+  subject: zod.string().nullish(),
+  gradeLevel: zod.string().nullish(),
+  language: zod.enum(["ar", "en"]),
+  theme: zod.string(),
+  pattern: zod.string(),
+  coverEmoji: zod.string().nullish(),
+  description: zod.string().nullish(),
+  slides: zod.array(
+    zod.object({
+      id: zod.string(),
+      layout: zod.string().nullish(),
+      background: zod.string().nullish(),
+      backgroundImage: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      elements: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            kind: zod.enum([
+              "text",
+              "image",
+              "icon",
+              "shape",
+              "activity",
+              "hasad-game",
+              "video-embed",
+            ]),
+            x: zod.number(),
+            y: zod.number(),
+            w: zod.number(),
+            h: zod.number(),
+            rotation: zod.number().nullish(),
+            zIndex: zod.number().nullish(),
+            text: zod.string().nullish(),
+            fontFamily: zod.string().nullish(),
+            fontSize: zod.number().nullish(),
+            fontWeight: zod.string().nullish(),
+            align: zod.enum(["start", "center", "end", "justify"]).nullish(),
+            color: zod.string().nullish(),
+            url: zod.string().nullish(),
+            iconName: zod.string().nullish(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .nullish(),
+            bgColor: zod.string().nullish(),
+            borderColor: zod.string().nullish(),
+            borderWidth: zod.number().nullish(),
+            activityKind: zod
+              .enum(["mcq", "true_false", "open", "poll"])
+              .nullish(),
+            questionId: zod.number().nullish(),
+            prompt: zod.string().nullish(),
+            options: zod.array(zod.string()).nullish(),
+            correctIndex: zod.number().nullish(),
+            accentColor: zod.string().nullish(),
+            gameKind: zod
+              .enum([
+                "kahoot",
+                "wheel",
+                "millionaire",
+                "flag-quiz",
+                "capitals",
+                "letrly",
+                "rocket",
+                "tug",
+                "maraqui",
+                "hack",
+              ])
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — which Hasad live game to launch.",
+              ),
+            topic: zod
+              .string()
+              .nullish()
+              .describe(
+                "Optional topic\/context string forwarded to the game setup page.",
+              ),
+            questions: zod
+              .array(
+                zod.object({
+                  prompt: zod.string(),
+                  options: zod.array(zod.string()),
+                  correctIndex: zod.number(),
+                }),
+              )
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.",
+              ),
+            objectFit: zod
+              .enum(["cover", "contain", "fill", "none"])
+              .nullish()
+              .describe(
+                "For `kind=image` — CSS object-fit applied to the image.",
+              ),
+            objectPosition: zod
+              .string()
+              .nullish()
+              .describe(
+                'For `kind=image` — CSS object-position, e.g. \"center\", \"top\", \"50% 25%\".',
+              ),
+            imageOpacity: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — opacity 0–1 (default 1)."),
+            imageBorderRadius: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — border-radius in pixels (0–500)."),
+            videoKind: zod
+              .enum(["youtube", "hasad-video"])
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — the source platform of the video.",
+              ),
+            videoId: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).",
+              ),
+            title: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — optional display title shown in the editor preview.",
+              ),
+          })
+          .describe(
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+          ),
+      ),
+    }),
+  ),
+  status: zod.enum(["draft", "published"]),
+  publishedAt: zod.coerce.date().nullish(),
+  isShared: zod.boolean(),
+  lastPresentedAt: zod.coerce.date().nullish(),
+  linkedActivityId: zod.string().nullish(),
+  linkedActivityKind: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  ownerName: zod.string().nullish(),
+  isOwner: zod.boolean().nullish(),
+});
+
+/**
+ * @summary Delete a presentation (owner only)
+ */
+export const DeletePresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePresentationResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Publish a presentation (owner only)
+ */
+export const PublishPresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PublishPresentationResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  title: zod.string(),
+  subject: zod.string().nullish(),
+  gradeLevel: zod.string().nullish(),
+  language: zod.enum(["ar", "en"]),
+  theme: zod.string(),
+  pattern: zod.string(),
+  coverEmoji: zod.string().nullish(),
+  description: zod.string().nullish(),
+  slides: zod.array(
+    zod.object({
+      id: zod.string(),
+      layout: zod.string().nullish(),
+      background: zod.string().nullish(),
+      backgroundImage: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      elements: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            kind: zod.enum([
+              "text",
+              "image",
+              "icon",
+              "shape",
+              "activity",
+              "hasad-game",
+              "video-embed",
+            ]),
+            x: zod.number(),
+            y: zod.number(),
+            w: zod.number(),
+            h: zod.number(),
+            rotation: zod.number().nullish(),
+            zIndex: zod.number().nullish(),
+            text: zod.string().nullish(),
+            fontFamily: zod.string().nullish(),
+            fontSize: zod.number().nullish(),
+            fontWeight: zod.string().nullish(),
+            align: zod.enum(["start", "center", "end", "justify"]).nullish(),
+            color: zod.string().nullish(),
+            url: zod.string().nullish(),
+            iconName: zod.string().nullish(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .nullish(),
+            bgColor: zod.string().nullish(),
+            borderColor: zod.string().nullish(),
+            borderWidth: zod.number().nullish(),
+            activityKind: zod
+              .enum(["mcq", "true_false", "open", "poll"])
+              .nullish(),
+            questionId: zod.number().nullish(),
+            prompt: zod.string().nullish(),
+            options: zod.array(zod.string()).nullish(),
+            correctIndex: zod.number().nullish(),
+            accentColor: zod.string().nullish(),
+            gameKind: zod
+              .enum([
+                "kahoot",
+                "wheel",
+                "millionaire",
+                "flag-quiz",
+                "capitals",
+                "letrly",
+                "rocket",
+                "tug",
+                "maraqui",
+                "hack",
+              ])
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — which Hasad live game to launch.",
+              ),
+            topic: zod
+              .string()
+              .nullish()
+              .describe(
+                "Optional topic\/context string forwarded to the game setup page.",
+              ),
+            questions: zod
+              .array(
+                zod.object({
+                  prompt: zod.string(),
+                  options: zod.array(zod.string()),
+                  correctIndex: zod.number(),
+                }),
+              )
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.",
+              ),
+            objectFit: zod
+              .enum(["cover", "contain", "fill", "none"])
+              .nullish()
+              .describe(
+                "For `kind=image` — CSS object-fit applied to the image.",
+              ),
+            objectPosition: zod
+              .string()
+              .nullish()
+              .describe(
+                'For `kind=image` — CSS object-position, e.g. \"center\", \"top\", \"50% 25%\".',
+              ),
+            imageOpacity: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — opacity 0–1 (default 1)."),
+            imageBorderRadius: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — border-radius in pixels (0–500)."),
+            videoKind: zod
+              .enum(["youtube", "hasad-video"])
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — the source platform of the video.",
+              ),
+            videoId: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).",
+              ),
+            title: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — optional display title shown in the editor preview.",
+              ),
+          })
+          .describe(
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+          ),
+      ),
+    }),
+  ),
+  status: zod.enum(["draft", "published"]),
+  publishedAt: zod.coerce.date().nullish(),
+  isShared: zod.boolean(),
+  lastPresentedAt: zod.coerce.date().nullish(),
+  linkedActivityId: zod.string().nullish(),
+  linkedActivityKind: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  ownerName: zod.string().nullish(),
+  isOwner: zod.boolean().nullish(),
+});
+
+/**
+ * @summary Move a presentation back to draft (owner only)
+ */
+export const UnpublishPresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UnpublishPresentationResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  title: zod.string(),
+  subject: zod.string().nullish(),
+  gradeLevel: zod.string().nullish(),
+  language: zod.enum(["ar", "en"]),
+  theme: zod.string(),
+  pattern: zod.string(),
+  coverEmoji: zod.string().nullish(),
+  description: zod.string().nullish(),
+  slides: zod.array(
+    zod.object({
+      id: zod.string(),
+      layout: zod.string().nullish(),
+      background: zod.string().nullish(),
+      backgroundImage: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      elements: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            kind: zod.enum([
+              "text",
+              "image",
+              "icon",
+              "shape",
+              "activity",
+              "hasad-game",
+              "video-embed",
+            ]),
+            x: zod.number(),
+            y: zod.number(),
+            w: zod.number(),
+            h: zod.number(),
+            rotation: zod.number().nullish(),
+            zIndex: zod.number().nullish(),
+            text: zod.string().nullish(),
+            fontFamily: zod.string().nullish(),
+            fontSize: zod.number().nullish(),
+            fontWeight: zod.string().nullish(),
+            align: zod.enum(["start", "center", "end", "justify"]).nullish(),
+            color: zod.string().nullish(),
+            url: zod.string().nullish(),
+            iconName: zod.string().nullish(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .nullish(),
+            bgColor: zod.string().nullish(),
+            borderColor: zod.string().nullish(),
+            borderWidth: zod.number().nullish(),
+            activityKind: zod
+              .enum(["mcq", "true_false", "open", "poll"])
+              .nullish(),
+            questionId: zod.number().nullish(),
+            prompt: zod.string().nullish(),
+            options: zod.array(zod.string()).nullish(),
+            correctIndex: zod.number().nullish(),
+            accentColor: zod.string().nullish(),
+            gameKind: zod
+              .enum([
+                "kahoot",
+                "wheel",
+                "millionaire",
+                "flag-quiz",
+                "capitals",
+                "letrly",
+                "rocket",
+                "tug",
+                "maraqui",
+                "hack",
+              ])
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — which Hasad live game to launch.",
+              ),
+            topic: zod
+              .string()
+              .nullish()
+              .describe(
+                "Optional topic\/context string forwarded to the game setup page.",
+              ),
+            questions: zod
+              .array(
+                zod.object({
+                  prompt: zod.string(),
+                  options: zod.array(zod.string()),
+                  correctIndex: zod.number(),
+                }),
+              )
+              .nullish()
+              .describe(
+                "For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.",
+              ),
+            objectFit: zod
+              .enum(["cover", "contain", "fill", "none"])
+              .nullish()
+              .describe(
+                "For `kind=image` — CSS object-fit applied to the image.",
+              ),
+            objectPosition: zod
+              .string()
+              .nullish()
+              .describe(
+                'For `kind=image` — CSS object-position, e.g. \"center\", \"top\", \"50% 25%\".',
+              ),
+            imageOpacity: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — opacity 0–1 (default 1)."),
+            imageBorderRadius: zod
+              .number()
+              .nullish()
+              .describe("For `kind=image` — border-radius in pixels (0–500)."),
+            videoKind: zod
+              .enum(["youtube", "hasad-video"])
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — the source platform of the video.",
+              ),
+            videoId: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).",
+              ),
+            title: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=video-embed` — optional display title shown in the editor preview.",
+              ),
+          })
+          .describe(
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+          ),
+      ),
+    }),
+  ),
+  status: zod.enum(["draft", "published"]),
+  publishedAt: zod.coerce.date().nullish(),
+  isShared: zod.boolean(),
+  lastPresentedAt: zod.coerce.date().nullish(),
+  linkedActivityId: zod.string().nullish(),
+  linkedActivityKind: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  ownerName: zod.string().nullish(),
+  isOwner: zod.boolean().nullish(),
+});
+
+/**
+ * @summary Link or unlink the presentation to a teacher activity (assignment)
+ */
+export const LinkPresentationActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const linkPresentationActivityBodyActivityKindDefault = `assignment`;
+
+export const LinkPresentationActivityBody = zod.object({
+  activityId: zod.number().nullable(),
+  activityKind: zod
+    .string()
+    .default(linkPresentationActivityBodyActivityKindDefault),
+});
+
+export const LinkPresentationActivityResponse = zod.object({
+  id: zod.number(),
+  linkedActivityId: zod.string().nullish(),
+  linkedActivityKind: zod.string().nullish(),
+});
+
+/**
+ * @summary Resolve the linked activity (or null if none / dangling)
+ */
+export const GetPresentationLinkedActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPresentationLinkedActivityResponse = zod.object({
+  kind: zod.string().nullable(),
+  activity: zod
+    .object({
+      id: zod.number(),
+      title: zod.string(),
+    })
+    .nullable(),
+  link: zod
+    .string()
+    .nullable()
+    .describe(
+      "Relative URL to open the linked activity, or null when there is no resolved link.",
+    ),
+});
+
+/**
+ * @summary Duplicate a presentation (owner or admin-shared)
+ */
+export const DuplicatePresentationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List uploaded assets for a presentation
+ */
+export const ListPresentationAssetsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPresentationAssetsResponseItem = zod.object({
+  id: zod.number(),
+  presentationId: zod.number(),
+  kind: zod.enum(["image", "file"]),
+  url: zod.string(),
+  byteSize: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListPresentationAssetsResponse = zod.array(
+  ListPresentationAssetsResponseItem,
+);
+
+/**
+ * @summary Register an uploaded asset URL on a presentation
+ */
+export const RegisterPresentationAssetParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const registerPresentationAssetBodyByteSizeMin = 0;
+
+export const RegisterPresentationAssetBody = zod.object({
+  kind: zod.enum(["image", "file"]),
+  url: zod.string().min(1),
+  byteSize: zod
+    .number()
+    .min(registerPresentationAssetBodyByteSizeMin)
+    .optional(),
+});
+
+/**
+ * @summary Tier-driven limits for AI outline generation
+ */
+export const GetPresentationAiLimitsResponse = zod.object({
+  tier: zod.enum(["standard", "pro", "claude"]),
+  dailyOutlines: zod.number(),
+  used: zod.number(),
+  remaining: zod.number(),
+  maxSlides: zod.number(),
+  allowedDensities: zod.array(zod.enum(["minimal", "balanced", "detailed"])),
+  allowClaude: zod.boolean(),
+});
+
+/**
+ * @summary Generate a reviewable outline (Phase 1A) — does NOT build slides
+ */
+export const generatePresentationOutlineBodySubjectMax = 100;
+
+export const generatePresentationOutlineBodyGradeLevelMax = 50;
+
+export const generatePresentationOutlineBodyTopicMax = 120;
+
+export const generatePresentationOutlineBodySlideCountMin = 5;
+export const generatePresentationOutlineBodySlideCountMax = 30;
+
+export const generatePresentationOutlineBodyNotesMax = 200;
+
+export const GeneratePresentationOutlineBody = zod.object({
+  language: zod.enum(["ar", "en"]),
+  subject: zod.string().min(1).max(generatePresentationOutlineBodySubjectMax),
+  gradeLevel: zod
+    .string()
+    .min(1)
+    .max(generatePresentationOutlineBodyGradeLevelMax),
+  topic: zod.string().min(1).max(generatePresentationOutlineBodyTopicMax),
+  presentationKind: zod.enum([
+    "explain",
+    "review",
+    "interactive",
+    "quick",
+    "contest",
+  ]),
+  slideCount: zod
+    .number()
+    .min(generatePresentationOutlineBodySlideCountMin)
+    .max(generatePresentationOutlineBodySlideCountMax),
+  durationMinutes: zod.union([
+    zod.literal(15),
+    zod.literal(30),
+    zod.literal(45),
+    zod.literal(60),
+  ]),
+  languageLevel: zod.enum(["simple", "medium", "advanced"]),
+  density: zod.enum(["minimal", "balanced", "detailed"]),
+  toggles: zod.object({
+    activities: zod.boolean(),
+    questions: zod.boolean(),
+    poll: zod.boolean(),
+    quiz: zod.boolean(),
+  }),
+  notes: zod.string().max(generatePresentationOutlineBodyNotesMax).nullish(),
+});
+
+/**
+ * Per-slide materialization with skip-on-failure semantics. Failed
+slides are reported in `skipped` so the teacher can author them
+manually. Progress is persisted on the draft row after every
+slide so a parallel poll on `GET /presentations/drafts/{id}`
+can drive a real progress bar without SSE plumbing.
+
+ * @summary Phase 1B — materialize an approved outline into a real deck
+ */
+export const BuildPresentationFromDraftParams = zod.object({
+  draftId: zod.coerce.number(),
+});
+
+export const buildPresentationFromDraftBodyThemeMax = 40;
+
+export const buildPresentationFromDraftBodyPatternMax = 40;
+
+export const buildPresentationFromDraftBodyCoverEmojiMax = 8;
+
+export const BuildPresentationFromDraftBody = zod.object({
+  theme: zod
+    .string()
+    .max(buildPresentationFromDraftBodyThemeMax)
+    .optional()
+    .describe(
+      'Slide theme key from SLIDE_THEMES; defaults to \"harvest\" if omitted or unknown.',
+    ),
+  pattern: zod
+    .string()
+    .max(buildPresentationFromDraftBodyPatternMax)
+    .optional(),
+  coverEmoji: zod
+    .string()
+    .max(buildPresentationFromDraftBodyCoverEmojiMax)
+    .optional(),
+});
+
+export const BuildPresentationFromDraftResponse = zod.object({
+  presentationId: zod.number(),
+  warnings: zod.array(zod.string()),
+  skipped: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Indexes of outline slides that failed validation and were not materialized.",
+    ),
+  cancelled: zod
+    .boolean()
+    .optional()
+    .describe("True when the build returned early due to a cancel request."),
+  alreadyBuilt: zod.boolean(),
+});
+
+/**
+ * Server-Sent Events feed: emits `progress` events on each
+polling tick and a terminal `done` event when the build
+finishes (status `built` or `failed`). Consumed via the
+browser's `EventSource`. Polling on the draft row remains
+available as a fallback driver.
+
+ * @summary Phase 1B — SSE stream of build progress
+ */
+export const StreamPresentationBuildParams = zod.object({
+  draftId: zod.coerce.number(),
+});
+
+/**
+ * Sets an in-memory cancel flag the build loop checks once per
+slide. Idempotent. Slides validated before the cancel arrived
+are still persisted into the resulting deck.
+
+ * @summary Phase 1B — request cancellation of an in-flight build
+ */
+export const CancelPresentationBuildParams = zod.object({
+  draftId: zod.coerce.number(),
+});
+
+export const CancelPresentationBuildResponse = zod.object({
+  ok: zod.boolean(),
+  wasActive: zod
+    .boolean()
+    .describe("True if a live in-memory build was found and flagged."),
+  status: zod
+    .string()
+    .optional()
+    .describe("Current draft status at cancel time."),
+});
+
+/**
+ * @summary List the current teacher's saved outline drafts
+ */
+export const listPresentationDraftsResponseBriefSubjectMax = 100;
+
+export const listPresentationDraftsResponseBriefGradeLevelMax = 50;
+
+export const listPresentationDraftsResponseBriefTopicMax = 120;
+
+export const listPresentationDraftsResponseBriefSlideCountMin = 5;
+export const listPresentationDraftsResponseBriefSlideCountMax = 30;
+
+export const listPresentationDraftsResponseBriefNotesMax = 200;
+
+export const listPresentationDraftsResponseOutlineTotalEstimatedMinutesMax = 240;
+
+export const listPresentationDraftsResponseOutlineObjectivesItemMax = 140;
+
+export const listPresentationDraftsResponseOutlineObjectivesMin = 2;
+export const listPresentationDraftsResponseOutlineObjectivesMax = 6;
+
+export const listPresentationDraftsResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+export const listPresentationDraftsResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const listPresentationDraftsResponseOutlineTeachingFlowMin = 4;
+export const listPresentationDraftsResponseOutlineTeachingFlowMax = 4;
+
+export const listPresentationDraftsResponseOutlineSlidesItemIndexMax = 30;
+
+export const listPresentationDraftsResponseOutlineSlidesItemTitleMax = 80;
+
+export const listPresentationDraftsResponseOutlineSlidesItemSubtitleMax = 80;
+
+export const listPresentationDraftsResponseOutlineSlidesItemPurposeMax = 140;
+
+export const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsMax = 6;
+
+export const listPresentationDraftsResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const listPresentationDraftsResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const listPresentationDraftsResponseOutlineSlidesItemSourceMax = 200;
+
+export const listPresentationDraftsResponseOutlineSlidesMin = 3;
+export const listPresentationDraftsResponseOutlineSlidesMax = 30;
+
+export const ListPresentationDraftsResponseItem = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  presentationId: zod.number().nullish(),
+  brief: zod.object({
+    language: zod.enum(["ar", "en"]),
+    subject: zod
+      .string()
+      .min(1)
+      .max(listPresentationDraftsResponseBriefSubjectMax),
+    gradeLevel: zod
+      .string()
+      .min(1)
+      .max(listPresentationDraftsResponseBriefGradeLevelMax),
+    topic: zod.string().min(1).max(listPresentationDraftsResponseBriefTopicMax),
+    presentationKind: zod.enum([
+      "explain",
+      "review",
+      "interactive",
+      "quick",
+      "contest",
+    ]),
+    slideCount: zod
+      .number()
+      .min(listPresentationDraftsResponseBriefSlideCountMin)
+      .max(listPresentationDraftsResponseBriefSlideCountMax),
+    durationMinutes: zod.union([
+      zod.literal(15),
+      zod.literal(30),
+      zod.literal(45),
+      zod.literal(60),
+    ]),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    toggles: zod.object({
+      activities: zod.boolean(),
+      questions: zod.boolean(),
+      poll: zod.boolean(),
+      quiz: zod.boolean(),
+    }),
+    notes: zod
+      .string()
+      .max(listPresentationDraftsResponseBriefNotesMax)
+      .nullish(),
+  }),
+  outline: zod.object({
+    language: zod.enum(["ar", "en"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    totalEstimatedMinutes: zod
+      .number()
+      .min(1)
+      .max(listPresentationDraftsResponseOutlineTotalEstimatedMinutesMax),
+    objectives: zod
+      .array(
+        zod
+          .string()
+          .min(1)
+          .max(listPresentationDraftsResponseOutlineObjectivesItemMax),
+      )
+      .min(listPresentationDraftsResponseOutlineObjectivesMin)
+      .max(listPresentationDraftsResponseOutlineObjectivesMax),
+    teachingFlow: zod
+      .array(
+        zod.object({
+          stage: zod.enum(["opener", "concept", "practice", "closure"]),
+          slideIndices: zod
+            .array(
+              zod
+                .number()
+                .min(1)
+                .max(
+                  listPresentationDraftsResponseOutlineTeachingFlowItemSlideIndicesItemMax,
+                ),
+            )
+            .min(1),
+          estimatedMinutes: zod
+            .number()
+            .min(1)
+            .max(
+              listPresentationDraftsResponseOutlineTeachingFlowItemEstimatedMinutesMax,
+            ),
+        }),
+      )
+      .min(listPresentationDraftsResponseOutlineTeachingFlowMin)
+      .max(listPresentationDraftsResponseOutlineTeachingFlowMax),
+    slides: zod
+      .array(
+        zod.object({
+          index: zod
+            .number()
+            .min(1)
+            .max(listPresentationDraftsResponseOutlineSlidesItemIndexMax),
+          kind: zod.enum([
+            "title",
+            "objectives",
+            "concept-card",
+            "comparison",
+            "visual-hero",
+            "steps",
+            "interactive",
+            "closure",
+            "timeline",
+            "formula",
+            "stat",
+            "quote",
+            "callout",
+          ]),
+          title: zod
+            .string()
+            .min(1)
+            .max(listPresentationDraftsResponseOutlineSlidesItemTitleMax),
+          subtitle: zod
+            .string()
+            .max(listPresentationDraftsResponseOutlineSlidesItemSubtitleMax)
+            .optional(),
+          purpose: zod
+            .string()
+            .min(1)
+            .max(listPresentationDraftsResponseOutlineSlidesItemPurposeMax),
+          talkingPoints: zod
+            .array(
+              zod
+                .string()
+                .min(1)
+                .max(
+                  listPresentationDraftsResponseOutlineSlidesItemTalkingPointsItemMax,
+                ),
+            )
+            .min(1)
+            .max(
+              listPresentationDraftsResponseOutlineSlidesItemTalkingPointsMax,
+            ),
+          interactionHint: zod
+            .enum(["poll", "quiz", "discussion", "activity"])
+            .nullable(),
+          visualDirection: zod.object({
+            icon: zod
+              .string()
+              .max(
+                listPresentationDraftsResponseOutlineSlidesItemVisualDirectionIconMax,
+              )
+              .optional(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .optional(),
+            layoutHint: zod
+              .string()
+              .max(
+                listPresentationDraftsResponseOutlineSlidesItemVisualDirectionLayoutHintMax,
+              )
+              .optional(),
+          }),
+          source: zod
+            .string()
+            .max(listPresentationDraftsResponseOutlineSlidesItemSourceMax)
+            .optional(),
+        }),
+      )
+      .min(listPresentationDraftsResponseOutlineSlidesMin)
+      .max(listPresentationDraftsResponseOutlineSlidesMax),
+  }),
+  status: zod.enum(["draft", "outline_ready", "building", "built", "failed"]),
+  modelUsed: zod.string().nullish(),
+  tokensUsed: zod.number(),
+  costMicroUsd: zod.number(),
+  errorMessage: zod.string().nullish(),
+  buildProgress: zod
+    .object({
+      current: zod.number().optional(),
+      total: zod.number().optional(),
+      warnings: zod.array(zod.string()).optional(),
+      skipped: zod
+        .array(zod.number())
+        .optional()
+        .describe(
+          "Outline indexes the materializer skipped (failed validation).",
+        ),
+    })
+    .nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListPresentationDraftsResponse = zod.array(
+  ListPresentationDraftsResponseItem,
+);
+
+/**
+ * @summary Read one draft (owner only)
+ */
+export const GetPresentationDraftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const getPresentationDraftResponseBriefSubjectMax = 100;
+
+export const getPresentationDraftResponseBriefGradeLevelMax = 50;
+
+export const getPresentationDraftResponseBriefTopicMax = 120;
+
+export const getPresentationDraftResponseBriefSlideCountMin = 5;
+export const getPresentationDraftResponseBriefSlideCountMax = 30;
+
+export const getPresentationDraftResponseBriefNotesMax = 200;
+
+export const getPresentationDraftResponseOutlineTotalEstimatedMinutesMax = 240;
+
+export const getPresentationDraftResponseOutlineObjectivesItemMax = 140;
+
+export const getPresentationDraftResponseOutlineObjectivesMin = 2;
+export const getPresentationDraftResponseOutlineObjectivesMax = 6;
+
+export const getPresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+export const getPresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const getPresentationDraftResponseOutlineTeachingFlowMin = 4;
+export const getPresentationDraftResponseOutlineTeachingFlowMax = 4;
+
+export const getPresentationDraftResponseOutlineSlidesItemIndexMax = 30;
+
+export const getPresentationDraftResponseOutlineSlidesItemTitleMax = 80;
+
+export const getPresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
+
+export const getPresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
+
+export const getPresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const getPresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
+
+export const getPresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const getPresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const getPresentationDraftResponseOutlineSlidesItemSourceMax = 200;
+
+export const getPresentationDraftResponseOutlineSlidesMin = 3;
+export const getPresentationDraftResponseOutlineSlidesMax = 30;
+
+export const GetPresentationDraftResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  presentationId: zod.number().nullish(),
+  brief: zod.object({
+    language: zod.enum(["ar", "en"]),
+    subject: zod
+      .string()
+      .min(1)
+      .max(getPresentationDraftResponseBriefSubjectMax),
+    gradeLevel: zod
+      .string()
+      .min(1)
+      .max(getPresentationDraftResponseBriefGradeLevelMax),
+    topic: zod.string().min(1).max(getPresentationDraftResponseBriefTopicMax),
+    presentationKind: zod.enum([
+      "explain",
+      "review",
+      "interactive",
+      "quick",
+      "contest",
+    ]),
+    slideCount: zod
+      .number()
+      .min(getPresentationDraftResponseBriefSlideCountMin)
+      .max(getPresentationDraftResponseBriefSlideCountMax),
+    durationMinutes: zod.union([
+      zod.literal(15),
+      zod.literal(30),
+      zod.literal(45),
+      zod.literal(60),
+    ]),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    toggles: zod.object({
+      activities: zod.boolean(),
+      questions: zod.boolean(),
+      poll: zod.boolean(),
+      quiz: zod.boolean(),
+    }),
+    notes: zod
+      .string()
+      .max(getPresentationDraftResponseBriefNotesMax)
+      .nullish(),
+  }),
+  outline: zod.object({
+    language: zod.enum(["ar", "en"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    totalEstimatedMinutes: zod
+      .number()
+      .min(1)
+      .max(getPresentationDraftResponseOutlineTotalEstimatedMinutesMax),
+    objectives: zod
+      .array(
+        zod
+          .string()
+          .min(1)
+          .max(getPresentationDraftResponseOutlineObjectivesItemMax),
+      )
+      .min(getPresentationDraftResponseOutlineObjectivesMin)
+      .max(getPresentationDraftResponseOutlineObjectivesMax),
+    teachingFlow: zod
+      .array(
+        zod.object({
+          stage: zod.enum(["opener", "concept", "practice", "closure"]),
+          slideIndices: zod
+            .array(
+              zod
+                .number()
+                .min(1)
+                .max(
+                  getPresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax,
+                ),
+            )
+            .min(1),
+          estimatedMinutes: zod
+            .number()
+            .min(1)
+            .max(
+              getPresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax,
+            ),
+        }),
+      )
+      .min(getPresentationDraftResponseOutlineTeachingFlowMin)
+      .max(getPresentationDraftResponseOutlineTeachingFlowMax),
+    slides: zod
+      .array(
+        zod.object({
+          index: zod
+            .number()
+            .min(1)
+            .max(getPresentationDraftResponseOutlineSlidesItemIndexMax),
+          kind: zod.enum([
+            "title",
+            "objectives",
+            "concept-card",
+            "comparison",
+            "visual-hero",
+            "steps",
+            "interactive",
+            "closure",
+            "timeline",
+            "formula",
+            "stat",
+            "quote",
+            "callout",
+          ]),
+          title: zod
+            .string()
+            .min(1)
+            .max(getPresentationDraftResponseOutlineSlidesItemTitleMax),
+          subtitle: zod
+            .string()
+            .max(getPresentationDraftResponseOutlineSlidesItemSubtitleMax)
+            .optional(),
+          purpose: zod
+            .string()
+            .min(1)
+            .max(getPresentationDraftResponseOutlineSlidesItemPurposeMax),
+          talkingPoints: zod
+            .array(
+              zod
+                .string()
+                .min(1)
+                .max(
+                  getPresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax,
+                ),
+            )
+            .min(1)
+            .max(getPresentationDraftResponseOutlineSlidesItemTalkingPointsMax),
+          interactionHint: zod
+            .enum(["poll", "quiz", "discussion", "activity"])
+            .nullable(),
+          visualDirection: zod.object({
+            icon: zod
+              .string()
+              .max(
+                getPresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax,
+              )
+              .optional(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .optional(),
+            layoutHint: zod
+              .string()
+              .max(
+                getPresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax,
+              )
+              .optional(),
+          }),
+          source: zod
+            .string()
+            .max(getPresentationDraftResponseOutlineSlidesItemSourceMax)
+            .optional(),
+        }),
+      )
+      .min(getPresentationDraftResponseOutlineSlidesMin)
+      .max(getPresentationDraftResponseOutlineSlidesMax),
+  }),
+  status: zod.enum(["draft", "outline_ready", "building", "built", "failed"]),
+  modelUsed: zod.string().nullish(),
+  tokensUsed: zod.number(),
+  costMicroUsd: zod.number(),
+  errorMessage: zod.string().nullish(),
+  buildProgress: zod
+    .object({
+      current: zod.number().optional(),
+      total: zod.number().optional(),
+      warnings: zod.array(zod.string()).optional(),
+      skipped: zod
+        .array(zod.number())
+        .optional()
+        .describe(
+          "Outline indexes the materializer skipped (failed validation).",
+        ),
+    })
+    .nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update outline or status (owner only)
+ */
+export const UpdatePresentationDraftParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updatePresentationDraftBodyOutlineTotalEstimatedMinutesMax = 240;
+
+export const updatePresentationDraftBodyOutlineObjectivesItemMax = 140;
+
+export const updatePresentationDraftBodyOutlineObjectivesMin = 2;
+export const updatePresentationDraftBodyOutlineObjectivesMax = 6;
+
+export const updatePresentationDraftBodyOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+export const updatePresentationDraftBodyOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const updatePresentationDraftBodyOutlineTeachingFlowMin = 4;
+export const updatePresentationDraftBodyOutlineTeachingFlowMax = 4;
+
+export const updatePresentationDraftBodyOutlineSlidesItemIndexMax = 30;
+
+export const updatePresentationDraftBodyOutlineSlidesItemTitleMax = 80;
+
+export const updatePresentationDraftBodyOutlineSlidesItemSubtitleMax = 80;
+
+export const updatePresentationDraftBodyOutlineSlidesItemPurposeMax = 140;
+
+export const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsMax = 6;
+
+export const updatePresentationDraftBodyOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const updatePresentationDraftBodyOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const updatePresentationDraftBodyOutlineSlidesItemSourceMax = 200;
+
+export const updatePresentationDraftBodyOutlineSlidesMin = 3;
+export const updatePresentationDraftBodyOutlineSlidesMax = 30;
+
+export const UpdatePresentationDraftBody = zod.object({
+  outline: zod
+    .object({
+      language: zod.enum(["ar", "en"]),
+      density: zod.enum(["minimal", "balanced", "detailed"]),
+      totalEstimatedMinutes: zod
+        .number()
+        .min(1)
+        .max(updatePresentationDraftBodyOutlineTotalEstimatedMinutesMax),
+      objectives: zod
+        .array(
+          zod
+            .string()
+            .min(1)
+            .max(updatePresentationDraftBodyOutlineObjectivesItemMax),
+        )
+        .min(updatePresentationDraftBodyOutlineObjectivesMin)
+        .max(updatePresentationDraftBodyOutlineObjectivesMax),
+      teachingFlow: zod
+        .array(
+          zod.object({
+            stage: zod.enum(["opener", "concept", "practice", "closure"]),
+            slideIndices: zod
+              .array(
+                zod
+                  .number()
+                  .min(1)
+                  .max(
+                    updatePresentationDraftBodyOutlineTeachingFlowItemSlideIndicesItemMax,
+                  ),
+              )
+              .min(1),
+            estimatedMinutes: zod
+              .number()
+              .min(1)
+              .max(
+                updatePresentationDraftBodyOutlineTeachingFlowItemEstimatedMinutesMax,
+              ),
+          }),
+        )
+        .min(updatePresentationDraftBodyOutlineTeachingFlowMin)
+        .max(updatePresentationDraftBodyOutlineTeachingFlowMax),
+      slides: zod
+        .array(
+          zod.object({
+            index: zod
+              .number()
+              .min(1)
+              .max(updatePresentationDraftBodyOutlineSlidesItemIndexMax),
+            kind: zod.enum([
+              "title",
+              "objectives",
+              "concept-card",
+              "comparison",
+              "visual-hero",
+              "steps",
+              "interactive",
+              "closure",
+              "timeline",
+              "formula",
+              "stat",
+              "quote",
+              "callout",
+            ]),
+            title: zod
+              .string()
+              .min(1)
+              .max(updatePresentationDraftBodyOutlineSlidesItemTitleMax),
+            subtitle: zod
+              .string()
+              .max(updatePresentationDraftBodyOutlineSlidesItemSubtitleMax)
+              .optional(),
+            purpose: zod
+              .string()
+              .min(1)
+              .max(updatePresentationDraftBodyOutlineSlidesItemPurposeMax),
+            talkingPoints: zod
+              .array(
+                zod
+                  .string()
+                  .min(1)
+                  .max(
+                    updatePresentationDraftBodyOutlineSlidesItemTalkingPointsItemMax,
+                  ),
+              )
+              .min(1)
+              .max(
+                updatePresentationDraftBodyOutlineSlidesItemTalkingPointsMax,
+              ),
+            interactionHint: zod
+              .enum(["poll", "quiz", "discussion", "activity"])
+              .nullable(),
+            visualDirection: zod.object({
+              icon: zod
+                .string()
+                .max(
+                  updatePresentationDraftBodyOutlineSlidesItemVisualDirectionIconMax,
+                )
+                .optional(),
+              shape: zod
+                .enum(["rect", "circle", "line", "arrow", "divider"])
+                .optional(),
+              layoutHint: zod
+                .string()
+                .max(
+                  updatePresentationDraftBodyOutlineSlidesItemVisualDirectionLayoutHintMax,
+                )
+                .optional(),
+            }),
+            source: zod
+              .string()
+              .max(updatePresentationDraftBodyOutlineSlidesItemSourceMax)
+              .optional(),
+          }),
+        )
+        .min(updatePresentationDraftBodyOutlineSlidesMin)
+        .max(updatePresentationDraftBodyOutlineSlidesMax),
+    })
+    .optional(),
+  status: zod.enum(["draft", "outline_ready"]).optional(),
+});
+
+export const updatePresentationDraftResponseBriefSubjectMax = 100;
+
+export const updatePresentationDraftResponseBriefGradeLevelMax = 50;
+
+export const updatePresentationDraftResponseBriefTopicMax = 120;
+
+export const updatePresentationDraftResponseBriefSlideCountMin = 5;
+export const updatePresentationDraftResponseBriefSlideCountMax = 30;
+
+export const updatePresentationDraftResponseBriefNotesMax = 200;
+
+export const updatePresentationDraftResponseOutlineTotalEstimatedMinutesMax = 240;
+
+export const updatePresentationDraftResponseOutlineObjectivesItemMax = 140;
+
+export const updatePresentationDraftResponseOutlineObjectivesMin = 2;
+export const updatePresentationDraftResponseOutlineObjectivesMax = 6;
+
+export const updatePresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax = 30;
+
+export const updatePresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax = 240;
+
+export const updatePresentationDraftResponseOutlineTeachingFlowMin = 4;
+export const updatePresentationDraftResponseOutlineTeachingFlowMax = 4;
+
+export const updatePresentationDraftResponseOutlineSlidesItemIndexMax = 30;
+
+export const updatePresentationDraftResponseOutlineSlidesItemTitleMax = 80;
+
+export const updatePresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
+
+export const updatePresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
+
+export const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+
+export const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
+
+export const updatePresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax = 40;
+
+export const updatePresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax = 40;
+
+export const updatePresentationDraftResponseOutlineSlidesItemSourceMax = 200;
+
+export const updatePresentationDraftResponseOutlineSlidesMin = 3;
+export const updatePresentationDraftResponseOutlineSlidesMax = 30;
+
+export const UpdatePresentationDraftResponse = zod.object({
+  id: zod.number(),
+  teacherId: zod.number(),
+  presentationId: zod.number().nullish(),
+  brief: zod.object({
+    language: zod.enum(["ar", "en"]),
+    subject: zod
+      .string()
+      .min(1)
+      .max(updatePresentationDraftResponseBriefSubjectMax),
+    gradeLevel: zod
+      .string()
+      .min(1)
+      .max(updatePresentationDraftResponseBriefGradeLevelMax),
+    topic: zod
+      .string()
+      .min(1)
+      .max(updatePresentationDraftResponseBriefTopicMax),
+    presentationKind: zod.enum([
+      "explain",
+      "review",
+      "interactive",
+      "quick",
+      "contest",
+    ]),
+    slideCount: zod
+      .number()
+      .min(updatePresentationDraftResponseBriefSlideCountMin)
+      .max(updatePresentationDraftResponseBriefSlideCountMax),
+    durationMinutes: zod.union([
+      zod.literal(15),
+      zod.literal(30),
+      zod.literal(45),
+      zod.literal(60),
+    ]),
+    languageLevel: zod.enum(["simple", "medium", "advanced"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    toggles: zod.object({
+      activities: zod.boolean(),
+      questions: zod.boolean(),
+      poll: zod.boolean(),
+      quiz: zod.boolean(),
+    }),
+    notes: zod
+      .string()
+      .max(updatePresentationDraftResponseBriefNotesMax)
+      .nullish(),
+  }),
+  outline: zod.object({
+    language: zod.enum(["ar", "en"]),
+    density: zod.enum(["minimal", "balanced", "detailed"]),
+    totalEstimatedMinutes: zod
+      .number()
+      .min(1)
+      .max(updatePresentationDraftResponseOutlineTotalEstimatedMinutesMax),
+    objectives: zod
+      .array(
+        zod
+          .string()
+          .min(1)
+          .max(updatePresentationDraftResponseOutlineObjectivesItemMax),
+      )
+      .min(updatePresentationDraftResponseOutlineObjectivesMin)
+      .max(updatePresentationDraftResponseOutlineObjectivesMax),
+    teachingFlow: zod
+      .array(
+        zod.object({
+          stage: zod.enum(["opener", "concept", "practice", "closure"]),
+          slideIndices: zod
+            .array(
+              zod
+                .number()
+                .min(1)
+                .max(
+                  updatePresentationDraftResponseOutlineTeachingFlowItemSlideIndicesItemMax,
+                ),
+            )
+            .min(1),
+          estimatedMinutes: zod
+            .number()
+            .min(1)
+            .max(
+              updatePresentationDraftResponseOutlineTeachingFlowItemEstimatedMinutesMax,
+            ),
+        }),
+      )
+      .min(updatePresentationDraftResponseOutlineTeachingFlowMin)
+      .max(updatePresentationDraftResponseOutlineTeachingFlowMax),
+    slides: zod
+      .array(
+        zod.object({
+          index: zod
+            .number()
+            .min(1)
+            .max(updatePresentationDraftResponseOutlineSlidesItemIndexMax),
+          kind: zod.enum([
+            "title",
+            "objectives",
+            "concept-card",
+            "comparison",
+            "visual-hero",
+            "steps",
+            "interactive",
+            "closure",
+            "timeline",
+            "formula",
+            "stat",
+            "quote",
+            "callout",
+          ]),
+          title: zod
+            .string()
+            .min(1)
+            .max(updatePresentationDraftResponseOutlineSlidesItemTitleMax),
+          subtitle: zod
+            .string()
+            .max(updatePresentationDraftResponseOutlineSlidesItemSubtitleMax)
+            .optional(),
+          purpose: zod
+            .string()
+            .min(1)
+            .max(updatePresentationDraftResponseOutlineSlidesItemPurposeMax),
+          talkingPoints: zod
+            .array(
+              zod
+                .string()
+                .min(1)
+                .max(
+                  updatePresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax,
+                ),
+            )
+            .min(1)
+            .max(
+              updatePresentationDraftResponseOutlineSlidesItemTalkingPointsMax,
+            ),
+          interactionHint: zod
+            .enum(["poll", "quiz", "discussion", "activity"])
+            .nullable(),
+          visualDirection: zod.object({
+            icon: zod
+              .string()
+              .max(
+                updatePresentationDraftResponseOutlineSlidesItemVisualDirectionIconMax,
+              )
+              .optional(),
+            shape: zod
+              .enum(["rect", "circle", "line", "arrow", "divider"])
+              .optional(),
+            layoutHint: zod
+              .string()
+              .max(
+                updatePresentationDraftResponseOutlineSlidesItemVisualDirectionLayoutHintMax,
+              )
+              .optional(),
+          }),
+          source: zod
+            .string()
+            .max(updatePresentationDraftResponseOutlineSlidesItemSourceMax)
+            .optional(),
+        }),
+      )
+      .min(updatePresentationDraftResponseOutlineSlidesMin)
+      .max(updatePresentationDraftResponseOutlineSlidesMax),
+  }),
+  status: zod.enum(["draft", "outline_ready", "building", "built", "failed"]),
+  modelUsed: zod.string().nullish(),
+  tokensUsed: zod.number(),
+  costMicroUsd: zod.number(),
+  errorMessage: zod.string().nullish(),
+  buildProgress: zod
+    .object({
+      current: zod.number().optional(),
+      total: zod.number().optional(),
+      warnings: zod.array(zod.string()).optional(),
+      skipped: zod
+        .array(zod.number())
+        .optional()
+        .describe(
+          "Outline indexes the materializer skipped (failed validation).",
+        ),
+    })
+    .nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a draft (owner only)
+ */
+export const DeletePresentationDraftParams = zod.object({
+  id: zod.coerce.number(),
 });

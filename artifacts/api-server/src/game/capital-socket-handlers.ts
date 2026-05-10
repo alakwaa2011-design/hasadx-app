@@ -79,8 +79,13 @@ export function setupCapitalSocket(io: Server) {
           cb?.({ error: "Game not found" });
           return;
         }
-        if (game.state !== "lobby") {
-          cb?.({ error: "Game already started" });
+        /* Late-join policy: only block once the game has fully ended.
+           A student who joins during countdown / mid-question /
+           leaderboard is added with a fresh 0-score and immediately
+           catches up to the live question. Mirrors the Flag-Quiz
+           handler — same rationale. */
+        if (game.state === "finished") {
+          cb?.({ error: "Game already finished" });
           return;
         }
         const player = addCapitalPlayer(data.pin, socket.id, data.name.trim());
@@ -91,13 +96,29 @@ export function setupCapitalSocket(io: Server) {
         socket.join(`capital:${data.pin}`);
         const players = getCapitalPlayerList(data.pin);
         io.to(`capital:${data.pin}`).emit("capital:player-joined", { players, name: data.name.trim() });
-        logger.info(`Player ${data.name} joined capital game ${data.pin}`);
+        logger.info(`Player ${data.name} joined capital game ${data.pin} (state=${game.state})`);
         cb?.({
           success: true,
           questionCount: game.questions.length,
           tier: game.tier,
           players,
         });
+        /* Catch-up: send current question only to the joining socket
+           with the remaining duration so their countdown timer is in
+           sync with the rest of the room. */
+        if (game.state === "question" && game.currentQuestionIdx >= 0) {
+          const q = game.questions[game.currentQuestionIdx];
+          if (q) {
+            const elapsedMs = Date.now() - game.questionStartTime;
+            const remaining = Math.max(1, Math.ceil((game.questionDuration * 1000 - elapsedMs) / 1000));
+            socket.emit("capital:question", {
+              questionIdx: game.currentQuestionIdx,
+              totalQuestions: game.questions.length,
+              question: q,
+              duration: remaining,
+            });
+          }
+        }
       } catch (err) {
         logger.error({ err }, "Error joining capital game:");
         cb?.({ error: "Failed to join" });

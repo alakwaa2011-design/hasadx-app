@@ -2,9 +2,23 @@ import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useSeo } from "@/lib/seo";
 
 export default function TermsPage() {
   const { lang } = useI18n();
+  useSeo(
+    lang === "ar"
+      ? {
+          title: "شروط الاستخدام | منصة حصاد — HasadX",
+          description: "شروط استخدام منصة حصاد التعليمية للمعلمين والطلاب والمؤسسات التعليمية.",
+          canonicalPath: "/terms",
+        }
+      : {
+          title: "Terms of Service | HasadX",
+          description: "HasadX terms of service for teachers, students, and educational institutions.",
+          canonicalPath: "/terms",
+        },
+  );
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   return (

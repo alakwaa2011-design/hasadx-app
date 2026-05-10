@@ -6,11 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Play, ArrowRight, ArrowLeft, Crown, Medal,
   Star, User, BookOpen, ChevronDown, Users, UserRound, Lock,
-  Plus, X, UserPlus, Swords, Database, Link2, QrCode, Loader2,
+  Plus, X, UserPlus, Swords, Database, Link2, QrCode, Loader2, Upload,
 } from "lucide-react";
+import { AssignmentPicker } from "@/components/assignment-picker";
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
 import { MultiplayerLobby } from "@/components/multiplayer-lobby";
+import {
+  ClassSelector,
+  getRememberedTargetClass,
+} from "@/components/teacher/class-selector";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -21,6 +26,30 @@ const PLAYER_NAME_KEY = "millionPlayerName";
 
 function formatPrize(n: number): string {
   return n.toLocaleString("en-US");
+}
+
+const TEAM_EMOJIS = [
+  "🔵","🔴","🟢","🟡","🟣","🟠",
+  "⚽","🏀","🎯","🦁","🐯","🦅",
+  "🌟","⚡","🔥","❄️","🏆","🛡️",
+  "💎","🚀","🦊","🎭","🌈","🎖️",
+];
+
+async function resizeImageToDataUrl(file: File, maxSize = 200): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.src = url;
+  });
 }
 
 interface PublicAssignment {
@@ -58,8 +87,20 @@ export default function MillionSetup() {
   const [bankLevel, setBankLevel] = useState<"easy" | "medium" | "hard" | "all">("all");
   const [bankCategory, setBankCategory] = useState<string>("all");
   const [playMode, setPlayMode] = useState<"solo" | "class" | "team">("solo");
+  const [targetClass, setTargetClass] = useState<string>(() =>
+    getRememberedTargetClass(),
+  );
   const [teamNameA, setTeamNameA] = useState(lang === "ar" ? "الفريق أ" : "Team A");
   const [teamNameB, setTeamNameB] = useState(lang === "ar" ? "الفريق ب" : "Team B");
+  const [competitionTitle, setCompetitionTitle] = useState("");
+  const [teamEmojiA, setTeamEmojiA] = useState("🔵");
+  const [teamEmojiB, setTeamEmojiB] = useState("🔴");
+  const [teamImageA, setTeamImageA] = useState<string>("");
+  const [teamImageB, setTeamImageB] = useState<string>("");
+  const [showEmojiA, setShowEmojiA] = useState(false);
+  const [showEmojiB, setShowEmojiB] = useState(false);
+  const fileInputARef = useRef<HTMLInputElement>(null);
+  const fileInputBRef = useRef<HTMLInputElement>(null);
   const [creating, setCreating] = useState(false);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
   const [myAssignments, setMyAssignments] = useState<PublicAssignment[]>([]);
@@ -234,20 +275,28 @@ export default function MillionSetup() {
           A: teamNameA.trim() || (lang === "ar" ? "الفريق أ" : "Team A"),
           B: teamNameB.trim() || (lang === "ar" ? "الفريق ب" : "Team B"),
         },
+        targetClass: targetClass || undefined,
       }, (res2: { pin?: string; hostToken?: string; error?: string }) => {
         if (res2.error || !res2.pin || !res2.hostToken) {
           toast.error(res2.error || (lang === "ar" ? "فشل إنشاء الغرفة" : "Failed to create room"));
           setCreating(false);
           return;
         }
-        try { sessionStorage.setItem(`millionTeamHostToken:${res2.pin}`, res2.hostToken); } catch { /* ignore */ }
+        try {
+          sessionStorage.setItem(`millionTeamHostToken:${res2.pin}`, res2.hostToken);
+          sessionStorage.setItem(`millionTeamTitle:${res2.pin}`, competitionTitle.trim());
+          sessionStorage.setItem(`millionTeamEmojiA:${res2.pin}`, teamEmojiA);
+          sessionStorage.setItem(`millionTeamEmojiB:${res2.pin}`, teamEmojiB);
+          if (teamImageA) sessionStorage.setItem(`millionTeamImgA:${res2.pin}`, teamImageA);
+          if (teamImageB) sessionStorage.setItem(`millionTeamImgB:${res2.pin}`, teamImageB);
+        } catch { /* ignore */ }
         setLocation(`/game/million/team-host/${res2.pin}?token=${encodeURIComponent(res2.hostToken)}`);
       });
     } catch {
       toast.error(lang === "ar" ? "حدث خطأ" : "An error occurred");
       setCreating(false);
     }
-  }, [creating, questionSource, selectedAssignmentId, bankCategory, teamNameA, teamNameB, lang, setLocation]);
+  }, [creating, questionSource, selectedAssignmentId, bankCategory, teamNameA, teamNameB, competitionTitle, teamEmojiA, teamEmojiB, teamImageA, teamImageB, lang, setLocation]);
 
   const handleCreateClassSession = useCallback(async () => {
     if (isCreatingSession) return;
@@ -293,6 +342,7 @@ export default function MillionSetup() {
       const sessionMode: "individual" | "broadcast" | "team-control" =
         isTeamControl ? "team-control" : (broadcastInClassSession ? "broadcast" : "individual");
       const body: Record<string, unknown> = { questionSource, autoAdvance, mode: sessionMode };
+      if (targetClass) body.targetClass = targetClass;
       if (sessionMode === "team-control") {
         body.teamAName = teamCtlAName.trim();
         body.teamBName = teamCtlBName.trim();
@@ -493,6 +543,15 @@ export default function MillionSetup() {
                     </button>
                   )}
                 </div>
+                {isTeacher && (
+                  <div className="mt-3">
+                    <ClassSelector
+                      value={targetClass}
+                      onChange={setTargetClass}
+                      accent="#fbbf24"
+                    />
+                  </div>
+                )}
                 {!isTeacher && isTeacher !== null && (
                   <div className="mt-2 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2.5 text-amber-200 text-xs leading-6 font-bold flex items-start gap-2">
                     <span aria-hidden="true">🔒</span>
@@ -625,42 +684,138 @@ export default function MillionSetup() {
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div
-                      className="rounded-xl p-4 space-y-3"
-                      style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.25)" }}
-                    >
-                      <p className="text-purple-300 text-xs font-bold">
-                        {lang === "ar" ? "🏆 أسماء الفريقين" : "🏆 Team Names"}
-                      </p>
+                    <div className="space-y-3">
+
+                      {/* Competition title */}
+                      <div className="rounded-xl p-3" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)" }}>
+                        <label className="text-amber-300 text-xs font-bold block mb-1.5 flex items-center gap-1.5">
+                          <Trophy className="w-3.5 h-3.5" />
+                          {lang === "ar" ? "عنوان المسابقة" : "Competition Title"}
+                          <span className="text-amber-400/60 font-medium">({lang === "ar" ? "اختياري" : "optional"})</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={competitionTitle}
+                          onChange={e => setCompetitionTitle(e.target.value)}
+                          maxLength={60}
+                          placeholder={lang === "ar" ? "مثال: مسابقة نهاية الفصل" : "e.g. End of Term Quiz"}
+                          className="w-full px-3 py-2 rounded-lg text-white text-sm placeholder-amber-600 focus:outline-none focus:ring-1 focus:ring-amber-400 font-medium"
+                          style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}
+                        />
+                      </div>
+
+                      {/* Team cards */}
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-blue-300 text-xs font-medium block mb-1">
-                            🔵 {lang === "ar" ? "الفريق الأول" : "Team A"}
-                          </label>
-                          <input
-                            type="text"
-                            value={teamNameA}
-                            onChange={e => setTeamNameA(e.target.value)}
-                            maxLength={20}
-                            placeholder={lang === "ar" ? "الفريق أ" : "Team A"}
-                            className="w-full px-3 py-2 rounded-lg text-white text-sm placeholder-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
-                            style={{ background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.3)" }}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-red-300 text-xs font-medium block mb-1">
-                            🔴 {lang === "ar" ? "الفريق الثاني" : "Team B"}
-                          </label>
-                          <input
-                            type="text"
-                            value={teamNameB}
-                            onChange={e => setTeamNameB(e.target.value)}
-                            maxLength={20}
-                            placeholder={lang === "ar" ? "الفريق ب" : "Team B"}
-                            className="w-full px-3 py-2 rounded-lg text-white text-sm placeholder-red-500 focus:outline-none focus:ring-1 focus:ring-red-400 text-center font-bold"
-                            style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}
-                          />
-                        </div>
+                        {/* Hidden file inputs */}
+                        <input ref={fileInputARef} type="file" accept="image/*" className="hidden"
+                          onChange={async e => {
+                            const f = e.target.files?.[0];
+                            if (f) { try { setTeamImageA(await resizeImageToDataUrl(f)); } catch { /* ignore */ } }
+                            if (fileInputARef.current) fileInputARef.current.value = "";
+                          }}
+                        />
+                        <input ref={fileInputBRef} type="file" accept="image/*" className="hidden"
+                          onChange={async e => {
+                            const f = e.target.files?.[0];
+                            if (f) { try { setTeamImageB(await resizeImageToDataUrl(f)); } catch { /* ignore */ } }
+                            if (fileInputBRef.current) fileInputBRef.current.value = "";
+                          }}
+                        />
+
+                        {(["A", "B"] as const).map(team => {
+                          const isA = team === "A";
+                          const name = isA ? teamNameA : teamNameB;
+                          const setName = isA ? setTeamNameA : setTeamNameB;
+                          const emoji = isA ? teamEmojiA : teamEmojiB;
+                          const setEmoji = isA ? setTeamEmojiA : setTeamEmojiB;
+                          const image = isA ? teamImageA : teamImageB;
+                          const setImage = isA ? setTeamImageA : setTeamImageB;
+                          const showEmoji = isA ? showEmojiA : showEmojiB;
+                          const setShowEmoji = isA ? setShowEmojiA : setShowEmojiB;
+                          const fileRef = isA ? fileInputARef : fileInputBRef;
+                          const bg = isA ? "rgba(14,165,233,0.12)" : "rgba(239,68,68,0.12)";
+                          const border = isA ? "1px solid rgba(14,165,233,0.35)" : "1px solid rgba(239,68,68,0.35)";
+                          const labelColor = isA ? "text-sky-300" : "text-rose-300";
+                          const pillAvail = isA ? "bg-sky-900/60 text-sky-200 border border-sky-700" : "bg-rose-900/60 text-rose-200 border border-rose-700";
+
+                          return (
+                            <div key={team} className="rounded-xl p-3 space-y-2" style={{ background: bg, border }}>
+                              <div className={`text-xs font-black ${labelColor}`}>
+                                {isA ? (lang === "ar" ? "الفريق الأول" : "Team A") : (lang === "ar" ? "الفريق الثاني" : "Team B")}
+                              </div>
+
+                              {/* Name input */}
+                              <input
+                                type="text"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                maxLength={20}
+                                placeholder={isA ? (lang === "ar" ? "الفريق أ" : "Team A") : (lang === "ar" ? "الفريق ب" : "Team B")}
+                                className="w-full px-2 py-1.5 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none focus:ring-1 font-bold text-center"
+                                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+                              />
+
+                              {/* Emoji + image row */}
+                              <div className="flex items-center gap-1.5">
+                                {/* Emoji picker */}
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowEmoji(v => !v)}
+                                    className="w-9 h-9 rounded-lg text-lg flex items-center justify-center border border-white/20 bg-white/10 hover:bg-white/20 transition-all"
+                                    title={lang === "ar" ? "شعار الفريق" : "Team logo"}
+                                  >{emoji}</button>
+                                  <AnimatePresence>
+                                    {showEmoji && (
+                                      <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: 4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: 4 }}
+                                        className="absolute z-50 top-11 start-0 rounded-xl shadow-2xl p-2 w-44"
+                                        style={{ background: "#1e293b", border: "1px solid rgba(255,255,255,0.15)" }}
+                                      >
+                                        <div className="text-[10px] text-white/40 text-center mb-1.5">{lang === "ar" ? "اختر شعاراً" : "Pick a logo"}</div>
+                                        <div className="grid grid-cols-6 gap-0.5">
+                                          {TEAM_EMOJIS.map(e => (
+                                            <button key={e} type="button"
+                                              onClick={() => { setEmoji(e); setShowEmoji(false); }}
+                                              className={`text-base p-0.5 rounded hover:bg-white/15 transition-all ${emoji === e ? "bg-white/20 ring-1 ring-blue-400" : ""}`}
+                                            >{e}</button>
+                                          ))}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+
+                                {/* Team image */}
+                                {image ? (
+                                  <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-white/20 shrink-0">
+                                    <img src={image} alt="" className="w-full h-full object-cover" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setImage("")}
+                                      className="absolute top-0 end-0 w-4 h-4 bg-red-500 text-white flex items-center justify-center text-[10px] rounded-bl"
+                                    ><X className="w-2.5 h-2.5" /></button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => fileRef.current?.click()}
+                                    className={`flex items-center gap-0.5 text-[10px] font-bold px-2 py-1 rounded-lg border border-dashed border-white/25 text-white/50 hover:text-white/80 hover:border-white/40 transition-all`}
+                                  >
+                                    <Upload className="w-3 h-3" />
+                                    {lang === "ar" ? "صورة" : "Photo"}
+                                  </button>
+                                )}
+
+                                <span className={`text-[9px] font-medium text-white/30`}>
+                                  {lang === "ar" ? "اختياري" : "opt."}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </motion.div>
@@ -1227,36 +1382,14 @@ export default function MillionSetup() {
                       {lang === "ar" ? "لا توجد واجبات تحتوي على 5 أسئلة أو أكثر" : "No assignments with 5+ questions available"}
                     </p>
                   ) : (
-                    <div className="relative">
-                      <select
-                        value={selectedAssignmentId ?? ""}
-                        onChange={e => setSelectedAssignmentId(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full px-4 py-3 rounded-xl text-white font-medium focus:outline-none focus:ring-2 focus:ring-amber-400 appearance-none transition-all"
-                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
-                      >
-                        <option value="" style={{ background: "#0d1f3c" }}>
-                          {lang === "ar" ? "-- اختر واجباً --" : "-- Choose Assignment --"}
-                        </option>
-                        <optgroup label={lang === "ar" ? "── واجباتي ──" : "── My Assignments ──"}>
-                          {myAssignments.filter(a => a.isOwn !== false).map(a => (
-                            <option key={a.id} value={a.id} style={{ background: "#0d1f3c" }}>
-                              {a.title} ({a.questionCount} {lang === "ar" ? "سؤال" : "q"})
-                              {a.isPrivate ? " 🔒" : ""}
-                            </option>
-                          ))}
-                        </optgroup>
-                        {myAssignments.some(a => a.isOwn === false) && (
-                          <optgroup label={lang === "ar" ? "── واجبات مشتركة ──" : "── Shared Assignments ──"}>
-                            {myAssignments.filter(a => a.isOwn === false).map(a => (
-                              <option key={a.id} value={a.id} style={{ background: "#0d1f3c" }}>
-                                {a.title} ({a.questionCount} {lang === "ar" ? "سؤال" : "q"}){a.ownerName ? ` (${a.ownerName})` : ""}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
-                      <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300 pointer-events-none" />
-                    </div>
+                    <AssignmentPicker
+                      assignments={myAssignments}
+                      value={selectedAssignmentId}
+                      onChange={setSelectedAssignmentId}
+                      lang={lang === "ar" ? "ar" : "en"}
+                      triggerClassName="text-white"
+                      panelClassName="bg-[#0d1f3c] text-white border-white/15"
+                    />
                   )}
                   {myAssignments.some(a => a.isPrivate) && (
                     <p className="text-blue-400 text-xs mt-1 flex items-center gap-1">

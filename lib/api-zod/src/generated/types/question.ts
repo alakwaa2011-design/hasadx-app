@@ -19,6 +19,8 @@ export interface Question {
   points: number;
   imageUrl?: string | null;
   readAloud?: boolean;
-  repeatQuestion?: boolean;
+  difficulty?: number | null;
+  skill?: string | null;
   allowMultipleAnswers?: boolean;
+  repeatQuestion?: boolean;
 }

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, teacherClassesTable, studentsTable } from "@workspace/db";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { featureAccess } from "@workspace/billing";
 
 const router: IRouter = Router();
 
@@ -42,10 +43,21 @@ router.post("/teacher/classes", requireAuth, async (req: any, res) => {
     const teacherId = req.session.teacherId;
     const name = (req.body?.name || "").toString().trim();
     if (!name) return res.status(400).json({ message: "الاسم مطلوب" });
+
+    // Subscription gate: enforce maxClasses cap (NULL = unlimited).
+    const gate = await featureAccess.check(teacherId, "create_class");
+    if (!gate.allowed) {
+      return res.status(403).json({
+        message: "وصلت إلى الحد الأقصى لعدد الصفوف في باقتك الحالية. يرجى ترقية الاشتراك.",
+        reason: gate.reason, limit: gate.limit, used: gate.used, remaining: gate.remaining,
+      });
+    }
+
     await db
       .insert(teacherClassesTable)
       .values({ teacherId, name })
       .onConflictDoNothing();
+    await featureAccess.increment(teacherId, "create_class").catch(() => {});
     res.json({ ok: true, name });
   } catch (err) {
     req.log?.error(err, "Create teacher class error");

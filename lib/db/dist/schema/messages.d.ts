@@ -177,13 +177,13 @@ export declare const messages: import("drizzle-orm/pg-core").PgTableWithColumns<
     dialect: "pg";
 }>;
 export declare const insertMessageSchema: z.ZodObject<{
-    conversationId: z.ZodInt;
     role: z.ZodString;
+    costMicroUsd: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    conversationId: z.ZodInt;
     content: z.ZodString;
     model: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     tokensIn: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     tokensOut: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    costMicroUsd: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     cached: z.ZodOptional<z.ZodInt>;
 }, {
     out: {};

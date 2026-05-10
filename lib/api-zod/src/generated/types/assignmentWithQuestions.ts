@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AssignmentWithQuestionsAccessMode } from "./assignmentWithQuestionsAccessMode";
+import type { AssignmentWithQuestionsListeningSettings } from "./assignmentWithQuestionsListeningSettings";
 import type { AssignmentWithQuestionsResultsReleaseMode } from "./assignmentWithQuestionsResultsReleaseMode";
 import type { AssignmentWithQuestionsSubmissionMode } from "./assignmentWithQuestionsSubmissionMode";
 import type { Question } from "./question";
@@ -30,6 +31,12 @@ export interface AssignmentWithQuestions {
   examDurationMinutes?: number | null;
   resultsReleaseMode?: AssignmentWithQuestionsResultsReleaseMode;
   aiGradingInstructions?: string | null;
+  /** Marks special activity types (e.g. 'listening' for dictation/listening assignments). */
+  activityType?: string | null;
+  listeningAudioText?: string | null;
+  listeningVoice?: string | null;
+  listeningSpeed?: string | null;
+  listeningSettings?: AssignmentWithQuestionsListeningSettings;
   createdAt: Date;
   questions: Question[];
 }

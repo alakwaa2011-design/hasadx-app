@@ -61,14 +61,26 @@ export function setupColorSocket(io: Server) {
       try {
         const game = getColorGame(data.pin);
         if (!game) { cb?.({ error: "Game not found" }); return; }
-        if (game.state !== "lobby") { cb?.({ error: "Game already started" }); return; }
+        /* Late-join policy: only block once the game has fully ended.
+           Color rounds are short, so late-joiners may miss the very
+           first round but will be in for the next one. If a round is
+           live right now we send it directly to the joining socket. */
+        if (game.state === "finished") { cb?.({ error: "Game already finished" }); return; }
         const player = addColorPlayer(data.pin, socket.id, data.name.trim());
         if (!player) { cb?.({ error: "Name already taken" }); return; }
         socket.join(`color:${data.pin}`);
         const players = getColorPlayerList(data.pin);
         io.to(`color:${data.pin}`).emit("color:player-joined", { players, name: data.name.trim() });
-        logger.info(`Player ${data.name} joined color game ${data.pin}`);
+        logger.info(`Player ${data.name} joined color game ${data.pin} (state=${game.state})`);
         cb?.({ success: true, players });
+        if (game.state === "playing" && game.currentLevel) {
+          socket.emit("color:round", {
+            levelNum: game.currentLevelNum,
+            level: game.currentLevel,
+            aliveCount: getActiveColorPlayerCount(data.pin),
+            roundTimeSec: getRoundTime(game.currentLevelNum),
+          });
+        }
       } catch (err) {
         logger.error({ err }, "Error joining color game:");
         cb?.({ error: "Failed to join" });

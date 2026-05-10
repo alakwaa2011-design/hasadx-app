@@ -12,6 +12,7 @@ export interface SubmitAssignmentBody {
     deviceFingerprint: string;
     accessCode?: string;
     examSessionId?: number;
+    durationSeconds?: number | null;
     answers: AnswerBody[];
 }
 //# sourceMappingURL=submitAssignmentBody.d.ts.map

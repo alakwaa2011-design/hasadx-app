@@ -1,1228 +1,1712 @@
-import { Router, type IRouter } from "express";
-import { db, presentationsTable, assignmentsTable, questionsTable, teachersTable } from "@workspace/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { Router, type IRouter, type Request, type Response } from "express";
+import multer from "multer";
+import { ObjectStorageService } from "../lib/objectStorage";
+import {
+  parsePptx,
+  parsePdf,
+  parseDocx,
+  buildSlidesFromParsed,
+  buildSlidesFromPdfPages,
+} from "../lib/import-file-parser";
+import { db, presentationsTable, presentationAssetsTable, teachersTable, assignmentsTable, questionBankTable } from "@workspace/db";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
-import { openai } from "@workspace/integrations-openai-ai-server";
-import { resolveTier, modelForTier, getAvailableTiers, isClaudeTier, type AiTier } from "../lib/ai-tier";
-import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
-
-/* Run a single-prompt AI completion against the model for the resolved tier.
-   Returns the raw text response. Branches between Anthropic (claude tier) and
-   OpenAI (standard / pro tiers) so the rest of the route just deals with text.
-   Optionally accepts a `system` message that is forwarded as a system prompt
-   to Anthropic and prepended as a system role message to OpenAI. */
-async function runTierCompletion(opts: {
-  tier: AiTier;
-  prompt: string;
-  maxTokens: number;
-  system?: string;
-}): Promise<string> {
-  if (isClaudeTier(opts.tier)) {
-    const response = await anthropic.messages.create({
-      model: SONNET_MODEL,
-      max_tokens: opts.maxTokens,
-      ...(opts.system ? { system: opts.system } : {}),
-      messages: [{ role: "user", content: opts.prompt }],
-    });
-    const textBlock = response.content.find((c) => c.type === "text");
-    return textBlock && "text" in textBlock ? textBlock.text : "";
-  }
-  const completion = await openai.chat.completions.create({
-    model: modelForTier(opts.tier),
-    max_completion_tokens: opts.maxTokens,
-    messages: [
-      ...(opts.system ? [{ role: "system" as const, content: opts.system }] : []),
-      { role: "user" as const, content: opts.prompt },
-    ],
-  });
-  return completion.choices[0]?.message?.content || "";
-}
-
-/* ── Pro design gating ───────────────────────────────────────── */
-const FREE_THEMES = new Set(["harvest", "ocean", "sunset", "midnight", "rose"]);
-const FREE_PATTERNS = new Set(["solid"]);
-
-async function teacherHasProDesign(teacherId: number): Promise<boolean> {
-  const [t] = await db
-    .select({ isAdmin: teachersTable.isAdmin, hasProDesign: teachersTable.hasProDesign })
-    .from(teachersTable)
-    .where(eq(teachersTable.id, teacherId))
-    .limit(1);
-  if (!t) return false;
-  return Boolean(t.isAdmin || t.hasProDesign);
-}
+import slugify from "slugify";
+import { presentationExportLimiter } from "../lib/rate-limiter";
+import { buildPptx, type PresentationForExport } from "../lib/presentation-pptx";
+import { buildPdf } from "../lib/presentation-pdf";
+import { mintExportToken, verifyExportToken } from "../lib/export-token";
+import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentations-tier";
+import { extractFileContent } from "../lib/file-extractor";
+import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
+import { buildOneSlide } from "../lib/materialize-slide";
 
 const router: IRouter = Router();
 
-/* ─────────────────────────────────────────────────────────────
-   GET /api/presentations/ai-options
-   Returns the AI tiers a teacher is allowed to choose from.
-   ───────────────────────────────────────────────────────────── */
-router.get("/presentations/ai-options", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
+/* Curated tasteful default themes for new decks (May 2026 redesign).
+   Mirror of TASTEFUL_DEFAULT_THEMES in the homework-app's slide-themes
+   registry. Excludes the loud / saturated palettes (harvest, sunset,
+   rose, royal, noor) so a freshly-created deck does not feel like a
+   primary-school poster. */
+const SERVER_DEFAULT_THEMES = [
+  "mist", "obsidian", "linen", "ink", "sage", "ocean", "pine", "clay",
+] as const;
+function pickServerDefaultTheme(): string {
+  return SERVER_DEFAULT_THEMES[
+    Math.floor(Math.random() * SERVER_DEFAULT_THEMES.length)
+  ];
+}
+
+/* ── Auth middleware (session-based). Mirrors the pattern used by
+   worksheets.ts / lesson_plans.ts so behavior across teacher-content
+   routes stays consistent. */
+function requireTeacher(req: any, res: any, next: any) {
+  if (!req.session?.teacherId) {
+    res.status(401).json({ message: "Unauthorized" });
     return;
   }
-  try {
-    const tiers = await getAvailableTiers(req.session.teacherId);
-    res.json({ tiers });
-  } catch (err) {
-    req.log.error({ err }, "Failed to fetch AI options");
-    res.status(500).json({ message: "حدث خطأ" });
+  next();
+}
+
+/* ── Hydrate Phase 2A bank-linked activity elements.
+   Storage stays normalized (the slide JSONB only carries `questionId`
+   for bank picks — see picker `submitFromBank`) but every read path
+   that feeds a renderer (editor GET, public GET, export-data) needs
+   the prompt/options/correctIndex resolved so the activity card isn't
+   blank. We do one IN(...) over the union of referenced ids and
+   overlay the fields per slide element without mutating the row that
+   gets written back to the DB. */
+/**
+ * Resolves the origin puppeteer should navigate to when rendering the
+ * print page for PDF export. We intentionally do NOT trust request
+ * headers (`Host` / `X-Forwarded-*` are client-controllable in many
+ * setups and would let an authenticated teacher redirect the headless
+ * chromium to arbitrary internal hosts — a classic SSRF). Instead we
+ * walk a closed allowlist of env-provided origins, in priority order:
+ *   1) `APP_ORIGIN` — explicit operator override.
+ *   2) First entry of `REPLIT_DOMAINS` (https) — the public domain
+ *      assigned to the deployment by Replit. Required in production:
+ *      each artifact deploys to its own image, so `localhost:80` does
+ *      NOT proxy to the homework-app there (this caused
+ *      `net::ERR_CONNECTION_REFUSED` and a 500 on every prod export
+ *      until this fallback was added).
+ *   3) `REPLIT_DEV_DOMAIN` (https) — the workspace dev URL.
+ *   4) `http://localhost:80` — the shared-proxy loopback in dev.
+ * Each candidate is parsed with `URL` and only http/https origins are
+ * accepted; invalid entries are silently skipped.
+ */
+export function resolveExportOrigin(env: NodeJS.ProcessEnv): string {
+  const firstReplDomain = env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  const candidates: Array<string | undefined> = [
+    env.APP_ORIGIN,
+    firstReplDomain ? `https://${firstReplDomain}` : undefined,
+    env.REPLIT_DEV_DOMAIN ? `https://${env.REPLIT_DEV_DOMAIN}` : undefined,
+    "http://localhost:80",
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === "http:" || u.protocol === "https:") {
+        return u.origin;
+      }
+    } catch { /* skip invalid candidate */ }
   }
+  return "http://localhost:80";
+}
+
+export async function hydrateActivityQuestions(slides: unknown): Promise<unknown> {
+  if (!Array.isArray(slides)) return slides;
+  const ids = new Set<number>();
+  for (const s of slides) {
+    const els = (s as { elements?: unknown }).elements;
+    if (!Array.isArray(els)) continue;
+    for (const el of els) {
+      const e = el as { kind?: string; questionId?: unknown };
+      if (e.kind === "activity" && typeof e.questionId === "number") ids.add(e.questionId);
+    }
+  }
+  if (ids.size === 0) return slides;
+  const rows = await db
+    .select({
+      id: questionBankTable.id,
+      text: questionBankTable.text,
+      questionType: questionBankTable.questionType,
+      optionA: questionBankTable.optionA,
+      optionB: questionBankTable.optionB,
+      optionC: questionBankTable.optionC,
+      optionD: questionBankTable.optionD,
+      correctAnswer: questionBankTable.correctAnswer,
+    })
+    .from(questionBankTable)
+    .where(inArray(questionBankTable.id, Array.from(ids)));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return slides.map((s) => {
+    const slide = s as { elements?: unknown[] };
+    if (!Array.isArray(slide.elements)) return s;
+    return {
+      ...slide,
+      elements: slide.elements.map((el) => {
+        const e = el as Record<string, unknown>;
+        if (e.kind !== "activity" || typeof e.questionId !== "number") return el;
+        const q = byId.get(e.questionId as number);
+        if (!q) return el;
+        const opts = [q.optionA, q.optionB, q.optionC, q.optionD].filter(
+          (o): o is string => typeof o === "string" && o.trim().length > 0,
+        );
+        const letter = (q.correctAnswer ?? "").toUpperCase();
+        const correctIndex = letter >= "A" && letter <= "D" ? letter.charCodeAt(0) - 65 : undefined;
+        const activityKind =
+          q.questionType === "true_false" ? "true_false"
+          : q.questionType === "open" ? "open"
+          : "mcq";
+        return {
+          ...e,
+          activityKind: e.activityKind ?? activityKind,
+          prompt: e.prompt ?? q.text,
+          options: e.options ?? (activityKind === "true_false" ? ["صح", "خطأ"] : opts),
+          correctIndex: e.correctIndex ?? correctIndex,
+        };
+      }),
+    };
+  });
+}
+
+/* ── Slide-element discriminated union. Every variant constrains its
+   own fields with bounded sizes so neither manual edits nor future AI
+   generators can sneak unbounded payloads into the JSONB column. */
+const colorSchema = z.string().max(40); // hex / rgba / css color name
+/* Slide-level background can be either a flat color OR a long CSS
+   mesh gradient string (multi-radial + base linear, see
+   lib/slide-templates/themes.ts). Bounded generously to prevent
+   payload abuse but wide enough for the longest registered mesh
+   (~480 chars today; cap at 2k to leave headroom for future themes
+   and any custom CSS the editor may surface). */
+const slideBackgroundSchema = z.string().max(2000);
+const baseElement = z.object({
+  id: z.string().min(1).max(64),
+  x: z.number().min(-2000).max(4000),
+  y: z.number().min(-2000).max(4000),
+  w: z.number().min(1).max(4000),
+  h: z.number().min(1).max(4000),
+  rotation: z.number().min(-360).max(360).optional(),
+  zIndex: z.number().int().min(0).max(999).optional(),
 });
 
-/* ─────────────────────────────────────────────────────────────
-   Slide types & validation
-   ───────────────────────────────────────────────────────────── */
+const textElement = baseElement.extend({
+  kind: z.literal("text"),
+  text: z.string().max(5000).default(""),
+  fontFamily: z.string().max(80).optional(),
+  fontSize: z.number().min(6).max(220).optional(),
+  fontWeight: z.string().max(20).optional(),
+  align: z.enum(["start", "center", "end", "justify"]).optional(),
+  color: colorSchema.optional(),
+  bgColor: colorSchema.optional(),
+});
+
+const imageElement = baseElement.extend({
+  kind: z.literal("image"),
+  url: z.string().min(1).max(2000),
+  objectFit: z.enum(["cover", "contain", "fill", "none"]).optional(),
+  objectPosition: z.string().max(40).optional(),
+  imageOpacity: z.number().min(0).max(1).optional(),
+  imageBorderRadius: z.number().min(0).max(500).optional(),
+});
+
+const iconElement = baseElement.extend({
+  kind: z.literal("icon"),
+  iconName: z.string().min(1).max(60),
+  color: colorSchema.optional(),
+});
+
+const shapeElement = baseElement.extend({
+  kind: z.literal("shape"),
+  shape: z.enum(["rect", "circle", "line", "arrow", "divider"]),
+  bgColor: colorSchema.optional(),
+  borderColor: colorSchema.optional(),
+  borderWidth: z.number().min(0).max(40).optional(),
+});
+
+/* Phase 2A — embedded activity element. Lives inside a slide's
+   `elements` array as the 5th element kind. Either holds inline
+   question content or references a `questionBank` row by id (in which
+   case we still copy `prompt` for display). The actual interactive
+   "answer" runtime ships in Phase 2B; for now this element is a
+   styled read-only card in present mode + exports. */
+const activityElement = baseElement.extend({
+  kind: z.literal("activity"),
+  activityKind: z.enum(["mcq", "true_false", "open", "poll"]),
+  /* Optional pointer into question_bank. When present, `prompt` may be
+     omitted — the renderer/exporter resolves the question text from
+     the bank by id (questionId-only reference path). When absent, the
+     activity is fully inline and `prompt` is required. */
+  questionId: z.number().int().positive().optional(),
+  prompt: z.string().min(1).max(2000).optional(),
+  options: z.array(z.string().max(500)).max(8).optional(),
+  correctIndex: z.number().int().min(0).max(7).optional(),
+  accentColor: colorSchema.optional(),
+});
+/* Note: we intentionally do not chain `.refine()` here because that
+   would convert this schema into a ZodEffects and break
+   `z.discriminatedUnion`. The "questionId XOR prompt" rule is enforced
+   manually inside the PUT handler. */
+
+/* Phase 3 — "AI Activity Bridge". A `hasad-game` element is a launcher
+   for one of the platform's live games (Kahoot, Wheel, Millionaire,
+   etc.). When the teacher opens it from the live control panel the
+   server forwards a `game:launch` event to the room with the URL each
+   student can tap to join the game on their own device. */
+/* A complete question payload that can be played inside Hasad's
+   in-platform Activity Runner. The AI Director generates this set
+   when it suggests a game on a slide so the teacher's "Start
+   activity" button has the full quiz ready, not a placeholder. */
+const gameQuestionSchema = z.object({
+  prompt: z.string().min(1).max(500),
+  options: z.array(z.string().min(1).max(200)).min(2).max(6),
+  correctIndex: z.number().int().min(0).max(5),
+});
+
+const hasadGameElement = baseElement.extend({
+  kind: z.literal("hasad-game"),
+  gameKind: z.enum([
+    "kahoot", "wheel", "millionaire", "flag-quiz", "capitals",
+    "letrly", "rocket", "tug", "maraqui", "hack",
+  ]),
+  prompt: z.string().min(1).max(200).optional(),
+  topic: z.string().max(200).optional(),
+  accentColor: colorSchema.optional(),
+  /* AI-generated complete question set. When present, the editor and
+     live-control "Start activity" button open the in-Hasad Activity
+     Runner pre-loaded with these questions instead of the legacy
+     game-setup page. */
+  questions: z.array(gameQuestionSchema).max(20).optional(),
+});
+
+/* Video embed element — YouTube or Hasad interactive video lesson.
+   `url` is the original pasted link; `videoKind` and `videoId` are
+   parsed on the client and stored so the renderer can build the embed
+   URL without re-parsing. `title` is an optional display label. */
+const videoEmbedElement = baseElement.extend({
+  kind: z.literal("video-embed"),
+  url: z.string().min(1).max(2000),
+  videoKind: z.enum(["youtube", "hasad-video"]),
+  videoId: z.string().max(200).optional(),
+  title: z.string().max(200).optional(),
+});
+
+const elementSchema = z.discriminatedUnion("kind", [
+  textElement,
+  imageElement,
+  iconElement,
+  shapeElement,
+  activityElement,
+  hasadGameElement,
+  videoEmbedElement,
+]);
 
 const slideSchema = z.object({
-  id: z.string(),
-  type: z.enum([
-    "cover",
-    "content",
-    "bullets",
-    "quiz",
-    "activity",
-    "discussion",
-    "image",
-    "video",
-    "summary",
-    "objectives",
-    "warmup",
-  ]),
-  title: z.string().nullish(),
-  subtitle: z.string().nullish(),
-  body: z.string().nullish(),
-  bullets: z.array(z.string()).nullish(),
-  emoji: z.string().nullish(),
-  imageUrl: z.string().nullish(),
-  videoUrl: z.string().nullish(),
-  speakerNotes: z.string().nullish(),
-  /* quiz slide */
-  question: z.object({
-    text: z.string(),
-    optionA: z.string(),
-    optionB: z.string(),
-    optionC: z.string(),
-    optionD: z.string(),
-    correctAnswer: z.enum(["A", "B", "C", "D"]),
-    explanation: z.string().nullish(),
-  }).nullish(),
-  /* activity slide */
-  activity: z.object({
-    gameType: z.enum(["wameed", "million", "tug", "rocket", "memory", "scramble"]),
-    instructions: z.string().nullish(),
-    questions: z.array(z.object({
-      text: z.string(),
-      optionA: z.string(),
-      optionB: z.string(),
-      optionC: z.string(),
-      optionD: z.string(),
-      correctAnswer: z.enum(["A", "B", "C", "D"]),
-      points: z.number().default(1),
-    })).default([]),
-  }).nullish(),
-  /* discussion slide */
-  discussionPrompt: z.string().nullish(),
-  discussionPoints: z.array(z.string()).nullish(),
-  /* per-slide AI-picked background (only honoured when presentation.pattern
-     === "ai"). Defined inline to avoid a forward-reference; the equivalent
-     customBackgroundSchema below validates the same shape coming back from
-     the AI fill endpoint. */
-  customBackground: z.object({
-    gradientFrom: z.string(),
-    gradientTo: z.string(),
-    textOnLight: z.boolean().optional(),
-  }).nullish(),
+  id: z.string().min(1).max(64),
+  layout: z.string().max(40).optional(),
+  background: slideBackgroundSchema.optional(),
+  backgroundImage: z.string().max(2000).optional(),
+  notes: z.string().max(4000).optional(),
+  elements: z.array(elementSchema).max(80).default([]),
 });
 
-const themeEnum = z.enum([
-  "harvest", "ocean", "sunset", "midnight", "rose",
-  "royal", "noor", "sage", "sand", "obsidian",
-]);
-const patternEnum = z.enum([
-  "solid", "dots", "grid", "lines", "waves", "geometric", "stars", "glow", "ai",
-]);
+const slidesSchema = z.array(slideSchema).max(200);
 
-/* Tailwind gradient classes the AI is allowed to pick when the presentation
-   uses the "ai" pattern. MUST be kept in sync with
-   artifacts/homework-app/src/lib/slide-themes.ts so that Tailwind's JIT
-   includes them in the bundle. The server only validates against this list. */
-const AI_GRADIENT_FROM = [
-  "from-rose-400","from-rose-500","from-rose-600",
-  "from-pink-400","from-pink-500","from-pink-600",
-  "from-fuchsia-500","from-fuchsia-600","from-fuchsia-700",
-  "from-purple-500","from-purple-600","from-purple-700",
-  "from-violet-500","from-violet-600","from-violet-700",
-  "from-indigo-500","from-indigo-600","from-indigo-700",
-  "from-blue-400","from-blue-500","from-blue-600","from-blue-700",
-  "from-sky-400","from-sky-500","from-sky-600",
-  "from-cyan-400","from-cyan-500","from-cyan-600",
-  "from-teal-400","from-teal-500","from-teal-600",
-  "from-emerald-400","from-emerald-500","from-emerald-600","from-emerald-700",
-  "from-green-400","from-green-500","from-green-600","from-green-700",
-  "from-lime-400","from-lime-500",
-  "from-yellow-400","from-yellow-500",
-  "from-amber-400","from-amber-500","from-amber-600",
-  "from-orange-400","from-orange-500","from-orange-600",
-  "from-red-500","from-red-600","from-red-700",
-  "from-slate-700","from-slate-800","from-slate-900",
-  "from-stone-700","from-stone-800",
-  "from-neutral-800","from-neutral-900",
-  "from-zinc-700","from-zinc-800",
-] as const;
-const AI_GRADIENT_TO = [
-  "to-rose-500","to-rose-600","to-rose-700","to-rose-800",
-  "to-pink-500","to-pink-600","to-pink-700",
-  "to-fuchsia-600","to-fuchsia-700","to-fuchsia-800",
-  "to-purple-600","to-purple-700","to-purple-800","to-purple-900",
-  "to-violet-600","to-violet-700","to-violet-800","to-violet-900",
-  "to-indigo-700","to-indigo-800","to-indigo-900",
-  "to-blue-600","to-blue-700","to-blue-800","to-blue-900",
-  "to-sky-600","to-sky-700","to-sky-800",
-  "to-cyan-600","to-cyan-700",
-  "to-teal-600","to-teal-700","to-teal-800",
-  "to-emerald-600","to-emerald-700","to-emerald-800",
-  "to-green-600","to-green-700","to-green-800","to-green-900",
-  "to-lime-600","to-lime-700",
-  "to-yellow-600","to-yellow-700",
-  "to-amber-600","to-amber-700","to-amber-800",
-  "to-orange-600","to-orange-700","to-orange-800",
-  "to-red-600","to-red-700","to-red-800",
-  "to-slate-800","to-slate-900",
-  "to-stone-800","to-stone-900",
-  "to-neutral-900",
-  "to-zinc-800","to-zinc-900",
-  "to-indigo-950","to-purple-950","to-rose-950","to-emerald-950",
-] as const;
-const aiGradientFromEnum = z.enum(AI_GRADIENT_FROM as unknown as [string, ...string[]]);
-const aiGradientToEnum = z.enum(AI_GRADIENT_TO as unknown as [string, ...string[]]);
-const customBackgroundSchema = z.object({
-  gradientFrom: aiGradientFromEnum,
-  gradientTo: aiGradientToEnum,
-  textOnLight: z.boolean().optional(),
+/* Re-exported so the AI presentation builder (Phase 1B) can validate
+   freshly materialized slides against the same discriminated union the
+   PUT route enforces. Keeping a single source of truth avoids drift. */
+export { slideSchema, slidesSchema };
+
+const languageSchema = z.enum(["ar", "en"]);
+
+const createBody = z.object({
+  title: z.string().min(1).max(200),
+  language: languageSchema.default("ar"),
+  subject: z.string().max(100).nullish(),
+  gradeLevel: z.string().max(50).nullish(),
+  theme: z.string().max(40).optional(),
+  pattern: z.string().max(40).optional(),
+  coverEmoji: z.string().max(8).nullish(),
 });
 
-/* ─────────────────────────────────────────────────────────────
-   GET /api/presentations  — list teacher's decks
-   ───────────────────────────────────────────────────────────── */
-router.get("/presentations", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
+const updateBody = z.object({
+  title: z.string().min(1).max(200).optional(),
+  language: languageSchema.optional(),
+  subject: z.string().max(100).nullish(),
+  gradeLevel: z.string().max(50).nullish(),
+  theme: z.string().max(40).optional(),
+  pattern: z.string().max(40).optional(),
+  coverEmoji: z.string().max(8).nullish(),
+  description: z.string().max(2000).nullish(),
+  slides: slidesSchema.optional(),
+});
+
+/* Phase 2A — body for PATCH /presentations/:id/link-activity. Pass
+   `activityId: null` to detach. `activityKind` defaults to "assignment"
+   so the UI doesn't need to send it. */
+const linkActivityBody = z.object({
+  activityId: z.union([z.number().int().positive(), z.null()]),
+  activityKind: z.string().min(1).max(40).default("assignment"),
+});
+
+/* Detect language from a block of text: "ar" if >15% of chars are Arabic. */
+function detectLangFromText(text: string): "ar" | "en" {
+  if (!text.trim()) return "ar";
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) ?? []).length;
+  return arabicChars / text.length > 0.15 ? "ar" : "en";
+}
+
+/* ── Default slide payload used when a deck is freshly created so the
+   editor has something to render immediately. */
+function defaultSlides(language: "ar" | "en") {
+  const ar = language === "ar";
+  return [
+    {
+      id: "s1",
+      layout: "cover",
+      background: "#ffffff",
+      elements: [
+        {
+          id: "t1",
+          kind: "text" as const,
+          x: 80,
+          y: 240,
+          w: 1120,
+          h: 120,
+          text: ar ? "عنوان العرض" : "Presentation title",
+          fontSize: 56,
+          fontWeight: "700",
+          align: "center" as const,
+          color: "#225739",
+        },
+      ],
+    },
+  ];
+}
+
+/* ── Tier resolver. Returns the effective tier (regular/pro) for the
+   current teacher plus the active limit values pulled from
+   `platform_settings.presentation_limits`. UI uses this to show lock
+   badges, "X / Y slides" usage bars, and the upgrade CTA. Must come
+   BEFORE the `/presentations/:id` matcher so "limits" isn't parsed
+   as an id. */
+router.get("/presentations/limits", requireTeacher, async (req, res) => {
   try {
+    const teacherId = req.session.teacherId as number;
+    const tier = await resolvePresentationsTier(teacherId);
+    res.json(tier);
+  } catch (err) {
+    req.log.error({ err }, "Resolve presentations tier failed");
+    res.status(500).json({ message: "Failed to load tier" });
+  }
+});
+
+router.get("/presentations/:id/usage", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ message: "Bad id" }); return; }
+    if (!(await ownsPresentation(teacherId, id))) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const [tier, usage] = await Promise.all([
+      resolvePresentationsTier(teacherId),
+      getPresentationUsage(id),
+    ]);
+    res.json({ ...tier, usage });
+  } catch (err) {
+    req.log.error({ err }, "Get presentation usage failed");
+    res.status(500).json({ message: "Failed to load usage" });
+  }
+});
+
+/* ── List: own decks + admin-shared. Mirrors lesson_plans/worksheets
+   list shape but returns a slim summary (slideCount instead of full
+   slides JSONB) to keep the list endpoint lean. */
+router.get("/presentations", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
     const rows = await db
       .select({
         id: presentationsTable.id,
+        teacherId: presentationsTable.teacherId,
         title: presentationsTable.title,
-        subject: presentationsTable.subject,
-        gradeLevel: presentationsTable.gradeLevel,
+        language: presentationsTable.language,
         theme: presentationsTable.theme,
         pattern: presentationsTable.pattern,
         coverEmoji: presentationsTable.coverEmoji,
-        description: presentationsTable.description,
-        slideCount: sql<number>`jsonb_array_length(${presentationsTable.slides})::int`,
-        lastPresentedAt: presentationsTable.lastPresentedAt,
+        slides: presentationsTable.slides,
+        status: presentationsTable.status,
+        publishedAt: presentationsTable.publishedAt,
+        isShared: presentationsTable.isShared,
         createdAt: presentationsTable.createdAt,
         updatedAt: presentationsTable.updatedAt,
+        ownerName: teachersTable.name,
+        ownerIsAdmin: teachersTable.isAdmin,
       })
       .from(presentationsTable)
-      .where(eq(presentationsTable.teacherId, req.session.teacherId))
+      .innerJoin(teachersTable, eq(teachersTable.id, presentationsTable.teacherId))
+      .where(or(
+        eq(presentationsTable.teacherId, teacherId),
+        and(eq(presentationsTable.isShared, true), eq(teachersTable.isAdmin, true)),
+      ))
       .orderBy(desc(presentationsTable.updatedAt));
-    res.json({ presentations: rows });
+
+    res.json(rows.map((r) => ({
+      id: r.id,
+      teacherId: r.teacherId,
+      title: r.title,
+      language: r.language,
+      theme: r.theme,
+      pattern: r.pattern,
+      coverEmoji: r.coverEmoji,
+      slideCount: Array.isArray(r.slides) ? r.slides.length : 0,
+      status: r.status,
+      publishedAt: r.publishedAt,
+      isShared: r.isShared,
+      ownerName: r.ownerName,
+      ownerIsAdmin: r.ownerIsAdmin,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    })));
   } catch (err) {
     req.log.error({ err }, "List presentations failed");
-    res.status(500).json({ message: "خطأ في تحميل العروض" });
+    res.status(500).json({ message: "Failed to load presentations" });
   }
 });
 
-/* ─────────────────────────────────────────────────────────────
-   GET /api/presentations/:id  — single deck
-   ───────────────────────────────────────────────────────────── */
-router.get("/presentations/:id", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const [row] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!row) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-  res.json({ presentation: row });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations  — save (after generation or manual create)
-   ───────────────────────────────────────────────────────────── */
-const createBody = z.object({
-  title: z.string().min(1).max(200),
-  subject: z.string().max(100).nullish(),
-  gradeLevel: z.string().max(50).nullish(),
-  language: z.enum(["ar", "en"]).default("ar"),
-  theme: themeEnum.default("harvest"),
-  pattern: patternEnum.default("solid"),
-  coverEmoji: z.string().max(8).nullish(),
-  description: z.string().max(1000).nullish(),
-  slides: z.array(slideSchema).default([]),
-  isShared: z.boolean().optional(),
-});
-
-router.post("/presentations", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const parsed = createBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة", issues: parsed.error.issues });
-    return;
-  }
+/* ── Public read — only published decks are exposed; drafts return
+   404 so a leaked link can't reveal in-progress work. No auth required
+   so anyone with the URL (typically students opening `/p/:id`) can
+   view. Returns the slim shape the present-mode renderer needs. */
+router.get("/presentations/public/:id", async (req, res) => {
   try {
-    const isPro = await teacherHasProDesign(req.session.teacherId);
-    let theme = parsed.data.theme;
-    let pattern = parsed.data.pattern;
-    if (!isPro) {
-      if (!FREE_THEMES.has(theme)) theme = "harvest";
-      if (!FREE_PATTERNS.has(pattern)) pattern = "solid";
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
     }
+    const [row] = await db
+      .select()
+      .from(presentationsTable)
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!row || row.status !== "published") {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    /* Strip teacher-only fields from each slide before exposing to
+       the public — `notes` is presenter-only content that must never
+       leak to students viewing `/p/:id`. */
+    const hydrated = await hydrateActivityQuestions(row.slides);
+    const publicSlides = Array.isArray(hydrated)
+      ? (hydrated as Array<Record<string, unknown>>).map((s) => {
+          const { notes: _notes, ...rest } = s;
+          return rest;
+        })
+      : [];
+    res.json({
+      id: row.id,
+      title: row.title,
+      language: row.language,
+      theme: row.theme,
+      pattern: row.pattern,
+      coverEmoji: row.coverEmoji,
+      slides: publicSlides,
+      status: row.status,
+      publishedAt: row.publishedAt,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Read public presentation failed");
+    res.status(500).json({ message: "Failed to load presentation" });
+  }
+});
+
+/* ── Read one — own or admin-shared (read-only access). */
+router.get("/presentations/:id", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [row] = await db
+      .select({ deck: presentationsTable, owner: teachersTable })
+      .from(presentationsTable)
+      .innerJoin(teachersTable, eq(teachersTable.id, presentationsTable.teacherId))
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    const isOwner = row.deck.teacherId === teacherId;
+    const isAdminShared = row.deck.isShared && row.owner.isAdmin;
+    if (!isOwner && !isAdminShared) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const hydratedSlides = await hydrateActivityQuestions(row.deck.slides);
+    res.json({
+      ...row.deck,
+      slides: hydratedSlides,
+      linkedActivityId: row.deck.linkedActivityId,
+      linkedActivityKind: row.deck.linkedActivityKind,
+      ownerName: row.owner.name,
+      isOwner,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Read presentation failed");
+    res.status(500).json({ message: "Failed to load presentation" });
+  }
+});
+
+/* ── Import-file. Parses the uploaded file, extracts slide content, and
+   creates a populated deck in the database.
+
+   Supported formats:
+     - PPTX  → 1 PPTX slide maps to 1 HasadX slide (title + body text)
+     - DOCX  → headings/paragraphs distributed across slides
+     - PDF   → per-page text extracted; first line = slide title
+     - Images → single-slide deck with the image as a background
+
+   Accepts PDF, PPTX, DOCX, and common image MIME types (server-enforced). */
+const IMPORT_ALLOWED_MIMES = new Set([
+  "application/pdf",
+  /* PPTX — browsers send various MIME strings; we accept all common ones. */
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  /* Word */
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  /* Excel */
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  /* Images */
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  /* Fallback for browsers that send a generic octet-stream for Office files. */
+  "application/octet-stream",
+  "application/zip",
+]);
+const IMPORT_ALLOWED_EXTS = new Set([
+  ".pptx", ".ppt",
+  ".docx", ".doc",
+  ".xlsx", ".xls",
+  ".pdf",
+  ".png", ".jpg", ".jpeg", ".gif", ".webp",
+]);
+
+const importUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    const ext = file.originalname.includes(".")
+      ? file.originalname.slice(file.originalname.lastIndexOf(".")).toLowerCase()
+      : "";
+    /* Browsers sometimes send application/octet-stream for .docx/.xlsx/.pptx.
+       Allow the upload if the extension is whitelisted regardless of MIME. */
+    if (IMPORT_ALLOWED_EXTS.has(ext)) {
+      cb(null, true);
+    } else if (IMPORT_ALLOWED_MIMES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(
+        "نوع الملف غير مدعوم. المقبول: PDF، PPTX، Word، Excel، وصور / " +
+        "Unsupported file type. Allowed: PDF, PPTX, Word, Excel, and images"
+      ));
+    }
+  },
+});
+/* Local error handler: converts multer validation errors (oversized,
+   wrong MIME type, …) into clean 400/413 JSON responses. */
+const handleImportUploadError: import("express").ErrorRequestHandler = (err, _req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ message: err.message });
+    return;
+  }
+  if (err instanceof Error) {
+    res.status(400).json({ message: err.message });
+    return;
+  }
+  next(err);
+};
+
+/* Detect whether a multer file is a plain image (not a document). */
+function isImageMulnerFile(f: Express.Multer.File): boolean {
+  const imageMimes = new Set(["image/png","image/jpeg","image/gif","image/webp"]);
+  const imageExts  = new Set([".png",".jpg",".jpeg",".gif",".webp"]);
+  const ext = f.originalname.includes(".")
+    ? f.originalname.slice(f.originalname.lastIndexOf(".")).toLowerCase()
+    : "";
+  return imageMimes.has(f.mimetype) || imageExts.has(ext);
+}
+
+/* Decode a multer originalname safely: browsers send the header value as
+   UTF-8 but Node/multer stores it as latin1. Re-encode to recover the
+   original string. Gracefully falls back when the round-trip doesn't help. */
+function decodeMulterFilename(name: string): string {
+  try {
+    const decoded = Buffer.from(name, "latin1").toString("utf8");
+    /* Sanity-check: if the result contains the replacement char (U+FFFD)
+       the input was already UTF-8, so return the original. */
+    return decoded.includes("\uFFFD") ? name : decoded;
+  } catch {
+    return name;
+  }
+}
+
+router.post(
+  "/presentations/import-file",
+  requireTeacher,
+  importUpload.array("file", 100),
+  handleImportUploadError,
+  async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+      const allFiles = (req.files as Express.Multer.File[] | undefined) ?? [];
+
+      if (allFiles.length === 0) {
+        res.status(400).json({ message: "No file uploaded" });
+        return;
+      }
+
+      const tier = await resolvePresentationsTier(teacherId);
+      const svc = new ObjectStorageService();
+
+      /* ── Multi-image fast path ─────────────────────────────────────
+         When every uploaded file is an image we skip AI entirely and
+         create one slide per image (same visual path as PDF pages).
+         Limits: 5 for regular, 10 for pro, unlimited for admin.      */
+      const imageFiles = allFiles.filter(isImageMulnerFile);
+      const docFiles   = allFiles.filter(f => !isImageMulnerFile(f));
+
+      if (imageFiles.length > 0 && docFiles.length === 0) {
+        const maxImages = tier.isAdmin ? Infinity : tier.isPro ? 10 : 5;
+        if (imageFiles.length > maxImages) {
+          res.status(400).json({
+            message: `يمكنك رفع ${maxImages} صور كحد أقصى في هذه الباقة / Your plan allows up to ${maxImages} images per import`,
+          });
+          return;
+        }
+
+        /* Step 1: Upload all images to Object Storage in parallel so we
+           have permanent public URLs to attach as `backgroundImage` on
+           each AI-materialized slide. */
+        const pageUrls = await Promise.all(
+          imageFiles.map((f) => {
+            const imgExt = f.originalname.includes(".")
+              ? f.originalname.slice(f.originalname.lastIndexOf(".")).toLowerCase()
+              : ".jpg";
+            return svc.uploadBufferAsPublic({
+              buffer: f.buffer,
+              contentType: f.mimetype || "image/jpeg",
+              extension: imgExt,
+            }).catch(() => "");
+          }),
+        );
+
+        /* Step 2: Run GPT-4o Vision to extract content from every image.
+           Each image becomes one slide with AI-generated title + bullets.
+           The uploaded URL is then stamped onto the slide as backgroundImage
+           so the original photo is still visible beneath the text layout.
+           Falls back to the image-as-background approach if AI fails so the
+           teacher always gets a usable deck. */
+        let finalSlides: unknown[];
+        let deckLanguage: "ar" | "en" = "ar";
+        let aiGenerated = false;
+
+        const validImages = imageFiles
+          .map((f, i) => ({ f, url: pageUrls[i] ?? "" }))
+          .filter(({ url }) => Boolean(url));
+
+        try {
+          const outline = await multiImagesToOutline(
+            validImages.map(({ f }) => ({
+              buffer: f.buffer,
+              filename: decodeMulterFilename(f.originalname || "image"),
+              mime: f.mimetype || "image/jpeg",
+            })),
+          );
+          deckLanguage = outline.language;
+          const themeKey = pickServerDefaultTheme();
+          const validSlides: unknown[] = [];
+          for (let i = 0; i < outline.cards.length; i++) {
+            const out = buildOneSlide({
+              card: outline.cards[i],
+              themeKey,
+              density: outline.density,
+              lang: outline.language,
+              /* Pass the uploaded URL so buildOneSlide stamps backgroundImage
+                 and prepends the readable semi-transparent overlay element. */
+              backgroundImageUrl: validImages[i]?.url || undefined,
+            });
+            const parsedOne = slideSchema.safeParse(out.slide);
+            if (parsedOne.success) validSlides.push(parsedOne.data);
+          }
+          /* Only flag as AI-generated when we actually got valid slides;
+             if every slide fails schema validation we fall back below. */
+          if (validSlides.length > 0) {
+            finalSlides = validSlides;
+            aiGenerated = true;
+            req.log.info({ imageCount: validImages.length, slideCount: finalSlides.length }, "Import: multi-image AI generation succeeded");
+          } else {
+            finalSlides = defaultSlides(deckLanguage);
+          }
+        } catch (err) {
+          /* AI failed — use blank default slides (same behaviour as every
+             other failed import path). The teacher can paste or type
+             content manually in the editor. */
+          req.log.warn({ err }, "Import: multi-image AI failed — using default slides");
+          finalSlides = defaultSlides(deckLanguage);
+        }
+
+        /* Title from first filename (decoded properly). */
+        const firstName = decodeMulterFilename(imageFiles[0].originalname || "صور");
+        const deckTitle = firstName.replace(/\.[^.]+$/, "").trim().slice(0, 200) || "صور مستوردة";
+
+        const [deck] = await db
+          .insert(presentationsTable)
+          .values({
+            teacherId,
+            title: deckTitle,
+            language: deckLanguage,
+            theme: pickServerDefaultTheme(),
+            pattern: "solid",
+            coverEmoji: "🖼️",
+            slides: finalSlides,
+            status: "draft",
+          })
+          .returning();
+
+        /* Register each image as an asset (best-effort). */
+        await Promise.allSettled(
+          imageFiles.map((f, i) =>
+            db.insert(presentationAssetsTable).values({
+              presentationId: deck.id,
+              kind: "file",
+              url: pageUrls[i] ?? "",
+              byteSize: f.size,
+            }),
+          ),
+        );
+
+        res.status(201).json({
+          presentationId: deck.id,
+          title: deck.title,
+          slideCount: (finalSlides as unknown[]).length,
+          aiGenerated,
+        });
+        return;
+      }
+
+      /* ── Single-document path (PDF / PPTX / DOCX / XLSX / other) ── */
+      const file = docFiles[0] ?? allFiles[0];
+
+      /* Tier-aware size check. */
+      const maxBytes = (tier.limits.maxSizeMbRegular ?? 50) * 1024 * 1024;
+      if (file.size > maxBytes) {
+        res.status(413).json({
+          message: `الملف أكبر من الحد المسموح به (${tier.limits.maxSizeMbRegular} م.ب) / File exceeds the ${tier.limits.maxSizeMbRegular} MB limit`,
+        });
+        return;
+      }
+
+      /* Derive deck title and extension from filename.
+         Multer stores originalname as latin1; re-encode to UTF-8 so
+         Arabic/non-ASCII filenames arrive intact. */
+      const rawName = decodeMulterFilename(file.originalname || "presentation");
+      const ext = rawName.includes(".") ? rawName.slice(rawName.lastIndexOf(".")).toLowerCase() : "";
+      const titleFromFile = rawName.replace(/\.[^.]+$/, "").trim().slice(0, 200) || "Imported presentation";
+      const mime = file.mimetype;
+
+      req.log.info({ mime, size: file.size, ext }, "Import: parsing file");
+
+      /* ── Step 1: Extract content & build slides based on file type ── */
+      let finalSlides: unknown[];
+      let deckLanguage: "ar" | "en" = "ar";
+      let contentExtractionFailed = false;
+      let aiGenerated = false;
+
+      if (mime === "application/pdf" || ext === ".pdf") {
+        /* PDF → render each page as a PNG image via pdftoppm, upload to
+           object storage, and use as slide backgroundImage. This preserves
+           the original visual layout of the document. */
+        try {
+          const pages = await parsePdf(file.buffer);
+          const pageUrls = await Promise.all(
+            pages.map((p) =>
+              svc.uploadBufferAsPublic({
+                buffer: p.imageBuffer,
+                contentType: "image/png",
+                extension: ".png",
+              }),
+            ),
+          );
+          const built = buildSlidesFromPdfPages(pageUrls);
+          const validated = slidesSchema.safeParse(built);
+          finalSlides =
+            validated.success && validated.data.length > 0
+              ? validated.data
+              : defaultSlides(deckLanguage);
+        } catch (err) {
+          req.log.warn({ err }, "Import: PDF page rendering failed — using blank deck");
+          contentExtractionFailed = true;
+          finalSlides = defaultSlides(deckLanguage);
+        }
+      } else if (
+        mime === "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+        mime === "application/vnd.ms-powerpoint" ||
+        ext === ".pptx" ||
+        ext === ".ppt"
+      ) {
+        /* PPTX → extract slide text then lay out as styled slides. */
+        try {
+          const parsed = await parsePptx(file.buffer);
+          deckLanguage = detectLangFromText(
+            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
+          );
+          const built = buildSlidesFromParsed(parsed, deckLanguage);
+          const validated = slidesSchema.safeParse(built);
+          finalSlides =
+            validated.success && validated.data.length > 0
+              ? validated.data
+              : defaultSlides(deckLanguage);
+        } catch (err) {
+          req.log.warn({ err }, "Import: PPTX parsing failed — using blank deck");
+          contentExtractionFailed = true;
+          finalSlides = defaultSlides(deckLanguage);
+        }
+      } else if (
+        mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        mime === "application/msword" ||
+        ext === ".docx" ||
+        ext === ".doc"
+      ) {
+        /* DOCX → extract headings and paragraphs then distribute across slides. */
+        try {
+          const parsed = await parseDocx(file.buffer);
+          deckLanguage = detectLangFromText(
+            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
+          );
+          const built = buildSlidesFromParsed(parsed, deckLanguage);
+          const validated = slidesSchema.safeParse(built);
+          finalSlides =
+            validated.success && validated.data.length > 0
+              ? validated.data
+              : defaultSlides(deckLanguage);
+        } catch (err) {
+          req.log.warn({ err }, "Import: DOCX parsing failed — using blank deck");
+          contentExtractionFailed = true;
+          finalSlides = defaultSlides(deckLanguage);
+        }
+      } else {
+        /* Images, spreadsheets, and other types — use the AI outline path
+           for best-effort content extraction. */
+        try {
+          const extracted = await extractFileContent(file.buffer, mime, rawName);
+          deckLanguage = extracted.detectedLanguage ?? "ar";
+          const outline = await fileToOutline(extracted, titleFromFile);
+          const themeForOutline = pickServerDefaultTheme();
+          const validSlides: unknown[] = [];
+          for (const card of outline.slides) {
+            const out = buildOneSlide({
+              card,
+              themeKey: themeForOutline,
+              density: outline.density,
+              lang: outline.language,
+            });
+            const parsedOne = slideSchema.safeParse(out.slide);
+            if (parsedOne.success) validSlides.push(parsedOne.data);
+          }
+          finalSlides = validSlides.length > 0 ? validSlides : defaultSlides(deckLanguage);
+          deckLanguage = outline.language ?? deckLanguage;
+          aiGenerated = true;
+        } catch (err) {
+          req.log.warn({ err }, "Import: AI extraction failed — using blank deck");
+          contentExtractionFailed = true;
+          finalSlides = defaultSlides(deckLanguage);
+        }
+      }
+
+      /* ── Step 2: Create deck row with slides included ─────────────── */
+      const themeKey = pickServerDefaultTheme();
+      const [deck] = await db
+        .insert(presentationsTable)
+        .values({
+          teacherId,
+          title: titleFromFile,
+          language: deckLanguage,
+          theme: themeKey,
+          pattern: "solid",
+          coverEmoji: "📄",
+          slides: finalSlides,
+          status: "draft",
+        })
+        .returning();
+
+      /* ── Step 3: Persist raw file to object storage (best-effort) ── */
+      let assetUrl = "";
+      try {
+        assetUrl = await svc.uploadBufferAsPublic({
+          buffer: file.buffer,
+          contentType: mime || "application/octet-stream",
+          extension: ext,
+        });
+      } catch (uploadErr) {
+        req.log.warn({ uploadErr }, "Import: object-storage upload skipped — bucket not configured");
+      }
+
+      await db.insert(presentationAssetsTable).values({
+        presentationId: deck.id,
+        kind: "file",
+        url: assetUrl,
+        byteSize: file.size,
+      });
+
+      res.status(201).json({
+        presentationId: deck.id,
+        title: deck.title,
+        slideCount: (finalSlides as unknown[]).length,
+        aiGenerated,
+        ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
+      });
+    } catch (err) {
+      req.log.error({ err }, "Import presentation file failed");
+      res.status(500).json({ message: "Failed to import file" });
+    }
+  },
+);
+
+/* ── Create. Seeds with a single empty cover slide so the editor
+   immediately renders. */
+router.post("/presentations", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const body = createBody.parse(req.body);
     const [row] = await db
       .insert(presentationsTable)
       .values({
-        teacherId: req.session.teacherId,
-        title: parsed.data.title,
-        subject: parsed.data.subject ?? null,
-        gradeLevel: parsed.data.gradeLevel ?? null,
-        language: parsed.data.language,
-        theme,
-        pattern,
-        coverEmoji: parsed.data.coverEmoji ?? "📚",
-        description: parsed.data.description ?? null,
-        slides: parsed.data.slides as unknown as object,
+        teacherId,
+        title: body.title,
+        language: body.language,
+        subject: body.subject ?? null,
+        gradeLevel: body.gradeLevel ?? null,
+        theme: body.theme ?? pickServerDefaultTheme(),
+        pattern: body.pattern ?? "solid",
+        coverEmoji: body.coverEmoji ?? "📚",
+        slides: defaultSlides(body.language),
+        status: "draft",
       })
       .returning();
-    res.json({ presentation: row });
-  } catch (err) {
+    res.status(201).json(row);
+  } catch (err: any) {
+    if (err?.issues) {
+      res.status(400).json({ message: "Invalid presentation", issues: err.issues });
+      return;
+    }
     req.log.error({ err }, "Create presentation failed");
-    res.status(500).json({ message: "تعذّر حفظ العرض" });
+    res.status(500).json({ message: "Failed to create presentation" });
   }
 });
 
-/* ─────────────────────────────────────────────────────────────
-   PUT /api/presentations/:id  — update
-   ───────────────────────────────────────────────────────────── */
-const updateBody = createBody.partial();
-router.put("/presentations/:id", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const parsed = updateBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة", issues: parsed.error.issues });
-    return;
-  }
-
-  const [existing] = await db
-    .select({ id: presentationsTable.id })
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!existing) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-
-  const isPro = await teacherHasProDesign(req.session.teacherId);
-  const updateData: Record<string, unknown> = { updatedAt: new Date() };
-  if (parsed.data.title !== undefined) updateData.title = parsed.data.title;
-  if (parsed.data.subject !== undefined) updateData.subject = parsed.data.subject;
-  if (parsed.data.gradeLevel !== undefined) updateData.gradeLevel = parsed.data.gradeLevel;
-  if (parsed.data.language !== undefined) updateData.language = parsed.data.language;
-  if (parsed.data.theme !== undefined) {
-    if (!isPro && !FREE_THEMES.has(parsed.data.theme)) {
-      res.status(403).json({ message: "هذا التصميم احترافي — تواصل مع المسؤول لتفعيله" });
-      return;
-    }
-    updateData.theme = parsed.data.theme;
-  }
-  if (parsed.data.pattern !== undefined) {
-    if (!isPro && !FREE_PATTERNS.has(parsed.data.pattern)) {
-      res.status(403).json({ message: "هذه الخلفية احترافية — تواصل مع المسؤول لتفعيلها" });
-      return;
-    }
-    updateData.pattern = parsed.data.pattern;
-  }
-  if (parsed.data.coverEmoji !== undefined) updateData.coverEmoji = parsed.data.coverEmoji;
-  if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
-  if (parsed.data.slides !== undefined) updateData.slides = parsed.data.slides;
-  if (parsed.data.isShared !== undefined) updateData.isShared = parsed.data.isShared;
-
-  const [row] = await db
-    .update(presentationsTable)
-    .set(updateData)
-    .where(eq(presentationsTable.id, id))
-    .returning();
-  res.json({ presentation: row });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   GET /api/presentations/public/:id  — anyone can view (if shared)
-   No auth required. Returns only if isShared = true.
-   ───────────────────────────────────────────────────────────── */
-router.get("/presentations/public/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const [row] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.isShared, true)))
-    .limit(1);
-  if (!row) {
-    res.status(404).json({ message: "العرض غير متاح للعرض العام" });
-    return;
-  }
-  /* Strip teacher info; only return display fields. */
-  const { teacherId: _t, ...publicData } = row;
-  res.json({ presentation: publicData });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   GET /api/presentations/shared  — gallery of shared decks (public)
-   ───────────────────────────────────────────────────────────── */
-router.get("/presentations-shared/list", async (_req, res) => {
+/* ── Update. Owner only. Slides are re-validated through the strict
+   discriminated union so the JSONB column never receives malformed
+   element shapes. */
+router.put("/presentations/:id", requireTeacher, async (req, res) => {
   try {
-    const rows = await db
-      .select({
-        id: presentationsTable.id,
-        title: presentationsTable.title,
-        subject: presentationsTable.subject,
-        gradeLevel: presentationsTable.gradeLevel,
-        theme: presentationsTable.theme,
-        coverEmoji: presentationsTable.coverEmoji,
-        description: presentationsTable.description,
-        slideCount: sql<number>`jsonb_array_length(${presentationsTable.slides})::int`,
-        createdAt: presentationsTable.createdAt,
-      })
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const body = updateBody.parse(req.body);
+    const [existing] = await db
+      .select()
       .from(presentationsTable)
-      .where(eq(presentationsTable.isShared, true))
-      .orderBy(desc(presentationsTable.createdAt))
-      .limit(60);
-    res.json({ presentations: rows });
-  } catch (err) {
-    res.status(500).json({ presentations: [] });
-  }
-});
-
-/* ─────────────────────────────────────────────────────────────
-   DELETE /api/presentations/:id
-   ───────────────────────────────────────────────────────────── */
-router.delete("/presentations/:id", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const result = await db
-    .delete(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .returning({ id: presentationsTable.id });
-  if (result.length === 0) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-  res.json({ ok: true });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations/:id/duplicate
-   ───────────────────────────────────────────────────────────── */
-router.post("/presentations/:id/duplicate", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const [src] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!src) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-  const isPro = await teacherHasProDesign(req.session.teacherId);
-  const dupTheme = !isPro && !FREE_THEMES.has(src.theme as string) ? "harvest" : src.theme;
-  const dupPattern = !isPro && !FREE_PATTERNS.has(src.pattern as string) ? "solid" : src.pattern;
-  const [row] = await db
-    .insert(presentationsTable)
-    .values({
-      teacherId: req.session.teacherId,
-      title: `${src.title} — نسخة`,
-      subject: src.subject,
-      gradeLevel: src.gradeLevel,
-      language: src.language,
-      theme: dupTheme,
-      pattern: dupPattern,
-      coverEmoji: src.coverEmoji,
-      description: src.description,
-      slides: src.slides as unknown as object,
-    })
-    .returning();
-  res.json({ presentation: row });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations/:id/launch-game
-   Creates a hidden assignment from an activity slide's questions and
-   returns the assignment id + recommended URL for the chosen game.
-   ───────────────────────────────────────────────────────────── */
-const launchBody = z.object({
-  slideId: z.string(),
-});
-
-router.post("/presentations/:id/launch-game", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const parsed = launchBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة" });
-    return;
-  }
-  const [pres] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!pres) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-  const slides = (pres.slides as unknown as Array<Record<string, unknown>>) || [];
-  const slide = slides.find((s) => s.id === parsed.data.slideId);
-  if (!slide || slide.type !== "activity" || !slide.activity) {
-    res.status(400).json({ message: "الشريحة ليست نشاطاً تفاعلياً" });
-    return;
-  }
-  const activity = slide.activity as { gameType: string; questions: Array<{ text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: "A"|"B"|"C"|"D"; points?: number }> };
-  if (!Array.isArray(activity.questions) || activity.questions.length === 0) {
-    res.status(400).json({ message: "لا توجد أسئلة في هذا النشاط" });
-    return;
-  }
-
-  /* Reuse the same assignment if one was created for this slide before,
-     so the teacher's list doesn't accumulate a new entry on every play. */
-  const slideKey = `${id}:${parsed.data.slideId}`;
-  const totalPoints = activity.questions.reduce((sum, q) => sum + (q.points || 1), 0);
-
-  const [existing] = await db
-    .select({ id: assignmentsTable.id })
-    .from(assignmentsTable)
-    .where(
-      and(
-        eq(assignmentsTable.teacherId, req.session.teacherId),
-        eq(assignmentsTable.fromPresentationSlide, slideKey),
-      ),
-    )
-    .limit(1);
-
-  let assignment: { id: number };
-
-  if (existing) {
-    /* Reuse — refresh the questions in case the slide was edited */
-    assignment = existing;
-    await db.delete(questionsTable).where(eq(questionsTable.assignmentId, existing.id));
-  } else {
-    /* First launch — create assignment (hidden from the main list) */
-    const [created] = await db
-      .insert(assignmentsTable)
-      .values({
-        title: `${pres.title} — ${(slide.title as string) || "نشاط"}`,
-        subject: pres.subject || "عرض تفاعلي",
-        description: `نشاط من العرض: ${pres.title}`,
-        submissionMode: "electronic",
-        accessMode: "private",
-        targetClass: pres.gradeLevel || null,
-        teacherId: req.session.teacherId,
-        totalPoints,
-        showResults: true,
-        fromPresentationSlide: slideKey,
-      })
-      .returning({ id: assignmentsTable.id });
-    assignment = created;
-  }
-
-  /* Insert (fresh) questions linked to the assignment. */
-  const questionRows = activity.questions.map((q) => ({
-    assignmentId: assignment.id,
-    text: q.text,
-    questionType: "mcq" as const,
-    optionA: q.optionA,
-    optionB: q.optionB,
-    optionC: q.optionC,
-    optionD: q.optionD,
-    correctAnswer: q.correctAnswer,
-    points: q.points || 1,
-  }));
-  await db.insert(questionsTable).values(questionRows);
-
-  /* Each game type launches into its own setup page (or the assignment
-     review page for wameed/memory/scramble which use the assignment-detail
-     launcher because their authoring flows aren't pure MCQ). */
-  const urlByGame: Record<string, string> = {
-    wameed: `/teacher/assignment/${assignment.id}`,
-    million: `/game/million?assignmentId=${assignment.id}`,
-    tug: `/game/tug/create?assignmentId=${assignment.id}`,
-    rocket: `/game/rocket/create?assignmentId=${assignment.id}`,
-    memory: `/teacher/assignment/${assignment.id}`,
-    scramble: `/teacher/assignment/${assignment.id}`,
-  };
-
-  res.json({
-    assignmentId: assignment.id,
-    gameType: activity.gameType,
-    launchUrl: urlByGame[activity.gameType] || urlByGame.wameed,
-  });
-});
-
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations/:id/regenerate-questions
-   AI-generates fresh questions for a single quiz/activity slide.
-   ───────────────────────────────────────────────────────────── */
-const regenBody = z.object({
-  slideId: z.string(),
-  count: z.number().int().min(1).max(10).default(5),
-  topic: z.string().max(300).nullish(),
-});
-
-router.post("/presentations/:id/regenerate-questions", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const parsed = regenBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة" });
-    return;
-  }
-  const [pres] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!pres) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-  const slides = (pres.slides as unknown as Array<Record<string, unknown>>) || [];
-  const slide = slides.find((s) => s.id === parsed.data.slideId);
-  if (!slide) {
-    res.status(404).json({ message: "الشريحة غير موجودة" });
-    return;
-  }
-  const isQuiz = slide.type === "quiz";
-  const isActivity = slide.type === "activity";
-  if (!isQuiz && !isActivity) {
-    res.status(400).json({ message: "هذه الشريحة ليست شريحة سؤال أو نشاط" });
-    return;
-  }
-  const topicHint = parsed.data.topic
-    || (slide.title as string)
-    || pres.title;
-  const count = isQuiz ? 1 : parsed.data.count;
-  const langInst = pres.language === "en"
-    ? "Use clear English suited to the grade level."
-    : "استخدم اللغة العربية الفصحى المبسطة المناسبة للطلاب.";
-
-  const prompt = `أنت معلم خبير. ولّد ${count} ${count === 1 ? "سؤال اختيار من متعدد" : "أسئلة اختيار من متعدد"} عن: ${topicHint}
-${pres.subject ? `المادة: ${pres.subject}` : ""}
-${pres.gradeLevel ? `الصف: ${pres.gradeLevel}` : ""}
-${langInst}
-
-أعد JSON فقط بهذا الشكل:
-{"questions":[{"text":"السؤال","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"A","explanation":"شرح قصير"}]}
-
-نوّع مواضع الإجابات الصحيحة بين A وB وC وD، واجعل المغريات قريبة من الإجابة الصحيحة.`;
-
-  try {
-    const tier = await resolveTier(req.session.teacherId, (req.body as { tier?: string })?.tier);
-    const txt = await runTierCompletion({ tier, prompt, maxTokens: 4000 });
-    const m = txt.match(/\{[\s\S]*\}/);
-    if (!m) { res.status(500).json({ message: "تعذّر التوليد" }); return; }
-    const parsed2 = JSON.parse(m[0]) as { questions?: Array<{ text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: "A"|"B"|"C"|"D"; explanation?: string }> };
-    const qs = (parsed2.questions || []).filter((q) => q && q.text && q.optionA && q.optionB && q.optionC && q.optionD && ["A","B","C","D"].includes(q.correctAnswer));
-    if (qs.length === 0) { res.status(500).json({ message: "لم تُولَّد أسئلة صالحة" }); return; }
-
-    res.json({
-      questions: qs.map((q) => ({
-        text: q.text, optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-        correctAnswer: q.correctAnswer, explanation: q.explanation || null, points: 1,
-      })),
-    });
-  } catch (err) {
-    req.log.error({ err }, "Regenerate questions failed");
-    res.status(500).json({ message: "تعذّر توليد الأسئلة" });
-  }
-});
-
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations/generate  — AI generation
-   ───────────────────────────────────────────────────────────── */
-const generateBody = z.object({
-  title: z.string().min(2).max(200),
-  subject: z.string().max(100).nullish(),
-  gradeLevel: z.string().max(50).nullish(),
-  slideCount: z.number().int().min(5).max(20).default(10),
-  lessonOutline: z.string().max(2000).nullish(),
-  includeQuizzes: z.boolean().default(true),
-  includeActivities: z.boolean().default(true),
-  includeDiscussion: z.boolean().default(true),
-  language: z.enum(["ar", "en"]).default("ar"),
-});
-
-router.post("/presentations/generate", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const parsed = generateBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة", issues: parsed.error.issues });
-    return;
-  }
-  const { title, subject, gradeLevel, slideCount, lessonOutline, includeQuizzes, includeActivities, includeDiscussion, language } = parsed.data;
-
-  const langInstruction = language === "ar"
-    ? "استخدم اللغة العربية الفصحى المبسطة المناسبة للطلاب."
-    : "Use clear English suited to the grade level.";
-
-  const includeList: string[] = [];
-  if (includeQuizzes) includeList.push("شريحة سؤال اختيار من متعدد واحدة على الأقل في الوسط");
-  if (includeActivities) includeList.push("شريحة نشاط تفاعلي واحدة على الأقل (لعبة جماعية للفصل) تحتوي 5-8 أسئلة قصيرة");
-  if (includeDiscussion) includeList.push("شريحة سؤال نقاش مفتوح واحدة على الأقل");
-
-  const prompt = `أنت خبير تربوي متخصص في تصميم الدروس التفاعلية. مهمتك إنشاء عرض تقديمي كامل وإبداعي.
-
-الموضوع: ${title}
-${subject ? `المادة: ${subject}` : ""}
-${gradeLevel ? `الصف: ${gradeLevel}` : ""}
-عدد الشرائح المطلوب: ${slideCount}
-${lessonOutline ? `خطة الدرس من المعلم: ${lessonOutline}` : ""}
-
-${langInstruction}
-
-التركيب المطلوب للعرض (بالترتيب):
-1. شريحة غلاف (cover) فيها العنوان ووصف جذاب قصير وإيموجي مناسب.
-2. شريحة أهداف الدرس (objectives) — قائمة 3-4 أهداف.
-3. شريحة تنشيطية (warmup) — سؤال إثارة فضول قصير لجذب انتباه الطلاب.
-4. شرائح محتوى (content أو bullets) تشرح الموضوع بطريقة منظمة وممتعة.
-${includeList.length ? `5. أثناء العرض أدرج: ${includeList.join("، ")}.` : ""}
-${slideCount}. شريحة ملخص (summary) — أهم 3-5 نقاط للحفظ.
-
-قواعد التصميم:
-- كل شريحة لها إيموجي واحد مناسب يعبر عن محتواها (emoji).
-- نصوص الشرائح مختصرة ومرتبة (ليست فقرات طويلة).
-- شرائح bullets فيها 3-5 نقاط مختصرة.
-- شرائح content فيها body قصير 2-4 جمل.
-- شريحة الكويز (quiz) فيها سؤال + 4 خيارات + الإجابة الصحيحة + شرح قصير.
-- شريحة النشاط (activity) فيها instructions موجزة + قائمة questions (5-8 أسئلة اختيار من متعدد) + اختر gameType الأنسب من: wameed (سؤال وجواب سريع) / million (مسابقة من سيربح المليون) / memory (لعبة الذاكرة) / tug (شد الحبل بين فريقين) / rocket (سباق صواريخ فردي سريع) / scramble (الكلمات المبعثرة).
-- شريحة النقاش (discussion) فيها discussionPrompt + discussionPoints (3-4 محاور للنقاش).
-- اكتب speakerNotes قصيرة لكل شريحة (2-3 جمل توجه المعلم ماذا يقول).
-- ضع id فريد لكل شريحة مثل: "s1", "s2", ...
-- نوّع الإيموجيز ولا تكررها.
-
-أعد النتيجة بتنسيق JSON فقط بدون أي نص قبل أو بعد. الشكل:
-{
-  "slides": [
-    {
-      "id": "s1",
-      "type": "cover",
-      "title": "...",
-      "subtitle": "...",
-      "emoji": "📚",
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s2",
-      "type": "objectives",
-      "title": "أهداف الدرس",
-      "bullets": ["...", "...", "..."],
-      "emoji": "🎯",
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s3",
-      "type": "content",
-      "title": "...",
-      "body": "...",
-      "emoji": "💡",
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s4",
-      "type": "bullets",
-      "title": "...",
-      "bullets": ["...", "...", "..."],
-      "emoji": "📌",
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s5",
-      "type": "quiz",
-      "title": "اختبر فهمك",
-      "emoji": "❓",
-      "question": {
-        "text": "...",
-        "optionA": "...",
-        "optionB": "...",
-        "optionC": "...",
-        "optionD": "...",
-        "correctAnswer": "B",
-        "explanation": "..."
-      },
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s6",
-      "type": "activity",
-      "title": "نشاط جماعي",
-      "emoji": "🎮",
-      "activity": {
-        "gameType": "wameed",
-        "instructions": "...",
-        "questions": [
-          {"text": "...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"A","points":1}
-        ]
-      },
-      "speakerNotes": "..."
-    },
-    {
-      "id": "s7",
-      "type": "discussion",
-      "title": "حوار وتفكير",
-      "emoji": "💬",
-      "discussionPrompt": "...",
-      "discussionPoints": ["...", "...", "..."],
-      "speakerNotes": "..."
-    },
-    {
-      "id": "sN",
-      "type": "summary",
-      "title": "خلاصة الدرس",
-      "emoji": "✨",
-      "bullets": ["...", "...", "..."],
-      "speakerNotes": "..."
-    }
-  ],
-  "coverEmoji": "📚",
-  "description": "وصف قصير للدرس (جملة واحدة)",
-  "theme": "ocean"
-}
-
-مهم:
-- نوّع مواضع الإجابات الصحيحة في الكويز والأنشطة بين A وB وC وD.
-- اختر theme الأنسب للموضوع من هذه الأسماء فقط: harvest / ocean / sunset / midnight / rose
-  • harvest → الدروس العلمية، الطبيعة، الحياة، الصحة، البيئة.
-  • ocean → الجغرافيا، التاريخ، الأنظمة، العلوم البحرية، التكنولوجيا.
-  • sunset → الفنون، الأدب، اللغة، الإبداع، التاريخ الحضاري.
-  • midnight → الرياضيات، الفيزياء، الفلك، البرمجة، المنطق.
-  • rose → التربية، القيم، الدراسات الإجتماعية، التواصل، القيادة.`;
-
-  try {
-    const tier = await resolveTier(req.session.teacherId, (req.body as { tier?: string })?.tier);
-    const responseText = await runTierCompletion({ tier, prompt, maxTokens: 16000 });
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      res.status(500).json({ message: "لم يتمكن الذكاء الاصطناعي من توليد العرض. حاول مرة أخرى." });
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ message: "Not found" });
       return;
     }
-    let parsedJson: { slides?: unknown; coverEmoji?: string; description?: string };
-    try {
-      parsedJson = JSON.parse(jsonMatch[0]);
-    } catch {
-      res.status(500).json({ message: "خطأ في تنسيق الإجابة. حاول مرة أخرى." });
+    if (existing.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
       return;
     }
-    if (!parsedJson.slides || !Array.isArray(parsedJson.slides)) {
-      res.status(500).json({ message: "لم يتم توليد شرائح صالحة." });
+    /* Tier enforcement on slide-shape updates. Pro tier bypasses
+       caps; regular tier is bounded by `maxSlidesRegular` and
+       `maxImagesRegular` (image-element count summed across all
+       slides). Returning a structured `LIMIT_EXCEEDED` payload lets
+       the editor render a localized upgrade toast without parsing
+       free-text messages. */
+    if (body.slides !== undefined) {
+      /* Phase 2A — validate that any embedded activity element
+         pointing at a question_bank row actually belongs to the
+         current teacher. Prevents a teacher from referencing another
+         teacher's question via the editor by hand-crafting an id.
+         We collect all referenced ids in one pass then run a single
+         IN(...) query rather than N round-trips. */
+      const referencedQuestionIds = new Set<number>();
+      for (const s of body.slides) {
+        for (const el of s.elements ?? []) {
+          if (el.kind === "activity") {
+            /* Phase 2A — manual XOR check: an activity must either
+               reference a bank question OR provide an inline prompt
+               (we couldn't express this via `.refine` without
+               breaking discriminatedUnion). */
+            const hasPrompt = typeof el.prompt === "string" && el.prompt.trim().length > 0;
+            const hasQid = typeof el.questionId === "number";
+            if (!hasPrompt && !hasQid) {
+              res.status(400).json({
+                message: "Activity element requires either questionId or prompt",
+                slideId: s.id,
+              });
+              return;
+            }
+            if (hasQid) referencedQuestionIds.add(el.questionId as number);
+          }
+        }
+      }
+      if (referencedQuestionIds.size > 0) {
+        const ids = Array.from(referencedQuestionIds);
+        const found = await db
+          .select({ id: questionBankTable.id, teacherId: questionBankTable.teacherId })
+          .from(questionBankTable)
+          .where(inArray(questionBankTable.id, ids));
+        const ownedIds = new Set(found.filter((q) => q.teacherId === teacherId).map((q) => q.id));
+        const bad = ids.filter((qid) => !ownedIds.has(qid));
+        if (bad.length > 0) {
+          res.status(403).json({
+            message: "Cannot reference questions you do not own",
+            badQuestionIds: bad,
+          });
+          return;
+        }
+      }
+      const tier = await resolvePresentationsTier(teacherId);
+      if (!tier.isPro) {
+        if (body.slides.length > tier.limits.maxSlidesRegular) {
+          res.status(403).json({
+            code: "LIMIT_EXCEEDED",
+            kind: "slides",
+            limit: tier.limits.maxSlidesRegular,
+            current: body.slides.length,
+            message: "Slide limit exceeded for the regular tier",
+          });
+          return;
+        }
+        let imageCount = 0;
+        for (const s of body.slides) {
+          for (const el of s.elements ?? []) {
+            if (el.kind === "image") imageCount += 1;
+          }
+        }
+        if (imageCount > tier.limits.maxImagesRegular) {
+          res.status(403).json({
+            code: "LIMIT_EXCEEDED",
+            kind: "images",
+            limit: tier.limits.maxImagesRegular,
+            current: imageCount,
+            message: "Image limit exceeded for the regular tier",
+          });
+          return;
+        }
+      }
+    }
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.language !== undefined) patch.language = body.language;
+    if (body.subject !== undefined) patch.subject = body.subject ?? null;
+    if (body.gradeLevel !== undefined) patch.gradeLevel = body.gradeLevel ?? null;
+    if (body.theme !== undefined) patch.theme = body.theme;
+    if (body.pattern !== undefined) patch.pattern = body.pattern;
+    if (body.coverEmoji !== undefined) patch.coverEmoji = body.coverEmoji ?? null;
+    if (body.description !== undefined) patch.description = body.description ?? null;
+    if (body.slides !== undefined) patch.slides = body.slides;
+
+    const [row] = await db
+      .update(presentationsTable)
+      .set(patch)
+      .where(eq(presentationsTable.id, id))
+      .returning();
+    res.json(row);
+  } catch (err: any) {
+    if (err?.issues) {
+      res.status(400).json({ message: "Invalid presentation", issues: err.issues });
       return;
     }
-    /* Light normalisation: ensure each slide has an id and a type. */
-    const cleaned = parsedJson.slides
-      .map((raw, idx) => {
-        const s = raw as Record<string, unknown>;
-        const safe = {
-          id: typeof s.id === "string" && s.id ? s.id : `s${idx + 1}`,
-          type: typeof s.type === "string" ? s.type : "content",
-          title: typeof s.title === "string" ? s.title : null,
-          subtitle: typeof s.subtitle === "string" ? s.subtitle : null,
-          body: typeof s.body === "string" ? s.body : null,
-          bullets: Array.isArray(s.bullets) ? s.bullets.filter((b) => typeof b === "string") : null,
-          emoji: typeof s.emoji === "string" ? s.emoji : "📄",
-          speakerNotes: typeof s.speakerNotes === "string" ? s.speakerNotes : null,
-          question: s.question ?? null,
-          activity: s.activity ?? null,
-          discussionPrompt: typeof s.discussionPrompt === "string" ? s.discussionPrompt : null,
-          discussionPoints: Array.isArray(s.discussionPoints) ? s.discussionPoints.filter((p) => typeof p === "string") : null,
-          imageUrl: typeof s.imageUrl === "string" ? s.imageUrl : null,
-          videoUrl: typeof s.videoUrl === "string" ? s.videoUrl : null,
-        };
-        const validTypes = ["cover","content","bullets","quiz","activity","discussion","image","video","summary","objectives","warmup"];
-        if (!validTypes.includes(safe.type)) safe.type = "content";
-        return safe;
-      });
-
-    const VALID_THEMES = ["harvest", "ocean", "sunset", "midnight", "rose"];
-    const suggestedTheme =
-      typeof (parsedJson as Record<string, unknown>).theme === "string" &&
-      VALID_THEMES.includes((parsedJson as Record<string, unknown>).theme as string)
-        ? (parsedJson as Record<string, unknown>).theme as string
-        : null;
-
-    res.json({
-      slides: cleaned,
-      coverEmoji: typeof parsedJson.coverEmoji === "string" ? parsedJson.coverEmoji : "📚",
-      description: typeof parsedJson.description === "string" ? parsedJson.description : null,
-      theme: suggestedTheme,
-    });
-  } catch (err) {
-    req.log.error({ err }, "Generate presentation failed");
-    res.status(500).json({ message: "تعذّر توليد العرض. حاول مرة أخرى." });
+    req.log.error({ err }, "Update presentation failed");
+    res.status(500).json({ message: "Failed to update presentation" });
   }
 });
 
-/* ─────────────────────────────────────────────────────────────
-   POST /api/presentations/:id/ai-fill-slide
-   Body: { slideId: string, hint?: string }
-   Uses Claude Sonnet to fill in the body of a slide given its title.
-   Returns a partial slide patch matching the slide's type.
-   ───────────────────────────────────────────────────────────── */
-const aiFillBody = z.object({
-  slideId: z.string().min(1),
-  hint: z.string().max(500).optional(),
-});
-
-router.post("/presentations/:id/ai-fill-slide", async (req, res) => {
-  if (!req.session.teacherId) {
-    res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
-    return;
-  }
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ message: "معرّف غير صالح" });
-    return;
-  }
-  const parsed = aiFillBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: "بيانات غير صالحة" });
-    return;
-  }
-
-  const [pres] = await db
-    .select()
-    .from(presentationsTable)
-    .where(and(eq(presentationsTable.id, id), eq(presentationsTable.teacherId, req.session.teacherId)))
-    .limit(1);
-  if (!pres) {
-    res.status(404).json({ message: "العرض غير موجود" });
-    return;
-  }
-
-  const slides = (pres.slides as Array<Record<string, unknown>>) || [];
-  const slide = slides.find((s) => s.id === parsed.data.slideId);
-  if (!slide) {
-    res.status(404).json({ message: "الشريحة غير موجودة" });
-    return;
-  }
-
-  const slideType = (slide.type as string) || "content";
-  const title = (slide.title as string | null | undefined)?.trim() || "";
-  if (!title) {
-    res.status(400).json({ message: "اكتب عنوان الشريحة أولاً" });
-    return;
-  }
-
-  const lang = (pres.language as string) === "en" ? "en" : "ar";
-  const subject = (pres.subject as string | null) || "";
-  const grade = (pres.gradeLevel as string | null) || "";
-  const hint = parsed.data.hint?.trim() || "";
-
-  const langDirective =
-    lang === "ar"
-      ? "اكتب كل المحتوى باللغة العربية الفصحى المبسّطة المناسبة للمعلمين والطلاب."
-      : "Write all content in clear, classroom-appropriate English.";
-
-  const contextLines = [
-    subject ? (lang === "ar" ? `المادة: ${subject}` : `Subject: ${subject}`) : "",
-    grade ? (lang === "ar" ? `المرحلة الدراسية: ${grade}` : `Grade level: ${grade}`) : "",
-    hint ? (lang === "ar" ? `إرشاد المعلم: ${hint}` : `Teacher hint: ${hint}`) : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  let schemaInstruction = "";
-  switch (slideType) {
-    case "cover":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON بهذا الشكل فقط: {"subtitle": "<عنوان فرعي قصير 6-12 كلمة>", "emoji": "<إيموجي واحد مناسب>"}`
-          : `Return JSON only: {"subtitle": "<6-12 word subtitle>", "emoji": "<one fitting emoji>"}`;
-      break;
-    case "content":
-    case "warmup":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"body": "<فقرة شرح من 3-5 جمل واضحة>"}`
-          : `Return JSON: {"body": "<3-5 sentence explanation paragraph>"}`;
-      break;
-    case "bullets":
-    case "summary":
-    case "objectives":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"bullets": ["<نقطة قصيرة>", ...]} بحيث تكون 4 إلى 6 نقاط، كل نقطة جملة كاملة قصيرة.`
-          : `Return JSON: {"bullets": ["<short point>", ...]} with 4 to 6 short, complete-sentence points.`;
-      break;
-    case "quiz":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"question": {"text": "<نص السؤال>", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctAnswer": "A|B|C|D", "explanation": "<شرح موجز للإجابة الصحيحة>"}}`
-          : `Return JSON: {"question": {"text": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctAnswer": "A|B|C|D", "explanation": "<brief why>"}}`;
-      break;
-    case "activity": {
-      const gameType =
-        ((slide.activity as Record<string, unknown> | null | undefined)?.gameType as string) ||
-        "wameed";
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"activity": {"gameType": "${gameType}", "instructions": "<تعليمات قصيرة للطلاب>", "questions": [{"text": "...", "optionA": "...", "optionB": "...", "optionC": "...", "optionD": "...", "correctAnswer": "A|B|C|D", "points": 1}, ...]} مع 4 أسئلة بالضبط مناسبة للعبة (${gameType}).`
-          : `Return JSON: {"activity": {"gameType": "${gameType}", "instructions": "...", "questions": [...4 MCQs...]}} with exactly 4 questions appropriate for game (${gameType}).`;
-      break;
-    }
-    case "discussion":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"discussionPrompt": "<سؤال نقاش رئيسي مفتوح>", "discussionPoints": ["<نقطة>", "<نقطة>", "<نقطة>", "<نقطة>"]} بأربع نقاط نقاش.`
-          : `Return JSON: {"discussionPrompt": "<main open question>", "discussionPoints": [...4 talking points...]}`;
-      break;
-    case "image":
-    case "video":
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"body": "<وصف توضيحي لما يجب أن يراه/يسمعه الطلاب وكيف يربطونه بعنوان الشريحة، 2-4 جمل>"}`
-          : `Return JSON: {"body": "<2-4 sentence description tying the media to the title>"}`;
-      break;
-    default:
-      schemaInstruction =
-        lang === "ar"
-          ? `أعد JSON: {"body": "<فقرة شرح قصيرة 3-5 جمل>"}`
-          : `Return JSON: {"body": "<3-5 sentence explanation>"}`;
-  }
-
-  /* When the deck uses the "ai" pattern, also ask the AI to pick a per-slide
-     background gradient that visually fits the slide's topic. The picked
-     classes must come from the AI_GRADIENT_FROM / AI_GRADIENT_TO whitelists
-     so Tailwind has them in the bundle. */
-  const isAiPattern = (pres.pattern as string) === "ai";
-  const customBgInstruction = isAiPattern
-    ? (lang === "ar"
-        ? `أيضاً، اختر تدرّجاً لونياً ملائماً جدّاً لمحتوى وعنوان الشريحة (مثلاً ألوان زاهية للأنشطة، ألوان دافئة للمواضيع الإيجابية، ألوان داكنة للمواضيع الجادة). أضف الحقل التالي إلى الكائن: "customBackground": {"gradientFrom": "<من القائمة>", "gradientTo": "<من القائمة>", "textOnLight": <true إذا كانت الخلفية فاتحة جدّاً يحتاج النص الأسود وإلا false>}.\nالقيم المسموح بها لـ gradientFrom (اختر واحدة بالضبط):\n${AI_GRADIENT_FROM.join(", ")}\nالقيم المسموح بها لـ gradientTo (اختر واحدة بالضبط):\n${AI_GRADIENT_TO.join(", ")}`
-        : `Also pick a gradient that visually fits the slide's topic (e.g. bright for activities, warm for positive topics, dark for serious ones). Add to the object: "customBackground": {"gradientFrom": "<from list>", "gradientTo": "<from list>", "textOnLight": <true only if the background is so light it needs dark text, else false>}.\nAllowed gradientFrom values (pick exactly one):\n${AI_GRADIENT_FROM.join(", ")}\nAllowed gradientTo values (pick exactly one):\n${AI_GRADIENT_TO.join(", ")}`)
-    : "";
-
-  const userPrompt = [
-    lang === "ar"
-      ? `أنت مساعد تربوي يساعد المعلم على إعداد شريحة عرض. عنوان الشريحة هو: «${title}».`
-      : `You are an instructional assistant helping a teacher author one slide. The slide title is: "${title}".`,
-    contextLines,
-    schemaInstruction,
-    customBgInstruction,
-    lang === "ar"
-      ? "أعد كائن JSON واحد فقط بدون أي نص آخر، بدون علامات ```."
-      : "Return ONLY a single JSON object, no prose, no ``` fences.",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
+/* ── Phase 2A — Link / unlink an activity (assignment) to a deck.
+   Owner only. The pointer is informational: it gives the deck a
+   "presented for {assignment}" badge and lets the launcher land on
+   the right grading view. Pass `activityId: null` to detach. We
+   verify the assignment exists and belongs to the teacher to prevent
+   cross-tenant pointers. */
+router.patch("/presentations/:id/link-activity", requireTeacher, async (req, res) => {
   try {
-    /* Honour the teacher's resolved AI tier (claude → Anthropic, pro/standard
-       → OpenAI). Bypassing this would leak Claude usage to non-claude tiers
-       and break paid-tier access controls. */
-    const tier = await resolveTier(req.session.teacherId, undefined);
-    const systemPrompt =
-      lang === "ar"
-        ? `${langDirective} كن دقيقاً ومناسباً للسن. التزم تماماً بصيغة JSON المطلوبة.`
-        : `${langDirective} Be accurate and age-appropriate. Strictly follow the requested JSON shape.`;
-    const raw = await runTierCompletion({
-      tier,
-      prompt: userPrompt,
-      maxTokens: 1500,
-      system: systemPrompt,
-    });
-    const cleaned = raw
-      .trim()
-      .replace(/^```(?:json)?/i, "")
-      .replace(/```$/i, "")
-      .trim();
-
-    let patch: Record<string, unknown>;
-    try {
-      patch = JSON.parse(cleaned);
-    } catch {
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      if (start === -1 || end === -1) {
-        req.log.error({ raw }, "AI fill: no JSON in response");
-        res.status(502).json({ message: "تعذّر فهم رد الذكاء الاصطناعي" });
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ message: "Bad id" }); return; }
+    if (!(await ownsPresentation(teacherId, id))) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const body = linkActivityBody.parse(req.body);
+    if (body.activityId !== null) {
+      const [a] = await db
+        .select({ id: assignmentsTable.id, teacherId: assignmentsTable.teacherId })
+        .from(assignmentsTable)
+        .where(eq(assignmentsTable.id, body.activityId))
+        .limit(1);
+      if (!a || a.teacherId !== teacherId) {
+        res.status(404).json({ message: "Activity not found or not yours" });
         return;
       }
-      patch = JSON.parse(cleaned.slice(start, end + 1));
     }
-
-    /* These shapes MUST match what the prompt asked for AND what the persisted
-       slideSchema expects (text/optionA..D/correctAnswer). Drift here causes
-       silent 502s for quiz / activity slides. */
-    const quizQuestionSchema = z.object({
-      text: z.string().min(1).max(500),
-      optionA: z.string().min(1).max(300),
-      optionB: z.string().min(1).max(300),
-      optionC: z.string().min(1).max(300),
-      optionD: z.string().min(1).max(300),
-      correctAnswer: z.enum(["A", "B", "C", "D"]),
-      explanation: z.string().max(800).nullish(),
+    const [row] = await db
+      .update(presentationsTable)
+      .set({
+        linkedActivityId: body.activityId === null ? null : String(body.activityId),
+        linkedActivityKind: body.activityId === null ? null : body.activityKind,
+        updatedAt: new Date(),
+      })
+      .where(eq(presentationsTable.id, id))
+      .returning();
+    res.json({
+      id: row.id,
+      linkedActivityId: row.linkedActivityId,
+      linkedActivityKind: row.linkedActivityKind,
     });
-
-    const activityQuestionSchema = z.object({
-      text: z.string().min(1).max(500),
-      optionA: z.string().min(1).max(300),
-      optionB: z.string().min(1).max(300),
-      optionC: z.string().min(1).max(300),
-      optionD: z.string().min(1).max(300),
-      correctAnswer: z.enum(["A", "B", "C", "D"]),
-      points: z.number().int().min(1).max(10).optional(),
-    });
-
-    /* Each per-type schema also allows an optional customBackground (only
-       expected when pres.pattern === "ai", but harmless to accept otherwise —
-       the client only honours it for the "ai" pattern). */
-    const cb = customBackgroundSchema.optional();
-    const patchSchemas: Record<string, z.ZodTypeAny> = {
-      cover: z.object({
-        subtitle: z.string().max(500).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      content: z.object({
-        body: z.string().max(3000).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      warmup: z.object({
-        body: z.string().max(2000).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      bullets: z.object({
-        bullets: z.array(z.string().min(1).max(400)).min(2).max(10).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      summary: z.object({
-        bullets: z.array(z.string().min(1).max(400)).min(2).max(10).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      objectives: z.object({
-        bullets: z.array(z.string().min(1).max(400)).min(2).max(10).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      quiz: z.object({
-        question: quizQuestionSchema.optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      activity: z.object({
-        activity: z.object({
-          gameType: z.string().optional(),
-          instructions: z.string().max(1000).optional(),
-          questions: z.array(activityQuestionSchema).max(20).optional(),
-        }).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-      discussion: z.object({
-        discussionPrompt: z.string().max(1000).optional(),
-        discussionPoints: z.array(z.string().min(1).max(400)).min(2).max(10).optional(),
-        emoji: z.string().max(8).optional(),
-        customBackground: cb,
-      }),
-    };
-
-    const schema = patchSchemas[slideType] ?? z.object({ customBackground: cb }).passthrough();
-    const parsed = schema.safeParse(patch);
-    if (!parsed.success) {
-      req.log.error({ raw, issues: parsed.error.issues, slideType }, "AI fill: schema validation failed");
-      res.status(502).json({ message: "تعذّر فهم رد الذكاء الاصطناعي" });
+  } catch (err: any) {
+    if (err?.issues) {
+      res.status(400).json({ message: "Invalid body", issues: err.issues });
       return;
     }
-    const safePatch = parsed.data as Record<string, unknown>;
-
-    if (slideType === "activity" && safePatch.activity) {
-      const incoming = safePatch.activity as Record<string, unknown>;
-      const existing = (slide.activity as Record<string, unknown> | null) || {};
-      safePatch.activity = {
-        gameType: existing.gameType || incoming.gameType || "wameed",
-        instructions: incoming.instructions ?? existing.instructions ?? "",
-        questions: Array.isArray(incoming.questions) ? incoming.questions : [],
-      };
-    }
-
-    res.json({ patch: safePatch });
-  } catch (err) {
-    req.log.error({ err }, "AI fill slide failed");
-    res.status(500).json({ message: "تعذّر توليد المحتوى. حاول مرة أخرى." });
+    req.log.error({ err }, "Link presentation activity failed");
+    res.status(500).json({ message: "Failed to link activity" });
   }
 });
+
+/* Returns the resolved linked activity (id, title) or null if no
+   pointer / pointer dangling (assignment deleted). Owner or admin-
+   shared reader. */
+router.get("/presentations/:id/linked-activity", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ message: "Bad id" }); return; }
+    /* Mirror the GET /presentations/:id authorization: owner OR a deck
+       that is admin-shared (i.e. owned by an admin AND `isShared`).
+       Plain `isShared` from a non-admin must NOT grant read access. */
+    const [deck] = await db
+      .select({
+        teacherId: presentationsTable.teacherId,
+        isShared: presentationsTable.isShared,
+        ownerIsAdmin: teachersTable.isAdmin,
+        linkedActivityId: presentationsTable.linkedActivityId,
+        linkedActivityKind: presentationsTable.linkedActivityKind,
+      })
+      .from(presentationsTable)
+      .innerJoin(teachersTable, eq(teachersTable.id, presentationsTable.teacherId))
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!deck) { res.status(404).json({ message: "Not found" }); return; }
+    const isOwner = deck.teacherId === teacherId;
+    const isAdminShared = deck.isShared && deck.ownerIsAdmin;
+    if (!isOwner && !isAdminShared) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    /* Always emit `link` (nullable) so the client can rely on the
+       field shape regardless of resolution outcome. */
+    if (!deck.linkedActivityId) {
+      res.json({ activity: null, kind: null, link: null });
+      return;
+    }
+    const aid = parseInt(deck.linkedActivityId, 10);
+    if (!Number.isFinite(aid)) {
+      res.json({ activity: null, kind: deck.linkedActivityKind, link: null });
+      return;
+    }
+    const [a] = await db
+      .select({ id: assignmentsTable.id, title: assignmentsTable.title, teacherId: assignmentsTable.teacherId })
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, aid))
+      .limit(1);
+    if (!a || a.teacherId !== deck.teacherId) {
+      res.json({ activity: null, kind: deck.linkedActivityKind, link: null });
+      return;
+    }
+    res.json({
+      kind: deck.linkedActivityKind,
+      activity: { id: a.id, title: a.title },
+      link: `/teacher/assignment/${a.id}`,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Get linked activity failed");
+    res.status(500).json({ message: "Failed to load linked activity" });
+  }
+});
+
+/* ── Delete. Owner only. Cascades to presentation_assets via FK. */
+router.delete("/presentations/:id", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(presentationsTable)
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    if (existing.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    await db.delete(presentationsTable).where(eq(presentationsTable.id, id));
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    req.log.error({ err }, "Delete presentation failed");
+    res.status(500).json({ message: "Failed to delete presentation" });
+  }
+});
+
+/* ── Publish / unpublish. Owner only. `publishedAt` is stamped on the
+   first publish and refreshed on every re-publish so list sorting can
+   surface freshly-published decks. */
+async function setStatus(req: any, res: any, status: "draft" | "published") {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [existing] = await db
+      .select()
+      .from(presentationsTable)
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    if (existing.teacherId !== teacherId) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const [row] = await db
+      .update(presentationsTable)
+      .set({
+        status,
+        publishedAt: status === "published" ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(presentationsTable.id, id))
+      .returning();
+    res.json(row);
+  } catch (err) {
+    req.log.error({ err }, "Set presentation status failed");
+    res.status(500).json({ message: "Failed to update status" });
+  }
+}
+router.post("/presentations/:id/publish", requireTeacher, (req, res) => setStatus(req, res, "published"));
+router.post("/presentations/:id/unpublish", requireTeacher, (req, res) => setStatus(req, res, "draft"));
+
+/* ── Duplicate. Anyone who can read the source (own or admin-shared)
+   can duplicate it; the copy is owned by the caller and reset to draft. */
+router.post("/presentations/:id/duplicate", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    const [src] = await db
+      .select({ deck: presentationsTable, owner: teachersTable })
+      .from(presentationsTable)
+      .innerJoin(teachersTable, eq(teachersTable.id, presentationsTable.teacherId))
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!src) {
+      res.status(404).json({ message: "Not found" });
+      return;
+    }
+    const canRead = src.deck.teacherId === teacherId || (src.deck.isShared && src.owner.isAdmin);
+    if (!canRead) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    /* Phase 2A — When duplicating a deck owned by someone else, strip
+       any embedded `activity.questionId` pointers because they
+       reference question_bank rows owned by the source teacher. The
+       inline prompt/options are preserved so the activity remains
+       fully usable; only the bank link is severed. Without this, a
+       subsequent PUT save would be blocked by the cross-tenant
+       ownership check and the duplicate would be effectively
+       uneditable. */
+    const sourceSlides = (src.deck.slides as any) ?? [];
+    const sanitizedSlides = src.deck.teacherId === teacherId
+      ? sourceSlides
+      : (Array.isArray(sourceSlides) ? sourceSlides : []).map((s: any) => ({
+          ...s,
+          elements: Array.isArray(s?.elements)
+            ? s.elements.map((el: any) =>
+                el?.kind === "activity" && typeof el?.questionId === "number"
+                  ? { ...el, questionId: undefined }
+                  : el)
+            : s?.elements,
+        }));
+    const [row] = await db
+      .insert(presentationsTable)
+      .values({
+        teacherId,
+        title: `${src.deck.title} (نسخة)`,
+        language: src.deck.language,
+        subject: src.deck.subject,
+        gradeLevel: src.deck.gradeLevel,
+        theme: src.deck.theme,
+        pattern: src.deck.pattern,
+        coverEmoji: src.deck.coverEmoji,
+        description: src.deck.description,
+        slides: sanitizedSlides as object,
+        status: "draft",
+      })
+      .returning();
+    res.status(201).json(row);
+  } catch (err) {
+    req.log.error({ err }, "Duplicate presentation failed");
+    res.status(500).json({ message: "Failed to duplicate presentation" });
+  }
+});
+
+/* ── Assets. Lightweight tracking table the editor (T3) and tier
+   enforcement (T7) will consume. The actual upload pipeline lives in
+   the existing object-storage helpers; here we just record the
+   resulting URL plus byte size against a presentation. */
+const registerAssetBody = z.object({
+  kind: z.enum(["image", "file"]),
+  url: z.string().min(1).max(2000),
+  byteSize: z.number().int().min(0).max(500 * 1024 * 1024).default(0),
+});
+
+/* ── POST /api/presentations/image-search
+   Proxy image search so the frontend doesn't need a direct API key.
+   Uses Brave Search Images API if BRAVE_SEARCH_API_KEY is set;
+   falls back to Wikimedia Commons (free, no key, educational content).
+   Returns { results: [{ url, thumbUrl, title, source }] }. */
+const imageSearchBody = z.object({
+  q: z.string().min(1).max(200),
+  count: z.number().int().min(1).max(20).default(12),
+});
+
+router.post("/presentations/image-search", requireTeacher, async (req, res) => {
+  try {
+    const { q, count } = imageSearchBody.parse(req.body);
+    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+
+    if (braveKey) {
+      /* Brave Search Images API */
+      const url = `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(q)}&count=${count}&safesearch=strict`;
+      const r = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+          "Accept-Encoding": "gzip",
+          "X-Subscription-Token": braveKey,
+        },
+      });
+      if (!r.ok) throw new Error(`Brave API ${r.status}`);
+      const data = await r.json() as { results?: Array<{ title?: string; url?: string; thumbnail?: { src?: string }; source?: string }> };
+      const results = (data.results ?? []).slice(0, count).map((item) => ({
+        url: item.url ?? "",
+        thumbUrl: item.thumbnail?.src ?? item.url ?? "",
+        title: item.title ?? "",
+        source: item.source ?? "",
+      })).filter((r) => r.url);
+      res.json({ results });
+      return;
+    }
+
+    /* Wikimedia Commons fallback — completely free, no key required,
+       excellent for educational content. */
+    const wikiUrl =
+      `https://commons.wikimedia.org/w/api.php?action=query` +
+      `&generator=search&gsrnamespace=6&gsrsearch=File:${encodeURIComponent(q)}` +
+      `&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=600` +
+      `&gsrlimit=${count}&format=json&origin=*`;
+    const r = await fetch(wikiUrl);
+    if (!r.ok) throw new Error(`Wikimedia API ${r.status}`);
+    const data = await r.json() as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ url?: string; thumburl?: string }> }> } };
+    const pages = Object.values(data.query?.pages ?? {});
+    const results = pages.flatMap((p) => {
+      const info = p.imageinfo?.[0];
+      if (!info?.url) return [];
+      return [{
+        url: info.url,
+        thumbUrl: info.thumburl ?? info.url,
+        title: (p.title ?? "").replace(/^File:/, "").replace(/\.[^.]+$/, ""),
+        source: "Wikimedia Commons",
+      }];
+    }).slice(0, count);
+    res.json({ results });
+  } catch (err) {
+    req.log.error({ err }, "Image search failed");
+    res.status(500).json({ message: "Image search failed" });
+  }
+});
+
+async function ownsPresentation(teacherId: number, id: number): Promise<boolean> {
+  const [row] = await db
+    .select({ teacherId: presentationsTable.teacherId })
+    .from(presentationsTable)
+    .where(eq(presentationsTable.id, id))
+    .limit(1);
+  return !!row && row.teacherId === teacherId;
+}
+
+router.get("/presentations/:id/assets", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    if (!(await ownsPresentation(teacherId, id))) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(presentationAssetsTable)
+      .where(eq(presentationAssetsTable.presentationId, id))
+      .orderBy(desc(presentationAssetsTable.createdAt));
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "List presentation assets failed");
+    res.status(500).json({ message: "Failed to load assets" });
+  }
+});
+
+router.post("/presentations/:id/assets", requireTeacher, async (req, res) => {
+  try {
+    const teacherId = req.session.teacherId as number;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ message: "Bad id" });
+      return;
+    }
+    if (!(await ownsPresentation(teacherId, id))) {
+      res.status(403).json({ message: "Forbidden" });
+      return;
+    }
+    const body = registerAssetBody.parse(req.body);
+    /* Tier enforcement on asset uploads. Regular tier is capped on
+       per-deck file count (kind="file") and total deck size in MB.
+       Image-count enforcement happens on the slides PUT (see above)
+       since images become slide elements rather than persistent
+       assets in the editor flow. */
+    const tier = await resolvePresentationsTier(teacherId);
+    if (!tier.isPro) {
+      const usage = await getPresentationUsage(id);
+      const incomingMb = body.byteSize / (1024 * 1024);
+      if (body.kind === "file" && usage.files + 1 > tier.limits.maxFilesRegular) {
+        res.status(403).json({
+          code: "LIMIT_EXCEEDED",
+          kind: "files",
+          limit: tier.limits.maxFilesRegular,
+          current: usage.files,
+          message: "File limit exceeded for the regular tier",
+        });
+        return;
+      }
+      if (usage.sizeMb + incomingMb > tier.limits.maxSizeMbRegular) {
+        res.status(403).json({
+          code: "LIMIT_EXCEEDED",
+          kind: "sizeMb",
+          limit: tier.limits.maxSizeMbRegular,
+          current: usage.sizeMb,
+          message: "Size limit exceeded for the regular tier",
+        });
+        return;
+      }
+    }
+    const [row] = await db
+      .insert(presentationAssetsTable)
+      .values({ presentationId: id, kind: body.kind, url: body.url, byteSize: body.byteSize })
+      .returning();
+    res.status(201).json(row);
+  } catch (err: any) {
+    if (err?.issues) {
+      res.status(400).json({ message: "Invalid asset", issues: err.issues });
+      return;
+    }
+    req.log.error({ err }, "Register presentation asset failed");
+    res.status(500).json({ message: "Failed to register asset" });
+  }
+});
+
+/* ── Export to PPTX. Owner only, rate-limited (5/min/IP). PDF export
+   is handled client-side via the `/teacher/presentations/:id/print`
+   page which stacks all slides + auto-fires `window.print()`, so the
+   browser's print-to-PDF reproduces the on-screen `SlideRender`
+   pixel-for-pixel without shipping headless chromium. */
+router.post(
+  "/presentations/:id/export/pptx",
+  presentationExportLimiter,
+  requireTeacher,
+  async (req, res) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) {
+        res.status(400).json({ message: "Bad id" });
+        return;
+      }
+      const [row] = await db
+        .select()
+        .from(presentationsTable)
+        .where(eq(presentationsTable.id, id))
+        .limit(1);
+      if (!row) {
+        res.status(404).json({ message: "Not found" });
+        return;
+      }
+      if (row.teacherId !== teacherId) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
+
+      /* Hydrate bank-linked activity elements (questionId-only) so
+         the PPTX renderer sees the same prompt/options/correctIndex
+         the editor and present mode see. */
+      const hydratedSlides = await hydrateActivityQuestions(row.slides);
+      const deck: PresentationForExport = {
+        title: row.title,
+        language: (row.language === "en" ? "en" : "ar"),
+        /* Pass deck-level theme + pattern so the PPTX builder can
+           resolve them to a representative slide background. Without
+           this, every exported slide falls back to white and any
+           light-coloured text becomes invisible on the page — the
+           bug that made titles "disappear" in the previous export. */
+        theme: row.theme ?? undefined,
+        pattern: row.pattern ?? undefined,
+        slides: Array.isArray(hydratedSlides) ? (hydratedSlides as PresentationForExport["slides"]) : [],
+      };
+      const buf = await buildPptx(deck);
+
+      // Slugged filename: "<title>-<lang>.pptx". `slugify` handles
+      // both Arabic and Latin; we coerce the result to ASCII for the
+      // Content-Disposition `filename=` field and provide the original
+      // (URL-encoded) UTF-8 in `filename*` for modern clients.
+      const baseRaw = `${row.title}-${deck.language}`;
+      const baseAscii = slugify(baseRaw, { lower: false, strict: true }) || `presentation-${id}`;
+      const baseUtf8 = encodeURIComponent(`${baseRaw}.pptx`);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${baseAscii}.pptx"; filename*=UTF-8''${baseUtf8}`,
+      );
+      res.setHeader("Content-Length", String(buf.length));
+      res.end(buf);
+    } catch (err) {
+      req.log.error({ err }, "Export presentation to PPTX failed");
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to export presentation" });
+      }
+    }
+  },
+);
+
+/* ── Tokenized read for the puppeteer-driven PDF export. Returns the
+   same shape as `GET /api/presentations/:id` but authenticates with a
+   short-lived HMAC token (60 s) instead of a session cookie, since the
+   chromium worker that renders the print page has no teacher session.
+   The token is bound to (presentationId, teacherId) so it can't be
+   reused against another deck. */
+router.get("/presentations/:id/export-data", async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id), 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ message: "Bad id" }); return; }
+    const token = String(req.query.token ?? "");
+    const claim = verifyExportToken(token, id);
+    if (!claim) { res.status(401).json({ message: "Invalid or expired token" }); return; }
+    const [row] = await db
+      .select()
+      .from(presentationsTable)
+      .where(eq(presentationsTable.id, id))
+      .limit(1);
+    if (!row) { res.status(404).json({ message: "Not found" }); return; }
+    if (row.teacherId !== claim.teacherId) { res.status(403).json({ message: "Forbidden" }); return; }
+    const hydratedSlides = await hydrateActivityQuestions(row.slides);
+    res.json({ ...row, slides: hydratedSlides });
+  } catch (err) {
+    req.log.error({ err }, "export-data failed");
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/* ── Export to PDF. Owner only, rate-limited via the same export
+   bucket as PPTX. Mints a 60-second export token, then drives a
+   cached headless chromium (puppeteer-core + the system Chromium
+   from replit.nix) to the live print page
+   (`/teacher/presentations/:id/print?exportToken=…&ssr=1`). The
+   print page reuses the same `SlideRender` React component as
+   present mode, so PDF output is pixel-for-pixel identical to what
+   the teacher sees on screen — no manual HTML re-implementation.
+   Page signals readiness via `window.__SLIDES_READY__`. */
+router.post(
+  "/presentations/:id/export/pdf",
+  presentationExportLimiter,
+  requireTeacher,
+  async (req, res) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+      const id = parseInt(String(req.params.id), 10);
+      if (!Number.isFinite(id)) {
+        res.status(400).json({ message: "Bad id" });
+        return;
+      }
+      const [row] = await db
+        .select({ teacherId: presentationsTable.teacherId, title: presentationsTable.title, language: presentationsTable.language })
+        .from(presentationsTable)
+        .where(eq(presentationsTable.id, id))
+        .limit(1);
+      if (!row) { res.status(404).json({ message: "Not found" }); return; }
+      if (row.teacherId !== teacherId) { res.status(403).json({ message: "Forbidden" }); return; }
+
+      const token = mintExportToken(id, teacherId);
+      const origin = resolveExportOrigin(process.env);
+      const printUrl = `${origin}/teacher/presentations/${id}/print?exportToken=${encodeURIComponent(token)}&ssr=1`;
+      req.log.info({ origin }, "PDF export navigating");
+      const buf = await buildPdf(printUrl);
+
+      const lang = row.language === "en" ? "en" : "ar";
+      const baseRaw = `${row.title}-${lang}`;
+      const baseAscii = slugify(baseRaw, { lower: false, strict: true }) || `presentation-${id}`;
+      const baseUtf8 = encodeURIComponent(`${baseRaw}.pdf`);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${baseAscii}.pdf"; filename*=UTF-8''${baseUtf8}`,
+      );
+      res.setHeader("Content-Length", String(buf.length));
+      res.end(buf);
+    } catch (err) {
+      req.log.error({ err }, "Export presentation to PDF failed");
+      if (!res.headersSent) {
+        /* In non-production, surface the underlying error message so
+           the editor's toast can show diagnostic detail. The frontend
+           reads `description` from the JSON body (see editor.tsx). */
+        const message =
+          process.env.NODE_ENV === "production"
+            ? "Failed to export presentation"
+            : `Failed to export presentation: ${(err as Error).message}`;
+        res.status(500).json({ message });
+      }
+    }
+  },
+);
 
 export default router;

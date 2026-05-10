@@ -17,6 +17,12 @@
     },
     {
       "path": "./lib/integrations-openai-ai-react"
+    },
+    {
+      "path": "./lib/billing"
+    },
+    {
+      "path": "./lib/slide-templates"
     }
   ]
 }

@@ -1,0 +1,1 @@
+{"version":3,"file":"presentationDraftWithGuardrails.d.ts","sourceRoot":"","sources":["../../../src/generated/types/presentationDraftWithGuardrails.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,qBAAqB,CAAC;AAC7D,OAAO,KAAK,EAAE,yCAAyC,EAAE,MAAM,6CAA6C,CAAC;AAE7G,MAAM,MAAM,+BAA+B,GAAG,iBAAiB,GAAG;IAChE,UAAU,EAAE,yCAAyC,CAAC;CACvD,CAAC"}

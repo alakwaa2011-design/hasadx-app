@@ -119,6 +119,37 @@ paths:
         "401":
           description: Not authenticated
 
+  /auth/role:
+    patch:
+      operationId: updateTeacherRole
+      tags: [auth]
+      summary: Change current user's role (teacher ↔ organizer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleBody"
+      responses:
+        "200":
+          description: Updated profile with new role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeacherProfile"
+        "400":
+          description: Invalid role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /auth/logout:
     post:
       operationId: logoutTeacher
@@ -131,6 +162,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+
+  /auth/google:
+    post:
+      operationId: loginTeacherWithGoogle
+      tags: [auth]
+      summary: Login or register a teacher using a Google ID token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleLoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Missing or invalid Google credential
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Google ID token verification failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Account is blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/preferences:
+    get:
+      operationId: getBriefPreferences
+      tags: [auth]
+      summary: Get the teacher's saved brief preferences
+      responses:
+        "200":
+          description: Saved preferences (empty object if none saved yet)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BriefPreferences"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateBriefPreferences
+      tags: [auth]
+      summary: Persist the teacher's brief preferences server-side
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BriefPreferences"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BriefPreferences"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /auth/sessions:
     get:
@@ -433,6 +543,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/Submission"
 
+  /submissions/{submissionId}/details:
+    get:
+      operationId: getSubmissionDetails
+      tags: [submissions]
+      summary: Get full submission with per-answer details (teacher only)
+      parameters:
+        - name: submissionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Submission with answers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionDetail"
+
+  /submission-answers/{answerId}:
+    patch:
+      operationId: updateAnswerGrade
+      tags: [submissions]
+      summary: Manually grade a single answer (teacher only)
+      parameters:
+        - name: answerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAnswerBody"
+      responses:
+        "200":
+          description: Updated answer + recomputed submission totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionDetail"
+
   /feedback:
     post:
       operationId: submitFeedback
@@ -451,6 +605,548 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+
+  /presentations/limits:
+    get:
+      operationId: getPresentationsLimits
+      tags: [presentations]
+      summary: Get the effective presentations tier and limits for the caller
+      responses:
+        "200":
+          description: Tier resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationTier"
+
+  /presentations/{id}/usage:
+    get:
+      operationId: getPresentationUsage
+      tags: [presentations]
+      summary: Get tier limits + per-deck usage for a single presentation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Tier + usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationTierWithUsage"
+
+  /presentations:
+    get:
+      operationId: listPresentations
+      tags: [presentations]
+      summary: List own presentations + admin-shared
+      responses:
+        "200":
+          description: List of presentations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresentationSummary"
+        "401":
+          description: Not authenticated
+    post:
+      operationId: createPresentation
+      tags: [presentations]
+      summary: Create a new presentation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePresentationBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+
+  /presentations/{id}:
+    get:
+      operationId: getPresentation
+      tags: [presentations]
+      summary: Get a presentation (owner or admin-shared)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Presentation details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+        "404":
+          description: Not found
+    put:
+      operationId: updatePresentation
+      tags: [presentations]
+      summary: Update a presentation (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePresentationBody"
+      responses:
+        "200":
+          description: Updated presentation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+    delete:
+      operationId: deletePresentation
+      tags: [presentations]
+      summary: Delete a presentation (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /presentations/{id}/publish:
+    post:
+      operationId: publishPresentation
+      tags: [presentations]
+      summary: Publish a presentation (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+
+  /presentations/{id}/unpublish:
+    post:
+      operationId: unpublishPresentation
+      tags: [presentations]
+      summary: Move a presentation back to draft (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unpublished
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+
+  /presentations/{id}/link-activity:
+    patch:
+      operationId: linkPresentationActivity
+      tags: [presentations]
+      summary: Link or unlink the presentation to a teacher activity (assignment)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activityId:
+                  type: integer
+                  nullable: true
+                activityKind:
+                  type: string
+                  default: assignment
+              required:
+                - activityId
+      responses:
+        "200":
+          description: Updated link
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  linkedActivityId:
+                    type: string
+                    nullable: true
+                  linkedActivityKind:
+                    type: string
+                    nullable: true
+                required: [id]
+
+  /presentations/{id}/linked-activity:
+    get:
+      operationId: getPresentationLinkedActivity
+      tags: [presentations]
+      summary: Resolve the linked activity (or null if none / dangling)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Linked activity
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                    nullable: true
+                  activity:
+                    nullable: true
+                    type: object
+                    properties:
+                      id: { type: integer }
+                      title: { type: string }
+                    required: [id, title]
+                  link:
+                    type: string
+                    nullable: true
+                    description: Relative URL to open the linked activity, or null when there is no resolved link.
+                required: [activity, kind, link]
+
+  /presentations/{id}/duplicate:
+    post:
+      operationId: duplicatePresentation
+      tags: [presentations]
+      summary: Duplicate a presentation (owner or admin-shared)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Duplicated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presentation"
+
+  /presentations/{id}/assets:
+    get:
+      operationId: listPresentationAssets
+      tags: [presentations]
+      summary: List uploaded assets for a presentation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresentationAsset"
+    post:
+      operationId: registerPresentationAsset
+      tags: [presentations]
+      summary: Register an uploaded asset URL on a presentation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterAssetBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationAsset"
+
+  /presentations/ai/limits:
+    get:
+      operationId: getPresentationAiLimits
+      tags: [presentations]
+      summary: Tier-driven limits for AI outline generation
+      responses:
+        "200":
+          description: Limits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationAiLimits"
+
+  /presentations/ai/outline:
+    post:
+      operationId: generatePresentationOutline
+      tags: [presentations]
+      summary: Generate a reviewable outline (Phase 1A) — does NOT build slides
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PresentationBrief"
+      responses:
+        "201":
+          description: Draft created with validated outline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationDraftWithGuardrails"
+        "403":
+          description: Tier limit hit (slides/density)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Could not produce a valid outline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Daily outline limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /presentations/ai/build/{draftId}:
+    post:
+      operationId: buildPresentationFromDraft
+      tags: [presentations]
+      summary: Phase 1B — materialize an approved outline into a real deck
+      description: |
+        Per-slide materialization with skip-on-failure semantics. Failed
+        slides are reported in `skipped` so the teacher can author them
+        manually. Progress is persisted on the draft row after every
+        slide so a parallel poll on `GET /presentations/drafts/{id}`
+        can drive a real progress bar without SSE plumbing.
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildPresentationRequest"
+      responses:
+        "200":
+          description: Already built — returns the existing presentation id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildPresentationResponse"
+        "201":
+          description: Built — returns the newly created presentation id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildPresentationResponse"
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Draft is not in `outline_ready` state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Build failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /presentations/ai/build/{draftId}/stream:
+    get:
+      operationId: streamPresentationBuild
+      tags: [presentations]
+      summary: Phase 1B — SSE stream of build progress
+      description: |
+        Server-Sent Events feed: emits `progress` events on each
+        polling tick and a terminal `done` event when the build
+        finishes (status `built` or `failed`). Consumed via the
+        browser's `EventSource`. Polling on the draft row remains
+        available as a fallback driver.
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Event stream opened
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /presentations/ai/build/{draftId}/cancel:
+    post:
+      operationId: cancelPresentationBuild
+      tags: [presentations]
+      summary: Phase 1B — request cancellation of an in-flight build
+      description: |
+        Sets an in-memory cancel flag the build loop checks once per
+        slide. Idempotent. Slides validated before the cancel arrived
+        are still persisted into the resulting deck.
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Cancel requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelBuildResponse"
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Draft not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /presentations/drafts:
+    get:
+      operationId: listPresentationDrafts
+      tags: [presentations]
+      summary: List the current teacher's saved outline drafts
+      responses:
+        "200":
+          description: Drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PresentationDraft"
+
+  /presentations/drafts/{id}:
+    get:
+      operationId: getPresentationDraft
+      tags: [presentations]
+      summary: Read one draft (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationDraft"
+    patch:
+      operationId: updatePresentationDraft
+      tags: [presentations]
+      summary: Update outline or status (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePresentationDraftBody"
+      responses:
+        "200":
+          description: Updated draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresentationDraft"
+    delete:
+      operationId: deletePresentationDraft
+      tags: [presentations]
+      summary: Delete a draft (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
 
 components:
   schemas:
@@ -586,6 +1282,11 @@ components:
         password:
           type: string
           minLength: 6
+        role:
+          type: string
+          enum: [teacher, organizer]
+          default: teacher
+          description: "Public registration role; admin role can only be granted internally."
       required:
         - name
         - password
@@ -613,6 +1314,15 @@ components:
       required:
         - teacher
 
+    GoogleLoginBody:
+      type: object
+      properties:
+        credential:
+          type: string
+          description: Google ID token (credential) returned by the Google sign-in flow.
+      required:
+        - credential
+
     TeacherProfile:
       type: object
       properties:
@@ -628,9 +1338,58 @@ components:
           type: boolean
         isBlocked:
           type: boolean
+        role:
+          type: string
+          enum: [teacher, organizer, admin]
+          description: "User role: teacher (classroom), organizer (events), or admin (super-admin)."
       required:
         - id
         - name
+
+    BriefPreferences:
+      type: object
+      description: Teacher's saved advanced brief form preferences, synced across devices.
+      properties:
+        language:
+          type: string
+          enum: [ar, en]
+        presentationKind:
+          type: string
+          enum: [explain, review, interactive, quick, contest]
+        slideCount:
+          type: integer
+          minimum: 5
+          maximum: 30
+        durationMinutes:
+          type: integer
+          enum: [15, 30, 45, 60]
+        languageLevel:
+          type: string
+          enum: [simple, medium, advanced]
+        density:
+          type: string
+          enum: [minimal, balanced, detailed]
+        activities:
+          type: boolean
+        questions:
+          type: boolean
+        poll:
+          type: boolean
+        quiz:
+          type: boolean
+        notes:
+          type: string
+          maxLength: 200
+
+    UpdateRoleBody:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [teacher, organizer]
+          description: "New role for the current user. Admin role cannot be self-assigned."
+      required:
+        - role
 
     CreateAssignmentBody:
       type: object
@@ -704,6 +1463,23 @@ components:
               type: array
               items:
                 type: string
+        activityType:
+          type: string
+          nullable: true
+          description: "Marks special activity types (e.g. 'listening' for dictation/listening assignments)."
+        listeningAudioText:
+          type: string
+          nullable: true
+        listeningVoice:
+          type: string
+          nullable: true
+        listeningSpeed:
+          type: string
+          nullable: true
+        listeningSettings:
+          type: object
+          nullable: true
+          additionalProperties: true
         questions:
           type: array
           items:
@@ -719,7 +1495,7 @@ components:
           type: string
         questionType:
           type: string
-          enum: [mcq, true_false, fill_blank, whiteboard, dictation]
+          enum: [mcq, true_false, fill_blank, whiteboard, dictation, open]
           default: mcq
         optionA:
           type: string
@@ -890,6 +1666,23 @@ components:
         aiGradingInstructions:
           type: string
           nullable: true
+        activityType:
+          type: string
+          nullable: true
+          description: "Marks special activity types (e.g. 'listening' for dictation/listening assignments)."
+        listeningAudioText:
+          type: string
+          nullable: true
+        listeningVoice:
+          type: string
+          nullable: true
+        listeningSpeed:
+          type: string
+          nullable: true
+        listeningSettings:
+          type: object
+          nullable: true
+          additionalProperties: true
         createdAt:
           type: string
           format: date-time
@@ -919,7 +1712,7 @@ components:
           type: string
         questionType:
           type: string
-          enum: [mcq, true_false, fill_blank, whiteboard, dictation]
+          enum: [mcq, true_false, fill_blank, whiteboard, dictation, open]
           default: mcq
         optionA:
           type: string
@@ -941,6 +1734,21 @@ components:
         imageUrl:
           type: string
           nullable: true
+        readAloud:
+          type: boolean
+          default: false
+        difficulty:
+          type: integer
+          nullable: true
+        skill:
+          type: string
+          nullable: true
+        allowMultipleAnswers:
+          type: boolean
+          default: false
+        repeatQuestion:
+          type: boolean
+          default: false
       required:
         - id
         - text
@@ -959,6 +1767,9 @@ components:
           type: string
         examSessionId:
           type: integer
+        durationSeconds:
+          type: integer
+          nullable: true
         answers:
           type: array
           items:
@@ -1027,6 +1838,12 @@ components:
         aiFeedback:
           type: string
           nullable: true
+        repeatEligibleIds:
+          type: array
+          items:
+            type: integer
+          nullable: true
+          description: IDs of questions answered incorrectly that the student may retry.
       required:
         - id
         - studentName
@@ -1093,6 +1910,9 @@ components:
         aiFeedback:
           type: string
           nullable: true
+        durationSeconds:
+          type: integer
+          nullable: true
         submittedAt:
           type: string
           format: date-time
@@ -1111,6 +1931,76 @@ components:
       type: object
       properties:
         teacherAdjustedPoints:
+          type: number
+          nullable: true
+        teacherNote:
+          type: string
+          nullable: true
+
+    SubmissionAnswerDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        questionId:
+          type: integer
+        questionText:
+          type: string
+        questionType:
+          type: string
+        points:
+          type: number
+        selectedAnswer:
+          type: string
+        correctAnswer:
+          type: string
+          nullable: true
+        optionA:
+          type: string
+          nullable: true
+        optionB:
+          type: string
+          nullable: true
+        optionC:
+          type: string
+          nullable: true
+        optionD:
+          type: string
+          nullable: true
+        isCorrect:
+          type: boolean
+        teacherPoints:
+          type: number
+          nullable: true
+        teacherNote:
+          type: string
+          nullable: true
+      required:
+        - id
+        - questionId
+        - questionText
+        - questionType
+        - points
+        - selectedAnswer
+        - isCorrect
+
+    SubmissionDetail:
+      type: object
+      properties:
+        submission:
+          $ref: "#/components/schemas/Submission"
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubmissionAnswerDetail"
+      required:
+        - submission
+        - answers
+
+    UpdateAnswerBody:
+      type: object
+      properties:
+        teacherPoints:
           type: number
           nullable: true
         teacherNote:
@@ -1173,3 +2063,810 @@ components:
         - createdAt
         - assignmentCount
         - submissionCount
+
+    PresentationStatus:
+      type: string
+      enum: [draft, published]
+
+    PresentationLanguage:
+      type: string
+      enum: [ar, en]
+
+    SlideElement:
+      type: object
+      description: Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [text, image, icon, shape, activity, hasad-game, video-embed]
+        x:
+          type: number
+        y:
+          type: number
+        w:
+          type: number
+        h:
+          type: number
+        rotation:
+          type: number
+          nullable: true
+        zIndex:
+          type: integer
+          nullable: true
+        text:
+          type: string
+          nullable: true
+        fontFamily:
+          type: string
+          nullable: true
+        fontSize:
+          type: number
+          nullable: true
+        fontWeight:
+          type: string
+          nullable: true
+        align:
+          type: string
+          enum: [start, center, end, justify]
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        iconName:
+          type: string
+          nullable: true
+        shape:
+          type: string
+          enum: [rect, circle, line, arrow, divider]
+          nullable: true
+        bgColor:
+          type: string
+          nullable: true
+        borderColor:
+          type: string
+          nullable: true
+        borderWidth:
+          type: number
+          nullable: true
+        activityKind:
+          type: string
+          enum: [mcq, true_false, open, poll]
+          nullable: true
+        questionId:
+          type: integer
+          nullable: true
+        prompt:
+          type: string
+          nullable: true
+        options:
+          type: array
+          items: { type: string }
+          nullable: true
+        correctIndex:
+          type: integer
+          nullable: true
+        accentColor:
+          type: string
+          nullable: true
+        gameKind:
+          type: string
+          enum: [kahoot, wheel, millionaire, flag-quiz, capitals, letrly, rocket, tug, maraqui, hack]
+          nullable: true
+          description: For `kind=hasad-game` — which Hasad live game to launch.
+        topic:
+          type: string
+          nullable: true
+          description: Optional topic/context string forwarded to the game setup page.
+        questions:
+          type: array
+          nullable: true
+          description: For `kind=hasad-game` — AI-generated complete question set. When present, the in-Hasad Activity Runner is opened with these questions pre-loaded instead of the legacy game-setup page.
+          items:
+            type: object
+            properties:
+              prompt:
+                type: string
+              options:
+                type: array
+                items: { type: string }
+              correctIndex:
+                type: integer
+            required: [prompt, options, correctIndex]
+        objectFit:
+          type: string
+          enum: [cover, contain, fill, none]
+          nullable: true
+          description: For `kind=image` — CSS object-fit applied to the image.
+        objectPosition:
+          type: string
+          nullable: true
+          description: For `kind=image` — CSS object-position, e.g. "center", "top", "50% 25%".
+        imageOpacity:
+          type: number
+          nullable: true
+          description: For `kind=image` — opacity 0–1 (default 1).
+        imageBorderRadius:
+          type: number
+          nullable: true
+          description: For `kind=image` — border-radius in pixels (0–500).
+        videoKind:
+          type: string
+          enum: [youtube, hasad-video]
+          nullable: true
+          description: For `kind=video-embed` — the source platform of the video.
+        videoId:
+          type: string
+          nullable: true
+          description: For `kind=video-embed` — extracted video identifier (YouTube video ID or Hasad lesson ID).
+        title:
+          type: string
+          nullable: true
+          description: For `kind=video-embed` — optional display title shown in the editor preview.
+      required:
+        - id
+        - kind
+        - x
+        - y
+        - w
+        - h
+
+    Slide:
+      type: object
+      properties:
+        id:
+          type: string
+        layout:
+          type: string
+          nullable: true
+        background:
+          type: string
+          nullable: true
+        backgroundImage:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/SlideElement"
+      required:
+        - id
+        - elements
+
+    Presentation:
+      type: object
+      properties:
+        id:
+          type: integer
+        teacherId:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+          nullable: true
+        gradeLevel:
+          type: string
+          nullable: true
+        language:
+          $ref: "#/components/schemas/PresentationLanguage"
+        theme:
+          type: string
+        pattern:
+          type: string
+        coverEmoji:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        slides:
+          type: array
+          items:
+            $ref: "#/components/schemas/Slide"
+        status:
+          $ref: "#/components/schemas/PresentationStatus"
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isShared:
+          type: boolean
+        lastPresentedAt:
+          type: string
+          format: date-time
+          nullable: true
+        linkedActivityId:
+          type: string
+          nullable: true
+        linkedActivityKind:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        ownerName:
+          type: string
+          nullable: true
+        isOwner:
+          type: boolean
+          nullable: true
+      required:
+        - id
+        - teacherId
+        - title
+        - language
+        - theme
+        - pattern
+        - slides
+        - status
+        - isShared
+        - createdAt
+        - updatedAt
+
+    PresentationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        teacherId:
+          type: integer
+        title:
+          type: string
+        language:
+          $ref: "#/components/schemas/PresentationLanguage"
+        theme:
+          type: string
+        pattern:
+          type: string
+        coverEmoji:
+          type: string
+          nullable: true
+        slideCount:
+          type: integer
+        status:
+          $ref: "#/components/schemas/PresentationStatus"
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isShared:
+          type: boolean
+        ownerName:
+          type: string
+          nullable: true
+        ownerIsAdmin:
+          type: boolean
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - teacherId
+        - title
+        - language
+        - theme
+        - pattern
+        - slideCount
+        - status
+        - isShared
+        - createdAt
+        - updatedAt
+
+    CreatePresentationBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        language:
+          $ref: "#/components/schemas/PresentationLanguage"
+        subject:
+          type: string
+          maxLength: 100
+          nullable: true
+        gradeLevel:
+          type: string
+          maxLength: 50
+          nullable: true
+        theme:
+          type: string
+          maxLength: 40
+        pattern:
+          type: string
+          maxLength: 40
+        coverEmoji:
+          type: string
+          maxLength: 8
+          nullable: true
+      required:
+        - title
+
+    UpdatePresentationBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        language:
+          $ref: "#/components/schemas/PresentationLanguage"
+        subject:
+          type: string
+          maxLength: 100
+          nullable: true
+        gradeLevel:
+          type: string
+          maxLength: 50
+          nullable: true
+        theme:
+          type: string
+          maxLength: 40
+        pattern:
+          type: string
+          maxLength: 40
+        coverEmoji:
+          type: string
+          maxLength: 8
+          nullable: true
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        slides:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/Slide"
+
+    PresentationAsset:
+      type: object
+      properties:
+        id:
+          type: integer
+        presentationId:
+          type: integer
+        kind:
+          type: string
+          enum: [image, file]
+        url:
+          type: string
+        byteSize:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - presentationId
+        - kind
+        - url
+        - byteSize
+        - createdAt
+
+    RegisterAssetBody:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [image, file]
+        url:
+          type: string
+          minLength: 1
+        byteSize:
+          type: integer
+          minimum: 0
+      required:
+        - kind
+        - url
+
+    PresentationLimits:
+      type: object
+      properties:
+        maxImagesRegular: { type: integer }
+        maxFilesRegular: { type: integer }
+        maxSlidesRegular: { type: integer }
+        maxSizeMbRegular: { type: integer }
+      required:
+        - maxImagesRegular
+        - maxFilesRegular
+        - maxSlidesRegular
+        - maxSizeMbRegular
+
+    PresentationTier:
+      type: object
+      properties:
+        isPro:
+          type: boolean
+        limits:
+          $ref: "#/components/schemas/PresentationLimits"
+      required:
+        - isPro
+        - limits
+
+    PresentationUsage:
+      type: object
+      properties:
+        slides: { type: integer }
+        images: { type: integer }
+        files: { type: integer }
+        sizeMb: { type: number }
+      required:
+        - slides
+        - images
+        - files
+        - sizeMb
+
+    PresentationTierWithUsage:
+      type: object
+      properties:
+        isPro:
+          type: boolean
+        limits:
+          $ref: "#/components/schemas/PresentationLimits"
+        usage:
+          $ref: "#/components/schemas/PresentationUsage"
+      required:
+        - isPro
+        - limits
+        - usage
+
+    PresentationBriefToggles:
+      type: object
+      properties:
+        activities: { type: boolean }
+        questions:  { type: boolean }
+        poll:       { type: boolean }
+        quiz:       { type: boolean }
+      required: [activities, questions, poll, quiz]
+
+    PresentationBrief:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: [ar, en]
+        subject:     { type: string, minLength: 1, maxLength: 100 }
+        gradeLevel:  { type: string, minLength: 1, maxLength: 50 }
+        topic:       { type: string, minLength: 1, maxLength: 120 }
+        presentationKind:
+          type: string
+          enum: [explain, review, interactive, quick, contest]
+        slideCount:
+          type: integer
+          minimum: 5
+          maximum: 30
+        durationMinutes:
+          type: integer
+          enum: [15, 30, 45, 60]
+        languageLevel:
+          type: string
+          enum: [simple, medium, advanced]
+        density:
+          type: string
+          enum: [minimal, balanced, detailed]
+        toggles:
+          $ref: "#/components/schemas/PresentationBriefToggles"
+        notes:
+          type: string
+          maxLength: 200
+          nullable: true
+      required:
+        - language
+        - subject
+        - gradeLevel
+        - topic
+        - presentationKind
+        - slideCount
+        - durationMinutes
+        - languageLevel
+        - density
+        - toggles
+
+    OutlineSlideKind:
+      type: string
+      enum:
+        - title
+        - objectives
+        - concept-card
+        - comparison
+        - visual-hero
+        - steps
+        - interactive
+        - closure
+        - timeline
+        - formula
+        - stat
+        - quote
+        - callout
+
+    OutlineVisualDirection:
+      type: object
+      properties:
+        icon:
+          type: string
+          maxLength: 40
+        shape:
+          type: string
+          enum: [rect, circle, line, arrow, divider]
+        layoutHint:
+          type: string
+          maxLength: 40
+
+    OutlineSlideCard:
+      type: object
+      properties:
+        index:
+          type: integer
+          minimum: 1
+          maximum: 30
+        kind:
+          $ref: "#/components/schemas/OutlineSlideKind"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+        subtitle:
+          type: string
+          maxLength: 80
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 140
+        talkingPoints:
+          type: array
+          minItems: 1
+          maxItems: 6
+          items:
+            type: string
+            minLength: 1
+            maxLength: 140
+        interactionHint:
+          type: string
+          enum: [poll, quiz, discussion, activity]
+          nullable: true
+        visualDirection:
+          $ref: "#/components/schemas/OutlineVisualDirection"
+        source:
+          type: string
+          maxLength: 200
+      required:
+        - index
+        - kind
+        - title
+        - purpose
+        - talkingPoints
+        - interactionHint
+        - visualDirection
+
+    OutlineTeachingFlowStage:
+      type: object
+      properties:
+        stage:
+          type: string
+          enum: [opener, concept, practice, closure]
+        slideIndices:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 1
+            maximum: 30
+        estimatedMinutes:
+          type: integer
+          minimum: 1
+          maximum: 240
+      required: [stage, slideIndices, estimatedMinutes]
+
+    PresentationOutline:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: [ar, en]
+        density:
+          type: string
+          enum: [minimal, balanced, detailed]
+        totalEstimatedMinutes:
+          type: integer
+          minimum: 1
+          maximum: 240
+        objectives:
+          type: array
+          minItems: 2
+          maxItems: 6
+          items:
+            type: string
+            minLength: 1
+            maxLength: 140
+        teachingFlow:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: "#/components/schemas/OutlineTeachingFlowStage"
+        slides:
+          type: array
+          minItems: 3
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/OutlineSlideCard"
+      required:
+        - language
+        - density
+        - totalEstimatedMinutes
+        - objectives
+        - teachingFlow
+        - slides
+
+    PresentationDraft:
+      type: object
+      properties:
+        id: { type: integer }
+        teacherId: { type: integer }
+        presentationId:
+          type: integer
+          nullable: true
+        brief:
+          $ref: "#/components/schemas/PresentationBrief"
+        outline:
+          $ref: "#/components/schemas/PresentationOutline"
+        status:
+          type: string
+          enum: [draft, outline_ready, building, built, failed]
+        modelUsed:
+          type: string
+          nullable: true
+        tokensUsed:
+          type: integer
+        costMicroUsd:
+          type: integer
+        errorMessage:
+          type: string
+          nullable: true
+        buildProgress:
+          type: object
+          nullable: true
+          properties:
+            current: { type: integer }
+            total:   { type: integer }
+            warnings:
+              type: array
+              items: { type: string }
+            skipped:
+              type: array
+              description: Outline indexes the materializer skipped (failed validation).
+              items: { type: integer }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - teacherId
+        - brief
+        - outline
+        - status
+        - tokensUsed
+        - costMicroUsd
+        - createdAt
+        - updatedAt
+
+    BuildPresentationRequest:
+      type: object
+      properties:
+        theme:
+          type: string
+          maxLength: 40
+          description: Slide theme key from SLIDE_THEMES; defaults to "harvest" if omitted or unknown.
+        pattern:
+          type: string
+          maxLength: 40
+        coverEmoji:
+          type: string
+          maxLength: 8
+
+    BuildPresentationResponse:
+      type: object
+      properties:
+        presentationId:
+          type: integer
+        warnings:
+          type: array
+          items: { type: string }
+        skipped:
+          type: array
+          description: Indexes of outline slides that failed validation and were not materialized.
+          items: { type: integer }
+        cancelled:
+          type: boolean
+          description: True when the build returned early due to a cancel request.
+        alreadyBuilt:
+          type: boolean
+      required:
+        - presentationId
+        - warnings
+        - alreadyBuilt
+
+    CancelBuildResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        wasActive:
+          type: boolean
+          description: True if a live in-memory build was found and flagged.
+        status:
+          type: string
+          description: Current draft status at cancel time.
+      required:
+        - ok
+        - wasActive
+
+    PresentationDraftWithGuardrails:
+      allOf:
+        - $ref: "#/components/schemas/PresentationDraft"
+        - type: object
+          properties:
+            guardrails:
+              type: object
+              properties:
+                feedback:
+                  type: array
+                  items: { type: string }
+                usedCache:
+                  type: boolean
+              required: [feedback, usedCache]
+          required: [guardrails]
+
+    UpdatePresentationDraftBody:
+      type: object
+      properties:
+        outline:
+          $ref: "#/components/schemas/PresentationOutline"
+        status:
+          type: string
+          enum: [draft, outline_ready]
+
+    PresentationAiLimits:
+      type: object
+      properties:
+        tier:
+          type: string
+          enum: [standard, pro, claude]
+        dailyOutlines: { type: integer }
+        used:          { type: integer }
+        remaining:     { type: integer }
+        maxSlides:     { type: integer }
+        allowedDensities:
+          type: array
+          items:
+            type: string
+            enum: [minimal, balanced, detailed]
+        allowClaude:
+          type: boolean
+      required:
+        - tier
+        - dailyOutlines
+        - used
+        - remaining
+        - maxSlides
+        - allowedDensities
+        - allowClaude

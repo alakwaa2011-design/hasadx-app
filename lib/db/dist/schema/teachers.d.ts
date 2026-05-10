@@ -122,6 +122,23 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        role: import("drizzle-orm/pg-core").PgColumn<{
+            name: "role";
+            tableName: "teachers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         isBlocked: import("drizzle-orm/pg-core").PgColumn<{
             name: "is_blocked";
             tableName: "teachers";
@@ -173,6 +190,23 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        presentationsProEnabled: import("drizzle-orm/pg-core").PgColumn<{
+            name: "presentations_pro_enabled";
+            tableName: "teachers";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         lastLoginAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "last_login_at";
             tableName: "teachers";
@@ -207,6 +241,25 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        preferences: import("drizzle-orm/pg-core").PgColumn<{
+            name: "preferences";
+            tableName: "teachers";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: Record<string, unknown>;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: Record<string, unknown>;
+        }>;
     };
     dialect: "pg";
 }>;
@@ -217,10 +270,13 @@ export declare const insertTeacherSchema: z.ZodObject<{
     passwordHash: z.ZodString;
     googleId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isAdmin: z.ZodOptional<z.ZodBoolean>;
+    role: z.ZodOptional<z.ZodString>;
     isBlocked: z.ZodOptional<z.ZodBoolean>;
     aiTier: z.ZodOptional<z.ZodString>;
     hasProDesign: z.ZodOptional<z.ZodBoolean>;
+    presentationsProEnabled: z.ZodOptional<z.ZodBoolean>;
     lastLoginAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    preferences: z.ZodOptional<z.ZodNullable<z.ZodType<Record<string, unknown>, Record<string, unknown>, z.core.$ZodTypeInternals<Record<string, unknown>, Record<string, unknown>>>>>;
 }, {
     out: {};
     in: {};

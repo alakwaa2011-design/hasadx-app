@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, real, boolean, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
@@ -43,9 +43,11 @@ export const assignmentsTable = pgTable("assignments", {
   listeningSpeed: text("listening_speed"),
   /** JSON blob: { maxListens, allowSpeedControl, allowSeek, showTranscript } */
   listeningSettings: text("listening_settings"),
-  /** When true, this assignment is omitted from the class grade sheet (not deleted). */
-  hiddenFromGradebook: boolean("hidden_from_gradebook").notNull().default(false),
-});
+}, (t) => ({
+  teacherIdx: index("assignments_teacher_idx").on(t.teacherId),
+  teacherCreatedIdx: index("assignments_teacher_created_idx").on(t.teacherId, t.createdAt),
+  categoryIdx: index("assignments_category_idx").on(t.categoryId),
+}));
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;
 export type Assignment = typeof assignmentsTable.$inferSelect;
