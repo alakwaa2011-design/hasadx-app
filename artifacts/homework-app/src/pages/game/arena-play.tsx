@@ -51,7 +51,7 @@ export default function ArenaPlay() {
   const [, setLocation] = useLocation();
   const [state, setState] = useState<ArenaState | null>(null);
   const [phase, setPhase] = useState<"board" | "end">("board");
-  const [pointAnimation, setPointAnimation] = useState<{ team: TeamSide; pts: number; player?: string } | null>(null);
+  const [pointAnimation, setPointAnimation] = useState<{ team: TeamSide; pts: number; difficulty: ArenaDifficulty; player?: string } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -356,7 +356,8 @@ export default function ArenaPlay() {
     const base = { boxShadow: TILE_SH, borderRadius: TILE_R };
     if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2457a8,#1e408e)", borderColor: "#183270", color: "#cfe0ff" };
     if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5525a8,#421e88)", borderColor: "#311668", color: "#ddd5ff" };
-    return                  { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
+    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
+    return                  { ...base, background: "linear-gradient(160deg,#b45309,#78350f)", borderColor: "#451a03", color: "#fef3c7", boxShadow: `${TILE_SH}, 0 0 8px rgba(251,191,36,0.35)` };
   };
 
   /* ── Game board grid — memoized HERE (before early returns) to keep hook order stable ─────────
@@ -651,7 +652,7 @@ export default function ArenaPlay() {
     const pts = active.difficulty * active.multiplier;
     const key = cardKey({ subCategoryId: active.subCategoryId, difficulty: active.difficulty, slot: active.slot });
     if (winner) {
-      setPointAnimation({ team: winner, pts, player });
+      setPointAnimation({ team: winner, pts, difficulty: active.difficulty, player });
       playSound("correct");
       setTimeout(() => setPointAnimation(null), 1800);
     } else {
@@ -1285,7 +1286,14 @@ function QuestionModal({
             <div className="text-[10px] font-bold text-emerald-400/70 tracking-wide mb-0.5">
               {sec?.emoji} {sub?.name}
             </div>
-            <div className="text-xl font-black text-amber-300 leading-none">
+            <div
+              className="text-xl font-black leading-none inline-flex items-center gap-1"
+              style={{
+                color: active.difficulty === 800 ? "#fde68a" : "#fbbf24",
+                textShadow: active.difficulty === 800 ? "0 0 10px rgba(251,191,36,0.6)" : undefined,
+              }}
+            >
+              {active.difficulty === 800 && <span style={{ fontSize: "0.75em" }}>⭐</span>}
               {active.difficulty}
               {active.multiplier > 1 && <span className="text-emerald-300 ms-2">× {active.multiplier} 🌾</span>}
             </div>
@@ -2174,7 +2182,7 @@ function TeamBadge({
   team: { name: string; emoji: string; color: string; score: number; helpers: HelperId[]; usedHelpers: HelperId[] };
   side: TeamSide;
   active: boolean;
-  animation: { team: TeamSide; pts: number; player?: string } | null;
+  animation: { team: TeamSide; pts: number; difficulty: ArenaDifficulty; player?: string } | null;
 }) {
   return (
     <div className={`flex-1 rounded-xl p-2 border-2 transition relative overflow-hidden ${
@@ -2197,7 +2205,13 @@ function TeamBadge({
             transition={{ duration: 1.4 }}
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10"
           >
-            <div className="text-3xl font-black text-amber-300 drop-shadow-lg">
+            <div
+              className="text-3xl font-black drop-shadow-lg"
+              style={{
+                color: animation.difficulty === 800 ? "#fde68a" : "#fcd34d",
+                textShadow: animation.difficulty === 800 ? "0 0 12px rgba(251,191,36,0.8), 0 0 24px rgba(251,191,36,0.4)" : undefined,
+              }}
+            >
               +{animation.pts}
             </div>
             {animation.player && (

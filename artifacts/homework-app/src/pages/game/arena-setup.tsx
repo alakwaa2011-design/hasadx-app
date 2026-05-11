@@ -44,6 +44,43 @@ const TEAM_EMOJIS = [
 
 const DIFFICULTIES: ArenaDifficulty[] = [200, 400, 600, 800];
 
+const DIFF_CHIP_STYLES: Record<number, { text: string; bg: string; activeBg: string; border: string }> = {
+  200: { text: "#93c5fd", bg: "rgba(36,87,168,0.20)", activeBg: "rgba(36,87,168,0.60)", border: "rgba(36,87,168,0.55)" },
+  400: { text: "#c4b5fd", bg: "rgba(85,37,168,0.20)", activeBg: "rgba(85,37,168,0.60)", border: "rgba(85,37,168,0.55)" },
+  600: { text: "#fca5a5", bg: "rgba(146,35,64,0.20)", activeBg: "rgba(146,35,64,0.60)", border: "rgba(146,35,64,0.55)" },
+  800: { text: "#fde68a", bg: "rgba(180,83,9,0.20)", activeBg: "rgba(180,83,9,0.65)", border: "rgba(180,83,9,0.65)" },
+};
+
+function DiffChips({ value, onChange }: { value: ArenaDifficulty; onChange: (d: ArenaDifficulty) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1 items-center">
+      {DIFFICULTIES.map(d => {
+        const c = DIFF_CHIP_STYLES[d];
+        const selected = d === value;
+        return (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onChange(d)}
+            className="px-2 py-1 rounded-md text-[11px] font-black border transition-all"
+            style={{
+              color: c.text,
+              background: selected ? c.activeBg : c.bg,
+              borderColor: selected ? c.text : c.border,
+              boxShadow: selected && d === 800 ? `0 0 6px rgba(253,230,138,0.45)` : undefined,
+              opacity: selected ? 1 : 0.65,
+              outline: selected ? `1.5px solid ${c.text}` : undefined,
+              outlineOffset: "1px",
+            }}
+          >
+            {d}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 interface TeamFormState {
   name: string;
   color: string;
@@ -615,7 +652,7 @@ export default function ArenaSetup() {
                     <Swords className="w-5 h-5 text-amber-300 shrink-0" />
                     <div className="min-w-0">
                       <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">مكتبة الفئات البصرية</h2>
-                      <p className="text-emerald-100/70 text-xs sm:text-sm">اختر 3 فئات لكل فريق — كل فئة بـ <strong className="text-amber-200">6 بطاقات</strong> (200×2، 400×2، 600×2)</p>
+                      <p className="text-emerald-100/70 text-xs sm:text-sm">اختر 3 فئات لكل فريق — كل فئة بـ <strong className="text-amber-200">8 بطاقات</strong> (200×2، 400×2، 600×2، <strong className="text-yellow-300">800×2⭐</strong>)</p>
                     </div>
                   </div>
                   <button
@@ -1358,9 +1395,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
               <div className="grid sm:grid-cols-12 gap-2">
                 <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300" />
                 <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300" />
-                <select value={draftDiff} onChange={e => setDraftDiff(Number(e.target.value) as ArenaDifficulty)} className="sm:col-span-2 bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300">
-                  {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <div className="sm:col-span-2 flex items-center">
+                  <DiffChips value={draftDiff} onChange={setDraftDiff} />
+                </div>
                 <button onClick={addEphemeral} className="sm:col-span-1 bg-amber-400 text-emerald-950 rounded-xl px-3 py-2 font-bold hover:bg-amber-300 inline-flex items-center justify-center">
                   <Plus className="w-4 h-4" />
                 </button>
@@ -1371,7 +1408,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   {customQuestions.map((cq, i) => (
                     <div key={i} className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
-                      <span className="text-xs font-bold text-amber-300 shrink-0 w-10 text-center">{cq.difficulty}</span>
+                      <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: cq.difficulty === 800 ? "#fde68a" : cq.difficulty === 600 ? "#fca5a5" : cq.difficulty === 400 ? "#c4b5fd" : "#93c5fd", background: cq.difficulty === 800 ? "rgba(180,83,9,0.35)" : cq.difficulty === 600 ? "rgba(146,35,64,0.35)" : cq.difficulty === 400 ? "rgba(85,37,168,0.35)" : "rgba(36,87,168,0.35)" }}>{cq.difficulty}</span>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-white truncate">{cq.q}</div>
                         <div className="text-xs text-emerald-200/80 truncate">→ {cq.a}</div>
@@ -1572,9 +1609,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       <div className="grid sm:grid-cols-12 gap-2">
                         <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? "وصف السؤال (مثال: ما هو هذا الحيوان؟)" : "نص السؤال"} className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
                         <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
-                        <select value={draftDiff} onChange={e => setDraftDiff(Number(e.target.value) as ArenaDifficulty)} className="sm:col-span-2 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300">
-                          {DIFFICULTIES.map(d => <option key={d} value={d}>{d} نقطة</option>)}
-                        </select>
+                        <div className="sm:col-span-2 flex items-center">
+                          <DiffChips value={draftDiff} onChange={setDraftDiff} />
+                        </div>
                         <button onClick={addSavedActivity} className="sm:col-span-1 bg-amber-400 text-emerald-950 rounded-lg px-3 py-2 font-bold hover:bg-amber-300 inline-flex items-center justify-center">
                           <Plus className="w-4 h-4" />
                         </button>
@@ -1583,9 +1620,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
                     {(draftType !== "text" && draftType !== "image") && (
                       <div className="flex flex-wrap gap-2 items-center pt-1">
-                        <select value={draftDiff} onChange={e => setDraftDiff(Number(e.target.value) as ArenaDifficulty)} className="bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300">
-                          {DIFFICULTIES.map(d => <option key={d} value={d}>{d} نقطة</option>)}
-                        </select>
+                        <DiffChips value={draftDiff} onChange={setDraftDiff} />
                         <button onClick={addSavedActivity} className="bg-amber-400 text-emerald-950 rounded-lg px-4 py-2 font-bold hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm">
                           <Plus className="w-4 h-4" />
                           إضافة السؤال
@@ -1609,9 +1644,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                               <div className="grid sm:grid-cols-12 gap-2">
                                 <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
                                 <input value={editA} onChange={e => setEditA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
-                                <select value={editDiff} onChange={e => setEditDiff(Number(e.target.value) as ArenaDifficulty)} className="sm:col-span-3 bg-black/40 text-white rounded-lg px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300">
-                                  {DIFFICULTIES.map(d => <option key={d} value={d}>{d} نقطة</option>)}
-                                </select>
+                                <div className="sm:col-span-3 flex items-center">
+                                  <DiffChips value={editDiff} onChange={setEditDiff} />
+                                </div>
                               </div>
                               <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="تلميح (اختياري)" className="w-full bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
                               <div className="flex gap-2 pt-1">
@@ -1627,7 +1662,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           ) : (
                             /* ── Normal row ── */
                             <div className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
-                              <span className="text-xs font-bold text-amber-300 shrink-0 w-10 text-center">{a.difficulty}</span>
+                              <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: a.difficulty === 800 ? "#fde68a" : a.difficulty === 600 ? "#fca5a5" : a.difficulty === 400 ? "#c4b5fd" : "#93c5fd", background: a.difficulty === 800 ? "rgba(180,83,9,0.35)" : a.difficulty === 600 ? "rgba(146,35,64,0.35)" : a.difficulty === 400 ? "rgba(85,37,168,0.35)" : "rgba(36,87,168,0.35)" }}>{a.difficulty}</span>
                               {a.imageUrl && (
                                 <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
                               )}
