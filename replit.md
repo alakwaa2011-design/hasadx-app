@@ -27,6 +27,7 @@ _Populate as you build_
     -   `artifacts/api-server/src/data/hasad_knowledge_base.md`: AI assistant knowledge base.
     -   `artifacts/api-server/src/data/hasad_faq.json`: AI assistant FAQs.
     -   `artifacts/api-server/src/lib/presentations-tier.ts`: Presentation tier logic.
+    -   `scripts/src/seed-hasad-challenge-expansion.ts`: Idempotent seed for Hasad Challenge content (sections/categories/questions). Run with `pnpm --filter @workspace/scripts run seed:hasad-expansion`.
 
 ## Architecture decisions
 

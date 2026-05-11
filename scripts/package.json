@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "seed:hasad-expansion": "tsx ./src/seed-hasad-challenge-expansion.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:million-bank": "node seed-million-bank.mjs",
     "import:500-questions": "node import-500-questions.mjs"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.18.0",
     "tsx": "catalog:"
   },
   "dependencies": {
