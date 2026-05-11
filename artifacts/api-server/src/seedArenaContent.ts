@@ -1,18 +1,17 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /*
  * Arena (تحدي حصاد) public content seed.
  *
- * Idempotent — re-runs are safe:
+ * Runs idempotently at server startup in BOTH development and production:
  *   - Sections matched by (name, parent_id IS NULL, is_public=true)
  *   - Sub-categories matched by (name, parent_id, is_public=true)
  *   - Activities matched by (category_id, question)
  *
  * All inserted content is public (teacher_id=NULL, is_public=true) so it
  * appears for every teacher inside the Arena category picker.
- *
- * Run with:  pnpm --filter @workspace/scripts run seed:arena
  */
-import { Client } from "pg";
+import { db, arenaCategoriesTable, arenaActivitiesTable } from "@workspace/db";
+import { and, eq, isNull } from "drizzle-orm";
+import { logger } from "./lib/logger";
 
 type Difficulty = 200 | 400 | 600;
 /** [difficulty, question, answer, hint?] */
@@ -32,7 +31,6 @@ interface Section {
   subs: SubCat[];
 }
 
-/* ───────────────────────── PALETTE ───────────────────────── */
 const PALETTE: { color: string; gradient: string }[] = [
   { color: "#1E4D35", gradient: "linear-gradient(135deg, #2D7048 0%, #1E4D35 60%, #0E2A1D 100%)" },
   { color: "#7C3F12", gradient: "linear-gradient(135deg, #E8A80E 0%, #B8730A 60%, #7C3F12 100%)" },
@@ -46,12 +44,7 @@ const PALETTE: { color: string; gradient: string }[] = [
   { color: "#0D3B66", gradient: "linear-gradient(135deg, #3680C2 0%, #1E5B96 60%, #0D3B66 100%)" },
 ];
 
-/* ===================================================================
- *                    CONTENT — 10 sections
- * =================================================================== */
-
 const SECTIONS: Section[] = [
-  /* 1 ── أنبياء ورسل ───────────────────────────────────────────── */
   {
     name: "أنبياء ورسل",
     emoji: "🕊️",
@@ -108,8 +101,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 2 ── صحابة وتابعون ─────────────────────────────────────────── */
   {
     name: "صحابة وتابعون",
     emoji: "⭐",
@@ -166,8 +157,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 3 ── قصص قرآنية ────────────────────────────────────────────── */
   {
     name: "قصص قرآنية",
     emoji: "📜",
@@ -224,8 +213,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 4 ── عواصم ودول ────────────────────────────────────────────── */
   {
     name: "عواصم ودول",
     emoji: "🌍",
@@ -282,8 +269,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 5 ── الأعلام والشخصيات ─────────────────────────────────────── */
   {
     name: "الأعلام والشخصيات",
     emoji: "👤",
@@ -340,8 +325,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 6 ── علم الفلك والفضاء ────────────────────────────────────── */
   {
     name: "علم الفلك والفضاء",
     emoji: "🚀",
@@ -398,8 +381,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 7 ── الطب والصحة ───────────────────────────────────────────── */
   {
     name: "الطب والصحة",
     emoji: "🩺",
@@ -456,8 +437,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 8 ── السيارات والمركبات ───────────────────────────────────── */
   {
     name: "السيارات والمركبات",
     emoji: "🚗",
@@ -514,8 +493,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 9 ── الطعام والمطبخ ───────────────────────────────────────── */
   {
     name: "الطعام والمطبخ",
     emoji: "🍲",
@@ -572,8 +549,6 @@ const SECTIONS: Section[] = [
       },
     ],
   },
-
-  /* 10 ── أمثال وحكم ──────────────────────────────────────────── */
   {
     name: "أمثال وحكم",
     emoji: "💭",
@@ -632,167 +607,113 @@ const SECTIONS: Section[] = [
   },
 ];
 
-/* ===================================================================
- *                          DRIVER
- * =================================================================== */
-
-async function getOrCreateCategory(
-  c: Client,
-  args: {
-    name: string;
-    emoji: string;
-    color: string;
-    gradient: string;
-    description?: string;
-    parentId: number | null;
-    sortOrder: number;
-  },
-): Promise<number> {
-  const sel = await c.query<{ id: number }>(
-    `SELECT id FROM arena_categories
-       WHERE name = $1
-         AND is_public = true
-         AND ${args.parentId === null ? "parent_id IS NULL" : "parent_id = $2"}
-       LIMIT 1`,
-    args.parentId === null ? [args.name] : [args.name, args.parentId],
-  );
-  if (sel.rows[0]) return sel.rows[0].id;
-
-  const ins = await c.query<{ id: number }>(
-    `INSERT INTO arena_categories
-       (name, emoji, cover_color, cover_gradient, description, parent_id, teacher_id, is_public, sort_order)
-     VALUES ($1, $2, $3, $4, $5, $6, NULL, true, $7)
-     RETURNING id`,
-    [args.name, args.emoji, args.color, args.gradient, args.description ?? null, args.parentId, args.sortOrder],
-  );
-  return ins.rows[0]!.id;
-}
-
-async function ensureActivity(
-  c: Client,
-  categoryId: number,
-  a: A,
-  sortOrder: number,
-): Promise<boolean> {
-  const [difficulty, question, answer, hint] = a;
-  const sel = await c.query<{ id: number }>(
-    `SELECT id FROM arena_activities
-       WHERE category_id = $1 AND question = $2
-       LIMIT 1`,
-    [categoryId, question],
-  );
-  if (sel.rows[0]) return false;
-
-  await c.query(
-    `INSERT INTO arena_activities
-       (category_id, type, difficulty, question, answer, hint, teacher_id, is_public, sort_order)
-     VALUES ($1, 'text', $2, $3, $4, $5, NULL, true, $6)`,
-    [categoryId, difficulty, question, answer, hint ?? null, sortOrder],
-  );
-  return true;
-}
-
-async function main() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is not set");
-  }
-
-  const c = new Client({ connectionString: databaseUrl });
-  await c.connect();
-
-  let sectionsCreated = 0;
-  let subsCreated = 0;
-  let actsInserted = 0;
-  let actsSkipped = 0;
-
-  const sectionStartOrder = 1000;
-  let sIdx = 0;
-
+export async function seedArenaContentIfNeeded(): Promise<void> {
   try {
+    let sectionsCreated = 0;
+    let subsCreated = 0;
+    let actsInserted = 0;
+
+    let sIdx = 0;
     for (const sec of SECTIONS) {
-      const beforeSec = await c.query<{ id: number }>(
-        `SELECT id FROM arena_categories
-           WHERE name = $1 AND parent_id IS NULL AND is_public = true LIMIT 1`,
-        [sec.name],
-      );
-      const isNewSection = beforeSec.rows.length === 0;
-      const sectionId = await getOrCreateCategory(c, {
-        name: sec.name,
-        emoji: sec.emoji,
-        color: sec.color,
-        gradient: sec.gradient,
-        description: sec.description,
-        parentId: null,
-        sortOrder: sectionStartOrder + sIdx,
-      });
-      if (isNewSection) sectionsCreated++;
+      // Find or create section (parent_id IS NULL, public)
+      let [section] = await db
+        .select()
+        .from(arenaCategoriesTable)
+        .where(
+          and(
+            eq(arenaCategoriesTable.name, sec.name),
+            eq(arenaCategoriesTable.isPublic, true),
+            isNull(arenaCategoriesTable.parentId),
+          ),
+        )
+        .limit(1);
+
+      if (!section) {
+        [section] = await db
+          .insert(arenaCategoriesTable)
+          .values({
+            name: sec.name,
+            emoji: sec.emoji,
+            coverColor: sec.color,
+            coverGradient: sec.gradient,
+            description: sec.description ?? null,
+            parentId: null,
+            teacherId: null,
+            isPublic: true,
+            sortOrder: 1000 + sIdx,
+          })
+          .returning();
+        sectionsCreated++;
+      }
 
       let subIdx = 0;
       for (const sub of sec.subs) {
-        const beforeSub = await c.query<{ id: number }>(
-          `SELECT id FROM arena_categories
-             WHERE name = $1 AND parent_id = $2 AND is_public = true LIMIT 1`,
-          [sub.name, sectionId],
-        );
-        const isNewSub = beforeSub.rows.length === 0;
-        const subId = await getOrCreateCategory(c, {
-          name: sub.name,
-          emoji: sub.emoji,
-          color: sec.color,
-          gradient: sec.gradient,
-          parentId: sectionId,
-          sortOrder: subIdx,
-        });
-        if (isNewSub) subsCreated++;
+        let [subRow] = await db
+          .select()
+          .from(arenaCategoriesTable)
+          .where(
+            and(
+              eq(arenaCategoriesTable.name, sub.name),
+              eq(arenaCategoriesTable.parentId, section!.id),
+              eq(arenaCategoriesTable.isPublic, true),
+            ),
+          )
+          .limit(1);
 
-        let aIdx = 0;
-        for (const a of sub.activities) {
-          const inserted = await ensureActivity(c, subId, a, aIdx++);
-          if (inserted) actsInserted++;
-          else actsSkipped++;
+        if (!subRow) {
+          [subRow] = await db
+            .insert(arenaCategoriesTable)
+            .values({
+              name: sub.name,
+              emoji: sub.emoji,
+              coverColor: sec.color,
+              coverGradient: sec.gradient,
+              parentId: section!.id,
+              teacherId: null,
+              isPublic: true,
+              sortOrder: subIdx,
+            })
+            .returning();
+          subsCreated++;
+        }
+
+        const existing = await db
+          .select({ q: arenaActivitiesTable.question })
+          .from(arenaActivitiesTable)
+          .where(eq(arenaActivitiesTable.categoryId, subRow!.id));
+        const existingSet = new Set(existing.map((r) => r.q));
+
+        const toInsert = sub.activities.filter(([, q]) => !existingSet.has(q));
+        if (toInsert.length > 0) {
+          await db.insert(arenaActivitiesTable).values(
+            toInsert.map(([difficulty, question, answer, hint], i) => ({
+              categoryId: subRow!.id,
+              type: "text" as const,
+              difficulty,
+              question,
+              answer,
+              hint: hint ?? null,
+              teacherId: null,
+              isPublic: true,
+              sortOrder: i,
+            })),
+          );
+          actsInserted += toInsert.length;
         }
         subIdx++;
       }
       sIdx++;
     }
 
-    /* ── assertions ───────────────────────────────────── */
-    const totSections = SECTIONS.length;
-    const totSubs = SECTIONS.reduce((n, s) => n + s.subs.length, 0);
-    const totActs = SECTIONS.reduce(
-      (n, s) => n + s.subs.reduce((m, sb) => m + sb.activities.length, 0),
-      0,
-    );
-
-    const dbActs = await c.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM arena_activities WHERE is_public = true`,
-    );
-    const dbSubs = await c.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM arena_categories
-         WHERE is_public = true AND parent_id IS NOT NULL`,
-    );
-    const dbSecs = await c.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM arena_categories
-         WHERE is_public = true AND parent_id IS NULL`,
-    );
-
-    console.log("\n========== Arena seed complete ==========");
-    console.log(`Defined: ${totSections} sections, ${totSubs} sub-categories, ${totActs} activities`);
-    console.log(`Created this run: sections=${sectionsCreated} subs=${subsCreated}`);
-    console.log(`Activities: inserted=${actsInserted} skipped(existed)=${actsSkipped}`);
-    console.log(`DB now (public): sections=${dbSecs.rows[0]!.n} subs=${dbSubs.rows[0]!.n} activities=${dbActs.rows[0]!.n}`);
-    console.log("=========================================\n");
-
-    if (Number(dbSecs.rows[0]!.n) < totSections) {
-      throw new Error(`Assertion failed: public sections in DB < ${totSections}`);
+    if (sectionsCreated > 0 || subsCreated > 0 || actsInserted > 0) {
+      logger.info(
+        { sectionsCreated, subsCreated, actsInserted },
+        "[seedArenaContent] inserted new arena content",
+      );
+    } else {
+      logger.info("[seedArenaContent] no new arena content to insert");
     }
-  } finally {
-    await c.end();
+  } catch (err) {
+    logger.error({ err }, "[seedArenaContent] failed");
   }
 }
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});

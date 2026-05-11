@@ -24,6 +24,7 @@ import { seedMillionBankIfEmpty } from "./seedMillionBank";
 import { seedIslamicIfNeeded } from "./seedIslamic";
 import { seedIslamicExtraIfNeeded } from "./seedIslamicExtra";
 import { seedPlansIfMissing } from "./seedPlans";
+import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
 import { startLibraryOrphanSweepJob } from "./lib/library-orphan-sweep";
 import { startActivityLogsCleanupJob } from "./lib/activity-logger";
@@ -287,6 +288,7 @@ ensureSessionTable()
       seedMillionBankIfEmpty();
       seedIslamicIfNeeded();
       seedIslamicExtraIfNeeded();
+      seedArenaContentIfNeeded();
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
       startActivityLogsCleanupJob();
