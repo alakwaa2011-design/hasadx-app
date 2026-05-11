@@ -28,6 +28,7 @@ _Populate as you build_
     -   `artifacts/api-server/src/data/hasad_faq.json`: AI assistant FAQs.
     -   `artifacts/api-server/src/lib/presentations-tier.ts`: Presentation tier logic.
     -   `scripts/src/seed-hasad-challenge-expansion.ts`: Idempotent seed for Hasad Challenge content (sections/categories/questions). Run with `pnpm --filter @workspace/scripts run seed:hasad-expansion`.
+    -   `scripts/src/seed-hasad-challenge-hard.ts`: Idempotent seed adding ≥10 'hard' questions to top Hasad Challenge categories. Run with `pnpm --filter @workspace/scripts run seed:hasad-hard`.
 
 ## Architecture decisions
 
