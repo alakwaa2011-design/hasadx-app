@@ -91,6 +91,7 @@ export default function ArenaPlay() {
   // Refs so openCard callback stays stable across renders (no stale closures)
   const stateRef = useRef<ArenaState | null>(null);
   stateRef.current = state;
+  const isDemoRef = useRef(false);
   const setGoldenTileRef = useRef<typeof setGoldenTile>(setGoldenTile);
   const allSectionsRef = useRef<ArenaSection[]>(ARENA_SECTIONS);
 
@@ -117,6 +118,36 @@ export default function ArenaPlay() {
   };
 
   useEffect(() => {
+    // Demo/preview mode — seed a fake game state without touching localStorage
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "1") {
+      isDemoRef.current = true;
+      // Pick 6 sub-categories from static sections for the demo board
+      const demoSubIds = ARENA_SECTIONS
+        .flatMap(s => s.subCategories.map(sc => sc.id))
+        .slice(0, 6);
+      const demoState: ArenaState = {
+        tournamentName: "بطولة المعلمين 2025",
+        teams: {
+          "team-a": { name: "الصقور", color: "#f59e0b", emoji: "🦅", score: 400, helpers: ["friend","swap","shura"], usedHelpers: [], players: [] },
+          "team-b": { name: "الأسود",  color: "#6366f1", emoji: "🦁", score: 200, helpers: ["friend","swap","shura"], usedHelpers: [], players: [] },
+        },
+        teamOrder: ["team-a", "team-b"],
+        subCategoryIds: demoSubIds,
+        customQuestions: [],
+        timerSeconds: 30,
+        currentTurn: "team-a",
+        usedCards: [`${demoSubIds[0]}_200_1`, `${demoSubIds[2]}_400_2`],
+        pickedQuestions: {},
+        active: null,
+        rulesAck: true,
+        startedAt: Date.now(),
+        publicMode: false,
+      };
+      setState(demoState);
+      return;
+    }
+
     const loaded = loadArenaState();
     if (!loaded) {
       // If the last game was started from the public arena page, go back there
@@ -128,7 +159,8 @@ export default function ArenaPlay() {
   }, [setLocation]);
 
   useEffect(() => {
-    if (state) saveArenaState(state);
+    // Never persist the demo/preview state to localStorage
+    if (state && !isDemoRef.current) saveArenaState(state);
   }, [state]);
 
   // Recovery: if any DB-backed sub-category IDs are missing from the saved
@@ -1033,7 +1065,7 @@ export default function ArenaPlay() {
   };
 
   const isPublicGame = state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
-  if (isLoggedIn === false && !isPublicGame) {
+  if (isLoggedIn === false && !isPublicGame && !isDemoRef.current) {
     return <ArenaLoginGate />;
   }
 
@@ -1219,11 +1251,9 @@ export default function ArenaPlay() {
           </div>
         </div>
 
-        {/* ── Row 2: Teams + Glowing turn banner ──────────────────────────── */}
-        <div className="flex items-stretch gap-2 px-2 pb-2">
-
-          {/* All teams */}
-          {state.teamOrder.map(teamId => {
+        {/* ── Row 2: Teams (split) + Glowing turn banner in centre ────────── */}
+        {(() => {
+          const renderTeam = (teamId: string) => {
             const t = state.teams[teamId];
             if (!t) return null;
             const isActive = state.currentTurn === teamId;
@@ -1239,57 +1269,67 @@ export default function ArenaPlay() {
                   boxShadow: isActive ? `0 0 20px -4px ${t.color}55` : undefined,
                 }}
               >
-                <span className="text-lg leading-none shrink-0">{t.emoji}</span>
+                <span className="text-xl leading-none shrink-0">{t.emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-black text-white text-[11px] truncate leading-tight">{t.name}</div>
-                  <div className="font-black text-base leading-tight tabular-nums" style={{ color: t.color }}>{t.score}</div>
+                  <div className="font-black text-white text-xs truncate leading-tight">{t.name}</div>
+                  <div className="font-black text-lg leading-tight tabular-nums" style={{ color: t.color }}>{t.score}</div>
                 </div>
               </motion.div>
             );
-          })}
+          };
 
-          {/* ── Glowing "دوره الآن" turn banner — center ── */}
-          <motion.div
-            key={`turn-${state.currentTurn}`}
-            initial={{ opacity: 0, scale: 0.88, y: -6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: "backOut" }}
-            className="flex flex-col items-center justify-center rounded-2xl px-4 py-1.5 shrink-0 relative overflow-hidden"
-            style={{
-              background: `linear-gradient(135deg, ${turnTeam.color}28 0%, ${turnTeam.color}12 100%)`,
-              border: `1.5px solid ${turnTeam.color}88`,
-              boxShadow: `0 0 24px -4px ${turnTeam.color}77, 0 0 0 1px ${turnTeam.color}22, inset 0 1px 0 rgba(255,255,255,0.1)`,
-              minWidth: "120px",
-            }}
-          >
-            {/* Animated glow ring */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl pointer-events-none"
-              animate={{ boxShadow: [
-                `0 0 12px -2px ${turnTeam.color}44`,
-                `0 0 28px -2px ${turnTeam.color}99`,
-                `0 0 12px -2px ${turnTeam.color}44`,
-              ]}}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            {/* Label */}
-            <div style={{ fontSize: "9px", fontWeight: 700, color: `${turnTeam.color}cc`, letterSpacing: "0.12em", textTransform: "uppercase" }}>الدور الآن</div>
-            {/* Emoji + name */}
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <motion.span
-                animate={{ scale: [1, 1.25, 1], rotate: [0, -8, 8, 0] }}
-                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                style={{ fontSize: "22px", lineHeight: 1 }}
+          const firstHalf = state.teamOrder.slice(0, Math.ceil(state.teamOrder.length / 2));
+          const secondHalf = state.teamOrder.slice(Math.ceil(state.teamOrder.length / 2));
+
+          return (
+            <div className="flex items-stretch gap-2 px-2 pb-2">
+              {/* First half of teams (RTL: appear on right) */}
+              {firstHalf.map(renderTeam)}
+
+              {/* ── Glowing "الدور الآن" turn banner — CENTRE ── */}
+              <motion.div
+                key={`turn-${state.currentTurn}`}
+                initial={{ opacity: 0, scale: 0.88, y: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "backOut" }}
+                className="flex flex-col items-center justify-center rounded-2xl px-5 py-1.5 shrink-0 relative overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${turnTeam.color}28 0%, ${turnTeam.color}10 100%)`,
+                  border: `1.5px solid ${turnTeam.color}99`,
+                  boxShadow: `0 0 28px -4px ${turnTeam.color}88, 0 0 0 1px ${turnTeam.color}22, inset 0 1px 0 rgba(255,255,255,0.1)`,
+                  minWidth: "130px",
+                }}
               >
-                {turnTeam.emoji}
-              </motion.span>
-              <span style={{ fontWeight: 900, fontSize: "14px", color: "#ffffff", maxWidth: "90px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {turnTeam.name}
-              </span>
-            </div>
-          </motion.div>
+                {/* Pulsing glow ring */}
+                <motion.div
+                  className="absolute inset-0 rounded-2xl pointer-events-none"
+                  animate={{ boxShadow: [
+                    `0 0 10px -2px ${turnTeam.color}33`,
+                    `0 0 30px -2px ${turnTeam.color}aa`,
+                    `0 0 10px -2px ${turnTeam.color}33`,
+                  ]}}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <div style={{ fontSize: "8px", fontWeight: 800, color: `${turnTeam.color}bb`, letterSpacing: "0.18em" }}>الدور الآن</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <motion.span
+                    animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ fontSize: "24px", lineHeight: 1 }}
+                  >
+                    {turnTeam.emoji}
+                  </motion.span>
+                  <span style={{ fontWeight: 900, fontSize: "15px", color: "#fff", maxWidth: "95px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {turnTeam.name}
+                  </span>
+                </div>
+              </motion.div>
 
-        </div>
+              {/* Second half of teams (RTL: appear on left) */}
+              {secondHalf.map(renderTeam)}
+            </div>
+          );
+        })()}
 
         {/* ── Row 3: Audience strip ────────────────────────────────────────── */}
         {isPublicGame && (
