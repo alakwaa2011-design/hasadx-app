@@ -895,13 +895,11 @@ export default function ArenaPlay() {
       >
         <div
           style={{
-            maxWidth: "1080px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(min(370px, 46%), 1fr))",
-            gap: "clamp(10px, 2vw, 22px)",
-            padding: "clamp(10px, 2vw, 24px)",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "clamp(8px, 1.5vw, 16px)",
+            padding: "clamp(8px, 1.5vw, 18px)",
           }}
         >
           {orderedSubCategoryIds.map((subId) => {
