@@ -53,6 +53,7 @@ export default function ArenaPlay() {
   const [phase, setPhase] = useState<"board" | "end">("board");
   const [pointAnimation, setPointAnimation] = useState<{ team: TeamSide; pts: number; difficulty: ArenaDifficulty; player?: string } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [goldenTile, setGoldenTile] = useState<string | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   // After organiser picks the winning team we optionally show a player chooser
@@ -72,6 +73,7 @@ export default function ArenaPlay() {
   // Refs so openCard callback stays stable across renders (no stale closures)
   const stateRef = useRef<ArenaState | null>(null);
   stateRef.current = state;
+  const setGoldenTileRef = useRef<typeof setGoldenTile>(setGoldenTile);
   const allSectionsRef = useRef<ArenaSection[]>(ARENA_SECTIONS);
 
   const { data: teacherData, isLoading: teacherAuthLoading } =
@@ -171,7 +173,7 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning]);
 
-  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win") => {
+  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare") => {
     if (!soundOn) return;
     try {
       if (!audioCtxRef.current) {
@@ -189,6 +191,20 @@ export default function ArenaPlay() {
         case "tick": o.frequency.value = 880; g.gain.setValueAtTime(0.05, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.05); o.start(now); o.stop(now + 0.06); break;
         case "buzz": o.type = "sawtooth"; o.frequency.value = 180; g.gain.setValueAtTime(0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.6); o.start(now); o.stop(now + 0.6); break;
         case "correct": o.frequency.value = 523; g.gain.setValueAtTime(0.1, now); o.frequency.exponentialRampToValueAtTime(880, now + 0.2); g.gain.exponentialRampToValueAtTime(0.001, now + 0.3); o.start(now); o.stop(now + 0.3); break;
+        case "fanfare": {
+          // Rising three-note fanfare for 800-pt cards
+          const fanNotes = [784, 1047, 1319];
+          fanNotes.forEach((f, i) => {
+            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            oo.connect(gg); gg.connect(ctx.destination);
+            oo.frequency.value = f;
+            gg.gain.setValueAtTime(0.0001, now + i * 0.12);
+            gg.gain.exponentialRampToValueAtTime(0.14, now + i * 0.12 + 0.02);
+            gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+            oo.start(now + i * 0.12); oo.stop(now + i * 0.12 + 0.38);
+          });
+          break;
+        }
         case "win": {
           const notes = [523, 659, 784, 1047];
           notes.forEach((f, i) => {
@@ -256,7 +272,14 @@ export default function ArenaPlay() {
       pickedQuestions: { ...prev.pickedQuestions, [bucketKey]: [...alreadyPicked, qi] },
     } : prev);
     setTimerRunning(true);
-    playSound("click");
+    if (difficulty === 800) {
+      playSound("fanfare");
+      const tileKey = cardKey({ subCategoryId, difficulty, slot });
+      setGoldenTileRef.current(tileKey);
+      setTimeout(() => setGoldenTileRef.current(null), 1200);
+    } else {
+      playSound("click");
+    }
   // stable — reads state via ref, never changes reference
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -429,9 +452,20 @@ export default function ArenaPlay() {
                         whileTap={!usedA && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
                         disabled={usedA || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center"
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
                         style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedA) }}
+                        animate={goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 }) ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                        transition={{ duration: 1.1, ease: "easeOut" }}
                       >
+                        {goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 }) && (
+                          <motion.span
+                            className="absolute inset-0 pointer-events-none"
+                            initial={{ opacity: 0.8, scaleX: 0 }}
+                            animate={{ opacity: 0, scaleX: 1 }}
+                            transition={{ duration: 1.0, ease: "easeOut" }}
+                            style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }}
+                          />
+                        )}
                         {usedA ? "—" : pts}
                       </motion.button>
                       <motion.button
@@ -439,9 +473,20 @@ export default function ArenaPlay() {
                         whileTap={!usedB && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
                         disabled={usedB || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center"
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
                         style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedB) }}
+                        animate={goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 }) ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                        transition={{ duration: 1.1, ease: "easeOut" }}
                       >
+                        {goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 }) && (
+                          <motion.span
+                            className="absolute inset-0 pointer-events-none"
+                            initial={{ opacity: 0.8, scaleX: 0 }}
+                            animate={{ opacity: 0, scaleX: 1 }}
+                            transition={{ duration: 1.0, ease: "easeOut" }}
+                            style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }}
+                          />
+                        )}
                         {usedB ? "—" : pts}
                       </motion.button>
                     </React.Fragment>
@@ -454,7 +499,7 @@ export default function ArenaPlay() {
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard]);
+  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard, goldenTile]);
 
   if (!state) return null;
 
