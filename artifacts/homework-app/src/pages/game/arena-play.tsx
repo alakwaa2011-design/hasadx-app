@@ -548,15 +548,21 @@ export default function ArenaPlay() {
   const boardGrid = useMemo(() => {
     const usedCards = state?.usedCards ?? [];
     const activeQ = state?.active ?? null;
+    const count = orderedSubCategoryIds.length;
+    /* Always 3 cols; rows = ceil(count/3). For 6 cats → 3×2 grid fills screen. */
+    const cols = Math.min(count, 3);
+    const rows = Math.ceil(count / cols) || 1;
     return (
       <div
-        className="relative flex-1 overflow-y-auto"
+        className="relative"
         style={{
+          flex: "1 1 0",
+          minHeight: 0,
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(min(140px, 42vw), 1fr))",
-          padding: "clamp(8px, 2vw, 28px)",
-          gap: "clamp(6px, 1.8vw, 20px)",
-          alignContent: "start",
+          gridTemplateColumns: `repeat(${cols}, 1fr)`,
+          gridTemplateRows: `repeat(${rows}, 1fr)`,
+          padding: "clamp(6px, 1.2vw, 16px)",
+          gap: "clamp(5px, 1vw, 14px)",
         }}
       >
         {orderedSubCategoryIds.map(subId => {
@@ -573,33 +579,79 @@ export default function ArenaPlay() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                background: "rgba(22,27,34,0.95)",
-                border: `1.5px solid ${accentColor}33`,
-                borderRadius: "10px",
+                background: "rgba(15,20,28,0.97)",
+                border: `1.5px solid ${accentColor}44`,
+                borderRadius: "12px",
                 overflow: "hidden",
-                boxShadow: `0 2px 10px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)`,
+                boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                minHeight: 0,
               }}
             >
-              {/* Image / icon area */}
-              <div className="relative overflow-hidden" style={{ height: "clamp(48px, 10vw, 120px)", flexShrink: 0 }}>
+              {/* Image / icon area — fills remaining flex space */}
+              <div className="relative overflow-hidden" style={{ flex: "1 1 0", minHeight: 0 }}>
                 {imgUrl ? (
-                  <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.85) saturate(0.9)" }} />
+                  <img
+                    src={imgUrl}
+                    alt={sub.name}
+                    className="absolute inset-0 w-full h-full"
+                    style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.82) saturate(0.9)" }}
+                  />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-2xl" style={{ background: `linear-gradient(160deg, ${accentColor}18 0%, ${accentColor}35 100%)`, color: accentColor }}>
-                    {sec?.emoji ?? "📚"}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}45 100%)` }}
+                  >
+                    <span style={{ fontSize: "clamp(28px, 4vw, 56px)", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
+                      {sec?.emoji ?? "📚"}
+                    </span>
                   </div>
                 )}
-                <div className="absolute inset-x-0 bottom-0 h-1/3" style={{ background: "linear-gradient(to bottom, transparent, rgba(14,17,23,0.85))" }} />
+                {/* Bottom scrim for text legibility */}
+                <div
+                  className="absolute inset-x-0 bottom-0"
+                  style={{ height: "55%", background: "linear-gradient(to bottom, transparent, rgba(8,12,20,0.92))" }}
+                />
+                {/* Category name overlaid at bottom of image */}
+                <div
+                  className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-1.5 pb-2 px-2"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {sec?.emoji && (
+                    <span style={{ fontSize: "clamp(12px, 1.8vw, 18px)", lineHeight: 1, flexShrink: 0 }}>{sec.emoji}</span>
+                  )}
+                  <span
+                    style={{
+                      fontFamily: "'Tajawal', sans-serif",
+                      fontWeight: 900,
+                      fontSize: "clamp(11px, 1.6vw, 17px)",
+                      color: "#ffffff",
+                      lineHeight: 1.2,
+                      textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    {sub.name}
+                  </span>
+                </div>
               </div>
-              {/* Name strip */}
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", padding: "4px 6px 5px", borderBottom: "1px solid rgba(255,255,255,0.06)", borderTop: `1px solid ${accentColor}33` }}>
-                {sec?.emoji && <span style={{ fontSize: "clamp(10px, 2vw, 13px)", lineHeight: 1 }}>{sec.emoji}</span>}
-                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(10px, 2.2vw, 14px)", color: "#f1f5f9", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {sub.name}
-                </span>
-              </div>
+
+              {/* Colored accent line */}
+              <div style={{ height: "3px", background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`, flexShrink: 0 }} />
+
               {/* Buttons grid — 2 columns (slot1 | slot2), one row per difficulty */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px", padding: "3px" }}>
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "clamp(2px, 0.4vw, 5px)",
+                  padding: "clamp(3px, 0.6vw, 8px)",
+                  background: "rgba(0,0,0,0.3)",
+                }}
+              >
                 {diffs.map(pts => {
                   const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
                   const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
@@ -608,12 +660,18 @@ export default function ArenaPlay() {
                   return (
                     <React.Fragment key={pts}>
                       <motion.button
-                        whileHover={!usedA && !activeQ ? { scale: 1.05, y: -1 } : undefined}
+                        whileHover={!usedA && !activeQ ? { scale: 1.04, y: -1 } : undefined}
                         whileTap={!usedA && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
                         disabled={usedA || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{ height: "clamp(24px, 4.5vw, 32px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(10px, 2.2vw, 13px)", ...diffStyle(pts, usedA) }}
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden rounded"
+                        style={{
+                          height: "clamp(22px, 3.2vw, 40px)",
+                          fontFamily: "'Tajawal', sans-serif",
+                          fontSize: "clamp(10px, 1.5vw, 16px)",
+                          borderRadius: "6px",
+                          ...diffStyle(pts, usedA),
+                        }}
                         animate={goldenTile === keyA ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
                         transition={{ duration: 1.1, ease: "easeOut" }}
                       >
@@ -623,12 +681,18 @@ export default function ArenaPlay() {
                         {usedA ? "—" : pts}
                       </motion.button>
                       <motion.button
-                        whileHover={!usedB && !activeQ ? { scale: 1.05, y: -1 } : undefined}
+                        whileHover={!usedB && !activeQ ? { scale: 1.04, y: -1 } : undefined}
                         whileTap={!usedB && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
                         disabled={usedB || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{ height: "clamp(24px, 4.5vw, 32px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(10px, 2.2vw, 13px)", ...diffStyle(pts, usedB) }}
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden rounded"
+                        style={{
+                          height: "clamp(22px, 3.2vw, 40px)",
+                          fontFamily: "'Tajawal', sans-serif",
+                          fontSize: "clamp(10px, 1.5vw, 16px)",
+                          borderRadius: "6px",
+                          ...diffStyle(pts, usedB),
+                        }}
                         animate={goldenTile === keyB ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
                         transition={{ duration: 1.1, ease: "easeOut" }}
                       >
