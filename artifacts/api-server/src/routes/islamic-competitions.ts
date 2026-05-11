@@ -136,6 +136,12 @@ router.get("/islamic/sections", async (req, res) => {
     .from(islamicQuestionsTable)
     .groupBy(islamicQuestionsTable.categoryId);
   const countMap = new Map(counts.map((c) => [c.categoryId, c.n]));
+  const hardCounts = await db
+    .select({ categoryId: islamicQuestionsTable.categoryId, n: sql<number>`COUNT(*)::int` })
+    .from(islamicQuestionsTable)
+    .where(eq(islamicQuestionsTable.difficulty, "hard"))
+    .groupBy(islamicQuestionsTable.categoryId);
+  const hardMap = new Map(hardCounts.map((c) => [c.categoryId, c.n]));
   const sections = all
     .filter((s) => {
       // Quran-related sections are hidden by default; admin can flip on the
@@ -153,7 +159,7 @@ router.get("/islamic/sections", async (req, res) => {
           if (c.ownerId !== null && c.ownerId !== undefined) return c.ownerId === teacherId;
           return isAdmin || c.isVisible;
         })
-        .map((c) => ({ ...c, questionCount: countMap.get(c.id) || 0 })),
+        .map((c) => ({ ...c, questionCount: countMap.get(c.id) || 0, hardCount: hardMap.get(c.id) || 0 })),
     }));
   res.json(sections);
 });
@@ -721,16 +727,31 @@ router.get("/islamic/leaderboard", async (req, res) => {
   res.json({ top: rows.rows, me: me.rows[0] || null });
 });
 
+const EXPERTS_MIN_HARD = 5;
+
 router.post("/islamic/challenges", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
-  const { categoryId } = req.body || {};
+  const { categoryId, expertsOnly } = req.body || {};
   if (!categoryId) {
     res.status(400).json({ message: "categoryId مطلوب" });
     return;
   }
-  const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(eq(islamicQuestionsTable.categoryId, categoryId));
+  const baseWhere = expertsOnly
+    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"))
+    : eq(islamicQuestionsTable.categoryId, categoryId);
+  const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(baseWhere);
   if (all.length === 0) {
-    res.status(400).json({ message: "لا أسئلة في هذه الفئة" });
+    res.status(400).json({
+      message: expertsOnly
+        ? `لا توجد أسئلة صعبة في هذه الفئة. وضع تحدّي الخبراء يتطلب ${EXPERTS_MIN_HARD} أسئلة صعبة على الأقل.`
+        : "لا أسئلة في هذه الفئة",
+    });
+    return;
+  }
+  if (expertsOnly && all.length < EXPERTS_MIN_HARD) {
+    res.status(400).json({
+      message: `يحتاج وضع تحدّي الخبراء إلى ${EXPERTS_MIN_HARD} أسئلة صعبة على الأقل في الفئة (المتوفر: ${all.length}).`,
+    });
     return;
   }
   const picked = [...all].sort(() => Math.random() - 0.5).slice(0, Math.min(10, all.length)).map((q) => q.id);
@@ -1359,7 +1380,7 @@ function genTeamToken(): string {
 
 router.post("/islamic/tournaments", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
-  const { name, categoryId, teamNames } = req.body || {};
+  const { name, categoryId, teamNames, expertsOnly } = req.body || {};
   if (!name?.trim()) { res.status(400).json({ message: "اسم البطولة مطلوب" }); return; }
   if (!categoryId) { res.status(400).json({ message: "الفئة مطلوبة" }); return; }
   if (!Array.isArray(teamNames) || teamNames.length < 2) { res.status(400).json({ message: "يجب إضافة فريقين على الأقل" }); return; }
@@ -1368,8 +1389,24 @@ router.post("/islamic/tournaments", async (req, res) => {
   const cleanTeams: string[] = teamNames.map((t: unknown) => String(t || "").trim().slice(0, 60)).filter(Boolean);
   if (cleanTeams.length < 2) { res.status(400).json({ message: "أسماء الفرق غير صالحة" }); return; }
 
-  const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(eq(islamicQuestionsTable.categoryId, categoryId));
-  if (all.length === 0) { res.status(400).json({ message: "لا أسئلة في هذه الفئة" }); return; }
+  const baseWhere = expertsOnly
+    ? and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.difficulty, "hard"))
+    : eq(islamicQuestionsTable.categoryId, categoryId);
+  const all = await db.select({ id: islamicQuestionsTable.id }).from(islamicQuestionsTable).where(baseWhere);
+  if (all.length === 0) {
+    res.status(400).json({
+      message: expertsOnly
+        ? `لا توجد أسئلة صعبة في هذه الفئة. وضع تحدّي الخبراء يتطلب ${EXPERTS_MIN_HARD} أسئلة صعبة على الأقل.`
+        : "لا أسئلة في هذه الفئة",
+    });
+    return;
+  }
+  if (expertsOnly && all.length < EXPERTS_MIN_HARD) {
+    res.status(400).json({
+      message: `يحتاج وضع تحدّي الخبراء إلى ${EXPERTS_MIN_HARD} أسئلة صعبة على الأقل في الفئة (المتوفر: ${all.length}).`,
+    });
+    return;
+  }
 
   const picked = [...all].sort(() => Math.random() - 0.5).slice(0, Math.min(10, all.length)).map((q) => q.id);
   const pin = genTournamentPin();

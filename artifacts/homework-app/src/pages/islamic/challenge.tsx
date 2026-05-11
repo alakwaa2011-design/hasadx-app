@@ -7,8 +7,10 @@ import {
 
 interface Section {
   id: number; name: string; ownerId?: number | null;
-  categories: Array<{ id: number; name: string; questionCount: number; ownerId?: number | null }>;
+  categories: Array<{ id: number; name: string; questionCount: number; hardCount?: number; ownerId?: number | null }>;
 }
+
+const EXPERTS_MIN_HARD = 5;
 interface Q { id: number; questionText: string; audioUrl: string | null; options: string[]; correctAnswer: string }
 interface Challenge {
   id: number; pin: string; categoryId: number; creatorId: number;
@@ -27,7 +29,7 @@ interface Tournament {
 const TIMER_SECONDS = 20;
 
 /* ── Shared category picker ──────────────────────────────────── */
-function CategoryPicker({ onPick, title }: { onPick: (id: number) => void; title: string }) {
+function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) => void; title: string; expertsOnly?: boolean }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [myName, setMyName] = useState("");
   const [myDesc, setMyDesc] = useState("");
@@ -60,12 +62,29 @@ function CategoryPicker({ onPick, title }: { onPick: (id: number) => void; title
             </h3>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 155px), 1fr))", gap: 8 }}>
-            {s.categories.filter((c) => c.questionCount > 0).map((c) => (
-              <IslamicCard key={c.id} onClick={() => onPick(c.id)}>
-                <div style={{ fontWeight: 700, fontSize: "clamp(13px, 3.5vw, 15px)" }}>{c.name}</div>
-                <div style={{ fontSize: "clamp(11px, 3vw, 13px)", opacity: 0.8 }}>{c.questionCount} سؤال</div>
-              </IslamicCard>
-            ))}
+            {s.categories
+              .filter((c) => c.questionCount > 0)
+              .map((c) => {
+                const hard = c.hardCount || 0;
+                const eligible = !expertsOnly || hard >= EXPERTS_MIN_HARD;
+                return (
+                  <IslamicCard
+                    key={c.id}
+                    onClick={eligible ? () => onPick(c.id) : undefined}
+                    style={!eligible ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: "clamp(13px, 3.5vw, 15px)" }}>{c.name}</div>
+                    <div style={{ fontSize: "clamp(11px, 3vw, 13px)", opacity: 0.8 }}>
+                      {expertsOnly ? `${hard} سؤال صعب` : `${c.questionCount} سؤال`}
+                    </div>
+                    {expertsOnly && !eligible && (
+                      <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 4 }}>
+                        تحتاج {EXPERTS_MIN_HARD} أسئلة صعبة على الأقل
+                      </div>
+                    )}
+                  </IslamicCard>
+                );
+              })}
           </div>
         </div>
       ))}
@@ -100,10 +119,17 @@ export function IslamicChallengeNew() {
   const [teams, setTeams] = useState<string[]>(["الفريق الأول", "الفريق الثاني"]);
   const [creating, setCreating] = useState(false);
   const [tourStep, setTourStep] = useState<"setup" | "category">("setup");
+  const [expertsOnly, setExpertsOnly] = useState(false);
+  const [createErr, setCreateErr] = useState("");
 
   async function createChallenge(categoryId: number) {
-    const c = await api<Challenge>("/islamic/challenges", { method: "POST", body: JSON.stringify({ categoryId }) });
-    setCreated(c);
+    setCreateErr("");
+    try {
+      const c = await api<Challenge>("/islamic/challenges", { method: "POST", body: JSON.stringify({ categoryId, expertsOnly }) });
+      setCreated(c);
+    } catch (e) {
+      setCreateErr(e instanceof Error ? e.message : "تعذر إنشاء التحدي");
+    }
   }
 
   async function createTournament(categoryId: number) {
@@ -111,13 +137,46 @@ export function IslamicChallengeNew() {
     const cleanTeams = teams.filter((t) => t.trim());
     if (cleanTeams.length < 2) return;
     setCreating(true);
+    setCreateErr("");
     try {
       const t = await api<Tournament>("/islamic/tournaments", {
         method: "POST",
-        body: JSON.stringify({ name: tourName.trim(), categoryId, teamNames: cleanTeams }),
+        body: JSON.stringify({ name: tourName.trim(), categoryId, teamNames: cleanTeams, expertsOnly }),
       });
       setTournament(t);
+    } catch (e) {
+      setCreateErr(e instanceof Error ? e.message : "تعذر إنشاء البطولة");
     } finally { setCreating(false); }
+  }
+
+  function ExpertsToggle() {
+    return (
+      <IslamicCard style={{ marginBottom: 14, background: expertsOnly ? "rgba(217,119,6,0.18)" : undefined, borderColor: expertsOnly ? ISLAMIC_GOLD : undefined }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={expertsOnly}
+            onChange={(e) => setExpertsOnly(e.target.checked)}
+            style={{ marginTop: 4, width: 18, height: 18, accentColor: ISLAMIC_GOLD, cursor: "pointer" }}
+          />
+          <div>
+            <div style={{ fontWeight: 800, color: ISLAMIC_GOLD, fontSize: 15 }}>🔥 وضع تحدّي الخبراء</div>
+            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4, lineHeight: 1.6 }}>
+              عند التفعيل، يتم اختيار الأسئلة الصعبة فقط. يتطلب {EXPERTS_MIN_HARD} أسئلة صعبة على الأقل في الفئة.
+            </div>
+          </div>
+        </label>
+      </IslamicCard>
+    );
+  }
+
+  function CreateError() {
+    if (!createErr) return null;
+    return (
+      <IslamicCard style={{ marginBottom: 12, borderColor: "#ef4444", background: "rgba(239,68,68,0.12)" }}>
+        <div style={{ color: "#fca5a5", fontWeight: 700, fontSize: 13 }}>{createErr}</div>
+      </IslamicCard>
+    );
   }
 
   /* ── Challenge created ──────────────────────────────────────── */
@@ -203,7 +262,9 @@ export function IslamicChallengeNew() {
       return (
         <IslamicShell title="اختر فئة البطولة">
           <GhostButton onClick={() => setTourStep("setup")} style={{ marginBottom: 16 }}>← رجوع</GhostButton>
-          <CategoryPicker title="اختر الفئة التي ستلعب بها جميع الفرق:" onPick={createTournament} />
+          <CreateError />
+          <ExpertsToggle />
+          <CategoryPicker title="اختر الفئة التي ستلعب بها جميع الفرق:" onPick={createTournament} expertsOnly={expertsOnly} />
           {creating && <p style={{ textAlign: "center", color: ISLAMIC_GOLD }}>جاري إنشاء البطولة…</p>}
         </IslamicShell>
       );
@@ -250,7 +311,13 @@ export function IslamicChallengeNew() {
   return (
     <IslamicShell title="أنشئ تحدياً">
       <GhostButton onClick={() => setMode("choose")} style={{ marginBottom: 16 }}>← رجوع</GhostButton>
-      <CategoryPicker title="اختر فئة لتنشئ تحدياً مع 10 أسئلة عشوائية:" onPick={createChallenge} />
+      <CreateError />
+      <ExpertsToggle />
+      <CategoryPicker
+        title={expertsOnly ? "اختر فئة (الأسئلة الصعبة فقط):" : "اختر فئة لتنشئ تحدياً مع 10 أسئلة عشوائية:"}
+        onPick={createChallenge}
+        expertsOnly={expertsOnly}
+      />
     </IslamicShell>
   );
 }
