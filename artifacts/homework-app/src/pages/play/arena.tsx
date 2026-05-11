@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Play, Users, Trophy, ChevronDown, X, UserPlus,
+  ArrowRight, Play, Users, Trophy, ChevronDown, X, UserPlus, Tv2,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -549,8 +549,19 @@ export default function PublicArenaSetup() {
 
         </AnimatePresence>
 
+        {/* Audience mode tip */}
+        <div className="mt-6 rounded-2xl border border-emerald-500/25 bg-emerald-500/8 px-4 py-3 flex items-start gap-3">
+          <Tv2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-emerald-200 font-bold text-sm mb-0.5">وضع المتفرج</p>
+            <p className="text-emerald-100/60 text-xs leading-relaxed">
+              بعد بدء اللعبة، ستجد زر «وضع المتفرج» في أعلى الشاشة. اضغط عليه لمشاركة رابط أو رمز QR يتيح لأي جهاز ثانٍ متابعة لوحة النقاط مباشرة بدون تسجيل دخول.
+            </p>
+          </div>
+        </div>
+
         {/* Login upsell footer */}
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <p className="text-emerald-100/50 text-xs mb-2">
             هل أنت معلم أو مدرّب؟
           </p>

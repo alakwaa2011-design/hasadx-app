@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Eye, Clock, RotateCcw, Home, Zap, X, Volume2, VolumeX,
   Maximize, Minimize, BookOpen, Sparkles, ChevronLeft, Share2, Flag,
-  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon,
+  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { ConfettiBurst } from "@/components/confetti-burst";
@@ -853,6 +853,19 @@ export default function ArenaPlay() {
             ))}
           </div>
         </div>
+
+        {/* Row 3 — Audience mode strip (public games only) */}
+        {isPublicGame && (
+          <button
+            onClick={() => setShowShare(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-125"
+            style={{ background: "linear-gradient(90deg,#065f46,#047857)", borderTop: "1px solid rgba(52,211,153,0.2)" }}
+          >
+            <Tv2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <span className="text-emerald-200">وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
+            <Share2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+          </button>
+        )}
       </header>
 
       {/* ══ BOARD ═══════════════════════════════════════════════════════════ */}
