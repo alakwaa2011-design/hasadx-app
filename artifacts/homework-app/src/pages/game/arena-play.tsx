@@ -641,10 +641,10 @@ export default function ArenaPlay() {
       >
         <div
           style={{
-            maxWidth: "1240px",
+            maxWidth: "1080px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 46%), 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 46%), 1fr))",
             gap: "clamp(10px, 2vw, 22px)",
             padding: "clamp(10px, 2vw, 24px)",
           }}
@@ -1145,6 +1145,7 @@ export default function ArenaPlay() {
 
   const ARABIC_FONT = "'IBM Plex Sans Arabic', 'Tajawal', sans-serif";
   const ARABIC_DISPLAY = "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif";
+  const ARABIC_ELEGANT = "'Amiri', 'Readex Pro', 'IBM Plex Sans Arabic', serif";
 
   return (
     <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "#faf6ec", fontFamily: ARABIC_FONT, height: "100vh", overflow: "hidden" }}>
@@ -1219,33 +1220,31 @@ export default function ArenaPlay() {
           </div>
 
           {/* Zone B (center): Brand */}
-          <div className="flex items-center justify-center gap-2.5 order-2 sm:order-none">
+          <div className="flex items-center justify-center gap-2 sm:gap-2.5 order-2 sm:order-none">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
               alt="حصاد"
-              className="w-11 h-11 rounded-xl object-cover shrink-0"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl object-cover shrink-0"
               style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
             />
             <div className="flex flex-col leading-none">
-              <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "20px", color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
-              <span style={{ fontFamily: ARABIC_FONT, fontWeight: 500, fontSize: "11px", color: "#a08a55", marginTop: "5px", paddingTop: "4px", borderTop: "1px solid #e8dfc8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>
+              <span className="arena-brand-title" style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
+              <span className="arena-brand-subtitle" style={{ fontFamily: ARABIC_ELEGANT, fontWeight: 700, color: "#8a6d2c", marginTop: "5px", paddingTop: "4px", borderTop: "1px solid #e8dfc8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.005em" }}>
                 {state.tournamentName ?? "بطولة المعرفة والتحدي"}
               </span>
             </div>
           </div>
 
-          {/* Zone C (left in RTL): Action buttons — compact, natural width */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-center order-3 sm:order-none">
+          {/* Zone C (left in RTL): Action buttons — icon-only on mobile, labeled on desktop */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap sm:flex-wrap justify-center order-3 sm:order-none">
             {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90"
+                aria-label={btn.label}
+                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90 w-[44px] h-[44px] sm:w-[46px] sm:h-[46px]"
                 style={{
-                  width: "46px",
-                  height: "46px",
-                  gap: "2px",
                   color: "#5b6b87",
                   background: "#faf6ec",
                   border: "1px solid #ebe2cd",
@@ -1261,7 +1260,7 @@ export default function ArenaPlay() {
                 }}
               >
                 {btn.icon}
-                <span style={{ fontSize: "9px", fontWeight: 600, color: "#8a7d5e" }}>{btn.label}</span>
+                <span className="hidden sm:inline" style={{ fontSize: "9px", fontWeight: 600, color: "#8a7d5e", marginTop: "2px" }}>{btn.label}</span>
               </button>
             ))}
           </div>

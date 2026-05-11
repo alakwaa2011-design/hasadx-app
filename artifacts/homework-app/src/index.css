@@ -590,3 +590,11 @@
     0 18px 40px -22px color-mix(in srgb, var(--accent) 55%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) inset;
 }
+
+/* Arena board brand title responsive sizing */
+.arena-brand-title { font-size: 17px; }
+.arena-brand-subtitle { font-size: 13px; max-width: 200px; }
+@media (min-width: 640px) {
+  .arena-brand-title { font-size: 20px; }
+  .arena-brand-subtitle { font-size: 15px; max-width: 240px; }
+}
