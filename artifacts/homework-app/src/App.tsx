@@ -9,7 +9,6 @@ import { DarkModeProvider } from "@/lib/dark-mode";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
-import { GlobalFeedbackFab } from "@/components/feedback-fab";
 import { PageViewTracker } from "@/components/page-view-tracker";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -506,7 +505,6 @@ function App() {
                 <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                   <Router />
                   <GlobalAiAssistant />
-                  <GlobalFeedbackFab />
                   <PageViewTracker />
                 </WouterRouter>
                 <I18nAwareToaster />
