@@ -173,7 +173,7 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning]);
 
-  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare") => {
+  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime") => {
     if (!soundOn) return;
     try {
       if (!audioCtxRef.current) {
@@ -215,6 +215,21 @@ export default function ArenaPlay() {
             gg.gain.exponentialRampToValueAtTime(0.12, now + i * 0.15 + 0.02);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
             oo.start(now + i * 0.15); oo.stop(now + i * 0.15 + 0.45);
+          });
+          break;
+        }
+        case "chime": {
+          // Short ascending three-note arpeggio for double-points multiplier
+          const chimeNotes = [880, 1109, 1397];
+          chimeNotes.forEach((f, i) => {
+            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            oo.connect(gg); gg.connect(ctx.destination);
+            oo.type = "sine";
+            oo.frequency.value = f;
+            gg.gain.setValueAtTime(0.0001, now + i * 0.1);
+            gg.gain.exponentialRampToValueAtTime(0.18, now + i * 0.1 + 0.015);
+            gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.22);
+            oo.start(now + i * 0.1); oo.stop(now + i * 0.1 + 0.25);
           });
           break;
         }
@@ -698,7 +713,12 @@ export default function ArenaPlay() {
     const key = cardKey({ subCategoryId: active.subCategoryId, difficulty: active.difficulty, slot: active.slot });
     if (winner) {
       setPointAnimation({ team: winner, pts, difficulty: active.difficulty, player });
-      playSound("correct");
+      if (active.multiplier > 1) {
+        playSound("chime");
+        setTimeout(() => playSound("correct"), 150);
+      } else {
+        playSound("correct");
+      }
       setTimeout(() => setPointAnimation(null), 1800);
     } else {
       playSound("buzz");
