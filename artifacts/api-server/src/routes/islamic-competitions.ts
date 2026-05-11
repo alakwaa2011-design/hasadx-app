@@ -1108,6 +1108,31 @@ router.get("/islamic/teacher/categories/:id/questions", async (req, res) => {
   res.json(rows);
 });
 
+router.post("/islamic/teacher/uploads/audio-url", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const { name, size, contentType } = req.body || {};
+  if (!name || !size || !contentType) {
+    res.status(400).json({ message: "بيانات الملف ناقصة" });
+    return;
+  }
+  if (!(contentType.startsWith("audio/") || contentType === "application/octet-stream")) {
+    res.status(400).json({ message: "النوع غير مدعوم" });
+    return;
+  }
+  if (size > 25 * 1024 * 1024) {
+    res.status(400).json({ message: "الحجم يتجاوز 25MB" });
+    return;
+  }
+  try {
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    res.json({ uploadURL, objectPath });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get teacher audio upload URL");
+    res.status(500).json({ message: "فشل توليد رابط الرفع" });
+  }
+});
+
 /* ── Teacher private categories ─────────────────────────────────
    Teachers can create their own categories (ownerId = teacherId).
    Admin-created (ownerId = null) categories appear to everyone.

@@ -91,6 +91,7 @@ export default function TeacherIslamicAdmin() {
   const [editing, setEditing] = useState<QDraft | null>(null);
   const [editError, setEditError] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -213,6 +214,16 @@ export default function TeacherIslamicAdmin() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function uploadAudio(file: File): Promise<string> {
+    const r = await api<{ uploadURL: string; objectPath: string }>("/islamic/teacher/uploads/audio-url", {
+      method: "POST",
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "audio/mpeg" }),
+    });
+    const put = await fetch(r.uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "audio/mpeg" } });
+    if (!put.ok) throw new Error("فشل رفع الملف إلى التخزين");
+    return r.objectPath;
   }
 
   async function deleteQuestion(q: Q) {
@@ -365,13 +376,53 @@ export default function TeacherIslamicAdmin() {
               <option value="medium">متوسط</option>
               <option value="hard">صعب</option>
             </select>
-            <input
-              placeholder="رابط ملف صوتي (اختياري)"
-              value={editing.audioUrl}
-              onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}
-              style={inpStyle}
-              maxLength={1000}
-            />
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch", marginBottom: 8 }}>
+              <input
+                placeholder="رابط ملف صوتي (اختياري)"
+                value={editing.audioUrl}
+                onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value })}
+                style={{ ...inpStyle, marginBottom: 0, flex: 1 }}
+                maxLength={1000}
+              />
+              <label
+                style={{
+                  ...smallBtn(true),
+                  padding: "0 14px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  whiteSpace: "nowrap",
+                  cursor: uploadingAudio ? "wait" : "pointer",
+                  opacity: uploadingAudio ? 0.6 : 1,
+                }}
+              >
+                {uploadingAudio ? "جاري الرفع…" : "اختر ملفاً"}
+                <input
+                  type="file"
+                  accept="audio/*"
+                  style={{ display: "none" }}
+                  disabled={uploadingAudio}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    if (file.size > 25 * 1024 * 1024) {
+                      setEditError("الحجم يتجاوز 25MB");
+                      return;
+                    }
+                    setUploadingAudio(true);
+                    setEditError("");
+                    try {
+                      const path = await uploadAudio(file);
+                      setEditing((prev) => (prev ? { ...prev, audioUrl: path } : prev));
+                    } catch (err) {
+                      setEditError(err instanceof Error ? err.message : "فشل رفع الملف");
+                    } finally {
+                      setUploadingAudio(false);
+                    }
+                  }}
+                />
+              </label>
+            </div>
             {editError && <p style={{ color: "#fca5a5", marginTop: 4 }}>{editError}</p>}
             <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
               <GhostButton onClick={() => setEditing(null)} disabled={saving}>إلغاء</GhostButton>
