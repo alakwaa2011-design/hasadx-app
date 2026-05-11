@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Eye, Clock, RotateCcw, Home, Zap, X, Volume2, VolumeX,
   Maximize, Minimize, BookOpen, Sparkles, ChevronLeft, Share2, Flag,
-  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown,
+  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown, Swords,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { ConfettiBurst } from "@/components/confetti-burst";
@@ -672,68 +672,43 @@ export default function ArenaPlay() {
                 }}
               >
                 {/* Image area — fixed aspect ratio */}
-                <div className="relative" style={{ aspectRatio: "16 / 7", overflow: "hidden", background: "#f3f0e6" }}>
+                <div className="relative" style={{ aspectRatio: "16 / 8", overflow: "hidden", background: "#f3f0e6" }}>
                   {imgUrl ? (
                     <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center" }} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}33, ${accentColor}66)` }}>
-                      <span style={{ fontSize: "44px" }}>{emoji}</span>
+                      <span style={{ fontSize: "52px" }}>{emoji}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Circle icon — overlapping image bottom */}
-                <div className="relative" style={{ height: 0 }}>
-                  <div
-                    className="absolute"
-                    style={{
-                      top: "-20px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      background: "#2d5e3f",
-                      border: "3px solid #ffffff",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "18px",
-                      zIndex: 2,
-                    }}
-                  >
-                    {emoji}
-                  </div>
-                </div>
-
-                {/* Category name */}
-                <div className="flex items-center justify-center gap-1.5" style={{ paddingTop: "26px", paddingBottom: "10px" }}>
-                  <span style={{ fontSize: "13px", lineHeight: 1 }}>{emoji}</span>
+                {/* Category name — clean, no icons */}
+                <div className="flex items-center justify-center" style={{ paddingTop: "14px", paddingBottom: "12px", paddingLeft: "12px", paddingRight: "12px" }}>
                   <span
                     style={{
                       fontFamily: "'Tajawal', sans-serif",
-                      fontWeight: 800,
-                      fontSize: "14px",
+                      fontWeight: 900,
+                      fontSize: "16px",
                       color: "#1f2937",
-                      lineHeight: 1,
+                      lineHeight: 1.2,
+                      textAlign: "center",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      maxWidth: "85%",
+                      maxWidth: "100%",
                     }}
                   >
                     {sub.name}
                   </span>
                 </div>
 
-                {/* Buttons — 2 cols × N rows, compact */}
+                {/* Buttons — 2 cols × N rows */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "6px",
-                    padding: "0 12px 14px 12px",
+                    gap: "8px",
+                    padding: "0 14px 16px 14px",
                   }}
                 >
                   {diffs.map(pts => {
@@ -756,8 +731,8 @@ export default function ArenaPlay() {
                             className="font-black border transition-all flex items-center justify-center relative overflow-hidden"
                             style={{
                               fontFamily: "'Tajawal', sans-serif",
-                              fontSize: "13px",
-                              height: "32px",
+                              fontSize: "15px",
+                              height: "38px",
                               ...diffStyle(pts, used),
                             }}
                             animate={goldenTile === key ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 16px rgba(251,191,36,0.9)", "0 0 28px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
@@ -1159,13 +1134,13 @@ export default function ArenaPlay() {
 
   /* ── Action buttons — calm light theme, icon + label ── */
   const ACTION_BTNS = [
-    { icon: soundOn ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>, action: () => setSoundOn(s => !s), label: "الصوت" },
-    { icon: isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>, action: toggleFullscreen, label: "ملء الشاشة" },
-    { icon: <BookOpen className="w-4 h-4"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "تعليمات" },
-    { icon: <Share2 className="w-4 h-4"/>, action: () => setShowShare(true), label: "مشاركة" },
-    { icon: <RotateCcw className="w-4 h-4"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
-    { icon: <Flag className="w-4 h-4"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
-    { icon: <Home className="w-4 h-4"/>, action: exitKeep, label: "الرئيسية" },
+    { icon: soundOn ? <Volume2 className="w-[18px] h-[18px]"/> : <VolumeX className="w-[18px] h-[18px]"/>, action: () => setSoundOn(s => !s), label: "الصوت" },
+    { icon: isFullscreen ? <Minimize className="w-[18px] h-[18px]"/> : <Maximize className="w-[18px] h-[18px]"/>, action: toggleFullscreen, label: "ملء الشاشة" },
+    { icon: <BookOpen className="w-[18px] h-[18px]"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "تعليمات" },
+    { icon: <Share2 className="w-[18px] h-[18px]"/>, action: () => setShowShare(true), label: "مشاركة" },
+    { icon: <RotateCcw className="w-[18px] h-[18px]"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
+    { icon: <Flag className="w-[18px] h-[18px]"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
+    { icon: <Home className="w-[18px] h-[18px]"/>, action: exitKeep, label: "الرئيسية" },
   ];
 
   return (
@@ -1185,11 +1160,15 @@ export default function ArenaPlay() {
             width: "100%",
           }}
         >
-          {/* Zone A (visually right in RTL): Teams scores + 800 toggle */}
-          <div className="flex items-center gap-2 order-1 ms-auto sm:ms-0">
+          {/* Zone A (visually right in RTL): Teams challenge button — bigger, with Swords icon */}
+          <div className="flex items-center order-1 ms-auto sm:ms-0">
             <div
-              className="flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-xl"
-              style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}
+              className="flex items-center gap-3 sm:gap-4 px-4 py-2.5 rounded-2xl"
+              style={{
+                background: "linear-gradient(135deg, #faf6ec, #f5efdc)",
+                border: "1.5px solid #d9c896",
+                boxShadow: "0 2px 6px rgba(45,94,63,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
+              }}
             >
               {state.teamOrder.slice(0, 2).map((teamId, i) => {
                 const t = state.teams[teamId];
@@ -1197,61 +1176,49 @@ export default function ArenaPlay() {
                 const isActive = state.currentTurn === teamId;
                 return (
                   <React.Fragment key={teamId}>
-                    {i > 0 && <span style={{ fontWeight: 800, fontSize: "11px", color: "#9ca3af", letterSpacing: "0.05em" }}>VS</span>}
-                    <div className="flex flex-col items-center min-w-0" style={{ minWidth: "52px" }}>
-                      <span style={{ fontSize: "10px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.1 }}>{t.name}</span>
-                      <span style={{ fontSize: "17px", fontWeight: 900, lineHeight: 1.1, color: isActive ? t.color : "#374151", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
+                    {i > 0 && (
+                      <div className="flex items-center justify-center" style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#2d5e3f", boxShadow: "0 2px 6px rgba(45,94,63,0.35)" }}>
+                        <Swords className="w-4 h-4" style={{ color: "#fff" }} />
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center min-w-0" style={{ minWidth: "64px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 800, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
+                      <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1.1, color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
                     </div>
                   </React.Fragment>
                 );
               })}
             </div>
-
-            {/* 800 toggle — organizer only */}
-            {isLoggedIn && (
-              <button
-                onClick={() => setShow800(v => !v)}
-                title={show800 ? "إخفاء بطاقات 800 نقطة" : "إظهار بطاقات 800 نقطة"}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-black text-xs transition-all active:scale-95"
-                style={show800
-                  ? { background: "linear-gradient(135deg, #2d5e3f, #1f4530)", color: "#ffffff", boxShadow: "0 2px 6px rgba(45,94,63,0.35)" }
-                  : { background: "#ffffff", color: "#6b7280", border: "1.5px solid #d1d5db" }
-                }
-              >
-                <Sparkles className="w-3.5 h-3.5" style={{ color: show800 ? "#fbbf24" : "currentColor" }} />
-                <span>800</span>
-              </button>
-            )}
           </div>
 
           {/* Zone B (center): Brand */}
-          <div className="flex items-center justify-center gap-2 order-2 flex-1 min-w-0">
+          <div className="flex items-center justify-center gap-2.5 order-2 flex-1 min-w-0">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
               alt="حصاد"
-              className="w-9 h-9 rounded-xl object-cover shrink-0"
-              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+              className="w-11 h-11 rounded-xl object-cover shrink-0"
+              style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
             />
             <div className="flex flex-col leading-none">
-              <span style={{ fontWeight: 900, fontSize: "16px", color: "#2d5e3f", letterSpacing: "0.02em" }}>تحدّي حصاد</span>
-              <span style={{ fontWeight: 600, fontSize: "10px", color: "#a08a55", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}>
+              <span style={{ fontWeight: 900, fontSize: "19px", color: "#2d5e3f", letterSpacing: "0.02em" }}>تحدّي حصاد</span>
+              <span style={{ fontWeight: 600, fontSize: "11px", color: "#a08a55", marginTop: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>
                 {state.tournamentName ?? "بطولة المعرفة والتحدي"}
               </span>
             </div>
           </div>
 
           {/* Zone C (visually left in RTL): Action buttons */}
-          <div className="flex items-center gap-1 order-3 flex-wrap justify-center">
+          <div className="flex items-center gap-1.5 order-3 flex-wrap justify-center">
             {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex flex-col items-center justify-center rounded-lg transition-all active:scale-90"
+                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90"
                 style={{
-                  width: "44px",
-                  height: "42px",
-                  gap: "2px",
+                  width: "52px",
+                  height: "50px",
+                  gap: "3px",
                   color: "#5b6b87",
                   background: "#faf6ec",
                   border: "1px solid #ebe2cd",
@@ -1266,7 +1233,7 @@ export default function ArenaPlay() {
                 }}
               >
                 {btn.icon}
-                <span style={{ fontSize: "8.5px", fontWeight: 700, color: "#8a7d5e" }}>{btn.label}</span>
+                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#8a7d5e" }}>{btn.label}</span>
               </button>
             ))}
           </div>
@@ -1283,28 +1250,28 @@ export default function ArenaPlay() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.25 }}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full"
+            className="flex items-center gap-2.5 px-5 py-2 rounded-full"
             style={{
               background: "#ffffff",
               border: `1.5px solid ${turnTeam.color}66`,
-              boxShadow: `0 2px 8px ${turnTeam.color}22`,
+              boxShadow: `0 2px 10px ${turnTeam.color}22`,
             }}
           >
             <div
               className="flex items-center justify-center"
               style={{
-                width: "24px",
-                height: "24px",
+                width: "28px",
+                height: "28px",
                 borderRadius: "50%",
                 background: turnTeam.color,
                 color: "#ffffff",
-                fontSize: "13px",
+                fontSize: "15px",
               }}
             >
               {turnTeam.emoji}
             </div>
-            <span style={{ fontWeight: 700, fontSize: "12px", color: "#374151" }}>الدور الآن:</span>
-            <span style={{ fontWeight: 900, fontSize: "13px", color: turnTeam.color, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
+            <span style={{ fontWeight: 700, fontSize: "14px", color: "#374151" }}>الدور الآن:</span>
+            <span style={{ fontWeight: 900, fontSize: "15px", color: turnTeam.color, maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
           </motion.div>
 
           {/* Decorative chevrons right */}
