@@ -303,13 +303,34 @@ export default function ArenaSetup() {
         helpers: t.helpers,
       })),
     });
+    // Include ALL DB sub-categories in the saved state — not just the standalone
+    // sections but also the ones merged into static sections (mergedSubsByStaticId).
+    // The play screen resolves sub-category IDs by searching allSections; if a
+    // DB sub-cat only lives in mergedSubsByStaticId it is never saved and becomes
+    // invisible on the board.
+    const dbSectionsForState: ArenaSection[] = [
+      ...dbSections,
+      ...Object.entries(mergedSubsByStaticId)
+        .filter(([, subs]) => subs.length > 0)
+        .map(([staticId, subs]) => {
+          const staticSec = ARENA_SECTIONS.find(s => s.id === staticId);
+          return {
+            id: `db-merged-${staticId}`,
+            name: staticSec?.name ?? staticId,
+            emoji: staticSec?.emoji ?? "📚",
+            cover: staticSec?.cover ?? { emoji: "📚", color: "#1E4D35" },
+            subCategories: subs,
+          } satisfies ArenaSection;
+        }),
+    ];
+
     saveArenaState({
       tournamentName: tournamentName.trim(),
       teams: teamsRecord,
       teamOrder,
       subCategoryIds: teams.flatMap(t => t.subCategoryIds),
       customQuestions,
-      dbSections,
+      dbSections: dbSectionsForState,
       timerSeconds,
       currentTurn: teamOrder[0],
       usedCards: [],
