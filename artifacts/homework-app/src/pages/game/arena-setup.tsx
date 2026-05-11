@@ -652,7 +652,7 @@ export default function ArenaSetup() {
                     <Swords className="w-5 h-5 text-amber-300 shrink-0" />
                     <div className="min-w-0">
                       <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">مكتبة الفئات البصرية</h2>
-                      <p className="text-emerald-100/70 text-xs sm:text-sm">اختر 3 فئات لكل فريق — كل فئة بـ <strong className="text-amber-200">8 بطاقات</strong> (200×2، 400×2، 600×2، <strong className="text-yellow-300">800×2⭐</strong>)</p>
+                      <p className="text-emerald-100/70 text-xs sm:text-sm">اختر 3 فئات لكل فريق — كل فئة بـ <strong className="text-amber-200">6 بطاقات</strong> (200×2، 400×2، 600×2) · يمكن إضافة <strong className="text-yellow-300">800⭐</strong> عبر فئة مخصصة</p>
                     </div>
                   </div>
                   <button
@@ -938,10 +938,12 @@ interface CategoryCardProps {
 function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdit, dimmed }: CategoryCardProps) {
   const taken = takenByIdx !== -1;
   const winningTeam = taken ? teams[takenByIdx] : null;
-  const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0) + (sub.questions[800]?.length ?? 0);
+  /* Only count 200/400/600 in the badge — 800 is optional/bonus */
+  const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0);
+  const has800 = (sub.questions[800]?.length ?? 0) > 0 && sub.id.startsWith("db-");
   return (
     <div
-      className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
+      className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative flex flex-col ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
       style={{
         borderColor: taken ? (winningTeam?.color ?? cover.color) : "rgba(255,255,255,0.12)",
         boxShadow: taken
@@ -949,60 +951,75 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
           : "0 4px 14px -6px rgba(0,0,0,0.4)",
       }}
     >
-      {/* Cover image / gradient (top) */}
+      {/* Cover image / gradient (top) — shorter on mobile */}
       <div
-        className="aspect-[4/3] relative overflow-hidden"
-        style={{
-          background: cover.imageUrl ? "#0E2A1D" : (cover.gradient ?? cover.color),
-        }}
+        className="aspect-[5/3] relative overflow-hidden"
+        style={{ background: cover.imageUrl ? "#0E2A1D" : (cover.gradient ?? cover.color) }}
       >
         {cover.imageUrl ? (
           <img src={cover.imageUrl} alt={sub.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-5xl sm:text-6xl drop-shadow-lg" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.4))" }}>
+            <span className="text-3xl sm:text-5xl drop-shadow-lg" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.4))" }}>
               {cover.emoji}
             </span>
           </div>
         )}
-        {/* Overlay gradient for legibility */}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/40 to-transparent" />
-        <div className="absolute top-2 end-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-[10px] font-bold">
-          {counts} سؤال
+        {/* Bottom gradient */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
+
+        {/* Question count badge */}
+        <div className="absolute top-1.5 end-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-white text-[9px] font-bold">
+          {counts}{has800 ? "+⭐" : ""} سؤال
         </div>
+
+        {/* Edit button */}
         {editable && onEdit && (
           <button
             onClick={onEdit}
-            className="absolute top-2 start-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm text-amber-200 hover:bg-amber-400 hover:text-emerald-950"
+            className="absolute top-1.5 start-1.5 p-1.5 rounded-full bg-black/50 backdrop-blur-sm text-amber-200 hover:bg-amber-400 hover:text-emerald-950"
             title="تعديل الفئة"
           >
-            <Edit3 className="w-3.5 h-3.5" />
+            <Edit3 className="w-3 h-3" />
           </button>
         )}
+
+        {/* Taken badge — small, at bottom of image, not full overlay */}
         {taken && winningTeam && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-            <div className="px-3 py-1.5 rounded-full font-black text-sm shadow-2xl" style={{ background: winningTeam.color, color: "white" }}>
+          <div className="absolute inset-x-0 bottom-0 flex justify-center pb-1.5">
+            <div className="px-2.5 py-1 rounded-full font-black text-[11px] sm:text-xs shadow-xl" style={{ background: winningTeam.color, color: "white" }}>
               {winningTeam.emoji} {winningTeam.name}
             </div>
           </div>
         )}
       </div>
 
-      {/* Title bar (bottom) */}
-      <div
-        className="px-2.5 py-2 text-center"
-        style={{
-          background: cover.color,
-          color: "white",
-        }}
-      >
-        <div className="font-extrabold text-sm sm:text-base leading-tight" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+      {/* Title bar */}
+      <div className="px-2 py-1.5 text-center" style={{ background: cover.color, color: "white" }}>
+        <div className="font-extrabold text-xs sm:text-sm leading-tight truncate" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
           {sub.name}
         </div>
       </div>
 
+      {/* Difficulty chips row — shows 200/400/600 (and 800 if DB-backed has it) */}
+      <div className="bg-black/20 px-1.5 py-1 flex gap-1 justify-center flex-wrap">
+        {([200, 400, 600] as ArenaDifficulty[]).map(d => {
+          const c = DIFF_CHIP_STYLES[d];
+          return (
+            <span key={d} className="text-[8px] sm:text-[9px] font-black rounded px-1.5 py-0.5" style={{ color: c.text, background: c.activeBg }}>
+              {d}
+            </span>
+          );
+        })}
+        {has800 && (
+          <span className="text-[8px] sm:text-[9px] font-black rounded px-1.5 py-0.5" style={{ color: DIFF_CHIP_STYLES[800].text, background: DIFF_CHIP_STYLES[800].activeBg }}>
+            800⭐
+          </span>
+        )}
+      </div>
+
       {/* Team selector buttons */}
-      <div className="bg-white/5 p-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, 1fr)` }}>
+      <div className="bg-white/5 p-1.5 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, 1fr)` }}>
         {teams.map((team, teamIdx) => {
           const picked = team.subCategoryIds.includes(sub.id);
           const disabledByOther = !picked && takenByIdx !== -1 && takenByIdx !== teamIdx;
@@ -1012,7 +1029,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
               onClick={() => onToggle(teamIdx)}
               disabled={disabledByOther}
               title={team.name}
-              className="text-[11px] sm:text-xs font-extrabold rounded-md py-1.5 px-1 transition disabled:opacity-25 disabled:cursor-not-allowed truncate"
+              className="text-[10px] sm:text-[11px] font-extrabold rounded-md py-1.5 px-1 transition disabled:opacity-25 disabled:cursor-not-allowed truncate"
               style={picked
                 ? { background: team.color, color: "#fff", boxShadow: `0 4px 10px -3px ${team.color}` }
                 : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)" }

@@ -24,8 +24,20 @@ import {
   type ArenaActiveQuestion, type ArenaCardSlot, type ArenaState, type TeamSide,
 } from "@/lib/arena-store";
 
-const POINT_VALUES: ArenaDifficulty[] = [200, 400, 600, 800];
+/** Base difficulty tiers shown on the board. 800 is only added when
+ *  the sub-category has explicit 800-pt questions (DB-backed only). */
+const BASE_POINT_VALUES: ArenaDifficulty[] = [200, 400, 600];
 const SLOTS: ArenaCardSlot[] = [1, 2];
+
+/** Returns the difficulty tiers available for a given sub-category.
+ *  Static categories: always [200,400,600].
+ *  DB-backed categories: add 800 only if they have 800-pt questions. */
+function subDifficulties(subId: string, sub: ArenaSubCategory): ArenaDifficulty[] {
+  if (subId.startsWith("db-") && (sub.questions[800]?.length ?? 0) > 0) {
+    return [200, 400, 600, 800];
+  }
+  return BASE_POINT_VALUES;
+}
 
 type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
 
@@ -146,7 +158,11 @@ export default function ArenaPlay() {
 
   useEffect(() => {
     if (!state) return;
-    const totalCards = state.subCategoryIds.length * POINT_VALUES.length * SLOTS.length;
+    const sections = allSectionsRef.current;
+    const totalCards = state.subCategoryIds.reduce((sum, subId) => {
+      const sub = findSubCategory(subId, sections);
+      return sum + (sub ? subDifficulties(subId, sub).length * SLOTS.length : 0);
+    }, 0);
     if (state.usedCards.length >= totalCards && !state.active) {
       setPhase("end");
     }
@@ -534,11 +550,13 @@ export default function ArenaPlay() {
     const activeQ = state?.active ?? null;
     return (
       <div
-        className="relative flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3"
+        className="relative flex-1 overflow-y-auto"
         style={{
-          padding: "clamp(10px, 2.5vw, 32px)",
-          gap: "clamp(10px, 2.5vw, 32px)",
-          gridAutoRows: "1fr",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(min(140px, 42vw), 1fr))",
+          padding: "clamp(8px, 2vw, 28px)",
+          gap: "clamp(6px, 1.8vw, 20px)",
+          alignContent: "start",
         }}
       >
         {orderedSubCategoryIds.map(subId => {
@@ -547,6 +565,7 @@ export default function ArenaPlay() {
           if (!sub) return null;
           const imgUrl = sec ? getStaticCoverImage(sec.id, subId) : undefined;
           const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
+          const diffs = subDifficulties(subId, sub);
 
           return (
             <div
@@ -554,36 +573,34 @@ export default function ArenaPlay() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                height: "100%",
                 background: "rgba(22,27,34,0.95)",
                 border: `1.5px solid ${accentColor}33`,
-                borderRadius: "12px",
+                borderRadius: "10px",
                 overflow: "hidden",
-                boxShadow: `0 2px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)`,
+                boxShadow: `0 2px 10px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)`,
               }}
             >
               {/* Image / icon area */}
-              <div className="relative overflow-hidden" style={{ height: "clamp(60px, 13vw, 160px)", flexShrink: 0 }}>
+              <div className="relative overflow-hidden" style={{ height: "clamp(48px, 10vw, 120px)", flexShrink: 0 }}>
                 {imgUrl ? (
                   <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.85) saturate(0.9)" }} />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-3xl" style={{ background: `linear-gradient(160deg, ${accentColor}18 0%, ${accentColor}35 100%)`, color: accentColor }}>
+                  <div className="absolute inset-0 flex items-center justify-center text-2xl" style={{ background: `linear-gradient(160deg, ${accentColor}18 0%, ${accentColor}35 100%)`, color: accentColor }}>
                     {sec?.emoji ?? "📚"}
                   </div>
                 )}
-                {/* Gradient overlay for text readability */}
                 <div className="absolute inset-x-0 bottom-0 h-1/3" style={{ background: "linear-gradient(to bottom, transparent, rgba(14,17,23,0.85))" }} />
               </div>
               {/* Name strip */}
-              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "5px 8px 6px", borderBottom: "1px solid rgba(255,255,255,0.06)", borderTop: `1px solid ${accentColor}33` }}>
-                {sec?.emoji && <span style={{ fontSize: "clamp(11px, 2.4vw, 15px)", lineHeight: 1 }}>{sec.emoji}</span>}
-                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(11px, 2.6vw, 16px)", color: "#f1f5f9", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", padding: "4px 6px 5px", borderBottom: "1px solid rgba(255,255,255,0.06)", borderTop: `1px solid ${accentColor}33` }}>
+                {sec?.emoji && <span style={{ fontSize: "clamp(10px, 2vw, 13px)", lineHeight: 1 }}>{sec.emoji}</span>}
+                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "clamp(10px, 2.2vw, 14px)", color: "#f1f5f9", lineHeight: 1.25, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {sub.name}
                 </span>
               </div>
-              {/* Buttons grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3px", padding: "4px" }}>
-                {POINT_VALUES.map(pts => {
+              {/* Buttons grid — 2 columns (slot1 | slot2), one row per difficulty */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px", padding: "3px" }}>
+                {diffs.map(pts => {
                   const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
                   const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
                   const usedA = usedCards.includes(keyA);
@@ -596,18 +613,12 @@ export default function ArenaPlay() {
                         onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
                         disabled={usedA || !!activeQ}
                         className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedA) }}
-                        animate={goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 }) ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                        style={{ height: "clamp(24px, 4.5vw, 32px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(10px, 2.2vw, 13px)", ...diffStyle(pts, usedA) }}
+                        animate={goldenTile === keyA ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
                         transition={{ duration: 1.1, ease: "easeOut" }}
                       >
-                        {goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 }) && (
-                          <motion.span
-                            className="absolute inset-0 pointer-events-none"
-                            initial={{ opacity: 0.8, scaleX: 0 }}
-                            animate={{ opacity: 0, scaleX: 1 }}
-                            transition={{ duration: 1.0, ease: "easeOut" }}
-                            style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }}
-                          />
+                        {goldenTile === keyA && (
+                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
                         )}
                         {usedA ? "—" : pts}
                       </motion.button>
@@ -617,18 +628,12 @@ export default function ArenaPlay() {
                         onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
                         disabled={usedB || !!activeQ}
                         className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{ height: "clamp(26px, 5vw, 34px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(11px, 2.5vw, 14px)", ...diffStyle(pts, usedB) }}
-                        animate={goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 }) ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                        style={{ height: "clamp(24px, 4.5vw, 32px)", fontFamily: "'Tajawal', sans-serif", fontSize: "clamp(10px, 2.2vw, 13px)", ...diffStyle(pts, usedB) }}
+                        animate={goldenTile === keyB ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
                         transition={{ duration: 1.1, ease: "easeOut" }}
                       >
-                        {goldenTile === cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 }) && (
-                          <motion.span
-                            className="absolute inset-0 pointer-events-none"
-                            initial={{ opacity: 0.8, scaleX: 0 }}
-                            animate={{ opacity: 0, scaleX: 1 }}
-                            transition={{ duration: 1.0, ease: "easeOut" }}
-                            style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }}
-                          />
+                        {goldenTile === keyB && (
+                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
                         )}
                         {usedB ? "—" : pts}
                       </motion.button>
@@ -646,7 +651,10 @@ export default function ArenaPlay() {
 
   if (!state) return null;
 
-  const totalCards = orderedSubCategoryIds.length * POINT_VALUES.length * SLOTS.length;
+  const totalCards = orderedSubCategoryIds.reduce((sum, subId) => {
+    const sub = findSubCategory(subId, allSections);
+    return sum + (sub ? subDifficulties(subId, sub).length * SLOTS.length : 0);
+  }, 0);
   const usedCount = state.usedCards.length;
   const active = state.active;
 
