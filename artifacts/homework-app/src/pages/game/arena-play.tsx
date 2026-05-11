@@ -98,7 +98,9 @@ export default function ArenaPlay() {
   useEffect(() => {
     const loaded = loadArenaState();
     if (!loaded) {
-      setLocation("/game/arena");
+      // If the last game was started from the public arena page, go back there
+      const wasPublic = sessionStorage.getItem("arena_public_mode") === "1";
+      setLocation(wasPublic ? "/play/arena" : "/game/arena");
       return;
     }
     setState(loaded);
@@ -669,14 +671,17 @@ export default function ArenaPlay() {
   };
 
   const restart = () => {
+    const isPublic = state?.publicMode ?? sessionStorage.getItem("arena_public_mode") === "1";
     saveArenaState(null);
+    sessionStorage.removeItem("arena_public_mode");
     void fetch("/api/arena/save", { method: "DELETE" }).catch(() => { /* best-effort */ });
-    setLocation("/game/arena");
+    setLocation(isPublic ? "/play/arena" : "/game/arena");
   };
 
   // Exit but keep the state so the host can come back and continue.
   const exitKeep = () => {
-    setLocation("/teacher");
+    const wasPublic = state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
+    setLocation(wasPublic ? "/games" : "/teacher");
   };
 
   // Force end the game (winner is computed from current scores).
@@ -685,7 +690,8 @@ export default function ArenaPlay() {
     setPhase("end");
   };
 
-  if (isLoggedIn === false) {
+  const isPublicGame = state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
+  if (isLoggedIn === false && !isPublicGame) {
     return <ArenaLoginGate />;
   }
 

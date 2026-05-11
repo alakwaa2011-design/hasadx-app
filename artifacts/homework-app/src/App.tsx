@@ -163,6 +163,7 @@ const GamesPage = lazy(() => import("@/pages/games"));
 const ArenaSetup = lazy(() => import("@/pages/game/arena-setup"));
 const ArenaPlay = lazy(() => import("@/pages/game/arena-play"));
 const ArenaAudience = lazy(() => import("@/pages/game/arena-audience"));
+const PublicArenaSetup = lazy(() => import("@/pages/play/arena"));
 const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const TeamsPage = lazy(() => import("@/pages/teacher/teams"));
 const InstallTutorial = lazy(() => import("@/pages/install-tutorial"));
@@ -431,10 +432,12 @@ function Router() {
             label="تحدي حصاد"
             onReset={() => {
               try {
+                const wasPublic = sessionStorage.getItem("arena_public_mode") === "1";
                 Object.keys(localStorage)
                   .filter((k) => k.startsWith("hasad_arena_"))
                   .forEach((k) => localStorage.removeItem(k));
-                window.location.href = "/game/arena";
+                sessionStorage.removeItem("arena_public_mode");
+                window.location.href = wasPublic ? "/play/arena" : "/game/arena";
               } catch {
                 /* ignore */
               }
@@ -443,6 +446,22 @@ function Router() {
             <ArenaPlay />
           </ErrorBoundary>
         </Route>
+        {/* Public Arena — no login required */}
+        <Route path="/play/arena">
+          <ErrorBoundary
+            label="تحدي حصاد"
+            onReset={() => {
+              try {
+                Object.keys(localStorage)
+                  .filter((k) => k.startsWith("hasad_arena_"))
+                  .forEach((k) => localStorage.removeItem(k));
+              } catch { /* ignore */ }
+            }}
+          >
+            <PublicArenaSetup />
+          </ErrorBoundary>
+        </Route>
+
         {/* Public Routes */}
         <Route path="/games" component={GamesPage} />
         <Route path="/public/games" component={PublicGamesPage} />

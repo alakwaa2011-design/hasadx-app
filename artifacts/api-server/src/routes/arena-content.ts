@@ -36,17 +36,18 @@ const ActivityBody = z.object({
   sortOrder: z.number().int().default(0),
 });
 
-// GET /arena-content/categories — admin sees all; others see public + own
+// GET /arena-content/categories — public + own (unauthenticated: public only)
 router.get("/arena-content/categories", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
-    const admin = await isAdmin(teacherId);
-    const rows = admin
-      ? await db.select().from(arenaCategoriesTable).orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id))
-      : await db.select().from(arenaCategoriesTable)
-          .where(or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId)))
-          .orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id));
+    const where = teacherId
+      ? or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId))
+      : eq(arenaCategoriesTable.isPublic, true);
+    const rows = await db
+      .select()
+      .from(arenaCategoriesTable)
+      .where(where)
+      .orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id));
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "list arena categories");
@@ -116,21 +117,19 @@ router.delete("/arena-content/categories/:id", async (req, res) => {
   }
 });
 
-// GET /arena-content/activities?categoryIds=1,2,3 — admin sees all
+// GET /arena-content/activities?categoryIds=1,2,3 (unauthenticated: public only)
 router.get("/arena-content/activities", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
-    const admin = await isAdmin(teacherId);
     const idsRaw = String(req.query.categoryIds ?? "").trim();
-    const ids = idsRaw ? idsRaw.split(",").map(Number).filter(n => Number.isFinite(n)) : [];
-    let cond: ReturnType<typeof and> | ReturnType<typeof or> | undefined;
-    if (!admin) {
-      cond = or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId));
-    }
-    if (ids.length > 0) {
-      const idFilter = inArray(arenaActivitiesTable.categoryId, ids);
-      cond = cond ? and(cond, idFilter)! : idFilter;
+    let cond = teacherId
+      ? or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId))
+      : eq(arenaActivitiesTable.isPublic, true);
+    if (idsRaw) {
+      const ids = idsRaw.split(",").map(Number).filter(n => Number.isFinite(n));
+      if (ids.length > 0) {
+        cond = and(cond, inArray(arenaActivitiesTable.categoryId, ids))!;
+      }
     }
     const rows = await db.select().from(arenaActivitiesTable)
       .where(cond)

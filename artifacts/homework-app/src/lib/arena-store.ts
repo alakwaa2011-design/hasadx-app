@@ -57,6 +57,8 @@ export interface ArenaState {
   active: ArenaActiveQuestion | null;
   rulesAck: boolean;
   startedAt: number;
+  /** Set to true when the game was started from the public /play/arena route (no login required). */
+  publicMode?: boolean;
 }
 
 const KEY = "hasad_arena_state_v4";
@@ -112,6 +114,7 @@ export function loadArenaState(): ArenaState | null {
           : null,
         rulesAck: parsed.rulesAck ?? false,
         startedAt: parsed.startedAt ?? Date.now(),
+        publicMode: parsed.publicMode ?? false,
       };
     }
 
