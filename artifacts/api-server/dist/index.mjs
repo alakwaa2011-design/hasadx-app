@@ -24171,8 +24171,8 @@ var require_instrumentation18 = __commonJS({
        */
       _patchRouterDispatch(dispatchLayer) {
         api.diag.debug("Patching @koa/router dispatch");
-        const router58 = dispatchLayer.router;
-        const routesStack = router58?.stack ?? [];
+        const router59 = dispatchLayer.router;
+        const routesStack = router59?.stack ?? [];
         for (const pathLayer of routesStack) {
           const path4 = pathLayer.path;
           const pathStack = pathLayer.stack;
@@ -67163,27 +67163,27 @@ var require_router = __commonJS({
     var slice2 = Array.prototype.slice;
     var flatten4 = Array.prototype.flat;
     var methods = METHODS.map((method) => method.toLowerCase());
-    module2.exports = Router58;
+    module2.exports = Router59;
     module2.exports.Route = Route;
-    function Router58(options) {
-      if (!(this instanceof Router58)) {
-        return new Router58(options);
+    function Router59(options) {
+      if (!(this instanceof Router59)) {
+        return new Router59(options);
       }
       const opts = options || {};
-      function router58(req, res, next) {
-        router58.handle(req, res, next);
+      function router59(req, res, next) {
+        router59.handle(req, res, next);
       }
-      Object.setPrototypeOf(router58, this);
-      router58.caseSensitive = opts.caseSensitive;
-      router58.mergeParams = opts.mergeParams;
-      router58.params = {};
-      router58.strict = opts.strict;
-      router58.stack = [];
-      return router58;
+      Object.setPrototypeOf(router59, this);
+      router59.caseSensitive = opts.caseSensitive;
+      router59.mergeParams = opts.mergeParams;
+      router59.params = {};
+      router59.strict = opts.strict;
+      router59.stack = [];
+      return router59;
     }
-    Router58.prototype = function() {
+    Router59.prototype = function() {
     };
-    Router58.prototype.param = function param2(name2, fn) {
+    Router59.prototype.param = function param2(name2, fn) {
       if (!name2) {
         throw new TypeError("argument name is required");
       }
@@ -67203,7 +67203,7 @@ var require_router = __commonJS({
       params.push(fn);
       return this;
     };
-    Router58.prototype.handle = function handle(req, res, callback) {
+    Router59.prototype.handle = function handle(req, res, callback) {
       if (!callback) {
         throw new TypeError("argument callback is required");
       }
@@ -67330,7 +67330,7 @@ var require_router = __commonJS({
         }
       }
     };
-    Router58.prototype.use = function use(handler) {
+    Router59.prototype.use = function use(handler) {
       let offset = 0;
       let path4 = "/";
       if (typeof handler !== "function") {
@@ -67363,7 +67363,7 @@ var require_router = __commonJS({
       }
       return this;
     };
-    Router58.prototype.route = function route(path4) {
+    Router59.prototype.route = function route(path4) {
       const route2 = new Route(path4);
       const layer = new Layer(path4, {
         sensitive: this.caseSensitive,
@@ -67378,7 +67378,7 @@ var require_router = __commonJS({
       return route2;
     };
     methods.concat("all").forEach(function(method) {
-      Router58.prototype[method] = function(path4) {
+      Router59.prototype[method] = function(path4) {
         const route = this.route(path4);
         route[method].apply(route, slice2.call(arguments, 1));
         return this;
@@ -67561,13 +67561,13 @@ var require_application = __commonJS({
     var compileTrust = require_utils24().compileTrust;
     var resolve3 = __require("node:path").resolve;
     var once = require_once();
-    var Router58 = require_router();
+    var Router59 = require_router();
     var slice2 = Array.prototype.slice;
     var flatten4 = Array.prototype.flat;
     var app2 = exports2 = module2.exports = {};
     var trustProxyDefaultSymbol = "@@symbol:trust_proxy_default";
     app2.init = function init3() {
-      var router58 = null;
+      var router59 = null;
       this.cache = /* @__PURE__ */ Object.create(null);
       this.engines = /* @__PURE__ */ Object.create(null);
       this.settings = /* @__PURE__ */ Object.create(null);
@@ -67576,13 +67576,13 @@ var require_application = __commonJS({
         configurable: true,
         enumerable: true,
         get: function getrouter() {
-          if (router58 === null) {
-            router58 = new Router58({
+          if (router59 === null) {
+            router59 = new Router59({
               caseSensitive: this.enabled("case sensitive routing"),
               strict: this.enabled("strict routing")
             });
           }
-          return router58;
+          return router59;
         }
       });
     };
@@ -67653,15 +67653,15 @@ var require_application = __commonJS({
       if (fns.length === 0) {
         throw new TypeError("app.use() requires a middleware function");
       }
-      var router58 = this.router;
+      var router59 = this.router;
       fns.forEach(function(fn2) {
         if (!fn2 || !fn2.handle || !fn2.set) {
-          return router58.use(path4, fn2);
+          return router59.use(path4, fn2);
         }
         debug2(".use app under %s", path4);
         fn2.mountpath = path4;
         fn2.parent = this;
-        router58.use(path4, function mounted_app(req, res, next) {
+        router59.use(path4, function mounted_app(req, res, next) {
           var orig = req.app;
           fn2.handle(req, res, function(err) {
             Object.setPrototypeOf(req, orig.request);
@@ -69949,7 +69949,7 @@ var require_express = __commonJS({
     var EventEmitter2 = __require("node:events").EventEmitter;
     var mixin2 = require_merge_descriptors();
     var proto = require_application();
-    var Router58 = require_router();
+    var Router59 = require_router();
     var req = require_request();
     var res = require_response();
     exports2 = module2.exports = createApplication;
@@ -69971,8 +69971,8 @@ var require_express = __commonJS({
     exports2.application = proto;
     exports2.request = req;
     exports2.response = res;
-    exports2.Route = Router58.Route;
-    exports2.Router = Router58;
+    exports2.Route = Router59.Route;
+    exports2.Router = Router59;
     exports2.json = bodyParser.json;
     exports2.raw = bodyParser.raw;
     exports2.static = require_serve_static();
@@ -102663,7 +102663,11 @@ var init_teachers = __esm({
       // Google Classroom OAuth2 tokens
       classroomAccessToken: text("classroom_access_token"),
       classroomRefreshToken: text("classroom_refresh_token"),
-      classroomTokenExpiry: timestamp("classroom_token_expiry")
+      classroomTokenExpiry: timestamp("classroom_token_expiry"),
+      // Microsoft Teams OAuth2 tokens
+      teamsAccessToken: text("teams_access_token"),
+      teamsRefreshToken: text("teams_refresh_token"),
+      teamsTokenExpiry: timestamp("teams_token_expiry")
     });
     insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });
   }
@@ -420251,9 +420255,9 @@ function patchExpressModule(optionsOrExports, maybeGetOptions) {
       "use",
       function appUseTrace(...args) {
         const route = originalApplicationUse.apply(this, args);
-        const router58 = isExpressWithRouterPrototype(express2) ? this.router : this._router;
-        if (router58) {
-          const layer = router58.stack[router58.stack.length - 1];
+        const router59 = isExpressWithRouterPrototype(express2) ? this.router : this._router;
+        if (router59) {
+          const layer = router59.stack[router59.stack.length - 1];
           if (layer) {
             patchLayer(getOptions, layer, getLayerPath(args));
           }
@@ -433265,7 +433269,7 @@ var import_dist = __toESM(require_dist2(), 1);
 var { Server, Namespace, Socket: Socket2 } = import_dist.default;
 
 // src/app.ts
-var import_express61 = __toESM(require_express2(), 1);
+var import_express62 = __toESM(require_express2(), 1);
 var import_compression = __toESM(require_compression(), 1);
 var import_cors = __toESM(require_lib(), 1);
 
@@ -433818,7 +433822,7 @@ var import_connect_pg_simple = __toESM(require_connect_pg_simple(), 1);
 init_src();
 
 // src/routes/index.ts
-var import_express60 = __toESM(require_express2(), 1);
+var import_express61 = __toESM(require_express2(), 1);
 
 // src/routes/health.ts
 var import_express4 = __toESM(require_express2(), 1);
@@ -468189,65 +468193,473 @@ router56.get("/classroom/courses/:courseId/submissions", async (req, res) => {
 });
 var classroom_default = router56;
 
-// src/routes/index.ts
+// src/routes/teams.ts
+var import_express60 = __toESM(require_express2(), 1);
+init_src();
+init_drizzle_orm();
 var router57 = (0, import_express60.Router)();
-router57.use(public_content_default);
-router57.use(quick_challenge_default);
-router57.use(health_default);
-router57.use(auth_default);
-router57.use(assignments_default);
-router57.use(submissions_default);
-router57.use(notifications_default);
-router57.use(ai_questions_default);
-router57.use(ai_mindmap_default);
-router57.use("/ai-chat", ai_chat_default);
-router57.use(students_default);
-router57.use(teacher_classes_default);
-router57.use(attendance_default);
-router57.use(import_students_default);
-router57.use(feedback_default);
-router57.use(admin_default);
-router57.use(question_bank_default);
-router57.use(game_history_default);
-router57.use(categories_default);
-router57.use(collections_default);
-router57.use(tug_templates_default);
-router57.use(rocket_templates_default);
-router57.use(wheel_default);
-router57.use(worksheets_default);
-router57.use(lesson_plans_default);
-router57.use(video_lessons_default);
-router57.use(storage_default);
-router57.use(color_scores_default);
-router57.use(flag_scores_default);
-router57.use(memory_default);
-router57.use(adaptive_default);
-router57.use(multiply_scores_default);
-router57.use(scramble_default);
-router57.use(sections_default);
-router57.use(student_auth_default);
-router57.use(capital_scores_default);
-router57.use(stroop_default);
-router57.use(maraqui_default);
-router57.use(million_game_default);
-router57.use(million_team_game_default);
-router57.use(million_class_session_default);
-router57.use(library_default);
-router57.use(custom_columns_default);
-router57.use(letrly_default);
-router57.use(tts_default);
-router57.use(islamic_competitions_default);
-router57.use(billing_default);
-router57.use(arena_content_default);
-router57.use(arena_session_default);
-router57.use(arena_save_default);
-router57.use(activity_default);
-router57.use(ai_presentations_default);
-router57.use(presentations_default);
-router57.use(presentation_sessions_default);
-router57.use(student_timeline_default);
-router57.use(classroom_default);
-var routes_default = router57;
+var CLIENT_ID3 = process.env.MICROSOFT_CLIENT_ID;
+var CLIENT_SECRET2 = process.env.MICROSOFT_CLIENT_SECRET;
+var GRAPH_BASE = "https://graph.microsoft.com/v1.0";
+var TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+var AUTH_BASE = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
+var SCOPES2 = [
+  "offline_access",
+  "User.Read",
+  "EduRoster.ReadBasic.All",
+  "EduAssignments.ReadWrite.All"
+].join(" ");
+function getRedirectUri2(req) {
+  const proto = req.headers["x-forwarded-proto"] || req.protocol || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+  return `${proto}://${host}/api/auth/microsoft/teams/callback`;
+}
+async function refreshIfNeeded(teacherId, token) {
+  const now = Date.now();
+  const expiryMs = token.expiry ? token.expiry.getTime() : 0;
+  if (expiryMs - now > 5 * 60 * 1e3) return token.accessToken;
+  try {
+    const params = new URLSearchParams({
+      client_id: CLIENT_ID3,
+      client_secret: CLIENT_SECRET2,
+      refresh_token: token.refreshToken,
+      grant_type: "refresh_token",
+      scope: SCOPES2
+    });
+    const r2 = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
+    });
+    if (!r2.ok) return null;
+    const data = await r2.json();
+    const newExpiry = new Date(Date.now() + (data.expires_in ?? 3600) * 1e3);
+    await db.update(teachersTable).set({
+      teamsAccessToken: data.access_token,
+      ...data.refresh_token ? { teamsRefreshToken: data.refresh_token } : {},
+      teamsTokenExpiry: newExpiry
+    }).where(eq(teachersTable.id, teacherId));
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
+async function getAccessToken(teacherId) {
+  const [row] = await db.select({
+    accessToken: teachersTable.teamsAccessToken,
+    refreshToken: teachersTable.teamsRefreshToken,
+    expiry: teachersTable.teamsTokenExpiry
+  }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+  if (!row?.accessToken || !row?.refreshToken) return null;
+  return refreshIfNeeded(teacherId, {
+    accessToken: row.accessToken,
+    refreshToken: row.refreshToken,
+    expiry: row.expiry
+  });
+}
+async function graph(path4, accessToken, opts = {}) {
+  const r2 = await fetch(`${GRAPH_BASE}${path4}`, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      ...opts.headers ?? {}
+    }
+  });
+  return r2;
+}
+router57.get("/teams/connect", (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  if (!CLIENT_ID3 || !CLIENT_SECRET2) {
+    res.status(503).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0625\u0639\u062F\u0627\u062F Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID3,
+    response_type: "code",
+    redirect_uri: getRedirectUri2(req),
+    response_mode: "query",
+    scope: SCOPES2,
+    state: String(teacherId),
+    prompt: "consent"
+  });
+  res.redirect(`${AUTH_BASE}?${params.toString()}`);
+});
+router57.get("/auth/microsoft/teams/callback", async (req, res) => {
+  try {
+    const { code, state, error: error41 } = req.query;
+    if (error41) {
+      req.log.warn({ error: error41 }, "Microsoft Teams OAuth denied");
+      res.redirect("/teacher/teams?error=denied");
+      return;
+    }
+    const teacherId = parseInt(state || "", 10);
+    if (!teacherId || isNaN(teacherId)) {
+      res.redirect("/teacher/teams?error=invalid_state");
+      return;
+    }
+    const params = new URLSearchParams({
+      client_id: CLIENT_ID3,
+      client_secret: CLIENT_SECRET2,
+      code,
+      redirect_uri: getRedirectUri2(req),
+      grant_type: "authorization_code",
+      scope: SCOPES2
+    });
+    const tokenRes = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
+    });
+    if (!tokenRes.ok) {
+      const body = await tokenRes.text();
+      req.log.error({ body }, "Microsoft Teams token exchange failed");
+      res.redirect("/teacher/teams?error=callback_failed");
+      return;
+    }
+    const tokens = await tokenRes.json();
+    const expiry = new Date(Date.now() + (tokens.expires_in ?? 3600) * 1e3);
+    await db.update(teachersTable).set({
+      teamsAccessToken: tokens.access_token ?? null,
+      teamsRefreshToken: tokens.refresh_token ?? null,
+      teamsTokenExpiry: expiry
+    }).where(eq(teachersTable.id, teacherId));
+    res.redirect("/teacher/teams?connected=1");
+  } catch (err) {
+    req.log.error({ err }, "Microsoft Teams callback error");
+    res.redirect("/teacher/teams?error=callback_failed");
+  }
+});
+router57.get("/teams/status", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const [row] = await db.select({
+    accessToken: teachersTable.teamsAccessToken,
+    refreshToken: teachersTable.teamsRefreshToken
+  }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+  res.json({ connected: !!(row?.accessToken && row?.refreshToken) });
+});
+router57.delete("/teams/disconnect", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  await db.update(teachersTable).set({
+    teamsAccessToken: null,
+    teamsRefreshToken: null,
+    teamsTokenExpiry: null
+  }).where(eq(teachersTable.id, teacherId));
+  res.json({ message: "\u062A\u0645 \u0642\u0637\u0639 \u0627\u0644\u0627\u062A\u0635\u0627\u0644 \u0628\u0640 Microsoft Teams" });
+});
+router57.get("/teams/classes", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const token = await getAccessToken(teacherId);
+  if (!token) {
+    res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  try {
+    const eduRes = await graph("/education/classes?$top=50&$select=id,displayName,externalId,mailNickname", token);
+    if (eduRes.ok) {
+      const data2 = await eduRes.json();
+      const classes2 = (data2.value || []).map((c) => ({
+        id: c.id,
+        name: c.displayName,
+        externalId: c.externalId || null,
+        mailNickname: c.mailNickname || null,
+        source: "education"
+      }));
+      res.json({ classes: classes2 });
+      return;
+    }
+    const teamsRes = await graph("/me/joinedTeams?$select=id,displayName,description", token);
+    if (!teamsRes.ok) {
+      const body = await teamsRes.text();
+      req.log.error({ body }, "Teams classes fetch failed");
+      res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0627\u0644\u0641\u0635\u0648\u0644" });
+      return;
+    }
+    const data = await teamsRes.json();
+    const classes = (data.value || []).map((t2) => ({
+      id: t2.id,
+      name: t2.displayName,
+      externalId: null,
+      mailNickname: null,
+      source: "teams"
+    }));
+    res.json({ classes });
+  } catch (err) {
+    req.log.error({ err }, "Teams classes fetch error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0627\u0644\u0641\u0635\u0648\u0644 \u0645\u0646 Microsoft Teams" });
+  }
+});
+router57.get("/teams/classes/:classId/members", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const token = await getAccessToken(teacherId);
+  if (!token) {
+    res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  const { classId } = req.params;
+  const source = req.query.source || "education";
+  try {
+    let members = [];
+    if (source === "education") {
+      const r2 = await graph(`/education/classes/${classId}/members?$select=id,displayName,mail,userPrincipalName`, token);
+      if (!r2.ok) throw new Error(`Education members: ${r2.status}`);
+      const data = await r2.json();
+      members = (data.value || []).filter((m2) => m2["@odata.type"] !== "#microsoft.graph.educationTeacher").map((m2) => ({
+        microsoftId: m2.id,
+        name: m2.displayName || m2.mail || "\u0637\u0627\u0644\u0628",
+        email: m2.mail || m2.userPrincipalName || null
+      }));
+    } else {
+      const r2 = await graph(`/groups/${classId}/members?$select=id,displayName,mail,userPrincipalName`, token);
+      if (!r2.ok) throw new Error(`Teams members: ${r2.status}`);
+      const data = await r2.json();
+      members = (data.value || []).map((m2) => ({
+        microsoftId: m2.id,
+        name: m2.displayName || m2.mail || "\u0639\u0636\u0648",
+        email: m2.mail || m2.userPrincipalName || null
+      }));
+    }
+    res.json({ members });
+  } catch (err) {
+    req.log.error({ err }, "Teams members fetch error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0623\u0639\u0636\u0627\u0621 \u0627\u0644\u0641\u0635\u0644" });
+  }
+});
+router57.post("/teams/classes/:classId/members/import", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const token = await getAccessToken(teacherId);
+  if (!token) {
+    res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  const { classId } = req.params;
+  const { targetClass, source = "education" } = req.body ?? {};
+  try {
+    let members = [];
+    if (source === "education") {
+      const r2 = await graph(`/education/classes/${classId}/members?$select=id,displayName,mail,userPrincipalName`, token);
+      if (!r2.ok) throw new Error(`Education members: ${r2.status}`);
+      const data = await r2.json();
+      members = (data.value || []).filter((m2) => m2["@odata.type"] !== "#microsoft.graph.educationTeacher").map((m2) => ({
+        name: m2.displayName || m2.mail || "\u0637\u0627\u0644\u0628",
+        email: m2.mail || m2.userPrincipalName || null
+      }));
+    } else {
+      const r2 = await graph(`/groups/${classId}/members?$select=id,displayName,mail,userPrincipalName`, token);
+      if (!r2.ok) throw new Error(`Teams members: ${r2.status}`);
+      const data = await r2.json();
+      members = (data.value || []).map((m2) => ({
+        name: m2.displayName || m2.mail || "\u0639\u0636\u0648",
+        email: m2.mail || m2.userPrincipalName || null
+      }));
+    }
+    if (members.length === 0) {
+      res.json({ imported: 0, message: "\u0644\u0627 \u064A\u0648\u062C\u062F \u0637\u0644\u0627\u0628 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0641\u0635\u0644" });
+      return;
+    }
+    const rows = members.map((m2) => ({
+      name: m2.name,
+      gradeLevel: null,
+      studentClass: targetClass || null,
+      parentPhone: null,
+      notes: m2.email ? `Microsoft Teams: ${m2.email}` : null,
+      teacherId
+    }));
+    const inserted = await db.insert(studentsTable).values(rows).returning({ id: studentsTable.id });
+    res.json({ imported: inserted.length, message: `\u062A\u0645 \u0627\u0633\u062A\u064A\u0631\u0627\u062F ${inserted.length} \u0637\u0627\u0644\u0628 \u0628\u0646\u062C\u0627\u062D` });
+  } catch (err) {
+    req.log.error({ err }, "Teams import error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0627\u0633\u062A\u064A\u0631\u0627\u062F \u0627\u0644\u0637\u0644\u0627\u0628" });
+  }
+});
+router57.post("/teams/classes/:classId/assignments", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const token = await getAccessToken(teacherId);
+  if (!token) {
+    res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  const { title, instructions, dueDate, maxPoints, assignmentUrl } = req.body ?? {};
+  if (!title) {
+    res.status(400).json({ message: "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u0648\u0627\u062C\u0628 \u0645\u0637\u0644\u0648\u0628" });
+    return;
+  }
+  const { classId } = req.params;
+  try {
+    const body = {
+      displayName: title,
+      instructions: {
+        content: instructions || "",
+        contentType: "text"
+      },
+      status: "published"
+    };
+    if (maxPoints) {
+      body.grading = { "@odata.type": "#microsoft.graph.educationAssignmentPointsGradeType", maxPoints: Number(maxPoints) };
+    }
+    if (dueDate) {
+      body.dueDateTime = new Date(dueDate).toISOString();
+    }
+    if (assignmentUrl) {
+      body.resources = [{
+        distributeForStudentWork: false,
+        resource: {
+          "@odata.type": "#microsoft.graph.educationLinkResource",
+          displayName: title,
+          link: assignmentUrl
+        }
+      }];
+    }
+    const r2 = await graph(`/education/classes/${classId}/assignments`, token, {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+    if (!r2.ok) {
+      const errBody = await r2.text();
+      req.log.error({ errBody, status: r2.status }, "Teams assignment publish failed");
+      res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0646\u0634\u0631 \u0627\u0644\u0648\u0627\u062C\u0628 \u0641\u064A Microsoft Teams" });
+      return;
+    }
+    const data = await r2.json();
+    res.json({
+      id: data.id,
+      title: data.displayName,
+      message: "\u062A\u0645 \u0646\u0634\u0631 \u0627\u0644\u0648\u0627\u062C\u0628 \u0641\u064A Microsoft Teams \u0628\u0646\u062C\u0627\u062D"
+    });
+  } catch (err) {
+    req.log.error({ err }, "Teams assignment publish error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0646\u0634\u0631 \u0627\u0644\u0648\u0627\u062C\u0628" });
+  }
+});
+router57.get("/teams/classes/:classId/submissions", async (req, res) => {
+  const teacherId = req.session.teacherId;
+  if (!teacherId) {
+    res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+    return;
+  }
+  const token = await getAccessToken(teacherId);
+  if (!token) {
+    res.status(403).json({ message: "\u0644\u0645 \u064A\u062A\u0645 \u0631\u0628\u0637 Microsoft Teams \u0628\u0639\u062F" });
+    return;
+  }
+  const { assignmentId } = req.query;
+  if (!assignmentId) {
+    res.status(400).json({ message: "assignmentId \u0645\u0637\u0644\u0648\u0628" });
+    return;
+  }
+  const { classId } = req.params;
+  try {
+    const r2 = await graph(
+      `/education/classes/${classId}/assignments/${assignmentId}/submissions?$select=id,status,submittedDateTime,recipient`,
+      token
+    );
+    if (!r2.ok) {
+      res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062A\u0633\u0644\u064A\u0645\u0627\u062A" });
+      return;
+    }
+    const data = await r2.json();
+    const submissions = (data.value || []).map((s2) => ({
+      id: s2.id,
+      status: s2.status,
+      submittedAt: s2.submittedDateTime,
+      studentId: s2.recipient?.userId
+    }));
+    res.json({ submissions });
+  } catch (err) {
+    req.log.error({ err }, "Teams submissions fetch error");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u062C\u0644\u0628 \u0627\u0644\u062A\u0633\u0644\u064A\u0645\u0627\u062A" });
+  }
+});
+var teams_default = router57;
+
+// src/routes/index.ts
+var router58 = (0, import_express61.Router)();
+router58.use(public_content_default);
+router58.use(quick_challenge_default);
+router58.use(health_default);
+router58.use(auth_default);
+router58.use(assignments_default);
+router58.use(submissions_default);
+router58.use(notifications_default);
+router58.use(ai_questions_default);
+router58.use(ai_mindmap_default);
+router58.use("/ai-chat", ai_chat_default);
+router58.use(students_default);
+router58.use(teacher_classes_default);
+router58.use(attendance_default);
+router58.use(import_students_default);
+router58.use(feedback_default);
+router58.use(admin_default);
+router58.use(question_bank_default);
+router58.use(game_history_default);
+router58.use(categories_default);
+router58.use(collections_default);
+router58.use(tug_templates_default);
+router58.use(rocket_templates_default);
+router58.use(wheel_default);
+router58.use(worksheets_default);
+router58.use(lesson_plans_default);
+router58.use(video_lessons_default);
+router58.use(storage_default);
+router58.use(color_scores_default);
+router58.use(flag_scores_default);
+router58.use(memory_default);
+router58.use(adaptive_default);
+router58.use(multiply_scores_default);
+router58.use(scramble_default);
+router58.use(sections_default);
+router58.use(student_auth_default);
+router58.use(capital_scores_default);
+router58.use(stroop_default);
+router58.use(maraqui_default);
+router58.use(million_game_default);
+router58.use(million_team_game_default);
+router58.use(million_class_session_default);
+router58.use(library_default);
+router58.use(custom_columns_default);
+router58.use(letrly_default);
+router58.use(tts_default);
+router58.use(islamic_competitions_default);
+router58.use(billing_default);
+router58.use(arena_content_default);
+router58.use(arena_session_default);
+router58.use(arena_save_default);
+router58.use(activity_default);
+router58.use(ai_presentations_default);
+router58.use(presentations_default);
+router58.use(presentation_sessions_default);
+router58.use(student_timeline_default);
+router58.use(classroom_default);
+router58.use(teams_default);
+var routes_default = router58;
 
 // src/app.ts
 init_logger2();
@@ -468272,7 +468684,7 @@ if (!SESSION_SECRET || SESSION_SECRET === DEFAULT_SECRET) {
   );
 }
 var PgSession2 = (0, import_connect_pg_simple.default)(import_express_session.default);
-var app = (0, import_express61.default)();
+var app = (0, import_express62.default)();
 app.set("trust proxy", 1);
 app.set("etag", false);
 app.use((0, import_compression.default)());
@@ -468363,9 +468775,9 @@ var IMAGE_UPLOAD_PATHS = /* @__PURE__ */ new Set(["/api/ai/extract-questions-fro
 var IMAGE_UPLOAD_PATTERN = /^\/api\/assignments\/\d+\/(submit|submit-image)$/;
 app.use((req, res, next) => {
   const isImageUpload = IMAGE_UPLOAD_PATHS.has(req.path) || IMAGE_UPLOAD_PATTERN.test(req.path);
-  import_express61.default.json({ limit: isImageUpload ? "8mb" : "2mb" })(req, res, next);
+  import_express62.default.json({ limit: isImageUpload ? "8mb" : "2mb" })(req, res, next);
 });
-app.use(import_express61.default.urlencoded({ extended: true, limit: "2mb" }));
+app.use(import_express62.default.urlencoded({ extended: true, limit: "2mb" }));
 var STATE_MUTATING_METHODS = /* @__PURE__ */ new Set(["POST", "PUT", "DELETE", "PATCH"]);
 app.use((req, res, next) => {
   if (!STATE_MUTATING_METHODS.has(req.method)) return next();

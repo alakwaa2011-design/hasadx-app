@@ -55,6 +55,7 @@ import aiPresentationsRouter from "./ai-presentations";
 import presentationSessionsRouter from "./presentation-sessions";
 import studentTimelineRouter from "./student-timeline";
 import classroomRouter from "./classroom";
+import teamsRouter from "./teams";
 
 const router: IRouter = Router();
 
@@ -117,5 +118,6 @@ router.use(presentationsRouter);
 router.use(presentationSessionsRouter);
 router.use(studentTimelineRouter);
 router.use(classroomRouter);
+router.use(teamsRouter);
 
 export default router;

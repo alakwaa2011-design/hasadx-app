@@ -26,6 +26,10 @@ export const teachersTable = pgTable("teachers", {
   classroomAccessToken: text("classroom_access_token"),
   classroomRefreshToken: text("classroom_refresh_token"),
   classroomTokenExpiry: timestamp("classroom_token_expiry"),
+  // Microsoft Teams OAuth2 tokens
+  teamsAccessToken: text("teams_access_token"),
+  teamsRefreshToken: text("teams_refresh_token"),
+  teamsTokenExpiry: timestamp("teams_token_expiry"),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });

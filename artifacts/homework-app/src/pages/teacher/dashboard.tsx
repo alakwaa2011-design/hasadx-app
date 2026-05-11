@@ -2270,6 +2270,23 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           accent: "#4285F4",
           href: "/teacher/classroom",
         },
+        {
+          icon: (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="24" height="24" rx="5" fill="#5059C9" />
+              <path d="M14.5 8.5C14.5 9.88 13.38 11 12 11C10.62 11 9.5 9.88 9.5 8.5C9.5 7.12 10.62 6 12 6C13.38 6 14.5 7.12 14.5 8.5Z" fill="white" />
+              <path d="M16 11H8C7.45 11 7 11.45 7 12V16.5C7 17.05 7.45 17.5 8 17.5H16C16.55 17.5 17 17.05 17 16.5V12C17 11.45 16.55 11 16 11Z" fill="white" />
+              <circle cx="17.5" cy="8" r="2.5" fill="#7B83EB" />
+              <path d="M19.5 10.5H15.5V14C15.5 14.83 16.17 15.5 17 15.5H18C19.1 15.5 20 14.6 20 13.5V11C20 10.72 19.78 10.5 19.5 10.5Z" fill="#7B83EB" />
+            </svg>
+          ),
+          title: isAr ? "Microsoft Teams" : "Microsoft Teams",
+          desc: isAr
+            ? "استيراد الطلاب ونشر الواجبات عبر Teams"
+            : "Import students, publish assignments via Teams",
+          accent: "#5059C9",
+          href: "/teacher/teams",
+        },
       ],
     },
     {
