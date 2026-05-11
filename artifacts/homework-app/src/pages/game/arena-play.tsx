@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Eye, Clock, RotateCcw, Home, Zap, X, Volume2, VolumeX,
   Maximize, Minimize, BookOpen, Sparkles, ChevronLeft, Share2, Flag,
-  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown, Swords,
+  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown, Users,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { ConfettiBurst } from "@/components/confetti-burst";
@@ -641,12 +641,12 @@ export default function ArenaPlay() {
       >
         <div
           style={{
-            maxWidth: "1080px",
+            maxWidth: "1240px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
-            gap: "clamp(14px, 2vw, 22px)",
-            padding: "clamp(12px, 2vw, 24px)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
+            gap: "clamp(16px, 2vw, 26px)",
+            padding: "clamp(14px, 2vw, 28px)",
           }}
         >
           {orderedSubCategoryIds.map(subId => {
@@ -686,9 +686,9 @@ export default function ArenaPlay() {
                 <div className="flex items-center justify-center" style={{ paddingTop: "14px", paddingBottom: "12px", paddingLeft: "12px", paddingRight: "12px" }}>
                   <span
                     style={{
-                      fontFamily: "'Tajawal', sans-serif",
-                      fontWeight: 900,
-                      fontSize: "16px",
+                      fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
+                      fontWeight: 600,
+                      fontSize: "17px",
                       color: "#1f2937",
                       lineHeight: 1.2,
                       textAlign: "center",
@@ -1143,85 +1143,120 @@ export default function ArenaPlay() {
     { icon: <Home className="w-[18px] h-[18px]"/>, action: exitKeep, label: "الرئيسية" },
   ];
 
+  const ARABIC_FONT = "'IBM Plex Sans Arabic', 'Tajawal', sans-serif";
+  const ARABIC_DISPLAY = "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif";
+
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "#faf6ec", fontFamily: "'Tajawal', sans-serif", height: "100vh", overflow: "hidden" }}>
+    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "#faf6ec", fontFamily: ARABIC_FONT, height: "100vh", overflow: "hidden" }}>
 
       {/* ══ HEADER — white card, 3 zones ══════════════════════════════════ */}
       <header className="shrink-0 px-2 sm:px-4 pt-2 sm:pt-3">
         <div
-          className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2"
+          className="px-3 sm:px-4 py-2.5 gap-3 sm:gap-4 flex flex-col sm:grid items-stretch sm:items-center"
           style={{
             background: "#ffffff",
-            borderRadius: "16px",
+            borderRadius: "18px",
             boxShadow: "0 2px 10px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
             border: "1px solid #ebe2cd",
             maxWidth: "1280px",
             margin: "0 auto",
             width: "100%",
+            gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
           }}
         >
-          {/* Zone A (visually right in RTL): Teams challenge button — bigger, with Swords icon */}
-          <div className="flex items-center order-1 ms-auto sm:ms-0">
+          {/* Zone A (visually right in RTL): Teams pill — fills cell, reaches toward brand */}
+          <div
+            className="flex items-center justify-stretch"
+            style={{ minWidth: 0 }}
+          >
             <div
-              className="flex items-center gap-3 sm:gap-4 px-4 py-2.5 rounded-2xl"
+              className="flex items-center justify-between w-full px-3 sm:px-4 py-2 rounded-2xl"
               style={{
                 background: "linear-gradient(135deg, #faf6ec, #f5efdc)",
                 border: "1.5px solid #d9c896",
                 boxShadow: "0 2px 6px rgba(45,94,63,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
+                fontFamily: ARABIC_FONT,
               }}
             >
-              {state.teamOrder.slice(0, 2).map((teamId, i) => {
-                const t = state.teams[teamId];
+              {/* Team A (right in RTL) */}
+              {(() => {
+                const t = state.teams[state.teamOrder[0]];
                 if (!t) return null;
-                const isActive = state.currentTurn === teamId;
+                const isActive = state.currentTurn === state.teamOrder[0];
                 return (
-                  <React.Fragment key={teamId}>
-                    {i > 0 && (
-                      <div className="flex items-center justify-center" style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#2d5e3f", boxShadow: "0 2px 6px rgba(45,94,63,0.35)" }}>
-                        <Swords className="w-4 h-4" style={{ color: "#fff" }} />
-                      </div>
-                    )}
-                    <div className="flex flex-col items-center min-w-0" style={{ minWidth: "64px" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 800, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
-                      <span style={{ fontSize: "22px", fontWeight: 900, lineHeight: 1.1, color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-start">
+                    <div className="flex items-center justify-center shrink-0" style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${t.color}1f` }}>
+                      <Users className="w-[20px] h-[20px]" style={{ color: t.color }} />
                     </div>
-                  </React.Fragment>
+                    <div className="flex flex-col min-w-0 leading-none">
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2, textAlign: "start" }}>{t.name}</span>
+                      <span style={{ fontSize: "22px", fontWeight: 800, lineHeight: 1.1, marginTop: "2px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums", textAlign: "start" }}>{t.score}</span>
+                    </div>
+                  </div>
                 );
-              })}
+              })()}
+
+              {/* VS center */}
+              <div className="flex items-center justify-center shrink-0 mx-2" style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#ffffff", border: "2px solid #d9c896", boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}>
+                <span style={{ fontSize: "13px", fontWeight: 900, color: "#2d5e3f", letterSpacing: "0.05em", fontFamily: ARABIC_DISPLAY }}>VS</span>
+              </div>
+
+              {/* Team B (left in RTL) */}
+              {(() => {
+                const t = state.teams[state.teamOrder[1]];
+                if (!t) return null;
+                const isActive = state.currentTurn === state.teamOrder[1];
+                return (
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+                    <div className="flex flex-col min-w-0 leading-none">
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2, textAlign: "end" }}>{t.name}</span>
+                      <span style={{ fontSize: "22px", fontWeight: 800, lineHeight: 1.1, marginTop: "2px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums", textAlign: "end" }}>{t.score}</span>
+                    </div>
+                    <div className="flex items-center justify-center shrink-0" style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${t.color}1f` }}>
+                      <Users className="w-[20px] h-[20px]" style={{ color: t.color }} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
           {/* Zone B (center): Brand */}
-          <div className="flex items-center justify-center gap-2.5 order-2 flex-1 min-w-0">
+          <div className="flex items-center justify-center gap-2.5 shrink-0 px-1">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
               alt="حصاد"
-              className="w-11 h-11 rounded-xl object-cover shrink-0"
+              className="w-12 h-12 rounded-xl object-cover shrink-0"
               style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
             />
             <div className="flex flex-col leading-none">
-              <span style={{ fontWeight: 900, fontSize: "19px", color: "#2d5e3f", letterSpacing: "0.02em" }}>تحدّي حصاد</span>
-              <span style={{ fontWeight: 600, fontSize: "11px", color: "#a08a55", marginTop: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>
+              <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "21px", color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
+              <span style={{ fontFamily: ARABIC_FONT, fontWeight: 500, fontSize: "11.5px", color: "#a08a55", marginTop: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" }}>
                 {state.tournamentName ?? "بطولة المعرفة والتحدي"}
               </span>
             </div>
           </div>
 
-          {/* Zone C (visually left in RTL): Action buttons */}
-          <div className="flex items-center gap-1.5 order-3 flex-wrap justify-center">
+          {/* Zone C (visually left in RTL): Action buttons — fills cell */}
+          <div
+            className="flex items-center justify-between"
+            style={{ gap: "6px", minWidth: 0 }}
+          >
             {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90"
+                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90 flex-1"
                 style={{
-                  width: "52px",
-                  height: "50px",
+                  minWidth: "0",
+                  maxWidth: "62px",
+                  height: "56px",
                   gap: "3px",
                   color: "#5b6b87",
                   background: "#faf6ec",
                   border: "1px solid #ebe2cd",
+                  fontFamily: ARABIC_FONT,
                 }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLButtonElement).style.background = "#f0e8d4";
@@ -1233,7 +1268,7 @@ export default function ArenaPlay() {
                 }}
               >
                 {btn.icon}
-                <span style={{ fontSize: "9.5px", fontWeight: 700, color: "#8a7d5e" }}>{btn.label}</span>
+                <span style={{ fontSize: "10px", fontWeight: 600, color: "#8a7d5e" }}>{btn.label}</span>
               </button>
             ))}
           </div>
@@ -1244,34 +1279,46 @@ export default function ArenaPlay() {
           {/* Decorative chevrons left */}
           <div className="hidden sm:block flex-1 text-end" style={{ color: "#c9a14b", fontSize: "12px", letterSpacing: "0.2em", opacity: 0.5 }}>‹‹‹‹</div>
 
-          {/* Turn pill */}
+          {/* Turn pill — prominent, animated glow */}
           <motion.div
             key={`turn-${state.currentTurn}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.25 }}
-            className="flex items-center gap-2.5 px-5 py-2 rounded-full"
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              boxShadow: [
+                `0 2px 8px ${turnTeam.color}22, 0 0 0 0 ${turnTeam.color}44`,
+                `0 2px 14px ${turnTeam.color}55, 0 0 0 6px ${turnTeam.color}11`,
+                `0 2px 8px ${turnTeam.color}22, 0 0 0 0 ${turnTeam.color}44`,
+              ],
+            }}
+            transition={{
+              opacity: { duration: 0.3 },
+              scale: { duration: 0.3 },
+              y: { duration: 0.3 },
+              boxShadow: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+            }}
+            className="flex items-center gap-3 px-5 sm:px-6 py-2.5 rounded-full"
             style={{
-              background: "#ffffff",
-              border: `1.5px solid ${turnTeam.color}66`,
-              boxShadow: `0 2px 10px ${turnTeam.color}22`,
+              background: `linear-gradient(135deg, #ffffff 0%, ${turnTeam.color}10 100%)`,
+              border: `2px solid ${turnTeam.color}88`,
+              fontFamily: ARABIC_FONT,
             }}
           >
             <div
-              className="flex items-center justify-center"
+              className="flex items-center justify-center shrink-0"
               style={{
-                width: "28px",
-                height: "28px",
-                borderRadius: "50%",
-                background: turnTeam.color,
-                color: "#ffffff",
-                fontSize: "15px",
+                width: "34px",
+                height: "34px",
+                borderRadius: "10px",
+                background: `${turnTeam.color}1f`,
               }}
             >
-              {turnTeam.emoji}
+              <Users className="w-[20px] h-[20px]" style={{ color: turnTeam.color }} />
             </div>
-            <span style={{ fontWeight: 700, fontSize: "14px", color: "#374151" }}>الدور الآن:</span>
-            <span style={{ fontWeight: 900, fontSize: "15px", color: turnTeam.color, maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
+            <span style={{ fontWeight: 700, fontSize: "15px", color: "#374151" }}>الدور الآن:</span>
+            <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "17px", color: turnTeam.color, maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
           </motion.div>
 
           {/* Decorative chevrons right */}
