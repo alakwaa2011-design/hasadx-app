@@ -1,6 +1,6 @@
 import { getStaticCoverImage } from "./arena-cover-images";
 
-export type ArenaDifficulty = 200 | 400 | 600;
+export type ArenaDifficulty = 200 | 400 | 600 | 800;
 
 export type ArenaQuestionType =
   | "text"
@@ -106,11 +106,16 @@ const mk = (
   q200: [string, string][],
   q400: [string, string][],
   q600: [string, string][],
-): Record<ArenaDifficulty, ArenaQuestion[]> => ({
-  200: q200.map(([q, a]) => ({ q, a })),
-  400: q400.map(([q, a]) => ({ q, a })),
-  600: q600.map(([q, a]) => ({ q, a })),
-});
+  q800: [string, string][] = [],
+): Record<ArenaDifficulty, ArenaQuestion[]> => {
+  const hard = q800.length > 0 ? q800 : q600;
+  return {
+    200: q200.map(([q, a]) => ({ q, a })),
+    400: q400.map(([q, a]) => ({ q, a })),
+    600: q600.map(([q, a]) => ({ q, a })),
+    800: hard.map(([q, a]) => ({ q, a })),
+  };
+};
 
 export const ARENA_SECTIONS: ArenaSection[] = [
   {
@@ -1919,10 +1924,10 @@ export function buildCustomSection(
   customs: ArenaCustomQuestion[],
 ): ArenaSection | null {
   if (customs.length === 0) return null;
-  const byDiff: Record<ArenaDifficulty, ArenaQuestion[]> = { 200: [], 400: [], 600: [] };
+  const byDiff: Record<ArenaDifficulty, ArenaQuestion[]> = { 200: [], 400: [], 600: [], 800: [] };
   for (const c of customs) byDiff[c.difficulty].push({ q: c.q, a: c.a });
   const allQs = customs.map(c => ({ q: c.q, a: c.a }));
-  for (const d of [200, 400, 600] as ArenaDifficulty[]) {
+  for (const d of [200, 400, 600, 800] as ArenaDifficulty[]) {
     if (byDiff[d].length === 0) byDiff[d] = allQs;
   }
   return {

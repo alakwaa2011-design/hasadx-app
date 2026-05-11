@@ -42,7 +42,7 @@ const TEAM_EMOJIS = [
   "⭐", "🔥", "🌾", "💎", "🏯", "⛰️", "📜", "✨",
 ];
 
-const DIFFICULTIES: ArenaDifficulty[] = [200, 400, 600];
+const DIFFICULTIES: ArenaDifficulty[] = [200, 400, 600, 800];
 
 interface TeamFormState {
   name: string;

@@ -25,7 +25,7 @@ export interface DbArenaActivity {
   id: number;
   categoryId: number;
   type: "text" | "image" | "video" | "memory" | "sin-jeem" | "categorize" | "logo";
-  difficulty: 200 | 400 | 600;
+  difficulty: 200 | 400 | 600 | 800;
   question: string;
   answer: string;
   hint: string | null;
@@ -240,10 +240,10 @@ export function buildDbSections(
       if (!selectedIds.has(cat.id)) continue;
       const acts = activitiesByCat.get(cat.id) ?? [];
       if (acts.length === 0) continue;
-      const byDiff: Record<ArenaDifficulty, ArenaQuestion[]> = { 200: [], 400: [], 600: [] };
+      const byDiff: Record<ArenaDifficulty, ArenaQuestion[]> = { 200: [], 400: [], 600: [], 800: [] };
       for (const a of acts) byDiff[a.difficulty as ArenaDifficulty].push(toQ(a));
       const allQs = acts.map(toQ);
-      for (const d of [200, 400, 600] as ArenaDifficulty[]) {
+      for (const d of [200, 400, 600, 800] as ArenaDifficulty[]) {
         if (byDiff[d].length === 0) byDiff[d] = allQs;
       }
       const subId = `db-${cat.id}`;

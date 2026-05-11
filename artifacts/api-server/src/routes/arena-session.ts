@@ -56,7 +56,7 @@ const TeamSchema = z.object({
 
 const ActiveQuestionSchema = z.object({
   questionText: z.string().max(500),
-  difficulty: z.number().int().refine(v => [200, 400, 600].includes(v)),
+  difficulty: z.number().int().refine(v => [200, 400, 600, 800].includes(v)),
   subCategoryName: z.string().max(80),
 });
 

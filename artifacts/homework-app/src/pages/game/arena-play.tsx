@@ -23,7 +23,7 @@ import {
   type ArenaActiveQuestion, type ArenaCardSlot, type ArenaState, type TeamSide,
 } from "@/lib/arena-store";
 
-const POINT_VALUES: ArenaDifficulty[] = [200, 400, 600];
+const POINT_VALUES: ArenaDifficulty[] = [200, 400, 600, 800];
 const SLOTS: ArenaCardSlot[] = [1, 2];
 
 type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
