@@ -23,6 +23,9 @@ import {
   loadArenaLastSettings,
   type ArenaActiveQuestion, type ArenaCardSlot, type ArenaState, type TeamSide,
 } from "@/lib/arena-store";
+import {
+  fetchArenaCategories, fetchArenaActivities, buildDbSections,
+} from "@/lib/arena-content";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
  *  the sub-category has explicit 800-pt questions (DB-backed only). */
@@ -124,6 +127,51 @@ export default function ArenaPlay() {
   useEffect(() => {
     if (state) saveArenaState(state);
   }, [state]);
+
+  // Recovery: if any DB-backed sub-category IDs are missing from the saved
+  // dbSections (happens with old saved games before the fix, or server-resumed
+  // games), silently fetch all categories + activities and rebuild dbSections.
+  useEffect(() => {
+    if (!state) return;
+    const dbIds = state.subCategoryIds.filter(id => id.startsWith("db-"));
+    if (dbIds.length === 0) return;
+
+    const currentSections = state.dbSections ?? [];
+    const allSubIds = new Set(currentSections.flatMap(s => s.subCategories.map(sc => sc.id)));
+    const missing = dbIds.filter(id => !allSubIds.has(id));
+    if (missing.length === 0) return;
+
+    // Some DB sub-categories are missing — rebuild dbSections from the API
+    (async () => {
+      try {
+        const cats = await fetchArenaCategories();
+        if (cats.length === 0) return;
+        const acts = await fetchArenaActivities(cats.map(c => c.id));
+        const allCatIds = new Set(cats.map(c => c.id));
+        const { sections, mergedSubsByStaticId } = buildDbSections(cats, acts, allCatIds);
+        const recovered: typeof sections = [
+          ...sections,
+          ...Object.entries(mergedSubsByStaticId)
+            .filter(([, subs]) => subs.length > 0)
+            .map(([staticId, subs]) => {
+              const staticSec = ARENA_SECTIONS.find(s => s.id === staticId);
+              return {
+                id: `db-merged-${staticId}`,
+                name: staticSec?.name ?? staticId,
+                emoji: staticSec?.emoji ?? "📚",
+                cover: staticSec?.cover ?? { emoji: "📚", color: "#1E4D35" },
+                subCategories: subs,
+              } as typeof sections[0];
+            }),
+        ];
+        setState(prev => prev ? { ...prev, dbSections: recovered } : prev);
+      } catch {
+        /* best-effort — board will show empty slots if fetch fails */
+      }
+    })();
+  // Only run once after state is first loaded (not on every state change)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state]);
 
   // Auto-save to server (debounced 2s) so the teacher can resume from any device.
   useEffect(() => {
