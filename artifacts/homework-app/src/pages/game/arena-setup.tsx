@@ -138,18 +138,24 @@ export default function ArenaSetup() {
   // Build virtual sections for DB content. Show ALL admin-public + own categories
   // (no gating by selection) so users can see everything available.
   const dbSelectedIds = useMemo(() => new Set(dbCats.map(c => c.id)), [dbCats]);
-  const { sections: dbSections } = useMemo(
+  const { sections: dbSections, mergedSubsByStaticId } = useMemo(
     () => buildDbSections(dbCats, dbActs, dbSelectedIds),
     [dbCats, dbActs, dbSelectedIds],
   );
 
-  // All sections for the picker (static + DB + custom)
+  // All sections for the picker: inject DB sub-cats into matching static sections,
+  // then append any DB sections that have no static counterpart, then custom.
   const sectionsForPicker = useMemo<ArenaSection[]>(() => {
     const custom = buildCustomSection(customQuestions);
-    const all = [...ARENA_SECTIONS, ...dbSections];
+    const enriched = ARENA_SECTIONS.map(sec => {
+      const extra = mergedSubsByStaticId[sec.id];
+      if (!extra || extra.length === 0) return sec;
+      return { ...sec, subCategories: [...sec.subCategories, ...extra] };
+    });
+    const all: ArenaSection[] = [...enriched, ...dbSections];
     if (custom) all.push(custom);
     return all;
-  }, [customQuestions, dbSections]);
+  }, [customQuestions, dbSections, mergedSubsByStaticId]);
 
   const addTeam = () => {
     if (teams.length >= 8) { toast.error("الحد الأقصى 8 فرق"); return; }

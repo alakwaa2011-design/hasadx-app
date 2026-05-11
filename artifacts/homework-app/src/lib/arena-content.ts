@@ -154,18 +154,39 @@ export async function uploadImageFile(file: File): Promise<string | null> {
 }
 
 /**
+ * Maps DB parent-section names to their matching static ARENA_SECTIONS id.
+ * Sub-categories under these parents are injected into the static section
+ * instead of appearing as a separate "library" section.
+ */
+export const DB_PARENT_TO_STATIC_SECTION: Record<string, string> = {
+  "أنبياء ورسل": "islamic",
+  "صحابة وتابعون": "islamic",
+  "قصص قرآنية": "islamic",
+  "عواصم ودول": "general",
+  "الأعلام والشخصيات": "history",
+  "علم الفلك والفضاء": "technology",
+  "الطب والصحة": "life",
+  "السيارات والمركبات": "brands",
+  "الطعام والمطبخ": "life",
+  "أمثال وحكم": "arabic",
+};
+
+/**
  * Builds virtual ArenaSection objects for selected DB categories so they can
  * be played alongside the static ARENA_SECTIONS. Empty difficulty buckets are
  * filled with the full activity pool to guarantee 6 cards per sub-category.
+ *
+ * Sub-categories whose parent section maps to a static section via
+ * DB_PARENT_TO_STATIC_SECTION are returned in `mergedSubsByStaticId` for
+ * injection into the static section. The remaining DB roots become standalone
+ * sections returned in `sections`.
  */
 export function buildDbSections(
   categories: DbArenaCategory[],
   activities: DbArenaActivity[],
   selectedIds: Set<number>,
-): { sections: ArenaSection[]; subIdMap: Map<string, number> } {
+): { sections: ArenaSection[]; mergedSubsByStaticId: Record<string, ArenaSubCategory[]>; subIdMap: Map<string, number> } {
   const subIdMap = new Map<string, number>();
-  // Group categories by parent (root = parentId==null). Each root becomes a section,
-  // each child becomes a sub-category. If a root has no children, it becomes both.
   const roots = categories.filter(c => c.parentId == null);
   const childrenByParent = new Map<number, DbArenaCategory[]>();
   for (const c of categories) {
@@ -182,66 +203,89 @@ export function buildDbSections(
     activitiesByCat.set(a.categoryId, arr);
   }
 
-  const sections: ArenaSection[] = [];
-  let coverIdx = 100; // offset so DB sections get distinct palette tones
-  for (const root of roots) {
-    const children = childrenByParent.get(root.id) ?? [];
-    const candidateCats = children.length > 0 ? children : [root];
-    const subCategories: ArenaSubCategory[] = [];
-    let subCoverIdx = coverIdx;
+  const toQ = (a: DbArenaActivity): ArenaQuestion => ({
+    q: a.question,
+    a: a.answer,
+    hint: a.hint ?? undefined,
+    type: a.type as ArenaQuestion["type"],
+    imageUrl: a.imageUrl ?? undefined,
+    videoUrl: a.videoUrl ?? undefined,
+    payload: (a.payload as ArenaQuestion["payload"]) ?? undefined,
+  });
+
+  const buildSubCats = (
+    candidateCats: DbArenaCategory[],
+    parentColor: string,
+    parentGradient: string | null,
+    coverIdxStart: number,
+  ): ArenaSubCategory[] => {
+    const subs: ArenaSubCategory[] = [];
+    let subCoverIdx = coverIdxStart;
     for (const cat of candidateCats) {
       if (!selectedIds.has(cat.id)) continue;
       const acts = activitiesByCat.get(cat.id) ?? [];
       if (acts.length === 0) continue;
-      const toQ = (a: DbArenaActivity): ArenaQuestion => ({
-        q: a.question,
-        a: a.answer,
-        hint: a.hint ?? undefined,
-        type: a.type as ArenaQuestion["type"],
-        imageUrl: a.imageUrl ?? undefined,
-        videoUrl: a.videoUrl ?? undefined,
-        payload: (a.payload as ArenaQuestion["payload"]) ?? undefined,
-      });
       const byDiff: Record<ArenaDifficulty, ArenaQuestion[]> = { 200: [], 400: [], 600: [] };
-      for (const a of acts) {
-        const diff = (a.difficulty as ArenaDifficulty);
-        byDiff[diff].push(toQ(a));
-      }
+      for (const a of acts) byDiff[a.difficulty as ArenaDifficulty].push(toQ(a));
       const allQs = acts.map(toQ);
       for (const d of [200, 400, 600] as ArenaDifficulty[]) {
         if (byDiff[d].length === 0) byDiff[d] = allQs;
       }
       const subId = `db-${cat.id}`;
       subIdMap.set(subId, cat.id);
-      const cover: ArenaCover = {
-        emoji: cat.emoji || "🎯",
-        color: cat.coverColor || "#1E4D35",
-        gradient: cat.coverGradient || coverForIndex(subCoverIdx).gradient,
-        imageUrl: cat.coverImageUrl,
-      };
-      subCoverIdx++;
-      subCategories.push({
+      subs.push({
         id: subId,
         name: cat.name,
         questions: byDiff,
-        cover,
+        cover: {
+          emoji: cat.emoji || "🎯",
+          color: cat.coverColor || parentColor,
+          gradient: cat.coverGradient || parentGradient || coverForIndex(subCoverIdx).gradient,
+          imageUrl: cat.coverImageUrl,
+        },
       });
+      subCoverIdx++;
     }
-    if (subCategories.length === 0) continue;
-    const sectionCover: ArenaCover = {
-      emoji: root.emoji || "🎯",
-      color: root.coverColor || "#1E4D35",
-      gradient: root.coverGradient || coverForIndex(coverIdx).gradient,
-      imageUrl: root.coverImageUrl,
-    };
-    sections.push({
-      id: `db-section-${root.id}`,
-      name: root.name,
-      emoji: root.emoji || "🎯",
-      cover: sectionCover,
-      subCategories,
-    });
-    coverIdx++;
+    return subs;
+  };
+
+  const sections: ArenaSection[] = [];
+  const mergedSubsByStaticId: Record<string, ArenaSubCategory[]> = {};
+  let coverIdx = 100;
+
+  for (const root of roots) {
+    const children = childrenByParent.get(root.id) ?? [];
+    const candidateCats = children.length > 0 ? children : [root];
+    const staticTarget = DB_PARENT_TO_STATIC_SECTION[root.name];
+
+    if (staticTarget) {
+      // Inject into matching static section
+      const subs = buildSubCats(candidateCats, root.coverColor, root.coverGradient, coverIdx);
+      if (subs.length > 0) {
+        const existing = mergedSubsByStaticId[staticTarget] ?? [];
+        mergedSubsByStaticId[staticTarget] = [...existing, ...subs];
+        coverIdx += subs.length;
+      }
+    } else {
+      // No mapping → standalone DB section
+      const subs = buildSubCats(candidateCats, root.coverColor, root.coverGradient, coverIdx);
+      if (subs.length > 0) {
+        sections.push({
+          id: `db-section-${root.id}`,
+          name: root.name,
+          emoji: root.emoji || "🎯",
+          cover: {
+            emoji: root.emoji || "🎯",
+            color: root.coverColor || "#1E4D35",
+            gradient: root.coverGradient || coverForIndex(coverIdx).gradient,
+            imageUrl: root.coverImageUrl,
+          },
+          subCategories: subs,
+        });
+        coverIdx++;
+      }
+    }
   }
-  return { sections, subIdMap };
+
+  return { sections, mergedSubsByStaticId, subIdMap };
 }
