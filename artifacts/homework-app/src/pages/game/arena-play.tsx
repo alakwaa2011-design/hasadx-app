@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy, Eye, Clock, RotateCcw, Home, Zap, X, Volume2, VolumeX,
   Maximize, Minimize, BookOpen, Sparkles, ChevronLeft, Share2, Flag,
-  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2,
+  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { ConfettiBurst } from "@/components/confetti-burst";
@@ -1603,15 +1603,23 @@ function FriendCallOverlay({
   );
 }
 
+/* ─────────────────────────────  Audience link helpers  ───────────────────────────── */
+
+function buildAudienceUrl(code: string): string {
+  const base = typeof window !== "undefined" ? window.location.origin : "";
+  return `${base}/game/arena/audience?code=${code}`;
+}
+
+function buildAudienceQrUrl(audienceUrl: string, size: number): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(audienceUrl)}`;
+}
+
 /* ─────────────────────────────  Share dialog (QR for audience)  ───────────────────────────── */
 
 function ShareDialog({ onClose }: { onClose: () => void }) {
   const code = useMemo(() => getOrCreateShareCode(), []);
-  const url = useMemo(() => {
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    return `${base}/game/arena/audience?code=${code}`;
-  }, [code]);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(url)}`;
+  const url = useMemo(() => buildAudienceUrl(code), [code]);
+  const qrUrl = buildAudienceQrUrl(url, 260);
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -1970,6 +1978,23 @@ function EndScreen({
   hasLastSettings?: boolean;
   onQuickReplay?: () => void;
 }) {
+  const [showQr, setShowQr] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareCode = useMemo(() => getOrCreateShareCode(), []);
+  const audienceUrl = useMemo(() => buildAudienceUrl(shareCode), [shareCode]);
+  const qrUrl = buildAudienceQrUrl(audienceUrl, 220);
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(audienceUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("تعذّر النسخ");
+    }
+  };
+
   useEffect(() => {
     if (!winnerTeam) return;
     const t = setTimeout(onWinSound, 200);
@@ -2075,6 +2100,66 @@ function EndScreen({
             <Home className="w-5 h-5" />
             خروج
           </button>
+        </div>
+
+        {/* Collapsible share / QR section */}
+        <div className="mt-6 w-full">
+          <button
+            onClick={() => setShowQr(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-5 rounded-2xl font-bold text-sm text-amber-300 border border-amber-400/30 hover:bg-amber-400/10 transition"
+            style={{ background: "rgba(245,158,11,0.06)" }}
+          >
+            <Share2 className="w-4 h-4" />
+            شارك النتيجة
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${showQr ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          <AnimatePresence>
+            {showQr && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="mt-3 rounded-2xl p-5 border text-center"
+                  style={{
+                    background: "linear-gradient(160deg, #064e3b22, #022c2244)",
+                    borderColor: "rgba(245,158,11,0.25)",
+                  }}
+                >
+                  <p className="text-emerald-100/70 text-xs mb-4">
+                    امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم
+                  </p>
+                  <div className="bg-white p-2.5 rounded-xl inline-block mb-3 shadow-lg">
+                    <img src={qrUrl} alt="QR" className="w-44 h-44 block" />
+                  </div>
+                  <div className="text-amber-200 font-mono font-extrabold text-xl tracking-[0.3em] mb-3">
+                    {shareCode}
+                  </div>
+                  <div className="flex items-center gap-2 bg-black/30 rounded-lg p-2">
+                    <input
+                      readOnly
+                      value={audienceUrl}
+                      className="flex-1 bg-transparent text-emerald-100 text-xs px-2 py-1 outline-none"
+                      onFocus={e => e.currentTarget.select()}
+                    />
+                    <button
+                      onClick={copyUrl}
+                      className="px-3 py-1.5 rounded-md font-bold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm"
+                    >
+                      {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied ? "نُسخ" : "نسخ"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </div>
