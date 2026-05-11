@@ -16,7 +16,7 @@ import {
   type ArenaSubCategory, type ArenaCover, type HelperId,
   type MemoryPair, type CategorizeGroup, type SinJeemPrompt,
 } from "@/data/arena-questions";
-import { saveArenaState, type ArenaState } from "@/lib/arena-store";
+import { saveArenaState, loadArenaLastSettings, saveArenaLastSettings, type ArenaState } from "@/lib/arena-store";
 import {
   fetchArenaCategories, fetchArenaActivities, buildDbSections,
   createArenaCategory, updateArenaCategory, deleteArenaCategory,
@@ -79,7 +79,9 @@ export default function ArenaSetup() {
   const [resumeChecked, setResumeChecked] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
-  const [tournamentName, setTournamentName] = useState("");
+  const [tournamentName, setTournamentName] = useState(
+    () => loadArenaLastSettings()?.tournamentName ?? "",
+  );
   const [teams, setTeams] = useState<TeamFormState[]>([
     { name: "الفريق الأول", color: TEAM_COLORS[0].color, emoji: "🦅", subCategoryIds: [], helpers: [], players: [] },
     { name: "الفريق الثاني", color: TEAM_COLORS[1].color, emoji: "🦁", subCategoryIds: [], helpers: [], players: [] },
@@ -253,6 +255,17 @@ export default function ArenaSetup() {
         players: teams[i].players,
       };
     }
+    saveArenaLastSettings({
+      timerSeconds,
+      tournamentName: tournamentName.trim(),
+      teams: teams.map(t => ({
+        name: t.name.trim(),
+        color: t.color,
+        emoji: t.emoji,
+        subCategoryIds: t.subCategoryIds,
+        helpers: t.helpers,
+      })),
+    });
     saveArenaState({
       tournamentName: tournamentName.trim(),
       teams: teamsRecord,

@@ -311,6 +311,7 @@ export interface ArenaLastTeamSettings {
 export interface ArenaLastSettings {
   timerSeconds: number;
   teams: ArenaLastTeamSettings[];
+  tournamentName?: string;
 }
 
 const LAST_SETTINGS_KEY = "hasad_arena_last_settings_v1";
@@ -350,7 +351,10 @@ export function loadArenaLastSettings(): ArenaLastSettings | null {
       }),
     );
 
-    return { timerSeconds, teams };
+    const tournamentName =
+      typeof parsed.tournamentName === "string" ? parsed.tournamentName : "";
+
+    return { timerSeconds, teams, tournamentName };
   } catch {
     return null;
   }
