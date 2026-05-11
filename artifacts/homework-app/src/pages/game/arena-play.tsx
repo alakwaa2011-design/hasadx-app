@@ -34,9 +34,10 @@ const SLOTS: ArenaCardSlot[] = [1, 2];
 
 /** Returns the difficulty tiers available for a given sub-category.
  *  Static categories: always [200,400,600].
- *  DB-backed categories: add 800 only if they have 800-pt questions. */
-function subDifficulties(subId: string, sub: ArenaSubCategory): ArenaDifficulty[] {
-  if (subId.startsWith("db-") && (sub.questions[800]?.length ?? 0) > 0) {
+ *  DB-backed categories: add 800 only when the organizer explicitly enables it
+ *  AND the sub-category has 800-pt questions. */
+function subDifficulties(subId: string, sub: ArenaSubCategory, show800 = false): ArenaDifficulty[] {
+  if (show800 && subId.startsWith("db-") && (sub.questions[800]?.length ?? 0) > 0) {
     return [200, 400, 600, 800];
   }
   return BASE_POINT_VALUES;
@@ -81,6 +82,8 @@ export default function ArenaPlay() {
   const [friendActive, setFriendActive] = useState(false);
   const [friendSeconds, setFriendSeconds] = useState(60);
   const [shuraVotes, setShuraVotes] = useState<{ a: number; b: number }>({ a: 0, b: 0 });
+  /** Organizer-controlled toggle: show 800-point cards on the board */
+  const [show800, setShow800] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncFingerprintRef = useRef<string>("");
@@ -597,29 +600,31 @@ export default function ArenaPlay() {
     const usedCards = state?.usedCards ?? [];
     const activeQ = state?.active ?? null;
     const count = orderedSubCategoryIds.length;
-    /* Always 3 cols; rows = ceil(count/3). For 6 cats → 3×2 grid fills screen. */
+    /* Always 3 cols; rows = ceil(count/3). For 6 cats → 3×2 grid. */
     const cols = Math.min(count, 3);
     const rows = Math.ceil(count / cols) || 1;
     return (
       <div
-        className="relative"
+        className="relative overflow-y-auto"
         style={{
           flex: "1 1 0",
           minHeight: 0,
           display: "grid",
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gridTemplateRows: `repeat(${rows}, 1fr)`,
-          padding: "clamp(6px, 1.2vw, 16px)",
-          gap: "clamp(5px, 1vw, 14px)",
+          padding: "clamp(8px, 1.5vw, 20px)",
+          gap: "clamp(6px, 1.2vw, 16px)",
         }}
       >
         {orderedSubCategoryIds.map(subId => {
           const sub = findSubCategory(subId, allSections);
           const sec = findSection(subId, allSections);
           if (!sub) return null;
-          const imgUrl = sec ? getStaticCoverImage(sec.id, subId) : undefined;
+          /* Priority: DB cover image → static cover image → emoji gradient */
+          const imgUrl = sub.cover?.imageUrl ?? (sec ? getStaticCoverImage(sec.id, subId) : undefined);
           const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
-          const diffs = subDifficulties(subId, sub);
+          const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
+          const diffs = subDifficulties(subId, sub, show800);
 
           return (
             <div
@@ -635,8 +640,11 @@ export default function ArenaPlay() {
                 minHeight: 0,
               }}
             >
-              {/* Image / icon area — fills remaining flex space */}
-              <div className="relative overflow-hidden" style={{ flex: "1 1 0", minHeight: 0 }}>
+              {/* Image / icon area — fixed height, not flex-grow, so cards stay compact */}
+              <div
+                className="relative overflow-hidden"
+                style={{ height: "clamp(70px, 18vh, 200px)", flexShrink: 0 }}
+              >
                 {imgUrl ? (
                   <img
                     src={imgUrl}
@@ -649,36 +657,34 @@ export default function ArenaPlay() {
                     className="absolute inset-0 flex items-center justify-center"
                     style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}45 100%)` }}
                   >
-                    <span style={{ fontSize: "clamp(28px, 4vw, 56px)", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
-                      {sec?.emoji ?? "📚"}
+                    <span style={{ fontSize: "clamp(32px, 5vw, 64px)", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
+                      {emoji}
                     </span>
                   </div>
                 )}
                 {/* Bottom scrim for text legibility */}
                 <div
                   className="absolute inset-x-0 bottom-0"
-                  style={{ height: "55%", background: "linear-gradient(to bottom, transparent, rgba(8,12,20,0.92))" }}
+                  style={{ height: "60%", background: "linear-gradient(to bottom, transparent, rgba(8,12,20,0.95))" }}
                 />
                 {/* Category name overlaid at bottom of image */}
                 <div
-                  className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-1.5 pb-2 px-2"
+                  className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-1.5 pb-2 px-3"
                   style={{ pointerEvents: "none" }}
                 >
-                  {sec?.emoji && (
-                    <span style={{ fontSize: "clamp(12px, 1.8vw, 18px)", lineHeight: 1, flexShrink: 0 }}>{sec.emoji}</span>
-                  )}
+                  <span style={{ fontSize: "clamp(12px, 1.6vw, 16px)", lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
                   <span
                     style={{
                       fontFamily: "'Tajawal', sans-serif",
                       fontWeight: 900,
-                      fontSize: "clamp(11px, 1.6vw, 17px)",
+                      fontSize: "clamp(12px, 1.6vw, 18px)",
                       color: "#ffffff",
                       lineHeight: 1.2,
                       textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      maxWidth: "100%",
+                      maxWidth: "calc(100% - 28px)",
                     }}
                   >
                     {sub.name}
@@ -692,11 +698,12 @@ export default function ArenaPlay() {
               {/* Buttons grid — 2 columns (slot1 | slot2), one row per difficulty */}
               <div
                 style={{
-                  flexShrink: 0,
+                  flex: "1 1 0",
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
+                  gridTemplateRows: `repeat(${diffs.length}, 1fr)`,
                   gap: "clamp(2px, 0.4vw, 5px)",
-                  padding: "clamp(3px, 0.6vw, 8px)",
+                  padding: "clamp(4px, 0.7vw, 10px)",
                   background: "rgba(0,0,0,0.3)",
                 }}
               >
@@ -712,12 +719,12 @@ export default function ArenaPlay() {
                         whileTap={!usedA && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
                         disabled={usedA || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden rounded"
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
                         style={{
-                          height: "clamp(22px, 3.2vw, 40px)",
                           fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.5vw, 16px)",
+                          fontSize: "clamp(11px, 1.6vw, 17px)",
                           borderRadius: "6px",
+                          minHeight: "clamp(24px, 3.5vw, 44px)",
                           ...diffStyle(pts, usedA),
                         }}
                         animate={goldenTile === keyA ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
@@ -733,12 +740,12 @@ export default function ArenaPlay() {
                         whileTap={!usedB && !activeQ ? { scale: 0.94 } : undefined}
                         onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
                         disabled={usedB || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden rounded"
+                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
                         style={{
-                          height: "clamp(22px, 3.2vw, 40px)",
                           fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.5vw, 16px)",
+                          fontSize: "clamp(11px, 1.6vw, 17px)",
                           borderRadius: "6px",
+                          minHeight: "clamp(24px, 3.5vw, 44px)",
                           ...diffStyle(pts, usedB),
                         }}
                         animate={goldenTile === keyB ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
@@ -759,13 +766,13 @@ export default function ArenaPlay() {
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard, goldenTile]);
+  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard, goldenTile, show800]);
 
   if (!state) return null;
 
   const totalCards = orderedSubCategoryIds.reduce((sum, subId) => {
     const sub = findSubCategory(subId, allSections);
-    return sum + (sub ? subDifficulties(subId, sub).length * SLOTS.length : 0);
+    return sum + (sub ? subDifficulties(subId, sub, show800).length * SLOTS.length : 0);
   }, 0);
   const usedCount = state.usedCards.length;
   const active = state.active;
@@ -1227,6 +1234,21 @@ export default function ArenaPlay() {
 
           {/* Action icon buttons */}
           <div className="flex items-center gap-0.5 shrink-0">
+            {/* 800-point toggle — only shown to logged-in organizer */}
+            {isLoggedIn && (
+              <button
+                onClick={() => setShow800(v => !v)}
+                title={show800 ? "إخفاء بطاقات 800 نقطة" : "إظهار بطاقات 800 نقطة"}
+                className="flex items-center gap-1 h-8 px-2 rounded-lg font-black text-[11px] transition-all active:scale-90"
+                style={show800
+                  ? { background: "linear-gradient(135deg,#b45309,#78350f)", color: "#fef3c7", border: "1px solid #b45309" }
+                  : { background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.1)" }
+                }
+              >
+                <Sparkles className="w-3 h-3" />
+                800
+              </button>
+            )}
             {[
               { icon: soundOn ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت" },
               { icon: isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>, action: toggleFullscreen, label: "شاشة" },
