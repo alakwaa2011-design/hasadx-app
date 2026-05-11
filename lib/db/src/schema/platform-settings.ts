@@ -1,4 +1,5 @@
 import { pgTable, serial, text, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /* Default caps for the regular (free) tier of the interactive
    presentations feature. Admins can override these from the admin
@@ -37,4 +38,15 @@ export const platformSettingsTable = pgTable("platform_settings", {
   showQuranSection: boolean("show_quran_section").notNull().default(false),
   showGeneralCertificates: boolean("show_general_certificates").notNull().default(false),
   showMaraqui: boolean("show_maraqui").notNull().default(false),
+  /* Google Classroom integration — globally enabled by an admin from
+     the admin panel. Off by default until the admin configures Azure /
+     Google credentials and explicitly turns it on. When `false` the
+     teacher dashboard hides the Classroom card and every /classroom/*
+     endpoint returns 403. */
+  classroomEnabled: boolean("classroom_enabled").notNull().default(false),
+  /* Optional teacher-email allowlist for the Classroom feature. Empty
+     array = the feature is open to every teacher when classroomEnabled
+     is true. Non-empty = only teachers whose login email is in the list
+     can connect / use Classroom. */
+  classroomAllowedEmails: text("classroom_allowed_emails").array().notNull().default(sql`ARRAY[]::text[]`),
 });

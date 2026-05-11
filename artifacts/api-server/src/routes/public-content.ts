@@ -204,6 +204,7 @@ router.get("/public/settings", async (req, res) => {
         showQuranSection: platformSettingsTable.showQuranSection,
         showGeneralCertificates: platformSettingsTable.showGeneralCertificates,
         showMaraqui: platformSettingsTable.showMaraqui,
+        classroomEnabled: platformSettingsTable.classroomEnabled,
       })
       .from(platformSettingsTable)
       .limit(1);
@@ -226,6 +227,7 @@ router.get("/public/settings", async (req, res) => {
       showQuranSection: row?.showQuranSection ?? false,
       showGeneralCertificates: row?.showGeneralCertificates ?? false,
       showMaraqui: row?.showMaraqui ?? false,
+      classroomEnabled: row?.classroomEnabled ?? false,
     });
   } catch (err) {
     req.log.error(err, "Public settings error");

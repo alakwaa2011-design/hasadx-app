@@ -490,6 +490,18 @@ export default function TeacherDashboard() {
 
   const isAr = lang === "ar";
 
+  // Admin-controlled feature flag for the Google Classroom integration.
+  // Hidden by default; surfaced only when the admin enables it.
+  const [classroomEnabled, setClassroomEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_URL}/api/public/settings`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setClassroomEnabled(!!d.classroomEnabled); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const tabContent = (
     <AnimatePresence mode="wait">
       <motion.div
@@ -551,7 +563,7 @@ export default function TeacherDashboard() {
           />
         )}
         {activeTab === "tools" && (
-          <ToolsTab t={t} lang={lang} setLocation={setLocation} user={user} />
+          <ToolsTab t={t} lang={lang} setLocation={setLocation} user={user} classroomEnabled={classroomEnabled} />
         )}
         {activeTab === "videos" && (
           <VideoLessonsTab lang={lang} setLocation={setLocation} user={user} />
@@ -2134,7 +2146,7 @@ function CompetitiveTab({
   );
 }
 
-function ToolsTab({ t, lang, setLocation, user }: any) {
+function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
   const isAr = lang === "ar";
 
   // Brand palette for tools — green primary, gold accent, warm white bg
@@ -2261,7 +2273,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
           accent: BRAND.green,
           href: "/teacher/students",
         },
-        {
+        ...(classroomEnabled ? [{
           icon: <GraduationCap className="w-6 h-6" />,
           title: isAr ? "Google Classroom" : "Google Classroom",
           desc: isAr
@@ -2269,7 +2281,7 @@ function ToolsTab({ t, lang, setLocation, user }: any) {
             : "Import students, publish assignments & sync grades",
           accent: "#4285F4",
           href: "/teacher/classroom",
-        },
+        }] : []),
         {
           icon: (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

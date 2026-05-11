@@ -490,6 +490,8 @@ async function getPlatformSettings() {
     showQuranSection: row?.showQuranSection ?? false,
     showGeneralCertificates: row?.showGeneralCertificates ?? false,
     showMaraqui: row?.showMaraqui ?? false,
+    classroomEnabled: row?.classroomEnabled ?? false,
+    classroomAllowedEmails: row?.classroomAllowedEmails ?? [],
   };
 }
 
@@ -512,7 +514,7 @@ router.get("/admin/platform-settings", async (req, res) => {
 router.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui } = req.body;
+    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails } = req.body;
 
     const update: Record<string, unknown> = {};
 
@@ -557,6 +559,20 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (showQuranSection !== undefined) update.showQuranSection = Boolean(showQuranSection);
     if (showGeneralCertificates !== undefined) update.showGeneralCertificates = Boolean(showGeneralCertificates);
     if (showMaraqui !== undefined) update.showMaraqui = Boolean(showMaraqui);
+    if (classroomEnabled !== undefined) update.classroomEnabled = Boolean(classroomEnabled);
+    if (classroomAllowedEmails !== undefined) {
+      if (!Array.isArray(classroomAllowedEmails)) {
+        return res.status(400).json({ message: "classroomAllowedEmails يجب أن يكون قائمة" });
+      }
+      const cleaned = Array.from(
+        new Set(
+          classroomAllowedEmails
+            .map((e: unknown) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
+            .filter((e: string) => e.length > 0 && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+        ),
+      ).slice(0, 500);
+      update.classroomAllowedEmails = cleaned;
+    }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });
     }

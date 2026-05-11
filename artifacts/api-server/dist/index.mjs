@@ -103088,6 +103088,7 @@ var init_platform_settings = __esm({
   "../../lib/db/src/schema/platform-settings.ts"() {
     "use strict";
     init_pg_core();
+    init_drizzle_orm();
     DEFAULT_PRESENTATION_LIMITS = {
       maxImagesRegular: 5,
       maxFilesRegular: 1,
@@ -103117,7 +103118,18 @@ var init_platform_settings = __esm({
       presentationLimits: jsonb("presentation_limits").$type().notNull().default(DEFAULT_PRESENTATION_LIMITS),
       showQuranSection: boolean("show_quran_section").notNull().default(false),
       showGeneralCertificates: boolean("show_general_certificates").notNull().default(false),
-      showMaraqui: boolean("show_maraqui").notNull().default(false)
+      showMaraqui: boolean("show_maraqui").notNull().default(false),
+      /* Google Classroom integration — globally enabled by an admin from
+         the admin panel. Off by default until the admin configures Azure /
+         Google credentials and explicitly turns it on. When `false` the
+         teacher dashboard hides the Classroom card and every /classroom/*
+         endpoint returns 403. */
+      classroomEnabled: boolean("classroom_enabled").notNull().default(false),
+      /* Optional teacher-email allowlist for the Classroom feature. Empty
+         array = the feature is open to every teacher when classroomEnabled
+         is true. Non-empty = only teachers whose login email is in the list
+         can connect / use Classroom. */
+      classroomAllowedEmails: text("classroom_allowed_emails").array().notNull().default(sql`ARRAY[]::text[]`)
     });
   }
 });
@@ -454016,7 +454028,9 @@ async function getPlatformSettings() {
     presentationLimits: row?.presentationLimits ?? DEFAULT_PRESENTATION_LIMITS,
     showQuranSection: row?.showQuranSection ?? false,
     showGeneralCertificates: row?.showGeneralCertificates ?? false,
-    showMaraqui: row?.showMaraqui ?? false
+    showMaraqui: row?.showMaraqui ?? false,
+    classroomEnabled: row?.classroomEnabled ?? false,
+    classroomAllowedEmails: row?.classroomAllowedEmails ?? []
   };
 }
 router11.get("/admin/platform-settings", async (req, res) => {
@@ -454032,7 +454046,7 @@ router11.get("/admin/platform-settings", async (req, res) => {
 router11.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!await requireAdmin2(req, res)) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui } = req.body;
+    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails } = req.body;
     const update = {};
     if (publicVisibility !== void 0) {
       if (!["all", "none", "selective"].includes(publicVisibility)) {
@@ -454073,6 +454087,18 @@ router11.patch("/admin/platform-settings", async (req, res) => {
     if (showQuranSection !== void 0) update.showQuranSection = Boolean(showQuranSection);
     if (showGeneralCertificates !== void 0) update.showGeneralCertificates = Boolean(showGeneralCertificates);
     if (showMaraqui !== void 0) update.showMaraqui = Boolean(showMaraqui);
+    if (classroomEnabled !== void 0) update.classroomEnabled = Boolean(classroomEnabled);
+    if (classroomAllowedEmails !== void 0) {
+      if (!Array.isArray(classroomAllowedEmails)) {
+        return res.status(400).json({ message: "classroomAllowedEmails \u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u0642\u0627\u0626\u0645\u0629" });
+      }
+      const cleaned = Array.from(
+        new Set(
+          classroomAllowedEmails.map((e2) => typeof e2 === "string" ? e2.trim().toLowerCase() : "").filter((e2) => e2.length > 0 && e2.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e2))
+        )
+      ).slice(0, 500);
+      update.classroomAllowedEmails = cleaned;
+    }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "\u0644\u0627 \u062A\u0648\u062C\u062F \u062D\u0642\u0648\u0644 \u0644\u0644\u062A\u062D\u062F\u064A\u062B" });
     }
@@ -455328,7 +455354,8 @@ router15.get("/public/settings", async (req, res) => {
       showCapitalsGame: platformSettingsTable.showCapitalsGame,
       showQuranSection: platformSettingsTable.showQuranSection,
       showGeneralCertificates: platformSettingsTable.showGeneralCertificates,
-      showMaraqui: platformSettingsTable.showMaraqui
+      showMaraqui: platformSettingsTable.showMaraqui,
+      classroomEnabled: platformSettingsTable.classroomEnabled
     }).from(platformSettingsTable).limit(1);
     res.json({
       guestLimit: row?.guestLimit ?? 1,
@@ -455348,7 +455375,8 @@ router15.get("/public/settings", async (req, res) => {
       showCapitalsGame: row?.showCapitalsGame ?? true,
       showQuranSection: row?.showQuranSection ?? false,
       showGeneralCertificates: row?.showGeneralCertificates ?? false,
-      showMaraqui: row?.showMaraqui ?? false
+      showMaraqui: row?.showMaraqui ?? false,
+      classroomEnabled: row?.classroomEnabled ?? false
     });
   } catch (err) {
     req.log.error(err, "Public settings error");
@@ -467885,6 +467913,43 @@ init_src();
 init_drizzle_orm();
 import { google } from "googleapis";
 var router56 = (0, import_express59.Router)();
+async function classroomGuard(req, res, next) {
+  try {
+    const [row] = await db.select({
+      enabled: platformSettingsTable.classroomEnabled,
+      allowed: platformSettingsTable.classroomAllowedEmails
+    }).from(platformSettingsTable).limit(1);
+    if (!row?.enabled) {
+      res.status(403).json({
+        message: "\u062A\u0643\u0627\u0645\u0644 Google Classroom \u063A\u064A\u0631 \u0645\u0641\u0639\u0651\u0644 \u0645\u0646 \u0642\u0628\u0644 \u0627\u0644\u0645\u0633\u0624\u0648\u0644",
+        code: "classroom_disabled"
+      });
+      return;
+    }
+    const allowed = row.allowed ?? [];
+    if (allowed.length > 0) {
+      const teacherId = req.session?.teacherId;
+      if (!teacherId) {
+        res.status(401).json({ message: "\u063A\u064A\u0631 \u0645\u0633\u062C\u0644 \u0627\u0644\u062F\u062E\u0648\u0644" });
+        return;
+      }
+      const [t2] = await db.select({ email: teachersTable.email }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+      const email3 = (t2?.email ?? "").trim().toLowerCase();
+      if (!email3 || !allowed.includes(email3)) {
+        res.status(403).json({
+          message: "\u062D\u0633\u0627\u0628\u0643 \u063A\u064A\u0631 \u0645\u064F\u062F\u0631\u064E\u062C \u0636\u0645\u0646 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0633\u0645\u0648\u062D \u0644\u0647\u0645 \u0628\u0627\u0633\u062A\u062E\u062F\u0627\u0645 Google Classroom",
+          code: "classroom_not_allowed"
+        });
+        return;
+      }
+    }
+    next();
+  } catch (err) {
+    req.log?.error?.(err, "classroomGuard failed");
+    res.status(500).json({ message: "\u062A\u0639\u0630\u0651\u0631 \u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u0625\u0639\u062F\u0627\u062F\u0627\u062A Google Classroom" });
+  }
+}
+router56.use(classroomGuard);
 var CLIENT_ID2 = process.env.GOOGLE_CLIENT_ID;
 var CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 var SCOPES = [

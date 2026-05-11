@@ -394,6 +394,10 @@ export default function AdminPage() {
   const [showQuranSection, setShowQuranSection] = useState(false);
   const [showGeneralCertificates, setShowGeneralCertificates] = useState(false);
   const [showMaraqui, setShowMaraqui] = useState(false);
+  const [classroomEnabled, setClassroomEnabled] = useState(false);
+  const [classroomAllowedEmails, setClassroomAllowedEmails] = useState<string[]>([]);
+  const [classroomEmailsInput, setClassroomEmailsInput] = useState("");
+  const [savingClassroom, setSavingClassroom] = useState(false);
   const [savingGameVisibility, setSavingGameVisibility] = useState(false);
 
   // Appearance
@@ -719,6 +723,10 @@ export default function AdminPage() {
           setShowQuranSection(ps.showQuranSection ?? false);
           setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
           setShowMaraqui(ps.showMaraqui ?? false);
+          setClassroomEnabled(ps.classroomEnabled ?? false);
+          const emails = Array.isArray(ps.classroomAllowedEmails) ? ps.classroomAllowedEmails : [];
+          setClassroomAllowedEmails(emails);
+          setClassroomEmailsInput(emails.join("\n"));
           setProAiForAll(ps.proAiForAll ?? false);
           setPresentationsProForAll(ps.presentationsProForAll ?? false);
           if (ps.presentationLimits) {
@@ -2361,6 +2369,119 @@ export default function AdminPage() {
                       : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
                   </button>
                 ))}
+              </div>
+            </Card>
+
+            {/* Google Classroom integration — admin toggle + teacher allowlist */}
+            <Card className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <GraduationCap className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="font-extrabold text-foreground">{lang === "ar" ? "تكامل Google Classroom" : "Google Classroom integration"}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "تحكّم بإظهار وإخفاء تكامل Google Classroom لكامل المنصة، وحدّد اختياريًا قائمة المعلمين المسموح لهم باستخدامه."
+                      : "Toggle the Google Classroom integration platform-wide, and optionally restrict it to a list of teacher emails."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  const next = !classroomEnabled;
+                  setClassroomEnabled(next);
+                  setSavingClassroom(true);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                      method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+                      body: JSON.stringify({ classroomEnabled: next }),
+                    });
+                    if (res.ok) toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+                    else setClassroomEnabled(!next);
+                  } catch { setClassroomEnabled(!next); } finally { setSavingClassroom(false); }
+                }}
+                disabled={savingClassroom}
+                className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3 hover:bg-muted/30 transition-colors text-start disabled:opacity-60 mb-3"
+              >
+                <div>
+                  <p className="font-bold text-sm text-foreground">
+                    {lang === "ar" ? "تفعيل تكامل Google Classroom" : "Enable Google Classroom integration"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "عند الإيقاف يُخفى زر Classroom من لوحة المعلم وتُرفض جميع الطلبات المتعلقة به."
+                      : "When off, the Classroom card is hidden from the teacher dashboard and all related requests are rejected."}
+                  </p>
+                </div>
+                {classroomEnabled
+                  ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
+                  : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+              </button>
+
+              <div className={`rounded-xl border border-border/60 bg-muted/10 p-4 ${!classroomEnabled ? "opacity-60" : ""}`}>
+                <label className="block">
+                  <span className="font-bold text-sm text-foreground">
+                    {lang === "ar" ? "قائمة المعلمين المسموح لهم (اختياري)" : "Allowed teacher emails (optional)"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-0.5 mb-2">
+                    {lang === "ar"
+                      ? "اترك الحقل فارغًا للسماح لجميع المعلمين. أدخل بريدًا واحدًا في كل سطر (أو افصل بفواصل)."
+                      : "Leave empty to allow every teacher. One email per line (or comma-separated)."}
+                  </span>
+                  <textarea
+                    value={classroomEmailsInput}
+                    onChange={(e) => setClassroomEmailsInput(e.target.value)}
+                    disabled={!classroomEnabled || savingClassroom}
+                    rows={5}
+                    placeholder={lang === "ar" ? "teacher1@example.com\nteacher2@example.com" : "teacher1@example.com\nteacher2@example.com"}
+                    className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm font-mono ltr text-start disabled:opacity-60"
+                    dir="ltr"
+                  />
+                </label>
+                <div className="flex items-center justify-between gap-2 mt-3">
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "ar"
+                      ? `المُدرَجون حاليًا: ${classroomAllowedEmails.length} ${classroomAllowedEmails.length === 0 ? "(الكل مسموح)" : ""}`
+                      : `Currently listed: ${classroomAllowedEmails.length} ${classroomAllowedEmails.length === 0 ? "(everyone allowed)" : ""}`}
+                  </p>
+                  <button
+                    onClick={async () => {
+                      const parsed = Array.from(new Set(
+                        classroomEmailsInput
+                          .split(/[\s,;]+/)
+                          .map((s) => s.trim().toLowerCase())
+                          .filter(Boolean),
+                      ));
+                      const invalid = parsed.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+                      if (invalid.length) {
+                        toast.error(lang === "ar" ? `بريد غير صالح: ${invalid[0]}` : `Invalid email: ${invalid[0]}`);
+                        return;
+                      }
+                      setSavingClassroom(true);
+                      try {
+                        const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                          method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+                          body: JSON.stringify({ classroomAllowedEmails: parsed }),
+                        });
+                        if (res.ok) {
+                          const updated = await res.json();
+                          const next = Array.isArray(updated.classroomAllowedEmails) ? updated.classroomAllowedEmails : parsed;
+                          setClassroomAllowedEmails(next);
+                          setClassroomEmailsInput(next.join("\n"));
+                          toast.success(lang === "ar" ? "تم حفظ القائمة" : "List saved");
+                        } else {
+                          toast.error(lang === "ar" ? "تعذّر الحفظ" : "Save failed");
+                        }
+                      } catch {
+                        toast.error(lang === "ar" ? "تعذّر الحفظ" : "Save failed");
+                      } finally { setSavingClassroom(false); }
+                    }}
+                    disabled={!classroomEnabled || savingClassroom}
+                    className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-bold hover:opacity-90 disabled:opacity-50"
+                  >
+                    {lang === "ar" ? "حفظ القائمة" : "Save list"}
+                  </button>
+                </div>
               </div>
             </Card>
 

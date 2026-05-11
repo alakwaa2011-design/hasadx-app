@@ -29,6 +29,8 @@ export default function ClassroomPage() {
   const [, setLocation] = useLocation();
   const { data: teacher } = useGetCurrentTeacher();
 
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [notAllowed, setNotAllowed] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
@@ -57,13 +59,29 @@ export default function ClassroomPage() {
     }
   }, []);
 
-  // Fetch connection status
+  // Check if Classroom integration is globally enabled by admin
   useEffect(() => {
-    fetch(`${API}/api/classroom/status`, { credentials: "include" })
+    fetch(`${API}/api/public/settings`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setConnected(!!d.connected))
-      .catch(() => setConnected(false));
+      .then((d) => setEnabled(!!d.classroomEnabled))
+      .catch(() => setEnabled(false));
   }, []);
+
+  // Fetch connection status — only when feature is enabled
+  useEffect(() => {
+    if (enabled !== true) return;
+    fetch(`${API}/api/classroom/status`, { credentials: "include" })
+      .then(async (r) => {
+        if (r.status === 403) {
+          const body = await r.json().catch(() => ({}));
+          if (body?.code === "classroom_not_allowed") setNotAllowed(true);
+          return null;
+        }
+        return r.json();
+      })
+      .then((d) => { if (d) setConnected(!!d.connected); })
+      .catch(() => setConnected(false));
+  }, [enabled]);
 
   // Fetch courses when connected
   useEffect(() => {

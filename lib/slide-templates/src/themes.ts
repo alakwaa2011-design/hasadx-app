@@ -131,7 +131,11 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function paletteForTheme(themeKey: string | null | undefined): ThemePalette {
-  const t = THEMES[themeKey ?? "harvest"] ?? THEMES.harvest;
+  /* Tasteful default fallback (Arabic-user feedback): when no theme
+     key is provided we no longer fall back to the loud green/gold
+     "harvest" palette. `mist` is a calm light editorial backdrop
+     that matches the curated TASTEFUL_DEFAULT_THEMES list. */
+  const t = THEMES[themeKey ?? "mist"] ?? THEMES.mist ?? THEMES.harvest;
   /* Tint factor — softer on light themes (the surface is already
      bright, so a 14% wash reads as a clear panel) and a touch heavier
      on dark themes (so the tinted card pops off the gradient). */

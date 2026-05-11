@@ -5015,7 +5015,7 @@ function ThemePanel({
   value, onChange, disabled, isAr,
 }: { value: string; onChange: (k: string) => void; disabled?: boolean; isAr: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const primaryKeys = ["mist", "harvest", "pine", "obsidian", "sunset"];
+  const primaryKeys = ["mist", "sage", "pine", "obsidian", "ocean"];
   const primaryThemes = SLIDE_THEMES.filter((t) => primaryKeys.includes(t.key));
   const otherThemes = SLIDE_THEMES.filter((t) => !primaryKeys.includes(t.key));
 

@@ -1,9 +1,64 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { google } from "googleapis";
-import { db, teachersTable, studentsTable } from "@workspace/db";
+import { db, teachersTable, studentsTable, platformSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+/* ── Feature-flag guard ─────────────────────────────────────────────────────
+   Classroom integration is admin-controlled. The admin can:
+     1) Toggle the entire integration on/off (classroomEnabled).
+     2) Optionally restrict it to a teacher-email allowlist
+        (classroomAllowedEmails). Empty list = open to all teachers.
+   This middleware runs before every /classroom/* and OAuth callback route
+   so a disabled feature returns 403 instead of leaking endpoints. */
+async function classroomGuard(req: Request, res: Response, next: NextFunction) {
+  try {
+    const [row] = await db
+      .select({
+        enabled: platformSettingsTable.classroomEnabled,
+        allowed: platformSettingsTable.classroomAllowedEmails,
+      })
+      .from(platformSettingsTable)
+      .limit(1);
+
+    if (!row?.enabled) {
+      res.status(403).json({
+        message: "تكامل Google Classroom غير مفعّل من قبل المسؤول",
+        code: "classroom_disabled",
+      });
+      return;
+    }
+
+    const allowed = row.allowed ?? [];
+    if (allowed.length > 0) {
+      const teacherId = (req.session as any)?.teacherId;
+      if (!teacherId) {
+        res.status(401).json({ message: "غير مسجل الدخول" });
+        return;
+      }
+      const [t] = await db
+        .select({ email: teachersTable.email })
+        .from(teachersTable)
+        .where(eq(teachersTable.id, teacherId))
+        .limit(1);
+      const email = (t?.email ?? "").trim().toLowerCase();
+      if (!email || !allowed.includes(email)) {
+        res.status(403).json({
+          message: "حسابك غير مُدرَج ضمن قائمة المسموح لهم باستخدام Google Classroom",
+          code: "classroom_not_allowed",
+        });
+        return;
+      }
+    }
+    next();
+  } catch (err) {
+    req.log?.error?.(err, "classroomGuard failed");
+    res.status(500).json({ message: "تعذّر التحقق من إعدادات Google Classroom" });
+  }
+}
+
+router.use(classroomGuard);
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;

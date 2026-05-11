@@ -34,19 +34,16 @@ export interface BuildOneResult {
 
 export function buildOneSlide(input: BuildOneInput): BuildOneResult {
   const deckPalette = paletteForTheme(input.themeKey);
-  /* Phase 4 — per-slide design intelligence.
-     If the AI Director picked a `slideTheme` that differs from the
-     deck-level theme, resolve a per-slide palette and stamp the slide
-     with that theme's mesh gradient. The deck still has a single
-     "primary" theme (used as the fallback and remembered in the editor
-     so the teacher can re-skin), but each slide can wear its own
-     editorial backdrop — exactly the variety the user complained was
-     missing. When `slideTheme` is omitted/unknown the materializer
-     uses the deck palette and leaves `slide.background` empty so the
-     renderer paints the deck gradient as before. */
-  const slideThemeKey = input.card.slideTheme ?? null;
-  const usePerSlide = !!slideThemeKey && slideThemeKey !== input.themeKey;
-  const palette = usePerSlide ? paletteForTheme(slideThemeKey) : deckPalette;
+  /* Phase 5 — ONE consistent theme per deck (Arabic-user feedback).
+     Per-slide `slideTheme` overrides are intentionally ignored; the
+     deck-level palette is the single source of truth so every slide
+     shares the same backdrop. We also leave `slide.background` empty
+     so the renderer paints the deck gradient uniformly. At most we
+     keep an exception path off — if a future "contrast slide"
+     feature lands, it should be opt-in via a dedicated card flag,
+     not an arbitrary per-slide theme key. */
+  const usePerSlide = false;
+  const palette = deckPalette;
   try {
     const out = materializeSlide({
       card: input.card,
