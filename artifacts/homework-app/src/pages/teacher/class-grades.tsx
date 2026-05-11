@@ -78,6 +78,10 @@ export default function ClassGrades() {
   const [editingGrade, setEditingGrade] = useState<GradeEditKey | null>(null);
   const [editingGradeValue, setEditingGradeValue] = useState("");
   const [savingGrade, setSavingGrade] = useState(false);
+  const [gradeInputError, setGradeInputError] = useState<string | null>(null);
+
+  /* row focus highlight */
+  const [focusedRow, setFocusedRow] = useState<number | null>(null);
 
   const autoSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const gradeTableRef = useRef<HTMLTableElement>(null);
@@ -180,6 +184,25 @@ export default function ClassGrades() {
       ?.focus();
   };
 
+  /** Navigate to a cell; for assignment columns immediately enter edit mode. */
+  const activateGradeCell = (rowIdx: number, colIdx: number) => {
+    if (colIdx < assignments.length) {
+      const student = sortedStudents[rowIdx];
+      const assignment = assignments[colIdx];
+      if (student && assignment) {
+        const sub = getSubmission(student.id, student.name, assignment.id);
+        if (sub) {
+          const cellKey = `${student.id}_${assignment.id}`;
+          setGradeInputError(null);
+          setEditingGrade(cellKey);
+          setEditingGradeValue(String(sub.teacherAdjustedPoints ?? sub.earnedPoints));
+          return; // autoFocus on newly-rendered input handles focus
+        }
+      }
+    }
+    focusGradeCell(rowIdx, colIdx);
+  };
+
   /** Arrow keys: move between students (up/down) and columns (left/right). */
   const handleGradeGridKeyDown = (
     e: React.KeyboardEvent,
@@ -221,7 +244,7 @@ export default function ClassGrades() {
     e.preventDefault();
 
     const finish = () => {
-      requestAnimationFrame(() => focusGradeCell(next.r, next.c));
+      requestAnimationFrame(() => activateGradeCell(next.r, next.c));
     };
 
     if (opts?.onLeaveAssignmentEdit) {
@@ -727,9 +750,14 @@ export default function ClassGrades() {
                   {sortedStudents.map((student, idx) => {
                     const avg = getStudentAverage(student);
                     return (
-                      <tr key={student.id} className="border-b border-border/50 hover:bg-muted/10 transition-colors">
-                        <td className="sticky start-0 z-10 bg-card px-3 py-2.5 text-muted-foreground text-xs font-bold">{idx + 1}</td>
-                        <td className="sticky start-8 z-10 bg-card px-4 py-2.5 font-semibold text-foreground whitespace-nowrap">{student.name}</td>
+                      <tr
+                        key={student.id}
+                        className={`border-b border-border/50 transition-colors ${focusedRow === idx ? "bg-emerald-50 dark:bg-emerald-950/20" : "hover:bg-muted/20"}`}
+                        onFocusCapture={() => setFocusedRow(idx)}
+                        onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusedRow(null); }}
+                      >
+                        <td className={`sticky start-0 z-10 px-3 py-2.5 text-muted-foreground text-xs font-bold ${focusedRow === idx ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-card"}`}>{idx + 1}</td>
+                        <td className={`sticky start-8 z-10 px-4 py-2.5 font-semibold text-foreground whitespace-nowrap ${focusedRow === idx ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-card"}`}>{student.name}</td>
                         {assignments.map((a, ac) => {
                           const sub = getSubmission(student.id, student.name, a.id);
                           if (!sub) {
@@ -748,6 +776,8 @@ export default function ClassGrades() {
                             <td key={a.id} className="px-1 py-1 text-center border-r border-primary/10 bg-primary/[0.03] dark:bg-primary/5">
                               {isEditing ? (
                                 <div className="flex items-center gap-1 justify-center">
+                                  <div className="flex flex-col items-center gap-0.5">
+                                  <div className="flex items-center gap-1">
                                   <input
                                     autoFocus
                                     type="number"
@@ -755,33 +785,48 @@ export default function ClassGrades() {
                                     max={sub.totalPoints}
                                     step="0.5"
                                     data-grade-nav={`${idx}-${navCol}`}
-                                    defaultValue={earned}
+                                    value={editingGradeValue}
+                                    onChange={e => {
+                                      const val = e.target.value;
+                                      setEditingGradeValue(val);
+                                      const num = parseFloat(val.replace(",", "."));
+                                      if (!isNaN(num) && num > sub.totalPoints) {
+                                        setGradeInputError(lang === "ar" ? `الحد الأقصى ${sub.totalPoints}` : `Max is ${sub.totalPoints}`);
+                                      } else {
+                                        setGradeInputError(null);
+                                      }
+                                    }}
                                     onKeyDown={e => {
-                                      const inputEl = e.currentTarget;
-                                      if (e.key === "Enter") void handleSaveGrade(sub, inputEl.value);
-                                      if (e.key === "Escape") setEditingGrade(null);
+                                      if (e.key === "Enter") void handleSaveGrade(sub, editingGradeValue);
+                                      if (e.key === "Escape") { setEditingGrade(null); setGradeInputError(null); }
                                       if (
                                         handleGradeGridKeyDown(e, idx, navCol, {
                                           onLeaveAssignmentEdit: async () => {
+                                            if (gradeInputError) return false;
                                             suppressAssignmentGradeBlurSave.current = true;
-                                            const ok = await handleSaveGrade(sub, inputEl.value, { quiet: true });
+                                            const ok = await handleSaveGrade(sub, editingGradeValue, { quiet: true });
                                             if (!ok) suppressAssignmentGradeBlurSave.current = false;
                                             return ok;
                                           },
                                         })
                                       ) return;
                                     }}
-                                    onBlur={e => {
+                                    onBlur={() => {
                                       if (suppressAssignmentGradeBlurSave.current) {
                                         suppressAssignmentGradeBlurSave.current = false;
                                         return;
                                       }
-                                      void handleSaveGrade(sub, e.target.value);
+                                      void handleSaveGrade(sub, editingGradeValue);
                                     }}
-                                    className="w-14 text-center px-1 py-0.5 rounded border border-primary/50 text-xs font-bold bg-card focus:outline-none focus:ring-1 focus:ring-primary"
+                                    className={`w-14 text-center px-1 py-0.5 rounded border text-xs font-bold bg-card focus:outline-none focus:ring-1 ${gradeInputError ? "border-red-400 focus:ring-red-300 text-red-600" : "border-primary/50 focus:ring-primary"}`}
                                     disabled={savingGrade}
                                   />
                                   <span className="text-[10px] text-muted-foreground">/{sub.totalPoints}</span>
+                                  </div>
+                                  {gradeInputError && (
+                                    <span className="text-[10px] text-red-500 font-semibold leading-tight whitespace-nowrap">{gradeInputError}</span>
+                                  )}
+                                  </div>
                                 </div>
                               ) : (
                                 <button
