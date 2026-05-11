@@ -1360,7 +1360,7 @@ const TOPUPS: TopUp[] = [
   },
   {
     sectionName: "طب وصحة",
-    categoryName: "تغذية صحية",
+    categoryName: "تغذية وصحة",
     questions: [
       ["ما الفيتامين المعروف بـ'فيتامين الشمس'؟", "A", "C", "D", "K", "easy", 2],
       ["أي عنصر يدعم بناء العظام أساساً؟", "الكالسيوم", "الزنك", "النحاس", "الكبريت", "easy", 0],
@@ -1371,7 +1371,7 @@ const TOPUPS: TopUp[] = [
   },
   {
     sectionName: "تكنولوجيا حديثة",
-    categoryName: "ذكاء اصطناعي",
+    categoryName: "الذكاء الاصطناعي",
     questions: [
       ["ما اختصار AI؟", "Auto Internet", "Artificial Intelligence", "Audio Input", "Active Index", "easy", 1],
       ["ما اسم نموذج OpenAI الشهير للمحادثة؟", "Bard", "ChatGPT", "Copilot", "Claude", "easy", 1],
@@ -1614,14 +1614,15 @@ async function main(): Promise<void> {
     }
   }
 
-  // 3. Top-up existing under-stocked categories
+  // 3. Top-up existing under-stocked categories — fail loudly if mapping is wrong
+  const mappingErrors: string[] = [];
   for (const t of TOPUPS) {
     const sec = await client.query<{ id: number }>(
       "SELECT id FROM islamic_sections WHERE name = $1 AND owner_id IS NULL LIMIT 1",
       [t.sectionName],
     );
     if (sec.rows.length === 0) {
-      console.warn(`  ⚠ القسم غير موجود، يُتخطى التوب-أب: ${t.sectionName}`);
+      mappingErrors.push(`القسم غير موجود للتوب-أب: ${t.sectionName}`);
       continue;
     }
     const cat = await client.query<{ id: number }>(
@@ -1629,7 +1630,7 @@ async function main(): Promise<void> {
       [t.categoryName, sec.rows[0].id],
     );
     if (cat.rows.length === 0) {
-      console.warn(`  ⚠ الفئة غير موجودة، يُتخطى التوب-أب: ${t.sectionName} / ${t.categoryName}`);
+      mappingErrors.push(`الفئة غير موجودة للتوب-أب: ${t.sectionName} / ${t.categoryName}`);
       continue;
     }
     for (const q of t.questions) {
@@ -1663,11 +1664,29 @@ async function main(): Promise<void> {
      ORDER BY COUNT(q.id) ASC`,
   );
   if (lowCats.rows.length > 0) {
-    console.log("─── فئات لا تزال أقل من ٢٠ سؤالاً (للمراجعة) ───");
+    console.log("─── فئات لا تزال أقل من ٢٠ سؤالاً ───");
     for (const r of lowCats.rows) console.log(`  • ${r.section} / ${r.category}: ${r.n}`);
   } else {
     console.log("✓ جميع الفئات غير القرآنية ≥ 20 سؤالاً.");
   }
+
+  // ─── Hard acceptance-criteria assertions (task #535) ───
+  const failures: string[] = [];
+  const MIN_SECTIONS = 18;
+  const MIN_CATEGORIES = 60;
+  const MIN_QUESTIONS = 1500;
+  if (after.sections < MIN_SECTIONS)
+    failures.push(`عدد الأقسام ${after.sections} < الحد الأدنى ${MIN_SECTIONS}`);
+  if (after.categories < MIN_CATEGORIES)
+    failures.push(`عدد الفئات ${after.categories} < الحد الأدنى ${MIN_CATEGORIES}`);
+  if (after.questions < MIN_QUESTIONS)
+    failures.push(`عدد الأسئلة ${after.questions} < الحد الأدنى ${MIN_QUESTIONS}`);
+  if (lowCats.rows.length > 0)
+    failures.push(`${lowCats.rows.length} فئة غير قرآنية تحت 20 سؤالاً`);
+  if (mappingErrors.length > 0)
+    failures.push(...mappingErrors.map((e) => `خطأ في تطابق الأسماء: ${e}`));
+  if (totalInvalid > 0)
+    failures.push(`${totalInvalid} سؤال غير صالح`);
 
   // Random sample of 20 newly seedable questions
   const sample = await client.query<{ section: string; category: string; question_text: string; correct_answer: string }>(
@@ -1684,6 +1703,13 @@ async function main(): Promise<void> {
   }
 
   await client.end();
+
+  if (failures.length > 0) {
+    console.error("─── فشل التحقق من معايير القبول ───");
+    for (const f of failures) console.error(`  ✗ ${f}`);
+    throw new Error(`Seed validation failed: ${failures.length} issue(s)`);
+  }
+  console.log("✓ جميع معايير القبول مستوفاة.");
 }
 
 main().catch((err) => {
