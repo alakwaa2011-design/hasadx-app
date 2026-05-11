@@ -609,20 +609,19 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, phase]);
 
-  /* ── difficulty colour tokens — defined before early returns so diffStyle is available in useMemo ── */
-  const TILE_R = "14px";
-  const TILE_SH = "0 1px 4px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12)";
+  /* ── difficulty colour tokens — calm light-theme palette (teal / slate / gold) ── */
+  const TILE_R = "8px";
   const diffStyle = (pts: ArenaDifficulty, used: boolean): React.CSSProperties => {
     if (used) return {
-      background: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.08)",
-      color: "rgba(0,0,0,0.18)", cursor: "not-allowed",
+      background: "#f1efe7", borderColor: "transparent",
+      color: "#b7b1a1", cursor: "not-allowed",
       boxShadow: "none", borderRadius: TILE_R,
     };
-    const base = { boxShadow: TILE_SH, borderRadius: TILE_R };
-    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2457a8,#1e408e)", borderColor: "#183270", color: "#cfe0ff" };
-    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5525a8,#421e88)", borderColor: "#311668", color: "#ddd5ff" };
-    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
-    return                  { ...base, background: "linear-gradient(160deg,#b45309,#78350f)", borderColor: "#451a03", color: "#fef3c7", boxShadow: `${TILE_SH}, 0 0 8px rgba(251,191,36,0.35)` };
+    const base = { boxShadow: "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.14)", borderRadius: TILE_R, borderColor: "transparent" };
+    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#234e5e,#173a48)", color: "#ffffff" };
+    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5b6b87,#465169)", color: "#ffffff" };
+    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#c9a14b,#a07f37)", color: "#ffffff" };
+    return                  { ...base, background: "linear-gradient(160deg,#e0b056,#a87a2a)", color: "#fffbeb", boxShadow: `${base.boxShadow}, 0 0 10px rgba(217,165,73,0.45)` };
   };
 
   /* ── Game board grid — memoized HERE (before early returns) to keep hook order stable ─────────
@@ -631,170 +630,153 @@ export default function ArenaPlay() {
   const boardGrid = useMemo(() => {
     const usedCards = state?.usedCards ?? [];
     const activeQ = state?.active ?? null;
-    const count = orderedSubCategoryIds.length;
-    /* Always 3 cols; rows = ceil(count/3). For 6 cats → 3×2 grid. */
-    const cols = Math.min(count, 3);
-    const rows = Math.ceil(count / cols) || 1;
+
     return (
       <div
-        className="relative overflow-y-auto"
         style={{
           flex: "1 1 0",
           minHeight: 0,
-          display: "grid",
-          gridTemplateColumns: `repeat(${cols}, 1fr)`,
-          gridTemplateRows: `repeat(${rows}, 1fr)`,
-          padding: "clamp(8px, 1.5vw, 20px)",
-          gap: "clamp(6px, 1.2vw, 16px)",
+          overflowY: "auto",
         }}
       >
-        {orderedSubCategoryIds.map(subId => {
-          const sub = findSubCategory(subId, allSections);
-          const sec = findSection(subId, allSections);
-          if (!sub) return null;
-          /* Priority: DB cover image → static cover image → emoji gradient */
-          const imgUrl = sub.cover?.imageUrl ?? (sec ? getStaticCoverImage(sec.id, subId) : undefined);
-          const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
-          const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
-          const diffs = subDifficulties(subId, sub, show800);
+        <div
+          style={{
+            maxWidth: "1080px",
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
+            gap: "clamp(14px, 2vw, 22px)",
+            padding: "clamp(12px, 2vw, 24px)",
+          }}
+        >
+          {orderedSubCategoryIds.map(subId => {
+            const sub = findSubCategory(subId, allSections);
+            const sec = findSection(subId, allSections);
+            if (!sub) return null;
+            const imgUrl = sub.cover?.imageUrl ?? (sec ? getStaticCoverImage(sec.id, subId) : undefined);
+            const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#2d5e3f";
+            const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
+            const diffs = subDifficulties(subId, sub, show800);
 
-          return (
-            <div
-              key={subId}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                background: "rgba(15,20,28,0.97)",
-                border: `1.5px solid ${accentColor}44`,
-                borderRadius: "12px",
-                overflow: "hidden",
-                boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
-                minHeight: 0,
-              }}
-            >
-              {/* Image / icon area — compact fixed height */}
+            return (
               <div
-                className="relative overflow-hidden"
-                style={{ height: "clamp(52px, 11vh, 130px)", flexShrink: 0 }}
+                key={subId}
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "16px",
+                  overflow: "hidden",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+                  border: "1px solid #ebe2cd",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
               >
-                {imgUrl ? (
-                  <img
-                    src={imgUrl}
-                    alt={sub.name}
-                    className="absolute inset-0 w-full h-full"
-                    style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.82) saturate(0.9)" }}
-                  />
-                ) : (
+                {/* Image area — fixed aspect ratio */}
+                <div className="relative" style={{ aspectRatio: "16 / 7", overflow: "hidden", background: "#f3f0e6" }}>
+                  {imgUrl ? (
+                    <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center" }} />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}33, ${accentColor}66)` }}>
+                      <span style={{ fontSize: "44px" }}>{emoji}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Circle icon — overlapping image bottom */}
+                <div className="relative" style={{ height: 0 }}>
                   <div
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}45 100%)` }}
+                    className="absolute"
+                    style={{
+                      top: "-20px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      background: "#2d5e3f",
+                      border: "3px solid #ffffff",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "18px",
+                      zIndex: 2,
+                    }}
                   >
-                    <span style={{ fontSize: "clamp(32px, 5vw, 64px)", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
-                      {emoji}
-                    </span>
+                    {emoji}
                   </div>
-                )}
-                {/* Bottom scrim for text legibility */}
-                <div
-                  className="absolute inset-x-0 bottom-0"
-                  style={{ height: "60%", background: "linear-gradient(to bottom, transparent, rgba(8,12,20,0.95))" }}
-                />
-                {/* Category name overlaid at bottom of image */}
-                <div
-                  className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-1.5 pb-2 px-3"
-                  style={{ pointerEvents: "none" }}
-                >
-                  <span style={{ fontSize: "clamp(12px, 1.6vw, 16px)", lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
+                </div>
+
+                {/* Category name */}
+                <div className="flex items-center justify-center gap-1.5" style={{ paddingTop: "26px", paddingBottom: "10px" }}>
+                  <span style={{ fontSize: "13px", lineHeight: 1 }}>{emoji}</span>
                   <span
                     style={{
                       fontFamily: "'Tajawal', sans-serif",
-                      fontWeight: 900,
-                      fontSize: "clamp(12px, 1.6vw, 18px)",
-                      color: "#ffffff",
-                      lineHeight: 1.2,
-                      textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)",
-                      whiteSpace: "nowrap",
+                      fontWeight: 800,
+                      fontSize: "14px",
+                      color: "#1f2937",
+                      lineHeight: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      maxWidth: "calc(100% - 28px)",
+                      whiteSpace: "nowrap",
+                      maxWidth: "85%",
                     }}
                   >
                     {sub.name}
                   </span>
                 </div>
-              </div>
 
-              {/* Colored accent line */}
-              <div style={{ height: "3px", background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`, flexShrink: 0 }} />
-
-              {/* Buttons grid — 2 columns (slot1 | slot2), one row per difficulty */}
-              <div
-                style={{
-                  flex: "1 1 0",
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gridTemplateRows: `repeat(${diffs.length}, 1fr)`,
-                  gap: "clamp(2px, 0.35vw, 4px)",
-                  padding: "clamp(3px, 0.5vw, 7px)",
-                  background: "rgba(0,0,0,0.3)",
-                }}
-              >
-                {diffs.map(pts => {
-                  const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
-                  const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
-                  const usedA = usedCards.includes(keyA);
-                  const usedB = usedCards.includes(keyB);
-                  return (
-                    <React.Fragment key={pts}>
-                      <motion.button
-                        whileHover={!usedA && !activeQ ? { scale: 1.05, y: -1 } : undefined}
-                        whileTap={!usedA && !activeQ ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
-                        disabled={usedA || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.4vw, 15px)",
-                          borderRadius: "5px",
-                          minHeight: "clamp(20px, 2.8vw, 36px)",
-                          ...diffStyle(pts, usedA),
-                        }}
-                        animate={goldenTile === keyA ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
-                        transition={{ duration: 1.1, ease: "easeOut" }}
-                      >
-                        {goldenTile === keyA && (
-                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
-                        )}
-                        {usedA ? "—" : pts}
-                      </motion.button>
-                      <motion.button
-                        whileHover={!usedB && !activeQ ? { scale: 1.05, y: -1 } : undefined}
-                        whileTap={!usedB && !activeQ ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
-                        disabled={usedB || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.4vw, 15px)",
-                          borderRadius: "5px",
-                          minHeight: "clamp(20px, 2.8vw, 36px)",
-                          ...diffStyle(pts, usedB),
-                        }}
-                        animate={goldenTile === keyB ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
-                        transition={{ duration: 1.1, ease: "easeOut" }}
-                      >
-                        {goldenTile === keyB && (
-                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
-                        )}
-                        {usedB ? "—" : pts}
-                      </motion.button>
-                    </React.Fragment>
-                  );
-                })}
+                {/* Buttons — 2 cols × N rows, compact */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "6px",
+                    padding: "0 12px 14px 12px",
+                  }}
+                >
+                  {diffs.map(pts => {
+                    const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
+                    const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
+                    const usedA = usedCards.includes(keyA);
+                    const usedB = usedCards.includes(keyB);
+                    return (
+                      <React.Fragment key={pts}>
+                        {[
+                          { key: keyA, used: usedA, slot: 1 as const },
+                          { key: keyB, used: usedB, slot: 2 as const },
+                        ].map(({ key, used, slot }) => (
+                          <motion.button
+                            key={key}
+                            whileHover={!used && !activeQ ? { scale: 1.04, y: -1 } : undefined}
+                            whileTap={!used && !activeQ ? { scale: 0.95 } : undefined}
+                            onClick={() => !used && !activeQ && openCard(subId, pts, slot)}
+                            disabled={used || !!activeQ}
+                            className="font-black border transition-all flex items-center justify-center relative overflow-hidden"
+                            style={{
+                              fontFamily: "'Tajawal', sans-serif",
+                              fontSize: "13px",
+                              height: "32px",
+                              ...diffStyle(pts, used),
+                            }}
+                            animate={goldenTile === key ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 16px rgba(251,191,36,0.9)", "0 0 28px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                            transition={{ duration: 1.1, ease: "easeOut" }}
+                          >
+                            {goldenTile === key && (
+                              <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
+                            )}
+                            {used ? "—" : pts}
+                          </motion.button>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1175,172 +1157,170 @@ export default function ArenaPlay() {
 
   const turnTeam = state.teams[state.currentTurn] ?? teamA;
 
+  /* ── Action buttons — calm light theme, icon + label ── */
+  const ACTION_BTNS = [
+    { icon: soundOn ? <Volume2 className="w-4 h-4"/> : <VolumeX className="w-4 h-4"/>, action: () => setSoundOn(s => !s), label: "الصوت" },
+    { icon: isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>, action: toggleFullscreen, label: "ملء الشاشة" },
+    { icon: <BookOpen className="w-4 h-4"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "تعليمات" },
+    { icon: <Share2 className="w-4 h-4"/>, action: () => setShowShare(true), label: "مشاركة" },
+    { icon: <RotateCcw className="w-4 h-4"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
+    { icon: <Flag className="w-4 h-4"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
+    { icon: <Home className="w-4 h-4"/>, action: exitKeep, label: "الرئيسية" },
+  ];
+
   return (
-    <div dir="rtl" className="h-screen overflow-hidden flex flex-col" style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}>
+    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "#faf6ec", fontFamily: "'Tajawal', sans-serif", height: "100vh", overflow: "hidden" }}>
 
-      {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
-      <header className="shrink-0" style={{ background: "linear-gradient(180deg,rgba(12,17,26,0.99) 0%,rgba(14,20,30,0.97) 100%)", borderBottom: "1px solid rgba(52,211,153,0.12)" }}>
-
-        {/* ── Row 1: Brand bar ─────────────────────────────────────────────── */}
-        <div className="flex items-center px-3 pt-2 pb-1.5 gap-2">
-
-          {/* Brand: Logo + name + tournament */}
-          <div className="flex items-center gap-2 shrink-0">
-            <img
-              src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-              alt="حصاد"
-              className="w-7 h-7 rounded-lg object-cover ring-1 ring-emerald-500/40 shrink-0"
-            />
-            <div className="flex flex-col leading-none">
-              <div className="flex items-baseline gap-1.5">
-                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "13px", color: "#34d399", letterSpacing: "0.04em" }}>تحدّي حصاد</span>
-                {state.tournamentName && (
-                  <>
-                    <span style={{ color: "rgba(255,255,255,0.2)", fontSize: "10px" }}>|</span>
-                    <span style={{ fontWeight: 700, fontSize: "11px", color: "rgba(255,255,255,0.55)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.tournamentName}</span>
-                  </>
-                )}
-              </div>
-              <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.25)", marginTop: "1px" }}>{usedCount}/{totalCards} بطاقة</div>
+      {/* ══ HEADER — white card, 3 zones ══════════════════════════════════ */}
+      <header className="shrink-0 px-2 sm:px-4 pt-2 sm:pt-3">
+        <div
+          className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2"
+          style={{
+            background: "#ffffff",
+            borderRadius: "16px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
+            border: "1px solid #ebe2cd",
+            maxWidth: "1280px",
+            margin: "0 auto",
+            width: "100%",
+          }}
+        >
+          {/* Zone A (visually right in RTL): Teams scores + 800 toggle */}
+          <div className="flex items-center gap-2 order-1 ms-auto sm:ms-0">
+            <div
+              className="flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-xl"
+              style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}
+            >
+              {state.teamOrder.slice(0, 2).map((teamId, i) => {
+                const t = state.teams[teamId];
+                if (!t) return null;
+                const isActive = state.currentTurn === teamId;
+                return (
+                  <React.Fragment key={teamId}>
+                    {i > 0 && <span style={{ fontWeight: 800, fontSize: "11px", color: "#9ca3af", letterSpacing: "0.05em" }}>VS</span>}
+                    <div className="flex flex-col items-center min-w-0" style={{ minWidth: "52px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.1 }}>{t.name}</span>
+                      <span style={{ fontSize: "17px", fontWeight: 900, lineHeight: 1.1, color: isActive ? t.color : "#374151", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
             </div>
-          </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Action icon buttons — larger, semantically colored */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* 800-point toggle */}
+            {/* 800 toggle — organizer only */}
             {isLoggedIn && (
               <button
                 onClick={() => setShow800(v => !v)}
                 title={show800 ? "إخفاء بطاقات 800 نقطة" : "إظهار بطاقات 800 نقطة"}
-                className="flex items-center gap-1 h-8 px-2.5 rounded-lg font-black text-[11px] transition-all active:scale-90"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-black text-xs transition-all active:scale-95"
                 style={show800
-                  ? { background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fef3c7", border: "1px solid #d97706", boxShadow: "0 0 10px rgba(217,119,6,0.45)" }
-                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }
+                  ? { background: "linear-gradient(135deg, #2d5e3f, #1f4530)", color: "#ffffff", boxShadow: "0 2px 6px rgba(45,94,63,0.35)" }
+                  : { background: "#ffffff", color: "#6b7280", border: "1.5px solid #d1d5db" }
                 }
               >
-                <Sparkles className="w-3 h-3" />
-                800
+                <Sparkles className="w-3.5 h-3.5" style={{ color: show800 ? "#fbbf24" : "currentColor" }} />
+                <span>800</span>
               </button>
             )}
+          </div>
 
-            {/* Semantic icon buttons */}
-            {[
-              { icon: soundOn ? <Volume2 className="w-[18px] h-[18px]"/> : <VolumeX className="w-[18px] h-[18px]"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت", color: soundOn ? "#38bdf8" : "rgba(255,255,255,0.3)" },
-              { icon: isFullscreen ? <Minimize className="w-[18px] h-[18px]"/> : <Maximize className="w-[18px] h-[18px]"/>, action: toggleFullscreen, label: "شاشة", color: "#a78bfa" },
-              { icon: <BookOpen className="w-[18px] h-[18px]"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "قواعد", color: "#fbbf24" },
-              { icon: <Share2 className="w-[18px] h-[18px]"/>, action: () => setShowShare(true), label: "مشاركة", color: "#34d399" },
-              { icon: <RotateCcw className="w-[18px] h-[18px]"/>, action: () => setShowRestartConfirm(true), label: "إعادة", color: "#fb923c" },
-              { icon: <Flag className="w-[18px] h-[18px]"/>, action: () => setShowEndConfirm(true), label: "إنهاء", color: "#fb7185" },
-              { icon: <Home className="w-[18px] h-[18px]"/>, action: exitKeep, label: "خروج", color: "#94a3b8" },
-            ].map((btn, i) => (
+          {/* Zone B (center): Brand */}
+          <div className="flex items-center justify-center gap-2 order-2 flex-1 min-w-0">
+            <img
+              src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+              alt="حصاد"
+              className="w-9 h-9 rounded-xl object-cover shrink-0"
+              style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}
+            />
+            <div className="flex flex-col leading-none">
+              <span style={{ fontWeight: 900, fontSize: "16px", color: "#2d5e3f", letterSpacing: "0.02em" }}>تحدّي حصاد</span>
+              <span style={{ fontWeight: 600, fontSize: "10px", color: "#a08a55", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "180px" }}>
+                {state.tournamentName ?? "بطولة المعرفة والتحدي"}
+              </span>
+            </div>
+          </div>
+
+          {/* Zone C (visually left in RTL): Action buttons */}
+          <div className="flex items-center gap-1 order-3 flex-wrap justify-center">
+            {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex items-center justify-center w-9 h-9 rounded-xl transition-all active:scale-90 group"
-                style={{ color: btn.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${btn.color}18`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${btn.color}44`; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
+                className="flex flex-col items-center justify-center rounded-lg transition-all active:scale-90"
+                style={{
+                  width: "44px",
+                  height: "42px",
+                  gap: "2px",
+                  color: "#5b6b87",
+                  background: "#faf6ec",
+                  border: "1px solid #ebe2cd",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "#f0e8d4";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#2d5e3f";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "#faf6ec";
+                  (e.currentTarget as HTMLButtonElement).style.color = "#5b6b87";
+                }}
               >
                 {btn.icon}
+                <span style={{ fontSize: "8.5px", fontWeight: 700, color: "#8a7d5e" }}>{btn.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Row 2: Teams (split) + Glowing turn banner in centre ────────── */}
-        {(() => {
-          const renderTeam = (teamId: string) => {
-            const t = state.teams[teamId];
-            if (!t) return null;
-            const isActive = state.currentTurn === teamId;
-            return (
-              <motion.div
-                key={teamId}
-                animate={{ scale: isActive ? 1 : 0.96, opacity: isActive ? 1 : 0.55 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 min-w-0 flex-1"
-                style={{
-                  background: isActive ? `${t.color}1a` : "rgba(255,255,255,0.03)",
-                  border: `1.5px solid ${isActive ? t.color + "66" : "rgba(255,255,255,0.06)"}`,
-                  boxShadow: isActive ? `0 0 20px -4px ${t.color}55` : undefined,
-                }}
-              >
-                <span className="text-xl leading-none shrink-0">{t.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-black text-white text-xs truncate leading-tight">{t.name}</div>
-                  <div className="font-black text-lg leading-tight tabular-nums" style={{ color: t.color }}>{t.score}</div>
-                </div>
-              </motion.div>
-            );
-          };
+        {/* ── Sub-header strip: turn pill ──────────────────────────────── */}
+        <div className="flex items-center justify-center px-3 py-2.5 gap-3" style={{ maxWidth: "1280px", margin: "0 auto" }}>
+          {/* Decorative chevrons left */}
+          <div className="hidden sm:block flex-1 text-end" style={{ color: "#c9a14b", fontSize: "12px", letterSpacing: "0.2em", opacity: 0.5 }}>‹‹‹‹</div>
 
-          const firstHalf = state.teamOrder.slice(0, Math.ceil(state.teamOrder.length / 2));
-          const secondHalf = state.teamOrder.slice(Math.ceil(state.teamOrder.length / 2));
-
-          return (
-            <div className="flex items-stretch gap-2 px-2 pb-2">
-              {/* First half of teams (RTL: appear on right) */}
-              {firstHalf.map(renderTeam)}
-
-              {/* ── Glowing "الدور الآن" turn banner — CENTRE ── */}
-              <motion.div
-                key={`turn-${state.currentTurn}`}
-                initial={{ opacity: 0, scale: 0.88, y: -6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "backOut" }}
-                className="flex flex-col items-center justify-center rounded-2xl px-5 py-1.5 shrink-0 relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${turnTeam.color}28 0%, ${turnTeam.color}10 100%)`,
-                  border: `1.5px solid ${turnTeam.color}99`,
-                  boxShadow: `0 0 28px -4px ${turnTeam.color}88, 0 0 0 1px ${turnTeam.color}22, inset 0 1px 0 rgba(255,255,255,0.1)`,
-                  minWidth: "130px",
-                }}
-              >
-                {/* Pulsing glow ring */}
-                <motion.div
-                  className="absolute inset-0 rounded-2xl pointer-events-none"
-                  animate={{ boxShadow: [
-                    `0 0 10px -2px ${turnTeam.color}33`,
-                    `0 0 30px -2px ${turnTeam.color}aa`,
-                    `0 0 10px -2px ${turnTeam.color}33`,
-                  ]}}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <div style={{ fontSize: "8px", fontWeight: 800, color: `${turnTeam.color}bb`, letterSpacing: "0.18em" }}>الدور الآن</div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <motion.span
-                    animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ fontSize: "24px", lineHeight: 1 }}
-                  >
-                    {turnTeam.emoji}
-                  </motion.span>
-                  <span style={{ fontWeight: 900, fontSize: "15px", color: "#fff", maxWidth: "95px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {turnTeam.name}
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Second half of teams (RTL: appear on left) */}
-              {secondHalf.map(renderTeam)}
+          {/* Turn pill */}
+          <motion.div
+            key={`turn-${state.currentTurn}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full"
+            style={{
+              background: "#ffffff",
+              border: `1.5px solid ${turnTeam.color}66`,
+              boxShadow: `0 2px 8px ${turnTeam.color}22`,
+            }}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "50%",
+                background: turnTeam.color,
+                color: "#ffffff",
+                fontSize: "13px",
+              }}
+            >
+              {turnTeam.emoji}
             </div>
-          );
-        })()}
+            <span style={{ fontWeight: 700, fontSize: "12px", color: "#374151" }}>الدور الآن:</span>
+            <span style={{ fontWeight: 900, fontSize: "13px", color: turnTeam.color, maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
+          </motion.div>
 
-        {/* ── Row 3: Audience strip ────────────────────────────────────────── */}
+          {/* Decorative chevrons right */}
+          <div className="hidden sm:block flex-1" style={{ color: "#c9a14b", fontSize: "12px", letterSpacing: "0.2em", opacity: 0.5 }}>››››</div>
+        </div>
+
+        {/* ── Audience strip ───────────────────────────────────────────── */}
         {isPublicGame && (
           <button
             onClick={() => setShowShare(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-125"
-            style={{ background: "linear-gradient(90deg,#064e3b,#065f46)", borderTop: "1px solid rgba(52,211,153,0.15)" }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-95"
+            style={{ background: "#f0fdf4", borderTop: "1px solid #bbf7d0", color: "#065f46" }}
           >
-            <Tv2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="text-emerald-300">وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
-            <Share2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <Tv2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
+            <Share2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           </button>
         )}
       </header>
