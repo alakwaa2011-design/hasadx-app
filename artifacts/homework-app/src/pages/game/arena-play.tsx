@@ -173,7 +173,7 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning]);
 
-  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime" | "trap") => {
+  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime" | "trap" | "swap" | "shura" | "ghaneema" | "friend" | "harvest") => {
     if (!soundOn) return;
     try {
       if (!audioCtxRef.current) {
@@ -263,6 +263,101 @@ export default function ArenaPlay() {
             gg.gain.exponentialRampToValueAtTime(0.18, now + i * 0.1 + 0.015);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.22);
             oo.start(now + i * 0.1); oo.stop(now + i * 0.1 + 0.25);
+          });
+          break;
+        }
+        case "harvest": {
+          // Power-up shimmer — triangle wave ascending rapid burst, distinct from chime
+          const harvestNotes = [392, 523, 659, 784];
+          harvestNotes.forEach((f, i) => {
+            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            oo.connect(gg); gg.connect(ctx.destination);
+            oo.type = "triangle";
+            oo.frequency.value = f;
+            gg.gain.setValueAtTime(0.0001, now + i * 0.07);
+            gg.gain.exponentialRampToValueAtTime(0.16, now + i * 0.07 + 0.01);
+            gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.18);
+            oo.start(now + i * 0.07); oo.stop(now + i * 0.07 + 0.2);
+          });
+          break;
+        }
+        case "swap": {
+          // Card-flip whoosh — quick descending then ascending sweep, like shuffling
+          const swapDown = ctx.createOscillator(); const swapDownG = ctx.createGain();
+          swapDown.type = "sine";
+          swapDown.connect(swapDownG); swapDownG.connect(ctx.destination);
+          swapDown.frequency.setValueAtTime(800, now);
+          swapDown.frequency.exponentialRampToValueAtTime(350, now + 0.12);
+          swapDownG.gain.setValueAtTime(0.0001, now);
+          swapDownG.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+          swapDownG.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          swapDown.start(now); swapDown.stop(now + 0.15);
+          const swapUp = ctx.createOscillator(); const swapUpG = ctx.createGain();
+          swapUp.type = "sine";
+          swapUp.connect(swapUpG); swapUpG.connect(ctx.destination);
+          swapUp.frequency.setValueAtTime(350, now + 0.14);
+          swapUp.frequency.exponentialRampToValueAtTime(700, now + 0.26);
+          swapUpG.gain.setValueAtTime(0.0001, now + 0.14);
+          swapUpG.gain.exponentialRampToValueAtTime(0.12, now + 0.16);
+          swapUpG.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+          swapUp.start(now + 0.14); swapUp.stop(now + 0.3);
+          break;
+        }
+        case "shura": {
+          // Council hum — three slightly detuned oscillators swell together, deliberative
+          const shuraFreqs = [330, 348, 365];
+          shuraFreqs.forEach((f, i) => {
+            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            oo.type = "sine";
+            oo.connect(gg); gg.connect(ctx.destination);
+            oo.frequency.value = f;
+            gg.gain.setValueAtTime(0.0001, now + i * 0.04);
+            gg.gain.linearRampToValueAtTime(0.07, now + i * 0.04 + 0.12);
+            gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.5);
+            oo.start(now + i * 0.04); oo.stop(now + i * 0.04 + 0.55);
+          });
+          break;
+        }
+        case "ghaneema": {
+          // Triumphant rising grab — brassy two-note sting like claiming a prize
+          const grabNotes = [440, 659];
+          grabNotes.forEach((f, i) => {
+            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            oo.type = "square";
+            oo.connect(gg); gg.connect(ctx.destination);
+            oo.frequency.value = f;
+            gg.gain.setValueAtTime(0.0001, now + i * 0.14);
+            gg.gain.exponentialRampToValueAtTime(0.1, now + i * 0.14 + 0.02);
+            gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.25);
+            oo.start(now + i * 0.14); oo.stop(now + i * 0.14 + 0.28);
+          });
+          // Bright shimmer on top
+          const sparkle = ctx.createOscillator(); const sparkleG = ctx.createGain();
+          sparkle.type = "sine";
+          sparkle.connect(sparkleG); sparkleG.connect(ctx.destination);
+          sparkle.frequency.value = 1318;
+          sparkleG.gain.setValueAtTime(0.0001, now + 0.2);
+          sparkleG.gain.exponentialRampToValueAtTime(0.12, now + 0.22);
+          sparkleG.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          sparkle.start(now + 0.2); sparkle.stop(now + 0.42);
+          break;
+        }
+        case "friend": {
+          // Phone ring — two classic DTMF-style tones pulsing like an incoming call
+          const ringPairs = [[941, 1336], [941, 1336]];
+          ringPairs.forEach(([f1, f2], pulse) => {
+            const start = now + pulse * 0.28;
+            [f1, f2].forEach(f => {
+              const oo = ctx.createOscillator(); const gg = ctx.createGain();
+              oo.type = "sine";
+              oo.connect(gg); gg.connect(ctx.destination);
+              oo.frequency.value = f;
+              gg.gain.setValueAtTime(0.0001, start);
+              gg.gain.exponentialRampToValueAtTime(0.09, start + 0.01);
+              gg.gain.setValueAtTime(0.09, start + 0.18);
+              gg.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+              oo.start(start); oo.stop(start + 0.24);
+            });
           });
           break;
         }
@@ -661,7 +756,14 @@ export default function ArenaPlay() {
       updateActive({ helpersUsedThisQ: [...active.helpersUsedThisQ, helperId] });
     }
     consumeHelperFrom(side, helperId);
-    playSound("click");
+    const helperSoundMap: Partial<Record<HelperId, Parameters<typeof playSound>[0]>> = {
+      harvest: "harvest",
+      shura: "shura",
+      swap: "swap",
+      ghaneema: "ghaneema",
+      friend: "friend",
+    };
+    playSound(helperSoundMap[helperId] ?? "click");
   };
 
   // Cancel-and-swap current question for a different one in the same bucket
