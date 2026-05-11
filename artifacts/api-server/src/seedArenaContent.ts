@@ -17,8 +17,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
 type Difficulty = 200 | 400 | 600;
-/** [difficulty, question, answer, hint?] */
-type A = readonly [Difficulty, string, string, string?];
+/** [difficulty, question, answer, hint?, imageUrl?] */
+type A = readonly [Difficulty, string, string, (string | undefined)?, (string | undefined)?];
 
 interface SubCat {
   name: string;
@@ -691,6 +691,12 @@ const SECTIONS: Section[] = [
           [600, "ما الاسم الآخر لشركة دايهاتسو؟", "تابعة لتويوتا", "تُصنع سيارات اقتصادية"],
           [600, "ما شعار شركة سوبارو وماذا يرمز؟", "مجموعة نجوم الثريا", "بالياباني سوبارو"],
           [600, "أي شركة يابانية تنتج مركبات دراجات نارية أيضًا؟", "هوندا وياماها وسوزوكي", "شركات متعددة الإنتاج"],
+          // ── Image questions ──
+          [200, "ما اسم الشركة اليابانية أصحاب هذا الشعار؟", "تويوتا", "أكبر شركة سيارات في العالم", "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Toyota.svg/300px-Toyota.svg.png"],
+          [200, "أي شركة يابانية يمثّل هذا الشعار الشهير؟", "هوندا", "تُنتج سيفيك وCRV", "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Honda_logo.svg/300px-Honda_logo.svg.png"],
+          [400, "ما اسم الشركة اليابانية أصحاب هذا الشعار الدائري؟", "نيسان", "تُنتج باترول وألتيما", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Nissan_2020_logo.svg/300px-Nissan_2020_logo.svg.png"],
+          [400, "حدّد الشركة اليابانية أصحاب هذا الشعار المجنّح", "مازدا", "شعارها يشبه جناحَي الطائر", "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Mazda_logo.svg/300px-Mazda_logo.svg.png"],
+          [600, "ما الشركة اليابانية صاحبة شعار المثلث الثلاثي؟", "ميتسوبيشي", "ميتسو=ثلاثة وبيشي=ماسة", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Mitsubishi_logo.svg/300px-Mitsubishi_logo.svg.png"],
         ],
       },
       {
@@ -710,6 +716,12 @@ const SECTIONS: Section[] = [
           [600, "ما شركة السيارات الكهربائية الأوروبية المعروفة بالتسارع الفائق؟", "بورش وغيرها", "Porsche Taycan مثلًا"],
           [600, "ما الشركة السويدية التي تُصنع أمأن سيارة في العالم؟", "فولفو", "أعلى معايير السلامة"],
           [600, "ما بلد شركة ألفا روميو؟", "إيطاليا", "شعارها الثعبان الكبير"],
+          // ── Image questions ──
+          [200, "أي شركة ألمانية يمثّل هذا الشعار ذو النجمة الثلاثية؟", "مرسيدس بنز", "أقدم شركات السيارات الفاخرة", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Mercedes-Benz_Logo_2010.svg/300px-Mercedes-Benz_Logo_2010.svg.png"],
+          [200, "ما اسم الشركة الألمانية أصحاب هذا الشعار الدائري الأزرق؟", "BMW", "تعني بايريشه موتورن فيركه", "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/300px-BMW.svg.png"],
+          [400, "أي شركة ألمانية تمثّل الحلقات الأربع المتشابكة في شعارها؟", "أودي", "نتيجة اندماج أربع شركات سيارات", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Audi-Logo_2016.svg/300px-Audi-Logo_2016.svg.png"],
+          [400, "ما الشركة الألمانية أصحاب هذا الشعار الشعبي بالحروف؟", "فولكس فاغن", "اسمها يعني (سيارة الشعب)", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Volkswagen_logo_2019.svg/300px-Volkswagen_logo_2019.svg.png"],
+          [600, "ما الشركة الإيطالية الفاخرة أصحاب شعار الحصان الراكض؟", "فيراري", "أسسها إنزو فيراري 1939", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Ferrari-Logo.svg/300px-Ferrari-Logo.svg.png"],
         ],
       },
       {
@@ -729,6 +741,10 @@ const SECTIONS: Section[] = [
           [600, "ما بلد شركة جيب (Jeep)؟", "أمريكا", "تابعة لـ ستيلانتيس"],
           [600, "ما اسم السيارة الكهربائية لشركة جنرال موتورز؟", "شيفروليه بولت", "وغيرها من موديلات EV"],
           [600, "من مؤسس شركة تسلا وفي أي عام؟", "مارتن إيبرهارد وماسك لاحقًا", "تأسست 2003"],
+          // ── Image questions ──
+          [200, "أي شركة أمريكية يمثّل البيضاوي الأزرق في شعارها؟", "فورد", "أسسها هنري فورد 1903", "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Ford_logo_flat.svg/300px-Ford_logo_flat.svg.png"],
+          [400, "ما الشركة الأمريكية أصحاب هذا الشعار للسيارات الكهربائية؟", "تسلا", "تحمل اسم المخترع نيكولا تسلا", "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/Tesla_Motors.svg/300px-Tesla_Motors.svg.png"],
+          [600, "ما الشركة الأمريكية أصحاب شعار ربطة العنق الذهبية؟", "شيفروليه", "تابعة لشركة جنرال موتورز", "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Chevrolet_Gold_Bowtie.svg/300px-Chevrolet_Gold_Bowtie.svg.png"],
         ],
       },
       {
@@ -886,6 +902,10 @@ const SECTIONS: Section[] = [
           [600, "ما معنى: \"بكرة وأنت خير\"؟", "تأجيل المهام يضر", "التسويف مرض"],
           [600, "ما أصل مثل \"ابن الوز عوام\"؟", "الابن يشبه أباه في الطبع", "الوراثة الخُلقية"],
           [600, "ما معنى مثل \"ما حك جلدك مثل ظفرك\"؟", "أنت أقدر من غيرك على شؤونك", "الاعتماد على النفس"],
+          // ── Image questions (visual clues) ──
+          [200, "هذا طائر الصقر — ما المثل الشعبي العربي الذي يرتبط به مباشرةً؟", "اللي ما يعرف الصقر يشويه", "عن الجاهل بقيمة الأشياء الثمينة", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Falco_peregrinus_good_-_Christopher_Watson.jpg/400px-Falco_peregrinus_good_-_Christopher_Watson.jpg"],
+          [400, "هذا جمل في الصحراء — ما المثل العربي القائل إن المرء لا يرى عيوب نفسه؟", "الجمل لا يرى اعوجاج رقبته", "عن الغرور وعمى الذات", "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Camelus_dromedarius_in_the_Sahara_Desert_Algeria.jpg/400px-Camelus_dromedarius_in_the_Sahara_Desert_Algeria.jpg"],
+          [600, "انظر للصورة — ما المثل الشعبي المرتبط بهذا الحيوان والحذر من الانفراد عن الجماعة؟", "الذيب ما يأكل إلا الشاردة", "من ترك القطيع فريسة سهلة", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Kolm_Saigurn_-_Wolf.jpg/400px-Kolm_Saigurn_-_Wolf.jpg"],
         ],
       },
       {
@@ -1016,13 +1036,14 @@ export async function seedArenaContentIfNeeded(): Promise<void> {
         const toInsert = sub.activities.filter(([, q]) => !existingSet.has(q));
         if (toInsert.length > 0) {
           await db.insert(arenaActivitiesTable).values(
-            toInsert.map(([difficulty, question, answer, hint], i) => ({
+            toInsert.map(([difficulty, question, answer, hint, imageUrl], i) => ({
               categoryId: subRow!.id,
-              type: "text" as const,
+              type: (imageUrl ? "image" : "text") as "image" | "text",
               difficulty,
               question,
               answer,
               hint: hint ?? null,
+              imageUrl: imageUrl ?? null,
               teacherId: null,
               isPublic: true,
               sortOrder: existing.length + i,

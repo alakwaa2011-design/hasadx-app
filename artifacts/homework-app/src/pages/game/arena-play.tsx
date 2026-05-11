@@ -2024,6 +2024,7 @@ function InteractiveActivity({ question, revealed }: { question: ArenaQuestion; 
   if (t === "memory") return <MemoryPlay question={question} revealed={revealed} />;
   if (t === "categorize") return <CategorizePlay question={question} revealed={revealed} />;
   if (t === "logo") return <LogoPlay question={question} revealed={revealed} />;
+  if (t === "image") return <ImagePlay key={question.imageUrl ?? question.q} question={question} revealed={revealed} />;
   // Default: text/image/video
   return (
     <>
@@ -2343,6 +2344,53 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function ImagePlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  return (
+    <div className="flex flex-col items-center gap-4 w-full">
+      {question.imageUrl ? (
+        <div className="relative w-full flex justify-center">
+          {status === "loading" && (
+            <div className="w-64 h-44 rounded-2xl bg-white/10 animate-pulse" />
+          )}
+          {status === "error" && (
+            <div className="w-64 h-44 rounded-2xl border-2 border-amber-300/20 bg-black/40 flex flex-col items-center justify-center gap-2 text-amber-200/50">
+              <span className="text-4xl">🖼️</span>
+              <span className="text-xs">تعذّر تحميل الصورة</span>
+            </div>
+          )}
+          <img
+            src={question.imageUrl}
+            alt="سؤال مصوّر"
+            onLoad={() => setStatus("loaded")}
+            onError={() => setStatus("error")}
+            className="max-h-[38vh] sm:max-h-[46vh] max-w-full rounded-2xl border-2 border-amber-300/40 object-contain bg-black/30 shadow-2xl"
+            style={{
+              boxShadow: "0 12px 40px -12px rgba(232,168,14,0.5)",
+              opacity: status === "loaded" ? 1 : 0,
+              transition: "opacity 0.35s ease",
+              position: status === "loaded" ? "static" : "absolute",
+              pointerEvents: status === "loaded" ? "auto" : "none",
+            }}
+          />
+          {status === "loaded" && (
+            <span className="absolute top-2 end-2 bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full select-none">
+              🖼️ سؤال مصوّر
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="w-64 h-44 rounded-2xl border-2 border-amber-300/30 bg-black/40 flex items-center justify-center text-amber-200/50 text-5xl">
+          🖼️
+        </div>
+      )}
+      <div className="text-xl sm:text-3xl font-extrabold text-white leading-[1.4] text-center px-2">
+        {question.q}
       </div>
     </div>
   );
