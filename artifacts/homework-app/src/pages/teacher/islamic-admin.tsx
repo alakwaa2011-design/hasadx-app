@@ -525,6 +525,21 @@ export default function TeacherIslamicAdmin() {
                   }}
                 />
               </label>
+              {editing.audioUrl.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setEditing((prev) => (prev ? { ...prev, audioUrl: "" } : prev))}
+                  disabled={uploadingAudio}
+                  style={{
+                    ...smallBtn(false),
+                    padding: "0 14px",
+                    whiteSpace: "nowrap",
+                    color: "#fca5a5",
+                  }}
+                >
+                  إزالة الصوت
+                </button>
+              )}
             </div>
             {editError && <p style={{ color: "#fca5a5", marginTop: 4 }}>{editError}</p>}
             <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
