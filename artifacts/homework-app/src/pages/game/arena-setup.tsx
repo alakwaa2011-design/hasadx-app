@@ -888,7 +888,7 @@ interface CategoryCardProps {
 function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdit, dimmed }: CategoryCardProps) {
   const taken = takenByIdx !== -1;
   const winningTeam = taken ? teams[takenByIdx] : null;
-  const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0);
+  const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0) + (sub.questions[800]?.length ?? 0);
   return (
     <div
       className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
