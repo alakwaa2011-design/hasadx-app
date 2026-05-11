@@ -22,6 +22,7 @@ import { randomUUID, randomInt } from "crypto";
 import { logIslamicEvent } from "../lib/islamicEvents";
 import { islamicEventsTable } from "@workspace/db";
 import { Readable } from "stream";
+import { z } from "zod";
 
 const router: IRouter = Router();
 const storage = new ObjectStorageService();
@@ -823,6 +824,287 @@ router.get("/islamic/admin/teachers-search", async (req, res) => {
     .from(teachersTable)
     .where(sql`(${teachersTable.name} ILIKE ${"%" + q + "%"} OR ${teachersTable.email} ILIKE ${"%" + q + "%"})`)
     .limit(10);
+  res.json(rows);
+});
+
+/* ── Teacher-scoped CRUD (organizer/teacher own content) ────────
+   Teachers/organizers can create, edit, and delete their own
+   sections, categories, and questions. All writes are scoped by
+   ownerId so a teacher can only touch their own rows.            */
+
+const sectionInputSchema = z.object({
+  name: z.string().trim().min(1, "اسم القسم مطلوب").max(120),
+  description: z.string().trim().max(500).optional().nullable(),
+  isVisible: z.boolean().optional(),
+  order: z.number().int().min(0).max(9999).optional(),
+});
+
+const categoryInputSchema = z.object({
+  sectionId: z.number().int().positive(),
+  name: z.string().trim().min(1, "اسم الفئة مطلوب").max(120),
+  description: z.string().trim().max(500).optional().nullable(),
+  level: z.enum(["easy", "medium", "hard", "mixed"]).optional(),
+  isVisible: z.boolean().optional(),
+  order: z.number().int().min(0).max(9999).optional(),
+});
+
+const questionInputSchema = z
+  .object({
+    categoryId: z.number().int().positive(),
+    questionText: z.string().trim().min(3, "نص السؤال قصير جداً").max(2000),
+    audioUrl: z.string().trim().max(1000).optional().nullable(),
+    options: z.array(z.string().trim().min(1, "الخيار لا يمكن أن يكون فارغاً").max(500)).length(4, "يجب توفير 4 خيارات"),
+    correctIndex: z.number().int().min(0).max(3),
+    difficulty: z.enum(["easy", "medium", "hard"]).optional(),
+  })
+  .refine((v) => new Set(v.options.map((o) => o.trim())).size === 4, {
+    message: "يجب أن تكون الخيارات الأربعة فريدة",
+    path: ["options"],
+  });
+
+function sendZodError(res: Response, err: z.ZodError): void {
+  const first = err.issues[0];
+  res.status(400).json({ message: first?.message || "بيانات غير صالحة", issues: err.issues });
+}
+
+async function ensureTeacherOwnsSection(sectionId: number, teacherId: number): Promise<boolean> {
+  const [s] = await db.select({ ownerId: islamicSectionsTable.ownerId }).from(islamicSectionsTable).where(eq(islamicSectionsTable.id, sectionId)).limit(1);
+  return !!s && s.ownerId === teacherId;
+}
+
+async function ensureTeacherOwnsCategory(categoryId: number, teacherId: number): Promise<boolean> {
+  const [c] = await db.select({ ownerId: islamicCategoriesTable.ownerId }).from(islamicCategoriesTable).where(eq(islamicCategoriesTable.id, categoryId)).limit(1);
+  return !!c && c.ownerId === teacherId;
+}
+
+async function ensureTeacherOwnsQuestion(questionId: number, teacherId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ ownerId: islamicCategoriesTable.ownerId })
+    .from(islamicQuestionsTable)
+    .leftJoin(islamicCategoriesTable, eq(islamicQuestionsTable.categoryId, islamicCategoriesTable.id))
+    .where(eq(islamicQuestionsTable.id, questionId))
+    .limit(1);
+  return !!row && row.ownerId === teacherId;
+}
+
+router.get("/islamic/teacher/my-content", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const sections = await db
+    .select()
+    .from(islamicSectionsTable)
+    .where(eq(islamicSectionsTable.ownerId, teacherId))
+    .orderBy(islamicSectionsTable.order, islamicSectionsTable.id);
+  const cats = sections.length
+    ? await db
+        .select()
+        .from(islamicCategoriesTable)
+        .where(eq(islamicCategoriesTable.ownerId, teacherId))
+        .orderBy(islamicCategoriesTable.order, islamicCategoriesTable.id)
+    : [];
+  const counts = cats.length
+    ? await db
+        .select({ categoryId: islamicQuestionsTable.categoryId, n: sql<number>`COUNT(*)::int` })
+        .from(islamicQuestionsTable)
+        .where(inArray(islamicQuestionsTable.categoryId, cats.map((c) => c.id)))
+        .groupBy(islamicQuestionsTable.categoryId)
+    : [];
+  const countMap = new Map(counts.map((c) => [c.categoryId, c.n]));
+  res.json(
+    sections.map((s) => ({
+      ...s,
+      categories: cats
+        .filter((c) => c.sectionId === s.id)
+        .map((c) => ({ ...c, questionCount: countMap.get(c.id) || 0 })),
+    })),
+  );
+});
+
+router.post("/islamic/teacher/sections", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const parsed = sectionInputSchema.safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const teacherId = req.session.teacherId!;
+  const v = parsed.data;
+  const [row] = await db
+    .insert(islamicSectionsTable)
+    .values({
+      name: v.name,
+      description: v.description || null,
+      isVisible: v.isVisible ?? true,
+      order: v.order ?? 999,
+      ownerId: teacherId,
+    })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/islamic/teacher/sections/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ message: "id غير صالح" }); return; }
+  if (!(await ensureTeacherOwnsSection(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية تعديل هذا القسم" });
+    return;
+  }
+  const parsed = sectionInputSchema.partial().safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const [row] = await db.update(islamicSectionsTable).set(parsed.data).where(eq(islamicSectionsTable.id, id)).returning();
+  res.json(row);
+});
+
+router.delete("/islamic/teacher/sections/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsSection(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية حذف هذا القسم" });
+    return;
+  }
+  await db.delete(islamicSectionsTable).where(eq(islamicSectionsTable.id, id));
+  res.json({ ok: true });
+});
+
+router.post("/islamic/teacher/categories", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const parsed = categoryInputSchema.safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const teacherId = req.session.teacherId!;
+  if (!(await ensureTeacherOwnsSection(parsed.data.sectionId, teacherId))) {
+    res.status(403).json({ message: "لا يمكن إضافة فئة في قسم لا تملكه" });
+    return;
+  }
+  const v = parsed.data;
+  const [row] = await db
+    .insert(islamicCategoriesTable)
+    .values({
+      sectionId: v.sectionId,
+      name: v.name,
+      description: v.description || null,
+      level: v.level || "mixed",
+      isVisible: v.isVisible ?? true,
+      order: v.order ?? 0,
+      ownerId: teacherId,
+    })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/islamic/teacher/categories/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsCategory(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية تعديل هذه الفئة" });
+    return;
+  }
+  const parsed = categoryInputSchema.partial().safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const patch = { ...parsed.data };
+  // Prevent moving a category into a section the teacher doesn't own.
+  if (patch.sectionId && !(await ensureTeacherOwnsSection(patch.sectionId, teacherId))) {
+    res.status(403).json({ message: "لا يمكن نقل الفئة إلى قسم لا تملكه" });
+    return;
+  }
+  const [row] = await db.update(islamicCategoriesTable).set(patch).where(eq(islamicCategoriesTable.id, id)).returning();
+  res.json(row);
+});
+
+router.delete("/islamic/teacher/categories/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsCategory(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية حذف هذه الفئة" });
+    return;
+  }
+  await db.delete(islamicCategoriesTable).where(eq(islamicCategoriesTable.id, id));
+  res.json({ ok: true });
+});
+
+router.post("/islamic/teacher/questions", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const parsed = questionInputSchema.safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const teacherId = req.session.teacherId!;
+  if (!(await ensureTeacherOwnsCategory(parsed.data.categoryId, teacherId))) {
+    res.status(403).json({ message: "لا يمكن إضافة سؤال في فئة لا تملكها" });
+    return;
+  }
+  const v = parsed.data;
+  const [row] = await db
+    .insert(islamicQuestionsTable)
+    .values({
+      categoryId: v.categoryId,
+      questionText: v.questionText,
+      audioUrl: v.audioUrl || null,
+      optionA: v.options[0],
+      optionB: v.options[1],
+      optionC: v.options[2],
+      optionD: v.options[3],
+      correctAnswer: v.options[v.correctIndex],
+      difficulty: v.difficulty || "medium",
+      createdBy: teacherId,
+    })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/islamic/teacher/questions/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsQuestion(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية تعديل هذا السؤال" });
+    return;
+  }
+  const parsed = questionInputSchema.safeParse(req.body);
+  if (!parsed.success) { sendZodError(res, parsed.error); return; }
+  const v = parsed.data;
+  if (!(await ensureTeacherOwnsCategory(v.categoryId, teacherId))) {
+    res.status(403).json({ message: "لا يمكن نقل السؤال إلى فئة لا تملكها" });
+    return;
+  }
+  const [row] = await db
+    .update(islamicQuestionsTable)
+    .set({
+      categoryId: v.categoryId,
+      questionText: v.questionText,
+      audioUrl: v.audioUrl || null,
+      optionA: v.options[0],
+      optionB: v.options[1],
+      optionC: v.options[2],
+      optionD: v.options[3],
+      correctAnswer: v.options[v.correctIndex],
+      difficulty: v.difficulty || "medium",
+    })
+    .where(eq(islamicQuestionsTable.id, id))
+    .returning();
+  res.json(row);
+});
+
+router.delete("/islamic/teacher/questions/:id", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsQuestion(id, teacherId))) {
+    res.status(403).json({ message: "ليس لديك صلاحية حذف هذا السؤال" });
+    return;
+  }
+  await db.delete(islamicQuestionsTable).where(eq(islamicQuestionsTable.id, id));
+  res.json({ ok: true });
+});
+
+router.get("/islamic/teacher/categories/:id/questions", async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  const teacherId = req.session.teacherId!;
+  const id = parseInt(req.params.id);
+  if (!(await ensureTeacherOwnsCategory(id, teacherId))) {
+    res.status(403).json({ message: "ليست فئتك" });
+    return;
+  }
+  const rows = await db.select().from(islamicQuestionsTable).where(eq(islamicQuestionsTable.categoryId, id)).orderBy(islamicQuestionsTable.id);
   res.json(rows);
 });
 

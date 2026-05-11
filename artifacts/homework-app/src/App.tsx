@@ -51,6 +51,7 @@ const TeacherSettings = lazy(() => import("@/pages/teacher/settings"));
 const TeacherGamesPage = lazy(() => import("@/pages/teacher/games"));
 const TeacherSessions = lazy(() => import("@/pages/teacher/sessions"));
 const AdminPage = lazy(() => import("@/pages/teacher/admin"));
+const TeacherIslamicAdmin = lazy(() => import("@/pages/teacher/islamic-admin"));
 const QuestionBankPage = lazy(() => import("@/pages/teacher/question-bank"));
 const WhiteboardMonitor = lazy(() => import("@/pages/teacher/whiteboard-monitor"));
 const SharedContentPage = lazy(() => import("@/pages/teacher/shared-content"));
@@ -241,6 +242,7 @@ function Router() {
         <Route path="/teacher/games" component={TeacherGamesPage} />
         <Route path="/teacher/sessions" component={TeacherSessions} />
         <Route path="/teacher/admin" component={AdminPage} />
+        <Route path="/teacher/islamic/admin" component={TeacherIslamicAdmin} />
         <Route path="/teacher/question-bank" component={QuestionBankPage} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
