@@ -173,7 +173,7 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning]);
 
-  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime") => {
+  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime" | "trap") => {
     if (!soundOn) return;
     try {
       if (!audioCtxRef.current) {
@@ -216,6 +216,39 @@ export default function ArenaPlay() {
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
             oo.start(now + i * 0.15); oo.stop(now + i * 0.15 + 0.45);
           });
+          break;
+        }
+        case "trap": {
+          // Menacing descending tension sting for the trap helper backfire
+          const sweep = ctx.createOscillator();
+          const sweepGain = ctx.createGain();
+          sweep.type = "sawtooth";
+          sweep.connect(sweepGain); sweepGain.connect(ctx.destination);
+          sweep.frequency.setValueAtTime(420, now);
+          sweep.frequency.exponentialRampToValueAtTime(70, now + 0.55);
+          sweepGain.gain.setValueAtTime(0.0001, now);
+          sweepGain.gain.exponentialRampToValueAtTime(0.18, now + 0.04);
+          sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+          sweep.start(now); sweep.stop(now + 0.62);
+          // Dissonant low growl underneath
+          const growl = ctx.createOscillator();
+          const growlGain = ctx.createGain();
+          growl.type = "square";
+          growl.connect(growlGain); growlGain.connect(ctx.destination);
+          growl.frequency.setValueAtTime(110, now);
+          growl.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+          growlGain.gain.setValueAtTime(0.0001, now);
+          growlGain.gain.exponentialRampToValueAtTime(0.1, now + 0.05);
+          growlGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+          growl.start(now); growl.stop(now + 0.66);
+          // Use the original oscillator to add a brief high stinger at the start
+          o.type = "triangle";
+          o.frequency.setValueAtTime(900, now);
+          o.frequency.exponentialRampToValueAtTime(300, now + 0.18);
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          o.start(now); o.stop(now + 0.24);
           break;
         }
         case "chime": {
@@ -590,6 +623,9 @@ export default function ArenaPlay() {
         answeringTeam: otherSide(active.answeringTeam),
         helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
       });
+      consumeHelperFrom(side, helperId);
+      playSound("trap");
+      return;
     } else if (helperId === "swap") {
       const sub = findSubCategory(active.subCategoryId, allSections);
       if (sub) {
