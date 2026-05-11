@@ -609,20 +609,20 @@ export default function ArenaPlay() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, phase]);
 
-  /* ── difficulty colour tokens — defined before early returns so diffStyle is available in useMemo ── */
-  const TILE_R = "14px";
-  const TILE_SH = "0 1px 4px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.12)";
+  /* ── difficulty colour tokens — light-theme version ── */
+  const TILE_R = "8px";
+  const TILE_SH = "0 2px 6px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.18)";
   const diffStyle = (pts: ArenaDifficulty, used: boolean): React.CSSProperties => {
     if (used) return {
-      background: "rgba(0,0,0,0.05)", borderColor: "rgba(0,0,0,0.08)",
-      color: "rgba(0,0,0,0.18)", cursor: "not-allowed",
+      background: "rgba(0,0,0,0.06)", borderColor: "rgba(0,0,0,0.1)",
+      color: "rgba(0,0,0,0.2)", cursor: "not-allowed",
       boxShadow: "none", borderRadius: TILE_R,
     };
     const base = { boxShadow: TILE_SH, borderRadius: TILE_R };
-    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2457a8,#1e408e)", borderColor: "#183270", color: "#cfe0ff" };
-    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5525a8,#421e88)", borderColor: "#311668", color: "#ddd5ff" };
-    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#922340,#7a1c34)", borderColor: "#561224", color: "#ffd5e0" };
-    return                  { ...base, background: "linear-gradient(160deg,#b45309,#78350f)", borderColor: "#451a03", color: "#fef3c7", boxShadow: `${TILE_SH}, 0 0 8px rgba(251,191,36,0.35)` };
+    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#2563eb,#1d4ed8)", borderColor: "#1e40af", color: "#eff6ff" };
+    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#7c3aed,#6d28d9)", borderColor: "#5b21b6", color: "#f5f3ff" };
+    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#be123c,#9f1239)", borderColor: "#881337", color: "#fff1f2" };
+    return                  { ...base, background: "linear-gradient(160deg,#d97706,#b45309)", borderColor: "#92400e", color: "#fffbeb", boxShadow: `${TILE_SH}, 0 0 10px rgba(217,119,6,0.5)` };
   };
 
   /* ── Game board grid — memoized HERE (before early returns) to keep hook order stable ─────────
@@ -632,31 +632,38 @@ export default function ArenaPlay() {
     const usedCards = state?.usedCards ?? [];
     const activeQ = state?.active ?? null;
     const count = orderedSubCategoryIds.length;
-    /* Always 3 cols; rows = ceil(count/3). For 6 cats → 3×2 grid. */
     const cols = Math.min(count, 3);
     const rows = Math.ceil(count / cols) || 1;
+
+    /* Button height & font — fixed so buttons stay compact regardless of card height */
+    const BTN_H = 26;    // px — height of each difficulty button
+    const BTN_GAP = 4;   // px — gap between buttons
+    const BTN_PAD = 6;   // px — padding around button grid (top + bottom)
+    const ACCENT_LINE = 3; // px
+
     return (
       <div
-        className="relative overflow-y-auto"
         style={{
           flex: "1 1 0",
           minHeight: 0,
           display: "grid",
           gridTemplateColumns: `repeat(${cols}, 1fr)`,
           gridTemplateRows: `repeat(${rows}, 1fr)`,
-          padding: "clamp(8px, 1.5vw, 20px)",
-          gap: "clamp(6px, 1.2vw, 16px)",
+          padding: "clamp(14px, 2vw, 28px)",
+          gap: "clamp(12px, 1.8vw, 22px)",
+          overflowY: "auto",
         }}
       >
         {orderedSubCategoryIds.map(subId => {
           const sub = findSubCategory(subId, allSections);
           const sec = findSection(subId, allSections);
           if (!sub) return null;
-          /* Priority: DB cover image → static cover image → emoji gradient */
           const imgUrl = sub.cover?.imageUrl ?? (sec ? getStaticCoverImage(sec.id, subId) : undefined);
-          const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#4a6fa5";
+          const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#1d4ed8";
           const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
           const diffs = subDifficulties(subId, sub, show800);
+          /* Exact pixel height consumed by the button strip */
+          const btnStripH = ACCENT_LINE + BTN_PAD * 2 + diffs.length * BTN_H + (diffs.length - 1) * BTN_GAP;
 
           return (
             <div
@@ -664,79 +671,73 @@ export default function ArenaPlay() {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                background: "rgba(15,20,28,0.97)",
-                border: `1.5px solid ${accentColor}44`,
-                borderRadius: "12px",
+                background: "#ffffff",
+                borderRadius: "16px",
                 overflow: "hidden",
-                boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.10), 0 8px 24px rgba(0,0,0,0.07)",
+                border: "1px solid rgba(0,0,0,0.07)",
                 minHeight: 0,
               }}
             >
-              {/* Image / icon area — compact fixed height */}
+              {/* ── Image area — fills all remaining space above the button strip ── */}
               <div
                 className="relative overflow-hidden"
-                style={{ height: "clamp(52px, 11vh, 130px)", flexShrink: 0 }}
+                style={{ flex: "1 1 0", minHeight: "60px" }}
               >
                 {imgUrl ? (
                   <img
                     src={imgUrl}
                     alt={sub.name}
                     className="absolute inset-0 w-full h-full"
-                    style={{ objectFit: "cover", objectPosition: "center", filter: "brightness(0.82) saturate(0.9)" }}
+                    style={{ objectFit: "cover", objectPosition: "center" }}
                   />
                 ) : (
                   <div
                     className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: `linear-gradient(160deg, ${accentColor}22 0%, ${accentColor}45 100%)` }}
+                    style={{ background: `linear-gradient(150deg, ${accentColor}33 0%, ${accentColor}66 100%)` }}
                   >
-                    <span style={{ fontSize: "clamp(32px, 5vw, 64px)", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}>
-                      {emoji}
-                    </span>
+                    <span style={{ fontSize: "clamp(28px, 4vw, 52px)" }}>{emoji}</span>
                   </div>
                 )}
-                {/* Bottom scrim for text legibility */}
+                {/* Bottom gradient scrim for legibility */}
                 <div
                   className="absolute inset-x-0 bottom-0"
-                  style={{ height: "60%", background: "linear-gradient(to bottom, transparent, rgba(8,12,20,0.95))" }}
+                  style={{ height: "50%", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.72))" }}
                 />
-                {/* Category name overlaid at bottom of image */}
-                <div
-                  className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-1.5 pb-2 px-3"
-                  style={{ pointerEvents: "none" }}
-                >
-                  <span style={{ fontSize: "clamp(12px, 1.6vw, 16px)", lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
-                  <span
-                    style={{
-                      fontFamily: "'Tajawal', sans-serif",
-                      fontWeight: 900,
-                      fontSize: "clamp(12px, 1.6vw, 18px)",
-                      color: "#ffffff",
-                      lineHeight: 1.2,
-                      textShadow: "0 2px 8px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      maxWidth: "calc(100% - 28px)",
-                    }}
-                  >
+                {/* Category name — pinned bottom of image */}
+                <div className="absolute inset-x-0 bottom-0 flex items-end gap-1.5 px-3 pb-2" style={{ pointerEvents: "none" }}>
+                  <span style={{ fontSize: "clamp(11px, 1.3vw, 15px)", lineHeight: 1, flexShrink: 0 }}>{emoji}</span>
+                  <span style={{
+                    fontFamily: "'Tajawal', sans-serif",
+                    fontWeight: 800,
+                    fontSize: "clamp(11px, 1.4vw, 16px)",
+                    color: "#ffffff",
+                    textShadow: "0 1px 6px rgba(0,0,0,0.9)",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "calc(100% - 24px)",
+                  }}>
                     {sub.name}
                   </span>
                 </div>
               </div>
 
-              {/* Colored accent line */}
-              <div style={{ height: "3px", background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)`, flexShrink: 0 }} />
+              {/* ── Accent line ── */}
+              <div style={{ height: `${ACCENT_LINE}px`, background: `linear-gradient(90deg, transparent, ${accentColor}bb, transparent)`, flexShrink: 0 }} />
 
-              {/* Buttons grid — 2 columns (slot1 | slot2), one row per difficulty */}
+              {/* ── Button strip — compact, fixed height ── */}
               <div
                 style={{
-                  flex: "1 1 0",
+                  flexShrink: 0,
+                  height: `${btnStripH - ACCENT_LINE}px`,
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gridTemplateRows: `repeat(${diffs.length}, 1fr)`,
-                  gap: "clamp(2px, 0.35vw, 4px)",
-                  padding: "clamp(3px, 0.5vw, 7px)",
-                  background: "rgba(0,0,0,0.3)",
+                  gridTemplateRows: `repeat(${diffs.length}, ${BTN_H}px)`,
+                  gap: `${BTN_GAP}px`,
+                  padding: `${BTN_PAD}px`,
+                  background: "#f8fafc",
                 }}
               >
                 {diffs.map(pts => {
@@ -746,48 +747,32 @@ export default function ArenaPlay() {
                   const usedB = usedCards.includes(keyB);
                   return (
                     <React.Fragment key={pts}>
-                      <motion.button
-                        whileHover={!usedA && !activeQ ? { scale: 1.05, y: -1 } : undefined}
-                        whileTap={!usedA && !activeQ ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedA && !activeQ && openCard(subId, pts, 1)}
-                        disabled={usedA || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.4vw, 15px)",
-                          borderRadius: "5px",
-                          minHeight: "clamp(20px, 2.8vw, 36px)",
-                          ...diffStyle(pts, usedA),
-                        }}
-                        animate={goldenTile === keyA ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
-                        transition={{ duration: 1.1, ease: "easeOut" }}
-                      >
-                        {goldenTile === keyA && (
-                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
-                        )}
-                        {usedA ? "—" : pts}
-                      </motion.button>
-                      <motion.button
-                        whileHover={!usedB && !activeQ ? { scale: 1.05, y: -1 } : undefined}
-                        whileTap={!usedB && !activeQ ? { scale: 0.93 } : undefined}
-                        onClick={() => !usedB && !activeQ && openCard(subId, pts, 2)}
-                        disabled={usedB || !!activeQ}
-                        className="font-bold border transition-all flex items-center justify-center relative overflow-hidden"
-                        style={{
-                          fontFamily: "'Tajawal', sans-serif",
-                          fontSize: "clamp(10px, 1.4vw, 15px)",
-                          borderRadius: "5px",
-                          minHeight: "clamp(20px, 2.8vw, 36px)",
-                          ...diffStyle(pts, usedB),
-                        }}
-                        animate={goldenTile === keyB ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.9)", "0 0 32px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
-                        transition={{ duration: 1.1, ease: "easeOut" }}
-                      >
-                        {goldenTile === keyB && (
-                          <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
-                        )}
-                        {usedB ? "—" : pts}
-                      </motion.button>
+                      {[
+                        { key: keyA, used: usedA, slot: 1 as const },
+                        { key: keyB, used: usedB, slot: 2 as const },
+                      ].map(({ key, used, slot }) => (
+                        <motion.button
+                          key={key}
+                          whileHover={!used && !activeQ ? { scale: 1.04, y: -1 } : undefined}
+                          whileTap={!used && !activeQ ? { scale: 0.94 } : undefined}
+                          onClick={() => !used && !activeQ && openCard(subId, pts, slot)}
+                          disabled={used || !!activeQ}
+                          className="font-black border transition-all flex items-center justify-center relative overflow-hidden"
+                          style={{
+                            fontFamily: "'Tajawal', sans-serif",
+                            fontSize: "clamp(10px, 1.2vw, 14px)",
+                            letterSpacing: "0.01em",
+                            ...diffStyle(pts, used),
+                          }}
+                          animate={goldenTile === key ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 16px rgba(251,191,36,0.9)", "0 0 28px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                          transition={{ duration: 1.1, ease: "easeOut" }}
+                        >
+                          {goldenTile === key && (
+                            <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.6) 50%, transparent 100%)", transformOrigin: "left" }} />
+                          )}
+                          {used ? "✓" : pts}
+                        </motion.button>
+                      ))}
                     </React.Fragment>
                   );
                 })}
@@ -1175,172 +1160,186 @@ export default function ArenaPlay() {
 
   const turnTeam = state.teams[state.currentTurn] ?? teamA;
 
+  /* ── Semantic colours for action icon buttons (light theme) ── */
+  const ACTION_BTNS = [
+    { icon: soundOn ? <Volume2 className="w-5 h-5"/> : <VolumeX className="w-5 h-5"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت", color: "#0ea5e9" },
+    { icon: isFullscreen ? <Minimize className="w-5 h-5"/> : <Maximize className="w-5 h-5"/>, action: toggleFullscreen, label: "شاشة", color: "#8b5cf6" },
+    { icon: <BookOpen className="w-5 h-5"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "قواعد", color: "#d97706" },
+    { icon: <Share2 className="w-5 h-5"/>, action: () => setShowShare(true), label: "مشاركة", color: "#059669" },
+    { icon: <RotateCcw className="w-5 h-5"/>, action: () => setShowRestartConfirm(true), label: "إعادة", color: "#ea580c" },
+    { icon: <Flag className="w-5 h-5"/>, action: () => setShowEndConfirm(true), label: "إنهاء", color: "#dc2626" },
+    { icon: <Home className="w-5 h-5"/>, action: exitKeep, label: "خروج", color: "#64748b" },
+  ] as const;
+
   return (
-    <div dir="rtl" className="h-screen overflow-hidden flex flex-col" style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}>
+    <div dir="rtl" className="h-screen overflow-hidden flex flex-col" style={{ background: "#eef2f7", fontFamily: "'Tajawal', sans-serif" }}>
 
-      {/* ══ HEADER ══════════════════════════════════════════════════════════ */}
-      <header className="shrink-0" style={{ background: "linear-gradient(180deg,rgba(12,17,26,0.99) 0%,rgba(14,20,30,0.97) 100%)", borderBottom: "1px solid rgba(52,211,153,0.12)" }}>
+      {/* ══ HEADER — light, 3-zone layout ══════════════════════════════════ */}
+      <header
+        className="shrink-0"
+        style={{
+          background: "#ffffff",
+          borderBottom: "1.5px solid #e2e8f0",
+          boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+        }}
+      >
+        {/* ── Single unified bar ─────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-3 py-2">
 
-        {/* ── Row 1: Brand bar ─────────────────────────────────────────────── */}
-        <div className="flex items-center px-3 pt-2 pb-1.5 gap-2">
-
-          {/* Brand: Logo + name + tournament */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Zone A — Brand (right in RTL) */}
+          <div className="flex items-center gap-2.5 shrink-0">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
               alt="حصاد"
-              className="w-7 h-7 rounded-lg object-cover ring-1 ring-emerald-500/40 shrink-0"
+              className="w-9 h-9 rounded-xl object-cover shadow-sm ring-2 ring-emerald-200 shrink-0"
             />
             <div className="flex flex-col leading-none">
-              <div className="flex items-baseline gap-1.5">
-                <span style={{ fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: "13px", color: "#34d399", letterSpacing: "0.04em" }}>تحدّي حصاد</span>
-                {state.tournamentName && (
-                  <>
-                    <span style={{ color: "rgba(255,255,255,0.2)", fontSize: "10px" }}>|</span>
-                    <span style={{ fontWeight: 700, fontSize: "11px", color: "rgba(255,255,255,0.55)", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{state.tournamentName}</span>
-                  </>
-                )}
-              </div>
-              <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.25)", marginTop: "1px" }}>{usedCount}/{totalCards} بطاقة</div>
+              <span style={{ fontWeight: 900, fontSize: "15px", color: "#065f46", letterSpacing: "0.03em" }}>تحدّي حصاد</span>
+              {state.tournamentName ? (
+                <span style={{ fontWeight: 600, fontSize: "11px", color: "#6b7280", maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "1px" }}>
+                  {state.tournamentName}
+                </span>
+              ) : (
+                <span style={{ fontSize: "10px", color: "#9ca3af", marginTop: "1px" }}>{usedCount}/{totalCards} بطاقة</span>
+              )}
             </div>
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Divider */}
+          <div style={{ width: "1px", alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0 }} />
 
-          {/* Action icon buttons — larger, semantically colored */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* 800-point toggle */}
+          {/* Zone B — Teams + Turn banner (flex-1, center) */}
+          <div className="flex items-stretch gap-2 flex-1 min-w-0">
+            {(() => {
+              const renderTeam = (teamId: string) => {
+                const t = state.teams[teamId];
+                if (!t) return null;
+                const isActive = state.currentTurn === teamId;
+                return (
+                  <motion.div
+                    key={teamId}
+                    animate={{ scale: isActive ? 1 : 0.97, opacity: isActive ? 1 : 0.5 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex items-center gap-2 rounded-xl px-3 py-1 min-w-0 flex-1"
+                    style={{
+                      background: isActive ? `${t.color}15` : "#f8fafc",
+                      border: `1.5px solid ${isActive ? t.color + "55" : "#e2e8f0"}`,
+                      boxShadow: isActive ? `0 0 16px -4px ${t.color}66` : undefined,
+                    }}
+                  >
+                    <span className="text-2xl leading-none shrink-0">{t.emoji}</span>
+                    <div className="min-w-0">
+                      <div style={{ fontWeight: 700, fontSize: "11px", color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</div>
+                      <div style={{ fontWeight: 900, fontSize: "20px", lineHeight: 1, color: t.color, fontVariantNumeric: "tabular-nums" }}>{t.score}</div>
+                    </div>
+                  </motion.div>
+                );
+              };
+
+              const firstHalf = state.teamOrder.slice(0, Math.ceil(state.teamOrder.length / 2));
+              const secondHalf = state.teamOrder.slice(Math.ceil(state.teamOrder.length / 2));
+
+              return (
+                <>
+                  {firstHalf.map(renderTeam)}
+
+                  {/* ── Glowing turn banner — CENTRE ── */}
+                  <motion.div
+                    key={`turn-${state.currentTurn}`}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, ease: "backOut" }}
+                    className="flex flex-col items-center justify-center rounded-2xl px-5 shrink-0 relative overflow-hidden"
+                    style={{
+                      background: `linear-gradient(135deg, ${turnTeam.color}20 0%, ${turnTeam.color}0c 100%)`,
+                      border: `2px solid ${turnTeam.color}88`,
+                      boxShadow: `0 0 24px -4px ${turnTeam.color}66, inset 0 1px 0 rgba(255,255,255,0.6)`,
+                      minWidth: "120px",
+                    }}
+                  >
+                    <motion.div
+                      className="absolute inset-0 rounded-2xl pointer-events-none"
+                      animate={{ boxShadow: [
+                        `0 0 8px -2px ${turnTeam.color}33`,
+                        `0 0 22px -2px ${turnTeam.color}99`,
+                        `0 0 8px -2px ${turnTeam.color}33`,
+                      ]}}
+                      transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <div style={{ fontSize: "8px", fontWeight: 800, color: turnTeam.color, letterSpacing: "0.2em", opacity: 0.85 }}>الدور الآن</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <motion.span
+                        animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                        style={{ fontSize: "22px", lineHeight: 1 }}
+                      >
+                        {turnTeam.emoji}
+                      </motion.span>
+                      <span style={{ fontWeight: 900, fontSize: "14px", color: "#111827", maxWidth: "80px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {turnTeam.name}
+                      </span>
+                    </div>
+                  </motion.div>
+
+                  {secondHalf.map(renderTeam)}
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: "1px", alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0 }} />
+
+          {/* Zone C — Action buttons (left in RTL) */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {/* 800 toggle — organizer only */}
             {isLoggedIn && (
               <button
                 onClick={() => setShow800(v => !v)}
                 title={show800 ? "إخفاء بطاقات 800 نقطة" : "إظهار بطاقات 800 نقطة"}
-                className="flex items-center gap-1 h-8 px-2.5 rounded-lg font-black text-[11px] transition-all active:scale-90"
+                className="flex flex-col items-center justify-center h-12 w-12 rounded-xl transition-all active:scale-90 gap-0.5"
                 style={show800
-                  ? { background: "linear-gradient(135deg,#d97706,#92400e)", color: "#fef3c7", border: "1px solid #d97706", boxShadow: "0 0 10px rgba(217,119,6,0.45)" }
-                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }
+                  ? { background: "#fef3c7", color: "#d97706", border: "1.5px solid #fbbf24" }
+                  : { background: "#f8fafc", color: "#94a3b8", border: "1.5px solid #e2e8f0" }
                 }
               >
-                <Sparkles className="w-3 h-3" />
-                800
+                <Sparkles className="w-5 h-5" />
+                <span style={{ fontSize: "9px", fontWeight: 800 }}>800</span>
               </button>
             )}
-
-            {/* Semantic icon buttons */}
-            {[
-              { icon: soundOn ? <Volume2 className="w-[18px] h-[18px]"/> : <VolumeX className="w-[18px] h-[18px]"/>, action: () => setSoundOn(s => !s), label: soundOn ? "صوت" : "صامت", color: soundOn ? "#38bdf8" : "rgba(255,255,255,0.3)" },
-              { icon: isFullscreen ? <Minimize className="w-[18px] h-[18px]"/> : <Maximize className="w-[18px] h-[18px]"/>, action: toggleFullscreen, label: "شاشة", color: "#a78bfa" },
-              { icon: <BookOpen className="w-[18px] h-[18px]"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "قواعد", color: "#fbbf24" },
-              { icon: <Share2 className="w-[18px] h-[18px]"/>, action: () => setShowShare(true), label: "مشاركة", color: "#34d399" },
-              { icon: <RotateCcw className="w-[18px] h-[18px]"/>, action: () => setShowRestartConfirm(true), label: "إعادة", color: "#fb923c" },
-              { icon: <Flag className="w-[18px] h-[18px]"/>, action: () => setShowEndConfirm(true), label: "إنهاء", color: "#fb7185" },
-              { icon: <Home className="w-[18px] h-[18px]"/>, action: exitKeep, label: "خروج", color: "#94a3b8" },
-            ].map((btn, i) => (
+            {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex items-center justify-center w-9 h-9 rounded-xl transition-all active:scale-90 group"
-                style={{ color: btn.color, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${btn.color}18`; (e.currentTarget as HTMLButtonElement).style.borderColor = `${btn.color}44`; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
+                className="flex flex-col items-center justify-center h-12 w-12 rounded-xl transition-all active:scale-90 gap-0.5"
+                style={{ color: btn.color, background: "#f8fafc", border: "1.5px solid #e2e8f0" }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = `${btn.color}15`;
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = `${btn.color}55`;
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0";
+                }}
               >
                 {btn.icon}
+                <span style={{ fontSize: "9px", fontWeight: 700, color: "#6b7280" }}>{btn.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Row 2: Teams (split) + Glowing turn banner in centre ────────── */}
-        {(() => {
-          const renderTeam = (teamId: string) => {
-            const t = state.teams[teamId];
-            if (!t) return null;
-            const isActive = state.currentTurn === teamId;
-            return (
-              <motion.div
-                key={teamId}
-                animate={{ scale: isActive ? 1 : 0.96, opacity: isActive ? 1 : 0.55 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 min-w-0 flex-1"
-                style={{
-                  background: isActive ? `${t.color}1a` : "rgba(255,255,255,0.03)",
-                  border: `1.5px solid ${isActive ? t.color + "66" : "rgba(255,255,255,0.06)"}`,
-                  boxShadow: isActive ? `0 0 20px -4px ${t.color}55` : undefined,
-                }}
-              >
-                <span className="text-xl leading-none shrink-0">{t.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-black text-white text-xs truncate leading-tight">{t.name}</div>
-                  <div className="font-black text-lg leading-tight tabular-nums" style={{ color: t.color }}>{t.score}</div>
-                </div>
-              </motion.div>
-            );
-          };
-
-          const firstHalf = state.teamOrder.slice(0, Math.ceil(state.teamOrder.length / 2));
-          const secondHalf = state.teamOrder.slice(Math.ceil(state.teamOrder.length / 2));
-
-          return (
-            <div className="flex items-stretch gap-2 px-2 pb-2">
-              {/* First half of teams (RTL: appear on right) */}
-              {firstHalf.map(renderTeam)}
-
-              {/* ── Glowing "الدور الآن" turn banner — CENTRE ── */}
-              <motion.div
-                key={`turn-${state.currentTurn}`}
-                initial={{ opacity: 0, scale: 0.88, y: -6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "backOut" }}
-                className="flex flex-col items-center justify-center rounded-2xl px-5 py-1.5 shrink-0 relative overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${turnTeam.color}28 0%, ${turnTeam.color}10 100%)`,
-                  border: `1.5px solid ${turnTeam.color}99`,
-                  boxShadow: `0 0 28px -4px ${turnTeam.color}88, 0 0 0 1px ${turnTeam.color}22, inset 0 1px 0 rgba(255,255,255,0.1)`,
-                  minWidth: "130px",
-                }}
-              >
-                {/* Pulsing glow ring */}
-                <motion.div
-                  className="absolute inset-0 rounded-2xl pointer-events-none"
-                  animate={{ boxShadow: [
-                    `0 0 10px -2px ${turnTeam.color}33`,
-                    `0 0 30px -2px ${turnTeam.color}aa`,
-                    `0 0 10px -2px ${turnTeam.color}33`,
-                  ]}}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <div style={{ fontSize: "8px", fontWeight: 800, color: `${turnTeam.color}bb`, letterSpacing: "0.18em" }}>الدور الآن</div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <motion.span
-                    animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                    style={{ fontSize: "24px", lineHeight: 1 }}
-                  >
-                    {turnTeam.emoji}
-                  </motion.span>
-                  <span style={{ fontWeight: 900, fontSize: "15px", color: "#fff", maxWidth: "95px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {turnTeam.name}
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Second half of teams (RTL: appear on left) */}
-              {secondHalf.map(renderTeam)}
-            </div>
-          );
-        })()}
-
-        {/* ── Row 3: Audience strip ────────────────────────────────────────── */}
+        {/* ── Audience strip ───────────────────────────────────────────────── */}
         {isPublicGame && (
           <button
             onClick={() => setShowShare(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-125"
-            style={{ background: "linear-gradient(90deg,#064e3b,#065f46)", borderTop: "1px solid rgba(52,211,153,0.15)" }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-95"
+            style={{ background: "#f0fdf4", borderTop: "1px solid #bbf7d0", color: "#065f46" }}
           >
-            <Tv2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="text-emerald-300">وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
-            <Share2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <Tv2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
+            <Share2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
           </button>
         )}
       </header>
