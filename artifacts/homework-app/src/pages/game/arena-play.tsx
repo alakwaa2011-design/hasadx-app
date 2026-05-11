@@ -126,9 +126,17 @@ export default function ArenaPlay() {
   }, [state, isLoggedIn]);
 
   // When the game ends, delete the server save so it doesn't appear as a resume prompt.
+  // For teacher games, also clear the public-mode sessionStorage flag so a stale flag
+  // from a previous public game cannot accidentally redirect the teacher to /play/arena.
   useEffect(() => {
-    if (phase !== "end" || !isLoggedIn) return;
-    void fetch("/api/arena/save", { method: "DELETE" }).catch(() => { /* best-effort */ });
+    if (phase !== "end") return;
+    if (isLoggedIn) {
+      void fetch("/api/arena/save", { method: "DELETE" }).catch(() => { /* best-effort */ });
+    }
+    if (!state?.publicMode) {
+      sessionStorage.removeItem("arena_public_mode");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, isLoggedIn]);
 
   useEffect(() => {
@@ -703,12 +711,17 @@ export default function ArenaPlay() {
     const topScore = sortedEntries[0]?.team.score ?? 0;
     const topWinners = sortedEntries.filter(x => x.team.score === topScore);
     const winnerTeam = topWinners.length === 1 ? topWinners[0].team : null;
+    const handleExit = () => {
+      sessionStorage.removeItem("arena_public_mode");
+      setLocation(state.publicMode ? "/play/arena" : "/games");
+    };
     return (
       <EndScreen
         winnerTeam={winnerTeam}
         teams={state.teams}
         teamOrder={state.teamOrder}
         onRestart={restart}
+        onExit={handleExit}
         onWinSound={() => playSound("win")}
       />
     );
@@ -1861,12 +1874,13 @@ function RulesPanel({ title, items }: { title: string; items: string[] }) {
 /* ─────────────────────────────  End screen  ───────────────────────────── */
 
 function EndScreen({
-  winnerTeam, teams, teamOrder, onRestart, onWinSound,
+  winnerTeam, teams, teamOrder, onRestart, onExit, onWinSound,
 }: {
   winnerTeam: { name: string; emoji: string; color: string; score: number } | null;
   teams: ArenaState["teams"];
   teamOrder: string[];
   onRestart: () => void;
+  onExit: () => void;
   onWinSound: () => void;
 }) {
   useEffect(() => {
@@ -1938,15 +1952,14 @@ function EndScreen({
             <RotateCcw className="w-5 h-5" />
             إعادة اللعب
           </button>
-          <Link href="/games">
-            <button
-              className="px-7 py-3.5 rounded-2xl font-bold text-lg text-white inline-flex items-center gap-2"
-              style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}
-            >
-              <Home className="w-5 h-5" />
-              خروج
-            </button>
-          </Link>
+          <button
+            onClick={onExit}
+            className="px-7 py-3.5 rounded-2xl font-bold text-lg text-white inline-flex items-center gap-2"
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}
+          >
+            <Home className="w-5 h-5" />
+            خروج
+          </button>
         </div>
       </motion.div>
     </div>
