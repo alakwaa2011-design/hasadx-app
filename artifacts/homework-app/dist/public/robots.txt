@@ -1,4 +1,20 @@
 User-agent: *
 Allow: /
 
+# Block private/dynamic surfaces — these aren't useful in search results
+# and just dilute crawl budget.
+Disallow: /teacher/
+Disallow: /organizer/
+Disallow: /student/dashboard
+Disallow: /p/control/
+Disallow: /p/show/
+Disallow: /p/play/
+Disallow: /p/results/
+Disallow: /api/
+Disallow: /solve/
+Disallow: /watch/
+Disallow: /game/play/
+Disallow: /reset-password
+Disallow: /forgot-password
+
 Sitemap: https://hasadx.com/sitemap.xml

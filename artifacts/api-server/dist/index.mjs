@@ -409311,7 +409311,7 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r2}, ${g}, ${b}, ${alpha})`;
 }
 function paletteForTheme(themeKey) {
-  const t2 = THEMES[themeKey ?? "harvest"] ?? THEMES.harvest;
+  const t2 = THEMES[themeKey ?? "mist"] ?? THEMES.mist ?? THEMES.harvest;
   const accentSoft = hexToRgba(t2.accent, t2.textOnLight ? 0.12 : 0.18);
   if (t2.textOnLight) {
     return {
@@ -410770,9 +410770,8 @@ var init_src4 = __esm({
 // src/lib/materialize-slide.ts
 function buildOneSlide(input) {
   const deckPalette = paletteForTheme(input.themeKey);
-  const slideThemeKey = input.card.slideTheme ?? null;
-  const usePerSlide = !!slideThemeKey && slideThemeKey !== input.themeKey;
-  const palette = usePerSlide ? paletteForTheme(slideThemeKey) : deckPalette;
+  const usePerSlide = false;
+  const palette = deckPalette;
   try {
     const out = materializeSlide({
       card: input.card,
