@@ -541,6 +541,13 @@ export default function TeacherIslamicAdmin() {
                 </button>
               )}
             </div>
+            {editing.audioUrl.trim() && (
+              <audio
+                controls
+                src={editing.audioUrl.trim()}
+                style={{ width: "100%", marginBottom: 8 }}
+              />
+            )}
             {editError && <p style={{ color: "#fca5a5", marginTop: 4 }}>{editError}</p>}
             <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "flex-end" }}>
               <GhostButton onClick={() => setEditing(null)} disabled={saving}>إلغاء</GhostButton>
