@@ -1133,6 +1133,172 @@ router.post("/islamic/teacher/uploads/audio-url", async (req, res) => {
   }
 });
 
+
+/* ── Teacher bulk import (xlsx/csv/docx) ────────────────────────
+   Accepts a file with rows of (section, category, question, 4 options,
+   correct answer, optional difficulty/audio). Creates new sections/
+   categories under the teacher's ownership. Reuses any matching
+   teacher-owned section/category (by name). Validates each row using
+   the same rules as the manual editor; reports per-row errors.    */
+router.post("/islamic/teacher/import", upload.single("file"), async (req, res) => {
+  if (!(await requireAccess(req, res))) return;
+  if (!req.file) {
+    res.status(400).json({ message: "لم يتم رفع ملف" });
+    return;
+  }
+  const teacherId = req.session.teacherId!;
+  try {
+    let rows: Array<Record<string, string>> = [];
+    const lower = req.file.originalname.toLowerCase();
+    if (lower.endsWith(".docx")) {
+      const out = await mammoth.extractRawText({ buffer: req.file.buffer });
+      const lines = out.value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const header = lines[0]?.split("\t");
+      if (!header || header.length < 2) {
+        res.status(400).json({ message: "ملف Word فارغ أو لا يحتوي جدولاً مفصولاً بـ Tab" });
+        return;
+      }
+      for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split("\t");
+        const obj: Record<string, string> = {};
+        header.forEach((h, j) => (obj[h.trim()] = (cells[j] || "").trim()));
+        rows.push(obj);
+      }
+    } else {
+      const wb = XLSX.read(req.file.buffer, { type: "buffer" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) {
+        res.status(400).json({ message: "الملف فارغ" });
+        return;
+      }
+      rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+    }
+
+    if (rows.length === 0) {
+      res.status(400).json({ message: "لا توجد صفوف في الملف" });
+      return;
+    }
+
+    // Pre-load this teacher's sections/categories for name matching.
+    const ownedSections = await db
+      .select()
+      .from(islamicSectionsTable)
+      .where(eq(islamicSectionsTable.ownerId, teacherId));
+    const ownedCats = await db
+      .select()
+      .from(islamicCategoriesTable)
+      .where(eq(islamicCategoriesTable.ownerId, teacherId));
+    const sectionsMap = new Map<string, number>();
+    ownedSections.forEach((s) => sectionsMap.set(s.name.trim(), s.id));
+    const categoriesMap = new Map<string, number>();
+    ownedCats.forEach((c) => categoriesMap.set(`${c.sectionId}::${c.name.trim()}`, c.id));
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: Array<{ row: number; message: string }> = [];
+
+    function pick(row: Record<string, string>, keys: string[]): string {
+      for (const k of keys) {
+        const v = row[k];
+        if (typeof v === "string" && v.trim()) return v.trim();
+        if (typeof v === "number") return String(v);
+      }
+      return "";
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // 1-based with header row
+      const sectionName = pick(row, ["section_name", "القسم", "section"]);
+      const categoryName = pick(row, ["category_name", "الفئة", "category"]);
+      const text = pick(row, ["نص السؤال", "question", "question_text", "السؤال"]);
+      const a = pick(row, ["الخيار أ", "option_a", "A", "أ"]);
+      const b = pick(row, ["الخيار ب", "option_b", "B", "ب"]);
+      const c = pick(row, ["الخيار ج", "option_c", "C", "ج"]);
+      const d = pick(row, ["الخيار د", "option_d", "D", "د"]);
+      const correctRaw = pick(row, ["الإجابة الصحيحة", "correct_answer", "correct"]);
+      const difficultyRaw = (pick(row, ["الصعوبة", "difficulty"]) || "medium").toLowerCase();
+      const audioUrl = pick(row, ["audio_url", "صوت"]) || null;
+
+      if (!sectionName || !categoryName || !text || !a || !b || !c || !d || !correctRaw) {
+        skipped++;
+        errors.push({ row: rowNum, message: "حقول إلزامية ناقصة" });
+        continue;
+      }
+
+      // Resolve correct answer label (A/B/C/D / أ-د) or full text match.
+      let normalizedCorrect = correctRaw;
+      if (["أ", "a", "A", "1"].includes(correctRaw)) normalizedCorrect = a;
+      else if (["ب", "b", "B", "2"].includes(correctRaw)) normalizedCorrect = b;
+      else if (["ج", "c", "C", "3"].includes(correctRaw)) normalizedCorrect = c;
+      else if (["د", "d", "D", "4"].includes(correctRaw)) normalizedCorrect = d;
+
+      const options = [a, b, c, d];
+      const correctIndex = options.indexOf(normalizedCorrect);
+      const difficulty = ["easy", "medium", "hard"].includes(difficultyRaw) ? difficultyRaw : "medium";
+
+      const parsed = questionInputSchema.safeParse({
+        categoryId: 1, // placeholder; we resolve below before insert
+        questionText: text,
+        audioUrl,
+        options,
+        correctIndex: correctIndex >= 0 ? correctIndex : 0,
+        difficulty,
+      });
+      if (!parsed.success) {
+        skipped++;
+        errors.push({ row: rowNum, message: parsed.error.issues[0]?.message || "بيانات غير صالحة" });
+        continue;
+      }
+      if (correctIndex < 0) {
+        skipped++;
+        errors.push({ row: rowNum, message: "الإجابة الصحيحة لا تطابق أياً من الخيارات" });
+        continue;
+      }
+
+      // Resolve / create section under this teacher.
+      let sectionId = sectionsMap.get(sectionName);
+      if (!sectionId) {
+        const [s] = await db
+          .insert(islamicSectionsTable)
+          .values({ name: sectionName, ownerId: teacherId, isVisible: true, order: 999 })
+          .returning();
+        sectionId = s.id;
+        sectionsMap.set(sectionName, sectionId);
+      }
+      const catKey = `${sectionId}::${categoryName}`;
+      let categoryId = categoriesMap.get(catKey);
+      if (!categoryId) {
+        const [cat] = await db
+          .insert(islamicCategoriesTable)
+          .values({ sectionId, name: categoryName, ownerId: teacherId, isVisible: true, order: 0, level: "mixed" })
+          .returning();
+        categoryId = cat.id;
+        categoriesMap.set(catKey, categoryId);
+      }
+
+      await db.insert(islamicQuestionsTable).values({
+        categoryId,
+        questionText: parsed.data.questionText,
+        audioUrl: parsed.data.audioUrl || null,
+        optionA: parsed.data.options[0],
+        optionB: parsed.data.options[1],
+        optionC: parsed.data.options[2],
+        optionD: parsed.data.options[3],
+        correctAnswer: parsed.data.options[parsed.data.correctIndex],
+        difficulty: parsed.data.difficulty || "medium",
+        createdBy: teacherId,
+      });
+      imported++;
+    }
+
+    res.json({ imported, skipped, errors, total: rows.length });
+  } catch (err) {
+    req.log.error({ err }, "Teacher islamic import failed");
+    res.status(500).json({ message: "فشل الاستيراد" });
+  }
+});
+
 /* ── Teacher private categories ─────────────────────────────────
    Teachers can create their own categories (ownerId = teacherId).
    Admin-created (ownerId = null) categories appear to everyone.

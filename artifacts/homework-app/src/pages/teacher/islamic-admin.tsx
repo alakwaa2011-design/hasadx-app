@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   api,
@@ -8,6 +8,15 @@ import {
   GhostButton,
   ISLAMIC_GOLD,
 } from "@/pages/islamic/_shared";
+
+const BASE = import.meta.env.VITE_API_URL || "";
+
+interface ImportReport {
+  imported: number;
+  skipped: number;
+  total: number;
+  errors: Array<{ row: number; message: string }>;
+}
 
 interface Category {
   id: number;
@@ -94,6 +103,39 @@ export default function TeacherIslamicAdmin() {
   const [uploadingAudio, setUploadingAudio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const [importing, setImporting] = useState(false);
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const [importError, setImportError] = useState<string>("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleImportFile(file: File) {
+    setImporting(true);
+    setImportError("");
+    setImportReport(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`${BASE}/api/islamic/teacher/import`, {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "فشل الاستيراد");
+      }
+      setImportReport(data as ImportReport);
+      reload();
+      if (activeCat) {
+        api<Q[]>(`/islamic/teacher/categories/${activeCat.id}/questions`).then(setQuestions).catch(() => {});
+      }
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "فشل الاستيراد");
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   async function reload() {
     setLoading(true);
@@ -242,7 +284,68 @@ export default function TeacherIslamicAdmin() {
         <GhostButton onClick={() => setLocation("/teacher")}>← لوحة المعلم</GhostButton>
         <GhostButton onClick={() => setLocation("/islamic")}>تحدي حصاد</GhostButton>
         <GoldButton onClick={addSection}>+ قسم جديد</GoldButton>
+        <GhostButton
+          onClick={() => fileRef.current?.click()}
+          disabled={importing}
+        >
+          {importing ? "جاري الاستيراد…" : "📥 استيراد ملف"}
+        </GhostButton>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,.csv,.docx"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleImportFile(f);
+          }}
+        />
       </div>
+
+      {(importing || importError || importReport) && (
+        <IslamicCard style={{ marginBottom: 14 }}>
+          {importing && <p style={{ textAlign: "center" }}>جاري معالجة الملف…</p>}
+          {importError && !importing && (
+            <p style={{ color: "#fca5a5", margin: 0 }}>تعذر الاستيراد: {importError}</p>
+          )}
+          {importReport && !importing && (
+            <div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ color: ISLAMIC_GOLD, fontWeight: 700 }}>تقرير الاستيراد</span>
+                <span>إجمالي الصفوف: {importReport.total}</span>
+                <span style={{ color: "#86efac" }}>تمت الإضافة: {importReport.imported}</span>
+                <span style={{ color: importReport.skipped ? "#fca5a5" : "#fefce8" }}>
+                  تم التخطي: {importReport.skipped}
+                </span>
+                <button
+                  onClick={() => setImportReport(null)}
+                  style={{ ...smallBtn(false), marginInlineStart: "auto" }}
+                >
+                  إخفاء
+                </button>
+              </div>
+              {importReport.errors.length > 0 && (
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ cursor: "pointer", color: "#fca5a5" }}>
+                    أخطاء الصفوف ({importReport.errors.length})
+                  </summary>
+                  <ul style={{ marginTop: 8, paddingInlineStart: 20, fontSize: 13, lineHeight: 1.8 }}>
+                    {importReport.errors.slice(0, 50).map((er, i) => (
+                      <li key={i}>صف {er.row}: {er.message}</li>
+                    ))}
+                    {importReport.errors.length > 50 && (
+                      <li style={{ opacity: 0.7 }}>… و{importReport.errors.length - 50} خطأ إضافي</li>
+                    )}
+                  </ul>
+                </details>
+              )}
+              <p style={{ marginTop: 10, fontSize: 12, opacity: 0.75 }}>
+                صيغة الملف: أعمدة (section_name, category_name, question, option_a, option_b, option_c, option_d, correct_answer, difficulty?, audio_url?). يقبل أيضاً المسميات العربية: القسم، الفئة، نص السؤال، الخيار أ/ب/ج/د، الإجابة الصحيحة، الصعوبة. الإجابة الصحيحة يمكن أن تكون A/B/C/D أو أ/ب/ج/د أو نص الخيار كاملاً.
+              </p>
+            </div>
+          )}
+        </IslamicCard>
+      )}
 
       {loading && <IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard>}
       {error && !loading && <IslamicCard><p style={{ color: "#fca5a5" }}>{error}</p></IslamicCard>}
