@@ -644,9 +644,9 @@ export default function ArenaPlay() {
             maxWidth: "1240px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
-            gap: "clamp(16px, 2vw, 26px)",
-            padding: "clamp(14px, 2vw, 28px)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 46%), 1fr))",
+            gap: "clamp(10px, 2vw, 22px)",
+            padding: "clamp(10px, 2vw, 24px)",
           }}
         >
           {orderedSubCategoryIds.map(subId => {
@@ -1152,7 +1152,7 @@ export default function ArenaPlay() {
       {/* ══ HEADER — white card, 3 zones ══════════════════════════════════ */}
       <header className="shrink-0 px-2 sm:px-4 pt-2 sm:pt-3">
         <div
-          className="px-3 sm:px-4 py-2.5 gap-3 sm:gap-4 flex flex-col sm:grid items-stretch sm:items-center"
+          className="px-3 sm:px-5 py-2.5 gap-2 sm:gap-5 flex flex-col sm:grid items-center"
           style={{
             background: "#ffffff",
             borderRadius: "18px",
@@ -1161,16 +1161,13 @@ export default function ArenaPlay() {
             maxWidth: "1280px",
             margin: "0 auto",
             width: "100%",
-            gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+            gridTemplateColumns: "auto minmax(0,1fr) auto",
           }}
         >
-          {/* Zone A (visually right in RTL): Teams pill — fills cell, reaches toward brand */}
-          <div
-            className="flex items-center justify-stretch"
-            style={{ minWidth: 0 }}
-          >
+          {/* Zone A (right in RTL): Teams pill — natural width, compact */}
+          <div className="flex items-center justify-end order-1 sm:order-none w-full sm:w-auto">
             <div
-              className="flex items-center justify-between w-full px-3 sm:px-4 py-2 rounded-2xl"
+              className="flex items-center gap-2 px-3 py-2 rounded-2xl"
               style={{
                 background: "linear-gradient(135deg, #faf6ec, #f5efdc)",
                 border: "1.5px solid #d9c896",
@@ -1178,42 +1175,42 @@ export default function ArenaPlay() {
                 fontFamily: ARABIC_FONT,
               }}
             >
-              {/* Team A (right in RTL) */}
+              {/* Team A */}
               {(() => {
                 const t = state.teams[state.teamOrder[0]];
                 if (!t) return null;
                 const isActive = state.currentTurn === state.teamOrder[0];
                 return (
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-start">
-                    <div className="flex items-center justify-center shrink-0" style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${t.color}1f` }}>
-                      <Users className="w-[20px] h-[20px]" style={{ color: t.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center shrink-0" style={{ width: "30px", height: "30px", borderRadius: "8px", background: `${t.color}1f` }}>
+                      <Users className="w-[16px] h-[16px]" style={{ color: t.color }} />
                     </div>
-                    <div className="flex flex-col min-w-0 leading-none">
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2, textAlign: "start" }}>{t.name}</span>
-                      <span style={{ fontSize: "22px", fontWeight: 800, lineHeight: 1.1, marginTop: "2px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums", textAlign: "start" }}>{t.score}</span>
+                    <div className="flex flex-col leading-none">
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
+                      <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: 1.1, marginTop: "1px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
                     </div>
                   </div>
                 );
               })()}
 
-              {/* VS center */}
-              <div className="flex items-center justify-center shrink-0 mx-2" style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#ffffff", border: "2px solid #d9c896", boxShadow: "0 2px 6px rgba(0,0,0,0.06)" }}>
-                <span style={{ fontSize: "13px", fontWeight: 900, color: "#2d5e3f", letterSpacing: "0.05em", fontFamily: ARABIC_DISPLAY }}>VS</span>
+              {/* VS */}
+              <div className="flex items-center justify-center shrink-0" style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#ffffff", border: "2px solid #d9c896", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <span style={{ fontSize: "11px", fontWeight: 900, color: "#2d5e3f", fontFamily: ARABIC_DISPLAY }}>VS</span>
               </div>
 
-              {/* Team B (left in RTL) */}
+              {/* Team B */}
               {(() => {
                 const t = state.teams[state.teamOrder[1]];
                 if (!t) return null;
                 const isActive = state.currentTurn === state.teamOrder[1];
                 return (
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
-                    <div className="flex flex-col min-w-0 leading-none">
-                      <span style={{ fontSize: "12px", fontWeight: 700, color: isActive ? t.color : "#4b5563", whiteSpace: "nowrap", lineHeight: 1.2, textAlign: "end" }}>{t.name}</span>
-                      <span style={{ fontSize: "22px", fontWeight: 800, lineHeight: 1.1, marginTop: "2px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums", textAlign: "end" }}>{t.score}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col leading-none items-end">
+                      <span style={{ fontSize: "11px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
+                      <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: 1.1, marginTop: "1px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
                     </div>
-                    <div className="flex items-center justify-center shrink-0" style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${t.color}1f` }}>
-                      <Users className="w-[20px] h-[20px]" style={{ color: t.color }} />
+                    <div className="flex items-center justify-center shrink-0" style={{ width: "30px", height: "30px", borderRadius: "8px", background: `${t.color}1f` }}>
+                      <Users className="w-[16px] h-[16px]" style={{ color: t.color }} />
                     </div>
                   </div>
                 );
@@ -1222,37 +1219,33 @@ export default function ArenaPlay() {
           </div>
 
           {/* Zone B (center): Brand */}
-          <div className="flex items-center justify-center gap-2.5 shrink-0 px-1">
+          <div className="flex items-center justify-center gap-2.5 order-2 sm:order-none">
             <img
               src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
               alt="حصاد"
-              className="w-12 h-12 rounded-xl object-cover shrink-0"
+              className="w-11 h-11 rounded-xl object-cover shrink-0"
               style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
             />
             <div className="flex flex-col leading-none">
-              <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "21px", color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
-              <span style={{ fontFamily: ARABIC_FONT, fontWeight: 500, fontSize: "11.5px", color: "#a08a55", marginTop: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "220px" }}>
+              <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "20px", color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
+              <span style={{ fontFamily: ARABIC_FONT, fontWeight: 500, fontSize: "11px", color: "#a08a55", marginTop: "5px", paddingTop: "4px", borderTop: "1px solid #e8dfc8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>
                 {state.tournamentName ?? "بطولة المعرفة والتحدي"}
               </span>
             </div>
           </div>
 
-          {/* Zone C (visually left in RTL): Action buttons — fills cell */}
-          <div
-            className="flex items-center justify-between"
-            style={{ gap: "6px", minWidth: 0 }}
-          >
+          {/* Zone C (left in RTL): Action buttons — compact, natural width */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-center order-3 sm:order-none">
             {ACTION_BTNS.map((btn, i) => (
               <button
                 key={i}
                 onClick={btn.action}
                 title={btn.label}
-                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90 flex-1"
+                className="flex flex-col items-center justify-center rounded-xl transition-all active:scale-90"
                 style={{
-                  minWidth: "0",
-                  maxWidth: "62px",
-                  height: "56px",
-                  gap: "3px",
+                  width: "46px",
+                  height: "46px",
+                  gap: "2px",
                   color: "#5b6b87",
                   background: "#faf6ec",
                   border: "1px solid #ebe2cd",
@@ -1268,7 +1261,7 @@ export default function ArenaPlay() {
                 }}
               >
                 {btn.icon}
-                <span style={{ fontSize: "10px", fontWeight: 600, color: "#8a7d5e" }}>{btn.label}</span>
+                <span style={{ fontSize: "9px", fontWeight: 600, color: "#8a7d5e" }}>{btn.label}</span>
               </button>
             ))}
           </div>
