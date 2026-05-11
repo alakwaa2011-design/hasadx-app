@@ -10,7 +10,7 @@ import {
   type ArenaDifficulty, type ArenaSection,
   type HelperId,
 } from "@/data/arena-questions";
-import { saveArenaState } from "@/lib/arena-store";
+import { saveArenaState, loadArenaLastSettings, saveArenaLastSettings } from "@/lib/arena-store";
 import {
   fetchArenaCategories, fetchArenaActivities, buildDbSections,
   type DbArenaCategory, type DbArenaActivity,
@@ -103,19 +103,33 @@ function Stepper({ step }: { step: Step }) {
   );
 }
 
+function buildInitialTeams(): TeamFormState[] {
+  const saved = loadArenaLastSettings();
+  if (saved && saved.teams.length >= 2) {
+    return saved.teams.map(t => ({
+      name: t.name,
+      color: t.color,
+      emoji: t.emoji,
+      subCategoryIds: t.subCategoryIds,
+      helpers: t.helpers,
+    }));
+  }
+  return [
+    { name: "الفريق الأول", color: TEAM_COLORS[0].color, emoji: "🦅", subCategoryIds: [], helpers: [] },
+    { name: "الفريق الثاني", color: TEAM_COLORS[1].color, emoji: "🦁", subCategoryIds: [], helpers: [] },
+  ];
+}
+
 export default function PublicArenaSetup() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const [step, setStep] = useState<Step>(1);
-  const [teams, setTeams] = useState<TeamFormState[]>([
-    { name: "الفريق الأول", color: TEAM_COLORS[0].color, emoji: "🦅", subCategoryIds: [], helpers: [] },
-    { name: "الفريق الثاني", color: TEAM_COLORS[1].color, emoji: "🦁", subCategoryIds: [], helpers: [] },
-  ]);
-  const [showEmoji, setShowEmoji] = useState<boolean[]>([false, false]);
-  const [showColors, setShowColors] = useState<boolean[]>([false, false]);
-  const [timerSeconds, setTimerSeconds] = useState(20);
+  const [teams, setTeams] = useState<TeamFormState[]>(buildInitialTeams);
+  const [showEmoji, setShowEmoji] = useState<boolean[]>(() => teams.map(() => false));
+  const [showColors, setShowColors] = useState<boolean[]>(() => teams.map(() => false));
+  const [timerSeconds, setTimerSeconds] = useState(() => loadArenaLastSettings()?.timerSeconds ?? 20);
 
   const [dbCats, setDbCats] = useState<DbArenaCategory[]>([]);
   const [dbActs, setDbActs] = useState<DbArenaActivity[]>([]);
@@ -227,6 +241,18 @@ export default function PublicArenaSetup() {
         players: [],
       };
     }
+    // Persist settings before launching so per-team sub-category assignments are
+    // captured directly from the form (no reconstruction needed after game ends).
+    saveArenaLastSettings({
+      timerSeconds,
+      teams: teams.map(t => ({
+        name: t.name.trim(),
+        color: t.color,
+        emoji: t.emoji,
+        subCategoryIds: t.subCategoryIds,
+        helpers: t.helpers,
+      })),
+    });
     sessionStorage.setItem("arena_public_mode", "1");
     saveArenaState({
       tournamentName: "",

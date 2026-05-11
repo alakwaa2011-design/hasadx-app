@@ -297,3 +297,61 @@ export function getOrCreateWriteSecret(): string {
     return "secret";
   }
 }
+
+// ── Last public-game settings persistence ────────────────────────────────────
+
+export interface ArenaLastTeamSettings {
+  name: string;
+  color: string;
+  emoji: string;
+  subCategoryIds: string[];
+  helpers: HelperId[];
+}
+
+export interface ArenaLastSettings {
+  timerSeconds: number;
+  teams: ArenaLastTeamSettings[];
+}
+
+const LAST_SETTINGS_KEY = "hasad_arena_last_settings_v1";
+
+export function saveArenaLastSettings(settings: ArenaLastSettings): void {
+  try {
+    localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadArenaLastSettings(): ArenaLastSettings | null {
+  try {
+    const raw = localStorage.getItem(LAST_SETTINGS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ArenaLastSettings>;
+
+    const timerSeconds =
+      typeof parsed.timerSeconds === "number"
+        ? Math.min(60, Math.max(10, Math.round(parsed.timerSeconds)))
+        : 20;
+
+    if (!Array.isArray(parsed.teams) || parsed.teams.length < 2) return null;
+
+    const teams: ArenaLastTeamSettings[] = (parsed.teams as Partial<ArenaLastTeamSettings>[]).map(
+      (t, i) => ({
+        name: typeof t?.name === "string" && t.name.trim() ? t.name : `الفريق ${i + 1}`,
+        color: typeof t?.color === "string" && t.color ? t.color : "#16a34a",
+        emoji: typeof t?.emoji === "string" && t.emoji ? t.emoji : "🦅",
+        subCategoryIds: Array.isArray(t?.subCategoryIds)
+          ? (t.subCategoryIds as unknown[]).filter((id): id is string => typeof id === "string")
+          : [],
+        helpers: Array.isArray(t?.helpers)
+          ? (t.helpers as unknown[]).filter((id): id is HelperId => typeof id === "string")
+          : [],
+      }),
+    );
+
+    return { timerSeconds, teams };
+  } catch {
+    return null;
+  }
+}

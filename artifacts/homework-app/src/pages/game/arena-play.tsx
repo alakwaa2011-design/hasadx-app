@@ -128,6 +128,8 @@ export default function ArenaPlay() {
   // When the game ends, delete the server save so it doesn't appear as a resume prompt.
   // For teacher games, also clear the public-mode sessionStorage flag so a stale flag
   // from a previous public game cannot accidentally redirect the teacher to /play/arena.
+  // For public games, persist the last-used settings to localStorage so the next visit
+  // to /play/arena can pre-fill the setup form without re-configuring from scratch.
   useEffect(() => {
     if (phase !== "end") return;
     if (isLoggedIn) {
