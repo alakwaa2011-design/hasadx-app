@@ -19,7 +19,8 @@ import {
 import { saveArenaState, type ArenaState } from "@/lib/arena-store";
 import {
   fetchArenaCategories, fetchArenaActivities, buildDbSections,
-  createArenaCategory, deleteArenaCategory, createArenaActivity,
+  createArenaCategory, updateArenaCategory, deleteArenaCategory,
+  createArenaActivity, updateArenaActivity, deleteArenaActivity,
   uploadImageFile, type DbArenaCategory, type DbArenaActivity,
 } from "@/lib/arena-content";
 import { toast } from "@/components/ui/sonner";
@@ -626,6 +627,7 @@ export default function ArenaSetup() {
                       onEditDbCat={(c) => { setEditingCat(c); setEditorOpen(true); }}
                       isAdmin={isAdmin}
                       currentTeacherId={(teacherData as any)?.id ?? null}
+                      allFull={step2Valid}
                     />
                   ))}
                 </div>
@@ -735,7 +737,44 @@ export default function ArenaSetup() {
           </div>
         </div>
 
-        {editorOpen && (
+        {/* Floating "next" banner — appears when all categories are chosen in step 2 */}
+      <AnimatePresence>
+        {step === 2 && step2Valid && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            dir="rtl"
+            className="fixed bottom-5 inset-x-0 z-40 flex justify-center pointer-events-none px-4"
+          >
+            <div
+              className="pointer-events-auto flex items-center gap-3 sm:gap-4 rounded-2xl px-4 sm:px-6 py-3 shadow-2xl border-2"
+              style={{
+                background: "linear-gradient(135deg, #0c3d28 0%, #081f14 100%)",
+                borderColor: "rgba(245,158,11,0.7)",
+                boxShadow: "0 12px 48px -10px rgba(0,0,0,0.7), 0 0 0 1px rgba(245,158,11,0.25)",
+              }}
+            >
+              <div className="text-sm font-bold text-emerald-100/80 hidden sm:block">
+                ✅ اكتمل الاختيار — {teams.map(t => `${t.emoji} ${t.name}`).join(" vs ")}
+              </div>
+              <div className="text-sm font-bold text-emerald-100/80 sm:hidden">
+                ✅ اكتمل الاختيار!
+              </div>
+              <button
+                onClick={goNext}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-base bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 shadow-lg transition-all active:scale-95"
+              >
+                التالي
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {editorOpen && (
           <CategoryEditor
             initial={editingCat}
             isAdmin={isAdmin}
@@ -771,9 +810,10 @@ interface SectionGroupProps {
   onEditDbCat: (cat: DbArenaCategory) => void;
   isAdmin: boolean;
   currentTeacherId: number | null;
+  allFull: boolean;
 }
 
-function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditDbCat, isAdmin, currentTeacherId }: SectionGroupProps) {
+function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditDbCat, isAdmin, currentTeacherId, allFull }: SectionGroupProps) {
   const cover = getSectionCover(section, sectionIdx);
   const isCustom = section.id === "custom";
   const isDbSec = section.id.startsWith("db-section-");
@@ -813,7 +853,7 @@ function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditD
           const subCover = getSubCover(sub, cover, subIdx);
           const dbId = sub.id.startsWith("db-") ? Number(sub.id.slice(3)) : null;
           const dbCat = dbId ? dbCats.find(c => c.id === dbId) : null;
-          const ownsDbCat = !!dbCat && (dbCat.teacherId === currentTeacherId || (isAdmin && dbCat.isPublic));
+          const ownsDbCat = !!dbCat && (dbCat.teacherId === currentTeacherId || isAdmin);
           const takenByIdx = teams.findIndex(tm => tm.subCategoryIds.includes(sub.id));
           return (
             <CategoryCard
@@ -825,6 +865,7 @@ function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditD
               onToggle={(teamIdx) => onToggleSub(teamIdx, sub.id)}
               editable={ownsDbCat && !!dbCat}
               onEdit={dbCat ? () => onEditDbCat(dbCat) : undefined}
+              dimmed={allFull && takenByIdx === -1}
             />
           );
         })}
@@ -841,15 +882,16 @@ interface CategoryCardProps {
   onToggle: (teamIdx: number) => void;
   editable?: boolean;
   onEdit?: () => void;
+  dimmed?: boolean;
 }
 
-function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdit }: CategoryCardProps) {
+function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdit, dimmed }: CategoryCardProps) {
   const taken = takenByIdx !== -1;
   const winningTeam = taken ? teams[takenByIdx] : null;
   const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0);
   return (
     <div
-      className="rounded-2xl overflow-hidden border-2 transition relative"
+      className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
       style={{
         borderColor: taken ? (winningTeam?.color ?? cover.color) : "rgba(255,255,255,0.12)",
         boxShadow: taken
@@ -1060,9 +1102,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     if (!name.trim()) { toast.error("اكتب اسم الفئة"); return; }
     setSavingCat(true);
     if (savedCatId) {
-      // For now: only support create + delete — keep editor lean.
-      toast.success("تم حفظ التغييرات");
+      const updated = await updateArenaCategory(savedCatId, {
+        name: name.trim(),
+        emoji,
+        coverColor,
+        coverGradient,
+        coverImageUrl,
+        ...(isAdmin ? { isPublic: makePublic } : {}),
+      });
       setSavingCat(false);
+      if (!updated) { toast.error("فشل حفظ التغييرات"); return; }
+      toast.success("تم حفظ التغييرات");
       await onSaved();
       return;
     }
@@ -1174,13 +1224,45 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   };
 
   const removeSavedActivity = async (id: number) => {
-    const ok = await (await import("@/lib/arena-content")).deleteArenaActivity(id);
+    const ok = await deleteArenaActivity(id);
     if (ok) {
       setActivities(prev => prev.filter(a => a.id !== id));
       await onSaved();
     } else {
       toast.error("فشل الحذف");
     }
+  };
+
+  const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
+  const [editQ, setEditQ] = useState("");
+  const [editA, setEditA] = useState("");
+  const [editDiff, setEditDiff] = useState<ArenaDifficulty>(200);
+  const [editHint, setEditHint] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const startEditActivity = (a: DbArenaActivity) => {
+    setEditingActivityId(a.id);
+    setEditQ(a.question);
+    setEditA(a.answer);
+    setEditDiff(a.difficulty as ArenaDifficulty);
+    setEditHint(a.hint ?? "");
+  };
+
+  const saveEditActivity = async () => {
+    if (!editingActivityId || !editQ.trim() || !editA.trim()) { toast.error("اكتب نص السؤال والإجابة"); return; }
+    setSavingEdit(true);
+    const updated = await updateArenaActivity(editingActivityId, {
+      question: editQ.trim(),
+      answer: editA.trim(),
+      difficulty: editDiff,
+      hint: editHint.trim() || null,
+    });
+    setSavingEdit(false);
+    if (!updated) { toast.error("فشل تعديل السؤال"); return; }
+    setActivities(prev => prev.map(a => a.id === editingActivityId ? updated : a));
+    setEditingActivityId(null);
+    toast.success("تم تعديل السؤال");
+    await onSaved();
   };
 
   const removeCategory = async () => {
@@ -1356,16 +1438,18 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 </div>
               </div>
 
-              {/* Public toggle (admin only) */}
-              {isAdmin && !savedCatId && (
+              {/* Public toggle (admin only — shown for both create and edit) */}
+              {isAdmin && (
                 <label className="flex items-center gap-3 p-3 rounded-xl bg-amber-300/10 border border-amber-300/30 cursor-pointer">
                   <input type="checkbox" checked={makePublic} onChange={e => setMakePublic(e.target.checked)} className="w-5 h-5 accent-amber-400" />
                   <div className="flex-1">
                     <div className="font-bold text-sm text-amber-100 inline-flex items-center gap-1.5">
                       <Globe className="w-4 h-4" />
-                      جعل الفئة عامة لكل المعلمين
+                      فئة عامة (مرئية لجميع المعلمين)
                     </div>
-                    <div className="text-[11px] text-amber-100/60">ستظهر في مكتبة جميع المعلمين، ولن تكون مرتبطة بحسابك</div>
+                    <div className="text-[11px] text-amber-100/60">
+                      {savedCatId ? "تحديث حالة الظهور للمعلمين الآخرين" : "ستظهر في مكتبة جميع المعلمين، ولن تكون مرتبطة بحسابك"}
+                    </div>
                   </div>
                 </label>
               )}
@@ -1504,18 +1588,48 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   ) : (
                     <div className="space-y-1.5 max-h-72 overflow-y-auto">
                       {activities.map(a => (
-                        <div key={a.id} className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
-                          <span className="text-xs font-bold text-amber-300 shrink-0 w-10 text-center">{a.difficulty}</span>
-                          {a.imageUrl && (
-                            <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
+                        <div key={a.id}>
+                          {editingActivityId === a.id ? (
+                            /* ── Inline edit form ── */
+                            <div className="rounded-lg bg-amber-400/10 border border-amber-300/40 px-3 py-3 space-y-2">
+                              <div className="text-[11px] font-extrabold text-amber-200 mb-1">تعديل السؤال</div>
+                              <div className="grid sm:grid-cols-12 gap-2">
+                                <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                                <input value={editA} onChange={e => setEditA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                                <select value={editDiff} onChange={e => setEditDiff(Number(e.target.value) as ArenaDifficulty)} className="sm:col-span-3 bg-black/40 text-white rounded-lg px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300">
+                                  {DIFFICULTIES.map(d => <option key={d} value={d}>{d} نقطة</option>)}
+                                </select>
+                              </div>
+                              <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="تلميح (اختياري)" className="w-full bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                              <div className="flex gap-2 pt-1">
+                                <button onClick={saveEditActivity} disabled={savingEdit} className="px-4 py-1.5 rounded-lg font-bold text-sm bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 disabled:opacity-50">
+                                  <Save className="w-3.5 h-3.5" />
+                                  {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديل"}
+                                </button>
+                                <button onClick={() => setEditingActivityId(null)} className="px-3 py-1.5 rounded-lg font-bold text-sm text-white/60 hover:text-white border border-white/15 hover:border-white/30">
+                                  إلغاء
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* ── Normal row ── */
+                            <div className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
+                              <span className="text-xs font-bold text-amber-300 shrink-0 w-10 text-center">{a.difficulty}</span>
+                              {a.imageUrl && (
+                                <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-bold text-white truncate">{a.question}</div>
+                                <div className="text-xs text-emerald-200/80 truncate">→ {a.answer}</div>
+                              </div>
+                              <button onClick={() => startEditActivity(a)} className="p-1.5 rounded-lg text-amber-300 hover:bg-amber-400/20" title="تعديل">
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-300 hover:bg-rose-500/20" title="حذف">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold text-white truncate">{a.question}</div>
-                            <div className="text-xs text-emerald-200/80 truncate">→ {a.answer}</div>
-                          </div>
-                          <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-300 hover:bg-rose-500/20">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       ))}
                     </div>

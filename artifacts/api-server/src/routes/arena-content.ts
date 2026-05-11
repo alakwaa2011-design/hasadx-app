@@ -36,16 +36,17 @@ const ActivityBody = z.object({
   sortOrder: z.number().int().default(0),
 });
 
-// GET /arena-content/categories — public + own
+// GET /arena-content/categories — admin sees all; others see public + own
 router.get("/arena-content/categories", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
-    const rows = await db
-      .select()
-      .from(arenaCategoriesTable)
-      .where(or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId)))
-      .orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id));
+    const admin = await isAdmin(teacherId);
+    const rows = admin
+      ? await db.select().from(arenaCategoriesTable).orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id))
+      : await db.select().from(arenaCategoriesTable)
+          .where(or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId)))
+          .orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id));
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "list arena categories");
@@ -80,7 +81,7 @@ router.put("/arena-content/categories/:id", async (req, res) => {
     const [existing] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const admin = await isAdmin(teacherId);
-    const ownsOrAdmin = existing.teacherId === teacherId || (admin && existing.isPublic);
+    const ownsOrAdmin = existing.teacherId === teacherId || admin;
     if (!ownsOrAdmin) return res.status(403).json({ error: "Forbidden" });
     const body = CategoryBody.partial().parse(req.body);
     const isPublic = admin ? (body.isPublic ?? existing.isPublic) : existing.isPublic;
@@ -105,7 +106,7 @@ router.delete("/arena-content/categories/:id", async (req, res) => {
     const [existing] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const admin = await isAdmin(teacherId);
-    const ownsOrAdmin = existing.teacherId === teacherId || (admin && existing.isPublic);
+    const ownsOrAdmin = existing.teacherId === teacherId || admin;
     if (!ownsOrAdmin) return res.status(403).json({ error: "Forbidden" });
     await db.delete(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, id));
     res.json({ ok: true });
@@ -115,20 +116,25 @@ router.delete("/arena-content/categories/:id", async (req, res) => {
   }
 });
 
-// GET /arena-content/activities?categoryIds=1,2,3
+// GET /arena-content/activities?categoryIds=1,2,3 — admin sees all
 router.get("/arena-content/activities", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    const admin = await isAdmin(teacherId);
     const idsRaw = String(req.query.categoryIds ?? "").trim();
-    let cond = or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId));
-    if (idsRaw) {
-      const ids = idsRaw.split(",").map(Number).filter(n => Number.isFinite(n));
-      if (ids.length > 0) {
-        cond = and(cond, inArray(arenaActivitiesTable.categoryId, ids))!;
-      }
+    const ids = idsRaw ? idsRaw.split(",").map(Number).filter(n => Number.isFinite(n)) : [];
+    let cond: ReturnType<typeof and> | ReturnType<typeof or> | undefined;
+    if (!admin) {
+      cond = or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId));
     }
-    const rows = await db.select().from(arenaActivitiesTable).where(cond).orderBy(asc(arenaActivitiesTable.sortOrder), asc(arenaActivitiesTable.id));
+    if (ids.length > 0) {
+      const idFilter = inArray(arenaActivitiesTable.categoryId, ids);
+      cond = cond ? and(cond, idFilter)! : idFilter;
+    }
+    const rows = await db.select().from(arenaActivitiesTable)
+      .where(cond)
+      .orderBy(asc(arenaActivitiesTable.sortOrder), asc(arenaActivitiesTable.id));
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "list arena activities");
@@ -144,7 +150,7 @@ router.post("/arena-content/activities", async (req, res) => {
     const [cat] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, body.categoryId));
     if (!cat) return res.status(404).json({ error: "Category not found" });
     const admin = await isAdmin(teacherId);
-    const ownsCat = cat.teacherId === teacherId || (admin && cat.isPublic);
+    const ownsCat = cat.teacherId === teacherId || admin;
     if (!ownsCat) return res.status(403).json({ error: "Forbidden" });
     const isPublic = admin && cat.isPublic;
     const [row] = await db.insert(arenaActivitiesTable).values({
@@ -168,7 +174,7 @@ router.put("/arena-content/activities/:id", async (req, res) => {
     const [existing] = await db.select().from(arenaActivitiesTable).where(eq(arenaActivitiesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const admin = await isAdmin(teacherId);
-    const owns = existing.teacherId === teacherId || (admin && existing.isPublic);
+    const owns = existing.teacherId === teacherId || admin;
     if (!owns) return res.status(403).json({ error: "Forbidden" });
     const body = ActivityBody.partial().parse(req.body);
     const [row] = await db.update(arenaActivitiesTable).set({
@@ -190,7 +196,7 @@ router.delete("/arena-content/activities/:id", async (req, res) => {
     const [existing] = await db.select().from(arenaActivitiesTable).where(eq(arenaActivitiesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const admin = await isAdmin(teacherId);
-    const owns = existing.teacherId === teacherId || (admin && existing.isPublic);
+    const owns = existing.teacherId === teacherId || admin;
     if (!owns) return res.status(403).json({ error: "Forbidden" });
     await db.delete(arenaActivitiesTable).where(eq(arenaActivitiesTable.id, id));
     res.json({ ok: true });

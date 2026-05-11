@@ -119,6 +119,21 @@ export async function createArenaActivity(body: Partial<DbArenaActivity>): Promi
   }
 }
 
+export async function updateArenaActivity(id: number, body: Partial<DbArenaActivity>): Promise<DbArenaActivity | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/activities/${id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteArenaActivity(id: number): Promise<boolean> {
   try {
     const r = await fetch(`${API_BASE}/api/arena-content/activities/${id}`, {
