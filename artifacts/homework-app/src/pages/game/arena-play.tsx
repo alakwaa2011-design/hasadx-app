@@ -20,6 +20,7 @@ import {
   cardKey, getNextTeam, loadArenaState, otherSide, pickKey, saveArenaState,
   getSeenIndices, markQuestionSeen, clearSeenBucket,
   saveArenaReport, getOrCreateShareCode, getOrCreateWriteSecret,
+  loadArenaLastSettings,
   type ArenaActiveQuestion, type ArenaCardSlot, type ArenaState, type TeamSide,
 } from "@/lib/arena-store";
 
@@ -717,6 +718,70 @@ export default function ArenaPlay() {
       sessionStorage.removeItem("arena_public_mode");
       setLocation(state.publicMode ? "/play/arena" : "/games");
     };
+    const lastSettings = loadArenaLastSettings();
+    const quickReplay = () => {
+      if (!lastSettings) {
+        setLocation("/play/arena");
+        return;
+      }
+      const sections = allSectionsRef.current;
+      const allValid = lastSettings.teams.every(
+        t =>
+          t.subCategoryIds.length === 3 &&
+          t.subCategoryIds.every(id => !!findSubCategory(id, sections)),
+      );
+      if (!allValid) {
+        toast.error("بعض الفئات لم تعد متاحة — يرجى إعادة الإعداد");
+        sessionStorage.removeItem("arena_public_mode");
+        setLocation("/play/arena");
+        return;
+      }
+      const teamsRecord: ArenaState["teams"] = {};
+      const teamOrder: string[] = [];
+      for (let i = 0; i < lastSettings.teams.length; i++) {
+        const id = `T${i + 1}`;
+        teamOrder.push(id);
+        const t = lastSettings.teams[i];
+        teamsRecord[id] = {
+          name: t.name,
+          color: t.color,
+          emoji: t.emoji,
+          score: 0,
+          helpers: t.helpers,
+          usedHelpers: [],
+          players: [],
+        };
+      }
+      const newArenaState: ArenaState = {
+        tournamentName: "",
+        teams: teamsRecord,
+        teamOrder,
+        subCategoryIds: lastSettings.teams.flatMap(t => t.subCategoryIds),
+        customQuestions: [],
+        // Carry forward DB-backed sections from the just-finished game so that any
+        // DB categories that were selected remain resolvable on the fresh board.
+        // allSectionsRef is already built from state.dbSections, so validation above
+        // and this source are consistent.
+        dbSections: state.dbSections ?? [],
+        timerSeconds: lastSettings.timerSeconds,
+        currentTurn: teamOrder[0],
+        usedCards: [],
+        pickedQuestions: {},
+        active: null,
+        rulesAck: false,
+        startedAt: Date.now(),
+        publicMode: true,
+      };
+      // Persist to localStorage so the rules overlay on the fresh board can load it
+      saveArenaState(newArenaState);
+      sessionStorage.setItem("arena_public_mode", "1");
+      // Update React state directly — we're already on /game/arena/play so navigation
+      // alone would not remount the component.  Setting state + resetting phase is the
+      // only reliable way to transition from "end" back to a fresh board in-place.
+      setTimerRunning(false);
+      setState(newArenaState);
+      setPhase("board");
+    };
     return (
       <EndScreen
         winnerTeam={winnerTeam}
@@ -725,6 +790,9 @@ export default function ArenaPlay() {
         onRestart={restart}
         onExit={handleExit}
         onWinSound={() => playSound("win")}
+        publicMode={state.publicMode ?? false}
+        hasLastSettings={lastSettings !== null}
+        onQuickReplay={quickReplay}
       />
     );
   }
@@ -1890,6 +1958,7 @@ function RulesPanel({ title, items }: { title: string; items: string[] }) {
 
 function EndScreen({
   winnerTeam, teams, teamOrder, onRestart, onExit, onWinSound,
+  publicMode, hasLastSettings, onQuickReplay,
 }: {
   winnerTeam: { name: string; emoji: string; color: string; score: number } | null;
   teams: ArenaState["teams"];
@@ -1897,12 +1966,17 @@ function EndScreen({
   onRestart: () => void;
   onExit: () => void;
   onWinSound: () => void;
+  publicMode?: boolean;
+  hasLastSettings?: boolean;
+  onQuickReplay?: () => void;
 }) {
   useEffect(() => {
     if (!winnerTeam) return;
     const t = setTimeout(onWinSound, 200);
     return () => clearTimeout(t);
   }, [winnerTeam, onWinSound]);
+
+  const showQuickReplay = publicMode && hasLastSettings && !!onQuickReplay;
 
   return (
     <div
@@ -1957,6 +2031,32 @@ function EndScreen({
           })}
         </div>
 
+        {/* Quick replay — public mode only, shown prominently above other actions */}
+        {showQuickReplay && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-4"
+          >
+            <button
+              onClick={onQuickReplay}
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black text-lg inline-flex items-center justify-center gap-2.5 shadow-2xl"
+              style={{
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                color: "#fff",
+                boxShadow: "0 8px 32px -8px rgba(16,185,129,0.6)",
+              }}
+            >
+              <Zap className="w-5 h-5" />
+              إعادة فورية بنفس الإعدادات
+            </button>
+            <div className="text-emerald-400/60 text-xs mt-2 font-bold">
+              يبدأ التحدّي فوراً بنفس الفرق والفئات — بدون خطوات الإعداد
+            </div>
+          </motion.div>
+        )}
+
         {/* Actions */}
         <div className="flex flex-wrap justify-center gap-3">
           <button
@@ -1965,7 +2065,7 @@ function EndScreen({
             style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)", color: "#0c0f14" }}
           >
             <RotateCcw className="w-5 h-5" />
-            إعادة اللعب
+            {showQuickReplay ? "إعادة مع تغيير الإعدادات" : "إعادة اللعب"}
           </button>
           <button
             onClick={onExit}
