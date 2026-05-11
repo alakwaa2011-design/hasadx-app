@@ -37,7 +37,7 @@ interface StoredSession {
 }
 
 const sessions = new Map<string, StoredSession>();
-const TTL_MS = 10 * 60 * 1000;
+const TTL_MS = Number(process.env.ARENA_SESSION_TTL_MS) || 30 * 60 * 1000;
 
 function evictExpired() {
   const now = Date.now();
@@ -154,6 +154,8 @@ router.get("/arena/session/:code", (req, res) => {
     evictExpired();
     const session = sessions.get(code);
     if (!session) return res.status(404).json({ error: "Session not found or expired" });
+
+    session.updatedAt = Date.now();
 
     const { writeSecret: _secret, ...publicData } = session;
     res.json(publicData);
