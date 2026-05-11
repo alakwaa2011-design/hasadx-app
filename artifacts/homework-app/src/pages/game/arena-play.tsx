@@ -1,30 +1,81 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Trophy, Eye, Clock, RotateCcw, Home, Zap, X, Volume2, VolumeX,
-  Maximize, Minimize, BookOpen, Sparkles, ChevronLeft, Share2, Flag,
-  Phone, RefreshCw, AlertTriangle, Lock, LogIn, Copy, Check as CheckIcon, Tv2, ChevronDown, Users,
+  Trophy,
+  Eye,
+  Clock,
+  RotateCcw,
+  Home,
+  Zap,
+  X,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  BookOpen,
+  Sparkles,
+  ChevronLeft,
+  Share2,
+  Flag,
+  Phone,
+  RefreshCw,
+  AlertTriangle,
+  Lock,
+  LogIn,
+  Copy,
+  Check as CheckIcon,
+  Tv2,
+  ChevronDown,
+  Users,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { ConfettiBurst } from "@/components/confetti-burst";
 import { toast } from "@/components/ui/sonner";
 import {
-  ARENA_SECTIONS, HELPERS, buildCustomSection,
-  type ArenaDifficulty, type ArenaSection, type ArenaSubCategory,
-  type HelperId, type ArenaQuestion,
-  type MemoryPayload, type SinJeemPayload, type CategorizePayload, type LogoPayload,
+  ARENA_SECTIONS,
+  HELPERS,
+  buildCustomSection,
+  type ArenaDifficulty,
+  type ArenaSection,
+  type ArenaSubCategory,
+  type HelperId,
+  type ArenaQuestion,
+  type MemoryPayload,
+  type SinJeemPayload,
+  type CategorizePayload,
+  type LogoPayload,
 } from "@/data/arena-questions";
 import { getStaticCoverImage } from "@/data/arena-cover-images";
 import {
-  cardKey, getNextTeam, loadArenaState, otherSide, pickKey, saveArenaState,
-  getSeenIndices, markQuestionSeen, clearSeenBucket,
-  saveArenaReport, getOrCreateShareCode, getOrCreateWriteSecret,
+  cardKey,
+  getNextTeam,
+  loadArenaState,
+  otherSide,
+  pickKey,
+  saveArenaState,
+  getSeenIndices,
+  markQuestionSeen,
+  clearSeenBucket,
+  saveArenaReport,
+  getOrCreateShareCode,
+  getOrCreateWriteSecret,
   loadArenaLastSettings,
-  type ArenaActiveQuestion, type ArenaCardSlot, type ArenaState, type TeamSide,
+  type ArenaActiveQuestion,
+  type ArenaCardSlot,
+  type ArenaState,
+  type TeamSide,
 } from "@/lib/arena-store";
 import {
-  fetchArenaCategories, fetchArenaActivities, buildDbSections,
+  fetchArenaCategories,
+  fetchArenaActivities,
+  buildDbSections,
 } from "@/lib/arena-content";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
@@ -36,8 +87,16 @@ const SLOTS: ArenaCardSlot[] = [1, 2];
  *  Static categories: always [200,400,600].
  *  DB-backed categories: add 800 only when the organizer explicitly enables it
  *  AND the sub-category has 800-pt questions. */
-function subDifficulties(subId: string, sub: ArenaSubCategory, show800 = false): ArenaDifficulty[] {
-  if (show800 && subId.startsWith("db-") && (sub.questions[800]?.length ?? 0) > 0) {
+function subDifficulties(
+  subId: string,
+  sub: ArenaSubCategory,
+  show800 = false,
+): ArenaDifficulty[] {
+  if (
+    show800 &&
+    subId.startsWith("db-") &&
+    (sub.questions[800]?.length ?? 0) > 0
+  ) {
     return [200, 400, 600, 800];
   }
   return BASE_POINT_VALUES;
@@ -50,7 +109,7 @@ function findSubCategory(
   sections: ArenaSection[] = ARENA_SECTIONS,
 ): ArenaSubCategory | undefined {
   for (const sec of sections) {
-    const sub = sec.subCategories.find(s => s.id === id);
+    const sub = sec.subCategories.find((s) => s.id === id);
     if (sub) return sub;
   }
   return undefined;
@@ -60,14 +119,19 @@ function findSection(
   subId: string,
   sections: ArenaSection[] = ARENA_SECTIONS,
 ): ArenaSection | undefined {
-  return sections.find(sec => sec.subCategories.some(s => s.id === subId));
+  return sections.find((sec) => sec.subCategories.some((s) => s.id === subId));
 }
 
 export default function ArenaPlay() {
   const [, setLocation] = useLocation();
   const [state, setState] = useState<ArenaState | null>(null);
   const [phase, setPhase] = useState<"board" | "end">("board");
-  const [pointAnimation, setPointAnimation] = useState<{ team: TeamSide; pts: number; difficulty: ArenaDifficulty; player?: string } | null>(null);
+  const [pointAnimation, setPointAnimation] = useState<{
+    team: TeamSide;
+    pts: number;
+    difficulty: ArenaDifficulty;
+    player?: string;
+  } | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [goldenTile, setGoldenTile] = useState<string | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -81,7 +145,10 @@ export default function ArenaPlay() {
   const [showReport, setShowReport] = useState(false);
   const [friendActive, setFriendActive] = useState(false);
   const [friendSeconds, setFriendSeconds] = useState(60);
-  const [shuraVotes, setShuraVotes] = useState<{ a: number; b: number }>({ a: 0, b: 0 });
+  const [shuraVotes, setShuraVotes] = useState<{ a: number; b: number }>({
+    a: 0,
+    b: 0,
+  });
   /** Organizer-controlled toggle: show 800-point cards on the board */
   const [show800, setShow800] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -123,14 +190,30 @@ export default function ArenaPlay() {
     if (params.get("demo") === "1") {
       isDemoRef.current = true;
       // Pick 6 sub-categories from static sections for the demo board
-      const demoSubIds = ARENA_SECTIONS
-        .flatMap(s => s.subCategories.map(sc => sc.id))
-        .slice(0, 6);
+      const demoSubIds = ARENA_SECTIONS.flatMap((s) =>
+        s.subCategories.map((sc) => sc.id),
+      ).slice(0, 6);
       const demoState: ArenaState = {
         tournamentName: "بطولة المعلمين 2025",
         teams: {
-          "team-a": { name: "الصقور", color: "#f59e0b", emoji: "🦅", score: 400, helpers: ["friend","swap","shura"], usedHelpers: [], players: [] },
-          "team-b": { name: "الأسود",  color: "#6366f1", emoji: "🦁", score: 200, helpers: ["friend","swap","shura"], usedHelpers: [], players: [] },
+          "team-a": {
+            name: "الصقور",
+            color: "#f59e0b",
+            emoji: "🦅",
+            score: 400,
+            helpers: ["friend", "swap", "shura"],
+            usedHelpers: [],
+            players: [],
+          },
+          "team-b": {
+            name: "الأسود",
+            color: "#6366f1",
+            emoji: "🦁",
+            score: 200,
+            helpers: ["friend", "swap", "shura"],
+            usedHelpers: [],
+            players: [],
+          },
         },
         teamOrder: ["team-a", "team-b"],
         subCategoryIds: demoSubIds,
@@ -168,12 +251,14 @@ export default function ArenaPlay() {
   // games), silently fetch all categories + activities and rebuild dbSections.
   useEffect(() => {
     if (!state) return;
-    const dbIds = state.subCategoryIds.filter(id => id.startsWith("db-"));
+    const dbIds = state.subCategoryIds.filter((id) => id.startsWith("db-"));
     if (dbIds.length === 0) return;
 
     const currentSections = state.dbSections ?? [];
-    const allSubIds = new Set(currentSections.flatMap(s => s.subCategories.map(sc => sc.id)));
-    const missing = dbIds.filter(id => !allSubIds.has(id));
+    const allSubIds = new Set(
+      currentSections.flatMap((s) => s.subCategories.map((sc) => sc.id)),
+    );
+    const missing = dbIds.filter((id) => !allSubIds.has(id));
     if (missing.length === 0) return;
 
     // Some DB sub-categories are missing — rebuild dbSections from the API
@@ -181,31 +266,35 @@ export default function ArenaPlay() {
       try {
         const cats = await fetchArenaCategories();
         if (cats.length === 0) return;
-        const acts = await fetchArenaActivities(cats.map(c => c.id));
-        const allCatIds = new Set(cats.map(c => c.id));
-        const { sections, mergedSubsByStaticId } = buildDbSections(cats, acts, allCatIds);
+        const acts = await fetchArenaActivities(cats.map((c) => c.id));
+        const allCatIds = new Set(cats.map((c) => c.id));
+        const { sections, mergedSubsByStaticId } = buildDbSections(
+          cats,
+          acts,
+          allCatIds,
+        );
         const recovered: typeof sections = [
           ...sections,
           ...Object.entries(mergedSubsByStaticId)
             .filter(([, subs]) => subs.length > 0)
             .map(([staticId, subs]) => {
-              const staticSec = ARENA_SECTIONS.find(s => s.id === staticId);
+              const staticSec = ARENA_SECTIONS.find((s) => s.id === staticId);
               return {
                 id: `db-merged-${staticId}`,
                 name: staticSec?.name ?? staticId,
                 emoji: staticSec?.emoji ?? "📚",
                 cover: staticSec?.cover ?? { emoji: "📚", color: "#1E4D35" },
                 subCategories: subs,
-              } as typeof sections[0];
+              } as (typeof sections)[0];
             }),
         ];
-        setState(prev => prev ? { ...prev, dbSections: recovered } : prev);
+        setState((prev) => (prev ? { ...prev, dbSections: recovered } : prev));
       } catch {
         /* best-effort — board will show empty slots if fetch fails */
       }
     })();
-  // Only run once after state is first loaded (not on every state change)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only run once after state is first loaded (not on every state change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
 
   // Auto-save to server (debounced 2s) so the teacher can resume from any device.
@@ -217,10 +306,14 @@ export default function ArenaPlay() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ state }),
-      }).catch(() => { /* best-effort */ });
+      }).catch(() => {
+        /* best-effort */
+      });
     }, 2000);
-    return () => { if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, isLoggedIn]);
 
   // When the game ends, delete the server save so it doesn't appear as a resume prompt.
@@ -231,12 +324,14 @@ export default function ArenaPlay() {
   useEffect(() => {
     if (phase !== "end") return;
     if (isLoggedIn) {
-      void fetch("/api/arena/save", { method: "DELETE" }).catch(() => { /* best-effort */ });
+      void fetch("/api/arena/save", { method: "DELETE" }).catch(() => {
+        /* best-effort */
+      });
     }
     if (!state?.publicMode) {
       sessionStorage.removeItem("arena_public_mode");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, isLoggedIn]);
 
   useEffect(() => {
@@ -244,7 +339,9 @@ export default function ArenaPlay() {
     const sections = allSectionsRef.current;
     const totalCards = state.subCategoryIds.reduce((sum, subId) => {
       const sub = findSubCategory(subId, sections);
-      return sum + (sub ? subDifficulties(subId, sub).length * SLOTS.length : 0);
+      return (
+        sum + (sub ? subDifficulties(subId, sub).length * SLOTS.length : 0)
+      );
     }, 0);
     if (state.usedCards.length >= totalCards && !state.active) {
       setPhase("end");
@@ -254,7 +351,7 @@ export default function ArenaPlay() {
   useEffect(() => {
     if (!timerRunning) return;
     const t = setInterval(() => {
-      setState(prev => {
+      setState((prev) => {
         if (!prev || !prev.active) return prev;
         const next = prev.active.timeLeft - 1;
         if (next <= 0) {
@@ -267,53 +364,103 @@ export default function ArenaPlay() {
       });
     }, 1000);
     return () => clearInterval(t);
-  // Only recreate when timer starts/stops — NOT on every tick.
-  // setState functional form reads latest prev, so timeLeft dep is not needed.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only recreate when timer starts/stops — NOT on every tick.
+    // setState functional form reads latest prev, so timeLeft dep is not needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerRunning]);
 
-  const playSound = (kind: "click" | "tick" | "buzz" | "correct" | "win" | "fanfare" | "chime" | "trap" | "swap" | "shura" | "ghaneema" | "friend" | "harvest") => {
+  const playSound = (
+    kind:
+      | "click"
+      | "tick"
+      | "buzz"
+      | "correct"
+      | "win"
+      | "fanfare"
+      | "chime"
+      | "trap"
+      | "swap"
+      | "shura"
+      | "ghaneema"
+      | "friend"
+      | "harvest",
+  ) => {
     if (!soundOn) return;
     try {
       if (!audioCtxRef.current) {
-        const Ctor = window.AudioContext ?? (window as WindowWithWebkit).webkitAudioContext;
+        const Ctor =
+          window.AudioContext ??
+          (window as WindowWithWebkit).webkitAudioContext;
         if (!Ctor) return;
         audioCtxRef.current = new Ctor();
       }
       const ctx = audioCtxRef.current;
       const o = ctx.createOscillator();
       const g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
+      o.connect(g);
+      g.connect(ctx.destination);
       const now = ctx.currentTime;
       switch (kind) {
-        case "click": o.frequency.value = 600; g.gain.setValueAtTime(0.08, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.08); o.start(now); o.stop(now + 0.1); break;
-        case "tick": o.frequency.value = 880; g.gain.setValueAtTime(0.05, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.05); o.start(now); o.stop(now + 0.06); break;
-        case "buzz": o.type = "sawtooth"; o.frequency.value = 180; g.gain.setValueAtTime(0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.6); o.start(now); o.stop(now + 0.6); break;
-        case "correct": o.frequency.value = 523; g.gain.setValueAtTime(0.1, now); o.frequency.exponentialRampToValueAtTime(880, now + 0.2); g.gain.exponentialRampToValueAtTime(0.001, now + 0.3); o.start(now); o.stop(now + 0.3); break;
+        case "click":
+          o.frequency.value = 600;
+          g.gain.setValueAtTime(0.08, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          o.start(now);
+          o.stop(now + 0.1);
+          break;
+        case "tick":
+          o.frequency.value = 880;
+          g.gain.setValueAtTime(0.05, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+          o.start(now);
+          o.stop(now + 0.06);
+          break;
+        case "buzz":
+          o.type = "sawtooth";
+          o.frequency.value = 180;
+          g.gain.setValueAtTime(0.15, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+          o.start(now);
+          o.stop(now + 0.6);
+          break;
+        case "correct":
+          o.frequency.value = 523;
+          g.gain.setValueAtTime(0.1, now);
+          o.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          o.start(now);
+          o.stop(now + 0.3);
+          break;
         case "fanfare": {
           // Rising three-note fanfare for 800-pt cards
           const fanNotes = [784, 1047, 1319];
           fanNotes.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
-            oo.connect(gg); gg.connect(ctx.destination);
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.12);
             gg.gain.exponentialRampToValueAtTime(0.14, now + i * 0.12 + 0.02);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
-            oo.start(now + i * 0.12); oo.stop(now + i * 0.12 + 0.38);
+            oo.start(now + i * 0.12);
+            oo.stop(now + i * 0.12 + 0.38);
           });
           break;
         }
         case "win": {
           const notes = [523, 659, 784, 1047];
           notes.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
-            oo.connect(gg); gg.connect(ctx.destination);
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.15);
             gg.gain.exponentialRampToValueAtTime(0.12, now + i * 0.15 + 0.02);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
-            oo.start(now + i * 0.15); oo.stop(now + i * 0.15 + 0.45);
+            oo.start(now + i * 0.15);
+            oo.stop(now + i * 0.15 + 0.45);
           });
           break;
         }
@@ -322,24 +469,28 @@ export default function ArenaPlay() {
           const sweep = ctx.createOscillator();
           const sweepGain = ctx.createGain();
           sweep.type = "sawtooth";
-          sweep.connect(sweepGain); sweepGain.connect(ctx.destination);
+          sweep.connect(sweepGain);
+          sweepGain.connect(ctx.destination);
           sweep.frequency.setValueAtTime(420, now);
           sweep.frequency.exponentialRampToValueAtTime(70, now + 0.55);
           sweepGain.gain.setValueAtTime(0.0001, now);
           sweepGain.gain.exponentialRampToValueAtTime(0.18, now + 0.04);
           sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-          sweep.start(now); sweep.stop(now + 0.62);
+          sweep.start(now);
+          sweep.stop(now + 0.62);
           // Dissonant low growl underneath
           const growl = ctx.createOscillator();
           const growlGain = ctx.createGain();
           growl.type = "square";
-          growl.connect(growlGain); growlGain.connect(ctx.destination);
+          growl.connect(growlGain);
+          growlGain.connect(ctx.destination);
           growl.frequency.setValueAtTime(110, now);
           growl.frequency.exponentialRampToValueAtTime(55, now + 0.6);
           growlGain.gain.setValueAtTime(0.0001, now);
           growlGain.gain.exponentialRampToValueAtTime(0.1, now + 0.05);
           growlGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-          growl.start(now); growl.stop(now + 0.66);
+          growl.start(now);
+          growl.stop(now + 0.66);
           // Use the original oscillator to add a brief high stinger at the start
           o.type = "triangle";
           o.frequency.setValueAtTime(900, now);
@@ -347,21 +498,25 @@ export default function ArenaPlay() {
           g.gain.setValueAtTime(0.0001, now);
           g.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
           g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-          o.start(now); o.stop(now + 0.24);
+          o.start(now);
+          o.stop(now + 0.24);
           break;
         }
         case "chime": {
           // Short ascending three-note arpeggio for double-points multiplier
           const chimeNotes = [880, 1109, 1397];
           chimeNotes.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
-            oo.connect(gg); gg.connect(ctx.destination);
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.type = "sine";
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.1);
             gg.gain.exponentialRampToValueAtTime(0.18, now + i * 0.1 + 0.015);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.22);
-            oo.start(now + i * 0.1); oo.stop(now + i * 0.1 + 0.25);
+            oo.start(now + i * 0.1);
+            oo.stop(now + i * 0.1 + 0.25);
           });
           break;
         }
@@ -369,51 +524,63 @@ export default function ArenaPlay() {
           // Power-up shimmer — triangle wave ascending rapid burst, distinct from chime
           const harvestNotes = [392, 523, 659, 784];
           harvestNotes.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
-            oo.connect(gg); gg.connect(ctx.destination);
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.type = "triangle";
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.07);
             gg.gain.exponentialRampToValueAtTime(0.16, now + i * 0.07 + 0.01);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.07 + 0.18);
-            oo.start(now + i * 0.07); oo.stop(now + i * 0.07 + 0.2);
+            oo.start(now + i * 0.07);
+            oo.stop(now + i * 0.07 + 0.2);
           });
           break;
         }
         case "swap": {
           // Card-flip whoosh — quick descending then ascending sweep, like shuffling
-          const swapDown = ctx.createOscillator(); const swapDownG = ctx.createGain();
+          const swapDown = ctx.createOscillator();
+          const swapDownG = ctx.createGain();
           swapDown.type = "sine";
-          swapDown.connect(swapDownG); swapDownG.connect(ctx.destination);
+          swapDown.connect(swapDownG);
+          swapDownG.connect(ctx.destination);
           swapDown.frequency.setValueAtTime(800, now);
           swapDown.frequency.exponentialRampToValueAtTime(350, now + 0.12);
           swapDownG.gain.setValueAtTime(0.0001, now);
           swapDownG.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
           swapDownG.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-          swapDown.start(now); swapDown.stop(now + 0.15);
-          const swapUp = ctx.createOscillator(); const swapUpG = ctx.createGain();
+          swapDown.start(now);
+          swapDown.stop(now + 0.15);
+          const swapUp = ctx.createOscillator();
+          const swapUpG = ctx.createGain();
           swapUp.type = "sine";
-          swapUp.connect(swapUpG); swapUpG.connect(ctx.destination);
+          swapUp.connect(swapUpG);
+          swapUpG.connect(ctx.destination);
           swapUp.frequency.setValueAtTime(350, now + 0.14);
           swapUp.frequency.exponentialRampToValueAtTime(700, now + 0.26);
           swapUpG.gain.setValueAtTime(0.0001, now + 0.14);
           swapUpG.gain.exponentialRampToValueAtTime(0.12, now + 0.16);
           swapUpG.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-          swapUp.start(now + 0.14); swapUp.stop(now + 0.3);
+          swapUp.start(now + 0.14);
+          swapUp.stop(now + 0.3);
           break;
         }
         case "shura": {
           // Council hum — three slightly detuned oscillators swell together, deliberative
           const shuraFreqs = [330, 348, 365];
           shuraFreqs.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
             oo.type = "sine";
-            oo.connect(gg); gg.connect(ctx.destination);
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.04);
             gg.gain.linearRampToValueAtTime(0.07, now + i * 0.04 + 0.12);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.5);
-            oo.start(now + i * 0.04); oo.stop(now + i * 0.04 + 0.55);
+            oo.start(now + i * 0.04);
+            oo.stop(now + i * 0.04 + 0.55);
           });
           break;
         }
@@ -421,41 +588,53 @@ export default function ArenaPlay() {
           // Triumphant rising grab — brassy two-note sting like claiming a prize
           const grabNotes = [440, 659];
           grabNotes.forEach((f, i) => {
-            const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            const oo = ctx.createOscillator();
+            const gg = ctx.createGain();
             oo.type = "square";
-            oo.connect(gg); gg.connect(ctx.destination);
+            oo.connect(gg);
+            gg.connect(ctx.destination);
             oo.frequency.value = f;
             gg.gain.setValueAtTime(0.0001, now + i * 0.14);
             gg.gain.exponentialRampToValueAtTime(0.1, now + i * 0.14 + 0.02);
             gg.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.25);
-            oo.start(now + i * 0.14); oo.stop(now + i * 0.14 + 0.28);
+            oo.start(now + i * 0.14);
+            oo.stop(now + i * 0.14 + 0.28);
           });
           // Bright shimmer on top
-          const sparkle = ctx.createOscillator(); const sparkleG = ctx.createGain();
+          const sparkle = ctx.createOscillator();
+          const sparkleG = ctx.createGain();
           sparkle.type = "sine";
-          sparkle.connect(sparkleG); sparkleG.connect(ctx.destination);
+          sparkle.connect(sparkleG);
+          sparkleG.connect(ctx.destination);
           sparkle.frequency.value = 1318;
           sparkleG.gain.setValueAtTime(0.0001, now + 0.2);
           sparkleG.gain.exponentialRampToValueAtTime(0.12, now + 0.22);
           sparkleG.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-          sparkle.start(now + 0.2); sparkle.stop(now + 0.42);
+          sparkle.start(now + 0.2);
+          sparkle.stop(now + 0.42);
           break;
         }
         case "friend": {
           // Phone ring — two classic DTMF-style tones pulsing like an incoming call
-          const ringPairs = [[941, 1336], [941, 1336]];
+          const ringPairs = [
+            [941, 1336],
+            [941, 1336],
+          ];
           ringPairs.forEach(([f1, f2], pulse) => {
             const start = now + pulse * 0.28;
-            [f1, f2].forEach(f => {
-              const oo = ctx.createOscillator(); const gg = ctx.createGain();
+            [f1, f2].forEach((f) => {
+              const oo = ctx.createOscillator();
+              const gg = ctx.createGain();
               oo.type = "sine";
-              oo.connect(gg); gg.connect(ctx.destination);
+              oo.connect(gg);
+              gg.connect(ctx.destination);
               oo.frequency.value = f;
               gg.gain.setValueAtTime(0.0001, start);
               gg.gain.exponentialRampToValueAtTime(0.09, start + 0.01);
               gg.gain.setValueAtTime(0.09, start + 0.18);
               gg.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
-              oo.start(start); oo.stop(start + 0.24);
+              oo.start(start);
+              oo.stop(start + 0.24);
             });
           });
           break;
@@ -466,7 +645,10 @@ export default function ArenaPlay() {
     }
   };
 
-  const orderedSubCategoryIds = useMemo(() => state?.subCategoryIds ?? [], [state?.subCategoryIds]);
+  const orderedSubCategoryIds = useMemo(
+    () => state?.subCategoryIds ?? [],
+    [state?.subCategoryIds],
+  );
 
   const allSections = useMemo<ArenaSection[]>(() => {
     if (!state) return ARENA_SECTIONS;
@@ -474,57 +656,83 @@ export default function ArenaPlay() {
     const db = state.dbSections ?? [];
     const merged = [...ARENA_SECTIONS, ...db];
     return custom ? [...merged, custom] : merged;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.customQuestions, state?.dbSections]);
   allSectionsRef.current = allSections;
 
   // Stable openCard — uses refs so board grid can be memoized without re-rendering on every timer tick
-  const openCard = useCallback((subCategoryId: string, difficulty: ArenaDifficulty, slot: ArenaCardSlot) => {
-    const s = stateRef.current;
-    if (!s) return;
-    const key = cardKey({ subCategoryId, difficulty, slot });
-    if (s.usedCards.includes(key)) return;
-    if (s.active) return;
-    const sections = allSectionsRef.current;
-    const sub = findSubCategory(subCategoryId, sections);
-    if (!sub) return;
-    const pool = sub.questions[difficulty];
-    if (pool.length === 0) return;
-    const bucketKey = pickKey(subCategoryId, difficulty);
-    const alreadyPicked = s.pickedQuestions[bucketKey] ?? [];
-    const seenAcrossGames = getSeenIndices(subCategoryId, difficulty);
-    const allIndices = pool.map((_, i) => i);
-    let candidates = allIndices.filter(i => !alreadyPicked.includes(i) && !seenAcrossGames.includes(i));
-    if (candidates.length === 0) {
-      candidates = allIndices.filter(i => !alreadyPicked.includes(i));
-      if (candidates.length > 0) clearSeenBucket(subCategoryId, difficulty);
-    }
-    if (candidates.length === 0) candidates = allIndices;
-    const qi = candidates[Math.floor(Math.random() * candidates.length)];
-    markQuestionSeen(subCategoryId, difficulty, qi);
-    const newActive: ArenaActiveQuestion = {
-      subCategoryId, difficulty, slot, questionIndex: qi,
-      question: pool[qi], multiplier: 1, answeringTeam: s.currentTurn,
-      trapUsed: false, transferUsed: false, ghaneemaUsed: false,
-      revealed: false, timeLeft: s.timerSeconds, helpersUsedThisQ: [], shuraVisible: false,
-    };
-    setState(prev => prev ? {
-      ...prev,
-      active: newActive,
-      pickedQuestions: { ...prev.pickedQuestions, [bucketKey]: [...alreadyPicked, qi] },
-    } : prev);
-    setTimerRunning(true);
-    if (difficulty === 800) {
-      playSound("fanfare");
-      const tileKey = cardKey({ subCategoryId, difficulty, slot });
-      setGoldenTileRef.current(tileKey);
-      setTimeout(() => setGoldenTileRef.current(null), 1200);
-    } else {
-      playSound("click");
-    }
-  // stable — reads state via ref, never changes reference
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const openCard = useCallback(
+    (
+      subCategoryId: string,
+      difficulty: ArenaDifficulty,
+      slot: ArenaCardSlot,
+    ) => {
+      const s = stateRef.current;
+      if (!s) return;
+      const key = cardKey({ subCategoryId, difficulty, slot });
+      if (s.usedCards.includes(key)) return;
+      if (s.active) return;
+      const sections = allSectionsRef.current;
+      const sub = findSubCategory(subCategoryId, sections);
+      if (!sub) return;
+      const pool = sub.questions[difficulty];
+      if (pool.length === 0) return;
+      const bucketKey = pickKey(subCategoryId, difficulty);
+      const alreadyPicked = s.pickedQuestions[bucketKey] ?? [];
+      const seenAcrossGames = getSeenIndices(subCategoryId, difficulty);
+      const allIndices = pool.map((_, i) => i);
+      let candidates = allIndices.filter(
+        (i) => !alreadyPicked.includes(i) && !seenAcrossGames.includes(i),
+      );
+      if (candidates.length === 0) {
+        candidates = allIndices.filter((i) => !alreadyPicked.includes(i));
+        if (candidates.length > 0) clearSeenBucket(subCategoryId, difficulty);
+      }
+      if (candidates.length === 0) candidates = allIndices;
+      const qi = candidates[Math.floor(Math.random() * candidates.length)];
+      markQuestionSeen(subCategoryId, difficulty, qi);
+      const newActive: ArenaActiveQuestion = {
+        subCategoryId,
+        difficulty,
+        slot,
+        questionIndex: qi,
+        question: pool[qi],
+        multiplier: 1,
+        answeringTeam: s.currentTurn,
+        trapUsed: false,
+        transferUsed: false,
+        ghaneemaUsed: false,
+        revealed: false,
+        timeLeft: s.timerSeconds,
+        helpersUsedThisQ: [],
+        shuraVisible: false,
+      };
+      setState((prev) =>
+        prev
+          ? {
+              ...prev,
+              active: newActive,
+              pickedQuestions: {
+                ...prev.pickedQuestions,
+                [bucketKey]: [...alreadyPicked, qi],
+              },
+            }
+          : prev,
+      );
+      setTimerRunning(true);
+      if (difficulty === 800) {
+        playSound("fanfare");
+        const tileKey = cardKey({ subCategoryId, difficulty, slot });
+        setGoldenTileRef.current(tileKey);
+        setTimeout(() => setGoldenTileRef.current(null), 1200);
+      } else {
+        playSound("click");
+      }
+      // stable — reads state via ref, never changes reference
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [],
+  );
 
   // Phone-a-friend countdown — independent of main timer.
   // Must be declared before any early return to keep hook order stable.
@@ -535,7 +743,7 @@ export default function ArenaPlay() {
       playSound("buzz");
       return;
     }
-    const t = setTimeout(() => setFriendSeconds(s => s - 1), 1000);
+    const t = setTimeout(() => setFriendSeconds((s) => s - 1), 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [friendActive, friendSeconds]);
@@ -550,16 +758,24 @@ export default function ArenaPlay() {
     const fetchVotes = async () => {
       try {
         const code = getOrCreateShareCode();
-        const res = await fetch(`/api/arena/session/${encodeURIComponent(code)}`);
+        const res = await fetch(
+          `/api/arena/session/${encodeURIComponent(code)}`,
+        );
         if (!res.ok) return;
-        const data = await res.json() as { shuraVotes?: { a: number; b: number } };
+        const data = (await res.json()) as {
+          shuraVotes?: { a: number; b: number };
+        };
         if (data.shuraVotes) setShuraVotes(data.shuraVotes);
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     };
     void fetchVotes();
-    const t = setInterval(() => { void fetchVotes(); }, 3000);
+    const t = setInterval(() => {
+      void fetchVotes();
+    }, 3000);
     return () => clearInterval(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.active?.shuraVisible]);
 
   // Sync audience-visible state to the server (debounced 500 ms).
@@ -571,13 +787,15 @@ export default function ArenaPlay() {
       ? {
           questionText: state.active.question.q,
           difficulty: state.active.difficulty,
-          subCategoryName: findSubCategory(state.active.subCategoryId, allSections)?.name ?? "",
+          subCategoryName:
+            findSubCategory(state.active.subCategoryId, allSections)?.name ??
+            "",
         }
       : null;
     const payload = {
       writeSecret: getOrCreateWriteSecret(),
       tournamentName: state.tournamentName,
-      teams: state.teamOrder.map(id => ({
+      teams: state.teamOrder.map((id) => ({
         id,
         name: state.teams[id]?.name ?? "",
         color: state.teams[id]?.color ?? "#16a34a",
@@ -602,26 +820,62 @@ export default function ArenaPlay() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).catch(() => { /* silent fail — audience feature is best-effort */ });
+      }).catch(() => {
+        /* silent fail — audience feature is best-effort */
+      });
     }, 500);
-    return () => { if (syncTimerRef.current) clearTimeout(syncTimerRef.current); };
-  // allSections derives from state; watching both state and phase is required
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
+    // allSections derives from state; watching both state and phase is required
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, phase]);
 
   /* ── difficulty colour tokens — calm light-theme palette (teal / slate / gold) ── */
   const TILE_R = "8px";
-  const diffStyle = (pts: ArenaDifficulty, used: boolean): React.CSSProperties => {
-    if (used) return {
-      background: "#f1efe7", borderColor: "transparent",
-      color: "#b7b1a1", cursor: "not-allowed",
-      boxShadow: "none", borderRadius: TILE_R,
+  const diffStyle = (
+    pts: ArenaDifficulty,
+    used: boolean,
+  ): React.CSSProperties => {
+    if (used)
+      return {
+        background: "#f1efe7",
+        borderColor: "transparent",
+        color: "#b7b1a1",
+        cursor: "not-allowed",
+        boxShadow: "none",
+        borderRadius: TILE_R,
+      };
+    const base = {
+      boxShadow:
+        "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.14)",
+      borderRadius: TILE_R,
+      borderColor: "transparent",
     };
-    const base = { boxShadow: "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.14)", borderRadius: TILE_R, borderColor: "transparent" };
-    if (pts === 200) return { ...base, background: "linear-gradient(160deg,#234e5e,#173a48)", color: "#ffffff" };
-    if (pts === 400) return { ...base, background: "linear-gradient(160deg,#5b6b87,#465169)", color: "#ffffff" };
-    if (pts === 600) return { ...base, background: "linear-gradient(160deg,#c9a14b,#a07f37)", color: "#ffffff" };
-    return                  { ...base, background: "linear-gradient(160deg,#e0b056,#a87a2a)", color: "#fffbeb", boxShadow: `${base.boxShadow}, 0 0 10px rgba(217,165,73,0.45)` };
+    if (pts === 200)
+      return {
+        ...base,
+        background: "linear-gradient(160deg,#234e5e,#173a48)",
+        color: "#ffffff",
+      };
+    if (pts === 400)
+      return {
+        ...base,
+        background: "linear-gradient(160deg,#5b6b87,#465169)",
+        color: "#ffffff",
+      };
+    if (pts === 600)
+      return {
+        ...base,
+        background: "linear-gradient(160deg,#c9a14b,#a07f37)",
+        color: "#ffffff",
+      };
+    return {
+      ...base,
+      background: "linear-gradient(160deg,#e0b056,#a87a2a)",
+      color: "#fffbeb",
+      boxShadow: `${base.boxShadow}, 0 0 10px rgba(217,165,73,0.45)`,
+    };
   };
 
   /* ── Game board grid — memoized HERE (before early returns) to keep hook order stable ─────────
@@ -644,17 +898,21 @@ export default function ArenaPlay() {
             maxWidth: "1080px",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 46%), 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(370px, 46%), 1fr))",
             gap: "clamp(10px, 2vw, 22px)",
             padding: "clamp(10px, 2vw, 24px)",
           }}
         >
-          {orderedSubCategoryIds.map(subId => {
+          {orderedSubCategoryIds.map((subId) => {
             const sub = findSubCategory(subId, allSections);
             const sec = findSection(subId, allSections);
             if (!sub) return null;
-            const imgUrl = sub.cover?.imageUrl ?? (sec ? getStaticCoverImage(sec.id, subId) : undefined);
-            const accentColor = sub.cover?.color ?? sec?.cover?.color ?? "#2d5e3f";
+            const imgUrl =
+              sub.cover?.imageUrl ??
+              (sec ? getStaticCoverImage(sec.id, subId) : undefined);
+            const accentColor =
+              sub.cover?.color ?? sec?.cover?.color ?? "#2d5e3f";
             const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
             const diffs = subDifficulties(subId, sub, show800);
 
@@ -665,28 +923,55 @@ export default function ArenaPlay() {
                   background: "#ffffff",
                   borderRadius: "16px",
                   overflow: "hidden",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
+                  boxShadow:
+                    "0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)",
                   border: "1px solid #ebe2cd",
                   display: "flex",
                   flexDirection: "column",
                 }}
               >
                 {/* Image area — fixed aspect ratio */}
-                <div className="relative" style={{ aspectRatio: "16 / 8", overflow: "hidden", background: "#f3f0e6" }}>
+                <div
+                  className="relative"
+                  style={{
+                    aspectRatio: "16 / 9",
+                    overflow: "hidden",
+                    background: "#f3f0e6",
+                  }}
+                >
                   {imgUrl ? (
-                    <img src={imgUrl} alt={sub.name} className="absolute inset-0 w-full h-full" style={{ objectFit: "cover", objectPosition: "center" }} />
+                    <img
+                      src={imgUrl}
+                      alt={sub.name}
+                      className="absolute inset-0 w-full h-full"
+                      style={{ objectFit: "cover", objectPosition: "center" }}
+                    />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}33, ${accentColor}66)` }}>
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        background: `linear-gradient(135deg, ${accentColor}33, ${accentColor}66)`,
+                      }}
+                    >
                       <span style={{ fontSize: "52px" }}>{emoji}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Category name — clean, no icons */}
-                <div className="flex items-center justify-center" style={{ paddingTop: "14px", paddingBottom: "12px", paddingLeft: "12px", paddingRight: "12px" }}>
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    paddingTop: "14px",
+                    paddingBottom: "12px",
+                    paddingLeft: "12px",
+                    paddingRight: "12px",
+                  }}
+                >
                   <span
                     style={{
-                      fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
+                      fontFamily:
+                        "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
                       fontWeight: 600,
                       fontSize: "17px",
                       color: "#1f2937",
@@ -711,9 +996,17 @@ export default function ArenaPlay() {
                     padding: "0 14px 16px 14px",
                   }}
                 >
-                  {diffs.map(pts => {
-                    const keyA = cardKey({ subCategoryId: subId, difficulty: pts, slot: 1 });
-                    const keyB = cardKey({ subCategoryId: subId, difficulty: pts, slot: 2 });
+                  {diffs.map((pts) => {
+                    const keyA = cardKey({
+                      subCategoryId: subId,
+                      difficulty: pts,
+                      slot: 1,
+                    });
+                    const keyB = cardKey({
+                      subCategoryId: subId,
+                      difficulty: pts,
+                      slot: 2,
+                    });
                     const usedA = usedCards.includes(keyA);
                     const usedB = usedCards.includes(keyB);
                     return (
@@ -724,22 +1017,51 @@ export default function ArenaPlay() {
                         ].map(({ key, used, slot }) => (
                           <motion.button
                             key={key}
-                            whileHover={!used && !activeQ ? { scale: 1.04, y: -1 } : undefined}
-                            whileTap={!used && !activeQ ? { scale: 0.95 } : undefined}
-                            onClick={() => !used && !activeQ && openCard(subId, pts, slot)}
+                            whileHover={
+                              !used && !activeQ
+                                ? { scale: 1.04, y: -1 }
+                                : undefined
+                            }
+                            whileTap={
+                              !used && !activeQ ? { scale: 0.95 } : undefined
+                            }
+                            onClick={() =>
+                              !used && !activeQ && openCard(subId, pts, slot)
+                            }
                             disabled={used || !!activeQ}
                             className="font-black border transition-all flex items-center justify-center relative overflow-hidden"
                             style={{
                               fontFamily: "'Tajawal', sans-serif",
                               fontSize: "15px",
-                              height: "38px",
+                              height: "46px",
                               ...diffStyle(pts, used),
                             }}
-                            animate={goldenTile === key ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 16px rgba(251,191,36,0.9)", "0 0 28px rgba(251,191,36,0.7)", "0 0 0px rgba(251,191,36,0)"] } : undefined}
+                            animate={
+                              goldenTile === key
+                                ? {
+                                    boxShadow: [
+                                      "0 0 0px rgba(251,191,36,0)",
+                                      "0 0 16px rgba(251,191,36,0.9)",
+                                      "0 0 28px rgba(251,191,36,0.7)",
+                                      "0 0 0px rgba(251,191,36,0)",
+                                    ],
+                                  }
+                                : undefined
+                            }
                             transition={{ duration: 1.1, ease: "easeOut" }}
                           >
                             {goldenTile === key && (
-                              <motion.span className="absolute inset-0 pointer-events-none" initial={{ opacity: 0.8, scaleX: 0 }} animate={{ opacity: 0, scaleX: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)", transformOrigin: "left" }} />
+                              <motion.span
+                                className="absolute inset-0 pointer-events-none"
+                                initial={{ opacity: 0.8, scaleX: 0 }}
+                                animate={{ opacity: 0, scaleX: 1 }}
+                                transition={{ duration: 1.0, ease: "easeOut" }}
+                                style={{
+                                  background:
+                                    "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)",
+                                  transformOrigin: "left",
+                                }}
+                              />
                             )}
                             {used ? "—" : pts}
                           </motion.button>
@@ -754,14 +1076,25 @@ export default function ArenaPlay() {
         </div>
       </div>
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderedSubCategoryIds, allSections, state?.usedCards, !!(state?.active), openCard, goldenTile, show800]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    orderedSubCategoryIds,
+    allSections,
+    state?.usedCards,
+    !!state?.active,
+    openCard,
+    goldenTile,
+    show800,
+  ]);
 
   if (!state) return null;
 
   const totalCards = orderedSubCategoryIds.reduce((sum, subId) => {
     const sub = findSubCategory(subId, allSections);
-    return sum + (sub ? subDifficulties(subId, sub, show800).length * SLOTS.length : 0);
+    return (
+      sum +
+      (sub ? subDifficulties(subId, sub, show800).length * SLOTS.length : 0)
+    );
   }, 0);
   const usedCount = state.usedCards.length;
   const active = state.active;
@@ -769,14 +1102,14 @@ export default function ArenaPlay() {
   // openCard is now defined as useCallback above early returns (uses stateRef)
 
   const updateActive = (patch: Partial<ArenaActiveQuestion>) => {
-    setState(prev => {
+    setState((prev) => {
       if (!prev || !prev.active) return prev;
       return { ...prev, active: { ...prev.active, ...patch } };
     });
   };
 
   const consumeHelperFrom = (side: TeamSide, helperId: HelperId) => {
-    setState(prev => {
+    setState((prev) => {
       if (!prev) return prev;
       const team = prev.teams[side];
       if (team.usedHelpers.includes(helperId)) return prev;
@@ -816,7 +1149,9 @@ export default function ArenaPlay() {
       );
     }
     if (helperId === "trap") {
-      return side === state.currentTurn && !active.trapUsed && !active.transferUsed;
+      return (
+        side === state.currentTurn && !active.trapUsed && !active.transferUsed
+      );
     }
     return side === active.answeringTeam;
   };
@@ -824,10 +1159,16 @@ export default function ArenaPlay() {
   const useHelper = (side: TeamSide, helperId: HelperId) => {
     if (!active || !canUseHelper(side, helperId)) return;
     if (helperId === "harvest") {
-      updateActive({ multiplier: 2, helpersUsedThisQ: [...active.helpersUsedThisQ, helperId] });
+      updateActive({
+        multiplier: 2,
+        helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
+      });
     } else if (helperId === "shura") {
       setTimerRunning(false);
-      updateActive({ shuraVisible: true, helpersUsedThisQ: [...active.helpersUsedThisQ, helperId] });
+      updateActive({
+        shuraVisible: true,
+        helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
+      });
     } else if (helperId === "trap") {
       updateActive({
         trapUsed: true,
@@ -869,10 +1210,14 @@ export default function ArenaPlay() {
       setTimerRunning(false);
       setFriendSeconds(60);
       setFriendActive(true);
-      updateActive({ helpersUsedThisQ: [...active.helpersUsedThisQ, helperId] });
+      updateActive({
+        helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
+      });
     }
     consumeHelperFrom(side, helperId);
-    const helperSoundMap: Partial<Record<HelperId, Parameters<typeof playSound>[0]>> = {
+    const helperSoundMap: Partial<
+      Record<HelperId, Parameters<typeof playSound>[0]>
+    > = {
       harvest: "harvest",
       shura: "shura",
       swap: "swap",
@@ -934,7 +1279,7 @@ export default function ArenaPlay() {
 
   const transferToOther = () => {
     if (!active || active.transferUsed || active.trapUsed) return;
-    setState(prev => {
+    setState((prev) => {
       if (!prev || !prev.active) return prev;
       return {
         ...prev,
@@ -961,12 +1306,24 @@ export default function ArenaPlay() {
     finalizeResolve(winner, undefined);
   };
 
-  const finalizeResolve = (winner: TeamSide | null, player: string | undefined) => {
+  const finalizeResolve = (
+    winner: TeamSide | null,
+    player: string | undefined,
+  ) => {
     if (!active) return;
     const pts = active.difficulty * active.multiplier;
-    const key = cardKey({ subCategoryId: active.subCategoryId, difficulty: active.difficulty, slot: active.slot });
+    const key = cardKey({
+      subCategoryId: active.subCategoryId,
+      difficulty: active.difficulty,
+      slot: active.slot,
+    });
     if (winner) {
-      setPointAnimation({ team: winner, pts, difficulty: active.difficulty, player });
+      setPointAnimation({
+        team: winner,
+        pts,
+        difficulty: active.difficulty,
+        player,
+      });
       if (active.multiplier > 1) {
         playSound("chime");
         setTimeout(() => playSound("correct"), 150);
@@ -977,16 +1334,21 @@ export default function ArenaPlay() {
     } else {
       playSound("buzz");
     }
-    setState(prev => {
+    setState((prev) => {
       if (!prev) return prev;
       const newTeams = { ...prev.teams };
       if (winner) {
-        newTeams[winner] = { ...newTeams[winner], score: newTeams[winner].score + pts };
+        newTeams[winner] = {
+          ...newTeams[winner],
+          score: newTeams[winner].score + pts,
+        };
       }
       return {
         ...prev,
         teams: newTeams,
-        usedCards: prev.usedCards.includes(key) ? prev.usedCards : [...prev.usedCards, key],
+        usedCards: prev.usedCards.includes(key)
+          ? prev.usedCards
+          : [...prev.usedCards, key],
         currentTurn: getNextTeam(prev.teamOrder, prev.currentTurn),
         active: null,
       };
@@ -997,21 +1359,25 @@ export default function ArenaPlay() {
 
   const closeQuestionUnresolved = () => {
     if (!active) return;
-    setState(prev => prev ? { ...prev, active: null } : prev);
+    setState((prev) => (prev ? { ...prev, active: null } : prev));
     setTimerRunning(false);
   };
 
   const restart = () => {
-    const isPublic = state?.publicMode ?? sessionStorage.getItem("arena_public_mode") === "1";
+    const isPublic =
+      state?.publicMode ?? sessionStorage.getItem("arena_public_mode") === "1";
     saveArenaState(null);
     sessionStorage.removeItem("arena_public_mode");
-    void fetch("/api/arena/save", { method: "DELETE" }).catch(() => { /* best-effort */ });
+    void fetch("/api/arena/save", { method: "DELETE" }).catch(() => {
+      /* best-effort */
+    });
     setLocation(isPublic ? "/play/arena" : "/game/arena");
   };
 
   // Exit but keep the state so the host can come back and continue.
   const exitKeep = () => {
-    const wasPublic = state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
+    const wasPublic =
+      state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
     setLocation(wasPublic ? "/games" : "/teacher");
   };
 
@@ -1021,18 +1387,19 @@ export default function ArenaPlay() {
     setPhase("end");
   };
 
-  const isPublicGame = state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
+  const isPublicGame =
+    state?.publicMode || sessionStorage.getItem("arena_public_mode") === "1";
   if (isLoggedIn === false && !isPublicGame && !isDemoRef.current) {
     return <ArenaLoginGate />;
   }
 
   if (phase === "end") {
     const sortedEntries = state.teamOrder
-      .map(id => ({ id, team: state.teams[id] }))
-      .filter(x => x.team)
+      .map((id) => ({ id, team: state.teams[id] }))
+      .filter((x) => x.team)
       .sort((a, b) => b.team.score - a.team.score);
     const topScore = sortedEntries[0]?.team.score ?? 0;
-    const topWinners = sortedEntries.filter(x => x.team.score === topScore);
+    const topWinners = sortedEntries.filter((x) => x.team.score === topScore);
     const winnerTeam = topWinners.length === 1 ? topWinners[0].team : null;
     const handleExit = () => {
       sessionStorage.removeItem("arena_public_mode");
@@ -1046,9 +1413,9 @@ export default function ArenaPlay() {
       }
       const sections = allSectionsRef.current;
       const allValid = lastSettings.teams.every(
-        t =>
+        (t) =>
           t.subCategoryIds.length === 3 &&
-          t.subCategoryIds.every(id => !!findSubCategory(id, sections)),
+          t.subCategoryIds.every((id) => !!findSubCategory(id, sections)),
       );
       if (!allValid) {
         toast.error("بعض الفئات لم تعد متاحة — يرجى إعادة الإعداد");
@@ -1076,7 +1443,7 @@ export default function ArenaPlay() {
         tournamentName: "",
         teams: teamsRecord,
         teamOrder,
-        subCategoryIds: lastSettings.teams.flatMap(t => t.subCategoryIds),
+        subCategoryIds: lastSettings.teams.flatMap((t) => t.subCategoryIds),
         customQuestions: [],
         // Carry forward DB-backed sections from the just-finished game so that any
         // DB categories that were selected remain resolvable on the fresh board.
@@ -1117,15 +1484,19 @@ export default function ArenaPlay() {
     );
   }
 
-  const teamA = state.teams[state.teamOrder[0]] ?? Object.values(state.teams)[0];
-  const teamB = state.teams[state.teamOrder[1]] ?? Object.values(state.teams)[1] ?? teamA;
+  const teamA =
+    state.teams[state.teamOrder[0]] ?? Object.values(state.teams)[0];
+  const teamB =
+    state.teams[state.teamOrder[1]] ?? Object.values(state.teams)[1] ?? teamA;
 
   if (!state.rulesAck) {
     return (
       <RulesOverlay
         teamA={teamA}
         teamB={teamB}
-        onAck={() => setState(prev => prev ? { ...prev, rulesAck: true } : prev)}
+        onAck={() =>
+          setState((prev) => (prev ? { ...prev, rulesAck: true } : prev))
+        }
       />
     );
   }
@@ -1134,13 +1505,50 @@ export default function ArenaPlay() {
 
   /* ── Action buttons — calm light theme, icon + label ── */
   const ACTION_BTNS = [
-    { icon: soundOn ? <Volume2 className="w-[18px] h-[18px]"/> : <VolumeX className="w-[18px] h-[18px]"/>, action: () => setSoundOn(s => !s), label: "الصوت" },
-    { icon: isFullscreen ? <Minimize className="w-[18px] h-[18px]"/> : <Maximize className="w-[18px] h-[18px]"/>, action: toggleFullscreen, label: "ملء الشاشة" },
-    { icon: <BookOpen className="w-[18px] h-[18px]"/>, action: () => setState(prev => prev ? { ...prev, rulesAck: false } : prev), label: "تعليمات" },
-    { icon: <Share2 className="w-[18px] h-[18px]"/>, action: () => setShowShare(true), label: "مشاركة" },
-    { icon: <RotateCcw className="w-[18px] h-[18px]"/>, action: () => setShowRestartConfirm(true), label: "إعادة" },
-    { icon: <Flag className="w-[18px] h-[18px]"/>, action: () => setShowEndConfirm(true), label: "إنهاء" },
-    { icon: <Home className="w-[18px] h-[18px]"/>, action: exitKeep, label: "الرئيسية" },
+    {
+      icon: soundOn ? (
+        <Volume2 className="w-[18px] h-[18px]" />
+      ) : (
+        <VolumeX className="w-[18px] h-[18px]" />
+      ),
+      action: () => setSoundOn((s) => !s),
+      label: "الصوت",
+    },
+    {
+      icon: isFullscreen ? (
+        <Minimize className="w-[18px] h-[18px]" />
+      ) : (
+        <Maximize className="w-[18px] h-[18px]" />
+      ),
+      action: toggleFullscreen,
+      label: "ملء الشاشة",
+    },
+    {
+      icon: <BookOpen className="w-[18px] h-[18px]" />,
+      action: () =>
+        setState((prev) => (prev ? { ...prev, rulesAck: false } : prev)),
+      label: "تعليمات",
+    },
+    {
+      icon: <Share2 className="w-[18px] h-[18px]" />,
+      action: () => setShowShare(true),
+      label: "مشاركة",
+    },
+    {
+      icon: <RotateCcw className="w-[18px] h-[18px]" />,
+      action: () => setShowRestartConfirm(true),
+      label: "إعادة",
+    },
+    {
+      icon: <Flag className="w-[18px] h-[18px]" />,
+      action: () => setShowEndConfirm(true),
+      label: "إنهاء",
+    },
+    {
+      icon: <Home className="w-[18px] h-[18px]" />,
+      action: exitKeep,
+      label: "الرئيسية",
+    },
   ];
 
   const ARABIC_FONT = "'IBM Plex Sans Arabic', 'Tajawal', sans-serif";
@@ -1148,8 +1556,16 @@ export default function ArenaPlay() {
   const ARABIC_ELEGANT = "'Amiri', 'Readex Pro', 'IBM Plex Sans Arabic', serif";
 
   return (
-    <div dir="rtl" className="min-h-screen flex flex-col" style={{ background: "#faf6ec", fontFamily: ARABIC_FONT, height: "100vh", overflow: "hidden" }}>
-
+    <div
+      dir="rtl"
+      className="min-h-screen flex flex-col"
+      style={{
+        background: "#faf6ec",
+        fontFamily: ARABIC_FONT,
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       {/* ══ HEADER — white card, 3 zones ══════════════════════════════════ */}
       <header className="shrink-0 px-2 sm:px-4 pt-2 sm:pt-3">
         <div
@@ -1157,7 +1573,8 @@ export default function ArenaPlay() {
           style={{
             background: "#ffffff",
             borderRadius: "18px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
+            boxShadow:
+              "0 2px 10px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)",
             border: "1px solid #ebe2cd",
             maxWidth: "1280px",
             margin: "0 auto",
@@ -1168,11 +1585,12 @@ export default function ArenaPlay() {
           {/* Zone A (right in RTL): Teams pill — natural width, compact */}
           <div className="flex items-center justify-end order-1 sm:order-none w-full sm:w-auto">
             <div
-              className="flex items-center gap-2 px-3 py-2 rounded-2xl"
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl"
               style={{
                 background: "linear-gradient(135deg, #faf6ec, #f5efdc)",
                 border: "1.5px solid #d9c896",
-                boxShadow: "0 2px 6px rgba(45,94,63,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
+                boxShadow:
+                  "0 2px 6px rgba(45,94,63,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
                 fontFamily: ARABIC_FONT,
               }}
             >
@@ -1183,20 +1601,72 @@ export default function ArenaPlay() {
                 const isActive = state.currentTurn === state.teamOrder[0];
                 return (
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center shrink-0" style={{ width: "30px", height: "30px", borderRadius: "8px", background: `${t.color}1f` }}>
-                      <Users className="w-[16px] h-[16px]" style={{ color: t.color }} />
+                    <div
+                      className="flex items-center justify-center shrink-0"
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "8px",
+                        background: `${t.color}1f`,
+                      }}
+                    >
+                      <Users
+                        className="w-[16px] h-[16px]"
+                        style={{ color: t.color }}
+                      />
                     </div>
                     <div className="flex flex-col leading-none">
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
-                      <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: 1.1, marginTop: "1px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          color: isActive ? t.color : "#6b7280",
+                          whiteSpace: "nowrap",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {t.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "26px",
+                          fontWeight: 800,
+                          lineHeight: 1.1,
+                          marginTop: "1px",
+                          marginTop: "1px",
+                          color: isActive ? t.color : "#1f2937",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {t.score}
+                      </span>
                     </div>
                   </div>
                 );
               })()}
 
               {/* VS */}
-              <div className="flex items-center justify-center shrink-0" style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#ffffff", border: "2px solid #d9c896", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <span style={{ fontSize: "11px", fontWeight: 900, color: "#2d5e3f", fontFamily: ARABIC_DISPLAY }}>VS</span>
+              <div
+                className="flex items-center justify-center shrink-0"
+                style={{
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "50%",
+                  background: "#ffffff",
+                  border: "2px solid #d9c896",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 900,
+                    color: "#2d5e3f",
+                    fontFamily: ARABIC_DISPLAY,
+                  }}
+                >
+                  VS
+                </span>
               </div>
 
               {/* Team B */}
@@ -1207,11 +1677,43 @@ export default function ArenaPlay() {
                 return (
                   <div className="flex items-center gap-2">
                     <div className="flex flex-col leading-none items-end">
-                      <span style={{ fontSize: "11px", fontWeight: 700, color: isActive ? t.color : "#6b7280", whiteSpace: "nowrap", lineHeight: 1.2 }}>{t.name}</span>
-                      <span style={{ fontSize: "20px", fontWeight: 800, lineHeight: 1.1, marginTop: "1px", color: isActive ? t.color : "#1f2937", fontVariantNumeric: "tabular-nums" }}>{t.score}</span>
+                      <span
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          color: isActive ? t.color : "#6b7280",
+                          whiteSpace: "nowrap",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {t.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "26px",
+                          fontWeight: 800,
+                          lineHeight: 1.1,
+                          marginTop: "1px",
+                          color: isActive ? t.color : "#1f2937",
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      >
+                        {t.score}
+                      </span>
                     </div>
-                    <div className="flex items-center justify-center shrink-0" style={{ width: "30px", height: "30px", borderRadius: "8px", background: `${t.color}1f` }}>
-                      <Users className="w-[16px] h-[16px]" style={{ color: t.color }} />
+                    <div
+                      className="flex items-center justify-center shrink-0"
+                      style={{
+                        width: "30px",
+                        height: "30px",
+                        borderRadius: "8px",
+                        background: `${t.color}1f`,
+                      }}
+                    >
+                      <Users
+                        className="w-[16px] h-[16px]"
+                        style={{ color: t.color }}
+                      />
                     </div>
                   </div>
                 );
@@ -1228,8 +1730,32 @@ export default function ArenaPlay() {
               style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
             />
             <div className="flex flex-col leading-none">
-              <span className="arena-brand-title" style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, color: "#2d5e3f", letterSpacing: "0.01em" }}>تحدّي حصاد</span>
-              <span className="arena-brand-subtitle" style={{ fontFamily: ARABIC_ELEGANT, fontWeight: 700, color: "#8a6d2c", marginTop: "5px", paddingTop: "4px", borderTop: "1px solid #e8dfc8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.005em" }}>
+              <span
+                className="arena-brand-title"
+                style={{
+                  fontFamily: ARABIC_DISPLAY,
+                  fontWeight: 700,
+                  color: "#2d5e3f",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                تحدّي حصاد
+              </span>
+              <span
+                className="arena-brand-subtitle"
+                style={{
+                  fontFamily: ARABIC_ELEGANT,
+                  fontWeight: 700,
+                  color: "#8a6d2c",
+                  marginTop: "5px",
+                  paddingTop: "4px",
+                  borderTop: "1px solid #e8dfc8",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  letterSpacing: "0.005em",
+                }}
+              >
                 {state.tournamentName ?? "بطولة المعرفة والتحدي"}
               </span>
             </div>
@@ -1250,26 +1776,53 @@ export default function ArenaPlay() {
                   border: "1px solid #ebe2cd",
                   fontFamily: ARABIC_FONT,
                 }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#f0e8d4";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#2d5e3f";
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "#f0e8d4";
+                  (e.currentTarget as HTMLButtonElement).style.color =
+                    "#2d5e3f";
                 }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#faf6ec";
-                  (e.currentTarget as HTMLButtonElement).style.color = "#5b6b87";
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background =
+                    "#faf6ec";
+                  (e.currentTarget as HTMLButtonElement).style.color =
+                    "#5b6b87";
                 }}
               >
                 {btn.icon}
-                <span className="hidden sm:inline" style={{ fontSize: "9px", fontWeight: 600, color: "#8a7d5e", marginTop: "2px" }}>{btn.label}</span>
+                <span
+                  className="hidden sm:inline"
+                  style={{
+                    fontSize: "9px",
+                    fontWeight: 600,
+                    color: "#8a7d5e",
+                    marginTop: "2px",
+                  }}
+                >
+                  {btn.label}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
         {/* ── Sub-header strip: turn pill ──────────────────────────────── */}
-        <div className="flex items-center justify-center px-3 py-2.5 gap-3" style={{ maxWidth: "1280px", margin: "0 auto" }}>
+        <div
+          className="flex items-center justify-center px-3 py-2.5 gap-3"
+          style={{ maxWidth: "1280px", margin: "0 auto" }}
+        >
           {/* Decorative chevrons left */}
-          <div className="hidden sm:block flex-1 text-end" style={{ color: "#c9a14b", fontSize: "12px", letterSpacing: "0.2em", opacity: 0.5 }}>‹‹‹‹</div>
+          <div
+            className="hidden sm:block flex-1 text-end"
+            style={{
+              color: "#c9a14b",
+              fontSize: "12px",
+              letterSpacing: "0.2em",
+              opacity: 0.5,
+            }}
+          >
+            ‹‹‹‹
+          </div>
 
           {/* Turn pill — prominent, animated glow */}
           <motion.div
@@ -1307,14 +1860,44 @@ export default function ArenaPlay() {
                 background: `${turnTeam.color}1f`,
               }}
             >
-              <Users className="w-[20px] h-[20px]" style={{ color: turnTeam.color }} />
+              <Users
+                className="w-[20px] h-[20px]"
+                style={{ color: turnTeam.color }}
+              />
             </div>
-            <span style={{ fontWeight: 700, fontSize: "15px", color: "#374151" }}>الدور الآن:</span>
-            <span style={{ fontFamily: ARABIC_DISPLAY, fontWeight: 700, fontSize: "17px", color: turnTeam.color, maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{turnTeam.name}</span>
+            <span
+              style={{ fontWeight: 700, fontSize: "15px", color: "#374151" }}
+            >
+              الدور الآن:
+            </span>
+            <span
+              style={{
+                fontFamily: ARABIC_DISPLAY,
+                fontWeight: 700,
+                fontSize: "17px",
+                color: turnTeam.color,
+                maxWidth: "180px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {turnTeam.name}
+            </span>
           </motion.div>
 
           {/* Decorative chevrons right */}
-          <div className="hidden sm:block flex-1" style={{ color: "#c9a14b", fontSize: "12px", letterSpacing: "0.2em", opacity: 0.5 }}>››››</div>
+          <div
+            className="hidden sm:block flex-1"
+            style={{
+              color: "#c9a14b",
+              fontSize: "12px",
+              letterSpacing: "0.2em",
+              opacity: 0.5,
+            }}
+          >
+            ››››
+          </div>
         </div>
 
         {/* ── Audience strip ───────────────────────────────────────────── */}
@@ -1322,7 +1905,11 @@ export default function ArenaPlay() {
           <button
             onClick={() => setShowShare(true)}
             className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-bold transition-all hover:brightness-95"
-            style={{ background: "#f0fdf4", borderTop: "1px solid #bbf7d0", color: "#065f46" }}
+            style={{
+              background: "#f0fdf4",
+              borderTop: "1px solid #bbf7d0",
+              color: "#065f46",
+            }}
           >
             <Tv2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span>وضع المتفرج — شارك رابط الجمهور مع شاشة ثانية</span>
@@ -1333,7 +1920,6 @@ export default function ArenaPlay() {
 
       {/* ══ BOARD ═══════════════════════════════════════════════════════════ */}
       {boardGrid}
-
 
       <AnimatePresence>
         {active && (
@@ -1379,9 +1965,7 @@ export default function ArenaPlay() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {showShare && (
-          <ShareDialog onClose={() => setShowShare(false)} />
-        )}
+        {showShare && <ShareDialog onClose={() => setShowShare(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1416,7 +2000,10 @@ export default function ArenaPlay() {
             confirmLabel="نعم، أعد من البداية"
             confirmTone="rose"
             onCancel={() => setShowRestartConfirm(false)}
-            onConfirm={() => { setShowRestartConfirm(false); restart(); }}
+            onConfirm={() => {
+              setShowRestartConfirm(false);
+              restart();
+            }}
           />
         )}
       </AnimatePresence>
@@ -1428,15 +2015,21 @@ export default function ArenaPlay() {
 
 function ArenaLoginGate() {
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center p-6" style={{
-      background: "radial-gradient(ellipse at top, #064e3b 0%, #022c22 60%, #000 100%)",
-    }}>
+    <div
+      dir="rtl"
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{
+        background:
+          "radial-gradient(ellipse at top, #064e3b 0%, #022c22 60%, #000 100%)",
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-xl rounded-3xl p-8 sm:p-10 border-4 text-center backdrop-blur-sm"
         style={{
-          background: "linear-gradient(160deg, rgba(6,78,59,0.95), rgba(2,44,34,0.95))",
+          background:
+            "linear-gradient(160deg, rgba(6,78,59,0.95), rgba(2,44,34,0.95))",
           borderColor: "rgba(245,158,11,0.55)",
         }}
       >
@@ -1469,7 +2062,10 @@ function ArenaLoginGate() {
 
 /* ─────────────────────────────  Turn Indicator  ───────────────────────────── */
 
-function TurnIndicator({ team, side }: {
+function TurnIndicator({
+  team,
+  side,
+}: {
   team: { name: string; emoji: string; color: string };
   side: TeamSide;
 }) {
@@ -1523,7 +2119,10 @@ function TurnIndicator({ team, side }: {
 /* ─────────────────────────────  Player picker  ───────────────────────────── */
 
 function PlayerPickerOverlay({
-  team, side, onPick, onSkip,
+  team,
+  side,
+  onPick,
+  onSkip,
 }: {
   team: { name: string; emoji: string; color: string; players: string[] };
   side: TeamSide;
@@ -1551,12 +2150,17 @@ function PlayerPickerOverlay({
         }}
       >
         <div className="text-5xl mb-2">{team.emoji}</div>
-        <div className="text-amber-200/80 text-sm font-bold mb-1">من أجاب من</div>
-        <div className="text-3xl sm:text-4xl font-black mb-5" style={{ color: team.color }}>
+        <div className="text-amber-200/80 text-sm font-bold mb-1">
+          من أجاب من
+        </div>
+        <div
+          className="text-3xl sm:text-4xl font-black mb-5"
+          style={{ color: team.color }}
+        >
           {team.name}؟
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
-          {team.players.map(p => (
+          {team.players.map((p) => (
             <button
               key={p}
               onClick={() => onPick(p)}
@@ -1584,9 +2188,21 @@ function PlayerPickerOverlay({
 /* ─────────────────────────────  Question modal  ───────────────────────────── */
 
 function QuestionModal({
-  state, active, sections, timerRunning, shuraVotes,
-  onStartTimer, onStopTimer, onReveal, onTransfer, onResolve, onClose,
-  onUseHelper, canUseHelper, onReplaceQuestion, onReport,
+  state,
+  active,
+  sections,
+  timerRunning,
+  shuraVotes,
+  onStartTimer,
+  onStopTimer,
+  onReveal,
+  onTransfer,
+  onResolve,
+  onClose,
+  onUseHelper,
+  canUseHelper,
+  onReplaceQuestion,
+  onReport,
 }: {
   state: ArenaState;
   active: ArenaActiveQuestion;
@@ -1604,10 +2220,13 @@ function QuestionModal({
   onReplaceQuestion: () => void;
   onReport: () => void;
 }) {
-  const teamA = state.teams[state.teamOrder[0]] ?? Object.values(state.teams)[0];
-  const teamB = state.teams[state.teamOrder[1]] ?? Object.values(state.teams)[1] ?? teamA;
+  const teamA =
+    state.teams[state.teamOrder[0]] ?? Object.values(state.teams)[0];
+  const teamB =
+    state.teams[state.teamOrder[1]] ?? Object.values(state.teams)[1] ?? teamA;
   const answeringTeam = state.teams[active.answeringTeam];
-  const otherTeam = state.teams[getNextTeam(state.teamOrder, active.answeringTeam)];
+  const otherTeam =
+    state.teams[getNextTeam(state.teamOrder, active.answeringTeam)];
   const sec = findSection(active.subCategoryId, sections);
   const sub = findSubCategory(active.subCategoryId, sections);
 
@@ -1630,8 +2249,8 @@ function QuestionModal({
             تعذّر تحميل هذا السؤال
           </div>
           <div className="text-sm text-white/70 mb-5">
-            قد يكون السؤال محذوفاً أو الفئة معدّلة. أغلق هذا الكرت وجرّب
-            كرتاً آخر.
+            قد يكون السؤال محذوفاً أو الفئة معدّلة. أغلق هذا الكرت وجرّب كرتاً
+            آخر.
           </div>
           <button
             onClick={onClose}
@@ -1644,7 +2263,8 @@ function QuestionModal({
     );
   }
 
-  const transferAvailable = active.revealed && !active.transferUsed && !active.trapUsed;
+  const transferAvailable =
+    active.revealed && !active.transferUsed && !active.trapUsed;
   const onlyAnsweringTeamCanWin = active.transferUsed || active.trapUsed;
 
   return (
@@ -1666,13 +2286,17 @@ function QuestionModal({
           background: "rgba(13,17,23,0.98)",
           border: "1px solid rgba(255,255,255,0.09)",
           borderBottom: "none",
-          boxShadow: "0 -8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          boxShadow:
+            "0 -8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
         }}
       >
         {/* ── Top strip ── */}
         <div
           className="flex items-center gap-2 px-4 pt-4 pb-3 sticky top-0 z-10"
-          style={{ background: "rgba(13,17,23,0.97)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+          style={{
+            background: "rgba(13,17,23,0.97)",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
+          }}
         >
           <div className="flex-1 min-w-0">
             <div className="text-[10px] font-bold text-emerald-400/70 tracking-wide mb-0.5">
@@ -1682,12 +2306,21 @@ function QuestionModal({
               className="text-xl font-black leading-none inline-flex items-center gap-1"
               style={{
                 color: active.difficulty === 800 ? "#fde68a" : "#fbbf24",
-                textShadow: active.difficulty === 800 ? "0 0 10px rgba(251,191,36,0.6)" : undefined,
+                textShadow:
+                  active.difficulty === 800
+                    ? "0 0 10px rgba(251,191,36,0.6)"
+                    : undefined,
               }}
             >
-              {active.difficulty === 800 && <span style={{ fontSize: "0.75em" }}>⭐</span>}
+              {active.difficulty === 800 && (
+                <span style={{ fontSize: "0.75em" }}>⭐</span>
+              )}
               {active.difficulty}
-              {active.multiplier > 1 && <span className="text-emerald-300 ms-2">× {active.multiplier} 🌾</span>}
+              {active.multiplier > 1 && (
+                <span className="text-emerald-300 ms-2">
+                  × {active.multiplier} 🌾
+                </span>
+              )}
             </div>
           </div>
           {/* Timer + close */}
@@ -1710,7 +2343,6 @@ function QuestionModal({
 
         {/* ── Scrollable body ── */}
         <div className="px-4 py-4 space-y-3">
-
           {/* Answering team badge — compact */}
           <motion.div
             key={`banner-${active.answeringTeam}-${active.transferUsed}-${active.trapUsed}`}
@@ -1725,21 +2357,32 @@ function QuestionModal({
           >
             <span className="text-2xl">{answeringTeam.emoji}</span>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-white/45 tracking-wide">يجيب الآن</div>
-              <div className="font-black text-base text-white truncate leading-tight">{answeringTeam.name}</div>
+              <div className="text-[10px] font-bold text-white/45 tracking-wide">
+                يجيب الآن
+              </div>
+              <div className="font-black text-base text-white truncate leading-tight">
+                {answeringTeam.name}
+              </div>
             </div>
             {active.trapUsed && (
-              <span className="ms-auto text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-400/30">🪤 فخ</span>
+              <span className="ms-auto text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-400/30">
+                🪤 فخ
+              </span>
             )}
             {active.transferUsed && !active.trapUsed && (
-              <span className="ms-auto text-[10px] font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/30">↔️ محوّل</span>
+              <span className="ms-auto text-[10px] font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/30">
+                ↔️ محوّل
+              </span>
             )}
           </motion.div>
 
           {/* Question area */}
           <div
             className="rounded-xl px-3 py-4 text-center"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
           >
             <InteractiveActivity
               key={`${active.question.type ?? "text"}::${active.question.q}`}
@@ -1753,10 +2396,17 @@ function QuestionModal({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: "spring", stiffness: 220 }}
                   className="mt-4 px-4 py-3 rounded-xl text-center"
-                  style={{ background: "rgba(251,191,36,0.12)", border: "1.5px solid rgba(251,191,36,0.4)" }}
+                  style={{
+                    background: "rgba(251,191,36,0.12)",
+                    border: "1.5px solid rgba(251,191,36,0.4)",
+                  }}
                 >
-                  <div className="text-amber-400/80 text-[10px] font-bold tracking-wide mb-1">الإجابة الصحيحة</div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-amber-200">{active.question.a}</div>
+                  <div className="text-amber-400/80 text-[10px] font-bold tracking-wide mb-1">
+                    الإجابة الصحيحة
+                  </div>
+                  <div className="text-xl sm:text-2xl font-extrabold text-amber-200">
+                    {active.question.a}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1770,25 +2420,51 @@ function QuestionModal({
               className="rounded-xl overflow-hidden border border-blue-400/30 bg-blue-500/08"
               style={{ background: "rgba(59,130,246,0.08)" }}
             >
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/12 border-b border-blue-400/15" style={{ background: "rgba(59,130,246,0.12)" }}>
+              <div
+                className="flex items-center gap-2 px-3 py-2 bg-blue-500/12 border-b border-blue-400/15"
+                style={{ background: "rgba(59,130,246,0.12)" }}
+              >
                 <span>🗣️</span>
-                <span className="text-blue-200 font-bold text-xs">تصويت الجمهور</span>
-                <span className="text-blue-100/40 text-[10px] ms-auto">{shuraVotes.a + shuraVotes.b} صوت</span>
+                <span className="text-blue-200 font-bold text-xs">
+                  تصويت الجمهور
+                </span>
+                <span className="text-blue-100/40 text-[10px] ms-auto">
+                  {shuraVotes.a + shuraVotes.b} صوت
+                </span>
               </div>
               <div className="px-3 py-2.5 space-y-1.5">
                 {[
-                  { label: "خيار أ", votes: shuraVotes.a, color: "bg-blue-400" },
-                  { label: "خيار ب", votes: shuraVotes.b, color: "bg-violet-400" },
+                  {
+                    label: "خيار أ",
+                    votes: shuraVotes.a,
+                    color: "bg-blue-400",
+                  },
+                  {
+                    label: "خيار ب",
+                    votes: shuraVotes.b,
+                    color: "bg-violet-400",
+                  },
                 ].map(({ label, votes, color }) => {
                   const total = shuraVotes.a + shuraVotes.b;
-                  const pct = total > 0 ? Math.round((votes / total) * 100) : 50;
+                  const pct =
+                    total > 0 ? Math.round((votes / total) * 100) : 50;
                   return (
                     <div key={label}>
                       <div className="flex justify-between text-[10px] font-bold text-blue-100/70 mb-0.5">
-                        <span>{label}</span><span>{votes} ({pct}٪)</span>
+                        <span>{label}</span>
+                        <span>
+                          {votes} ({pct}٪)
+                        </span>
                       </div>
-                      <div className="h-2 rounded-full bg-white/8 overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                        <motion.div className={`h-full rounded-full ${color}`} animate={{ width: `${pct}%` }} transition={{ type: "spring", stiffness: 80 }} />
+                      <div
+                        className="h-2 rounded-full bg-white/8 overflow-hidden"
+                        style={{ background: "rgba(255,255,255,0.08)" }}
+                      >
+                        <motion.div
+                          className={`h-full rounded-full ${color}`}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ type: "spring", stiffness: 80 }}
+                        />
                       </div>
                     </div>
                   );
@@ -1798,21 +2474,30 @@ function QuestionModal({
           )}
 
           {/* Helpers — compact single-row per team */}
-          {state.teamOrder.some(side => state.teams[side]?.helpers.length > 0) && (
+          {state.teamOrder.some(
+            (side) => state.teams[side]?.helpers.length > 0,
+          ) && (
             <div className="space-y-1.5">
-              {state.teamOrder.map(side => {
+              {state.teamOrder.map((side) => {
                 const t = state.teams[side];
                 if (!t || t.helpers.length === 0) return null;
                 return (
-                  <div key={side} className="flex items-center gap-1.5 flex-wrap">
+                  <div
+                    key={side}
+                    className="flex items-center gap-1.5 flex-wrap"
+                  >
                     <span
                       className="text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded-md"
-                      style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}44` }}
+                      style={{
+                        background: `${t.color}22`,
+                        color: t.color,
+                        border: `1px solid ${t.color}44`,
+                      }}
                     >
                       {t.emoji}
                     </span>
-                    {t.helpers.map(hid => {
-                      const h = HELPERS.find(x => x.id === hid);
+                    {t.helpers.map((hid) => {
+                      const h = HELPERS.find((x) => x.id === hid);
                       if (!h) return null;
                       const usable = canUseHelper(side, hid);
                       const consumed = t.usedHelpers.includes(hid);
@@ -1827,8 +2512,12 @@ function QuestionModal({
                             opacity: consumed ? 0.28 : usable ? 1 : 0.45,
                             filter: consumed ? "grayscale(1)" : undefined,
                             cursor: usable ? "pointer" : "not-allowed",
-                            background: consumed ? "rgba(255,255,255,0.04)" : `${t.color}28`,
-                            borderColor: consumed ? "rgba(255,255,255,0.10)" : `${t.color}55`,
+                            background: consumed
+                              ? "rgba(255,255,255,0.04)"
+                              : `${t.color}28`,
+                            borderColor: consumed
+                              ? "rgba(255,255,255,0.10)"
+                              : `${t.color}55`,
                             color: "white",
                           }}
                         >
@@ -1862,23 +2551,26 @@ function QuestionModal({
           </div>
 
           {/* Action buttons — timer + reveal + resolve */}
-          <div
-            className="flex flex-wrap gap-2 pt-1 pb-2"
-          >
+          <div className="flex flex-wrap gap-2 pt-1 pb-2">
             {!timerRunning && !active.revealed && (
               <button
                 onClick={onStartTimer}
                 className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center justify-center gap-1.5"
               >
                 <Clock className="w-4 h-4" />
-                {active.timeLeft === 0 || active.timeLeft === state.timerSeconds ? "بدء المؤقت" : "متابعة"}
+                {active.timeLeft === 0 || active.timeLeft === state.timerSeconds
+                  ? "بدء المؤقت"
+                  : "متابعة"}
               </button>
             )}
             {timerRunning && (
               <button
                 onClick={onStopTimer}
                 className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm text-white inline-flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.12)" }}
+                style={{
+                  background: "rgba(255,255,255,0.09)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
               >
                 إيقاف المؤقت
               </button>
@@ -1893,14 +2585,17 @@ function QuestionModal({
             )}
             {active.revealed && (
               <div className="w-full flex flex-wrap gap-2">
-                {state.teamOrder.map(teamId => {
+                {state.teamOrder.map((teamId) => {
                   const t = state.teams[teamId];
                   if (!t) return null;
                   return (
                     <button
                       key={teamId}
                       onClick={() => onResolve(teamId)}
-                      disabled={onlyAnsweringTeamCanWin && active.answeringTeam !== teamId}
+                      disabled={
+                        onlyAnsweringTeamCanWin &&
+                        active.answeringTeam !== teamId
+                      }
                       className="flex-1 min-w-[110px] py-3 rounded-xl font-black text-white text-sm inline-flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-25 disabled:cursor-not-allowed"
                       style={{ background: t.color }}
                     >
@@ -1912,7 +2607,10 @@ function QuestionModal({
                   <button
                     onClick={onTransfer}
                     className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-blue-200 inline-flex items-center justify-center gap-1.5"
-                    style={{ background: "rgba(59,130,246,0.18)", border: "1px solid rgba(147,197,253,0.3)" }}
+                    style={{
+                      background: "rgba(59,130,246,0.18)",
+                      border: "1px solid rgba(147,197,253,0.3)",
+                    }}
                   >
                     ↔️ {otherTeam.name}
                   </button>
@@ -1920,14 +2618,16 @@ function QuestionModal({
                 <button
                   onClick={() => onResolve(null)}
                   className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-white/70 inline-flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)" }}
+                  style={{
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                  }}
                 >
                   لا أحد
                 </button>
               </div>
             )}
           </div>
-
         </div>
       </motion.div>
     </motion.div>
@@ -1937,7 +2637,9 @@ function QuestionModal({
 /* ─────────────────────────────  Phone-a-friend overlay  ───────────────────────────── */
 
 function FriendCallOverlay({
-  seconds, team, onClose,
+  seconds,
+  team,
+  onClose,
 }: {
   seconds: number;
   team: { name: string; emoji: string; color: string };
@@ -1967,19 +2669,28 @@ function FriendCallOverlay({
           animate={{ rotate: [0, -8, 8, -8, 0], scale: [1, 1.08, 1] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
           className="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4"
-          style={{ background: `${team.color}33`, border: `3px solid ${team.color}`, willChange: "transform" }}
+          style={{
+            background: `${team.color}33`,
+            border: `3px solid ${team.color}`,
+            willChange: "transform",
+          }}
         >
           <Phone className="w-12 h-12" style={{ color: team.color }} />
         </motion.div>
-        <div className="text-amber-200/80 text-sm font-bold tracking-widest mb-1">اتصال بصديق</div>
+        <div className="text-amber-200/80 text-sm font-bold tracking-widest mb-1">
+          اتصال بصديق
+        </div>
         <div className="text-2xl sm:text-3xl font-black text-white mb-1">
           {team.emoji} {team.name}
         </div>
         <div className="text-emerald-100/70 text-sm mb-6">
-          لديك ٦٠ ثانية للاتصال بصديق وأخذ رأيه — لن يتم خصم وقت السؤال أثناء المكالمة
+          لديك ٦٠ ثانية للاتصال بصديق وأخذ رأيه — لن يتم خصم وقت السؤال أثناء
+          المكالمة
         </div>
 
-        <div className={`text-7xl sm:text-9xl font-black mb-3 ${seconds <= 10 ? "text-red-400 animate-pulse" : "text-amber-300"}`}>
+        <div
+          className={`text-7xl sm:text-9xl font-black mb-3 ${seconds <= 10 ? "text-red-400 animate-pulse" : "text-amber-300"}`}
+        >
           {seconds}
         </div>
         <div className="h-3 rounded-full bg-white/10 overflow-hidden mb-6">
@@ -2053,12 +2764,16 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
             <Share2 className="w-6 h-6" />
             مشاركة مع الجمهور
           </h2>
-          <button onClick={onClose} className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10">
+          <button
+            onClick={onClose}
+            className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
         <p className="text-emerald-100/80 text-sm mb-4">
-          امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع اللعبة
+          امسح الرمز أو افتح الرابط على الشاشة الكبيرة ليصوّت الجمهور أو يتابع
+          اللعبة
         </p>
         <div className="bg-white p-3 rounded-2xl inline-block mb-4 shadow-2xl">
           <img src={qrUrl} alt="QR" className="w-56 h-56 block" />
@@ -2071,13 +2786,17 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
             readOnly
             value={url}
             className="flex-1 bg-transparent text-emerald-100 text-xs px-2 py-1 outline-none"
-            onFocus={e => e.currentTarget.select()}
+            onFocus={(e) => e.currentTarget.select()}
           />
           <button
             onClick={copy}
             className="px-3 py-1.5 rounded-md font-bold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm"
           >
-            {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? (
+              <CheckIcon className="w-4 h-4" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
             {copied ? "نُسخ" : "نسخ"}
           </button>
         </div>
@@ -2095,7 +2814,10 @@ function ShareDialog({ onClose }: { onClose: () => void }) {
 /* ─────────────────────────────  Report dialog  ───────────────────────────── */
 
 function ReportDialog({
-  question, answer, onClose, onSubmit,
+  question,
+  answer,
+  onClose,
+  onSubmit,
 }: {
   question: string;
   answer: string;
@@ -2128,21 +2850,30 @@ function ReportDialog({
             <AlertTriangle className="w-6 h-6" />
             إبلاغ عن خطأ في السؤال
           </h2>
-          <button onClick={onClose} className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10">
+          <button
+            onClick={onClose}
+            className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
         <div className="rounded-lg bg-black/30 border border-white/10 p-3 mb-3">
-          <div className="text-[10px] font-bold text-amber-200/70 mb-1">السؤال</div>
+          <div className="text-[10px] font-bold text-amber-200/70 mb-1">
+            السؤال
+          </div>
           <div className="text-white text-sm font-bold mb-2">{question}</div>
-          <div className="text-[10px] font-bold text-amber-200/70 mb-1">الإجابة الحالية</div>
+          <div className="text-[10px] font-bold text-amber-200/70 mb-1">
+            الإجابة الحالية
+          </div>
           <div className="text-emerald-200 text-sm">{answer}</div>
         </div>
         <label className="block mb-3">
-          <span className="text-emerald-100/85 text-sm font-bold mb-1 block">ما المشكلة؟</span>
+          <span className="text-emerald-100/85 text-sm font-bold mb-1 block">
+            ما المشكلة؟
+          </span>
           <textarea
             value={note}
-            onChange={e => setNote(e.target.value)}
+            onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة..."
             className="w-full bg-black/30 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-rose-300"
@@ -2150,12 +2881,13 @@ function ReportDialog({
         </label>
         <label className="block mb-4">
           <span className="text-emerald-100/85 text-sm font-bold mb-1 block">
-            الإجابة الصحيحة المقترحة <span className="opacity-60">(اختياري)</span>
+            الإجابة الصحيحة المقترحة{" "}
+            <span className="opacity-60">(اختياري)</span>
           </span>
           <input
             type="text"
             value={correct}
-            onChange={e => setCorrect(e.target.value)}
+            onChange={(e) => setCorrect(e.target.value)}
             className="w-full bg-black/30 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-rose-300"
           />
         </label>
@@ -2187,7 +2919,12 @@ function ReportDialog({
 /* ─────────────────────────────  Confirm dialog  ───────────────────────────── */
 
 function ConfirmDialog({
-  title, body, confirmLabel, confirmTone, onCancel, onConfirm,
+  title,
+  body,
+  confirmLabel,
+  confirmTone,
+  onCancel,
+  onConfirm,
 }: {
   title: string;
   body: string;
@@ -2220,7 +2957,9 @@ function ConfirmDialog({
         }}
       >
         <h2 className="text-2xl font-black text-amber-200 mb-2">{title}</h2>
-        <p className="text-emerald-100/85 text-base mb-5 leading-relaxed">{body}</p>
+        <p className="text-emerald-100/85 text-base mb-5 leading-relaxed">
+          {body}
+        </p>
         <div className="flex gap-2">
           <button
             onClick={onCancel}
@@ -2243,7 +2982,9 @@ function ConfirmDialog({
 /* ─────────────────────────────  Rules overlay  ───────────────────────────── */
 
 function RulesOverlay({
-  teamA, teamB, onAck,
+  teamA,
+  teamB,
+  onAck,
 }: {
   teamA: { name: string; emoji: string; color: string };
   teamB: { name: string; emoji: string; color: string };
@@ -2265,18 +3006,29 @@ function RulesOverlay({
         <div className="text-center mb-5">
           <div
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold mb-3"
-            style={{ background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.25)" }}
+            style={{
+              background: "rgba(16,185,129,0.12)",
+              color: "#6ee7b7",
+              border: "1px solid rgba(16,185,129,0.25)",
+            }}
           >
             <BookOpen className="w-3 h-3" />
             قوانين تحدّي حصاد
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white mb-2" style={{ lineHeight: 1.2 }}>
+          <h1
+            className="text-3xl sm:text-4xl font-black text-white mb-2"
+            style={{ lineHeight: 1.2 }}
+          >
             استعدّوا للتحدّي
           </h1>
           <div className="flex items-center justify-center gap-2 text-lg">
-            <span className="font-black" style={{ color: teamA.color }}>{teamA.emoji} {teamA.name}</span>
+            <span className="font-black" style={{ color: teamA.color }}>
+              {teamA.emoji} {teamA.name}
+            </span>
             <span className="text-white/30">×</span>
-            <span className="font-black" style={{ color: teamB.color }}>{teamB.emoji} {teamB.name}</span>
+            <span className="font-black" style={{ color: teamB.color }}>
+              {teamB.emoji} {teamB.name}
+            </span>
           </div>
         </div>
 
@@ -2307,23 +3059,37 @@ function RulesOverlay({
         {/* Helpers — compact grid */}
         <div
           className="rounded-2xl p-4 mb-4"
-          style={{ background: "rgba(22,27,34,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
+          style={{
+            background: "rgba(22,27,34,0.95)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
         >
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-amber-300/70" />
-            <h2 className="text-base font-extrabold text-amber-200/90">الوسائل المساعدة</h2>
+            <h2 className="text-base font-extrabold text-amber-200/90">
+              الوسائل المساعدة
+            </h2>
           </div>
           <div className="grid sm:grid-cols-2 gap-2">
-            {HELPERS.map(h => (
+            {HELPERS.map((h) => (
               <div
                 key={h.id}
                 className="rounded-xl px-3 py-2.5 flex items-start gap-2.5"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
               >
-                <span className="text-2xl shrink-0 leading-none mt-0.5">{h.emoji}</span>
+                <span className="text-2xl shrink-0 leading-none mt-0.5">
+                  {h.emoji}
+                </span>
                 <div>
-                  <div className="font-bold text-white text-sm leading-tight">{h.name}</div>
-                  <div className="text-white/55 text-xs leading-relaxed mt-0.5">{h.desc}</div>
+                  <div className="font-bold text-white text-sm leading-tight">
+                    {h.name}
+                  </div>
+                  <div className="text-white/55 text-xs leading-relaxed mt-0.5">
+                    {h.desc}
+                  </div>
                 </div>
               </div>
             ))}
@@ -2333,7 +3099,10 @@ function RulesOverlay({
         <button
           onClick={onAck}
           className="w-full py-4 rounded-2xl font-bold text-lg transition inline-flex items-center justify-center gap-2"
-          style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)", color: "#0c0f14" }}
+          style={{
+            background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+            color: "#0c0f14",
+          }}
         >
           <Sparkles className="w-5 h-5" />
           فهمنا — ابدأ اللعبة
@@ -2347,12 +3116,18 @@ function RulesPanel({ title, items }: { title: string; items: string[] }) {
   return (
     <div
       className="rounded-xl p-3.5"
-      style={{ background: "rgba(22,27,34,0.95)", border: "1px solid rgba(255,255,255,0.07)" }}
+      style={{
+        background: "rgba(22,27,34,0.95)",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
     >
       <h3 className="text-sm font-black text-amber-300/90 mb-2">{title}</h3>
       <ul className="space-y-1">
         {items.map((it, i) => (
-          <li key={i} className="text-white/65 text-xs sm:text-sm leading-relaxed flex gap-2">
+          <li
+            key={i}
+            className="text-white/65 text-xs sm:text-sm leading-relaxed flex gap-2"
+          >
             <span className="text-emerald-400/70 shrink-0 mt-0.5">•</span>
             <span>{it}</span>
           </li>
@@ -2365,10 +3140,22 @@ function RulesPanel({ title, items }: { title: string; items: string[] }) {
 /* ─────────────────────────────  End screen  ───────────────────────────── */
 
 function EndScreen({
-  winnerTeam, teams, teamOrder, onRestart, onExit, onWinSound,
-  publicMode, hasLastSettings, onQuickReplay,
+  winnerTeam,
+  teams,
+  teamOrder,
+  onRestart,
+  onExit,
+  onWinSound,
+  publicMode,
+  hasLastSettings,
+  onQuickReplay,
 }: {
-  winnerTeam: { name: string; emoji: string; color: string; score: number } | null;
+  winnerTeam: {
+    name: string;
+    emoji: string;
+    color: string;
+    score: number;
+  } | null;
   teams: ArenaState["teams"];
   teamOrder: string[];
   onRestart: () => void;
@@ -2422,35 +3209,54 @@ function EndScreen({
         </div>
         {winnerTeam ? (
           <>
-            <div className="text-sm font-bold text-white/40 tracking-widest uppercase mb-1">الفائز</div>
+            <div className="text-sm font-bold text-white/40 tracking-widest uppercase mb-1">
+              الفائز
+            </div>
             <div
               className="text-5xl sm:text-6xl font-black text-white mb-2 leading-tight"
               style={{ textShadow: `0 0 40px ${winnerTeam.color}` }}
             >
               {winnerTeam.emoji} {winnerTeam.name}
             </div>
-            <div className="text-2xl font-bold mb-8" style={{ color: winnerTeam.color }}>
+            <div
+              className="text-2xl font-bold mb-8"
+              style={{ color: winnerTeam.color }}
+            >
               {winnerTeam.score} نقطة
             </div>
           </>
         ) : (
-          <div className="text-4xl font-extrabold text-amber-300 mb-6">تعادل!</div>
+          <div className="text-4xl font-extrabold text-amber-300 mb-6">
+            تعادل!
+          </div>
         )}
 
         {/* Score cards */}
-        <div className={`grid gap-3 mb-8 ${teamOrder.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}>
-          {teamOrder.map(side => {
+        <div
+          className={`grid gap-3 mb-8 ${teamOrder.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"}`}
+        >
+          {teamOrder.map((side) => {
             const t = teams[side];
             if (!t) return null;
             return (
               <div
                 key={side}
                 className="rounded-2xl p-4 border"
-                style={{ background: `${t.color}14`, borderColor: `${t.color}44` }}
+                style={{
+                  background: `${t.color}14`,
+                  borderColor: `${t.color}44`,
+                }}
               >
                 <div className="text-3xl mb-1">{t.emoji}</div>
-                <div className="font-black text-white text-base mb-0.5 truncate">{t.name}</div>
-                <div className="text-2xl font-extrabold" style={{ color: t.color }}>{t.score}</div>
+                <div className="font-black text-white text-base mb-0.5 truncate">
+                  {t.name}
+                </div>
+                <div
+                  className="text-2xl font-extrabold"
+                  style={{ color: t.color }}
+                >
+                  {t.score}
+                </div>
               </div>
             );
           })}
@@ -2487,7 +3293,10 @@ function EndScreen({
           <button
             onClick={onRestart}
             className="px-7 py-3.5 rounded-2xl font-bold text-lg inline-flex items-center gap-2"
-            style={{ background: "linear-gradient(135deg, #f59e0b, #fbbf24)", color: "#0c0f14" }}
+            style={{
+              background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
+              color: "#0c0f14",
+            }}
           >
             <RotateCcw className="w-5 h-5" />
             {showQuickReplay ? "إعادة مع تغيير الإعدادات" : "إعادة اللعب"}
@@ -2495,7 +3304,10 @@ function EndScreen({
           <button
             onClick={onExit}
             className="px-7 py-3.5 rounded-2xl font-bold text-lg text-white inline-flex items-center gap-2"
-            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)" }}
+            style={{
+              background: "rgba(255,255,255,0.07)",
+              border: "1px solid rgba(255,255,255,0.14)",
+            }}
           >
             <Home className="w-5 h-5" />
             خروج
@@ -2505,7 +3317,7 @@ function EndScreen({
         {/* Collapsible share / QR section */}
         <div className="mt-6 w-full">
           <button
-            onClick={() => setShowQr(v => !v)}
+            onClick={() => setShowQr((v) => !v)}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-5 rounded-2xl font-bold text-sm text-amber-300 border border-amber-400/30 hover:bg-amber-400/10 transition"
             style={{ background: "rgba(245,158,11,0.06)" }}
           >
@@ -2546,13 +3358,17 @@ function EndScreen({
                       readOnly
                       value={audienceUrl}
                       className="flex-1 bg-transparent text-emerald-100 text-xs px-2 py-1 outline-none"
-                      onFocus={e => e.currentTarget.select()}
+                      onFocus={(e) => e.currentTarget.select()}
                     />
                     <button
                       onClick={copyUrl}
                       className="px-3 py-1.5 rounded-md font-bold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm"
                     >
-                      {copied ? <CheckIcon className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copied ? (
+                        <CheckIcon className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
                       {copied ? "نُسخ" : "نسخ"}
                     </button>
                   </div>
@@ -2569,17 +3385,33 @@ function EndScreen({
 /* ─────────────────────────────  Team badge  ───────────────────────────── */
 
 function TeamBadge({
-  team, side, active, animation,
+  team,
+  side,
+  active,
+  animation,
 }: {
-  team: { name: string; emoji: string; color: string; score: number; helpers: HelperId[]; usedHelpers: HelperId[] };
+  team: {
+    name: string;
+    emoji: string;
+    color: string;
+    score: number;
+    helpers: HelperId[];
+    usedHelpers: HelperId[];
+  };
   side: TeamSide;
   active: boolean;
-  animation: { team: TeamSide; pts: number; difficulty: ArenaDifficulty; player?: string } | null;
+  animation: {
+    team: TeamSide;
+    pts: number;
+    difficulty: ArenaDifficulty;
+    player?: string;
+  } | null;
 }) {
   return (
-    <div className={`flex-1 rounded-xl p-2 border-2 transition relative overflow-hidden ${
-      active ? "shadow-xl" : "opacity-80"
-    }`}
+    <div
+      className={`flex-1 rounded-xl p-2 border-2 transition relative overflow-hidden ${
+        active ? "shadow-xl" : "opacity-80"
+      }`}
       style={{
         background: active
           ? `linear-gradient(135deg, #ffffff 0%, ${team.color}20 100%)`
@@ -2601,7 +3433,10 @@ function TeamBadge({
               className="text-3xl font-black drop-shadow-lg"
               style={{
                 color: animation.difficulty === 800 ? "#fde68a" : "#fcd34d",
-                textShadow: animation.difficulty === 800 ? "0 0 12px rgba(251,191,36,0.8), 0 0 24px rgba(251,191,36,0.4)" : undefined,
+                textShadow:
+                  animation.difficulty === 800
+                    ? "0 0 12px rgba(251,191,36,0.8), 0 0 24px rgba(251,191,36,0.4)"
+                    : undefined,
               }}
             >
               +{animation.pts}
@@ -2617,11 +3452,18 @@ function TeamBadge({
       <div className="flex items-center gap-2">
         <div className="text-xl sm:text-2xl">{team.emoji}</div>
         <div className="flex-1 min-w-0">
-          <div className="font-black text-gray-900 text-sm truncate leading-tight">{team.name}</div>
-          <div className="text-xl sm:text-2xl font-black leading-none" style={{ color: team.color }}>{team.score}</div>
+          <div className="font-black text-gray-900 text-sm truncate leading-tight">
+            {team.name}
+          </div>
+          <div
+            className="text-xl sm:text-2xl font-black leading-none"
+            style={{ color: team.color }}
+          >
+            {team.score}
+          </div>
           <div className="flex gap-0.5 mt-0.5 flex-wrap">
-            {team.helpers.map(hid => {
-              const h = HELPERS.find(x => x.id === hid);
+            {team.helpers.map((hid) => {
+              const h = HELPERS.find((x) => x.id === hid);
               if (!h) return null;
               const used = team.usedHelpers.includes(hid);
               return (
@@ -2643,13 +3485,29 @@ function TeamBadge({
 
 // ─────────────────────────── Interactive Activity Renderers ───────────────────────────
 
-function InteractiveActivity({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+function InteractiveActivity({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
   const t = question.type;
-  if (t === "sin-jeem") return <SinJeemPlay question={question} revealed={revealed} />;
-  if (t === "memory") return <MemoryPlay question={question} revealed={revealed} />;
-  if (t === "categorize") return <CategorizePlay question={question} revealed={revealed} />;
+  if (t === "sin-jeem")
+    return <SinJeemPlay question={question} revealed={revealed} />;
+  if (t === "memory")
+    return <MemoryPlay question={question} revealed={revealed} />;
+  if (t === "categorize")
+    return <CategorizePlay question={question} revealed={revealed} />;
   if (t === "logo") return <LogoPlay question={question} revealed={revealed} />;
-  if (t === "image") return <ImagePlay key={question.imageUrl ?? question.q} question={question} revealed={revealed} />;
+  if (t === "image")
+    return (
+      <ImagePlay
+        key={question.imageUrl ?? question.q}
+        question={question}
+        revealed={revealed}
+      />
+    );
   // Default: text/image/video
   return (
     <>
@@ -2670,7 +3528,13 @@ function InteractiveActivity({ question, revealed }: { question: ArenaQuestion; 
   );
 }
 
-function SinJeemPlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+function SinJeemPlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
   const payload = (question.payload ?? {}) as Partial<SinJeemPayload>;
   const letter = payload.letter ?? "؟";
   const prompts = payload.prompts ?? [];
@@ -2684,7 +3548,10 @@ function SinJeemPlay({ question, revealed }: { question: ArenaQuestion; revealed
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 180, damping: 14 }}
         className="text-[120px] sm:text-[180px] leading-none font-black text-amber-300 select-none"
-        style={{ textShadow: "0 4px 32px rgba(251,191,36,0.7), 0 1px 0 rgba(0,0,0,0.4)" }}
+        style={{
+          textShadow:
+            "0 4px 32px rgba(251,191,36,0.7), 0 1px 0 rgba(0,0,0,0.4)",
+        }}
       >
         {letter}
       </motion.div>
@@ -2694,8 +3561,12 @@ function SinJeemPlay({ question, revealed }: { question: ArenaQuestion; revealed
             key={i}
             className="rounded-xl border-2 border-amber-300/25 bg-black/35 px-4 py-3 text-right transition"
           >
-            <div className="text-amber-200/80 text-[11px] font-bold mb-1">سؤال {i + 1}</div>
-            <div className="text-base sm:text-xl font-bold text-white">{p.prompt}</div>
+            <div className="text-amber-200/80 text-[11px] font-bold mb-1">
+              سؤال {i + 1}
+            </div>
+            <div className="text-base sm:text-xl font-bold text-white">
+              {p.prompt}
+            </div>
             {revealed && (
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
@@ -2719,7 +3590,13 @@ interface MemoryCardItem {
   side: { kind: "text" | "image"; value: string };
 }
 
-function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+function MemoryPlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
   const payload = (question.payload ?? {}) as Partial<MemoryPayload>;
   const pairs = payload.pairs ?? [];
 
@@ -2746,10 +3623,10 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
     const next = [...flipped, card.id];
     setFlipped(next);
     if (next.length === 2) {
-      const a = cards.find(c => c.id === next[0])!;
-      const b = cards.find(c => c.id === next[1])!;
+      const a = cards.find((c) => c.id === next[0])!;
+      const b = cards.find((c) => c.id === next[1])!;
       if (a.pairId === b.pairId) {
-        setMatched(prev => [...prev, a.pairId]);
+        setMatched((prev) => [...prev, a.pairId]);
         window.setTimeout(() => setFlipped([]), 700);
       } else {
         window.setTimeout(() => setFlipped([]), 1200);
@@ -2770,8 +3647,7 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
         طابق الأزواج المتشابهة
         {!revealed && (
           <span className="ms-2 text-emerald-300">
-            ({matched.length}/{pairs.length})
-            {allMatched && " 🎉"}
+            ({matched.length}/{pairs.length}){allMatched && " 🎉"}
           </span>
         )}
       </div>
@@ -2779,8 +3655,11 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
         className="grid gap-2 sm:gap-3 w-full max-w-3xl"
         style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}
       >
-        {cards.map(card => {
-          const isFlipped = revealed || flipped.includes(card.id) || matched.includes(card.pairId);
+        {cards.map((card) => {
+          const isFlipped =
+            revealed ||
+            flipped.includes(card.id) ||
+            matched.includes(card.pairId);
           const isMatched = revealed || matched.includes(card.pairId);
           return (
             <motion.button
@@ -2795,8 +3674,12 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
                       background: isMatched
                         ? "linear-gradient(160deg, #064e3b, #022c22)"
                         : "linear-gradient(160deg, #1e3a8a, #1e40af)",
-                      borderColor: isMatched ? "rgba(52,211,153,0.6)" : "rgba(245,158,11,0.6)",
-                      boxShadow: isMatched ? "0 0 24px -6px rgba(52,211,153,0.5)" : undefined,
+                      borderColor: isMatched
+                        ? "rgba(52,211,153,0.6)"
+                        : "rgba(245,158,11,0.6)",
+                      boxShadow: isMatched
+                        ? "0 0 24px -6px rgba(52,211,153,0.5)"
+                        : undefined,
                     }
                   : {
                       background: "linear-gradient(160deg, #d97706, #92400e)",
@@ -2806,14 +3689,20 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
             >
               {isFlipped ? (
                 card.side.kind === "image" ? (
-                  <img src={card.side.value} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={card.side.value}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="text-white text-sm sm:text-lg font-extrabold p-2 text-center break-words">
                     {card.side.value}
                   </div>
                 )
               ) : (
-                <div className="text-4xl sm:text-6xl text-amber-200 font-black drop-shadow">؟</div>
+                <div className="text-4xl sm:text-6xl text-amber-200 font-black drop-shadow">
+                  ؟
+                </div>
               )}
               {isMatched && !revealed && (
                 <div className="absolute top-1 end-1 bg-emerald-500 rounded-full p-0.5">
@@ -2828,13 +3717,23 @@ function MemoryPlay({ question, revealed }: { question: ArenaQuestion; revealed:
   );
 }
 
-function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+function CategorizePlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
   const payload = (question.payload ?? {}) as Partial<CategorizePayload>;
   const groups = payload.groups ?? [];
 
   const allItems = useMemo(() => {
     const items: { item: string; groupIdx: number; key: string }[] = [];
-    groups.forEach((g, gi) => g.items.forEach((it, ii) => items.push({ item: it, groupIdx: gi, key: `${gi}-${ii}` })));
+    groups.forEach((g, gi) =>
+      g.items.forEach((it, ii) =>
+        items.push({ item: it, groupIdx: gi, key: `${gi}-${ii}` }),
+      ),
+    );
     for (let i = items.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [items[i], items[j]] = [items[j], items[i]];
@@ -2848,7 +3747,7 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
 
   const assign = (groupIdx: number) => {
     if (!selectedKey) return;
-    setAssignments(prev => ({ ...prev, [selectedKey]: groupIdx }));
+    setAssignments((prev) => ({ ...prev, [selectedKey]: groupIdx }));
     setSelectedKey(null);
   };
 
@@ -2859,17 +3758,29 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
   if (revealed) {
     return (
       <div className="flex flex-col items-center gap-3 w-full">
-        <div className="text-amber-200/80 text-sm font-bold mb-1">التصنيف الصحيح</div>
+        <div className="text-amber-200/80 text-sm font-bold mb-1">
+          التصنيف الصحيح
+        </div>
         <div
           className="grid gap-2.5 w-full max-w-4xl"
-          style={{ gridTemplateColumns: `repeat(${Math.min(groups.length, 2)}, minmax(0,1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${Math.min(groups.length, 2)}, minmax(0,1fr))`,
+          }}
         >
           {groups.map((g, gi) => (
-            <div key={gi} className="rounded-xl border-2 border-emerald-400/50 bg-emerald-500/10 p-3">
-              <div className="text-emerald-200 font-extrabold text-base sm:text-lg mb-2 text-center">{g.name}</div>
+            <div
+              key={gi}
+              className="rounded-xl border-2 border-emerald-400/50 bg-emerald-500/10 p-3"
+            >
+              <div className="text-emerald-200 font-extrabold text-base sm:text-lg mb-2 text-center">
+                {g.name}
+              </div>
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {g.items.map((it, j) => (
-                  <span key={j} className="px-3 py-1.5 rounded-lg bg-emerald-600/80 text-white font-bold text-sm">
+                  <span
+                    key={j}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600/80 text-white font-bold text-sm"
+                  >
                     {it}
                   </span>
                 ))}
@@ -2881,9 +3792,9 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
     );
   }
 
-  const unassigned = allItems.filter(it => assignments[it.key] === undefined);
+  const unassigned = allItems.filter((it) => assignments[it.key] === undefined);
   const correctCount = Object.entries(assignments).filter(([key, gi]) => {
-    const it = allItems.find(x => x.key === key);
+    const it = allItems.find((x) => x.key === key);
     return it && it.groupIdx === gi;
   }).length;
 
@@ -2898,15 +3809,19 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
         )}
       </div>
       <div className="rounded-xl border border-amber-300/20 bg-black/30 p-3">
-        <div className="text-[11px] font-bold text-emerald-200/70 mb-2">العناصر</div>
+        <div className="text-[11px] font-bold text-emerald-200/70 mb-2">
+          العناصر
+        </div>
         <div className="flex flex-wrap gap-2 justify-center min-h-[3rem]">
           {unassigned.length === 0 ? (
             <div className="text-emerald-200/50 text-sm">— تم تصنيف الكل —</div>
           ) : (
-            unassigned.map(it => (
+            unassigned.map((it) => (
               <button
                 key={it.key}
-                onClick={() => setSelectedKey(it.key === selectedKey ? null : it.key)}
+                onClick={() =>
+                  setSelectedKey(it.key === selectedKey ? null : it.key)
+                }
                 className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 transition ${
                   selectedKey === it.key
                     ? "bg-amber-400 text-emerald-950 border-amber-200 scale-110 shadow-lg"
@@ -2921,12 +3836,14 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
       </div>
       <div
         className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${Math.min(groups.length, 2)}, minmax(0,1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(${Math.min(groups.length, 2)}, minmax(0,1fr))`,
+        }}
       >
         {groups.map((g, gi) => {
           const inside = Object.entries(assignments)
             .filter(([, gIdx]) => gIdx === gi)
-            .map(([key]) => allItems.find(x => x.key === key)!)
+            .map(([key]) => allItems.find((x) => x.key === key)!)
             .filter(Boolean);
           return (
             <button
@@ -2939,16 +3856,18 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
                   : "border-white/10 bg-black/30 cursor-default"
               }`}
             >
-              <div className="text-white font-extrabold text-base sm:text-lg mb-2 text-center">{g.name}</div>
+              <div className="text-white font-extrabold text-base sm:text-lg mb-2 text-center">
+                {g.name}
+              </div>
               <div className="flex flex-wrap gap-1.5 justify-center">
-                {inside.map(it => {
+                {inside.map((it) => {
                   const correct = it.groupIdx === gi;
                   return (
                     <span
                       key={it.key}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setAssignments(prev => {
+                        setAssignments((prev) => {
                           const next = { ...prev };
                           delete next[it.key];
                           return next;
@@ -2974,8 +3893,16 @@ function CategorizePlay({ question, revealed }: { question: ArenaQuestion; revea
   );
 }
 
-function ImagePlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+function ImagePlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
   return (
     <div className="flex flex-col items-center gap-4 w-full">
       {question.imageUrl ? (
@@ -3021,7 +3948,13 @@ function ImagePlay({ question, revealed }: { question: ArenaQuestion; revealed: 
   );
 }
 
-function LogoPlay({ question, revealed }: { question: ArenaQuestion; revealed: boolean }) {
+function LogoPlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
   const payload = (question.payload ?? {}) as Partial<LogoPayload>;
   const [revealLevel, setRevealLevel] = useState(0); // 0..3
   const blur = revealed ? 0 : Math.max(0, 18 - revealLevel * 6);
@@ -3047,7 +3980,7 @@ function LogoPlay({ question, revealed }: { question: ArenaQuestion; revealed: b
       </div>
       {!revealed && question.imageUrl && (
         <button
-          onClick={() => setRevealLevel(l => Math.min(3, l + 1))}
+          onClick={() => setRevealLevel((l) => Math.min(3, l + 1))}
           disabled={revealLevel >= 3}
           className="px-3 py-1.5 rounded-lg bg-amber-400 text-emerald-950 font-bold text-xs hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
         >
