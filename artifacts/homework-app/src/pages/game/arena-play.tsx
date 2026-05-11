@@ -970,7 +970,7 @@ export default function ArenaPlay() {
                     style={{
                       fontFamily:
                         "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
-                      fontWeight: 600,
+                      fontWeight: 7,
                       fontSize: "19px",
                       color: "#1f2937",
                       lineHeight: 1.2,
