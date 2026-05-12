@@ -119,12 +119,15 @@ export function Layout({ children, noHeader }: LayoutProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const searchString = location.includes("?") ? location.split("?")[1] : "";
+  const isEmbed = new URLSearchParams(searchString).get("embed") === "1";
+
   return (
     <div
       className="min-h-screen flex flex-col bg-background selection:bg-primary/20"
       dir={dir}
     >
-      {!noHeader && (
+      {!noHeader && !isEmbed && (
         <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-12 sm:h-14">
