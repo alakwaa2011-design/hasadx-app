@@ -1974,7 +1974,7 @@ export default function CreateAssignment() {
                       so teachers can flip an assignment to private with one
                       click without opening Advanced Settings. Hidden when
                       the assignment is access-private (cannot be shared). */}
-                  {accessMode !== "private" && !isContestMode && (
+                  {accessMode !== "private" && (
                     <Card className={`p-4 border-2 ${isShared ? "border-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/10" : "border-border bg-muted/30"}`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-start gap-2.5 min-w-0">
@@ -1982,7 +1982,9 @@ export default function CreateAssignment() {
                           <div className="min-w-0">
                             <div className="text-sm font-extrabold">
                               {isShared
-                                ? (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة الأنشطة" : "Will be auto-shared to the Activities Library")
+                                ? (isContestMode
+                                    ? (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة المسابقات" : "Will be auto-shared to the Competitions Library")
+                                    : (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة الأنشطة" : "Will be auto-shared to the Activities Library"))
                                 : (lang === "ar" ? "خاص بك فقط" : "Private to you only")}
                             </div>
                             <div className="text-[11px] text-muted-foreground">
@@ -1998,7 +2000,7 @@ export default function CreateAssignment() {
                             const next = !isShared;
                             setIsShared(next);
                             toast.success(next
-                              ? (lang === "ar" ? "🌍 سيُشارك في مكتبة الأنشطة" : "🌍 Will be shared")
+                              ? (lang === "ar" ? "🌍 سيُشارك مع المعلمين" : "🌍 Will be shared")
                               : (lang === "ar" ? "🔒 تم جعله خاصًا" : "🔒 Made private"));
                           }}
                           className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-cyan-400 text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"}`}

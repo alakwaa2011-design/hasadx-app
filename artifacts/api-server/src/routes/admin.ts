@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -948,61 +948,78 @@ router.post("/admin/assignments/:id/reject-share", async (req, res) => {
    on assignments, question_bank rows, and video_lessons. */
 const HideBody = z.object({ reason: z.string().max(500).optional() });
 
-function buildHideHandler<T extends { id: any; hiddenByAdmin: any; hiddenAt: any; hiddenById: any; hideReason: any }>(
-  table: T,
-  label: string,
-) {
-  return async (req: any, res: any) => {
-    try {
-      const adminId = await requireAdmin(req, res);
-      if (!adminId) return;
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
-      const body = HideBody.parse(req.body ?? {});
-      await db
-        .update(table as any)
-        .set({
-          hiddenByAdmin: true,
-          hiddenAt: new Date(),
-          hiddenById: req.session.teacherId,
-          hideReason: body.reason ?? null,
-        })
-        .where(eq((table as any).id, id));
-      res.json({ success: true });
-    } catch (err) {
-      req.log.error(err, `Failed to hide ${label}`);
-      res.status(500).json({ message: "حدث خطأ" });
-    }
-  };
+// Each handler is bound to a specific Drizzle table so its `set` /
+// `where` calls keep their generated column types — no `any` escapes.
+async function parseIdAndAdmin(req: Request, res: Response): Promise<{ id: number; adminId: number } | null> {
+  if (!(await requireAdmin(req, res))) return null;
+  const adminId = req.session.teacherId as number;
+  const id = parseInt(String(req.params.id), 10);
+  if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return null; }
+  return { id, adminId };
 }
 
-function buildUnhideHandler<T extends { id: any; hiddenByAdmin: any; hiddenAt: any; hiddenById: any; hideReason: any }>(
-  table: T,
-  label: string,
-) {
-  return async (req: any, res: any) => {
-    try {
-      if (!(await requireAdmin(req, res))) return;
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
-      await db
-        .update(table as any)
-        .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
-        .where(eq((table as any).id, id));
-      res.json({ success: true });
-    } catch (err) {
-      req.log.error(err, `Failed to unhide ${label}`);
-      res.status(500).json({ message: "حدث خطأ" });
-    }
-  };
-}
+router.post("/admin/assignments/:id/hide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    const body = HideBody.parse(req.body ?? {});
+    await db.update(assignmentsTable)
+      .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
+      .where(eq(assignmentsTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to hide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
+});
 
-router.post("/admin/assignments/:id/hide", buildHideHandler(assignmentsTable, "assignment"));
-router.post("/admin/assignments/:id/unhide", buildUnhideHandler(assignmentsTable, "assignment"));
-router.post("/admin/question-bank/:id/hide", buildHideHandler(questionBankTable, "question"));
-router.post("/admin/question-bank/:id/unhide", buildUnhideHandler(questionBankTable, "question"));
-router.post("/admin/video-lessons/:id/hide", buildHideHandler(videoLessonsTable, "video"));
-router.post("/admin/video-lessons/:id/unhide", buildUnhideHandler(videoLessonsTable, "video"));
+router.post("/admin/assignments/:id/unhide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    await db.update(assignmentsTable)
+      .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
+      .where(eq(assignmentsTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to unhide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
+});
+
+router.post("/admin/question-bank/:id/hide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    const body = HideBody.parse(req.body ?? {});
+    await db.update(questionBankTable)
+      .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
+      .where(eq(questionBankTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to hide question"); res.status(500).json({ message: "حدث خطأ" }); }
+});
+
+router.post("/admin/question-bank/:id/unhide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    await db.update(questionBankTable)
+      .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
+      .where(eq(questionBankTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to unhide question"); res.status(500).json({ message: "حدث خطأ" }); }
+});
+
+router.post("/admin/video-lessons/:id/hide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    const body = HideBody.parse(req.body ?? {});
+    await db.update(videoLessonsTable)
+      .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
+      .where(eq(videoLessonsTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to hide video"); res.status(500).json({ message: "حدث خطأ" }); }
+});
+
+router.post("/admin/video-lessons/:id/unhide", async (req, res) => {
+  try {
+    const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
+    await db.update(videoLessonsTable)
+      .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
+      .where(eq(videoLessonsTable.id, ctx.id));
+    res.json({ success: true });
+  } catch (err) { req.log.error({ err }, "Failed to unhide video"); res.status(500).json({ message: "حدث خطأ" }); }
+});
 
 export { getPublicVisibility };
 export default router;
