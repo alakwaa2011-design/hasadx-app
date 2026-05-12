@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
   Search, User, Calendar, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
-  Gamepad2, EyeOff, FolderOpen,
+  Gamepad2, EyeOff, FolderOpen, MoreVertical, Zap, Users,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -669,182 +669,195 @@ export default function SharedContentPage() {
 
         {activeTab === "assignments" && (
           filteredAssignments.length > 0 ? (
-            <div className="grid gap-3">
-              {filteredAssignments.map((a, i) => (
-                <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className={`p-4 hover:shadow-md transition-shadow ${a.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground mb-1">{a.title}</h3>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <AuthorBadge isAdminContent={a.isAdminContent} teacherName={a.teacherName} />
-                          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded font-bold">{typeLabel(a.type)}</span>
-                          <span>{a.questionCount} {lang === "ar" ? "سؤال" : "Q"}</span>
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(a.createdAt)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                        {a.teacherId === currentTeacherId ? (
-                          <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-bold border border-teal-300 dark:border-teal-700">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lang === "ar" ? "محتواك · مشارك" : "Your content · Shared"}
+            <div className="grid gap-2.5">
+              {filteredAssignments.map((a, i) => {
+                // Accent color per question type
+                const typeAccent =
+                  a.type === "mcq"        ? { bg: "bg-blue-50 dark:bg-blue-950/40",   icon: "text-blue-500",   border: "border-blue-200 dark:border-blue-800" } :
+                  a.type === "true_false" ? { bg: "bg-amber-50 dark:bg-amber-950/40", icon: "text-amber-500",  border: "border-amber-200 dark:border-amber-800" } :
+                  a.type === "fill_blank" ? { bg: "bg-violet-50 dark:bg-violet-950/40", icon: "text-violet-500", border: "border-violet-200 dark:border-violet-800" } :
+                                           { bg: "bg-teal-50 dark:bg-teal-950/40",    icon: "text-teal-500",   border: "border-teal-200 dark:border-teal-800" };
+                const isOwn = a.teacherId === currentTeacherId;
+                return (
+                <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }}>
+                  <div className={`group relative flex items-center gap-3 px-4 py-3.5 rounded-2xl border bg-card hover:shadow-sm transition-all duration-150 ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border"}`}>
+
+                    {/* Type icon pill */}
+                    <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${typeAccent.bg} border ${typeAccent.border}`}>
+                      <BookText className={`w-4.5 h-4.5 ${typeAccent.icon}`} />
+                    </div>
+
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground leading-snug truncate mb-1.5">{a.title}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Question count chip */}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
+                          <HelpCircle className="w-3 h-3" />{a.questionCount} {lang === "ar" ? "سؤال" : "Q"}
+                        </span>
+                        {/* Type chip */}
+                        <span className={`inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full ${typeAccent.bg} ${typeAccent.icon} border ${typeAccent.border}`}>
+                          {typeLabel(a.type)}
+                        </span>
+                        {/* Subject chip if present */}
+                        {a.subject && (
+                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/8 text-primary/80 border border-primary/20">
+                            {a.subject}
                           </span>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => launchAsGame(a.id, "classic")}
-                                disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                                title={a.questionCount === 0 ? (lang === "ar" ? "لا توجد أسئلة" : "No questions") : (lang === "ar" ? "ابدأ المسابقة بلعبة وميض" : "Launch live with Wameedh")}
-                                className="flex items-center gap-1 text-xs py-1.5 px-3 rounded-lg font-bold transition-all border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {launchingIds.has(a.id) ? (
-                                  <><Loader2 className="w-3 h-3 animate-spin" />{lang === "ar" ? "جارٍ البدء..." : "Starting..."}</>
-                                ) : (
-                                  <><Gamepad2 className="w-3 h-3" />{lang === "ar" ? "إلعبها الآن · وميض" : "Play now · Wameedh"}</>
-                                )}
-                              </button>
-                              {/* Subtle "switch game" affordance — defaults to
-                                  Wameedh; teachers can pick teams mode when
-                                  they want a different format. */}
-                              <details className="relative">
-                                <summary
-                                  className="cursor-pointer list-none text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 px-1 py-1.5 select-none"
-                                  title={lang === "ar" ? "تغيير اللعبة" : "Change game"}
-                                >
-                                  {lang === "ar" ? "تغيير اللعبة" : "Change game"}
-                                </summary>
-                                <div className={`absolute z-20 mt-1 ${lang === "ar" ? "left-0" : "right-0"} min-w-[160px] rounded-lg border border-border bg-popover shadow-lg p-1 text-xs`}>
-                                  <button
-                                    onClick={() => launchAsGame(a.id, "classic")}
-                                    disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                                    className="w-full text-start px-2 py-1.5 rounded hover:bg-muted disabled:opacity-40"
-                                  >
-                                    {lang === "ar" ? "وميض (افتراضي)" : "Wameedh (default)"}
-                                  </button>
-                                  <button
-                                    onClick={() => launchAsGame(a.id, "teams")}
-                                    disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                                    className="w-full text-start px-2 py-1.5 rounded hover:bg-muted disabled:opacity-40"
-                                  >
-                                    {lang === "ar" ? "وضع الفِرَق" : "Teams mode"}
-                                  </button>
-                                </div>
-                              </details>
-                            </div>
-                            <Button variant="outline" onClick={() => copyLink(a.id)} className="gap-1 text-xs py-1.5 px-3 h-auto">
-                              <Copy className="w-3 h-3" />
-                              {isCompetitionLibrary
-                                ? t.sharedContent.copyLink
-                                : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
-                            </Button>
-                            <button
-                              onClick={() => importAssignment(a.id)}
-                              disabled={importingIds.has(a.id) || importedIds.has(a.id)}
-                              className={`flex items-center gap-1 text-xs py-1.5 px-3 rounded-lg font-bold transition-all border ${
-                                importedIds.has(a.id)
-                                  ? "border-green-400 bg-green-50 text-green-700 dark:bg-green-900/20"
-                                  : "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                              } disabled:opacity-60`}
-                            >
-                              {importingIds.has(a.id) ? (
-                                <><Loader2 className="w-3 h-3 animate-spin" />{t.sharedContent.importing}</>
-                              ) : importedIds.has(a.id) ? (
-                                <><CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "تم" : "Done"}</>
-                              ) : (
-                                <><Download className="w-3 h-3" />{t.sharedContent.importAssignment}</>
-                              )}
-                            </button>
-                            <button
-                              onClick={() => dismissItem("assignment", a.id)}
-                              disabled={dismissingIds.has(`assignment-${a.id}`)}
-                              title={lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                            >
-                              {dismissingIds.has(`assignment-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                            </button>
-                          </>
                         )}
-                        {isAdmin && (
-                          <>
-                            {/* Library placement picker — inline dropdown */}
-                            <div className="relative group/lib">
-                              <button
-                                type="button"
-                                disabled={changingKindIds.has(a.id)}
-                                title={lang === "ar" ? "تغيير المكتبة (مشرف)" : "Change library (admin)"}
-                                className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg font-bold text-indigo-600 border border-indigo-300 hover:bg-indigo-50 transition-colors disabled:opacity-40"
-                              >
-                                {changingKindIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                                <span className="hidden sm:inline">
-                                  {a.contentKind === "both"
-                                    ? (lang === "ar" ? "كلتاهما" : "Both")
-                                    : a.contentKind === "competition"
-                                      ? (lang === "ar" ? "مسابقات" : "Comp.")
-                                      : (lang === "ar" ? "أنشطة" : "Act.")}
-                                </span>
-                              </button>
-                              {/* Dropdown */}
-                              <div className="absolute z-20 top-full mt-1 end-0 hidden group-hover/lib:flex flex-col min-w-[180px] rounded-xl border border-border bg-background shadow-lg overflow-hidden">
-                                {(
-                                  [
-                                    { value: "homework",    labelAr: "مكتبة الأنشطة فقط",   labelEn: "Activities only",     cls: "text-blue-700 hover:bg-blue-50" },
-                                    { value: "competition", labelAr: "مكتبة المسابقات فقط",  labelEn: "Competitions only",   cls: "text-amber-700 hover:bg-amber-50" },
-                                    { value: "both",        labelAr: "كلتا المكتبتين",        labelEn: "Both libraries",      cls: "text-purple-700 hover:bg-purple-50" },
-                                  ] as const
-                                ).map(opt => (
-                                  <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => changeLibraryKind(a.id, opt.value)}
-                                    className={`text-start px-4 py-2.5 text-xs font-bold transition-colors ${opt.cls} ${a.contentKind === opt.value ? "bg-muted font-extrabold" : ""}`}
-                                  >
-                                    {lang === "ar" ? opt.labelAr : opt.labelEn}
-                                    {a.contentKind === opt.value && " ✓"}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            {/* Hide / restore */}
-                            {a.hiddenByAdmin ? (
-                              <button
-                                onClick={() => unhideAsAdmin("assignments", a.id)}
-                                disabled={hidingIds.has(`assignments-${a.id}`)}
-                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                              >
-                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                                {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => hideAsAdmin("assignments", a.id)}
-                                disabled={hidingIds.has(`assignments-${a.id}`)}
-                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                              >
-                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                              </button>
-                            )}
-                          </>
+                        {/* Author */}
+                        {!a.isAdminContent && a.teacherName && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                            <User className="w-2.5 h-2.5" />{a.teacherName}
+                          </span>
+                        )}
+                        {/* Date — only on wider screens */}
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground/50">
+                          <Calendar className="w-2.5 h-2.5" />{formatDate(a.createdAt)}
+                        </span>
+                        {/* Admin hidden badge */}
+                        {a.hiddenByAdmin && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                            <EyeOff className="w-2.5 h-2.5" />{lang === "ar" ? "مخفي" : "Hidden"}
+                          </span>
                         )}
                       </div>
                     </div>
-                  </Card>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isOwn ? (
+                        <span className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold border border-teal-200 dark:border-teal-800">
+                          <CheckCircle2 className="w-3 h-3" />
+                          {lang === "ar" ? "محتواك" : "Yours"}
+                        </span>
+                      ) : (
+                        <>
+                          {/* PRIMARY: Play button (always visible) */}
+                          <button
+                            onClick={() => launchAsGame(a.id, "classic")}
+                            disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600 transition-all shadow-sm shadow-emerald-200 dark:shadow-none disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {launchingIds.has(a.id)
+                              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{lang === "ar" ? "جارٍ…" : "…"}</>
+                              : <><Zap className="w-3.5 h-3.5" />{lang === "ar" ? "ابدأ" : "Play"}</>
+                            }
+                          </button>
+
+                          {/* SECONDARY overflow menu */}
+                          <div className="relative group/menu">
+                            <button
+                              type="button"
+                              className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/menu:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
+                              {/* Import */}
+                              <button
+                                onClick={() => importAssignment(a.id)}
+                                disabled={importingIds.has(a.id) || importedIds.has(a.id)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50 text-start w-full"
+                              >
+                                {importedIds.has(a.id)
+                                  ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{lang === "ar" ? "تم الاستيراد" : "Imported"}</>
+                                  : importingIds.has(a.id)
+                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{lang === "ar" ? "جارٍ الاستيراد…" : "Importing…"}</>
+                                    : <><Download className="w-3.5 h-3.5 text-primary" />{t.sharedContent.importAssignment}</>
+                                }
+                              </button>
+                              {/* Copy link */}
+                              <button
+                                onClick={() => copyLink(a.id)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                                {isCompetitionLibrary ? t.sharedContent.copyLink : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
+                              </button>
+                              {/* Teams mode */}
+                              <button
+                                onClick={() => launchAsGame(a.id, "teams")}
+                                disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full disabled:opacity-40"
+                              >
+                                <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                                {lang === "ar" ? "ابدأ بوضع الفِرَق" : "Play in Teams mode"}
+                              </button>
+                              <div className="h-px bg-border/60 mx-3 my-1" />
+                              {/* Dismiss */}
+                              <button
+                                onClick={() => dismissItem("assignment", a.id)}
+                                disabled={dismissingIds.has(`assignment-${a.id}`)}
+                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-destructive/8 text-destructive/70 hover:text-destructive transition-colors text-start w-full disabled:opacity-40"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                {lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Admin controls — compact icon buttons */}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Library kind picker */}
+                          <div className="relative group/lib">
+                            <button
+                              type="button"
+                              disabled={changingKindIds.has(a.id)}
+                              title={lang === "ar" ? "تغيير المكتبة" : "Change library"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-40"
+                            >
+                              {changingKindIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
+                            </button>
+                            <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/lib:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
+                              {([ { value: "homework" as const, labelAr: "مكتبة الأنشطة", cls: "text-blue-600" }, { value: "competition" as const, labelAr: "مكتبة المسابقات", cls: "text-amber-600" }, { value: "both" as const, labelAr: "كلتا المكتبتين", cls: "text-violet-600" } ]).map(opt => (
+                                <button key={opt.value} type="button" onClick={() => changeLibraryKind(a.id, opt.value)}
+                                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full ${opt.cls} ${a.contentKind === opt.value ? "bg-muted/60 font-bold" : ""}`}>
+                                  {a.contentKind === opt.value && <CheckCircle2 className="w-3 h-3" />}
+                                  {lang === "ar" ? opt.labelAr : opt.value === "both" ? "Both libraries" : opt.value === "competition" ? "Competitions" : "Activities"}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Hide / restore */}
+                          {a.hiddenByAdmin ? (
+                            <button onClick={() => unhideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
+                              title={lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                            </button>
+                          ) : (
+                            <button onClick={() => hideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
+                              title={lang === "ar" ? "إخفاء من المكتبة" : "Hide from library"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
-              ))}
+              );
+              })}
             </div>
           ) : (
-            <Card className="py-12 text-center border-dashed">
-              <BookText className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-              <h3 className="text-lg font-bold text-foreground">{lang === "ar" ? "لا توجد واجبات مشتركة" : "No shared assignments"}</h3>
+            <div className="py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <BookText className="w-7 h-7 text-muted-foreground/30" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">{lang === "ar" ? "لا توجد واجبات مشتركة" : "No shared assignments"}</h3>
               <p className="text-sm text-muted-foreground mt-1">{lang === "ar" ? "لم يشارك أي معلم واجباته بعد" : "No teachers have shared their assignments yet"}</p>
-            </Card>
+            </div>
           )
         )}
 
         {activeTab === "videos" && (
           videoLessons.length > 0 ? (
-            <div className="grid gap-3">
+            <div className="grid gap-2.5">
               {videoLessons
                 .filter(v =>
                   (!search || v.title.includes(search) || v.teacherName?.includes(search)) &&
@@ -852,175 +865,169 @@ export default function SharedContentPage() {
                   (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
                 )
                 .map((v, i) => (
-                <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className={`p-4 hover:shadow-md transition-shadow ${v.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                            <Video className="w-4 h-4 text-red-500" />
-                          </div>
-                          <h3 className="font-bold text-foreground">{v.title}</h3>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <AuthorBadge isAdminContent={v.isAdminContent} teacherName={v.teacherName} />
-                          {v.subject && <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 rounded font-bold">{v.subject}</span>}
-                          <span className="flex items-center gap-1"><Play className="w-3 h-3" /> {v.questionCount} {lang === "ar" ? "سؤال" : "Q"}</span>
-                          {v.targetClass && <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {v.targetClass}</span>}
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(v.createdAt)}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {v.teacherId === currentTeacherId ? (
-                          <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-bold border border-teal-300 dark:border-teal-700">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lang === "ar" ? "محتواك · مشارك" : "Your content · Shared"}
-                          </span>
-                        ) : importedVIds.has(v.id) ? (
-                          <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lang === "ar" ? "تم الاستيراد" : "Imported"}
-                          </span>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            onClick={() => importVideoLesson(v.id)}
-                            disabled={importingVIds.has(v.id)}
-                            className="gap-1 text-xs py-1.5 px-3 h-auto"
-                          >
-                            {importingVIds.has(v.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                            {lang === "ar" ? "استيراد الدرس" : "Import Lesson"}
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          v.hiddenByAdmin ? (
-                            <button
-                              onClick={() => unhideAsAdmin("video-lessons", v.id)}
-                              disabled={hidingIds.has(`video-lessons-${v.id}`)}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => hideAsAdmin("video-lessons", v.id)}
-                              disabled={hidingIds.has(`video-lessons-${v.id}`)}
-                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                            </button>
-                          )
-                        )}
+                <motion.div key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }}>
+                  <div className={`group flex items-center gap-3 px-4 py-3.5 rounded-2xl border bg-card hover:shadow-sm transition-all duration-150 ${v.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border"}`}>
+                    {/* Video icon */}
+                    <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800">
+                      <Video className="w-4.5 h-4.5 text-red-500" />
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground leading-snug truncate mb-1.5">{v.title}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
+                          <Play className="w-2.5 h-2.5" />{v.questionCount} {lang === "ar" ? "سؤال" : "Q"}
+                        </span>
+                        {v.subject && <span className="inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 border border-red-200 dark:border-red-800">{v.subject}</span>}
+                        {v.targetClass && <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground"><GraduationCap className="w-2.5 h-2.5" />{v.targetClass}</span>}
+                        {!v.isAdminContent && v.teacherName && <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70"><User className="w-2.5 h-2.5" />{v.teacherName}</span>}
+                        {v.hiddenByAdmin && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"><EyeOff className="w-2.5 h-2.5" />{lang === "ar" ? "مخفي" : "Hidden"}</span>}
                       </div>
                     </div>
-                  </Card>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {v.teacherId === currentTeacherId ? (
+                        <span className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold border border-teal-200">
+                          <CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "محتواك" : "Yours"}
+                        </span>
+                      ) : importedVIds.has(v.id) ? (
+                        <span className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-green-50 text-green-600 font-bold border border-green-200">
+                          <CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "تم" : "Imported"}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => importVideoLesson(v.id)}
+                          disabled={importingVIds.has(v.id)}
+                          className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-all disabled:opacity-40"
+                        >
+                          {importingVIds.has(v.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                          {lang === "ar" ? "استيراد" : "Import"}
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {v.hiddenByAdmin ? (
+                            <button onClick={() => unhideAsAdmin("video-lessons", v.id)} disabled={hidingIds.has(`video-lessons-${v.id}`)}
+                              title={lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                            </button>
+                          ) : (
+                            <button onClick={() => hideAsAdmin("video-lessons", v.id)} disabled={hidingIds.has(`video-lessons-${v.id}`)}
+                              title={lang === "ar" ? "إخفاء" : "Hide"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-50 border border-amber-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
           ) : (
-            <Card className="py-12 text-center border-dashed">
-              <Video className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-              <h3 className="text-lg font-bold text-foreground">{lang === "ar" ? "لا توجد دروس فيديو مشتركة" : "No shared video lessons"}</h3>
+            <div className="py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <Video className="w-7 h-7 text-muted-foreground/30" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">{lang === "ar" ? "لا توجد دروس فيديو مشتركة" : "No shared video lessons"}</h3>
               <p className="text-sm text-muted-foreground mt-1">{lang === "ar" ? "لم يشارك أي معلم دروسه بعد" : "No teachers have shared their video lessons yet"}</p>
-            </Card>
+            </div>
           )
         )}
 
         {activeTab === "questions" && (
           filteredQuestions.length > 0 ? (
-            <div className="grid gap-3">
+            <div className="grid gap-2.5">
               {filteredQuestions.map((q, i) => (
-                <motion.div key={q.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className={`p-4 hover:shadow-md transition-shadow ${q.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-foreground mb-1">{q.text}</p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <AuthorBadge isAdminContent={q.isAdminContent} teacherName={q.teacherName} />
-                          {q.subject && <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded font-bold">{q.subject}</span>}
-                          <span className="px-2 py-0.5 bg-muted text-muted-foreground rounded font-bold">{q.points} {lang === "ar" ? "درجة" : "pts"}</span>
-                          {q.correctAnswer && <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 rounded font-bold">{q.correctAnswer}</span>}
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(q.createdAt)}</span>
+                <motion.div key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }}>
+                  <div className={`group flex items-start gap-3 px-4 py-3.5 rounded-2xl border bg-card hover:shadow-sm transition-all duration-150 ${q.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border"}`}>
+                    {/* Icon */}
+                    <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 mt-0.5">
+                      <HelpCircle className="w-4.5 h-4.5 text-indigo-500" />
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground leading-snug mb-1.5 line-clamp-2">{q.text}</p>
+                      {/* Answer options (compact) */}
+                      {(q.optionA || q.optionB) && (
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mb-2">
+                          {q.optionA && <span className={`text-[11px] ${q.correctAnswer === "A" ? "text-green-600 font-bold" : "text-muted-foreground"}`}>أ) {q.optionA}</span>}
+                          {q.optionB && <span className={`text-[11px] ${q.correctAnswer === "B" ? "text-green-600 font-bold" : "text-muted-foreground"}`}>ب) {q.optionB}</span>}
+                          {q.optionC && <span className={`text-[11px] ${q.correctAnswer === "C" ? "text-green-600 font-bold" : "text-muted-foreground"}`}>ج) {q.optionC}</span>}
+                          {q.optionD && <span className={`text-[11px] ${q.correctAnswer === "D" ? "text-green-600 font-bold" : "text-muted-foreground"}`}>د) {q.optionD}</span>}
                         </div>
-                        {(q.optionA || q.optionB) && (
-                          <div className="grid grid-cols-2 gap-1 mt-2 text-sm text-muted-foreground">
-                            {q.optionA && <span className={q.correctAnswer === "A" ? "text-green-600 font-bold" : ""}>أ) {q.optionA}</span>}
-                            {q.optionB && <span className={q.correctAnswer === "B" ? "text-green-600 font-bold" : ""}>ب) {q.optionB}</span>}
-                            {q.optionC && <span className={q.correctAnswer === "C" ? "text-green-600 font-bold" : ""}>ج) {q.optionC}</span>}
-                            {q.optionD && <span className={q.correctAnswer === "D" ? "text-green-600 font-bold" : ""}>د) {q.optionD}</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {q.teacherId === currentTeacherId ? (
-                          <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 font-bold border border-teal-300 dark:border-teal-700">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {lang === "ar" ? "محتواك · مشارك" : "Your content · Shared"}
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => importQuestion(q.id)}
-                              disabled={importingQIds.has(q.id) || importedQIds.has(q.id)}
-                              className={`flex items-center gap-1 text-xs py-1.5 px-3 rounded-lg font-bold transition-all border ${
-                                importedQIds.has(q.id)
-                                  ? "border-green-400 bg-green-50 text-green-700 dark:bg-green-900/20"
-                                  : "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                              } disabled:opacity-60`}
-                            >
-                              {importingQIds.has(q.id) ? (
-                                <><Loader2 className="w-3 h-3 animate-spin" />{t.sharedContent.importing}</>
-                              ) : importedQIds.has(q.id) ? (
-                                <><CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "تم" : "Done"}</>
-                              ) : (
-                                <><Download className="w-3 h-3" />{t.sharedContent.importQuestion}</>
-                              )}
-                            </button>
-                            <button
-                              onClick={() => dismissItem("question", q.id)}
-                              disabled={dismissingIds.has(`question-${q.id}`)}
-                              title={lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                            >
-                              {dismissingIds.has(`question-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                            </button>
-                          </>
-                        )}
-                        {isAdmin && (
-                          q.hiddenByAdmin ? (
-                            <button
-                              onClick={() => unhideAsAdmin("question-bank", q.id)}
-                              disabled={hidingIds.has(`question-bank-${q.id}`)}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => hideAsAdmin("question-bank", q.id)}
-                              disabled={hidingIds.has(`question-bank-${q.id}`)}
-                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                            </button>
-                          )
-                        )}
+                      )}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {q.subject && <span className="inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 border border-indigo-200 dark:border-indigo-800">{q.subject}</span>}
+                        <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">{q.points} {lang === "ar" ? "درجة" : "pts"}</span>
+                        {!q.isAdminContent && q.teacherName && <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70"><User className="w-2.5 h-2.5" />{q.teacherName}</span>}
+                        {q.hiddenByAdmin && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"><EyeOff className="w-2.5 h-2.5" />{lang === "ar" ? "مخفي" : "Hidden"}</span>}
                       </div>
                     </div>
-                  </Card>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                      {q.teacherId === currentTeacherId ? (
+                        <span className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-bold border border-teal-200">
+                          <CheckCircle2 className="w-3 h-3" />{lang === "ar" ? "محتواك" : "Yours"}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => importQuestion(q.id)}
+                            disabled={importingQIds.has(q.id) || importedQIds.has(q.id)}
+                            className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl transition-all disabled:opacity-40 border ${
+                              importedQIds.has(q.id)
+                                ? "bg-green-50 border-green-200 text-green-600"
+                                : "bg-primary border-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                            }`}
+                          >
+                            {importingQIds.has(q.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : importedQIds.has(q.id) ? <CheckCircle2 className="w-3.5 h-3.5" />
+                              : <Download className="w-3.5 h-3.5" />}
+                            {importedQIds.has(q.id) ? (lang === "ar" ? "تم" : "Done") : (lang === "ar" ? "استيراد" : "Import")}
+                          </button>
+                          <button
+                            onClick={() => dismissItem("question", q.id)}
+                            disabled={dismissingIds.has(`question-${q.id}`)}
+                            title={lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-colors disabled:opacity-40"
+                          >
+                            {dismissingIds.has(`question-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                          </button>
+                        </>
+                      )}
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {q.hiddenByAdmin ? (
+                            <button onClick={() => unhideAsAdmin("question-bank", q.id)} disabled={hidingIds.has(`question-bank-${q.id}`)}
+                              title={lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 border border-emerald-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                            </button>
+                          ) : (
+                            <button onClick={() => hideAsAdmin("question-bank", q.id)} disabled={hidingIds.has(`question-bank-${q.id}`)}
+                              title={lang === "ar" ? "إخفاء" : "Hide"}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-50 border border-amber-200 transition-colors disabled:opacity-40">
+                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <EyeOff className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>
           ) : (
-            <Card className="py-12 text-center border-dashed">
-              <HelpCircle className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
-              <h3 className="text-lg font-bold text-foreground">{lang === "ar" ? "لا توجد أسئلة مشتركة" : "No shared questions"}</h3>
+            <div className="py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <HelpCircle className="w-7 h-7 text-muted-foreground/30" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">{lang === "ar" ? "لا توجد أسئلة مشتركة" : "No shared questions"}</h3>
               <p className="text-sm text-muted-foreground mt-1">{lang === "ar" ? "لم يشارك أي معلم أسئلته بعد" : "No teachers have shared their questions yet"}</p>
-            </Card>
+            </div>
           )
         )}
 
