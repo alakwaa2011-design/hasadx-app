@@ -531,7 +531,12 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
     // hidden assignment is invisible to everyone else — even when they
     // know the ID — so the public detail endpoint cannot be used to
     // bypass the library hide filter.
-    if (assignment.hiddenByAdmin && !isTeacher) {
+    // Only enforce the hide check against other authenticated TEACHERS
+    // browsing the public library — students and access-code visitors
+    // who already received the link / id should still be able to load
+    // the assignment (the row is just hidden from the library, not
+    // unpublished). Owner and admin always retain access.
+    if (assignment.hiddenByAdmin && !isTeacher && req.session.teacherId) {
       const requesterIsAdmin = await isAdminTeacher(req.session.teacherId);
       if (!requesterIsAdmin) {
         res.status(404).json({ message: "الواجب غير موجود" });

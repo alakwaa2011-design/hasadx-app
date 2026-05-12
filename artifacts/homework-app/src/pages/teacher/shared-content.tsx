@@ -588,28 +588,28 @@ export default function SharedContentPage() {
                             >
                               {dismissingIds.has(`assignment-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
-                            {isAdmin && (
-                              a.hiddenByAdmin ? (
-                                <button
-                                  onClick={() => unhideAsAdmin("assignments", a.id)}
-                                  disabled={hidingIds.has(`assignments-${a.id}`)}
-                                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                                >
-                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                                  {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => hideAsAdmin("assignments", a.id)}
-                                  disabled={hidingIds.has(`assignments-${a.id}`)}
-                                  title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                                  className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                                >
-                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                                </button>
-                              )
-                            )}
                           </>
+                        )}
+                        {isAdmin && (
+                          a.hiddenByAdmin ? (
+                            <button
+                              onClick={() => unhideAsAdmin("assignments", a.id)}
+                              disabled={hidingIds.has(`assignments-${a.id}`)}
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => hideAsAdmin("assignments", a.id)}
+                              disabled={hidingIds.has(`assignments-${a.id}`)}
+                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
@@ -767,28 +767,28 @@ export default function SharedContentPage() {
                             >
                               {dismissingIds.has(`question-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
-                            {isAdmin && (
-                              q.hiddenByAdmin ? (
-                                <button
-                                  onClick={() => unhideAsAdmin("question-bank", q.id)}
-                                  disabled={hidingIds.has(`question-bank-${q.id}`)}
-                                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                                >
-                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                                  {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => hideAsAdmin("question-bank", q.id)}
-                                  disabled={hidingIds.has(`question-bank-${q.id}`)}
-                                  title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                                  className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                                >
-                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                                </button>
-                              )
-                            )}
                           </>
+                        )}
+                        {isAdmin && (
+                          q.hiddenByAdmin ? (
+                            <button
+                              onClick={() => unhideAsAdmin("question-bank", q.id)}
+                              disabled={hidingIds.has(`question-bank-${q.id}`)}
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => hideAsAdmin("question-bank", q.id)}
+                              disabled={hidingIds.has(`question-bank-${q.id}`)}
+                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
