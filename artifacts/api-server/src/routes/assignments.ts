@@ -284,7 +284,7 @@ router.post("/assignments", async (req, res) => {
         // POST /admin/assignments/:id/hide.
         isShared: body.isShared === false ? false : true,
         isShareApproved: body.isShared === false ? false : true,
-        contentKind: ((req.body as any).contentKind === "competition" ? "competition" : "homework"),
+        contentKind: body.contentKind === "competition" ? "competition" : "homework",
         isAdaptive: body.isAdaptive || false,
         adaptiveConfig: body.adaptiveConfig ? JSON.stringify(body.adaptiveConfig) : null,
         activityType: body.activityType || null,
@@ -488,6 +488,7 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
         resultsReleaseMode: assignmentsTable.resultsReleaseMode,
         isShared: assignmentsTable.isShared,
         isShareApproved: assignmentsTable.isShareApproved,
+        hiddenByAdmin: assignmentsTable.hiddenByAdmin,
         isAdaptive: assignmentsTable.isAdaptive,
         adaptiveConfig: assignmentsTable.adaptiveConfig,
         activityType: assignmentsTable.activityType,
@@ -512,6 +513,17 @@ router.get("/assignments/:id", publicReadLimiter, async (req, res) => {
       .where(eq(questionsTable.assignmentId, id));
 
     const isTeacher = req.session.teacherId === assignment.teacherId;
+    // Hidden moderation: admins (and the owner) keep full access, but a
+    // hidden assignment is invisible to everyone else — even when they
+    // know the ID — so the public detail endpoint cannot be used to
+    // bypass the library hide filter.
+    if (assignment.hiddenByAdmin && !isTeacher) {
+      const requesterIsAdmin = await isAdminTeacher(req.session.teacherId);
+      if (!requesterIsAdmin) {
+        res.status(404).json({ message: "الواجب غير موجود" });
+        return;
+      }
+    }
     // Other authenticated teachers may view correctAnswer for admin-approved shared
     // assignments so they can use them in their own games (Tug, Million, etc.).
     const isApprovedSharedForTeacher =
