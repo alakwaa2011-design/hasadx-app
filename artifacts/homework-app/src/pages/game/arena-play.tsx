@@ -52,7 +52,7 @@ import {
   type CategorizePayload,
   type LogoPayload,
 } from "@/data/arena-questions";
-import { getStaticCoverImage } from "@/data/arena-cover-images";
+import { getStaticCoverImage, toCoverThumb } from "@/data/arena-cover-images";
 import {
   cardKey,
   getNextTeam,
@@ -908,9 +908,10 @@ export default function ArenaPlay() {
             const sub = findSubCategory(subId, allSections);
             const sec = findSection(subId, allSections);
             if (!sub) return null;
-            const imgUrl =
+            const rawImgUrl =
               sub.cover?.imageUrl ??
               (sec ? getStaticCoverImage(sec.id, subId) : undefined);
+            const imgUrl = toCoverThumb(rawImgUrl) ?? rawImgUrl;
             const accentColor =
               sub.cover?.color ?? sec?.cover?.color ?? "#2d5e3f";
             const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
@@ -953,6 +954,10 @@ export default function ArenaPlay() {
                     style={{
                       objectFit: "cover",
                       objectPosition: "50% 0%",
+                    }}
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (rawImgUrl && el.src !== rawImgUrl) el.src = rawImgUrl;
                     }}
                   />
                   ) : (

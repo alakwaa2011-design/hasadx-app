@@ -11,6 +11,7 @@ import {
   type HelperId,
 } from "@/data/arena-questions";
 import { saveArenaState, loadArenaLastSettings, saveArenaLastSettings } from "@/lib/arena-store";
+import { toCoverThumb } from "@/data/arena-cover-images";
 import {
   fetchArenaCategories, fetchArenaActivities, buildDbSections,
   type DbArenaCategory, type DbArenaActivity,
@@ -434,7 +435,18 @@ export default function PublicArenaSetup() {
                             }}
                           >
                             {sub.cover?.imageUrl ? (
-                              <img src={sub.cover.imageUrl} alt={sub.name} className="absolute inset-0 w-full h-full object-cover" />
+                              <img
+                                src={toCoverThumb(sub.cover.imageUrl) ?? sub.cover.imageUrl}
+                                alt={sub.name}
+                                className="absolute inset-0 w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                                onError={(e) => {
+                                  const img = e.currentTarget;
+                                  const orig = sub.cover?.imageUrl;
+                                  if (orig && img.src !== orig) img.src = orig;
+                                }}
+                              />
                             ) : (
                               <span>{sub.cover?.emoji ?? "🎯"}</span>
                             )}

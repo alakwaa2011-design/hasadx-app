@@ -7,6 +7,7 @@
     "hello": "tsx ./src/hello.ts",
     "seed:hasad-expansion": "tsx ./src/seed-hasad-challenge-expansion.ts",
     "seed:hasad-hard": "tsx ./src/seed-hasad-challenge-hard.ts",
+    "thumbs:arena-covers": "tsx ./src/generate-arena-cover-thumbs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:million-bank": "node seed-million-bank.mjs",
     "import:500-questions": "node import-500-questions.mjs"
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@types/pg": "^8.18.0",
+    "sharp": "^0.34.5",
     "tsx": "catalog:"
   },
   "dependencies": {

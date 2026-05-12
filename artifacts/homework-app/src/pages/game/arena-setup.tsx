@@ -5,8 +5,9 @@ import {
   ArrowRight, ArrowLeft, Play, Users, Swords, Sparkles, Check, Trophy,
   Plus, Trash2, ChevronRight, ChevronLeft, X, UserPlus, LogIn, Lock,
   ChevronDown, Award, Image as ImageIcon, Upload, Edit3, Globe, FolderPlus,
-  Save, Camera, Crown, Inbox, Dices, Wand2, Info, Palette, Smile,
+  Save, Camera, Crown, Inbox, Dices, Wand2, Info, Palette, Smile, Search,
 } from "lucide-react";
+import { toCoverThumb } from "@/data/arena-cover-images";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
@@ -207,6 +208,31 @@ export default function ArenaSetup() {
     if (custom) all.push(custom);
     return all;
   }, [customQuestions, dbSections, mergedSubsByStaticId]);
+
+  // Search query for filtering visible categories on Step 2
+  const [catSearch, setCatSearch] = useState("");
+  const normalizedSearch = catSearch.trim().toLowerCase();
+  const filteredSectionsForPicker = useMemo<ArenaSection[]>(() => {
+    if (!normalizedSearch) return sectionsForPicker;
+    const result: ArenaSection[] = [];
+    for (const sec of sectionsForPicker) {
+      const sectionMatches = sec.name.toLowerCase().includes(normalizedSearch);
+      const matchedSubs = sec.subCategories.filter(s =>
+        s.name.toLowerCase().includes(normalizedSearch),
+      );
+      if (sectionMatches) {
+        // If section name itself matches, keep all its sub-categories
+        result.push(sec);
+      } else if (matchedSubs.length > 0) {
+        result.push({ ...sec, subCategories: matchedSubs });
+      }
+    }
+    return result;
+  }, [sectionsForPicker, normalizedSearch]);
+  const totalVisibleSubs = useMemo(
+    () => filteredSectionsForPicker.reduce((sum, s) => sum + s.subCategories.length, 0),
+    [filteredSectionsForPicker],
+  );
 
   const addTeam = () => {
     if (teams.length >= 8) { toast.error("الحد الأقصى 8 فرق"); return; }
@@ -975,22 +1001,95 @@ export default function ArenaSetup() {
                   </motion.div>
                 )}
 
+                {/* Search bar — filters categories across all sections */}
+                <div
+                  className="rounded-2xl mb-4 relative overflow-hidden"
+                  style={{
+                    background: "linear-gradient(135deg, #ffffff 0%, #faf6ec 100%)",
+                    border: "1.5px solid #ebe2cd",
+                    boxShadow: "0 4px 14px -6px rgba(31,77,79,0.12), inset 0 0 0 1px rgba(201,161,75,0.18)",
+                  }}
+                >
+                  {/* Gold accent strip */}
+                  <div
+                    className="absolute top-0 inset-x-0 h-[3px]"
+                    style={{ background: "linear-gradient(90deg, transparent, #c9a14b, transparent)" }}
+                  />
+                  <div className="flex items-center gap-3 px-3 sm:px-4 py-3">
+                    <motion.div
+                      animate={catSearch ? { rotate: [0, -10, 10, 0] } : { rotate: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{
+                        background: "linear-gradient(135deg, #1f4d4f, #2d5e3f)",
+                        boxShadow: "0 6px 14px -4px rgba(31,77,79,0.45)",
+                      }}
+                    >
+                      <Search className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200" />
+                    </motion.div>
+                    <input
+                      type="search"
+                      value={catSearch}
+                      onChange={(e) => setCatSearch(e.target.value)}
+                      placeholder="ابحث عن فئة أو قسم… (مثل: جغرافيا، لغة، فلك)"
+                      className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm sm:text-base font-bold placeholder:font-medium"
+                      style={{ color: "#1f4d4f" }}
+                      aria-label="بحث في الفئات"
+                    />
+                    {catSearch && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setCatSearch("")}
+                        className="w-8 h-8 rounded-full inline-flex items-center justify-center shrink-0 transition hover:bg-rose-50"
+                        style={{ color: "#5b6b87" }}
+                        title="مسح البحث"
+                      >
+                        <X className="w-4 h-4" />
+                      </motion.button>
+                    )}
+                    <span
+                      className="hidden sm:inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0"
+                      style={{
+                        background: catSearch ? "rgba(201,161,75,0.18)" : "rgba(31,77,79,0.08)",
+                        color: catSearch ? "#a07f37" : "#1f4d4f",
+                        border: `1px solid ${catSearch ? "rgba(201,161,75,0.4)" : "rgba(31,77,79,0.2)"}`,
+                      }}
+                    >
+                      {totalVisibleSubs} فئة
+                    </span>
+                  </div>
+                </div>
+
                 {/* Visual category grid */}
                 <div className="space-y-5">
-                  {sectionsForPicker.map((sec, secIdx) => (
-                    <SectionGroup
-                      key={sec.id}
-                      section={sec}
-                      sectionIdx={secIdx}
-                      teams={teams}
-                      onToggleSub={toggleSub}
-                      dbCats={dbCats}
-                      onEditDbCat={(c) => { setEditingCat(c); setEditorOpen(true); }}
-                      isAdmin={isAdmin}
-                      currentTeacherId={(teacherData as any)?.id ?? null}
-                      allFull={step2Valid}
-                    />
-                  ))}
+                  {filteredSectionsForPicker.length === 0 ? (
+                    <div
+                      className="rounded-2xl p-8 text-center"
+                      style={{ background: "#ffffff", border: "1px dashed #ebe2cd", color: "#5b6b87" }}
+                    >
+                      <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                      <div className="font-extrabold text-base mb-1" style={{ color: "#1f4d4f" }}>
+                        لا توجد نتائج لـ «{catSearch}»
+                      </div>
+                      <div className="text-xs">جرّب كلمة أخرى أو امسح البحث لعرض كل الفئات.</div>
+                    </div>
+                  ) : (
+                    filteredSectionsForPicker.map((sec, secIdx) => (
+                      <SectionGroup
+                        key={sec.id}
+                        section={sec}
+                        sectionIdx={secIdx}
+                        teams={teams}
+                        onToggleSub={toggleSub}
+                        dbCats={dbCats}
+                        onEditDbCat={(c) => { setEditingCat(c); setEditorOpen(true); }}
+                        isAdmin={isAdmin}
+                        currentTeacherId={(teacherData as any)?.id ?? null}
+                        allFull={step2Valid}
+                      />
+                    ))
+                  )}
                 </div>
 
                 <div className="mt-3 text-xs text-center font-bold" style={{ color: "#5b6b87" }}>
@@ -1418,7 +1517,17 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
         style={{ background: cover.imageUrl ? "#0E2A1D" : (cover.gradient ?? cover.color) }}
       >
         {cover.imageUrl ? (
-          <img src={cover.imageUrl} alt={sub.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+          <img
+            src={toCoverThumb(cover.imageUrl) ?? cover.imageUrl}
+            alt={sub.name}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (cover.imageUrl && img.src !== cover.imageUrl) img.src = cover.imageUrl;
+            }}
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-3xl sm:text-5xl drop-shadow-lg" style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.4))" }}>
