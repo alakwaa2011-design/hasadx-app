@@ -336,7 +336,7 @@ export default function ArenaSetup() {
       usedCards: [],
       pickedQuestions: {},
       active: null,
-      rulesAck: false,
+      rulesAck: true,
       startedAt: Date.now(),
     });
     setLocation("/game/arena/play");
@@ -475,67 +475,95 @@ export default function ArenaSetup() {
       </AnimatePresence>
 
       <div dir={dir} className="min-h-[calc(100vh-4rem)] py-4 sm:py-8" style={{
-        background: "linear-gradient(180deg, #1E4D35 0%, #0F2A20 45%, #0A1F18 100%)",
+        background: "#faf6ec",
+        fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif",
       }}>
         <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
           <Link href="/games">
-            <button className="inline-flex items-center gap-2 text-sm font-bold text-amber-200/90 hover:text-amber-100 mb-4">
+            <button className="inline-flex items-center gap-2 text-sm font-bold mb-4 transition" style={{ color: "#5b6b87" }}>
               <BackIcon className="w-4 h-4" />
               عودة للألعاب
             </button>
           </Link>
 
+          {/* ── Hero card — white surface, teal/gold accents ────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-5"
+            className="mb-5 rounded-3xl px-5 sm:px-8 py-5 sm:py-6"
+            style={{
+              background: "#ffffff",
+              border: "1px solid #ebe2cd",
+              boxShadow:
+                "0 1px 3px rgba(0,0,0,0.04), 0 12px 32px -16px rgba(31,77,79,0.18)",
+            }}
           >
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-400/15 text-amber-300 text-[10px] sm:text-xs font-bold mb-3 border border-amber-300/30 max-w-full">
-              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span className="truncate">ميدان المعرفة · مسابقة الفرق على الشاشة الكبيرة</span>
-            </div>
-            <h1
-              className="text-3xl sm:text-5xl md:text-7xl font-black mb-2 sm:mb-3 text-transparent bg-clip-text bg-gradient-to-l from-amber-300 via-yellow-200 to-amber-400"
-              style={{ lineHeight: 1.18, paddingBottom: "0.25em" }}
-            >
-              تحدّي حصاد
-            </h1>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-5">
+              {/* Title block */}
+              <div className="text-center md:text-right min-w-0">
+                <div
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold mb-2"
+                  style={{
+                    background: "rgba(31,77,79,0.07)",
+                    color: "#1f4d4f",
+                    border: "1px solid rgba(31,77,79,0.18)",
+                  }}
+                >
+                  <Trophy className="w-3.5 h-3.5" style={{ color: "#c9a14b" }} />
+                  ميدان المعرفة · مسابقة الفرق
+                </div>
+                <h1
+                  className="text-3xl sm:text-4xl md:text-5xl font-black"
+                  style={{
+                    color: "#1f4d4f",
+                    fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
+                    lineHeight: 1.15,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  تحدّي حصاد
+                </h1>
+                <div className="text-sm font-bold mt-1.5" style={{ color: "#5b6b87" }}>
+                  {step === 1 && `الخطوة 1 من 3 — ${teams.length > 2 ? `${teams.length} فرق` : "الفريقان"} والأعضاء`}
+                  {step === 2 && "الخطوة 2 من 3 — اختيار الفئات والأسئلة المخصصة"}
+                  {step === 3 && "الخطوة 3 من 3 — الوسائل المساعدة والمؤقت"}
+                </div>
+              </div>
 
-            {/* Tournament name — prominent, with crown icon to emphasize tournament mode */}
-            <div className="max-w-md mx-auto mb-3">
-              <div className="rounded-2xl p-3 border-2 backdrop-blur-sm" style={{
-                background: "linear-gradient(135deg, rgba(232,168,14,0.15), rgba(232,168,14,0.05))",
-                borderColor: "rgba(232,168,14,0.45)",
-                boxShadow: "0 6px 24px -8px rgba(232,168,14,0.4)",
-              }}>
-                <label className="flex items-center gap-2 mb-2 text-[11px] font-black tracking-wider text-amber-200">
-                  <Crown className="w-4 h-4 text-amber-300" />
+              {/* Tournament name input */}
+              <div className="w-full md:max-w-sm shrink-0">
+                <label
+                  className="flex items-center gap-1.5 mb-1.5 text-[11px] font-extrabold tracking-wider"
+                  style={{ color: "#a07f37" }}
+                >
+                  <Crown className="w-3.5 h-3.5" />
                   وضع البطولة (اختياري)
                 </label>
                 <input
                   type="text"
                   value={tournamentName}
                   onChange={e => setTournamentName(e.target.value)}
-                  placeholder="مثال: بطولة العلوم 2025 — يظهر اسم البطولة على الشاشة الكبيرة"
+                  placeholder="مثال: بطولة العلوم 2025"
                   maxLength={60}
-                  className="w-full text-center text-sm sm:text-base font-bold bg-black/40 text-amber-100 placeholder-amber-100/40 rounded-xl px-4 py-2.5 border border-amber-400/30 focus:outline-none focus:border-amber-300/80"
+                  className="w-full text-sm font-bold rounded-xl px-3.5 py-2.5 outline-none transition placeholder:font-normal"
+                  style={{
+                    background: "#faf6ec",
+                    color: "#1f4d4f",
+                    border: "1.5px solid #e9dfc7",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#c9a14b")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "#e9dfc7")}
                 />
                 {tournamentName.trim() && (
-                  <div className="mt-2 text-[11px] text-emerald-100/70 text-center">
-                    سيظهر <span className="font-black text-amber-200">«{tournamentName.trim()}»</span> في رأس الشاشة طوال البطولة
+                  <div className="mt-1.5 text-[11px] text-center" style={{ color: "#5b6b87" }}>
+                    سيظهر <span className="font-black" style={{ color: "#a07f37" }}>«{tournamentName.trim()}»</span> في رأس الشاشة
                   </div>
                 )}
               </div>
             </div>
 
-            <p className="text-emerald-100/80 text-sm sm:text-base px-2">
-              {step === 1 && `الخطوة 1 من 3 — ${teams.length > 2 ? `${teams.length} فرق` : "الفريقان"} والأعضاء`}
-              {step === 2 && "الخطوة 2 من 3 — اختيار الفئات والأسئلة المخصصة"}
-              {step === 3 && "الخطوة 3 من 3 — الوسائل المساعدة والمؤقت"}
-            </p>
+            <Stepper step={step} />
           </motion.div>
-
-          <Stepper step={step} />
 
           <AnimatePresence mode="wait">
             {step === 1 && (
@@ -544,21 +572,26 @@ export default function ArenaSetup() {
                   {teams.map((team, idx) => (
                     <div
                       key={idx}
-                      className="rounded-2xl p-3 sm:p-5 border-2 backdrop-blur-sm relative"
+                      className="rounded-2xl p-3 sm:p-5 relative"
                       style={{
-                        background: `linear-gradient(160deg, ${team.color}33, ${team.color}0a)`,
-                        borderColor: `${team.color}88`,
-                        boxShadow: `0 12px 40px -16px ${team.color}80`,
+                        background: "#ffffff",
+                        border: `1.5px solid ${team.color}55`,
+                        boxShadow: `0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -12px ${team.color}55`,
                       }}
                     >
+                      {/* Team color top bar */}
+                      <div
+                        className="absolute top-0 inset-x-0 h-1 rounded-t-2xl"
+                        style={{ background: team.color }}
+                      />
                       {teams.length > 2 && (
-                        <button onClick={() => removeTeam(idx)} className="absolute top-2 start-2 p-1 rounded-full bg-black/40 text-rose-300 hover:bg-rose-500/30" title="حذف الفريق">
+                        <button onClick={() => removeTeam(idx)} className="absolute top-3 start-3 p-1 rounded-full transition" style={{ background: "#faf6ec", color: "#b91c1c" }} title="حذف الفريق">
                           <X className="w-4 h-4" />
                         </button>
                       )}
-                      <div className="flex items-center gap-2 mb-3">
-                        <Users className="w-5 h-5 text-amber-200" />
-                        <span className="text-xs font-bold text-amber-200">الفريق {idx + 1}</span>
+                      <div className="flex items-center gap-2 mb-3 mt-1">
+                        <Users className="w-4 h-4" style={{ color: "#c9a14b" }} />
+                        <span className="text-[11px] font-extrabold tracking-wider" style={{ color: "#a07f37" }}>الفريق {idx + 1}</span>
                       </div>
                       <div className="flex items-center gap-2 sm:gap-3 mb-4">
                         <span className="text-3xl sm:text-4xl shrink-0">{team.emoji}</span>
@@ -567,12 +600,19 @@ export default function ArenaSetup() {
                           value={team.name}
                           onChange={e => updateTeam(idx, { name: e.target.value })}
                           maxLength={24}
-                          className="flex-1 min-w-0 text-lg sm:text-2xl font-black bg-black/30 text-white rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-white/10 focus:outline-none focus:border-amber-300"
+                          className="flex-1 min-w-0 text-lg sm:text-2xl font-black rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 outline-none transition"
+                          style={{
+                            background: "#faf6ec",
+                            color: "#1f4d4f",
+                            border: "1.5px solid #e9dfc7",
+                          }}
+                          onFocus={e => (e.currentTarget.style.borderColor = team.color)}
+                          onBlur={e => (e.currentTarget.style.borderColor = "#e9dfc7")}
                         />
                       </div>
 
                       <div className="mb-3">
-                        <button type="button" onClick={() => toggleEmoji(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 bg-black/30 hover:bg-black/40 border border-white/10 text-emerald-100/90 transition">
+                        <button type="button" onClick={() => toggleEmoji(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 transition" style={{ background: "#faf6ec", border: "1px solid #ebe2cd", color: "#1f4d4f" }}>
                           <span className="text-xs font-bold flex items-center gap-2">
                             <span className="text-lg">{team.emoji}</span>
                             تغيير شعار الفريق
@@ -584,7 +624,14 @@ export default function ArenaSetup() {
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                               <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 pt-2">
                                 {TEAM_EMOJIS.map(em => (
-                                  <button key={em} onClick={() => updateTeam(idx, { emoji: em })} className={`aspect-square w-full rounded-lg text-xl flex items-center justify-center transition ${team.emoji === em ? "bg-amber-400 ring-2 ring-amber-200" : "bg-white/10 hover:bg-white/20"}`}>
+                                  <button
+                                    key={em}
+                                    onClick={() => updateTeam(idx, { emoji: em })}
+                                    className="aspect-square w-full rounded-lg text-xl flex items-center justify-center transition"
+                                    style={team.emoji === em
+                                      ? { background: "#c9a14b", color: "white", boxShadow: "0 2px 6px rgba(201,161,75,0.4)" }
+                                      : { background: "#faf6ec", border: "1px solid #ebe2cd" }}
+                                  >
                                     {em}
                                   </button>
                                 ))}
@@ -595,9 +642,9 @@ export default function ArenaSetup() {
                       </div>
 
                       <div className="mb-4">
-                        <button type="button" onClick={() => toggleColors(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 bg-black/30 hover:bg-black/40 border border-white/10 text-emerald-100/90 transition">
+                        <button type="button" onClick={() => toggleColors(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 transition" style={{ background: "#faf6ec", border: "1px solid #ebe2cd", color: "#1f4d4f" }}>
                           <span className="text-xs font-bold flex items-center gap-2">
-                            <span className="w-4 h-4 rounded-full ring-2 ring-white/30" style={{ background: team.color }} />
+                            <span className="w-4 h-4 rounded-full ring-2" style={{ background: team.color, boxShadow: "0 0 0 2px white, 0 0 0 3px #ebe2cd" }} />
                             تغيير لون الفريق
                           </span>
                           <ChevronDown className={`w-4 h-4 transition-transform ${showColors[idx] ? "rotate-180" : ""}`} />
@@ -607,7 +654,7 @@ export default function ArenaSetup() {
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                               <div className="flex flex-wrap gap-2 pt-2">
                                 {TEAM_COLORS.map(c => (
-                                  <button key={c.color} onClick={() => updateTeam(idx, { color: c.color })} className={`w-8 h-8 rounded-full transition ${team.color === c.color ? "ring-2 ring-white scale-110" : ""}`} style={{ background: c.color }} title={c.name} />
+                                  <button key={c.color} onClick={() => updateTeam(idx, { color: c.color })} className={`w-8 h-8 rounded-full transition ${team.color === c.color ? "scale-110" : ""}`} style={{ background: c.color, boxShadow: team.color === c.color ? `0 0 0 2px white, 0 0 0 4px ${c.color}` : undefined }} title={c.name} />
                                 ))}
                               </div>
                             </motion.div>
@@ -617,11 +664,11 @@ export default function ArenaSetup() {
 
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <div className="text-xs font-bold text-emerald-100/70 flex items-center gap-1.5">
+                          <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: "#5b6b87" }}>
                             <UserPlus className="w-3.5 h-3.5" />
-                            لاعبو الفريق <span className="opacity-60">(اختياري)</span>
+                            لاعبو الفريق <span className="opacity-70">(اختياري)</span>
                           </div>
-                          <span className="text-[10px] font-bold text-emerald-100/50">{team.players.length}/12</span>
+                          <span className="text-[10px] font-bold" style={{ color: "#a07f37" }}>{team.players.length}/12</span>
                         </div>
                         <div className="flex gap-2 mb-2">
                           <input
@@ -631,25 +678,28 @@ export default function ArenaSetup() {
                             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPlayer(idx); } }}
                             placeholder="اسم اللاعب"
                             maxLength={20}
-                            className="flex-1 bg-black/30 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300"
+                            className="flex-1 rounded-lg px-3 py-2 text-sm outline-none transition"
+                            style={{ background: "#faf6ec", color: "#1f4d4f", border: "1px solid #ebe2cd" }}
+                            onFocus={e => (e.currentTarget.style.borderColor = team.color)}
+                            onBlur={e => (e.currentTarget.style.borderColor = "#ebe2cd")}
                           />
-                          <button onClick={() => addPlayer(idx)} className="px-3 py-2 rounded-lg font-bold text-sm hover:opacity-90" style={{ background: team.color }}>
+                          <button onClick={() => addPlayer(idx)} className="px-3 py-2 rounded-lg font-bold text-sm hover:opacity-90 shadow-sm" style={{ background: team.color }}>
                             <Plus className="w-4 h-4 text-white" />
                           </button>
                         </div>
                         {team.players.length > 0 ? (
                           <div className="flex flex-wrap gap-1.5">
                             {team.players.map(p => (
-                              <span key={p} className="inline-flex items-center gap-1 rounded-full text-xs font-bold px-2.5 py-1 border" style={{ background: `${team.color}33`, borderColor: `${team.color}88`, color: "white" }}>
+                              <span key={p} className="inline-flex items-center gap-1 rounded-full text-xs font-bold px-2.5 py-1" style={{ background: `${team.color}18`, border: `1px solid ${team.color}55`, color: team.color }}>
                                 {p}
-                                <button onClick={() => removePlayer(idx, p)} className="rounded-full hover:bg-white/20 p-0.5">
+                                <button onClick={() => removePlayer(idx, p)} className="rounded-full hover:bg-black/10 p-0.5">
                                   <X className="w-3 h-3" />
                                 </button>
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-[11px] text-emerald-100/40">بدون لاعبين فرديين — سيُحتسب الإجابة للفريق فقط</div>
+                          <div className="text-[11px]" style={{ color: "#9ca3af" }}>بدون لاعبين فرديين — سيُحتسب الإجابة للفريق فقط</div>
                         )}
                       </div>
                     </div>
@@ -657,7 +707,7 @@ export default function ArenaSetup() {
                 </div>
 
                 {teams.length < 8 && (
-                  <button onClick={addTeam} className="w-full py-3 rounded-2xl border-2 border-dashed border-amber-400/40 text-amber-300 font-bold hover:border-amber-400/70 hover:bg-amber-400/5 transition inline-flex items-center justify-center gap-2 mb-4">
+                  <button onClick={addTeam} className="w-full py-3 rounded-2xl border-2 border-dashed font-bold transition inline-flex items-center justify-center gap-2 mb-4" style={{ borderColor: "#c9a14b66", color: "#a07f37", background: "#ffffff" }}>
                     <Plus className="w-5 h-5" />
                     إضافة فريق ({teams.length}/8)
                   </button>
@@ -668,17 +718,20 @@ export default function ArenaSetup() {
             {step === 2 && (
               <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 {/* Action bar: create category */}
-                <div className="rounded-2xl p-4 mb-4 bg-amber-300/8 backdrop-blur-sm border border-amber-300/30 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Swords className="w-5 h-5 text-amber-300 shrink-0" />
+                <div className="rounded-2xl p-4 mb-4 flex flex-wrap items-center justify-between gap-3" style={{ background: "#ffffff", border: "1px solid #ebe2cd", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(31,77,79,0.08)" }}>
+                      <Swords className="w-4 h-4" style={{ color: "#1f4d4f" }} />
+                    </div>
                     <div className="min-w-0">
-                      <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">مكتبة الفئات البصرية</h2>
-                      <p className="text-emerald-100/70 text-xs sm:text-sm">اختر 3 فئات لكل فريق — كل فئة بـ <strong className="text-amber-200">6 بطاقات</strong> (200×2، 400×2، 600×2) · يمكن إضافة <strong className="text-yellow-300">800⭐</strong> عبر فئة مخصصة</p>
+                      <h2 className="text-base sm:text-lg font-extrabold truncate" style={{ color: "#1f4d4f" }}>مكتبة الفئات البصرية</h2>
+                      <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — كل فئة بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
                     </div>
                   </div>
                   <button
                     onClick={() => { setEditingCat(null); setEditorOpen(true); }}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center gap-2 shadow-lg shrink-0"
+                    className="px-4 py-2.5 rounded-xl font-bold text-sm inline-flex items-center gap-2 shadow-md shrink-0 transition hover:opacity-95"
+                    style={{ background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white" }}
                   >
                     <FolderPlus className="w-4 h-4" />
                     اصنع فئتك
@@ -703,7 +756,7 @@ export default function ArenaSetup() {
                   ))}
                 </div>
 
-                <div className="mt-3 text-xs text-emerald-100/70 text-center">
+                <div className="mt-3 text-xs text-center font-bold" style={{ color: "#5b6b87" }}>
                   {teams.map((t) => `${t.subCategoryIds.length}/3 لـ ${t.name}`).join(" | ")} — المجموع {allSelected.size}/{teams.length * 3}
                 </div>
               </motion.div>
@@ -711,67 +764,139 @@ export default function ArenaSetup() {
 
             {step === 3 && (
               <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <div className="rounded-2xl p-5 mb-4 bg-white/5 backdrop-blur-sm border border-white/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-amber-300" />
-                    <h2 className="text-xl font-extrabold text-white">وسائل المساعدة (3 لكل فريق)</h2>
+                {/* ── Helpers selection — professional white cards ──────── */}
+                <div
+                  className="rounded-2xl p-5 sm:p-6 mb-4"
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #ebe2cd",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -16px rgba(31,77,79,0.18)",
+                  }}
+                >
+                  <div className="flex items-start gap-3 mb-5 pb-4 border-b" style={{ borderColor: "#ebe2cd" }}>
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(201,161,75,0.14)" }}>
+                      <Sparkles className="w-5 h-5" style={{ color: "#c9a14b" }} />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-2xl font-black" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
+                        وسائل المساعدة
+                      </h2>
+                      <p className="text-sm mt-0.5" style={{ color: "#5b6b87" }}>
+                        اختر <strong style={{ color: "#1f4d4f" }}>3 وسائل لكل فريق</strong> — كل وسيلة تُستخدم مرة واحدة فقط في المسابقة
+                      </p>
+                    </div>
                   </div>
+
                   <div className={`grid gap-4 ${teams.length <= 2 ? "md:grid-cols-2" : teams.length <= 4 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
-                    {teams.map((team, teamIdx) => (
-                      <div
-                        key={teamIdx}
-                        className="rounded-xl p-3 border-2"
-                        style={{
-                          background: `linear-gradient(160deg, ${team.color}22, transparent)`,
-                          borderColor: `${team.color}66`,
-                        }}
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xl">{team.emoji}</span>
-                          <span className="font-black text-lg text-white">{team.name}</span>
-                          <span className="text-xs font-bold ms-auto px-2 py-0.5 rounded-full" style={{ background: `${team.color}55`, color: "white" }}>
-                            {team.helpers.length}/3
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {HELPERS.map(h => {
-                            const active = team.helpers.includes(h.id);
-                            return (
-                              <button
-                                key={h.id}
-                                onClick={() => toggleHelper(teamIdx, h.id)}
-                                className={`w-full text-right rounded-lg px-3 py-2 transition border-2 ${active ? "text-white shadow-lg" : "border-white/10 bg-white/5 hover:bg-white/10 text-emerald-50"}`}
-                                style={active ? { background: `${team.color}66`, borderColor: team.color } : undefined}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="text-2xl">{h.emoji}</span>
-                                  <div className="flex-1">
-                                    <div className="font-bold text-sm">{h.name}</div>
-                                    <div className="text-[11px] opacity-80">{h.desc}</div>
+                    {teams.map((team, teamIdx) => {
+                      const complete = team.helpers.length === 3;
+                      return (
+                        <div
+                          key={teamIdx}
+                          className="rounded-2xl p-4 relative overflow-hidden transition"
+                          style={{
+                            background: "#faf6ec",
+                            border: `1.5px solid ${complete ? team.color : "#e9dfc7"}`,
+                            boxShadow: complete ? `0 6px 20px -10px ${team.color}80` : "0 1px 2px rgba(0,0,0,0.03)",
+                          }}
+                        >
+                          {/* Team color top accent */}
+                          <div className="absolute top-0 inset-x-0 h-1" style={{ background: team.color }} />
+
+                          <div className="flex items-center gap-2 mb-3 mt-1">
+                            <span className="text-2xl">{team.emoji}</span>
+                            <span className="font-black text-base flex-1 truncate" style={{ color: "#1f4d4f" }}>{team.name}</span>
+                            <span
+                              className="text-[11px] font-extrabold px-2.5 py-1 rounded-full"
+                              style={{
+                                background: complete ? team.color : "#ffffff",
+                                color: complete ? "white" : team.color,
+                                border: `1.5px solid ${team.color}`,
+                              }}
+                            >
+                              {team.helpers.length}/3
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            {HELPERS.map(h => {
+                              const active = team.helpers.includes(h.id);
+                              const disabled = !active && team.helpers.length >= 3;
+                              return (
+                                <button
+                                  key={h.id}
+                                  onClick={() => toggleHelper(teamIdx, h.id)}
+                                  disabled={disabled}
+                                  className="w-full text-right rounded-xl px-3 py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                  style={active
+                                    ? {
+                                        background: "#ffffff",
+                                        border: `1.5px solid ${team.color}`,
+                                        boxShadow: `0 2px 8px -2px ${team.color}55, inset 0 0 0 1px ${team.color}22`,
+                                      }
+                                    : {
+                                        background: "#ffffff",
+                                        border: "1.5px solid #ebe2cd",
+                                      }}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-2xl shrink-0">{h.emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-extrabold text-sm" style={{ color: active ? team.color : "#1f4d4f" }}>{h.name}</div>
+                                      <div className="text-[11px] mt-0.5 leading-snug" style={{ color: "#5b6b87" }}>{h.desc}</div>
+                                    </div>
+                                    {active && (
+                                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: team.color }}>
+                                        <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                                      </div>
+                                    )}
                                   </div>
-                                  {active && <Check className="w-4 h-4 text-amber-300" />}
-                                </div>
-                              </button>
-                            );
-                          })}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="rounded-2xl p-5 bg-white/5 backdrop-blur-sm border border-white/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Award className="w-5 h-5 text-amber-300" />
-                    <h2 className="text-xl font-extrabold text-white">مدة المؤقت لكل سؤال</h2>
+                {/* ── Timer selection ─────────────────────────────────────── */}
+                <div
+                  className="rounded-2xl p-5 sm:p-6"
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #ebe2cd",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 8px 24px -16px rgba(31,77,79,0.18)",
+                  }}
+                >
+                  <div className="flex items-start gap-3 mb-4 pb-4 border-b" style={{ borderColor: "#ebe2cd" }}>
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(91,107,135,0.12)" }}>
+                      <Award className="w-5 h-5" style={{ color: "#5b6b87" }} />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-2xl font-black" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
+                        مدة المؤقت لكل سؤال
+                      </h2>
+                      <p className="text-sm mt-0.5" style={{ color: "#5b6b87" }}>المؤقت يبدأ تلقائياً عند فتح كل سؤال</p>
+                    </div>
                   </div>
-                  <p className="text-emerald-100/60 text-sm mb-3">المؤقت يبدأ تلقائياً عند فتح كل سؤال</p>
                   <div className="flex flex-wrap gap-2">
-                    {[20, 30, 45, 60, 90].map(s => (
-                      <button key={s} onClick={() => setTimerSeconds(s)} className={`px-5 py-2 rounded-xl font-bold transition border-2 ${timerSeconds === s ? "bg-amber-400 text-emerald-950 border-amber-300" : "bg-white/5 text-white border-white/10 hover:bg-white/10"}`}>
-                        {s} ثانية
-                      </button>
-                    ))}
+                    {[20, 30, 45, 60, 90].map(s => {
+                      const active = timerSeconds === s;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setTimerSeconds(s)}
+                          className="px-5 py-2.5 rounded-xl font-extrabold transition text-base"
+                          style={active
+                            ? { background: "#1f4d4f", color: "#ffffff", boxShadow: "0 4px 12px -4px rgba(31,77,79,0.5)" }
+                            : { background: "#faf6ec", color: "#1f4d4f", border: "1.5px solid #e9dfc7" }}
+                        >
+                          {s} ثانية
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </motion.div>
@@ -782,7 +907,8 @@ export default function ArenaSetup() {
             <button
               onClick={goPrev}
               disabled={step === 1}
-              className="px-3 sm:px-5 py-3 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 border border-white/20 disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shrink-0"
+              className="px-4 sm:px-5 py-3 rounded-xl font-bold transition disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shrink-0"
+              style={{ background: "#ffffff", color: "#1f4d4f", border: "1.5px solid #e9dfc7" }}
             >
               <ChevronRight className="w-4 h-4" />
               <span className="hidden sm:inline">السابق</span>
@@ -790,7 +916,8 @@ export default function ArenaSetup() {
             {step < 3 ? (
               <button
                 onClick={goNext}
-                className="flex-1 py-3 rounded-xl font-extrabold text-base sm:text-lg transition shadow-xl bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center justify-center gap-2 sm:gap-3"
+                className="flex-1 py-3 rounded-xl font-extrabold text-base sm:text-lg transition shadow-md inline-flex items-center justify-center gap-2 sm:gap-3 hover:opacity-95"
+                style={{ background: "linear-gradient(135deg, #1f4d4f 0%, #2d5e3f 100%)", color: "white", boxShadow: "0 8px 24px -10px rgba(31,77,79,0.5)" }}
               >
                 التالي
                 <ChevronLeft className="w-5 h-5" />
@@ -799,7 +926,12 @@ export default function ArenaSetup() {
               <button
                 onClick={start}
                 disabled={!canStart}
-                className="flex-1 py-3 sm:py-4 rounded-xl font-extrabold text-lg sm:text-2xl transition shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center justify-center gap-2 sm:gap-3"
+                className="flex-1 py-3 sm:py-4 rounded-xl font-extrabold text-lg sm:text-2xl transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 sm:gap-3 hover:opacity-95"
+                style={{
+                  background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)",
+                  color: "white",
+                  boxShadow: "0 12px 32px -10px rgba(201,161,75,0.6)",
+                }}
               >
                 <Play className="w-5 h-5 sm:w-7 sm:h-7" />
                 ابدأ تحدّي حصاد
@@ -889,9 +1021,10 @@ function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditD
   const isCustom = section.id === "custom";
   const isDbSec = section.id.startsWith("db-section-");
   return (
-    <div className="rounded-2xl p-3 sm:p-4 border" style={{
-      background: "rgba(255,255,255,0.04)",
-      borderColor: "rgba(255,255,255,0.08)",
+    <div className="rounded-2xl p-3 sm:p-4" style={{
+      background: "#ffffff",
+      border: "1px solid #ebe2cd",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
     }}>
       <div className="flex items-center gap-2.5 mb-3 px-1">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{
@@ -901,18 +1034,18 @@ function SectionGroup({ section, sectionIdx, teams, onToggleSub, dbCats, onEditD
           <span>{cover.emoji}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-extrabold text-base sm:text-lg text-white truncate">{section.name}</h3>
-          <div className="text-[10px] sm:text-[11px] text-emerald-100/55 font-bold">
+          <h3 className="font-extrabold text-base sm:text-lg truncate" style={{ color: "#1f4d4f" }}>{section.name}</h3>
+          <div className="text-[10px] sm:text-[11px] font-bold" style={{ color: "#5b6b87" }}>
             {section.subCategories.length} فئات
           </div>
         </div>
         {isCustom && (
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-300/30">
+          <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: "rgba(201,161,75,0.15)", color: "#a07f37", border: "1px solid rgba(201,161,75,0.4)" }}>
             خاص بك
           </span>
         )}
         {isDbSec && (
-          <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-400/15 text-emerald-200 border border-emerald-300/30 inline-flex items-center gap-1">
+          <span className="text-[10px] font-bold px-2 py-1 rounded-full inline-flex items-center gap-1" style={{ background: "rgba(31,77,79,0.10)", color: "#1f4d4f", border: "1px solid rgba(31,77,79,0.25)" }}>
             <Globe className="w-3 h-3" />
             مكتبة
           </span>
@@ -966,10 +1099,11 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
     <div
       className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative flex flex-col ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
       style={{
-        borderColor: taken ? (winningTeam?.color ?? cover.color) : "rgba(255,255,255,0.12)",
+        background: "#ffffff",
+        borderColor: taken ? (winningTeam?.color ?? cover.color) : "#ebe2cd",
         boxShadow: taken
           ? `0 8px 28px -8px ${winningTeam?.color ?? cover.color}, 0 0 0 2px ${winningTeam?.color ?? cover.color}55`
-          : "0 4px 14px -6px rgba(0,0,0,0.4)",
+          : "0 1px 3px rgba(0,0,0,0.04), 0 4px 14px -6px rgba(31,77,79,0.12)",
       }}
     >
       {/* Cover image / gradient (top) — shorter on mobile */}
@@ -1023,7 +1157,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
       </div>
 
       {/* Difficulty chips row — shows 200/400/600 (and 800 if DB-backed has it) */}
-      <div className="bg-black/20 px-1.5 py-1 flex gap-1 justify-center flex-wrap">
+      <div className="px-1.5 py-1 flex gap-1 justify-center flex-wrap" style={{ background: "#faf6ec", borderTop: "1px solid #ebe2cd" }}>
         {([200, 400, 600] as ArenaDifficulty[]).map(d => {
           const c = DIFF_CHIP_STYLES[d];
           return (
@@ -1040,7 +1174,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
       </div>
 
       {/* Team selector buttons */}
-      <div className="bg-white/5 p-1.5 grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, 1fr)` }}>
+      <div className="p-1.5 grid gap-1" style={{ background: "#ffffff", borderTop: "1px solid #ebe2cd", gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, 1fr)` }}>
         {teams.map((team, teamIdx) => {
           const picked = team.subCategoryIds.includes(sub.id);
           const disabledByOther = !picked && takenByIdx !== -1 && takenByIdx !== teamIdx;
@@ -1053,7 +1187,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
               className="text-[10px] sm:text-[11px] font-extrabold rounded-md py-1.5 px-1 transition disabled:opacity-25 disabled:cursor-not-allowed truncate"
               style={picked
                 ? { background: team.color, color: "#fff", boxShadow: `0 4px 10px -3px ${team.color}` }
-                : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)" }
+                : { background: "#faf6ec", color: "#1f4d4f", border: "1px solid #ebe2cd" }
               }
             >
               {picked && <Check className="w-3 h-3 inline -mt-0.5 me-0.5" />}
@@ -1955,19 +2089,29 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
 function Stepper({ step }: { step: Step }) {
   const labels: Record<Step, string> = { 1: "الفرق", 2: "الفئات", 3: "الوسائل والمؤقت" };
   return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-6 flex-wrap">
+    <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
       {([1, 2, 3] as Step[]).map((s, idx) => {
         const done = s < step;
         const current = s === step;
+        const styles = current
+          ? { background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white", border: "1.5px solid #b8860b", boxShadow: "0 4px 12px -4px rgba(201,161,75,0.5)" }
+          : done
+          ? { background: "rgba(31,77,79,0.10)", color: "#1f4d4f", border: "1.5px solid rgba(31,77,79,0.25)" }
+          : { background: "#faf6ec", color: "#9ca3af", border: "1.5px solid #ebe2cd" };
+        const numStyles = current
+          ? { background: "rgba(255,255,255,0.25)", color: "white" }
+          : done
+          ? { background: "#1f4d4f", color: "white" }
+          : { background: "#ffffff", color: "#9ca3af" };
         return (
           <div key={s} className="flex items-center gap-1.5 sm:gap-2">
-            <div className={`flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3 py-1.5 border-2 transition ${current ? "bg-amber-400 text-emerald-950 border-amber-200 shadow-lg" : done ? "bg-emerald-700/60 text-amber-100 border-emerald-500/60" : "bg-black/30 text-emerald-100/50 border-white/10"}`}>
-              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/30 text-[10px] sm:text-xs font-extrabold flex items-center justify-center">
-                {done ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : s}
+            <div className="flex items-center gap-1.5 sm:gap-2 rounded-full px-2.5 sm:px-3.5 py-1.5 transition" style={styles}>
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full text-[10px] sm:text-xs font-extrabold flex items-center justify-center" style={numStyles}>
+                {done ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={3} /> : s}
               </span>
-              <span className="text-[10px] sm:text-xs font-bold whitespace-nowrap">{labels[s]}</span>
+              <span className="text-[10px] sm:text-xs font-extrabold whitespace-nowrap">{labels[s]}</span>
             </div>
-            {idx < 2 && <div className="w-3 sm:w-6 h-px bg-white/15" />}
+            {idx < 2 && <div className="w-4 sm:w-8 h-px" style={{ background: "#d6c89a" }} />}
           </div>
         );
       })}

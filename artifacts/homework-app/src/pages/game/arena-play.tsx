@@ -1457,7 +1457,7 @@ export default function ArenaPlay() {
         usedCards: [],
         pickedQuestions: {},
         active: null,
-        rulesAck: false,
+        rulesAck: true,
         startedAt: Date.now(),
         publicMode: true,
       };
@@ -1750,7 +1750,6 @@ export default function ArenaPlay() {
                   fontSize: "25px",
                   fontWeight: 800,
                   fontFamily: ARABIC_ELEGANT,
-                  fontWeight: 800,
                   color: "#8a6d2c",
                   marginTop: "5px",
                   paddingTop: "4px",
@@ -2998,7 +2997,7 @@ function RulesOverlay({
     <div
       dir="rtl"
       className="min-h-screen overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-4 sm:p-6"
-      style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}
+      style={{ background: "#faf6ec", fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif" }}
     >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -3009,19 +3008,19 @@ function RulesOverlay({
         {/* Header */}
         <div className="text-center mb-5">
           <div
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold mb-3"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold mb-3"
             style={{
-              background: "rgba(16,185,129,0.12)",
-              color: "#6ee7b7",
-              border: "1px solid rgba(16,185,129,0.25)",
+              background: "rgba(31,77,79,0.08)",
+              color: "#1f4d4f",
+              border: "1px solid rgba(31,77,79,0.20)",
             }}
           >
-            <BookOpen className="w-3 h-3" />
+            <BookOpen className="w-3 h-3" style={{ color: "#c9a14b" }} />
             قوانين تحدّي حصاد
           </div>
           <h1
-            className="text-3xl sm:text-4xl font-black text-white mb-2"
-            style={{ lineHeight: 1.2 }}
+            className="text-3xl sm:text-4xl font-black mb-2"
+            style={{ lineHeight: 1.2, color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}
           >
             استعدّوا للتحدّي
           </h1>
@@ -3029,7 +3028,7 @@ function RulesOverlay({
             <span className="font-black" style={{ color: teamA.color }}>
               {teamA.emoji} {teamA.name}
             </span>
-            <span className="text-white/30">×</span>
+            <span style={{ color: "#5b6b87" }}>×</span>
             <span className="font-black" style={{ color: teamB.color }}>
               {teamB.emoji} {teamB.name}
             </span>
@@ -3064,13 +3063,14 @@ function RulesOverlay({
         <div
           className="rounded-2xl p-4 mb-4"
           style={{
-            background: "rgba(22,27,34,0.95)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            background: "#ffffff",
+            border: "1px solid #ebe2cd",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           }}
         >
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-amber-300/70" />
-            <h2 className="text-base font-extrabold text-amber-200/90">
+            <Sparkles className="w-4 h-4" style={{ color: "#c9a14b" }} />
+            <h2 className="text-base font-extrabold" style={{ color: "#1f4d4f" }}>
               الوسائل المساعدة
             </h2>
           </div>
@@ -3080,18 +3080,18 @@ function RulesOverlay({
                 key={h.id}
                 className="rounded-xl px-3 py-2.5 flex items-start gap-2.5"
                 style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "#faf6ec",
+                  border: "1px solid #ebe2cd",
                 }}
               >
                 <span className="text-2xl shrink-0 leading-none mt-0.5">
                   {h.emoji}
                 </span>
                 <div>
-                  <div className="font-bold text-white text-sm leading-tight">
+                  <div className="font-extrabold text-sm leading-tight" style={{ color: "#1f4d4f" }}>
                     {h.name}
                   </div>
-                  <div className="text-white/55 text-xs leading-relaxed mt-0.5">
+                  <div className="text-xs leading-relaxed mt-0.5" style={{ color: "#5b6b87" }}>
                     {h.desc}
                   </div>
                 </div>
@@ -3102,10 +3102,11 @@ function RulesOverlay({
 
         <button
           onClick={onAck}
-          className="w-full py-4 rounded-2xl font-bold text-lg transition inline-flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-extrabold text-lg transition inline-flex items-center justify-center gap-2 hover:opacity-95"
           style={{
-            background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
-            color: "#0c0f14",
+            background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)",
+            color: "#ffffff",
+            boxShadow: "0 12px 32px -10px rgba(201,161,75,0.6)",
           }}
         >
           <Sparkles className="w-5 h-5" />
@@ -3121,18 +3122,20 @@ function RulesPanel({ title, items }: { title: string; items: string[] }) {
     <div
       className="rounded-xl p-3.5"
       style={{
-        background: "rgba(22,27,34,0.95)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: "#ffffff",
+        border: "1px solid #ebe2cd",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
-      <h3 className="text-sm font-black text-amber-300/90 mb-2">{title}</h3>
+      <h3 className="text-sm font-black mb-2" style={{ color: "#1f4d4f" }}>{title}</h3>
       <ul className="space-y-1">
         {items.map((it, i) => (
           <li
             key={i}
-            className="text-white/65 text-xs sm:text-sm leading-relaxed flex gap-2"
+            className="text-xs sm:text-sm leading-relaxed flex gap-2"
+            style={{ color: "#1f2937" }}
           >
-            <span className="text-emerald-400/70 shrink-0 mt-0.5">•</span>
+            <span className="shrink-0 mt-0.5" style={{ color: "#c9a14b" }}>•</span>
             <span>{it}</span>
           </li>
         ))}
@@ -3198,39 +3201,46 @@ function EndScreen({
     <div
       dir="rtl"
       className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      style={{ background: "#0e1117", fontFamily: "'Tajawal', sans-serif" }}
+      style={{ background: "#faf6ec", fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif" }}
     >
       <ConfettiBurst active={!!winnerTeam} />
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="text-center z-10 w-full max-w-2xl"
+        className="text-center z-10 w-full max-w-2xl rounded-3xl p-6 sm:p-10"
+        style={{
+          background: "#ffffff",
+          border: "1px solid #ebe2cd",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.04), 0 24px 64px -24px rgba(31,77,79,0.25)",
+        }}
       >
         {/* Trophy / result */}
         <div className="mb-5">
-          <Trophy className="w-20 h-20 inline text-amber-400/90 drop-shadow-xl" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full" style={{ background: "rgba(201,161,75,0.14)", border: "2px solid rgba(201,161,75,0.35)" }}>
+            <Trophy className="w-14 h-14" style={{ color: "#c9a14b", filter: "drop-shadow(0 4px 12px rgba(201,161,75,0.4))" }} />
+          </div>
         </div>
         {winnerTeam ? (
           <>
-            <div className="text-sm font-bold text-white/40 tracking-widest uppercase mb-1">
+            <div className="text-xs font-extrabold tracking-[0.3em] uppercase mb-2" style={{ color: "#a07f37" }}>
               الفائز
             </div>
             <div
-              className="text-5xl sm:text-6xl font-black text-white mb-2 leading-tight"
-              style={{ textShadow: `0 0 40px ${winnerTeam.color}` }}
+              className="text-4xl sm:text-6xl font-black mb-2 leading-tight"
+              style={{ color: winnerTeam.color, fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}
             >
               {winnerTeam.emoji} {winnerTeam.name}
             </div>
             <div
-              className="text-2xl font-bold mb-8"
-              style={{ color: winnerTeam.color }}
+              className="text-2xl font-extrabold mb-8"
+              style={{ color: "#1f4d4f" }}
             >
-              {winnerTeam.score} نقطة
+              {winnerTeam.score} <span className="text-lg" style={{ color: "#5b6b87" }}>نقطة</span>
             </div>
           </>
         ) : (
-          <div className="text-4xl font-extrabold text-amber-300 mb-6">
+          <div className="text-4xl font-black mb-6" style={{ color: "#c9a14b" }}>
             تعادل!
           </div>
         )}
@@ -3242,21 +3252,24 @@ function EndScreen({
           {teamOrder.map((side) => {
             const t = teams[side];
             if (!t) return null;
+            const isWinner = winnerTeam && t.color === winnerTeam.color && t.name === winnerTeam.name;
             return (
               <div
                 key={side}
-                className="rounded-2xl p-4 border"
+                className="rounded-2xl p-4 relative overflow-hidden"
                 style={{
-                  background: `${t.color}14`,
-                  borderColor: `${t.color}44`,
+                  background: "#faf6ec",
+                  border: `1.5px solid ${isWinner ? t.color : "#e9dfc7"}`,
+                  boxShadow: isWinner ? `0 6px 20px -8px ${t.color}66` : "0 1px 2px rgba(0,0,0,0.03)",
                 }}
               >
-                <div className="text-3xl mb-1">{t.emoji}</div>
-                <div className="font-black text-white text-base mb-0.5 truncate">
+                <div className="absolute top-0 inset-x-0 h-1" style={{ background: t.color }} />
+                <div className="text-3xl mb-1 mt-1">{t.emoji}</div>
+                <div className="font-black text-base mb-0.5 truncate" style={{ color: "#1f4d4f" }}>
                   {t.name}
                 </div>
                 <div
-                  className="text-2xl font-extrabold"
+                  className="text-2xl font-extrabold tabular-nums"
                   style={{ color: t.color }}
                 >
                   {t.score}
@@ -3276,17 +3289,17 @@ function EndScreen({
           >
             <button
               onClick={onQuickReplay}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black text-lg inline-flex items-center justify-center gap-2.5 shadow-2xl"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black text-lg inline-flex items-center justify-center gap-2.5 hover:opacity-95 transition"
               style={{
-                background: "linear-gradient(135deg, #10b981, #059669)",
+                background: "linear-gradient(135deg, #1f4d4f 0%, #2d5e3f 100%)",
                 color: "#fff",
-                boxShadow: "0 8px 32px -8px rgba(16,185,129,0.6)",
+                boxShadow: "0 12px 32px -10px rgba(31,77,79,0.55)",
               }}
             >
               <Zap className="w-5 h-5" />
               إعادة فورية بنفس الإعدادات
             </button>
-            <div className="text-emerald-400/60 text-xs mt-2 font-bold">
+            <div className="text-xs mt-2 font-bold" style={{ color: "#5b6b87" }}>
               يبدأ التحدّي فوراً بنفس الفرق والفئات — بدون خطوات الإعداد
             </div>
           </motion.div>
@@ -3296,10 +3309,11 @@ function EndScreen({
         <div className="flex flex-wrap justify-center gap-3">
           <button
             onClick={onRestart}
-            className="px-7 py-3.5 rounded-2xl font-bold text-lg inline-flex items-center gap-2"
+            className="px-7 py-3.5 rounded-2xl font-extrabold text-lg inline-flex items-center gap-2 hover:opacity-95 transition"
             style={{
-              background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
-              color: "#0c0f14",
+              background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)",
+              color: "#ffffff",
+              boxShadow: "0 8px 24px -8px rgba(201,161,75,0.55)",
             }}
           >
             <RotateCcw className="w-5 h-5" />
@@ -3307,10 +3321,11 @@ function EndScreen({
           </button>
           <button
             onClick={onExit}
-            className="px-7 py-3.5 rounded-2xl font-bold text-lg text-white inline-flex items-center gap-2"
+            className="px-7 py-3.5 rounded-2xl font-bold text-lg inline-flex items-center gap-2 transition"
             style={{
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#ffffff",
+              color: "#1f4d4f",
+              border: "1.5px solid #e9dfc7",
             }}
           >
             <Home className="w-5 h-5" />
@@ -3322,8 +3337,8 @@ function EndScreen({
         <div className="mt-6 w-full">
           <button
             onClick={() => setShowQr((v) => !v)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-5 rounded-2xl font-bold text-sm text-amber-300 border border-amber-400/30 hover:bg-amber-400/10 transition"
-            style={{ background: "rgba(245,158,11,0.06)" }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-5 rounded-2xl font-bold text-sm transition hover:opacity-95"
+            style={{ background: "#faf6ec", color: "#a07f37", border: "1.5px solid rgba(201,161,75,0.4)" }}
           >
             <Share2 className="w-4 h-4" />
             شارك النتيجة
@@ -3342,31 +3357,33 @@ function EndScreen({
                 className="overflow-hidden"
               >
                 <div
-                  className="mt-3 rounded-2xl p-5 border text-center"
+                  className="mt-3 rounded-2xl p-5 text-center"
                   style={{
-                    background: "linear-gradient(160deg, #064e3b22, #022c2244)",
-                    borderColor: "rgba(245,158,11,0.25)",
+                    background: "#faf6ec",
+                    border: "1.5px solid rgba(201,161,75,0.35)",
                   }}
                 >
-                  <p className="text-emerald-100/70 text-xs mb-4">
+                  <p className="text-xs mb-4" style={{ color: "#5b6b87" }}>
                     امسح الرمز ليرى المتأخرون النتيجة النهائية على شاشتهم
                   </p>
-                  <div className="bg-white p-2.5 rounded-xl inline-block mb-3 shadow-lg">
+                  <div className="bg-white p-2.5 rounded-xl inline-block mb-3 shadow-lg" style={{ border: "1px solid #ebe2cd" }}>
                     <img src={qrUrl} alt="QR" className="w-44 h-44 block" />
                   </div>
-                  <div className="text-amber-200 font-mono font-extrabold text-xl tracking-[0.3em] mb-3">
+                  <div className="font-mono font-extrabold text-xl tracking-[0.3em] mb-3" style={{ color: "#a07f37" }}>
                     {shareCode}
                   </div>
-                  <div className="flex items-center gap-2 bg-black/30 rounded-lg p-2">
+                  <div className="flex items-center gap-2 rounded-lg p-2" style={{ background: "#ffffff", border: "1px solid #ebe2cd" }}>
                     <input
                       readOnly
                       value={audienceUrl}
-                      className="flex-1 bg-transparent text-emerald-100 text-xs px-2 py-1 outline-none"
+                      className="flex-1 bg-transparent text-xs px-2 py-1 outline-none"
+                      style={{ color: "#1f4d4f" }}
                       onFocus={(e) => e.currentTarget.select()}
                     />
                     <button
                       onClick={copyUrl}
-                      className="px-3 py-1.5 rounded-md font-bold bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 text-sm"
+                      className="px-3 py-1.5 rounded-md font-bold inline-flex items-center gap-1.5 text-sm hover:opacity-90"
+                      style={{ background: "#c9a14b", color: "white" }}
                     >
                       {copied ? (
                         <CheckIcon className="w-4 h-4" />
