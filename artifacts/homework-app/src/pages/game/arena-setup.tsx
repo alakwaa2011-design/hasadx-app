@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowLeft, Play, Users, Swords, Sparkles, Check, Trophy,
   Plus, Trash2, ChevronRight, ChevronLeft, X, UserPlus, LogIn, Lock,
   ChevronDown, Award, Image as ImageIcon, Upload, Edit3, Globe, FolderPlus,
-  Save, Camera, Crown, Inbox, Dices, Wand2,
+  Save, Camera, Crown, Inbox, Dices, Wand2, Info, Palette, Smile,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -218,8 +218,26 @@ export default function ArenaSetup() {
     setTeams(prev => prev.map((t, i) => i === idx ? { ...t, ...patch } : t));
   };
 
-  const toggleEmoji = (idx: number) => setShowEmoji(prev => prev.map((v, i) => i === idx ? !v : v));
-  const toggleColors = (idx: number) => setShowColors(prev => prev.map((v, i) => i === idx ? !v : v));
+  /* Mutually exclusive: opening one popover closes the other for that team. */
+  const toggleEmoji = (idx: number) => {
+    setShowColors(prev => prev.map((v, i) => i === idx ? false : v));
+    setShowEmoji(prev => prev.map((v, i) => i === idx ? !v : v));
+  };
+  const toggleColors = (idx: number) => {
+    setShowEmoji(prev => prev.map((v, i) => i === idx ? false : v));
+    setShowColors(prev => prev.map((v, i) => i === idx ? !v : v));
+  };
+
+  /* Tap-to-reveal helper descriptions on small screens (key: `${teamIdx}:${helperId}`) */
+  const [expandedHelperInfo, setExpandedHelperInfo] = useState<Set<string>>(new Set());
+  const toggleHelperInfo = (teamIdx: number, helperId: HelperId) => {
+    const key = `${teamIdx}:${helperId}`;
+    setExpandedHelperInfo(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const toggleSub = (teamIdx: number, id: string) => {
     const takenByOther = teams.some((t, i) => i !== teamIdx && t.subCategoryIds.includes(id));
@@ -647,55 +665,149 @@ export default function ArenaSetup() {
                         />
                       </div>
 
-                      <div className="mb-3">
-                        <button type="button" onClick={() => toggleEmoji(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 transition" style={{ background: "#faf6ec", border: "1px solid #ebe2cd", color: "#1f4d4f" }}>
-                          <span className="text-xs font-bold flex items-center gap-2">
-                            <span className="text-lg">{team.emoji}</span>
-                            تغيير شعار الفريق
-                          </span>
-                          <ChevronDown className={`w-4 h-4 transition-transform ${showEmoji[idx] ? "rotate-180" : ""}`} />
-                        </button>
-                        <AnimatePresence>
-                          {showEmoji[idx] && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                              <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 pt-2">
-                                {TEAM_EMOJIS.map(em => (
-                                  <button
-                                    key={em}
-                                    onClick={() => updateTeam(idx, { emoji: em })}
-                                    className="aspect-square w-full rounded-lg text-xl flex items-center justify-center transition"
-                                    style={team.emoji === em
-                                      ? { background: "#c9a14b", color: "white", boxShadow: "0 2px 6px rgba(201,161,75,0.4)" }
-                                      : { background: "#faf6ec", border: "1px solid #ebe2cd" }}
-                                  >
-                                    {em}
-                                  </button>
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                      {/* Compact identity row: emoji + color side-by-side */}
+                      <div className="grid grid-cols-2 gap-2 mb-4 relative">
+                        {/* Emoji pill */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => toggleEmoji(idx)}
+                            className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 transition"
+                            style={{
+                              background: showEmoji[idx] ? "#ffffff" : "#faf6ec",
+                              border: `1.5px solid ${showEmoji[idx] ? team.color : "#ebe2cd"}`,
+                              color: "#1f4d4f",
+                              boxShadow: showEmoji[idx] ? `0 4px 12px -4px ${team.color}55` : "none",
+                            }}
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-xl shrink-0">{team.emoji}</span>
+                              <span className="text-[11px] font-extrabold truncate">الشعار</span>
+                            </span>
+                            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showEmoji[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
+                          </button>
+                          <AnimatePresence>
+                            {showEmoji[idx] && (
+                              <>
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  className="fixed inset-0 z-30"
+                                  onClick={() => toggleEmoji(idx)}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                                  transition={{ duration: 0.15, ease: "easeOut" }}
+                                  className="absolute z-40 top-full mt-1.5 inset-x-0 rounded-2xl p-2"
+                                  style={{
+                                    background: "#ffffff",
+                                    border: "1px solid #ebe2cd",
+                                    boxShadow: "0 14px 32px -10px rgba(31,77,79,0.25), 0 0 0 3px rgba(201,161,75,0.18)",
+                                  }}
+                                >
+                                  <div className="text-[10px] font-black mb-1.5 px-1 inline-flex items-center gap-1" style={{ color: "#a07f37" }}>
+                                    <Smile className="w-3 h-3" />
+                                    اختر شعار الفريق
+                                  </div>
+                                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-1">
+                                    {TEAM_EMOJIS.map(em => {
+                                      const sel = team.emoji === em;
+                                      return (
+                                        <motion.button
+                                          key={em}
+                                          whileTap={{ scale: 0.85 }}
+                                          onClick={() => { updateTeam(idx, { emoji: em }); toggleEmoji(idx); }}
+                                          className="aspect-square w-full rounded-lg text-xl flex items-center justify-center transition"
+                                          style={sel
+                                            ? { background: `linear-gradient(135deg, ${team.color}, ${team.color}dd)`, boxShadow: `0 2px 6px ${team.color}66` }
+                                            : { background: "#faf6ec", border: "1px solid #ebe2cd" }}
+                                        >
+                                          {em}
+                                        </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
 
-                      <div className="mb-4">
-                        <button type="button" onClick={() => toggleColors(idx)} className="w-full flex items-center justify-between rounded-lg px-3 py-2 transition" style={{ background: "#faf6ec", border: "1px solid #ebe2cd", color: "#1f4d4f" }}>
-                          <span className="text-xs font-bold flex items-center gap-2">
-                            <span className="w-4 h-4 rounded-full ring-2" style={{ background: team.color, boxShadow: "0 0 0 2px white, 0 0 0 3px #ebe2cd" }} />
-                            تغيير لون الفريق
-                          </span>
-                          <ChevronDown className={`w-4 h-4 transition-transform ${showColors[idx] ? "rotate-180" : ""}`} />
-                        </button>
-                        <AnimatePresence>
-                          {showColors[idx] && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                {TEAM_COLORS.map(c => (
-                                  <button key={c.color} onClick={() => updateTeam(idx, { color: c.color })} className={`w-8 h-8 rounded-full transition ${team.color === c.color ? "scale-110" : ""}`} style={{ background: c.color, boxShadow: team.color === c.color ? `0 0 0 2px white, 0 0 0 4px ${c.color}` : undefined }} title={c.name} />
-                                ))}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        {/* Color pill */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => toggleColors(idx)}
+                            className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 transition"
+                            style={{
+                              background: showColors[idx] ? "#ffffff" : "#faf6ec",
+                              border: `1.5px solid ${showColors[idx] ? team.color : "#ebe2cd"}`,
+                              color: "#1f4d4f",
+                              boxShadow: showColors[idx] ? `0 4px 12px -4px ${team.color}55` : "none",
+                            }}
+                          >
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-4 h-4 rounded-full shrink-0" style={{ background: team.color, boxShadow: "inset 0 0 0 1.5px white, 0 0 0 1px #ebe2cd" }} />
+                              <span className="text-[11px] font-extrabold truncate">اللون</span>
+                            </span>
+                            <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showColors[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
+                          </button>
+                          <AnimatePresence>
+                            {showColors[idx] && (
+                              <>
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  className="fixed inset-0 z-30"
+                                  onClick={() => toggleColors(idx)}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                                  transition={{ duration: 0.15, ease: "easeOut" }}
+                                  className="absolute z-40 top-full mt-1.5 inset-x-0 rounded-2xl p-2.5"
+                                  style={{
+                                    background: "#ffffff",
+                                    border: "1px solid #ebe2cd",
+                                    boxShadow: "0 14px 32px -10px rgba(31,77,79,0.25), 0 0 0 3px rgba(201,161,75,0.18)",
+                                  }}
+                                >
+                                  <div className="text-[10px] font-black mb-2 px-1 inline-flex items-center gap-1" style={{ color: "#a07f37" }}>
+                                    <Palette className="w-3 h-3" />
+                                    اختر لون الفريق
+                                  </div>
+                                  <div className="grid grid-cols-7 gap-1.5">
+                                    {TEAM_COLORS.map(c => {
+                                      const sel = team.color === c.color;
+                                      return (
+                                        <motion.button
+                                          key={c.color}
+                                          whileTap={{ scale: 0.85 }}
+                                          onClick={() => { updateTeam(idx, { color: c.color }); toggleColors(idx); }}
+                                          className="aspect-square w-full rounded-full transition relative flex items-center justify-center"
+                                          style={{
+                                            background: c.color,
+                                            boxShadow: sel
+                                              ? `inset 0 0 0 2px white, 0 0 0 2px ${c.color}, 0 4px 8px -2px ${c.color}88`
+                                              : `inset 0 0 0 2px white, 0 0 0 1px #ebe2cd`,
+                                          }}
+                                          title={c.name}
+                                        >
+                                          {sel && <Check className="w-3.5 h-3.5 text-white drop-shadow" strokeWidth={3} />}
+                                        </motion.button>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
 
                       <div>
@@ -932,40 +1044,97 @@ export default function ArenaSetup() {
                             </span>
                           </div>
 
-                          <div className="space-y-1.5">
+                          {/* Compact 2-col grid (mobile-first) — single-line on larger screens */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {HELPERS.map(h => {
                               const active = team.helpers.includes(h.id);
                               const disabled = !active && team.helpers.length >= 3;
+                              const infoKey = `${teamIdx}:${h.id}`;
+                              const infoOpen = expandedHelperInfo.has(infoKey);
                               return (
-                                <button
+                                <motion.div
                                   key={h.id}
-                                  onClick={() => toggleHelper(teamIdx, h.id)}
-                                  disabled={disabled}
-                                  className="w-full text-right rounded-xl px-3 py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                  layout
+                                  className="relative rounded-xl overflow-hidden"
                                   style={active
                                     ? {
                                         background: "#ffffff",
                                         border: `1.5px solid ${team.color}`,
-                                        boxShadow: `0 2px 8px -2px ${team.color}55, inset 0 0 0 1px ${team.color}22`,
+                                        boxShadow: `0 4px 14px -4px ${team.color}55, inset 0 0 0 1px ${team.color}22`,
                                       }
                                     : {
                                         background: "#ffffff",
                                         border: "1.5px solid #ebe2cd",
                                       }}
                                 >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="text-2xl shrink-0">{h.emoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-extrabold text-sm" style={{ color: active ? team.color : "#1f4d4f" }}>{h.name}</div>
-                                      <div className="text-[11px] mt-0.5 leading-snug" style={{ color: "#5b6b87" }}>{h.desc}</div>
-                                    </div>
-                                    {active && (
-                                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: team.color }}>
-                                        <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-                                      </div>
+                                  {/* Info button (top corner) */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); toggleHelperInfo(teamIdx, h.id); }}
+                                    className="absolute top-1.5 start-1.5 w-6 h-6 rounded-full flex items-center justify-center transition z-10"
+                                    style={{
+                                      background: infoOpen ? "#1f4d4f" : "#faf6ec",
+                                      color: infoOpen ? "#fff" : "#5b6b87",
+                                      border: `1px solid ${infoOpen ? "#1f4d4f" : "#ebe2cd"}`,
+                                    }}
+                                    aria-label={infoOpen ? "إخفاء الشرح" : "عرض الشرح"}
+                                    title={infoOpen ? "إخفاء الشرح" : "عرض الشرح"}
+                                  >
+                                    <Info className="w-3 h-3" />
+                                  </button>
+
+                                  {/* Active check badge */}
+                                  {active && (
+                                    <motion.div
+                                      initial={{ scale: 0, rotate: -90 }}
+                                      animate={{ scale: 1, rotate: 0 }}
+                                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                      className="absolute top-1.5 end-1.5 w-6 h-6 rounded-full flex items-center justify-center z-10"
+                                      style={{ background: team.color, boxShadow: `0 4px 8px -2px ${team.color}aa` }}
+                                    >
+                                      <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                                    </motion.div>
+                                  )}
+
+                                  {/* Tap-to-toggle area */}
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleHelper(teamIdx, h.id)}
+                                    disabled={disabled}
+                                    className="w-full px-2 pt-7 pb-2.5 flex flex-col items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    <motion.span
+                                      whileTap={{ scale: 0.9, rotate: -8 }}
+                                      className="text-3xl leading-none"
+                                    >
+                                      {h.emoji}
+                                    </motion.span>
+                                    <span
+                                      className="text-[12px] font-extrabold text-center leading-tight line-clamp-2"
+                                      style={{ color: active ? team.color : "#1f4d4f" }}
+                                    >
+                                      {h.name}
+                                    </span>
+                                  </button>
+
+                                  {/* Inline expandable description */}
+                                  <AnimatePresence initial={false}>
+                                    {infoOpen && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.22, ease: "easeOut" }}
+                                        className="overflow-hidden"
+                                        style={{ borderTop: "1px solid #ebe2cd", background: "#faf6ec" }}
+                                      >
+                                        <div className="px-2.5 py-2 text-[10.5px] leading-snug font-medium" style={{ color: "#1f4d4f" }}>
+                                          {h.desc}
+                                        </div>
+                                      </motion.div>
                                     )}
-                                  </div>
-                                </button>
+                                  </AnimatePresence>
+                                </motion.div>
                               );
                             })}
                           </div>
