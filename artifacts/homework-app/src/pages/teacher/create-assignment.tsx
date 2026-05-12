@@ -768,9 +768,7 @@ export default function CreateAssignment() {
         isShared, categoryId: categoryId || undefined,
         // contentKind drives which public library the activity appears in:
         // contest mode → "مكتبة المسابقات الجاهزة", otherwise "مكتبة الأنشطة".
-        // Cast through `as any` because OpenAPI codegen hasn't been regenerated
-        // yet; the server reads contentKind directly from req.body.
-        ...({ contentKind: isContestMode ? "competition" : "homework" } as any),
+        contentKind: isContestMode ? "competition" : "homework",
         isAdaptive: isAdaptive || undefined,
         adaptiveConfig: isAdaptive ? { questionsPerSession: adaptiveQuestionsPerSession, skills: adaptiveSkills } : undefined,
         questions: isPaper
@@ -1714,17 +1712,21 @@ export default function CreateAssignment() {
                       <Toggle on={allowRetry} onChange={() => setAllowRetry(!allowRetry)} color="green" />
                     </div>
 
-                    {/* Share publicly */}
-                    <div className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-2.5">
-                        <Globe className={`w-4 h-4 ${isShared ? "text-cyan-500" : "text-muted-foreground"}`} />
-                        <div>
-                          <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
-                          <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "ستظهر تلقائياً للمعلمين الآخرين. اضغط لجعلها خاصة 🔒" : "Will be auto-published to other teachers. Tap to make private 🔒") : (lang === "ar" ? "خاص بك فقط — لن يراها أحد" : "Only visible to you")}</span>
+                    {/* Share publicly — hidden when accessMode is private,
+                        because a private assignment by definition cannot be
+                        published to the shared library. */}
+                    {accessMode !== "private" && (
+                      <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Globe className={`w-4 h-4 ${isShared ? "text-cyan-500" : "text-muted-foreground"}`} />
+                          <div>
+                            <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
+                            <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "ستظهر تلقائياً للمعلمين الآخرين. اضغط لجعلها خاصة 🔒" : "Will be auto-published to other teachers. Tap to make private 🔒") : (lang === "ar" ? "خاص بك فقط — لن يراها أحد" : "Only visible to you")}</span>
+                          </div>
                         </div>
+                        <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="cyan" />
                       </div>
-                      <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="cyan" />
-                    </div>
+                    )}
 
                     {/* Exam mode */}
                     {!isPaper && (

@@ -219,6 +219,19 @@ export interface UpdateRoleBody {
   role: UpdateRoleBodyRole;
 }
 
+/**
+ * Which public library this assignment appears in once shared.
+'homework' → مكتبة الأنشطة, 'competition' → مكتبة المسابقات الجاهزة.
+
+ */
+export type CreateAssignmentBodyContentKind =
+  (typeof CreateAssignmentBodyContentKind)[keyof typeof CreateAssignmentBodyContentKind];
+
+export const CreateAssignmentBodyContentKind = {
+  homework: "homework",
+  competition: "competition",
+} as const;
+
 export type CreateAssignmentBodySubmissionMode =
   (typeof CreateAssignmentBodySubmissionMode)[keyof typeof CreateAssignmentBodySubmissionMode];
 
@@ -293,6 +306,10 @@ export interface CreateAssignmentBody {
   title: string;
   subject?: string;
   description?: string;
+  /** Which public library this assignment appears in once shared.
+'homework' → مكتبة الأنشطة, 'competition' → مكتبة المسابقات الجاهزة.
+ */
+  contentKind?: CreateAssignmentBodyContentKind;
   submissionMode?: CreateAssignmentBodySubmissionMode;
   accessMode?: CreateAssignmentBodyAccessMode;
   accessCode?: string | null;
@@ -344,6 +361,17 @@ export const AssignmentResultsReleaseMode = {
   manual: "manual",
 } as const;
 
+/**
+ * Which public library this assignment belongs to.
+ */
+export type AssignmentContentKind =
+  (typeof AssignmentContentKind)[keyof typeof AssignmentContentKind];
+
+export const AssignmentContentKind = {
+  homework: "homework",
+  competition: "competition",
+} as const;
+
 export interface Assignment {
   id: number;
   title: string;
@@ -369,6 +397,10 @@ export interface Assignment {
   createdAt: string;
   isShared?: boolean;
   isShareApproved?: boolean;
+  /** Which public library this assignment belongs to. */
+  contentKind?: AssignmentContentKind;
+  /** True when an admin has hidden this assignment from public libraries. */
+  hiddenByAdmin?: boolean;
   /** True if this assignment belongs to the authenticated requester. Always present when listing. */
   isOwn?: boolean;
   /** Display name of the assignment's original teacher. */

@@ -131,8 +131,10 @@ router.get("/assignments", async (req, res) => {
         .innerJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
         .where(
           and(
+            // Approval gating was removed in task #595 — every shared row
+            // is publicly visible by default; admins curate via hide.
             eq(assignmentsTable.isShared, true),
-            eq(assignmentsTable.isShareApproved, true),
+            eq(assignmentsTable.hiddenByAdmin, false),
             ne(assignmentsTable.teacherId, requesterTeacherId),
           ),
         )
@@ -390,10 +392,15 @@ router.get("/assignments/shared", async (req, res) => {
     const kindParam = (req.query.kind as string | undefined);
     const kindFilter = kindParam === "competition" || kindParam === "homework" ? kindParam : null;
 
+    // Admins may opt in to seeing hidden rows from the same endpoint by
+    // passing ?showHidden=1 — used by the moderation tab. Non-admins
+    // never see hidden content even with the flag.
+    const wantHidden = req.query.showHidden === "1" || req.query.showHidden === "true";
+    const isAdminRequester = wantHidden ? await isAdminTeacher(teacherId) : false;
     const whereClause = and(
+      // Approval gating dropped (task #595): rely on hide for moderation.
       eq(assignmentsTable.isShared, true),
-      eq(assignmentsTable.isShareApproved, true),
-      eq(assignmentsTable.hiddenByAdmin, false),
+      (wantHidden && isAdminRequester) ? undefined : eq(assignmentsTable.hiddenByAdmin, false),
       ne(assignmentsTable.teacherId, teacherId),
       kindFilter ? eq(assignmentsTable.contentKind, kindFilter) : undefined,
       dismissedIds.length > 0 ? notInArray(assignmentsTable.id, dismissedIds) : undefined
@@ -410,6 +417,10 @@ router.get("/assignments/shared", async (req, res) => {
         totalPoints: assignmentsTable.totalPoints,
         isShared: assignmentsTable.isShared,
         contentKind: assignmentsTable.contentKind,
+        // hiddenByAdmin lets the admin "show hidden" toggle render
+        // an unhide button on already-moderated rows.
+        hiddenByAdmin: assignmentsTable.hiddenByAdmin,
+        hideReason: assignmentsTable.hideReason,
         teacherId: assignmentsTable.teacherId,
         teacherName: teachersTable.name,
         createdAt: assignmentsTable.createdAt,
@@ -1262,8 +1273,8 @@ router.post("/assignments/:id/import", async (req, res) => {
         isShared: false,
         // Preserve contentKind so a competition stays in the competitions
         // library when imported and (later) re-shared by the new owner.
-        contentKind: (original as any).contentKind ?? "homework",
-      } as any)
+        contentKind: original.contentKind ?? "homework",
+      })
       .returning();
 
     const questions = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, id));

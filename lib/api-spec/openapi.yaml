@@ -1400,6 +1400,13 @@ components:
           type: string
         description:
           type: string
+        contentKind:
+          type: string
+          enum: [homework, competition]
+          default: homework
+          description: |
+            Which public library this assignment appears in once shared.
+            'homework' → مكتبة الأنشطة, 'competition' → مكتبة المسابقات الجاهزة.
         submissionMode:
           type: string
           enum: [electronic, paper, both]
@@ -1591,6 +1598,13 @@ components:
           type: boolean
         isShareApproved:
           type: boolean
+        contentKind:
+          type: string
+          enum: [homework, competition]
+          description: Which public library this assignment belongs to.
+        hiddenByAdmin:
+          type: boolean
+          description: True when an admin has hidden this assignment from public libraries.
         isOwn:
           type: boolean
           description: True if this assignment belongs to the authenticated requester. Always present when listing.

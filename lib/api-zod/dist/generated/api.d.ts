@@ -610,6 +610,8 @@ export declare const ListAssignmentsResponseItem: zod.ZodObject<{
     createdAt: zod.ZodDate;
     isShared: zod.ZodOptional<zod.ZodBoolean>;
     isShareApproved: zod.ZodOptional<zod.ZodBoolean>;
+    contentKind: zod.ZodOptional<zod.ZodEnum<["homework", "competition"]>>;
+    hiddenByAdmin: zod.ZodOptional<zod.ZodBoolean>;
     isOwn: zod.ZodOptional<zod.ZodBoolean>;
     ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
@@ -637,6 +639,8 @@ export declare const ListAssignmentsResponseItem: zod.ZodObject<{
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
+    contentKind?: "homework" | "competition" | undefined;
+    hiddenByAdmin?: boolean | undefined;
     isOwn?: boolean | undefined;
     ownerName?: string | null | undefined;
 }, {
@@ -664,6 +668,8 @@ export declare const ListAssignmentsResponseItem: zod.ZodObject<{
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
+    contentKind?: "homework" | "competition" | undefined;
+    hiddenByAdmin?: boolean | undefined;
     isOwn?: boolean | undefined;
     ownerName?: string | null | undefined;
 }>;
@@ -692,6 +698,8 @@ export declare const ListAssignmentsResponse: zod.ZodArray<zod.ZodObject<{
     createdAt: zod.ZodDate;
     isShared: zod.ZodOptional<zod.ZodBoolean>;
     isShareApproved: zod.ZodOptional<zod.ZodBoolean>;
+    contentKind: zod.ZodOptional<zod.ZodEnum<["homework", "competition"]>>;
+    hiddenByAdmin: zod.ZodOptional<zod.ZodBoolean>;
     isOwn: zod.ZodOptional<zod.ZodBoolean>;
     ownerName: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
@@ -719,6 +727,8 @@ export declare const ListAssignmentsResponse: zod.ZodArray<zod.ZodObject<{
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
+    contentKind?: "homework" | "competition" | undefined;
+    hiddenByAdmin?: boolean | undefined;
     isOwn?: boolean | undefined;
     ownerName?: string | null | undefined;
 }, {
@@ -746,12 +756,15 @@ export declare const ListAssignmentsResponse: zod.ZodArray<zod.ZodObject<{
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
     isShareApproved?: boolean | undefined;
+    contentKind?: "homework" | "competition" | undefined;
+    hiddenByAdmin?: boolean | undefined;
     isOwn?: boolean | undefined;
     ownerName?: string | null | undefined;
 }>, "many">;
 /**
  * @summary Create a new assignment
  */
+export declare const createAssignmentBodyContentKindDefault = "homework";
 export declare const createAssignmentBodySubmissionModeDefault = "both";
 export declare const createAssignmentBodyAccessModeDefault = "public";
 export declare const createAssignmentBodyShowResultsDefault = true;
@@ -767,6 +780,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
     title: zod.ZodString;
     subject: zod.ZodOptional<zod.ZodString>;
     description: zod.ZodOptional<zod.ZodString>;
+    contentKind: zod.ZodDefault<zod.ZodEnum<["homework", "competition"]>>;
     submissionMode: zod.ZodDefault<zod.ZodEnum<["electronic", "paper", "both"]>>;
     accessMode: zod.ZodDefault<zod.ZodEnum<["public", "private"]>>;
     accessCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
@@ -859,6 +873,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
     examMode: boolean;
     resultsReleaseMode: "immediate" | "after_deadline" | "manual";
     isShared: boolean;
+    contentKind: "homework" | "competition";
     isAdaptive: boolean;
     subject?: string | undefined;
     description?: string | undefined;
@@ -909,6 +924,7 @@ export declare const CreateAssignmentBody: zod.ZodObject<{
     resultsReleaseMode?: "immediate" | "after_deadline" | "manual" | undefined;
     aiGradingInstructions?: string | null | undefined;
     isShared?: boolean | undefined;
+    contentKind?: "homework" | "competition" | undefined;
     modelImageBase64?: string | null | undefined;
     categoryId?: number | null | undefined;
     isAdaptive?: boolean | undefined;

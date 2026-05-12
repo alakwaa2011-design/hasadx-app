@@ -26,6 +26,8 @@ interface SharedAssignment {
   teacherName: string | null;
   isAdminContent?: boolean;
   createdAt: string;
+  hiddenByAdmin?: boolean;
+  hideReason?: string | null;
 }
 
 interface SharedQuestion {
@@ -99,6 +101,9 @@ export default function SharedContentPage() {
   const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  // Admin-only toggle: when ON, the page also fetches admin-hidden rows
+  // so moderators can review and (un)hide them.
+  const [showHidden, setShowHidden] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
 
@@ -111,8 +116,12 @@ export default function SharedContentPage() {
         const meData = await meRes.json();
         setCurrentTeacherId(meData.id || null);
         setIsAdmin(!!meData.isAdmin);
-        const aUrl = libraryKind
-          ? `${API_BASE}/api/assignments/shared?kind=${libraryKind}`
+        const params = new URLSearchParams();
+        if (libraryKind) params.set("kind", libraryKind);
+        if (showHidden && meData.isAdmin) params.set("showHidden", "1");
+        const qs = params.toString();
+        const aUrl = qs
+          ? `${API_BASE}/api/assignments/shared?${qs}`
           : `${API_BASE}/api/assignments/shared`;
         // Competition library: assignments only — skip the (slower) bank
         // and video lookups entirely so the tab feels snappy.
@@ -132,7 +141,35 @@ export default function SharedContentPage() {
         }
       } catch {} finally { setLoading(false); }
     })();
-  }, [libraryKind, isCompetitionLibrary]);
+  }, [libraryKind, isCompetitionLibrary, showHidden]);
+
+  /** Admin-only: restore a previously hidden row. */
+  const unhideAsAdmin = async (
+    itemType: "assignments" | "question-bank" | "video-lessons",
+    itemId: number,
+  ) => {
+    if (!isAdmin) return;
+    const key = `${itemType}-${itemId}`;
+    setHidingIds(prev => new Set(prev).add(key));
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/${itemType}/${itemId}/unhide`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        if (itemType === "assignments") {
+          setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, hiddenByAdmin: false } : a));
+        }
+        toast.success(lang === "ar" ? "تم استعادة العنصر إلى المكتبة" : "Item restored to library");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر الاستعادة" : "Failed to restore");
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    } finally {
+      setHidingIds(prev => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  };
 
   /** Admin-only: hide a row from the public library. */
   const hideAsAdmin = async (
@@ -154,7 +191,13 @@ export default function SharedContentPage() {
         body: JSON.stringify({ reason: reason || undefined }),
       });
       if (res.ok) {
-        if (itemType === "assignments") setAssignments(prev => prev.filter(a => a.id !== itemId));
+        // When the moderator is browsing in "show hidden" mode we keep
+        // the row in place and just flip its flag, so they can still see
+        // (and potentially unhide) what they just hid. Otherwise we drop
+        // it from the list to mirror the public view.
+        if (showHidden && itemType === "assignments") {
+          setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, hiddenByAdmin: true } : a));
+        } else if (itemType === "assignments") setAssignments(prev => prev.filter(a => a.id !== itemId));
         else if (itemType === "question-bank") setQuestions(prev => prev.filter(q => q.id !== itemId));
         else setVideoLessons(prev => prev.filter(v => v.id !== itemId));
         toast.success(lang === "ar" ? "تم إخفاء العنصر من المكتبة" : "Item hidden from library");
@@ -415,6 +458,21 @@ export default function SharedContentPage() {
               {lang === "ar" ? "مسح الفلاتر" : "Clear filters"}
             </button>
           )}
+          {isAdmin && (
+            <label
+              className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border cursor-pointer transition-colors ${showHidden ? "bg-amber-100 border-amber-400 text-amber-900" : "bg-background border-border text-muted-foreground hover:text-foreground"}`}
+              title={lang === "ar" ? "إظهار العناصر المخفية (مشرف)" : "Show hidden items (admin)"}
+            >
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={e => setShowHidden(e.target.checked)}
+                className="accent-amber-600"
+              />
+              <EyeOff className="w-3.5 h-3.5" />
+              {lang === "ar" ? "عرض المخفي" : "Show hidden"}
+            </label>
+          )}
         </div>
 
         {activeTab === "assignments" && (
@@ -483,14 +541,25 @@ export default function SharedContentPage() {
                               {dismissingIds.has(`assignment-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
                             {isAdmin && (
-                              <button
-                                onClick={() => hideAsAdmin("assignments", a.id)}
-                                disabled={hidingIds.has(`assignments-${a.id}`)}
-                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                              >
-                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                              </button>
+                              a.hiddenByAdmin ? (
+                                <button
+                                  onClick={() => unhideAsAdmin("assignments", a.id)}
+                                  disabled={hidingIds.has(`assignments-${a.id}`)}
+                                  title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
+                                  className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                                >
+                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => hideAsAdmin("assignments", a.id)}
+                                  disabled={hidingIds.has(`assignments-${a.id}`)}
+                                  title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                                  className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                                >
+                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                                </button>
+                              )
                             )}
                           </>
                         )}

@@ -7,6 +7,7 @@
  */
 import type { CreateAssignmentBodyAccessMode } from "./createAssignmentBodyAccessMode";
 import type { CreateAssignmentBodyAdaptiveConfig } from "./createAssignmentBodyAdaptiveConfig";
+import type { CreateAssignmentBodyContentKind } from "./createAssignmentBodyContentKind";
 import type { CreateAssignmentBodyListeningSettings } from "./createAssignmentBodyListeningSettings";
 import type { CreateAssignmentBodyResultsReleaseMode } from "./createAssignmentBodyResultsReleaseMode";
 import type { CreateAssignmentBodySubmissionMode } from "./createAssignmentBodySubmissionMode";
@@ -15,6 +16,10 @@ export interface CreateAssignmentBody {
     title: string;
     subject?: string;
     description?: string;
+    /** Which public library this assignment appears in once shared.
+  'homework' → مكتبة الأنشطة, 'competition' → مكتبة المسابقات الجاهزة.
+   */
+    contentKind?: CreateAssignmentBodyContentKind;
     submissionMode?: CreateAssignmentBodySubmissionMode;
     accessMode?: CreateAssignmentBodyAccessMode;
     accessCode?: string | null;

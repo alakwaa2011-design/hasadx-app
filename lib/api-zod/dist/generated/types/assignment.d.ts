@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AssignmentAccessMode } from "./assignmentAccessMode";
+import type { AssignmentContentKind } from "./assignmentContentKind";
 import type { AssignmentResultsReleaseMode } from "./assignmentResultsReleaseMode";
 import type { AssignmentSubmissionMode } from "./assignmentSubmissionMode";
 export interface Assignment {
@@ -33,6 +34,10 @@ export interface Assignment {
     createdAt: Date;
     isShared?: boolean;
     isShareApproved?: boolean;
+    /** Which public library this assignment belongs to. */
+    contentKind?: AssignmentContentKind;
+    /** True when an admin has hidden this assignment from public libraries. */
+    hiddenByAdmin?: boolean;
     /** True if this assignment belongs to the authenticated requester. Always present when listing. */
     isOwn?: boolean;
     /** Display name of the assignment's original teacher. */

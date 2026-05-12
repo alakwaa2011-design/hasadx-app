@@ -373,6 +373,16 @@ export const ListAssignmentsResponseItem = zod.object({
   createdAt: zod.coerce.date(),
   isShared: zod.boolean().optional(),
   isShareApproved: zod.boolean().optional(),
+  contentKind: zod
+    .enum(["homework", "competition"])
+    .optional()
+    .describe("Which public library this assignment belongs to."),
+  hiddenByAdmin: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when an admin has hidden this assignment from public libraries.",
+    ),
   isOwn: zod
     .boolean()
     .optional()
@@ -389,6 +399,7 @@ export const ListAssignmentsResponse = zod.array(ListAssignmentsResponseItem);
 /**
  * @summary Create a new assignment
  */
+export const createAssignmentBodyContentKindDefault = `homework`;
 export const createAssignmentBodySubmissionModeDefault = `both`;
 export const createAssignmentBodyAccessModeDefault = `public`;
 export const createAssignmentBodyShowResultsDefault = true;
@@ -406,6 +417,12 @@ export const CreateAssignmentBody = zod.object({
   title: zod.string(),
   subject: zod.string().optional(),
   description: zod.string().optional(),
+  contentKind: zod
+    .enum(["homework", "competition"])
+    .default(createAssignmentBodyContentKindDefault)
+    .describe(
+      "Which public library this assignment appears in once shared.\n'homework' → مكتبة الأنشطة, 'competition' → مكتبة المسابقات الجاهزة.\n",
+    ),
   submissionMode: zod
     .enum(["electronic", "paper", "both"])
     .default(createAssignmentBodySubmissionModeDefault),
