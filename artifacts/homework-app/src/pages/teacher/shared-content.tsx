@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
-  Search, User, Calendar, Copy, Eye, ChevronRight, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
+  Search, User, Calendar, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
   Gamepad2, EyeOff,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -237,14 +237,18 @@ export default function SharedContentPage() {
     return map[type] || type;
   };
 
-  const launchAsGame = (id: number) => {
+  // Wameedh ("وميض") is the default live-quiz launcher — gameMode="classic"
+  // resolves to the standard solo flow on the server. Teams mode is exposed
+  // as a non-prominent secondary option per row so the organizer can switch
+  // without leaving the library.
+  const launchAsGame = (id: number, gameMode: "classic" | "teams" = "classic") => {
     setLaunchingIds((s) => new Set(s).add(id));
     const socket = getSocket();
     let remembered = "";
     try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
     socket.emit(
       "teacher:create-game",
-      { assignmentId: id, gameMode: "solo", targetClass: remembered || undefined },
+      { assignmentId: id, gameMode, targetClass: remembered || undefined },
       (res: { pin?: string; error?: string }) => {
         setLaunchingIds((s) => { const n = new Set(s); n.delete(id); return n; });
         if (res?.error || !res?.pin) {
@@ -488,40 +492,9 @@ export default function SharedContentPage() {
           )}
         </div>
 
-        {/* Quick-launch cards live only inside the competitions library —
-            they let teachers jump straight into the seeded competition
-            modes (Arena, Million, Islamic Quiz) without browsing rows. */}
-        {isCompetitionLibrary && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-            <button
-              onClick={() => setLocation("/game/arena")}
-              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg,#7c3aed,#db2777)" }}
-            >
-              <div className="text-2xl mb-1">⚔️</div>
-              <div className="font-extrabold">{lang === "ar" ? "ساحة المعركة" : "Arena"}</div>
-              <div className="text-xs opacity-85">{lang === "ar" ? "مسابقة سريعة بنك أسئلة جاهز" : "Fast-paced competition · seeded bank"}</div>
-            </button>
-            <button
-              onClick={() => setLocation("/game/million")}
-              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
-            >
-              <div className="text-2xl mb-1">💰</div>
-              <div className="font-extrabold">{lang === "ar" ? "من سيربح المليون؟" : "Who Wants a Million"}</div>
-              <div className="text-xs opacity-85">{lang === "ar" ? "لعبة الأسئلة الكلاسيكية" : "Classic trivia ladder"}</div>
-            </button>
-            <button
-              onClick={() => setLocation("/islamic")}
-              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
-              style={{ background: "linear-gradient(135deg,#059669,#0d9488)" }}
-            >
-              <div className="text-2xl mb-1">☪️</div>
-              <div className="font-extrabold">{lang === "ar" ? "المسابقة الإسلامية" : "Islamic Quiz"}</div>
-              <div className="text-xs opacity-85">{lang === "ar" ? "أسئلة تربوية إسلامية" : "Islamic studies bank"}</div>
-            </button>
-          </div>
-        )}
+        {/* Competitions library is intentionally a question-bank only —
+            no quick-launch game cards. Each competition row gets its own
+            "إلعبها الآن" button below (default = Wameedh). */}
 
         {activeTab === "assignments" && (
           filteredAssignments.length > 0 ? (
@@ -547,18 +520,47 @@ export default function SharedContentPage() {
                           </span>
                         ) : (
                           <>
-                            <button
-                              onClick={() => launchAsGame(a.id)}
-                              disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                              title={a.questionCount === 0 ? (lang === "ar" ? "لا توجد أسئلة" : "No questions") : (lang === "ar" ? "ابدأ المسابقة مع طلابك مباشرة" : "Launch live with your students")}
-                              className="flex items-center gap-1 text-xs py-1.5 px-3 rounded-lg font-bold transition-all border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {launchingIds.has(a.id) ? (
-                                <><Loader2 className="w-3 h-3 animate-spin" />{lang === "ar" ? "جارٍ البدء..." : "Starting..."}</>
-                              ) : (
-                                <><Gamepad2 className="w-3 h-3" />{lang === "ar" ? "شغّلها مع طلابي" : "Play with my class"}</>
-                              )}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => launchAsGame(a.id, "classic")}
+                                disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                                title={a.questionCount === 0 ? (lang === "ar" ? "لا توجد أسئلة" : "No questions") : (lang === "ar" ? "ابدأ المسابقة بلعبة وميض" : "Launch live with Wameedh")}
+                                className="flex items-center gap-1 text-xs py-1.5 px-3 rounded-lg font-bold transition-all border border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {launchingIds.has(a.id) ? (
+                                  <><Loader2 className="w-3 h-3 animate-spin" />{lang === "ar" ? "جارٍ البدء..." : "Starting..."}</>
+                                ) : (
+                                  <><Gamepad2 className="w-3 h-3" />{lang === "ar" ? "إلعبها الآن · وميض" : "Play now · Wameedh"}</>
+                                )}
+                              </button>
+                              {/* Subtle "switch game" affordance — defaults to
+                                  Wameedh; teachers can pick teams mode when
+                                  they want a different format. */}
+                              <details className="relative">
+                                <summary
+                                  className="cursor-pointer list-none text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 px-1 py-1.5 select-none"
+                                  title={lang === "ar" ? "تغيير اللعبة" : "Change game"}
+                                >
+                                  {lang === "ar" ? "تغيير اللعبة" : "Change game"}
+                                </summary>
+                                <div className={`absolute z-20 mt-1 ${lang === "ar" ? "left-0" : "right-0"} min-w-[160px] rounded-lg border border-border bg-popover shadow-lg p-1 text-xs`}>
+                                  <button
+                                    onClick={() => launchAsGame(a.id, "classic")}
+                                    disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                                    className="w-full text-start px-2 py-1.5 rounded hover:bg-muted disabled:opacity-40"
+                                  >
+                                    {lang === "ar" ? "وميض (افتراضي)" : "Wameedh (default)"}
+                                  </button>
+                                  <button
+                                    onClick={() => launchAsGame(a.id, "teams")}
+                                    disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                                    className="w-full text-start px-2 py-1.5 rounded hover:bg-muted disabled:opacity-40"
+                                  >
+                                    {lang === "ar" ? "وضع الفِرَق" : "Teams mode"}
+                                  </button>
+                                </div>
+                              </details>
+                            </div>
                             <Button variant="outline" onClick={() => copyLink(a.id)} className="gap-1 text-xs py-1.5 px-3 h-auto">
                               <Copy className="w-3 h-3" />
                               {t.sharedContent.copyLink}
