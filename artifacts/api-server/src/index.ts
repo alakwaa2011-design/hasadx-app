@@ -71,6 +71,13 @@ async function runSchemaMigrations() {
       ALTER TABLE assignments
         ADD COLUMN IF NOT EXISTS target_classes TEXT[]
     `);
+    // Composite index for the kind-filtered shared-library hot path
+    // (task #595). Covers WHERE is_shared=true AND hidden_by_admin=false
+    // AND content_kind=? ORDER BY created_at DESC.
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS assignments_shared_library_idx
+        ON assignments (is_shared, hidden_by_admin, content_kind, created_at DESC)
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS class_custom_columns (
         id SERIAL PRIMARY KEY,

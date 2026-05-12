@@ -5,6 +5,9 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export * from "./adminHideAssignmentBody";
+export * from "./adminHideQuestionBankItemBody";
+export * from "./adminHideVideoLessonBody";
 export * from "./adminTeacherSummary";
 export * from "./answerBody";
 export * from "./answerResult";

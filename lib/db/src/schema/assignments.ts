@@ -55,6 +55,13 @@ export const assignmentsTable = pgTable("assignments", {
   teacherIdx: index("assignments_teacher_idx").on(t.teacherId),
   teacherCreatedIdx: index("assignments_teacher_created_idx").on(t.teacherId, t.createdAt),
   categoryIdx: index("assignments_category_idx").on(t.categoryId),
+  // Hot path: shared-library scans filter by contentKind, isShared,
+  // hiddenByAdmin, accessMode and order by createdAt DESC. A composite
+  // index keyed on (content_kind, created_at desc) with isShared in the
+  // leading position keeps the scan covering for both library tabs.
+  sharedLibraryIdx: index("assignments_shared_library_idx").on(
+    t.isShared, t.hiddenByAdmin, t.contentKind, t.createdAt,
+  ),
 }));
 export const insertAssignmentSchema = createInsertSchema(assignmentsTable).omit({ id: true, createdAt: true });
 export type InsertAssignment = z.infer<typeof insertAssignmentSchema>;

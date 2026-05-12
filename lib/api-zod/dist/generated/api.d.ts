@@ -520,6 +520,87 @@ export declare const RevokeTeacherSessionResponse: zod.ZodObject<{
     wasCurrent: boolean;
 }>;
 /**
+ * @summary Hide a shared assignment from the public library (admin only)
+ */
+export declare const AdminHideAssignmentParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const AdminHideAssignmentBody: zod.ZodObject<{
+    reason: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    reason?: string | null | undefined;
+}, {
+    reason?: string | null | undefined;
+}>;
+/**
+ * @summary Restore a previously hidden assignment to the public library
+ */
+export declare const AdminUnhideAssignmentParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+/**
+ * @summary Hide a shared question-bank item from the public library
+ */
+export declare const AdminHideQuestionBankItemParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const AdminHideQuestionBankItemBody: zod.ZodObject<{
+    reason: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    reason?: string | null | undefined;
+}, {
+    reason?: string | null | undefined;
+}>;
+/**
+ * @summary Restore a hidden question-bank item to the public library
+ */
+export declare const AdminUnhideQuestionBankItemParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+/**
+ * @summary Hide a shared video lesson from the public library
+ */
+export declare const AdminHideVideoLessonParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const AdminHideVideoLessonBody: zod.ZodObject<{
+    reason: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+}, "strip", zod.ZodTypeAny, {
+    reason?: string | null | undefined;
+}, {
+    reason?: string | null | undefined;
+}>;
+/**
+ * @summary Restore a hidden video lesson to the public library
+ */
+export declare const AdminUnhideVideoLessonParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+/**
  * @summary List all registered teachers with stats
  */
 export declare const ListAllTeachersResponseItem: zod.ZodObject<{
