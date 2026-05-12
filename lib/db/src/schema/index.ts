@@ -66,5 +66,6 @@ export * from "./plans";
 export * from "./subscriptions";
 export * from "./subscription-usage";
 export * from "./arena-categories";
+export * from "./arena-question-reports";
 export * from "./activity-logs";
 export * from "./arena-saves";

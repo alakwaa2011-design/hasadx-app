@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowLeft, Play, Users, Swords, Sparkles, Check, Trophy,
   Plus, Trash2, ChevronRight, ChevronLeft, X, UserPlus, LogIn, Lock,
   ChevronDown, Award, Image as ImageIcon, Upload, Edit3, Globe, FolderPlus,
-  Save, Camera, Crown,
+  Save, Camera, Crown, Inbox,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -737,6 +737,50 @@ export default function ArenaSetup() {
                     اصنع فئتك
                   </button>
                 </div>
+
+                {/* Admin-only quick link to question reports inbox */}
+                {isAdmin && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 flex-wrap"
+                    style={{
+                      background: "linear-gradient(135deg, #ffffff 0%, #faf6ec 100%)",
+                      border: "1px solid rgba(201,161,75,0.4)",
+                      boxShadow: "0 4px 14px -6px rgba(201,161,75,0.25)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <motion.div
+                        animate={{ rotate: [0, -6, 6, 0] }}
+                        transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.4 }}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          background: "linear-gradient(135deg, #c9a14b, #a07f37)",
+                          boxShadow: "0 6px 14px -4px rgba(201,161,75,0.55)",
+                        }}
+                      >
+                        <Inbox className="w-4.5 h-4.5 text-white" />
+                      </motion.div>
+                      <div className="min-w-0">
+                        <div className="font-black text-sm" style={{ color: "#1f4d4f" }}>صندوق بلاغات الأسئلة</div>
+                        <div className="text-[11px] font-bold" style={{ color: "#5b6b87" }}>راجع الشكاوى التي يرسلها المعلّمون عن أسئلة تحدّي حصاد</div>
+                      </div>
+                    </div>
+                    <Link
+                      href="/teacher/arena-reports"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold shrink-0"
+                      style={{
+                        background: "linear-gradient(135deg, #1f4d4f, #2d5e3f)",
+                        color: "#ffffff",
+                        boxShadow: "0 6px 14px -4px rgba(31,77,79,0.45)",
+                      }}
+                    >
+                      فتح الصندوق
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </Link>
+                  </motion.div>
+                )}
 
                 {/* Visual category grid */}
                 <div className="space-y-5">

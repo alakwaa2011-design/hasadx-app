@@ -76,6 +76,7 @@ import {
   fetchArenaCategories,
   fetchArenaActivities,
   buildDbSections,
+  submitArenaReport,
 } from "@/lib/arena-content";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
@@ -946,6 +947,8 @@ export default function ArenaPlay() {
                   <img
                     src={imgUrl}
                     alt={sub.name}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 w-full h-full"
                     style={{
                       objectFit: "cover",
@@ -1279,6 +1282,7 @@ export default function ArenaPlay() {
 
   const submitReport = (note: string, correctAnswer: string) => {
     if (!active) return;
+    /* Local cache (offline-friendly) */
     saveArenaReport({
       subCategoryId: active.subCategoryId,
       difficulty: active.difficulty,
@@ -1287,8 +1291,22 @@ export default function ArenaPlay() {
       note,
       correctAnswer: correctAnswer || undefined,
     });
+    /* Best-effort: send to backend so admins can review */
+    const dbId = active.subCategoryId.startsWith("db-")
+      ? Number(active.subCategoryId.slice(3))
+      : null;
+    void submitArenaReport({
+      categoryId: Number.isFinite(dbId) ? dbId : null,
+      subCategoryId: active.subCategoryId,
+      difficulty: active.difficulty,
+      questionType: active.question.type ?? "text",
+      questionText: active.question.q,
+      currentAnswer: active.question.a,
+      suggestedAnswer: correctAnswer || null,
+      note,
+    });
     setShowReport(false);
-    toast.success("تم إرسال البلاغ — شكراً");
+    toast.success("تم إرسال البلاغ — شكراً، سيراجعه المسؤول");
   };
 
   const reveal = () => {
@@ -3017,85 +3035,159 @@ function ReportDialog({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[65] flex items-center justify-center p-4 backdrop-blur-none"
-      style={{ background: "rgba(0,0,0,0.85)" }}
+      className="fixed inset-0 z-[65] flex items-center justify-center p-4"
+      style={{ background: "rgba(31,77,79,0.55)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-lg rounded-3xl p-6 border-4"
+        initial={{ scale: 0.92, y: 18, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, y: 10, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 240, damping: 24 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-3xl overflow-hidden relative"
         style={{
-          background: "linear-gradient(160deg, #064e3b, #022c22)",
-          borderColor: "rgba(244,114,182,0.5)",
+          background: "#ffffff",
+          border: "1px solid #ebe2cd",
+          boxShadow: "0 24px 60px -16px rgba(31,77,79,0.35), 0 0 0 4px rgba(201,161,75,0.18)",
         }}
         dir="rtl"
       >
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-black text-rose-200 flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6" />
-            إبلاغ عن خطأ في السؤال
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="rounded-lg bg-black/30 border border-white/10 p-3 mb-3">
-          <div className="text-[10px] font-bold text-amber-200/70 mb-1">
-            السؤال
+        {/* Animated accent strip */}
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="h-1.5 origin-right"
+          style={{ background: "linear-gradient(90deg, #c9a14b 0%, #a07f37 50%, #c9a14b 100%)" }}
+        />
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-black flex items-center gap-2" style={{ color: "#1f4d4f" }}>
+              <motion.div
+                animate={{ rotate: [0, -8, 8, -4, 4, 0] }}
+                transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 2.5 }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(135deg, #c9a14b, #a07f37)",
+                  boxShadow: "0 6px 16px -4px rgba(201,161,75,0.55)",
+                }}
+              >
+                <AlertTriangle className="w-5 h-5 text-white" />
+              </motion.div>
+              إبلاغ عن خطأ في السؤال
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg transition"
+              style={{ color: "#5b6b87" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#faf6ec"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="text-white text-sm font-bold mb-2">{question}</div>
-          <div className="text-[10px] font-bold text-amber-200/70 mb-1">
-            الإجابة الحالية
+
+          <div className="rounded-2xl p-4 mb-4 relative overflow-hidden" style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}>
+            <div className="text-[10px] font-black mb-1 inline-flex items-center gap-1.5" style={{ color: "#a07f37" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#c9a14b" }} />
+              السؤال
+            </div>
+            <div className="text-sm font-bold mb-3 leading-relaxed" style={{ color: "#1f2937" }}>{question}</div>
+            <div className="text-[10px] font-black mb-1 inline-flex items-center gap-1.5" style={{ color: "#1f4d4f" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#2d5e3f" }} />
+              الإجابة الحالية
+            </div>
+            <div className="text-sm font-bold leading-relaxed" style={{ color: "#1f4d4f" }}>{answer}</div>
           </div>
-          <div className="text-emerald-200 text-sm">{answer}</div>
-        </div>
-        <label className="block mb-3">
-          <span className="text-emerald-100/85 text-sm font-bold mb-1 block">
-            ما المشكلة؟
-          </span>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            placeholder="مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة..."
-            className="w-full bg-black/30 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-rose-300"
-          />
-        </label>
-        <label className="block mb-4">
-          <span className="text-emerald-100/85 text-sm font-bold mb-1 block">
-            الإجابة الصحيحة المقترحة{" "}
-            <span className="opacity-60">(اختياري)</span>
-          </span>
-          <input
-            type="text"
-            value={correct}
-            onChange={(e) => setCorrect(e.target.value)}
-            className="w-full bg-black/30 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-rose-300"
-          />
-        </label>
-        <div className="flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20"
-          >
-            إلغاء
-          </button>
-          <button
-            onClick={() => {
-              if (!note.trim()) {
-                toast.error("اكتب وصف المشكلة");
-                return;
-              }
-              onSubmit(note.trim(), correct.trim());
-            }}
-            className="flex-1 py-2.5 rounded-xl font-extrabold bg-rose-500 hover:bg-rose-400 text-white"
-          >
-            إرسال البلاغ
-          </button>
+
+          <label className="block mb-3">
+            <span className="text-sm font-extrabold mb-1.5 block" style={{ color: "#1f4d4f" }}>
+              ما المشكلة؟ <span style={{ color: "#a07f37" }}>*</span>
+            </span>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="مثلاً: السؤال غير واضح، أو الإجابة غير دقيقة، أو الصورة لا تطابق..."
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm transition-all focus:outline-none"
+              style={{
+                background: "#ffffff",
+                color: "#1f2937",
+                border: "1.5px solid #ebe2cd",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "#c9a14b"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,161,75,0.18)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "#ebe2cd"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+          </label>
+
+          <label className="block mb-5">
+            <span className="text-sm font-extrabold mb-1.5 block" style={{ color: "#1f4d4f" }}>
+              الإجابة الصحيحة المقترحة{" "}
+              <span className="text-xs font-bold" style={{ color: "#5b6b87" }}>(اختياري)</span>
+            </span>
+            <input
+              type="text"
+              value={correct}
+              onChange={(e) => setCorrect(e.target.value)}
+              placeholder="ساعدنا — اكتب الإجابة التي تراها صحيحة"
+              className="w-full rounded-xl px-3.5 py-2.5 text-sm transition-all focus:outline-none"
+              style={{
+                background: "#ffffff",
+                color: "#1f2937",
+                border: "1.5px solid #ebe2cd",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "#c9a14b"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,161,75,0.18)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "#ebe2cd"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+          </label>
+
+          <div className="flex gap-2.5">
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl font-bold text-sm transition"
+              style={{
+                background: "#faf6ec",
+                color: "#1f4d4f",
+                border: "1px solid #ebe2cd",
+              }}
+            >
+              إلغاء
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (!note.trim()) {
+                  toast.error("اكتب وصف المشكلة");
+                  return;
+                }
+                onSubmit(note.trim(), correct.trim());
+              }}
+              className="flex-1 py-2.5 rounded-xl font-black text-sm text-white relative overflow-hidden"
+              style={{
+                background: "linear-gradient(135deg, #c9a14b 0%, #a07f37 100%)",
+                boxShadow: "0 8px 22px -6px rgba(201,161,75,0.55)",
+              }}
+            >
+              <motion.span
+                aria-hidden
+                className="absolute inset-0"
+                animate={{ x: ["-130%", "130%"] }}
+                transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 1.5, ease: "easeInOut" }}
+                style={{
+                  background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
+                  width: "60%",
+                }}
+              />
+              <span className="relative inline-flex items-center justify-center gap-1.5">
+                <AlertTriangle className="w-4 h-4" />
+                إرسال البلاغ
+              </span>
+            </motion.button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
@@ -3720,6 +3812,8 @@ function InteractiveActivity({
           <img
             src={question.imageUrl}
             alt="سؤال"
+            decoding="async"
+            {...({ fetchpriority: "high" } as any)}
             className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl object-contain"
             style={{ boxShadow: "0 12px 40px -12px rgba(201,161,75,0.35)", border: "2px solid #c9a14b66", background: "#faf6ec" }}
           />
@@ -4128,6 +4222,8 @@ function ImagePlay({
           <img
             src={question.imageUrl}
             alt="سؤال مصوّر"
+            decoding="async"
+            {...({ fetchpriority: "high" } as any)}
             onLoad={() => setStatus("loaded")}
             onError={() => setStatus("error")}
             className="max-h-[38vh] sm:max-h-[46vh] max-w-full rounded-2xl object-contain"
@@ -4177,6 +4273,8 @@ function LogoPlay({
           <img
             src={question.imageUrl}
             alt="logo"
+            decoding="async"
+            {...({ fetchpriority: "high" } as any)}
             className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl object-contain transition-all"
             style={{
               filter: `blur(${blur}px)`,

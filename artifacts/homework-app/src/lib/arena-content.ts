@@ -146,6 +146,98 @@ export async function deleteArenaActivity(id: number): Promise<boolean> {
   }
 }
 
+/* ─────────────────── Question reports ─────────────────── */
+
+export interface ArenaQuestionReport {
+  id: number;
+  categoryId: number | null;
+  activityId: number | null;
+  subCategoryId: string | null;
+  difficulty: number | null;
+  questionType: string | null;
+  questionText: string;
+  currentAnswer: string;
+  suggestedAnswer: string | null;
+  note: string;
+  reporterTeacherId: number | null;
+  reporterName: string | null;
+  status: "open" | "resolved" | "dismissed";
+  resolvedByTeacherId: number | null;
+  resolvedAt: string | null;
+  adminNote: string | null;
+  createdAt: string;
+}
+
+export interface SubmitArenaReportInput {
+  categoryId?: number | null;
+  activityId?: number | null;
+  subCategoryId?: string | null;
+  difficulty?: number | null;
+  questionType?: string | null;
+  questionText: string;
+  currentAnswer: string;
+  suggestedAnswer?: string | null;
+  note: string;
+}
+
+export async function submitArenaReport(input: SubmitArenaReportInput): Promise<ArenaQuestionReport | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/reports`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchArenaReports(status?: "open" | "resolved" | "dismissed"): Promise<ArenaQuestionReport[]> {
+  try {
+    const url = status
+      ? `${API_BASE}/api/arena-content/reports?status=${status}`
+      : `${API_BASE}/api/arena-content/reports`;
+    const r = await fetch(url, { credentials: "include" });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function updateArenaReport(
+  id: number,
+  patch: { status?: "open" | "resolved" | "dismissed"; adminNote?: string | null },
+): Promise<ArenaQuestionReport | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/reports/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteArenaReport(id: number): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/reports/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function uploadImageFile(file: File): Promise<string | null> {
   try {
     const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {

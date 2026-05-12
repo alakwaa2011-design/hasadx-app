@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, arenaCategoriesTable, arenaActivitiesTable, teachersTable } from "@workspace/db";
-import { eq, or, and, isNull, asc, inArray } from "drizzle-orm";
+import { db, arenaCategoriesTable, arenaActivitiesTable, arenaQuestionReportsTable, teachersTable } from "@workspace/db";
+import { eq, or, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -201,6 +201,117 @@ router.delete("/arena-content/activities/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "delete arena activity");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ───────────────────── Question reports ───────────────────── */
+
+const ReportBody = z.object({
+  categoryId: z.number().int().nullable().optional(),
+  activityId: z.number().int().nullable().optional(),
+  subCategoryId: z.string().max(120).nullable().optional(),
+  difficulty: z.number().int().nullable().optional(),
+  questionType: z.string().max(40).nullable().optional(),
+  questionText: z.string().min(1).max(2000),
+  currentAnswer: z.string().min(1).max(2000),
+  suggestedAnswer: z.string().max(2000).nullable().optional(),
+  note: z.string().min(1).max(2000),
+});
+
+// POST /arena-content/reports — anyone (auth optional) can report
+router.post("/arena-content/reports", async (req, res) => {
+  try {
+    const body = ReportBody.parse(req.body);
+    const teacherId = (req.session as any)?.teacherId ?? null;
+    let reporterName: string | null = null;
+    if (teacherId) {
+      const [t] = await db.select({ name: teachersTable.name }).from(teachersTable).where(eq(teachersTable.id, teacherId));
+      reporterName = t?.name ?? null;
+    }
+    const [row] = await db.insert(arenaQuestionReportsTable).values({
+      categoryId: body.categoryId ?? null,
+      activityId: body.activityId ?? null,
+      subCategoryId: body.subCategoryId ?? null,
+      difficulty: body.difficulty ?? null,
+      questionType: body.questionType ?? null,
+      questionText: body.questionText,
+      currentAnswer: body.currentAnswer,
+      suggestedAnswer: body.suggestedAnswer ?? null,
+      note: body.note,
+      reporterTeacherId: teacherId,
+      reporterName,
+      status: "open",
+    }).returning();
+    res.status(201).json(row);
+  } catch (err) {
+    req.log.error({ err }, "create arena report");
+    res.status(400).json({ error: "Invalid data" });
+  }
+});
+
+// GET /arena-content/reports — admin only
+router.get("/arena-content/reports", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "Forbidden" });
+    const status = String(req.query.status ?? "").trim();
+    const where = status && ["open", "resolved", "dismissed"].includes(status)
+      ? eq(arenaQuestionReportsTable.status, status)
+      : undefined;
+    const q = db.select().from(arenaQuestionReportsTable);
+    const rows = await (where ? q.where(where) : q).orderBy(desc(arenaQuestionReportsTable.createdAt)).limit(500);
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "list arena reports");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// PATCH /arena-content/reports/:id — admin only — update status / admin note
+router.patch("/arena-content/reports/:id", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "Forbidden" });
+    const id = Number(req.params.id);
+    const patch = z.object({
+      status: z.enum(["open", "resolved", "dismissed"]).optional(),
+      adminNote: z.string().max(2000).nullable().optional(),
+    }).parse(req.body);
+    const setData: any = {};
+    if (patch.status !== undefined) {
+      setData.status = patch.status;
+      if (patch.status === "resolved" || patch.status === "dismissed") {
+        setData.resolvedByTeacherId = teacherId;
+        setData.resolvedAt = new Date();
+      } else {
+        setData.resolvedByTeacherId = null;
+        setData.resolvedAt = null;
+      }
+    }
+    if (patch.adminNote !== undefined) setData.adminNote = patch.adminNote;
+    const [row] = await db.update(arenaQuestionReportsTable).set(setData).where(eq(arenaQuestionReportsTable.id, id)).returning();
+    if (!row) return res.status(404).json({ error: "Not found" });
+    res.json(row);
+  } catch (err) {
+    req.log.error({ err }, "update arena report");
+    res.status(400).json({ error: "Invalid data" });
+  }
+});
+
+// DELETE /arena-content/reports/:id — admin only
+router.delete("/arena-content/reports/:id", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    if (!(await isAdmin(teacherId))) return res.status(403).json({ error: "Forbidden" });
+    const id = Number(req.params.id);
+    await db.delete(arenaQuestionReportsTable).where(eq(arenaQuestionReportsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "delete arena report");
     res.status(500).json({ error: "Server error" });
   }
 });
