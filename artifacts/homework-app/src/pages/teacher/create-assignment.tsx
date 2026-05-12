@@ -280,12 +280,15 @@ function SortableQuestionWrapper({
 export default function CreateAssignment() {
   const [, setLocation] = useLocation();
   const { t, lang } = useI18n();
-  // When the organizer enters this page from the "Create Contest" entry
-  // (`/teacher/new/assignment?contest=1`), we re-skin the hero so the copy
-  // talks about "contest questions" instead of generic assignment language.
-  const isContestMode =
+  // Content-kind picker (task #595): the teacher chooses up-front whether
+  // this is a homework activity (default) or a competition question pack.
+  // Initialised from `?contest=1` so the existing "Create Contest" entry
+  // still routes here, but kept as state so the form has an explicit
+  // 2-option chooser independent of the URL.
+  const [isContestMode, setIsContestMode] = useState(
     typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("contest") === "1";
+      new URLSearchParams(window.location.search).get("contest") === "1",
+  );
   const BackArrowIcon = lang === "ar" ? ArrowRight : ArrowLeft;
 
   // ── Wizard state ──
@@ -1014,6 +1017,38 @@ export default function CreateAssignment() {
                   <h2 className="text-xl font-black text-foreground">{lang === "ar" ? "معلومات الواجب" : "Assignment Details"}</h2>
 
                   <Card className="p-5 space-y-4">
+                    {/* ── Content-kind chooser (task #595) ──
+                        Decides which public library this lands in once
+                        shared: مكتبة الأنشطة vs مكتبة المسابقات الجاهزة. */}
+                    <div>
+                      <Label className="text-sm font-bold mb-1.5 block">
+                        {lang === "ar" ? "نوع المحتوى" : "Content type"}
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsContestMode(false)}
+                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${!isContestMode ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-border hover:border-cyan-300"}`}
+                        >
+                          <span className="text-xl">📘</span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "واجب مدرسي" : "Homework"}</div>
+                            <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة الأنشطة" : "Lands in Activities Library"}</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsContestMode(true)}
+                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${isContestMode ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20" : "border-border hover:border-amber-300"}`}
+                        >
+                          <span className="text-xl">🏆</span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "سؤال لمسابقة" : "Competition question"}</div>
+                            <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة المسابقات" : "Lands in Competitions Library"}</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
                     <div>
                       <Label className="text-sm font-bold mb-1.5 block">{t.createAssignment.assignmentTitle} <span className="text-destructive">*</span></Label>
                       <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t.createAssignment.titlePlaceholder} className="text-base" />

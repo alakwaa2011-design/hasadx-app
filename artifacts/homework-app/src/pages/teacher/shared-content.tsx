@@ -46,6 +46,7 @@ interface SharedQuestion {
   teacherName: string | null;
   isAdminContent?: boolean;
   createdAt: string;
+  hiddenByAdmin?: boolean;
 }
 
 interface SharedVideoLesson {
@@ -61,6 +62,7 @@ interface SharedVideoLesson {
   isShared: boolean;
   createdAt: string;
   questionCount: number;
+  hiddenByAdmin?: boolean;
 }
 
 export default function SharedContentPage() {
@@ -125,10 +127,15 @@ export default function SharedContentPage() {
           : `${API_BASE}/api/assignments/shared`;
         // Competition library: assignments only — skip the (slower) bank
         // and video lookups entirely so the tab feels snappy.
+        // Admin show-hidden mode applies to ALL shared endpoints, not just
+        // assignments — so question-bank and video moderation works too.
+        const adminShowHidden = showHidden && meData.isAdmin;
+        const qbUrl = `${API_BASE}/api/question-bank/shared${adminShowHidden ? "?showHidden=1" : ""}`;
+        const vidUrl = `${API_BASE}/api/video-lessons/shared/all${adminShowHidden ? "?showHidden=1" : ""}`;
         const fetches: Promise<Response>[] = [fetch(aUrl, { credentials: "include" })];
         if (!isCompetitionLibrary) {
-          fetches.push(fetch(`${API_BASE}/api/question-bank/shared`, { credentials: "include" }));
-          fetches.push(fetch(`${API_BASE}/api/video-lessons/shared/all`, { credentials: "include" }));
+          fetches.push(fetch(qbUrl, { credentials: "include" }));
+          fetches.push(fetch(vidUrl, { credentials: "include" }));
         }
         const [aRes, qRes, vRes] = await Promise.all(fetches);
         if (aRes.ok) setAssignments(await aRes.json());
@@ -159,6 +166,10 @@ export default function SharedContentPage() {
       if (res.ok) {
         if (itemType === "assignments") {
           setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, hiddenByAdmin: false } : a));
+        } else if (itemType === "question-bank") {
+          setQuestions(prev => prev.map(q => q.id === itemId ? { ...q, hiddenByAdmin: false } : q));
+        } else {
+          setVideoLessons(prev => prev.map(v => v.id === itemId ? { ...v, hiddenByAdmin: false } : v));
         }
         toast.success(lang === "ar" ? "تم استعادة العنصر إلى المكتبة" : "Item restored to library");
       } else {
@@ -195,8 +206,10 @@ export default function SharedContentPage() {
         // the row in place and just flip its flag, so they can still see
         // (and potentially unhide) what they just hid. Otherwise we drop
         // it from the list to mirror the public view.
-        if (showHidden && itemType === "assignments") {
-          setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, hiddenByAdmin: true } : a));
+        if (showHidden) {
+          if (itemType === "assignments") setAssignments(prev => prev.map(a => a.id === itemId ? { ...a, hiddenByAdmin: true } : a));
+          else if (itemType === "question-bank") setQuestions(prev => prev.map(q => q.id === itemId ? { ...q, hiddenByAdmin: true } : q));
+          else setVideoLessons(prev => prev.map(v => v.id === itemId ? { ...v, hiddenByAdmin: true } : v));
         } else if (itemType === "assignments") setAssignments(prev => prev.filter(a => a.id !== itemId));
         else if (itemType === "question-bank") setQuestions(prev => prev.filter(q => q.id !== itemId));
         else setVideoLessons(prev => prev.filter(v => v.id !== itemId));
@@ -475,6 +488,41 @@ export default function SharedContentPage() {
           )}
         </div>
 
+        {/* Quick-launch cards live only inside the competitions library —
+            they let teachers jump straight into the seeded competition
+            modes (Arena, Million, Islamic Quiz) without browsing rows. */}
+        {isCompetitionLibrary && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            <button
+              onClick={() => setLocation("/game/arena")}
+              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(135deg,#7c3aed,#db2777)" }}
+            >
+              <div className="text-2xl mb-1">⚔️</div>
+              <div className="font-extrabold">{lang === "ar" ? "ساحة المعركة" : "Arena"}</div>
+              <div className="text-xs opacity-85">{lang === "ar" ? "مسابقة سريعة بنك أسئلة جاهز" : "Fast-paced competition · seeded bank"}</div>
+            </button>
+            <button
+              onClick={() => setLocation("/game/million")}
+              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(135deg,#f59e0b,#ea580c)" }}
+            >
+              <div className="text-2xl mb-1">💰</div>
+              <div className="font-extrabold">{lang === "ar" ? "من سيربح المليون؟" : "Who Wants a Million"}</div>
+              <div className="text-xs opacity-85">{lang === "ar" ? "لعبة الأسئلة الكلاسيكية" : "Classic trivia ladder"}</div>
+            </button>
+            <button
+              onClick={() => setLocation("/islamic")}
+              className="group relative overflow-hidden rounded-2xl p-4 text-start text-white shadow-lg transition-transform hover:-translate-y-0.5"
+              style={{ background: "linear-gradient(135deg,#059669,#0d9488)" }}
+            >
+              <div className="text-2xl mb-1">☪️</div>
+              <div className="font-extrabold">{lang === "ar" ? "المسابقة الإسلامية" : "Islamic Quiz"}</div>
+              <div className="text-xs opacity-85">{lang === "ar" ? "أسئلة تربوية إسلامية" : "Islamic studies bank"}</div>
+            </button>
+          </div>
+        )}
+
         {activeTab === "assignments" && (
           filteredAssignments.length > 0 ? (
             <div className="grid gap-3">
@@ -626,14 +674,25 @@ export default function SharedContentPage() {
                           </Button>
                         )}
                         {isAdmin && v.teacherId !== currentTeacherId && (
-                          <button
-                            onClick={() => hideAsAdmin("video-lessons", v.id)}
-                            disabled={hidingIds.has(`video-lessons-${v.id}`)}
-                            title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                            className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                          >
-                            {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                          </button>
+                          v.hiddenByAdmin ? (
+                            <button
+                              onClick={() => unhideAsAdmin("video-lessons", v.id)}
+                              disabled={hidingIds.has(`video-lessons-${v.id}`)}
+                              title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
+                              className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => hideAsAdmin("video-lessons", v.id)}
+                              disabled={hidingIds.has(`video-lessons-${v.id}`)}
+                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                            >
+                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
@@ -709,14 +768,25 @@ export default function SharedContentPage() {
                               {dismissingIds.has(`question-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
                             {isAdmin && (
-                              <button
-                                onClick={() => hideAsAdmin("question-bank", q.id)}
-                                disabled={hidingIds.has(`question-bank-${q.id}`)}
-                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                              >
-                                {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                              </button>
+                              q.hiddenByAdmin ? (
+                                <button
+                                  onClick={() => unhideAsAdmin("question-bank", q.id)}
+                                  disabled={hidingIds.has(`question-bank-${q.id}`)}
+                                  title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
+                                  className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                                >
+                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => hideAsAdmin("question-bank", q.id)}
+                                  disabled={hidingIds.has(`question-bank-${q.id}`)}
+                                  title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                                  className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                                >
+                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                                </button>
+                              )
                             )}
                           </>
                         )}

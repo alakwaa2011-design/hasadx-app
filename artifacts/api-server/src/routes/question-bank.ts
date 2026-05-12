@@ -447,6 +447,16 @@ router.get("/question-bank/shared", async (req, res) => {
       ));
     const dismissedIds = dismissed.map(d => d.itemId);
 
+    // Admin-only opt-in to surface admin-hidden rows for moderation. We
+    // verify admin by DB lookup so a non-admin cannot bypass the filter
+    // simply by appending ?showHidden=1.
+    const wantHidden = req.query.showHidden === "1" || req.query.showHidden === "true";
+    let isAdminRequester = false;
+    if (wantHidden) {
+      const [me] = await db.select({ isAdmin: teachersTable.isAdmin }).from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+      isAdminRequester = !!me?.isAdmin;
+    }
+
     const results = await db
       .select({
         id: questionBankTable.id,
@@ -461,6 +471,7 @@ router.get("/question-bank/shared", async (req, res) => {
         tags: questionBankTable.tags,
         imageUrl: questionBankTable.imageUrl,
         isShared: questionBankTable.isShared,
+        hiddenByAdmin: questionBankTable.hiddenByAdmin,
         allowMultipleAnswers: questionBankTable.allowMultipleAnswers,
         repeatQuestion: questionBankTable.repeatQuestion,
         teacherId: questionBankTable.teacherId,
@@ -472,7 +483,7 @@ router.get("/question-bank/shared", async (req, res) => {
       .leftJoin(teachersTable, eq(questionBankTable.teacherId, teachersTable.id))
       .where(and(
         eq(questionBankTable.isShared, true),
-        eq(questionBankTable.hiddenByAdmin, false),
+        (wantHidden && isAdminRequester) ? undefined : eq(questionBankTable.hiddenByAdmin, false),
         ne(questionBankTable.teacherId, teacherId),
         dismissedIds.length > 0 ? notInArray(questionBankTable.id, dismissedIds) : undefined
       ))

@@ -121,6 +121,15 @@ router.get("/video-lessons", async (req, res) => {
 
 router.get("/video-lessons/shared/all", async (req, res) => {
   try {
+    // Admin-only opt-in to include hidden rows for moderation.
+    const wantHidden = req.query.showHidden === "1" || req.query.showHidden === "true";
+    let isAdminRequester = false;
+    const requesterId = req.session.teacherId;
+    if (wantHidden && requesterId) {
+      const [me] = await db.select({ isAdmin: teachersTable.isAdmin }).from(teachersTable).where(eq(teachersTable.id, requesterId)).limit(1);
+      isAdminRequester = !!me?.isAdmin;
+    }
+
     const lessons = await db
       .select({
         id: videoLessonsTable.id,
@@ -133,12 +142,16 @@ router.get("/video-lessons/shared/all", async (req, res) => {
         teacherName: teachersTable.name,
         isAdminContent: teachersTable.isAdmin,
         isShared: videoLessonsTable.isShared,
+        hiddenByAdmin: videoLessonsTable.hiddenByAdmin,
         createdAt: videoLessonsTable.createdAt,
         questionCount: sql<number>`(SELECT COUNT(*) FROM video_questions WHERE video_questions.video_lesson_id = ${videoLessonsTable.id})`.as("question_count"),
       })
       .from(videoLessonsTable)
       .leftJoin(teachersTable, eq(videoLessonsTable.teacherId, teachersTable.id))
-      .where(and(eq(videoLessonsTable.isShared, true), eq(videoLessonsTable.hiddenByAdmin, false)))
+      .where(and(
+        eq(videoLessonsTable.isShared, true),
+        (wantHidden && isAdminRequester) ? undefined : eq(videoLessonsTable.hiddenByAdmin, false),
+      ))
       .orderBy(desc(videoLessonsTable.createdAt));
 
     res.json(lessons.map(l => ({ ...l, isAdminContent: !!l.isAdminContent })));

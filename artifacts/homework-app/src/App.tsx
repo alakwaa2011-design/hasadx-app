@@ -138,6 +138,12 @@ const MillionJoin = lazy(() => import("@/pages/game/million-join"));
 const MillionBroadcastHost = lazy(() => import("@/pages/game/million-broadcast-host"));
 const MillionTeamControlHost = lazy(() => import("@/pages/game/million-team-control-host"));
 const MillionTeamWatch = lazy(() => import("@/pages/game/million-team-watch"));
+function LegacySharedRedirect() {
+  const [, setLocation] = useLocation();
+  useEffect(() => { setLocation("/teacher/library/homework", { replace: true }); }, [setLocation]);
+  return null;
+}
+
 function MillionTeamSetupRedirect() {
   const [, setLocation] = useLocation();
   useEffect(() => { setLocation("/game/million", { replace: true }); }, [setLocation]);
@@ -248,7 +254,9 @@ function Router() {
         <Route path="/teacher/question-bank" component={QuestionBankPage} />
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
-        <Route path="/teacher/shared" component={SharedContentPage} />
+        {/* Legacy /teacher/shared → redirect to the new activities library
+            (task #595 split). Existing bookmarks and links keep working. */}
+        <Route path="/teacher/shared" component={LegacySharedRedirect} />
         {/* Split libraries — same component, kind comes from the URL */}
         <Route path="/teacher/library/homework" component={SharedContentPage} />
         <Route path="/teacher/library/competitions" component={SharedContentPage} />
