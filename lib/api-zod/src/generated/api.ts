@@ -320,6 +320,60 @@ export const RevokeTeacherSessionResponse = zod.object({
 });
 
 /**
+ * @summary Hide a shared assignment from the public library (admin only)
+ */
+export const AdminHideAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminHideAssignmentBody = zod.object({
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Restore a previously hidden assignment to the public library
+ */
+export const AdminUnhideAssignmentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Hide a shared question-bank item from the public library
+ */
+export const AdminHideQuestionBankItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminHideQuestionBankItemBody = zod.object({
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Restore a hidden question-bank item to the public library
+ */
+export const AdminUnhideQuestionBankItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Hide a shared video lesson from the public library
+ */
+export const AdminHideVideoLessonParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AdminHideVideoLessonBody = zod.object({
+  reason: zod.string().nullish(),
+});
+
+/**
+ * @summary Restore a hidden video lesson to the public library
+ */
+export const AdminUnhideVideoLessonParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all registered teachers with stats
  */
 export const ListAllTeachersResponseItem = zod.object({

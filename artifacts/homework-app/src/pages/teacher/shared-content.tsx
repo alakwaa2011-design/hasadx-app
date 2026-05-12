@@ -528,7 +528,7 @@ export default function SharedContentPage() {
             <div className="grid gap-3">
               {filteredAssignments.map((a, i) => (
                 <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className="p-4 hover:shadow-md transition-shadow">
+                  <Card className={`p-4 hover:shadow-md transition-shadow ${a.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-bold text-foreground mb-1">{a.title}</h3>
@@ -593,10 +593,10 @@ export default function SharedContentPage() {
                                 <button
                                   onClick={() => unhideAsAdmin("assignments", a.id)}
                                   disabled={hidingIds.has(`assignments-${a.id}`)}
-                                  title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
-                                  className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
                                 >
-                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                                  {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                                  {lang === "ar" ? "إعادة الإظهار" : "Restore"}
                                 </button>
                               ) : (
                                 <button
@@ -634,7 +634,7 @@ export default function SharedContentPage() {
                   (!subjectFilter || v.subject === subjectFilter))
                 .map((v, i) => (
                 <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className="p-4 hover:shadow-md transition-shadow">
+                  <Card className={`p-4 hover:shadow-md transition-shadow ${v.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -678,10 +678,10 @@ export default function SharedContentPage() {
                             <button
                               onClick={() => unhideAsAdmin("video-lessons", v.id)}
                               disabled={hidingIds.has(`video-lessons-${v.id}`)}
-                              title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
-                              className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
                             >
-                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                              {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
                             </button>
                           ) : (
                             <button
@@ -714,7 +714,7 @@ export default function SharedContentPage() {
             <div className="grid gap-3">
               {filteredQuestions.map((q, i) => (
                 <motion.div key={q.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
-                  <Card className="p-4 hover:shadow-md transition-shadow">
+                  <Card className={`p-4 hover:shadow-md transition-shadow ${q.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-foreground mb-1">{q.text}</p>
@@ -772,10 +772,10 @@ export default function SharedContentPage() {
                                 <button
                                   onClick={() => unhideAsAdmin("question-bank", q.id)}
                                   disabled={hidingIds.has(`question-bank-${q.id}`)}
-                                  title={lang === "ar" ? "استعادة إلى المكتبة (مشرف)" : "Restore to library (admin)"}
-                                  className="p-1.5 rounded-lg text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 transition-colors disabled:opacity-40"
+                                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
                                 >
-                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                                  {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                                  {lang === "ar" ? "إعادة الإظهار" : "Restore"}
                                 </button>
                               ) : (
                                 <button

@@ -1970,6 +1970,47 @@ export default function CreateAssignment() {
                   </Card>
 
 
+                  {/* Sharing banner — sits next to the Save/Publish action
+                      so teachers can flip an assignment to private with one
+                      click without opening Advanced Settings. Hidden when
+                      the assignment is access-private (cannot be shared). */}
+                  {accessMode !== "private" && !isContestMode && (
+                    <Card className={`p-4 border-2 ${isShared ? "border-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/10" : "border-border bg-muted/30"}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <span className="text-2xl shrink-0">{isShared ? "🌍" : "🔒"}</span>
+                          <div className="min-w-0">
+                            <div className="text-sm font-extrabold">
+                              {isShared
+                                ? (lang === "ar" ? "سيُشارك تلقائيًا في مكتبة الأنشطة" : "Will be auto-shared to the Activities Library")
+                                : (lang === "ar" ? "خاص بك فقط" : "Private to you only")}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {isShared
+                                ? (lang === "ar" ? "زملاؤك المعلمون يستطيعون استيراده مباشرة." : "Other teachers can import it directly.")
+                                : (lang === "ar" ? "لن يظهر لأي معلم آخر." : "Won't appear to any other teacher.")}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !isShared;
+                            setIsShared(next);
+                            toast.success(next
+                              ? (lang === "ar" ? "🌍 سيُشارك في مكتبة الأنشطة" : "🌍 Will be shared")
+                              : (lang === "ar" ? "🔒 تم جعله خاصًا" : "🔒 Made private"));
+                          }}
+                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-cyan-400 text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"}`}
+                        >
+                          {isShared
+                            ? (lang === "ar" ? "اجعله خاصًا 🔒" : "Make Private 🔒")
+                            : (lang === "ar" ? "شاركه مع المعلمين 🌍" : "Share with teachers 🌍")}
+                        </button>
+                      </div>
+                    </Card>
+                  )}
+
                   {/* Publish button */}
                   <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary via-primary to-emerald-700 hover:opacity-95 text-primary-foreground font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2">

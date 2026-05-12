@@ -299,6 +299,126 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /admin/assignments/{id}/hide:
+    post:
+      operationId: adminHideAssignment
+      tags: [admin]
+      summary: Hide a shared assignment from the public library (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, nullable: true }
+      responses:
+        "200": { description: Assignment hidden }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Assignment not found }
+
+  /admin/assignments/{id}/unhide:
+    post:
+      operationId: adminUnhideAssignment
+      tags: [admin]
+      summary: Restore a previously hidden assignment to the public library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Assignment restored }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Assignment not found }
+
+  /admin/question-bank/{id}/hide:
+    post:
+      operationId: adminHideQuestionBankItem
+      tags: [admin]
+      summary: Hide a shared question-bank item from the public library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, nullable: true }
+      responses:
+        "200": { description: Question hidden }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Question not found }
+
+  /admin/question-bank/{id}/unhide:
+    post:
+      operationId: adminUnhideQuestionBankItem
+      tags: [admin]
+      summary: Restore a hidden question-bank item to the public library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Question restored }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Question not found }
+
+  /admin/video-lessons/{id}/hide:
+    post:
+      operationId: adminHideVideoLesson
+      tags: [admin]
+      summary: Hide a shared video lesson from the public library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, nullable: true }
+      responses:
+        "200": { description: Video lesson hidden }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Video lesson not found }
+
+  /admin/video-lessons/{id}/unhide:
+    post:
+      operationId: adminUnhideVideoLesson
+      tags: [admin]
+      summary: Restore a hidden video lesson to the public library
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Video lesson restored }
+        "401": { description: Not authenticated }
+        "403": { description: Not an admin }
+        "404": { description: Video lesson not found }
+
   /admin/teachers:
     get:
       operationId: listAllTeachers

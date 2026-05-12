@@ -1276,6 +1276,18 @@ export interface PresentationAiLimits {
   allowClaude: boolean;
 }
 
+export type AdminHideAssignmentBody = {
+  reason?: string | null;
+};
+
+export type AdminHideQuestionBankItemBody = {
+  reason?: string | null;
+};
+
+export type AdminHideVideoLessonBody = {
+  reason?: string | null;
+};
+
 export type ListAssignmentsParams = {
   teacherId?: number;
   /**

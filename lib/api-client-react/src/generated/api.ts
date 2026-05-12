@@ -17,6 +17,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminHideAssignmentBody,
+  AdminHideQuestionBankItemBody,
+  AdminHideVideoLessonBody,
   AdminTeacherSummary,
   Assignment,
   AssignmentWithQuestions,
@@ -1139,6 +1142,521 @@ export const useRevokeTeacherSession = <
   TContext
 > => {
   return useMutation(getRevokeTeacherSessionMutationOptions(options));
+};
+
+/**
+ * @summary Hide a shared assignment from the public library (admin only)
+ */
+export const getAdminHideAssignmentUrl = (id: number) => {
+  return `/api/admin/assignments/${id}/hide`;
+};
+
+export const adminHideAssignment = async (
+  id: number,
+  adminHideAssignmentBody?: AdminHideAssignmentBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminHideAssignmentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminHideAssignmentBody),
+  });
+};
+
+export const getAdminHideAssignmentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideAssignment>>,
+    TError,
+    { id: number; data: BodyType<AdminHideAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminHideAssignment>>,
+  TError,
+  { id: number; data: BodyType<AdminHideAssignmentBody> },
+  TContext
+> => {
+  const mutationKey = ["adminHideAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminHideAssignment>>,
+    { id: number; data: BodyType<AdminHideAssignmentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return adminHideAssignment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminHideAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminHideAssignment>>
+>;
+export type AdminHideAssignmentMutationBody = BodyType<AdminHideAssignmentBody>;
+export type AdminHideAssignmentMutationError = ErrorType<void>;
+
+/**
+ * @summary Hide a shared assignment from the public library (admin only)
+ */
+export const useAdminHideAssignment = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideAssignment>>,
+    TError,
+    { id: number; data: BodyType<AdminHideAssignmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminHideAssignment>>,
+  TError,
+  { id: number; data: BodyType<AdminHideAssignmentBody> },
+  TContext
+> => {
+  return useMutation(getAdminHideAssignmentMutationOptions(options));
+};
+
+/**
+ * @summary Restore a previously hidden assignment to the public library
+ */
+export const getAdminUnhideAssignmentUrl = (id: number) => {
+  return `/api/admin/assignments/${id}/unhide`;
+};
+
+export const adminUnhideAssignment = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminUnhideAssignmentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAdminUnhideAssignmentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUnhideAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["adminUnhideAssignment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUnhideAssignment>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return adminUnhideAssignment(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUnhideAssignmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUnhideAssignment>>
+>;
+
+export type AdminUnhideAssignmentMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a previously hidden assignment to the public library
+ */
+export const useAdminUnhideAssignment = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideAssignment>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUnhideAssignment>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAdminUnhideAssignmentMutationOptions(options));
+};
+
+/**
+ * @summary Hide a shared question-bank item from the public library
+ */
+export const getAdminHideQuestionBankItemUrl = (id: number) => {
+  return `/api/admin/question-bank/${id}/hide`;
+};
+
+export const adminHideQuestionBankItem = async (
+  id: number,
+  adminHideQuestionBankItemBody?: AdminHideQuestionBankItemBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminHideQuestionBankItemUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminHideQuestionBankItemBody),
+  });
+};
+
+export const getAdminHideQuestionBankItemMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideQuestionBankItem>>,
+    TError,
+    { id: number; data: BodyType<AdminHideQuestionBankItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminHideQuestionBankItem>>,
+  TError,
+  { id: number; data: BodyType<AdminHideQuestionBankItemBody> },
+  TContext
+> => {
+  const mutationKey = ["adminHideQuestionBankItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminHideQuestionBankItem>>,
+    { id: number; data: BodyType<AdminHideQuestionBankItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return adminHideQuestionBankItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminHideQuestionBankItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminHideQuestionBankItem>>
+>;
+export type AdminHideQuestionBankItemMutationBody =
+  BodyType<AdminHideQuestionBankItemBody>;
+export type AdminHideQuestionBankItemMutationError = ErrorType<void>;
+
+/**
+ * @summary Hide a shared question-bank item from the public library
+ */
+export const useAdminHideQuestionBankItem = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideQuestionBankItem>>,
+    TError,
+    { id: number; data: BodyType<AdminHideQuestionBankItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminHideQuestionBankItem>>,
+  TError,
+  { id: number; data: BodyType<AdminHideQuestionBankItemBody> },
+  TContext
+> => {
+  return useMutation(getAdminHideQuestionBankItemMutationOptions(options));
+};
+
+/**
+ * @summary Restore a hidden question-bank item to the public library
+ */
+export const getAdminUnhideQuestionBankItemUrl = (id: number) => {
+  return `/api/admin/question-bank/${id}/unhide`;
+};
+
+export const adminUnhideQuestionBankItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminUnhideQuestionBankItemUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAdminUnhideQuestionBankItemMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["adminUnhideQuestionBankItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return adminUnhideQuestionBankItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUnhideQuestionBankItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>
+>;
+
+export type AdminUnhideQuestionBankItemMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a hidden question-bank item to the public library
+ */
+export const useAdminUnhideQuestionBankItem = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUnhideQuestionBankItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAdminUnhideQuestionBankItemMutationOptions(options));
+};
+
+/**
+ * @summary Hide a shared video lesson from the public library
+ */
+export const getAdminHideVideoLessonUrl = (id: number) => {
+  return `/api/admin/video-lessons/${id}/hide`;
+};
+
+export const adminHideVideoLesson = async (
+  id: number,
+  adminHideVideoLessonBody?: AdminHideVideoLessonBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminHideVideoLessonUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminHideVideoLessonBody),
+  });
+};
+
+export const getAdminHideVideoLessonMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideVideoLesson>>,
+    TError,
+    { id: number; data: BodyType<AdminHideVideoLessonBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminHideVideoLesson>>,
+  TError,
+  { id: number; data: BodyType<AdminHideVideoLessonBody> },
+  TContext
+> => {
+  const mutationKey = ["adminHideVideoLesson"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminHideVideoLesson>>,
+    { id: number; data: BodyType<AdminHideVideoLessonBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return adminHideVideoLesson(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminHideVideoLessonMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminHideVideoLesson>>
+>;
+export type AdminHideVideoLessonMutationBody =
+  BodyType<AdminHideVideoLessonBody>;
+export type AdminHideVideoLessonMutationError = ErrorType<void>;
+
+/**
+ * @summary Hide a shared video lesson from the public library
+ */
+export const useAdminHideVideoLesson = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminHideVideoLesson>>,
+    TError,
+    { id: number; data: BodyType<AdminHideVideoLessonBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminHideVideoLesson>>,
+  TError,
+  { id: number; data: BodyType<AdminHideVideoLessonBody> },
+  TContext
+> => {
+  return useMutation(getAdminHideVideoLessonMutationOptions(options));
+};
+
+/**
+ * @summary Restore a hidden video lesson to the public library
+ */
+export const getAdminUnhideVideoLessonUrl = (id: number) => {
+  return `/api/admin/video-lessons/${id}/unhide`;
+};
+
+export const adminUnhideVideoLesson = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminUnhideVideoLessonUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAdminUnhideVideoLessonMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideVideoLesson>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUnhideVideoLesson>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["adminUnhideVideoLesson"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUnhideVideoLesson>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return adminUnhideVideoLesson(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUnhideVideoLessonMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUnhideVideoLesson>>
+>;
+
+export type AdminUnhideVideoLessonMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a hidden video lesson to the public library
+ */
+export const useAdminUnhideVideoLesson = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUnhideVideoLesson>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUnhideVideoLesson>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAdminUnhideVideoLessonMutationOptions(options));
 };
 
 /**
