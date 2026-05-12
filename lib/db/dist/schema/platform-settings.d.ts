@@ -8,8 +8,8 @@ export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
 export declare const DEFAULT_ARENA_IMPORT_SOURCES: {
     readonly manual: true;
     readonly ai: true;
-    readonly homework: false;
-    readonly file: false;
+    readonly homework: true;
+    readonly file: true;
 };
 export type ArenaImportSources = {
     manual: boolean;
