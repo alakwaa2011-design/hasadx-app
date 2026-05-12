@@ -1265,6 +1265,7 @@ export default function AdminPage() {
                   { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
                   { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط" : "Activity Log", icon: Activity },
                   { key: "appearance" as Tab, label: t.admin.tabAppearance, icon: Palette },
+                  { key: "__hidden__" as Tab, label: lang === "ar" ? "المخفي بواسطة المسؤول" : "Hidden by admin", icon: Eye, href: "/admin/hidden" },
                 ],
               },
             ]).map((group, gi, arr) => (
@@ -1273,20 +1274,35 @@ export default function AdminPage() {
                   {group.title}
                 </span>
                 <div className="flex items-center">
-                  {group.tabs.map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => { setActiveTab(tab.key); setSearch(""); }}
-                      className={`px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all -mb-px whitespace-nowrap ${
-                        activeTab === tab.key
-                          ? "border-primary text-primary"
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <tab.icon className="w-4 h-4" />
-                      {tab.label}
-                    </button>
-                  ))}
+                  {group.tabs.map((tab) => {
+                    const t2 = tab as typeof tab & { href?: string };
+                    if (t2.href) {
+                      return (
+                        <Link
+                          key={tab.key}
+                          href={t2.href}
+                          className="px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-all -mb-px whitespace-nowrap"
+                        >
+                          <tab.icon className="w-4 h-4" />
+                          {tab.label}
+                        </Link>
+                      );
+                    }
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => { setActiveTab(tab.key); setSearch(""); }}
+                        className={`px-3 py-2 text-sm font-bold flex items-center gap-1.5 border-b-2 transition-all -mb-px whitespace-nowrap ${
+                          activeTab === tab.key
+                            ? "border-primary text-primary"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <tab.icon className="w-4 h-4" />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}

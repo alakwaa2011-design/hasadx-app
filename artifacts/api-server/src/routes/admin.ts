@@ -941,6 +941,68 @@ router.post("/admin/assignments/:id/reject-share", async (req, res) => {
   }
 });
 
+/* ── Admin: list all hidden items across types ──────────────────
+   Powers the "Hidden by admin" review page. Returns flat rows with
+   {type, id, title, teacherName, hiddenAt, hideReason, hiddenByName}
+   so a single sortable table can render assignments + question-bank
+   + video-lessons together. */
+router.get("/admin/hidden", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+
+    const assignmentRows = await db.execute(sql`
+      SELECT a.id, a.title, a.subject, a.hidden_at AS "hiddenAt",
+             a.hide_reason AS "hideReason", a.hidden_by_id AS "hiddenById",
+             owner.name AS "teacherName", hider.name AS "hiddenByName"
+        FROM assignments a
+        LEFT JOIN teachers owner ON owner.id = a.teacher_id
+        LEFT JOIN teachers hider ON hider.id = a.hidden_by_id
+       WHERE a.hidden_by_admin = true
+       ORDER BY a.hidden_at DESC NULLS LAST, a.id DESC
+    `);
+
+    const questionRows = await db.execute(sql`
+      SELECT q.id, q.text AS title, q.subject, q.hidden_at AS "hiddenAt",
+             q.hide_reason AS "hideReason", q.hidden_by_id AS "hiddenById",
+             owner.name AS "teacherName", hider.name AS "hiddenByName"
+        FROM question_bank q
+        LEFT JOIN teachers owner ON owner.id = q.teacher_id
+        LEFT JOIN teachers hider ON hider.id = q.hidden_by_id
+       WHERE q.hidden_by_admin = true
+       ORDER BY q.hidden_at DESC NULLS LAST, q.id DESC
+    `);
+
+    const videoRows = await db.execute(sql`
+      SELECT v.id, v.title, v.subject, v.hidden_at AS "hiddenAt",
+             v.hide_reason AS "hideReason", v.hidden_by_id AS "hiddenById",
+             owner.name AS "teacherName", hider.name AS "hiddenByName"
+        FROM video_lessons v
+        LEFT JOIN teachers owner ON owner.id = v.teacher_id
+        LEFT JOIN teachers hider ON hider.id = v.hidden_by_id
+       WHERE v.hidden_by_admin = true
+       ORDER BY v.hidden_at DESC NULLS LAST, v.id DESC
+    `);
+
+    type HiddenRow = Record<string, unknown> & { type: "assignment" | "question-bank" | "video-lesson"; hiddenAt: string | null };
+    const items: HiddenRow[] = [
+      ...(assignmentRows.rows as Array<Record<string, unknown>>).map((r) => ({ ...r, type: "assignment" as const }) as HiddenRow),
+      ...(questionRows.rows as Array<Record<string, unknown>>).map((r) => ({ ...r, type: "question-bank" as const }) as HiddenRow),
+      ...(videoRows.rows as Array<Record<string, unknown>>).map((r) => ({ ...r, type: "video-lesson" as const }) as HiddenRow),
+    ];
+
+    items.sort((a, b) => {
+      const ta = a.hiddenAt ? new Date(a.hiddenAt).getTime() : 0;
+      const tb = b.hiddenAt ? new Date(b.hiddenAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    res.json({ items });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list hidden items");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
 /* ── Admin hide / unhide endpoints ──────────────────────────────
    The new sharing model auto-publishes everything; admins moderate
    reactively by hiding individual rows from the public libraries.
