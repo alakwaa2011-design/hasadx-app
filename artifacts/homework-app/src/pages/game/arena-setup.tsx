@@ -5,7 +5,7 @@ import {
   ArrowRight, ArrowLeft, Play, Users, Swords, Sparkles, Check, Trophy,
   Plus, Trash2, ChevronRight, ChevronLeft, X, UserPlus, LogIn, Lock,
   ChevronDown, Award, Image as ImageIcon, Upload, Edit3, Globe, FolderPlus,
-  Save, Camera, Crown, Inbox,
+  Save, Camera, Crown, Inbox, Dices, Wand2,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -262,6 +262,42 @@ export default function ArenaSetup() {
     () => new Set(teams.flatMap(t => t.subCategoryIds)),
     [teams],
   );
+
+  /* ───────── Random pick (قرعة الفئات الذكية) ───────── */
+  const [randomReveal, setRandomReveal] = useState<null | {
+    pool: ArenaSubCategory[];
+    result: string[][]; // result[teamIdx] = [3 subCategory ids]
+  }>(null);
+
+  const pickRandomCategories = () => {
+    const pool: ArenaSubCategory[] = sectionsForPicker.flatMap(s => s.subCategories);
+    const needed = teams.length * 3;
+    if (pool.length < needed) {
+      toast.error(`تحتاج ${needed} فئة على الأقل — المتاح ${pool.length}`);
+      return;
+    }
+    /* Fisher–Yates shuffle for unbiased distribution */
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const picks = shuffled.slice(0, needed);
+    const result: string[][] = teams.map((_, ti) =>
+      picks.slice(ti * 3, ti * 3 + 3).map(s => s.id),
+    );
+    setRandomReveal({ pool, result });
+  };
+
+  const applyRandomPick = () => {
+    if (!randomReveal) return;
+    setTeams(prev => prev.map((t, i) => ({
+      ...t,
+      subCategoryIds: randomReveal.result[i],
+    })));
+    setRandomReveal(null);
+    toast.success("تم اختيار الفئات بالقرعة 🎉");
+  };
 
   const step1Valid = teams.every(t => t.name.trim());
   const step2Valid = teams.every(t => t.subCategoryIds.length === 3);
@@ -728,14 +764,48 @@ export default function ArenaSetup() {
                       <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — كل فئة بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => { setEditingCat(null); setEditorOpen(true); }}
-                    className="px-4 py-2.5 rounded-xl font-bold text-sm inline-flex items-center gap-2 shadow-md shrink-0 transition hover:opacity-95"
-                    style={{ background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white" }}
-                  >
-                    <FolderPlus className="w-4 h-4" />
-                    اصنع فئتك
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <motion.button
+                      onClick={pickRandomCategories}
+                      whileHover={{ scale: 1.04, y: -1 }}
+                      whileTap={{ scale: 0.95, rotate: -2 }}
+                      className="relative px-4 py-2.5 rounded-xl font-extrabold text-sm inline-flex items-center gap-2 overflow-hidden"
+                      style={{
+                        background: "linear-gradient(135deg, #1f4d4f 0%, #2d5e3f 55%, #1f4d4f 100%)",
+                        color: "#ffffff",
+                        boxShadow: "0 8px 22px -6px rgba(31,77,79,0.55), inset 0 0 0 1px rgba(201,161,75,0.45)",
+                      }}
+                      title="قرعة عشوائية — يختار 3 فئات لكل فريق دون تحيّز"
+                    >
+                      {/* Shimmer */}
+                      <motion.span
+                        aria-hidden
+                        className="absolute inset-0"
+                        animate={{ x: ["-130%", "130%"] }}
+                        transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }}
+                        style={{
+                          background: "linear-gradient(90deg, transparent 0%, rgba(201,161,75,0.55) 50%, transparent 100%)",
+                          width: "55%",
+                        }}
+                      />
+                      <motion.span
+                        animate={{ rotate: [0, -10, 10, -6, 6, 0] }}
+                        transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 2.2 }}
+                        className="relative inline-flex"
+                      >
+                        <Dices className="w-4 h-4" style={{ color: "#f5d272" }} />
+                      </motion.span>
+                      <span className="relative">قرعة عشوائية</span>
+                    </motion.button>
+                    <button
+                      onClick={() => { setEditingCat(null); setEditorOpen(true); }}
+                      className="px-4 py-2.5 rounded-xl font-bold text-sm inline-flex items-center gap-2 shadow-md transition hover:opacity-95"
+                      style={{ background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white" }}
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      اصنع فئتك
+                    </button>
+                  </div>
                 </div>
 
                 {/* Admin-only quick link to question reports inbox */}
@@ -1031,6 +1101,18 @@ export default function ArenaSetup() {
             setCustomQuestions={setCustomQuestions}
           />
         )}
+
+        <AnimatePresence>
+          {randomReveal && (
+            <RandomPickReveal
+              teams={teams}
+              pool={randomReveal.pool}
+              result={randomReveal.result}
+              onClose={() => setRandomReveal(null)}
+              onApply={applyRandomPick}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </Layout>
   );
@@ -2127,6 +2209,371 @@ function CategorizeEditor({ groups, onGroups }: CategorizeEditorProps) {
         إضافة مجموعة
       </button>
     </div>
+  );
+}
+
+/* ─────────────────────────── Random pick reveal modal ─────────────────────────── */
+
+interface RandomPickRevealProps {
+  teams: TeamFormState[];
+  pool: ArenaSubCategory[];
+  result: string[][]; // result[teamIdx] -> 3 sub ids
+  onClose: () => void;
+  onApply: () => void;
+}
+
+function RandomPickReveal({ teams, pool, result, onClose, onApply }: RandomPickRevealProps) {
+  const subById = useMemo(() => {
+    const m = new Map<string, ArenaSubCategory>();
+    pool.forEach((s, i) => m.set(s.id, s));
+    return m;
+  }, [pool]);
+  const coverFor = (sub: ArenaSubCategory, idx: number): ArenaCover => {
+    if (sub.cover) return sub.cover;
+    return coverForIndex(idx, { emoji: "🎯" });
+  };
+  const poolWithCover = useMemo(
+    () => pool.map((s, i) => ({ sub: s, cover: coverFor(s, i) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pool],
+  );
+
+  /* Track how many reels have finished — auto-apply when all done. */
+  const totalReels = teams.length * 3;
+  const [doneCount, setDoneCount] = useState(0);
+  const [allDone, setAllDone] = useState(false);
+
+  useEffect(() => {
+    if (doneCount >= totalReels && !allDone) {
+      setAllDone(true);
+      const t = setTimeout(() => onApply(), 1400);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [doneCount, totalReels, allDone, onApply]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4"
+      style={{ background: "rgba(31,77,79,0.78)", backdropFilter: "blur(10px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      dir="rtl"
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 24, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 24 }}
+        className="w-full max-w-6xl rounded-3xl overflow-hidden relative"
+        style={{
+          background: "#faf6ec",
+          border: "1px solid #ebe2cd",
+          boxShadow: "0 30px 80px -20px rgba(0,0,0,0.55), 0 0 0 4px rgba(201,161,75,0.25)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Top accent strip */}
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+          className="h-1.5 origin-right"
+          style={{ background: "linear-gradient(90deg, #c9a14b 0%, #a07f37 50%, #c9a14b 100%)" }}
+        />
+
+        {/* Header */}
+        <div className="px-5 sm:px-7 pt-5 pb-4 flex items-center justify-between gap-3 flex-wrap"
+          style={{ borderBottom: "1px solid #ebe2cd" }}>
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
+              transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 1.6 }}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+              style={{
+                background: "linear-gradient(135deg, #c9a14b, #a07f37)",
+                boxShadow: "0 10px 22px -6px rgba(201,161,75,0.55)",
+              }}
+            >
+              <Dices className="w-6 h-6 text-white" />
+            </motion.div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-black inline-flex items-center gap-2" style={{ color: "#1f4d4f" }}>
+                <Wand2 className="w-4 h-4" style={{ color: "#a07f37" }} />
+                قرعة الفئات الذكية
+              </h2>
+              <p className="text-[11px] sm:text-xs font-bold" style={{ color: "#5b6b87" }}>
+                نختار {teams.length * 3} فئات بشكل عشوائي تماماً — 3 فئات لكل فريق
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl transition"
+            style={{ color: "#5b6b87", background: "#ffffff", border: "1px solid #ebe2cd" }}
+            aria-label="إغلاق"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Reels grid */}
+        <div className="p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
+          <div
+            className="grid gap-3 sm:gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, minmax(0, 1fr))`,
+            }}
+          >
+            {teams.map((team, ti) => (
+              <motion.div
+                key={ti}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: ti * 0.08 }}
+                className="rounded-2xl p-3 sm:p-4 flex flex-col gap-2.5"
+                style={{
+                  background: "#ffffff",
+                  border: `2px solid ${team.color}33`,
+                  boxShadow: `0 8px 24px -10px ${team.color}55`,
+                }}
+              >
+                {/* Team header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${team.color}, ${team.color}dd)`,
+                      color: "#ffffff",
+                      boxShadow: `0 4px 12px -3px ${team.color}88`,
+                    }}
+                  >
+                    {team.emoji}
+                  </div>
+                  <div className="font-extrabold text-sm truncate" style={{ color: "#1f2937" }}>
+                    {team.name}
+                  </div>
+                </div>
+
+                {/* 3 reels */}
+                {[0, 1, 2].map((slot) => (
+                  <SlotReel
+                    key={slot}
+                    pool={poolWithCover}
+                    finalSub={subById.get(result[ti][slot])!}
+                    finalIdx={pool.findIndex(s => s.id === result[ti][slot])}
+                    teamColor={team.color}
+                    delay={400 + ti * 180 + slot * 520}
+                    onDone={() => setDoneCount((c) => c + 1)}
+                  />
+                ))}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-xs font-bold" style={{ color: "#5b6b87" }}>
+              {allDone ? (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex items-center gap-1.5"
+                  style={{ color: "#2d5e3f" }}
+                >
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "#c9a14b" }} />
+                  اكتملت القرعة — جارٍ التطبيق...
+                </motion.span>
+              ) : (
+                <span>{doneCount} من {totalReels} فئات تم اختيارها</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 ms-auto">
+              <button
+                onClick={onClose}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold"
+                style={{ background: "#faf6ec", color: "#1f4d4f", border: "1px solid #ebe2cd" }}
+              >
+                إلغاء
+              </button>
+              {allDone && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={onApply}
+                  className="px-4 py-2 rounded-xl text-xs font-extrabold inline-flex items-center gap-1.5 text-white"
+                  style={{
+                    background: "linear-gradient(135deg, #2d5e3f, #1f4d4f)",
+                    boxShadow: "0 8px 20px -6px rgba(31,77,79,0.55)",
+                  }}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  تطبيق الآن
+                </motion.button>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SlotReel({
+  pool, finalSub, finalIdx, teamColor, delay, onDone,
+}: {
+  pool: { sub: ArenaSubCategory; cover: ArenaCover }[];
+  finalSub: ArenaSubCategory;
+  finalIdx: number;
+  teamColor: string;
+  delay: number;
+  onDone: () => void;
+}) {
+  const [phase, setPhase] = useState<"wait" | "spin" | "locked">("wait");
+  const [tickIdx, setTickIdx] = useState(() => Math.floor(Math.random() * pool.length));
+
+  useEffect(() => {
+    let intervalId: number | undefined;
+    let lockTimeoutId: number | undefined;
+    const startTimeoutId = window.setTimeout(() => {
+      setPhase("spin");
+      let speed = 60;
+      let i = tickIdx;
+      const tick = () => {
+        i = (i + 1) % pool.length;
+        setTickIdx(i);
+      };
+      intervalId = window.setInterval(tick, speed);
+
+      /* Slow-down then lock */
+      lockTimeoutId = window.setTimeout(() => {
+        if (intervalId) window.clearInterval(intervalId);
+        setTickIdx(finalIdx >= 0 ? finalIdx : 0);
+        setPhase("locked");
+        onDone();
+      }, 1100);
+    }, delay);
+
+    return () => {
+      window.clearTimeout(startTimeoutId);
+      if (intervalId) window.clearInterval(intervalId);
+      if (lockTimeoutId) window.clearTimeout(lockTimeoutId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const current = phase === "locked"
+    ? { sub: finalSub, cover: pool[finalIdx >= 0 ? finalIdx : 0]?.cover ?? coverForIndex(0) }
+    : pool[tickIdx] ?? { sub: finalSub, cover: coverForIndex(0) };
+
+  const locked = phase === "locked";
+  const coverImg = current.cover.imageUrl;
+  const accent = locked ? teamColor : (current.cover.color ?? "#1f4d4f");
+
+  return (
+    <motion.div
+      animate={
+        locked
+          ? { scale: [1, 1.08, 1], boxShadow: `0 0 0 3px ${teamColor}, 0 12px 28px -8px ${teamColor}aa` }
+          : phase === "spin"
+            ? { y: [0, -2, 0] }
+            : {}
+      }
+      transition={
+        locked
+          ? { duration: 0.55, ease: "easeOut" }
+          : { duration: 0.18, repeat: Infinity, ease: "easeInOut" }
+      }
+      className="relative rounded-xl overflow-hidden flex items-center gap-2.5 p-2"
+      style={{
+        background: locked
+          ? "linear-gradient(135deg, #ffffff, #faf6ec)"
+          : "#faf6ec",
+        border: `1.5px solid ${locked ? teamColor : "#ebe2cd"}`,
+        minHeight: 56,
+      }}
+    >
+      {/* Cover thumb */}
+      <div
+        className="w-12 h-12 rounded-lg shrink-0 relative overflow-hidden flex items-center justify-center"
+        style={{
+          background: coverImg ? "#0E2A1D" : (current.cover.gradient ?? accent),
+        }}
+      >
+        {coverImg ? (
+          <img
+            src={coverImg}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-2xl">{current.cover.emoji}</span>
+        )}
+      </div>
+
+      {/* Name with vertical scroll feel during spin */}
+      <div className="flex-1 min-w-0 relative h-6 overflow-hidden">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={`${phase}-${current.sub.id}`}
+            initial={phase === "spin" ? { y: 18, opacity: 0 } : { opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={phase === "spin" ? { y: -18, opacity: 0 } : { opacity: 0 }}
+            transition={{ duration: phase === "spin" ? 0.12 : 0.3 }}
+            className="font-extrabold text-sm truncate"
+            style={{ color: locked ? "#1f4d4f" : "#1f2937" }}
+          >
+            {current.sub.name}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Lock indicator */}
+      {locked ? (
+        <motion.div
+          initial={{ scale: 0, rotate: -90 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 18 }}
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+          style={{
+            background: `linear-gradient(135deg, ${teamColor}, ${teamColor}dd)`,
+            color: "#ffffff",
+            boxShadow: `0 4px 10px -2px ${teamColor}aa`,
+          }}
+        >
+          <Check className="w-4 h-4" />
+        </motion.div>
+      ) : (
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: "rgba(201,161,75,0.18)", color: "#a07f37" }}
+        >
+          <Dices className="w-3.5 h-3.5" />
+        </motion.div>
+      )}
+
+      {/* Lock-in shimmer flash */}
+      {locked && (
+        <motion.span
+          aria-hidden
+          initial={{ x: "-130%" }}
+          animate={{ x: "130%" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="absolute inset-y-0 w-1/2 pointer-events-none"
+          style={{
+            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)",
+          }}
+        />
+      )}
+    </motion.div>
   );
 }
 
