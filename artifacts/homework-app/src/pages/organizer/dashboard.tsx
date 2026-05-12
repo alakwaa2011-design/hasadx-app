@@ -36,6 +36,10 @@ import {
   Eye,
   Palette,
   Calculator,
+  MapPin,
+  PartyPopper,
+  Lightbulb,
+  Library,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -87,6 +91,8 @@ export default function OrganizerDashboard() {
   const [sharedContests, setSharedContests] = useState<SharedAssignment[]>([]);
   const [sharedLoading, setSharedLoading] = useState(true);
   const [launchingId, setLaunchingId] = useState<number | null>(null);
+  // Sidebar tab for the right-side quick-launch panel
+  const [sideTab, setSideTab] = useState<"events" | "brain" | "library">("events");
 
   useEffect(() => {
     if (error) setLocation("/login");
@@ -312,6 +318,41 @@ export default function OrganizerDashboard() {
         Icon: Hash,
         tint: "#facc15",
       },
+      {
+        href: "/game/capitals",
+        title: lang === "ar" ? "عواصم" : "Capitals",
+        Icon: MapPin,
+        tint: "#0ea5e9",
+      },
+    ],
+    [lang],
+  );
+
+  // Games for gatherings, events, visits — shown in sidebar tab 1
+  const gatheringsGames = useMemo(
+    () => [
+      {
+        href: "/game/arena",
+        title: lang === "ar" ? "تحدّي حصاد 🏆" : "Hasad Arena 🏆",
+        subtitle:
+          lang === "ar"
+            ? "تحدٍّ بين فريقين أو أكثر — ٦ فئات، أسئلة بقيم متصاعدة ومساعدات استراتيجية. مثالي للحفلات والتجمعات والزيارات."
+            : "Multi-team challenge — 6 categories, escalating values. Built for events and gatherings.",
+        Icon: Swords,
+        accent: "#1f8246",
+        btnLabel: lang === "ar" ? "ابدأ التحدّي" : "Start challenge",
+      },
+      {
+        href: "/islamic",
+        title: lang === "ar" ? "مسابقات عامة 📚" : "General Quizzes 📚",
+        subtitle:
+          lang === "ar"
+            ? "بنك أسئلة متنوّعة جاهزة للتجمعات والزيارات والمناسبات — انطلق فوراً بلا تحضير."
+            : "Ready question bank for visits, gatherings, and school events — start instantly.",
+        Icon: BookOpen,
+        accent: "#0e7490",
+        btnLabel: lang === "ar" ? "ابدأ" : "Start",
+      },
     ],
     [lang],
   );
@@ -449,7 +490,320 @@ export default function OrganizerDashboard() {
             }}
           />
         </div>
-        <div className="container mx-auto px-4 py-10 max-w-6xl relative">
+
+        {/* ── Desktop layout: flex row. In RTL the first child is on the RIGHT ── */}
+        <div className="lg:flex lg:min-h-screen relative">
+
+          {/* ══════════ RIGHT SIDEBAR (desktop only) ════════════════════════════
+               In RTL flex the first child is placed at flex-start = RIGHT side.
+               Three tabs: (1) games for gatherings, (2) brain games, (3) library */}
+          <aside
+            className="hidden lg:flex flex-col w-[296px] shrink-0 sticky top-0 h-screen overflow-y-auto"
+            style={{
+              background: "rgba(255,255,255,0.76)",
+              backdropFilter: "blur(18px)",
+              WebkitBackdropFilter: "blur(18px)",
+              borderInlineEnd: "1.5px solid rgba(215,165,29,0.22)",
+              boxShadow: "4px 0 24px -12px rgba(15,55,32,0.10)",
+            }}
+          >
+            {/* Sidebar header */}
+            <div
+              className="px-4 pt-5 pb-3 border-b"
+              style={{ borderColor: "rgba(215,165,29,0.18)" }}
+            >
+              <p
+                className="text-[10px] font-black uppercase tracking-widest mb-1"
+                style={{ color: "rgba(27,107,63,0.55)" }}
+              >
+                {lang === "ar" ? "لوحة التشغيل السريع" : "Quick Launch"}
+              </p>
+              <p className="text-sm font-extrabold" style={{ color: "#103d2a" }}>
+                {lang === "ar" ? "اختر وانطلق 🚀" : "Pick & go 🚀"}
+              </p>
+            </div>
+
+            {/* Tab selector */}
+            <div
+              className="flex border-b"
+              style={{ borderColor: "rgba(215,165,29,0.18)" }}
+            >
+              {(
+                [
+                  { id: "events", icon: <PartyPopper className="w-3.5 h-3.5" />, label: lang === "ar" ? "فعاليات" : "Events" },
+                  { id: "brain",  icon: <Lightbulb className="w-3.5 h-3.5" />,  label: lang === "ar" ? "تحدي وذكاء" : "Brain" },
+                  { id: "library",icon: <Library className="w-3.5 h-3.5" />,    label: lang === "ar" ? "المكتبة" : "Library" },
+                ] as const
+              ).map((tab) => {
+                const active = sideTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSideTab(tab.id)}
+                    className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[10px] font-extrabold transition-all"
+                    style={
+                      active
+                        ? {
+                            color: "#1b6b3f",
+                            borderBottom: "2.5px solid #d7a51d",
+                            background: "rgba(215,165,29,0.07)",
+                          }
+                        : { color: "rgba(27,107,63,0.45)", borderBottom: "2.5px solid transparent" }
+                    }
+                  >
+                    <span style={{ color: active ? "#d7a51d" : "inherit" }}>{tab.icon}</span>
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ── Tab 1: ألعاب للقاءات والجمعات والزيارات ── */}
+            {sideTab === "events" && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <p
+                  className="text-[10px] font-black uppercase tracking-widest mb-2"
+                  style={{ color: "rgba(27,107,63,0.55)" }}
+                >
+                  {lang === "ar" ? "ألعاب للقاءات والجمعات والزيارات" : "Games for Gatherings & Events"}
+                </p>
+                {gatheringsGames.map((g) => (
+                  <Link key={g.href} href={g.href}>
+                    <div
+                      className="group rounded-2xl p-4 cursor-pointer transition-all duration-200 hover:-translate-y-1 relative overflow-hidden"
+                      style={{
+                        background: `linear-gradient(160deg,#ffffff 0%,${g.accent}0d 100%)`,
+                        border: `1.5px solid ${g.accent}40`,
+                        boxShadow: `0 6px 18px -10px ${g.accent}50`,
+                      }}
+                    >
+                      <div
+                        aria-hidden
+                        className="absolute pointer-events-none"
+                        style={{
+                          top: -30,
+                          [dir === "rtl" ? "left" : "right"]: -30,
+                          width: 90,
+                          height: 90,
+                          borderRadius: "50%",
+                          background: `radial-gradient(circle,${g.accent}28 0%,transparent 70%)`,
+                        }}
+                      />
+                      <div className="relative flex items-start gap-3 mb-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-6"
+                          style={{
+                            background: `linear-gradient(135deg,${g.accent}28 0%,${g.accent}14 100%)`,
+                            border: `1.5px solid ${g.accent}55`,
+                            color: g.accent,
+                            boxShadow: `0 4px 12px -6px ${g.accent}70`,
+                          }}
+                        >
+                          <g.Icon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3
+                            className="text-[14px] font-black leading-snug tracking-tight"
+                            style={{ color: "#103d2a" }}
+                          >
+                            {g.title}
+                          </h3>
+                        </div>
+                      </div>
+                      <p
+                        className="relative text-[12px] leading-relaxed mb-3"
+                        style={{ color: "#3a6a4d" }}
+                      >
+                        {g.subtitle}
+                      </p>
+                      <span
+                        className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-extrabold transition-all group-hover:brightness-110"
+                        style={{
+                          background: `linear-gradient(135deg,${g.accent}22 0%,${g.accent}14 100%)`,
+                          color: g.accent,
+                          border: `1.5px solid ${g.accent}45`,
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                        {g.btnLabel}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* ── Tab 2: ألعاب تحدي وذكاء ── */}
+            {sideTab === "brain" && (
+              <div className="flex-1 overflow-y-auto p-4">
+                <p
+                  className="text-[10px] font-black uppercase tracking-widest mb-3"
+                  style={{ color: "rgba(27,107,63,0.55)" }}
+                >
+                  {lang === "ar" ? "ألعاب تحدي وذكاء" : "Challenge & Brain Games"}
+                </p>
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: "repeat(2, 1fr)" }}
+                >
+                  {soloBrainGames.map((g) => (
+                    <Link key={g.href} href={g.href}>
+                      <div
+                        className="group flex flex-col items-center justify-center gap-2 px-2 py-3.5 rounded-xl transition-all hover:-translate-y-1 cursor-pointer"
+                        style={{
+                          background: `linear-gradient(180deg,#ffffff 0%,${g.tint}0e 100%)`,
+                          border: `1.5px solid ${g.tint}40`,
+                          boxShadow: `0 4px 10px -6px ${g.tint}40`,
+                        }}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-6"
+                          style={{
+                            background: `linear-gradient(135deg,${g.tint}26 0%,${g.tint}14 100%)`,
+                            border: `1.5px solid ${g.tint}55`,
+                            color: g.tint,
+                            boxShadow: `0 4px 10px -6px ${g.tint}66`,
+                          }}
+                        >
+                          <g.Icon className="w-5 h-5" />
+                        </div>
+                        <span
+                          className="text-[12px] font-extrabold text-center leading-tight"
+                          style={{ color: "#103d2a" }}
+                        >
+                          {g.title}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                <Link
+                  href="/games"
+                  className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5"
+                  style={{
+                    color: "#6d28d9",
+                    background: "rgba(167,139,250,0.14)",
+                    border: "1px solid rgba(167,139,250,0.32)",
+                  }}
+                >
+                  {lang === "ar" ? "كل الألعاب" : "All games"}
+                  <ArrowRight
+                    className="w-3 h-3"
+                    style={{ transform: dir === "rtl" ? "rotate(180deg)" : "none" }}
+                  />
+                </Link>
+              </div>
+            )}
+
+            {/* ── Tab 3: مكتبة المسابقات الجاهزة ── */}
+            {sideTab === "library" && (
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p
+                    className="text-[10px] font-black uppercase tracking-widest"
+                    style={{ color: "rgba(27,107,63,0.55)" }}
+                  >
+                    {lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library"}
+                  </p>
+                  <Link
+                    href="/teacher/library/competitions"
+                    className="text-[10px] font-bold px-2 py-1 rounded-full transition-all hover:-translate-y-0.5"
+                    style={{
+                      color: "#0e7490",
+                      background: "rgba(34,211,238,0.12)",
+                      border: "1px solid rgba(34,211,238,0.30)",
+                    }}
+                  >
+                    {lang === "ar" ? "عرض الكل" : "View all"}
+                  </Link>
+                </div>
+
+                {sharedLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-8" style={{ color: "#0e7490" }}>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-xs font-bold">{lang === "ar" ? "جاري التحميل…" : "Loading…"}</span>
+                  </div>
+                ) : sharedContests.length === 0 ? (
+                  <p className="text-center text-xs py-8" style={{ color: "#6b7280" }}>
+                    {lang === "ar" ? "لا توجد مسابقات حتى الآن" : "No competitions yet"}
+                  </p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {sharedContests.map((c) => (
+                      <div
+                        key={c.id}
+                        className="group rounded-xl p-3 flex flex-col gap-2.5 relative overflow-hidden"
+                        style={{
+                          background: "linear-gradient(180deg,#ffffff 0%,#fffaeb 100%)",
+                          border: "1.5px solid rgba(215,165,29,0.28)",
+                          boxShadow: "0 4px 12px -8px rgba(215,165,29,0.28)",
+                        }}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{
+                              background: "rgba(215,165,29,0.14)",
+                              border: "1.5px solid rgba(215,165,29,0.35)",
+                              color: "#b88712",
+                            }}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h3
+                              className="text-[13px] font-black leading-snug line-clamp-2 tracking-tight"
+                              style={{ color: "#103d2a" }}
+                            >
+                              {c.title}
+                            </h3>
+                            <div
+                              className="flex items-center gap-2 mt-1 text-[10px] font-semibold"
+                              style={{ color: "#6b7280" }}
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                {c.questionCount} {lang === "ar" ? "سؤال" : "Qs"}
+                              </span>
+                              {c.teacherName && (
+                                <span className="inline-flex items-center gap-1 truncate">
+                                  <User className="w-3 h-3" />
+                                  <span className="truncate">{c.teacherName}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={launchingId !== null}
+                          onClick={() => launchSharedContest(c.id)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[12px] font-extrabold transition-all hover:brightness-110 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                          style={{
+                            background: "linear-gradient(135deg,#f0a929 0%,#d7a51d 100%)",
+                            color: "#143b28",
+                            boxShadow: "0 6px 14px -6px rgba(215,165,29,0.55)",
+                          }}
+                        >
+                          {launchingId === c.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5" />
+                          )}
+                          {lang === "ar" ? "ابدأها الآن" : "Launch now"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </aside>
+
+          {/* ══════════ MAIN CONTENT ════════════════════════════════════════════ */}
+          <div className="flex-1 min-w-0">
+        <div className="container mx-auto px-4 py-10 max-w-5xl relative">
           {/* Editorial top bar: welcome + live-counter chip. */}
           <motion.section
             initial={{ opacity: 0, y: -6 }}
@@ -796,8 +1150,8 @@ export default function OrganizerDashboard() {
             ))}
           </div>
 
-          {/* Section: solo brain games. */}
-          <section className="mt-12">
+          {/* Section: solo brain games — visible on mobile only; desktop uses sidebar */}
+          <section className="mt-12 lg:hidden">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
                 <div
@@ -939,12 +1293,9 @@ export default function OrganizerDashboard() {
             </div>
           </section>
 
-          {/* ── Shared contests: مسابقات للاستخدام ──────────────────────
-             Lets the organizer pick a ready-made contest and launch it as a
-             generic solo game in one tap. Hidden entirely while loading
-             returns nothing, so the page never has a half-empty placeholder. */}
+          {/* ── Shared contests — visible on mobile only; desktop uses sidebar */}
           {(sharedLoading || sharedContests.length > 0) && (
-            <section className="mt-12">
+            <section className="mt-12 lg:hidden">
               <div className="mb-5 flex items-end justify-between gap-3">
                 <div>
                   <div
@@ -1193,7 +1544,9 @@ export default function OrganizerDashboard() {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </div>{/* end container */}
+          </div>{/* end main content flex-1 */}
+        </div>{/* end lg:flex wrapper */}
 
         {/* Mobile bottom navigation per spec — fixed bar visible only on small screens */}
         <nav
