@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
-  Search, User, Calendar, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
+  Search, User, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
   Gamepad2, EyeOff, FolderOpen, MoreVertical, Zap, Users,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -366,14 +366,15 @@ export default function SharedContentPage() {
   // resolves to the standard solo flow on the server. Teams mode is exposed
   // as a non-prominent secondary option per row so the organizer can switch
   // without leaving the library.
+  // No class is pre-selected by default — the teacher can assign one from
+  // the game lobby if needed. Class preferences are NOT stored on the shared
+  // assignment so each teacher manages their own context locally.
   const launchAsGame = (id: number, gameMode: "classic" | "teams" = "classic") => {
     setLaunchingIds((s) => new Set(s).add(id));
     const socket = getSocket();
-    let remembered = "";
-    try { remembered = localStorage.getItem("hasad:lastTargetClass") || ""; } catch {}
     socket.emit(
       "teacher:create-game",
-      { assignmentId: id, gameMode, targetClass: remembered || undefined },
+      { assignmentId: id, gameMode, targetClass: undefined },
       (res: { pin?: string; error?: string }) => {
         setLaunchingIds((s) => { const n = new Set(s); n.delete(id); return n; });
         if (res?.error || !res?.pin) {
@@ -669,175 +670,159 @@ export default function SharedContentPage() {
 
         {activeTab === "assignments" && (
           filteredAssignments.length > 0 ? (
-            <div className="grid gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {filteredAssignments.map((a, i) => {
-                // Accent color per question type
-                const typeAccent =
-                  a.type === "mcq"        ? { bg: "bg-blue-50 dark:bg-blue-950/40",   icon: "text-blue-500",   border: "border-blue-200 dark:border-blue-800" } :
-                  a.type === "true_false" ? { bg: "bg-amber-50 dark:bg-amber-950/40", icon: "text-amber-500",  border: "border-amber-200 dark:border-amber-800" } :
-                  a.type === "fill_blank" ? { bg: "bg-violet-50 dark:bg-violet-950/40", icon: "text-violet-500", border: "border-violet-200 dark:border-violet-800" } :
-                                           { bg: "bg-teal-50 dark:bg-teal-950/40",    icon: "text-teal-500",   border: "border-teal-200 dark:border-teal-800" };
+                // Subtle top-bar accent per question type (no labels shown)
+                const barColor =
+                  a.type === "mcq"        ? "#3b82f6" :
+                  a.type === "true_false" ? "#f59e0b" :
+                  a.type === "fill_blank" ? "#8b5cf6" :
+                                           "#14b8a6";
                 const isOwn = a.teacherId === currentTeacherId;
                 return (
-                <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }}>
-                  <div className={`group relative flex items-center gap-3 px-4 py-3.5 rounded-2xl border bg-card hover:shadow-sm transition-all duration-150 ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border"}`}>
+                <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }} className="h-full">
+                  <div className={`group relative flex flex-col rounded-2xl border bg-card transition-all duration-200 overflow-hidden h-full ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border hover:shadow-md hover:-translate-y-0.5"}`}>
 
-                    {/* Type icon pill */}
-                    <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${typeAccent.bg} border ${typeAccent.border}`}>
-                      <BookText className={`w-4.5 h-4.5 ${typeAccent.icon}`} />
-                    </div>
+                    {/* Colored accent bar at top */}
+                    <div className="h-1 w-full shrink-0" style={{ background: barColor }} />
 
-                    {/* Main content */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-foreground leading-snug truncate mb-1.5">{a.title}</p>
+                    <div className="flex flex-col flex-1 p-3.5 gap-3">
+                      {/* Title — clipped at 2 lines */}
+                      <p className="font-black text-[13px] text-foreground leading-snug line-clamp-2 flex-1 min-h-[2.5rem]">
+                        {a.title}
+                      </p>
+
+                      {/* Meta chips: question count + subject */}
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* Question count chip */}
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
-                          <HelpCircle className="w-3 h-3" />{a.questionCount} {lang === "ar" ? "سؤال" : "Q"}
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
+                          <HelpCircle className="w-2.5 h-2.5" />
+                          {a.questionCount} {lang === "ar" ? "سؤال" : "Q"}
                         </span>
-                        {/* Type chip */}
-                        <span className={`inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full ${typeAccent.bg} ${typeAccent.icon} border ${typeAccent.border}`}>
-                          {typeLabel(a.type)}
-                        </span>
-                        {/* Subject chip if present */}
                         {a.subject && (
-                          <span className="inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/8 text-primary/80 border border-primary/20">
+                          <span className="inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/8 text-primary/80 border border-primary/20 max-w-[90px] truncate">
                             {a.subject}
                           </span>
                         )}
-                        {/* Author */}
-                        {!a.isAdminContent && a.teacherName && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
-                            <User className="w-2.5 h-2.5" />{a.teacherName}
-                          </span>
-                        )}
-                        {/* Date — only on wider screens */}
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-muted-foreground/50">
-                          <Calendar className="w-2.5 h-2.5" />{formatDate(a.createdAt)}
-                        </span>
-                        {/* Admin hidden badge */}
                         {a.hiddenByAdmin && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                             <EyeOff className="w-2.5 h-2.5" />{lang === "ar" ? "مخفي" : "Hidden"}
                           </span>
                         )}
                       </div>
-                    </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isOwn ? (
-                        <span className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold border border-teal-200 dark:border-teal-800">
-                          <CheckCircle2 className="w-3 h-3" />
-                          {lang === "ar" ? "محتواك" : "Yours"}
-                        </span>
-                      ) : (
-                        <>
-                          {/* PRIMARY: Play button (always visible) */}
-                          <button
-                            onClick={() => launchAsGame(a.id, "classic")}
-                            disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                            className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600 transition-all shadow-sm shadow-emerald-200 dark:shadow-none disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            {launchingIds.has(a.id)
-                              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{lang === "ar" ? "جارٍ…" : "…"}</>
-                              : <><Zap className="w-3.5 h-3.5" />{lang === "ar" ? "ابدأ" : "Play"}</>
-                            }
-                          </button>
-
-                          {/* SECONDARY overflow menu */}
-                          <div className="relative group/menu">
+                      {/* Action row */}
+                      <div className="flex items-center gap-1.5 mt-auto">
+                        {isOwn ? (
+                          <span className="flex items-center justify-center gap-1 text-[11px] px-2.5 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-bold border border-teal-200 dark:border-teal-800 w-full">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {lang === "ar" ? "محتواك" : "Yours"}
+                          </span>
+                        ) : (
+                          <>
+                            {/* PRIMARY: Play — Hasad dark green */}
                             <button
-                              type="button"
-                              className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              onClick={() => launchAsGame(a.id, "classic")}
+                              disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-extrabold px-3 py-2 rounded-xl text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 hover:-translate-y-0.5"
+                              style={{
+                                background: "linear-gradient(135deg,#1f8246 0%,#155d32 100%)",
+                                boxShadow: "0 4px 12px -4px rgba(27,107,63,0.50)",
+                              }}
                             >
-                              <MoreVertical className="w-4 h-4" />
+                              {launchingIds.has(a.id)
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <><Zap className="w-3.5 h-3.5" />{lang === "ar" ? "ابدأ" : "Play"}</>
+                              }
                             </button>
-                            <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/menu:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
-                              {/* Import */}
-                              <button
-                                onClick={() => importAssignment(a.id)}
-                                disabled={importingIds.has(a.id) || importedIds.has(a.id)}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50 text-start w-full"
-                              >
-                                {importedIds.has(a.id)
-                                  ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{lang === "ar" ? "تم الاستيراد" : "Imported"}</>
-                                  : importingIds.has(a.id)
-                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{lang === "ar" ? "جارٍ الاستيراد…" : "Importing…"}</>
-                                    : <><Download className="w-3.5 h-3.5 text-primary" />{t.sharedContent.importAssignment}</>
-                                }
-                              </button>
-                              {/* Copy link */}
-                              <button
-                                onClick={() => copyLink(a.id)}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full"
-                              >
-                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                                {isCompetitionLibrary ? t.sharedContent.copyLink : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
-                              </button>
-                              {/* Teams mode */}
-                              <button
-                                onClick={() => launchAsGame(a.id, "teams")}
-                                disabled={launchingIds.has(a.id) || a.questionCount === 0}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full disabled:opacity-40"
-                              >
-                                <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                                {lang === "ar" ? "ابدأ بوضع الفِرَق" : "Play in Teams mode"}
-                              </button>
-                              <div className="h-px bg-border/60 mx-3 my-1" />
-                              {/* Dismiss */}
-                              <button
-                                onClick={() => dismissItem("assignment", a.id)}
-                                disabled={dismissingIds.has(`assignment-${a.id}`)}
-                                className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-destructive/8 text-destructive/70 hover:text-destructive transition-colors text-start w-full disabled:opacity-40"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                                {lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
 
-                      {/* Admin controls — compact icon buttons */}
-                      {isAdmin && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {/* Library kind picker */}
-                          <div className="relative group/lib">
-                            <button
-                              type="button"
-                              disabled={changingKindIds.has(a.id)}
-                              title={lang === "ar" ? "تغيير المكتبة" : "Change library"}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-40"
-                            >
-                              {changingKindIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
-                            </button>
-                            <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/lib:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
-                              {([ { value: "homework" as const, labelAr: "مكتبة الأنشطة", cls: "text-blue-600" }, { value: "competition" as const, labelAr: "مكتبة المسابقات", cls: "text-amber-600" }, { value: "both" as const, labelAr: "كلتا المكتبتين", cls: "text-violet-600" } ]).map(opt => (
-                                <button key={opt.value} type="button" onClick={() => changeLibraryKind(a.id, opt.value)}
-                                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full ${opt.cls} ${a.contentKind === opt.value ? "bg-muted/60 font-bold" : ""}`}>
-                                  {a.contentKind === opt.value && <CheckCircle2 className="w-3 h-3" />}
-                                  {lang === "ar" ? opt.labelAr : opt.value === "both" ? "Both libraries" : opt.value === "competition" ? "Competitions" : "Activities"}
+                            {/* SECONDARY overflow menu */}
+                            <div className="relative group/menu">
+                              <button
+                                type="button"
+                                className="w-7 h-7 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+                              <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/menu:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
+                                <button
+                                  onClick={() => importAssignment(a.id)}
+                                  disabled={importingIds.has(a.id) || importedIds.has(a.id)}
+                                  className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors disabled:opacity-50 text-start w-full"
+                                >
+                                  {importedIds.has(a.id)
+                                    ? <><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{lang === "ar" ? "تم الاستيراد" : "Imported"}</>
+                                    : importingIds.has(a.id)
+                                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{lang === "ar" ? "جارٍ الاستيراد…" : "Importing…"}</>
+                                      : <><Download className="w-3.5 h-3.5 text-primary" />{t.sharedContent.importAssignment}</>
+                                  }
                                 </button>
-                              ))}
+                                <button
+                                  onClick={() => copyLink(a.id)}
+                                  className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full"
+                                >
+                                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {isCompetitionLibrary ? t.sharedContent.copyLink : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
+                                </button>
+                                <button
+                                  onClick={() => launchAsGame(a.id, "teams")}
+                                  disabled={launchingIds.has(a.id) || a.questionCount === 0}
+                                  className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full disabled:opacity-40"
+                                >
+                                  <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                                  {lang === "ar" ? "ابدأ بوضع الفِرَق" : "Play in Teams mode"}
+                                </button>
+                                <div className="h-px bg-border/60 mx-3 my-1" />
+                                <button
+                                  onClick={() => dismissItem("assignment", a.id)}
+                                  disabled={dismissingIds.has(`assignment-${a.id}`)}
+                                  className="flex items-center gap-2.5 px-4 py-2.5 text-xs font-semibold hover:bg-destructive/8 text-destructive/70 hover:text-destructive transition-colors text-start w-full disabled:opacity-40"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  {lang === "ar" ? "إخفاء من قائمتي" : "Remove from my list"}
+                                </button>
+                              </div>
                             </div>
+                          </>
+                        )}
+
+                        {/* Admin controls — shown on card hover */}
+                        {isAdmin && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="relative group/lib">
+                              <button
+                                type="button"
+                                disabled={changingKindIds.has(a.id)}
+                                title={lang === "ar" ? "تغيير المكتبة" : "Change library"}
+                                className="w-6 h-6 rounded-lg flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 transition-colors disabled:opacity-40"
+                              >
+                                {changingKindIds.has(a.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <FolderOpen className="w-3 h-3" />}
+                              </button>
+                              <div className={`absolute z-30 top-full mt-1 ${lang === "ar" ? "left-0" : "right-0"} hidden group-hover/lib:flex flex-col min-w-[190px] rounded-2xl border border-border bg-popover shadow-xl overflow-hidden py-1`}>
+                                {([ { value: "homework" as const, labelAr: "مكتبة الأنشطة", cls: "text-blue-600" }, { value: "competition" as const, labelAr: "مكتبة المسابقات", cls: "text-amber-600" }, { value: "both" as const, labelAr: "كلتا المكتبتين", cls: "text-violet-600" } ]).map(opt => (
+                                  <button key={opt.value} type="button" onClick={() => changeLibraryKind(a.id, opt.value)}
+                                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold hover:bg-muted transition-colors text-start w-full ${opt.cls} ${a.contentKind === opt.value ? "bg-muted/60 font-bold" : ""}`}>
+                                    {a.contentKind === opt.value && <CheckCircle2 className="w-3 h-3" />}
+                                    {lang === "ar" ? opt.labelAr : opt.value === "both" ? "Both libraries" : opt.value === "competition" ? "Competitions" : "Activities"}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {a.hiddenByAdmin ? (
+                              <button onClick={() => unhideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
+                                title={lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                                className="w-6 h-6 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 transition-colors disabled:opacity-40">
+                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Globe className="w-3 h-3" />}
+                              </button>
+                            ) : (
+                              <button onClick={() => hideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
+                                title={lang === "ar" ? "إخفاء من المكتبة" : "Hide from library"}
+                                className="w-6 h-6 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 transition-colors disabled:opacity-40">
+                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3 h-3 animate-spin" /> : <EyeOff className="w-3 h-3" />}
+                              </button>
+                            )}
                           </div>
-                          {/* Hide / restore */}
-                          {a.hiddenByAdmin ? (
-                            <button onClick={() => unhideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
-                              title={lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 transition-colors disabled:opacity-40">
-                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                            </button>
-                          ) : (
-                            <button onClick={() => hideAsAdmin("assignments", a.id)} disabled={hidingIds.has(`assignments-${a.id}`)}
-                              title={lang === "ar" ? "إخفاء من المكتبة" : "Hide from library"}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-200 transition-colors disabled:opacity-40">
-                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <EyeOff className="w-3.5 h-3.5" />}
-                            </button>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
