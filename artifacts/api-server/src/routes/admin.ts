@@ -902,6 +902,7 @@ router.get("/admin/pending-shares", async (req, res) => {
         teacherId: assignmentsTable.teacherId,
         teacherName: teachersTable.name,
         createdAt: assignmentsTable.createdAt,
+        contentKind: assignmentsTable.contentKind,
         questionCount: sql<number>`(SELECT COUNT(*) FROM questions WHERE questions.assignment_id = ${assignmentsTable.id})::int`,
       })
       .from(assignmentsTable)
@@ -920,10 +921,39 @@ router.post("/admin/assignments/:id/approve-share", async (req, res) => {
     if (!(await requireAdmin(req, res))) return;
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
-    await db.update(assignmentsTable).set({ isShareApproved: true }).where(eq(assignmentsTable.id, id));
+    const rawKind = req.body?.contentKind;
+    const contentKind = (rawKind === "competition" || rawKind === "homework" || rawKind === "both") ? rawKind : undefined;
+    const update: Record<string, unknown> = { isShareApproved: true };
+    if (contentKind) update.contentKind = contentKind;
+    await db.update(assignmentsTable).set(update as never).where(eq(assignmentsTable.id, id));
     res.json({ success: true });
   } catch (err) {
     req.log.error(err, "Failed to approve share");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
+/* ── Admin: change the library classification of a shared assignment ─────
+   Lets admins move a shared assignment between 'homework' (مكتبة الأنشطة),
+   'competition' (مكتبة المسابقات), or 'both' (كلتا المكتبتين). */
+router.patch("/admin/assignments/:id/content-kind", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
+    const { contentKind } = req.body;
+    if (contentKind !== "homework" && contentKind !== "competition" && contentKind !== "both") {
+      return res.status(400).json({ message: "contentKind يجب أن يكون homework أو competition أو both" });
+    }
+    const [updated] = await db
+      .update(assignmentsTable)
+      .set({ contentKind })
+      .where(eq(assignmentsTable.id, id))
+      .returning({ id: assignmentsTable.id, contentKind: assignmentsTable.contentKind });
+    if (!updated) return res.status(404).json({ message: "الواجب غير موجود" });
+    res.json(updated);
+  } catch (err) {
+    req.log.error(err, "Failed to update content kind");
     res.status(500).json({ message: "حدث خطأ" });
   }
 });

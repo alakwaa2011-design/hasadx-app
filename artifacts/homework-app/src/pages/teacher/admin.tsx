@@ -474,10 +474,13 @@ export default function AdminPage() {
     teacherName: string | null;
     createdAt: string;
     questionCount: number;
+    contentKind: string;
   }
   const [pendingShares, setPendingShares] = useState<PendingShare[]>([]);
   const [sharesLoading, setSharesLoading] = useState(false);
   const [sharesActing, setSharesActing] = useState<number | null>(null);
+  // Tracks the chosen library destination per pending-share row (before clicking Approve)
+  const [approvalKinds, setApprovalKinds] = useState<Record<number, "homework" | "competition" | "both">>({});
 
   const loadPendingShares = () => {
     setSharesLoading(true);
@@ -492,10 +495,17 @@ export default function AdminPage() {
     setSharesActing(id);
     try {
       const endpoint = approve ? "approve-share" : "reject-share";
+      const chosenKind = approve ? (approvalKinds[id] ?? "homework") : undefined;
       const res = await fetch(`${API_BASE}/api/admin/assignments/${id}/${endpoint}`, {
-        method: "POST", credentials: "include",
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: approve ? JSON.stringify({ contentKind: chosenKind }) : undefined,
       });
-      if (res.ok) setPendingShares(prev => prev.filter(p => p.id !== id));
+      if (res.ok) {
+        setPendingShares(prev => prev.filter(p => p.id !== id));
+        setApprovalKinds(prev => { const n = { ...prev }; delete n[id]; return n; });
+      }
     } catch {}
     setSharesActing(null);
   };
@@ -2727,30 +2737,56 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-border/40">
-                  {pendingShares.map(s => (
-                    <div key={s.id} className="flex items-center gap-3 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-foreground truncate">{s.title}</p>
-                        <p className="text-xs text-muted-foreground">{s.teacherName || "—"} {s.subject ? `· ${s.subject}` : ""} · {s.questionCount} {lang === "ar" ? "سؤال" : "questions"}</p>
+                  {pendingShares.map(s => {
+                    const currentKind = (approvalKinds[s.id] ?? s.contentKind ?? "homework") as "homework" | "competition" | "both";
+                    const kindOptions: { value: "homework" | "competition" | "both"; labelAr: string; labelEn: string; color: string }[] = [
+                      { value: "homework",    labelAr: "مكتبة الأنشطة",     labelEn: "Activities",     color: "bg-blue-100 dark:bg-blue-900/30 border-blue-300 text-blue-700" },
+                      { value: "competition", labelAr: "مكتبة المسابقات",   labelEn: "Competitions",   color: "bg-amber-100 dark:bg-amber-900/30 border-amber-300 text-amber-700" },
+                      { value: "both",        labelAr: "كلتا المكتبتين",    labelEn: "Both libraries", color: "bg-purple-100 dark:bg-purple-900/30 border-purple-300 text-purple-700" },
+                    ];
+                    return (
+                    <div key={s.id} className="flex flex-col gap-2 py-3 border-b border-border/30 last:border-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{s.title}</p>
+                          <p className="text-xs text-muted-foreground">{s.teacherName || "—"} {s.subject ? `· ${s.subject}` : ""} · {s.questionCount} {lang === "ar" ? "سؤال" : "questions"}</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={() => handleShareDecision(s.id, true)}
+                            disabled={sharesActing === s.id}
+                            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold bg-green-100 dark:bg-green-900/30 border border-green-300 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
+                          >
+                            {lang === "ar" ? "موافقة" : "Approve"}
+                          </button>
+                          <button
+                            onClick={() => handleShareDecision(s.id, false)}
+                            disabled={sharesActing === s.id}
+                            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold bg-red-100 dark:bg-red-900/30 border border-red-300 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                          >
+                            {lang === "ar" ? "رفض" : "Reject"}
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={() => handleShareDecision(s.id, true)}
-                          disabled={sharesActing === s.id}
-                          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold bg-green-100 dark:bg-green-900/30 border border-green-300 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
-                        >
-                          {lang === "ar" ? "موافقة" : "Approve"}
-                        </button>
-                        <button
-                          onClick={() => handleShareDecision(s.id, false)}
-                          disabled={sharesActing === s.id}
-                          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold bg-red-100 dark:bg-red-900/30 border border-red-300 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
-                        >
-                          {lang === "ar" ? "رفض" : "Reject"}
-                        </button>
+                      {/* Library destination picker */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                          {lang === "ar" ? "أضفها إلى:" : "Add to:"}
+                        </span>
+                        {kindOptions.map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setApprovalKinds(prev => ({ ...prev, [s.id]: opt.value }))}
+                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all ${currentKind === opt.value ? opt.color + " ring-2 ring-offset-1 ring-current" : "bg-muted/40 border-border text-muted-foreground hover:bg-muted"}`}
+                          >
+                            {lang === "ar" ? opt.labelAr : opt.labelEn}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </Card>

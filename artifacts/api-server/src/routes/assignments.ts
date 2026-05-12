@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable } from "@workspace/db";
-import { eq, sql, and, ne, notInArray, inArray, isNull } from "drizzle-orm";
+import { eq, sql, and, ne, notInArray, inArray, isNull, or } from "drizzle-orm";
 import { submissionsTable } from "@workspace/db";
 import {
   CreateAssignmentBody,
@@ -427,7 +427,7 @@ router.get("/assignments/shared", async (req, res) => {
       ne(assignmentsTable.accessMode, "private"),
       (wantHidden && isAdminRequester) ? undefined : eq(assignmentsTable.hiddenByAdmin, false),
       ne(assignmentsTable.teacherId, teacherId),
-      kindFilter ? eq(assignmentsTable.contentKind, kindFilter) : undefined,
+      kindFilter ? or(eq(assignmentsTable.contentKind, kindFilter), eq(assignmentsTable.contentKind, "both")) : undefined,
       dismissedIds.length > 0 ? notInArray(assignmentsTable.id, dismissedIds) : undefined
     );
 

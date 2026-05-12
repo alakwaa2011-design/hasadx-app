@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
   Search, User, Calendar, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
-  Gamepad2, EyeOff,
+  Gamepad2, EyeOff, FolderOpen,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -121,6 +121,7 @@ interface SharedAssignment {
   subject?: string | null;
   targetClass?: string | null;
   targetClasses?: string[] | null;
+  contentKind?: string | null;
 }
 
 interface SharedQuestion {
@@ -194,6 +195,7 @@ export default function SharedContentPage() {
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
   const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
+  const [changingKindIds, setChangingKindIds] = useState<Set<number>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   // Admin-only toggle: when ON, the page also fetches admin-hidden rows
@@ -315,6 +317,35 @@ export default function SharedContentPage() {
       toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
     } finally {
       setHidingIds(prev => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  };
+
+  /** Admin-only: change the library classification of a shared assignment. */
+  const changeLibraryKind = async (assignmentId: number, newKind: "homework" | "competition" | "both") => {
+    if (!isAdmin) return;
+    setChangingKindIds(prev => new Set(prev).add(assignmentId));
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/assignments/${assignmentId}/content-kind`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contentKind: newKind }),
+      });
+      if (res.ok) {
+        setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, contentKind: newKind } : a));
+        const kindLabel = newKind === "both"
+          ? (lang === "ar" ? "كلتا المكتبتين" : "both libraries")
+          : newKind === "competition"
+            ? (lang === "ar" ? "مكتبة المسابقات" : "Competitions Library")
+            : (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library");
+        toast.success(lang === "ar" ? `تم نقله إلى ${kindLabel}` : `Moved to ${kindLabel}`);
+      } else {
+        toast.error(lang === "ar" ? "تعذّر التغيير" : "Failed to change");
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    } finally {
+      setChangingKindIds(prev => { const s = new Set(prev); s.delete(assignmentId); return s; });
     }
   };
 
@@ -735,25 +766,66 @@ export default function SharedContentPage() {
                           </>
                         )}
                         {isAdmin && (
-                          a.hiddenByAdmin ? (
-                            <button
-                              onClick={() => unhideAsAdmin("assignments", a.id)}
-                              disabled={hidingIds.has(`assignments-${a.id}`)}
-                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
-                              {lang === "ar" ? "إعادة الإظهار" : "Restore"}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => hideAsAdmin("assignments", a.id)}
-                              disabled={hidingIds.has(`assignments-${a.id}`)}
-                              title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
-                              className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
-                            >
-                              {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
-                            </button>
-                          )
+                          <>
+                            {/* Library placement picker — inline dropdown */}
+                            <div className="relative group/lib">
+                              <button
+                                type="button"
+                                disabled={changingKindIds.has(a.id)}
+                                title={lang === "ar" ? "تغيير المكتبة (مشرف)" : "Change library (admin)"}
+                                className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg font-bold text-indigo-600 border border-indigo-300 hover:bg-indigo-50 transition-colors disabled:opacity-40"
+                              >
+                                {changingKindIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">
+                                  {a.contentKind === "both"
+                                    ? (lang === "ar" ? "كلتاهما" : "Both")
+                                    : a.contentKind === "competition"
+                                      ? (lang === "ar" ? "مسابقات" : "Comp.")
+                                      : (lang === "ar" ? "أنشطة" : "Act.")}
+                                </span>
+                              </button>
+                              {/* Dropdown */}
+                              <div className="absolute z-20 top-full mt-1 end-0 hidden group-hover/lib:flex flex-col min-w-[180px] rounded-xl border border-border bg-background shadow-lg overflow-hidden">
+                                {(
+                                  [
+                                    { value: "homework",    labelAr: "مكتبة الأنشطة فقط",   labelEn: "Activities only",     cls: "text-blue-700 hover:bg-blue-50" },
+                                    { value: "competition", labelAr: "مكتبة المسابقات فقط",  labelEn: "Competitions only",   cls: "text-amber-700 hover:bg-amber-50" },
+                                    { value: "both",        labelAr: "كلتا المكتبتين",        labelEn: "Both libraries",      cls: "text-purple-700 hover:bg-purple-50" },
+                                  ] as const
+                                ).map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => changeLibraryKind(a.id, opt.value)}
+                                    className={`text-start px-4 py-2.5 text-xs font-bold transition-colors ${opt.cls} ${a.contentKind === opt.value ? "bg-muted font-extrabold" : ""}`}
+                                  >
+                                    {lang === "ar" ? opt.labelAr : opt.labelEn}
+                                    {a.contentKind === opt.value && " ✓"}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Hide / restore */}
+                            {a.hiddenByAdmin ? (
+                              <button
+                                onClick={() => unhideAsAdmin("assignments", a.id)}
+                                disabled={hidingIds.has(`assignments-${a.id}`)}
+                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-bold text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-400 transition-colors disabled:opacity-40"
+                              >
+                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Globe className="w-3.5 h-3.5" />}
+                                {lang === "ar" ? "إعادة الإظهار" : "Restore"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => hideAsAdmin("assignments", a.id)}
+                                disabled={hidingIds.has(`assignments-${a.id}`)}
+                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                              >
+                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
