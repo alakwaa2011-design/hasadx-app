@@ -119,7 +119,10 @@ export default function OrganizerDashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/api/assignments/shared`, {
+        // Organizer dashboard surfaces "ready-to-play contests" only —
+        // ask the server to filter to contentKind='competition' so we
+        // don't accidentally render homework activities here.
+        const r = await fetch(`${API_BASE}/api/assignments/shared?kind=competition`, {
           credentials: "include",
         });
         if (!r.ok) return;
@@ -368,8 +371,12 @@ export default function OrganizerDashboard() {
       label: lang === "ar" ? "المجموعات" : "Collections",
     },
     {
-      href: "/teacher/shared",
-      label: lang === "ar" ? "المحتوى المشترك" : "Shared Content",
+      href: "/teacher/library/homework",
+      label: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
+    },
+    {
+      href: "/teacher/library/competitions",
+      label: lang === "ar" ? "مكتبة المسابقات" : "Competitions Library",
     },
   ];
 
@@ -968,7 +975,7 @@ export default function OrganizerDashboard() {
                   }}
                 />
                 <Link
-                  href="/teacher/shared"
+                  href="/teacher/library/competitions"
                   className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold transition-all hover:-translate-y-0.5 shrink-0 px-3 py-1.5 rounded-full"
                   style={{
                     color: "#0e7490",
@@ -1101,7 +1108,7 @@ export default function OrganizerDashboard() {
 
               <div className="mt-4 sm:hidden">
                 <Link
-                  href="/teacher/shared"
+                  href="/teacher/library/competitions"
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
                   style={{
                     background: "rgba(34,211,238,0.14)",

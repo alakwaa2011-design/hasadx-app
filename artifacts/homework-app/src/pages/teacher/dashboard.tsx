@@ -94,6 +94,8 @@ type TabId =
   | "overview"
   | "assignments"
   | "shared"
+  | "library_homework"
+  | "library_competitions"
   | "competitive"
   | "tools"
   | "presentations"
@@ -207,7 +209,7 @@ export default function TeacherDashboard() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
-    const allowed = ["overview", "assignments", "shared", "competitive", "tools", "videos", "stats", "students"] as const;
+    const allowed = ["overview", "assignments", "shared", "library_homework", "library_competitions", "competitive", "tools", "videos", "stats", "students"] as const;
     type AllowedTab = typeof allowed[number];
     if (tabParam && (allowed as readonly string[]).includes(tabParam)) {
       setActiveTab(tabParam as AllowedTab);
@@ -428,10 +430,23 @@ export default function TeacherDashboard() {
       icon: <BookText className="w-4 h-4" />,
     },
     {
-      id: "shared",
-      label: lang === "ar" ? "مسابقات مشتركة" : "Shared Competitions",
-      shortLabel: lang === "ar" ? "مشتركة" : "Shared",
+      // The mixed "shared" library has been split into two dedicated
+      // libraries. These two entries both navigate via `href` to the
+      // unified shared-content page (kind-aware). The legacy "shared"
+      // tab is kept for back-compat with deep-links such as
+      // /teacher?tab=shared but no sidebar entry points to it.
+      id: "library_homework",
+      label: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
+      shortLabel: lang === "ar" ? "الأنشطة" : "Activities",
       icon: <Globe className="w-4 h-4" />,
+      href: "/teacher/library/homework",
+    },
+    {
+      id: "library_competitions",
+      label: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
+      shortLabel: lang === "ar" ? "المسابقات" : "Competitions",
+      icon: <Trophy className="w-4 h-4" />,
+      href: "/teacher/library/competitions",
     },
     {
       id: "competitive",
@@ -622,7 +637,7 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
               {isAr ? "الرئيسية" : "Main"}
             </p>
-            {tabs.filter(t => ["overview","assignments","shared","competitive","islamic","stats","students"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["overview","assignments","library_homework","library_competitions","competitive","islamic","stats","students"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
@@ -698,7 +713,7 @@ export default function TeacherDashboard() {
                 </h1>
               </div>
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
-          {!["tools", "competitive", "students", "shared"].includes(activeTab) && (
+          {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions"].includes(activeTab) && (
           <div className="grid grid-cols-3 gap-3 mb-7">
             <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -2257,7 +2272,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
             ? "تصفح واجبات وأسئلة ومسابقات المعلمين الآخرين"
             : "Browse assignments, questions & games from other teachers",
           accent: BRAND.green,
-          href: "/teacher/shared",
+          href: "/teacher/library/homework",
         },
       ],
     },

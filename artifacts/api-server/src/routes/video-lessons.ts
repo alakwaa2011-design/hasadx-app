@@ -138,7 +138,7 @@ router.get("/video-lessons/shared/all", async (req, res) => {
       })
       .from(videoLessonsTable)
       .leftJoin(teachersTable, eq(videoLessonsTable.teacherId, teachersTable.id))
-      .where(eq(videoLessonsTable.isShared, true))
+      .where(and(eq(videoLessonsTable.isShared, true), eq(videoLessonsTable.hiddenByAdmin, false)))
       .orderBy(desc(videoLessonsTable.createdAt));
 
     res.json(lessons.map(l => ({ ...l, isAdminContent: !!l.isAdminContent })));
@@ -166,7 +166,7 @@ router.get("/video-lessons/shared", async (req, res) => {
       })
       .from(videoLessonsTable)
       .leftJoin(teachersTable, eq(videoLessonsTable.teacherId, teachersTable.id))
-      .where(eq(videoLessonsTable.isShared, true))
+      .where(and(eq(videoLessonsTable.isShared, true), eq(videoLessonsTable.hiddenByAdmin, false)))
       .orderBy(desc(videoLessonsTable.createdAt));
 
     res.json(lessons);
@@ -193,6 +193,11 @@ router.post("/video-lessons/:id/import", async (req, res) => {
     if (!source) return res.status(404).json({ message: "درس غير موجود" });
     if (!source.isShared && source.teacherId !== teacherId) {
       return res.status(403).json({ message: "غير مصرح" });
+    }
+    // Admin-hidden lessons cannot be imported even if the ID is known.
+    // Owners are still allowed to clone their own (hidden) content.
+    if (source.hiddenByAdmin && source.teacherId !== teacherId) {
+      return res.status(404).json({ message: "درس غير متاح" });
     }
 
     const [newLesson] = await db
@@ -334,7 +339,7 @@ router.post("/video-lessons", async (req, res) => {
         accessMode: body.accessMode,
         accessCode: body.accessCode || null,
         teacherId: req.session.teacherId,
-        isShared: body.isShared ?? false,
+        isShared: body.isShared === false ? false : true,
         skipSegments: body.skipSegments && body.skipSegments.length > 0
           ? JSON.stringify(body.skipSegments)
           : null,

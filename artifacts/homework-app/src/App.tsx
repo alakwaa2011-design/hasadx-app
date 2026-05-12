@@ -249,6 +249,9 @@ function Router() {
         <Route path="/teacher/game/:pin" component={TeacherGame} />
         <Route path="/teacher/whiteboard/:assignmentId/:questionId" component={WhiteboardMonitor} />
         <Route path="/teacher/shared" component={SharedContentPage} />
+        {/* Split libraries — same component, kind comes from the URL */}
+        <Route path="/teacher/library/homework" component={SharedContentPage} />
+        <Route path="/teacher/library/competitions" component={SharedContentPage} />
         <Route path="/teacher/categories" component={CategoriesPage} />
         <Route path="/teacher/collections" component={CollectionsPage} />
         <Route path="/teacher/class-grades/:gradeLevel" component={ClassGrades} />

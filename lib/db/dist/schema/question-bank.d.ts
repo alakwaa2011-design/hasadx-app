@@ -258,6 +258,74 @@ export declare const questionBankTable: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        hiddenByAdmin: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hidden_by_admin";
+            tableName: "question_bank";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hiddenAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hidden_at";
+            tableName: "question_bank";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hiddenById: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hidden_by_id";
+            tableName: "question_bank";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        hideReason: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hide_reason";
+            tableName: "question_bank";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         allowMultipleAnswers: import("drizzle-orm/pg-core").PgColumn<{
             name: "allow_multiple_answers";
             tableName: "question_bank";
@@ -313,10 +381,14 @@ export declare const questionBankTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertQuestionBankSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     subject: z.ZodString;
+    teacherId: z.ZodInt;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     isShared: z.ZodOptional<z.ZodBoolean>;
+    hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
+    hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
+    hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     questionType: z.ZodOptional<z.ZodString>;
     text: z.ZodString;
     optionA: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -325,10 +397,10 @@ export declare const insertQuestionBankSchema: z.ZodObject<{
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     points: z.ZodOptional<z.ZodNumber>;
+    tags: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     allowMultipleAnswers: z.ZodOptional<z.ZodBoolean>;
     repeatQuestion: z.ZodOptional<z.ZodBoolean>;
-    tags: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

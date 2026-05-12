@@ -130,7 +130,7 @@ router.post("/question-bank", async (req, res) => {
         points: body.points || 1,
         tags: body.tags || null,
         imageUrl: body.imageUrl || null,
-        isShared: body.isShared || false,
+        isShared: body.isShared === false ? false : true,
         allowMultipleAnswers: body.allowMultipleAnswers ?? false,
         repeatQuestion: body.repeatQuestion ?? false,
       })
@@ -472,6 +472,8 @@ router.get("/question-bank/shared", async (req, res) => {
       .leftJoin(teachersTable, eq(questionBankTable.teacherId, teachersTable.id))
       .where(and(
         eq(questionBankTable.isShared, true),
+        eq(questionBankTable.hiddenByAdmin, false),
+        ne(questionBankTable.teacherId, teacherId),
         dismissedIds.length > 0 ? notInArray(questionBankTable.id, dismissedIds) : undefined
       ))
       .orderBy(sql`${questionBankTable.createdAt} DESC`);
@@ -501,7 +503,12 @@ router.post("/question-bank/:id/import", async (req, res) => {
     const [original] = await db
       .select()
       .from(questionBankTable)
-      .where(and(eq(questionBankTable.id, id), eq(questionBankTable.isShared, true)))
+      .where(and(
+        eq(questionBankTable.id, id),
+        eq(questionBankTable.isShared, true),
+        // Admin-hidden items must not be importable even if the ID is known.
+        eq(questionBankTable.hiddenByAdmin, false),
+      ))
       .limit(1);
 
     if (!original) {

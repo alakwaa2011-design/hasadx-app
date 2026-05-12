@@ -313,7 +313,10 @@ export default function CreateAssignment() {
   const [modelImage, setModelImage] = useState<string | null>(null);
   const modelImageRef = useRef<HTMLInputElement>(null);
   const [aiGradingInstructions, setAiGradingInstructions] = useState("");
-  const [isShared, setIsShared] = useState(false);
+  // Sharing now defaults to PUBLIC. Teachers can still flip the toggle to
+  // keep an activity private — the new library auto-publishes everything
+  // and admins moderate by hiding individual rows.
+  const [isShared, setIsShared] = useState(true);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [availableCategories, setAvailableCategories] = useState<any[]>([]);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
@@ -763,6 +766,11 @@ export default function CreateAssignment() {
         resultsReleaseMode: resultsReleaseMode !== "immediate" ? resultsReleaseMode : undefined,
         aiGradingInstructions: aiGradingInstructions.trim() || undefined,
         isShared, categoryId: categoryId || undefined,
+        // contentKind drives which public library the activity appears in:
+        // contest mode → "مكتبة المسابقات الجاهزة", otherwise "مكتبة الأنشطة".
+        // Cast through `as any` because OpenAPI codegen hasn't been regenerated
+        // yet; the server reads contentKind directly from req.body.
+        ...({ contentKind: isContestMode ? "competition" : "homework" } as any),
         isAdaptive: isAdaptive || undefined,
         adaptiveConfig: isAdaptive ? { questionsPerSession: adaptiveQuestionsPerSession, skills: adaptiveSkills } : undefined,
         questions: isPaper
@@ -1711,8 +1719,8 @@ export default function CreateAssignment() {
                       <div className="flex items-center gap-2.5">
                         <Globe className={`w-4 h-4 ${isShared ? "text-cyan-500" : "text-muted-foreground"}`} />
                         <div>
-                          <span className="text-sm font-bold block">{lang === "ar" ? "مشاركة عامة" : "Share Publicly"}</span>
-                          <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "مرئي للمعلمين الآخرين" : "Visible to other teachers") : (lang === "ar" ? "خاص بك فقط" : "Only visible to you")}</span>
+                          <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
+                          <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "ستظهر تلقائياً للمعلمين الآخرين. اضغط لجعلها خاصة 🔒" : "Will be auto-published to other teachers. Tap to make private 🔒") : (lang === "ar" ? "خاص بك فقط — لن يراها أحد" : "Only visible to you")}</span>
                         </div>
                       </div>
                       <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="cyan" />

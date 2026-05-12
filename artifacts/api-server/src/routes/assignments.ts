@@ -91,6 +91,8 @@ router.get("/assignments", async (req, res) => {
       resultsReleaseMode: assignmentsTable.resultsReleaseMode,
       isShared: assignmentsTable.isShared,
       isShareApproved: assignmentsTable.isShareApproved,
+      contentKind: assignmentsTable.contentKind,
+      hiddenByAdmin: assignmentsTable.hiddenByAdmin,
       questionCount: sql<number>`(SELECT COUNT(*) FROM questions WHERE questions.assignment_id = ${assignmentsTable.id})`.as("question_count"),
       submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions WHERE submissions.assignment_id = ${assignmentsTable.id})`.as("submission_count"),
       hasModelImage: sql<boolean>`(${assignmentsTable.modelImageBase64} IS NOT NULL)`.as("has_model_image"),
@@ -274,8 +276,13 @@ router.post("/assignments", async (req, res) => {
         examDurationMinutes: body.examDurationMinutes || null,
         resultsReleaseMode: body.resultsReleaseMode || "immediate",
         aiGradingInstructions: body.aiGradingInstructions || null,
-        isShared: body.isShared || false,
-        isShareApproved: (body.isShared || false) && await isAdminTeacher(req.session.teacherId),
+        // Sharing defaults to PUBLIC. Teachers can opt-out via the "make
+        // private" toggle (sends isShared:false). All shares are
+        // auto-approved — admins can later HIDE individual rows via
+        // POST /admin/assignments/:id/hide.
+        isShared: body.isShared === false ? false : true,
+        isShareApproved: body.isShared === false ? false : true,
+        contentKind: ((req.body as any).contentKind === "competition" ? "competition" : "homework"),
         isAdaptive: body.isAdaptive || false,
         adaptiveConfig: body.adaptiveConfig ? JSON.stringify(body.adaptiveConfig) : null,
         activityType: body.activityType || null,
@@ -378,10 +385,17 @@ router.get("/assignments/shared", async (req, res) => {
       ));
     const dismissedIds = dismissed.map(d => d.itemId);
 
+    // ?kind=homework|competition narrows the public library. When omitted we
+    // return both so existing clients keep working.
+    const kindParam = (req.query.kind as string | undefined);
+    const kindFilter = kindParam === "competition" || kindParam === "homework" ? kindParam : null;
+
     const whereClause = and(
       eq(assignmentsTable.isShared, true),
       eq(assignmentsTable.isShareApproved, true),
+      eq(assignmentsTable.hiddenByAdmin, false),
       ne(assignmentsTable.teacherId, teacherId),
+      kindFilter ? eq(assignmentsTable.contentKind, kindFilter) : undefined,
       dismissedIds.length > 0 ? notInArray(assignmentsTable.id, dismissedIds) : undefined
     );
 
@@ -395,6 +409,7 @@ router.get("/assignments/shared", async (req, res) => {
         targetClass: assignmentsTable.targetClass,
         totalPoints: assignmentsTable.totalPoints,
         isShared: assignmentsTable.isShared,
+        contentKind: assignmentsTable.contentKind,
         teacherId: assignmentsTable.teacherId,
         teacherName: teachersTable.name,
         createdAt: assignmentsTable.createdAt,
@@ -1171,10 +1186,12 @@ router.patch("/assignments/:id/share", async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { isShared } = req.body;
     const wantShared = !!isShared;
-    const isAdmin = await isAdminTeacher(req.session.teacherId!);
+    // All shares are auto-approved now (admins can hide individual rows
+    // via /admin/assignments/:id/hide). Keep isShareApproved in sync with
+    // isShared for every teacher, not just admins.
     const [updated] = await db
       .update(assignmentsTable)
-      .set({ isShared: wantShared, ...(isAdmin ? { isShareApproved: wantShared } : {}) })
+      .set({ isShared: wantShared, isShareApproved: wantShared })
       .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
       .returning();
     if (!updated) {
@@ -1202,7 +1219,12 @@ router.post("/assignments/:id/import", async (req, res) => {
     const [original] = await db
       .select()
       .from(assignmentsTable)
-      .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.isShared, true)))
+      .where(and(
+        eq(assignmentsTable.id, id),
+        eq(assignmentsTable.isShared, true),
+        // Admin-hidden items must not be importable even if the ID is known.
+        eq(assignmentsTable.hiddenByAdmin, false),
+      ))
       .limit(1);
 
     if (!original) {
@@ -1238,7 +1260,10 @@ router.post("/assignments/:id/import", async (req, res) => {
         resultsReleaseMode: original.resultsReleaseMode,
         teacherId: req.session.teacherId,
         isShared: false,
-      })
+        // Preserve contentKind so a competition stays in the competitions
+        // library when imported and (later) re-shared by the new owner.
+        contentKind: (original as any).contentKind ?? "homework",
+      } as any)
       .returning();
 
     const questions = await db.select().from(questionsTable).where(eq(questionsTable.assignmentId, id));

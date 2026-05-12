@@ -15,7 +15,11 @@ export const videoLessonsTable = pgTable("video_lessons", {
   accessCode: text("access_code"),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   isPublished: boolean("is_published").notNull().default(true),
-  isShared: boolean("is_shared").notNull().default(false),
+  isShared: boolean("is_shared").notNull().default(true),
+  hiddenByAdmin: boolean("hidden_by_admin").notNull().default(false),
+  hiddenAt: timestamp("hidden_at"),
+  hiddenById: integer("hidden_by_id").references(() => teachersTable.id, { onDelete: "set null" }),
+  hideReason: text("hide_reason"),
   skipSegments: text("skip_segments"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

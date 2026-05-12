@@ -315,8 +315,8 @@ export declare const submissionsTable: import("drizzle-orm/pg-core").PgTableWith
 export declare const insertSubmissionSchema: z.ZodObject<{
     totalPoints: z.ZodOptional<z.ZodNumber>;
     assignmentId: z.ZodInt;
-    studentClass: z.ZodOptional<z.ZodString>;
     studentName: z.ZodString;
+    studentClass: z.ZodOptional<z.ZodString>;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     deviceFingerprint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     score: z.ZodNumber;

@@ -24,8 +24,16 @@ export const assignmentsTable = pgTable("assignments", {
   examDurationMinutes: integer("exam_duration_minutes"),
   resultsReleaseMode: text("results_release_mode").notNull().default("immediate"),
   aiGradingInstructions: text("ai_grading_instructions"),
-  isShared: boolean("is_shared").notNull().default(false),
-  isShareApproved: boolean("is_share_approved").notNull().default(false),
+  isShared: boolean("is_shared").notNull().default(true),
+  isShareApproved: boolean("is_share_approved").notNull().default(true),
+  /** "homework" (default) or "competition". Drives which library this appears in
+   *  ("مكتبة الأنشطة" vs "مكتبة المسابقات الجاهزة"). */
+  contentKind: text("content_kind").notNull().default("homework"),
+  /** When non-null, the row is hidden from public libraries by an admin. */
+  hiddenByAdmin: boolean("hidden_by_admin").notNull().default(false),
+  hiddenAt: timestamp("hidden_at"),
+  hiddenById: integer("hidden_by_id").references(() => teachersTable.id, { onDelete: "set null" }),
+  hideReason: text("hide_reason"),
   isAdaptive: boolean("is_adaptive").notNull().default(false),
   adaptiveConfig: text("adaptive_config"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

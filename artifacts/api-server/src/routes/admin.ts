@@ -941,5 +941,68 @@ router.post("/admin/assignments/:id/reject-share", async (req, res) => {
   }
 });
 
+/* ── Admin hide / unhide endpoints ──────────────────────────────
+   The new sharing model auto-publishes everything; admins moderate
+   reactively by hiding individual rows from the public libraries.
+   These endpoints set hidden_by_admin/hidden_at/hidden_by_id/hide_reason
+   on assignments, question_bank rows, and video_lessons. */
+const HideBody = z.object({ reason: z.string().max(500).optional() });
+
+function buildHideHandler<T extends { id: any; hiddenByAdmin: any; hiddenAt: any; hiddenById: any; hideReason: any }>(
+  table: T,
+  label: string,
+) {
+  return async (req: any, res: any) => {
+    try {
+      const adminId = await requireAdmin(req, res);
+      if (!adminId) return;
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
+      const body = HideBody.parse(req.body ?? {});
+      await db
+        .update(table as any)
+        .set({
+          hiddenByAdmin: true,
+          hiddenAt: new Date(),
+          hiddenById: req.session.teacherId,
+          hideReason: body.reason ?? null,
+        })
+        .where(eq((table as any).id, id));
+      res.json({ success: true });
+    } catch (err) {
+      req.log.error(err, `Failed to hide ${label}`);
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  };
+}
+
+function buildUnhideHandler<T extends { id: any; hiddenByAdmin: any; hiddenAt: any; hiddenById: any; hideReason: any }>(
+  table: T,
+  label: string,
+) {
+  return async (req: any, res: any) => {
+    try {
+      if (!(await requireAdmin(req, res))) return;
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صحيح" }); return; }
+      await db
+        .update(table as any)
+        .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
+        .where(eq((table as any).id, id));
+      res.json({ success: true });
+    } catch (err) {
+      req.log.error(err, `Failed to unhide ${label}`);
+      res.status(500).json({ message: "حدث خطأ" });
+    }
+  };
+}
+
+router.post("/admin/assignments/:id/hide", buildHideHandler(assignmentsTable, "assignment"));
+router.post("/admin/assignments/:id/unhide", buildUnhideHandler(assignmentsTable, "assignment"));
+router.post("/admin/question-bank/:id/hide", buildHideHandler(questionBankTable, "question"));
+router.post("/admin/question-bank/:id/unhide", buildUnhideHandler(questionBankTable, "question"));
+router.post("/admin/video-lessons/:id/hide", buildHideHandler(videoLessonsTable, "video"));
+router.post("/admin/video-lessons/:id/unhide", buildUnhideHandler(videoLessonsTable, "video"));
+
 export { getPublicVisibility };
 export default router;

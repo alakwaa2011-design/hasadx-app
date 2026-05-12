@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
   Search, User, Calendar, Copy, Eye, ChevronRight, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
-  Gamepad2,
+  Gamepad2, EyeOff,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -63,9 +63,20 @@ interface SharedVideoLesson {
 
 export default function SharedContentPage() {
   const { t, lang } = useI18n();
-  const [, setLocation] = useLocation();
+  const [path, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const BackArrow = lang === "ar" ? ArrowRight : ArrowLeft;
+
+  // The page now serves three URLs:
+  //   /teacher/library/homework      → kind="homework" (مكتبة الأنشطة)
+  //   /teacher/library/competitions  → kind="competition" (مكتبة المسابقات الجاهزة)
+  //   /teacher/shared (legacy)       → kind=null (everything, both kinds)
+  // In competition mode we hide the questions/videos tabs and only show
+  // assignments tagged contentKind='competition'.
+  const libraryKind: "homework" | "competition" | null =
+    path.endsWith("/library/competitions") ? "competition" :
+    path.endsWith("/library/homework") ? "homework" : null;
+  const isCompetitionLibrary = libraryKind === "competition";
 
   const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
     if (isAdminContent) return null;
@@ -85,28 +96,77 @@ export default function SharedContentPage() {
   const [importedQIds, setImportedQIds] = useState<Set<number>>(new Set());
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
+  const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
         const meRes = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
         if (!meRes.ok) { setLocation("/login"); return; }
         const meData = await meRes.json();
         setCurrentTeacherId(meData.id || null);
-        const [aRes, qRes, vRes] = await Promise.all([
-          fetch(`${API_BASE}/api/assignments/shared`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/question-bank/shared`, { credentials: "include" }),
-          fetch(`${API_BASE}/api/video-lessons/shared/all`, { credentials: "include" }),
-        ]);
+        setIsAdmin(!!meData.isAdmin);
+        const aUrl = libraryKind
+          ? `${API_BASE}/api/assignments/shared?kind=${libraryKind}`
+          : `${API_BASE}/api/assignments/shared`;
+        // Competition library: assignments only — skip the (slower) bank
+        // and video lookups entirely so the tab feels snappy.
+        const fetches: Promise<Response>[] = [fetch(aUrl, { credentials: "include" })];
+        if (!isCompetitionLibrary) {
+          fetches.push(fetch(`${API_BASE}/api/question-bank/shared`, { credentials: "include" }));
+          fetches.push(fetch(`${API_BASE}/api/video-lessons/shared/all`, { credentials: "include" }));
+        }
+        const [aRes, qRes, vRes] = await Promise.all(fetches);
         if (aRes.ok) setAssignments(await aRes.json());
-        if (qRes.ok) setQuestions(await qRes.json());
-        if (vRes.ok) setVideoLessons(await vRes.json());
+        if (!isCompetitionLibrary) {
+          if (qRes && qRes.ok) setQuestions(await qRes.json());
+          if (vRes && vRes.ok) setVideoLessons(await vRes.json());
+        } else {
+          setQuestions([]);
+          setVideoLessons([]);
+        }
       } catch {} finally { setLoading(false); }
     })();
-  }, []);
+  }, [libraryKind, isCompetitionLibrary]);
+
+  /** Admin-only: hide a row from the public library. */
+  const hideAsAdmin = async (
+    itemType: "assignments" | "question-bank" | "video-lessons",
+    itemId: number,
+  ) => {
+    if (!isAdmin) return;
+    const reason = window.prompt(lang === "ar"
+      ? "سبب الإخفاء (اختياري):"
+      : "Reason for hiding (optional):");
+    if (reason === null) return; // user cancelled
+    const key = `${itemType}-${itemId}`;
+    setHidingIds(prev => new Set(prev).add(key));
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/${itemType}/${itemId}/hide`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason || undefined }),
+      });
+      if (res.ok) {
+        if (itemType === "assignments") setAssignments(prev => prev.filter(a => a.id !== itemId));
+        else if (itemType === "question-bank") setQuestions(prev => prev.filter(q => q.id !== itemId));
+        else setVideoLessons(prev => prev.filter(v => v.id !== itemId));
+        toast.success(lang === "ar" ? "تم إخفاء العنصر من المكتبة" : "Item hidden from library");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر الإخفاء" : "Failed to hide");
+      }
+    } catch {
+      toast.error(lang === "ar" ? "خطأ في الاتصال" : "Connection error");
+    } finally {
+      setHidingIds(prev => { const s = new Set(prev); s.delete(key); return s; });
+    }
+  };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-US", { year: "numeric", month: "short", day: "numeric" });
 
@@ -268,15 +328,34 @@ export default function SharedContentPage() {
         </Link>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center shadow-lg">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
+            style={{
+              background: isCompetitionLibrary
+                ? "linear-gradient(135deg,#f59e0b,#ea580c)"
+                : "linear-gradient(135deg,#06b6d4,#0d9488)",
+            }}
+          >
             <Globe className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {t.sharedContent.title}
+              {libraryKind === "competition"
+                ? (lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library")
+                : libraryKind === "homework"
+                ? (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library")
+                : t.sharedContent.title}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {t.sharedContent.subtitle}
+              {libraryKind === "competition"
+                ? (lang === "ar"
+                    ? "تصفح وشغّل مسابقات جاهزة شاركها معلمون آخرون"
+                    : "Browse ready-to-play competitions shared by other teachers")
+                : libraryKind === "homework"
+                ? (lang === "ar"
+                    ? "تصفح أنشطة وأسئلة وفيديوهات جاهزة من معلمين آخرين"
+                    : "Browse activities, questions and videos shared by other teachers")
+                : t.sharedContent.subtitle}
             </p>
           </div>
         </div>
@@ -284,8 +363,12 @@ export default function SharedContentPage() {
         <div className="flex items-center gap-2 mb-6 border-b border-border pb-0">
           {([
             { key: "assignments" as Tab, label: t.sharedContent.tabAssignments, icon: BookText, count: assignments.length },
-            { key: "questions" as Tab, label: t.sharedContent.tabQuestions, icon: HelpCircle, count: questions.length },
-            { key: "videos" as Tab, label: lang === "ar" ? "دروس فيديو" : "Video Lessons", icon: Video, count: videoLessons.length },
+            // Competition library: only show the assignments tab —
+            // question-bank and video lessons live in the activities library.
+            ...(isCompetitionLibrary ? [] : [
+              { key: "questions" as Tab, label: t.sharedContent.tabQuestions, icon: HelpCircle, count: questions.length },
+              { key: "videos" as Tab, label: lang === "ar" ? "دروس فيديو" : "Video Lessons", icon: Video, count: videoLessons.length },
+            ]),
           ]).map(tab => (
             <button
               key={tab.key}
@@ -399,6 +482,16 @@ export default function SharedContentPage() {
                             >
                               {dismissingIds.has(`assignment-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => hideAsAdmin("assignments", a.id)}
+                                disabled={hidingIds.has(`assignments-${a.id}`)}
+                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                              >
+                                {hidingIds.has(`assignments-${a.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -462,6 +555,16 @@ export default function SharedContentPage() {
                             {importingVIds.has(v.id) ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                             {lang === "ar" ? "استيراد الدرس" : "Import Lesson"}
                           </Button>
+                        )}
+                        {isAdmin && v.teacherId !== currentTeacherId && (
+                          <button
+                            onClick={() => hideAsAdmin("video-lessons", v.id)}
+                            disabled={hidingIds.has(`video-lessons-${v.id}`)}
+                            title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                          >
+                            {hidingIds.has(`video-lessons-${v.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -536,6 +639,16 @@ export default function SharedContentPage() {
                             >
                               {dismissingIds.has(`question-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                             </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => hideAsAdmin("question-bank", q.id)}
+                                disabled={hidingIds.has(`question-bank-${q.id}`)}
+                                title={lang === "ar" ? "إخفاء من المكتبة (مشرف)" : "Hide from library (admin)"}
+                                className="p-1.5 rounded-lg text-amber-600 hover:text-white hover:bg-amber-600 border border-amber-300 transition-colors disabled:opacity-40"
+                              >
+                                {hidingIds.has(`question-bank-${q.id}`) ? <Loader2 className="w-4 h-4 animate-spin" /> : <EyeOff className="w-4 h-4" />}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
