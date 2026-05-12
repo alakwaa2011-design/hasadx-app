@@ -399,6 +399,8 @@ export default function AdminPage() {
   const [classroomEmailsInput, setClassroomEmailsInput] = useState("");
   const [savingClassroom, setSavingClassroom] = useState(false);
   const [savingGameVisibility, setSavingGameVisibility] = useState(false);
+  const [arenaImportSources, setArenaImportSources] = useState<{ manual: boolean; ai: boolean; homework: boolean; file: boolean }>({ manual: true, ai: true, homework: false, file: false });
+  const [savingArenaSources, setSavingArenaSources] = useState(false);
 
   // Appearance
   const [appearancePrimaryColor, setAppearancePrimaryColor] = useState("#0d6b75");
@@ -723,6 +725,7 @@ export default function AdminPage() {
           setShowQuranSection(ps.showQuranSection ?? false);
           setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
           setShowMaraqui(ps.showMaraqui ?? false);
+          if (ps.arenaImportSources) setArenaImportSources(ps.arenaImportSources);
           setClassroomEnabled(ps.classroomEnabled ?? false);
           const emails = Array.isArray(ps.classroomAllowedEmails) ? ps.classroomAllowedEmails : [];
           setClassroomAllowedEmails(emails);
@@ -2289,8 +2292,47 @@ export default function AdminPage() {
                 </button>
 
                 <div className="border-t border-border/40 my-2" />
-                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "الألعاب التعليمية" : "Educational Games"}</p>
+                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "تحدّي حصاد — مصادر الأسئلة" : "Hasad Challenge — Question Sources"}</p>
+                {([
+                  { key: "manual" as const, label: lang === "ar" ? "إدخال يدوي" : "Manual entry", desc: lang === "ar" ? "إدخال السؤال والإجابة يدوياً." : "Type questions and answers by hand." },
+                  { key: "ai" as const, label: lang === "ar" ? "توليد بالذكاء الاصطناعي" : "AI generation", desc: lang === "ar" ? "توليد دفعة من الأسئلة بناءً على موضوع." : "Generate a batch of questions from a topic." },
+                  { key: "homework" as const, label: lang === "ar" ? "استيراد من الواجبات" : "Import from homework", desc: lang === "ar" ? "(قريباً) استيراد أسئلة من واجباتك السابقة." : "(Coming soon) Import questions from your past homework." },
+                  { key: "file" as const, label: lang === "ar" ? "استيراد من ملف (Excel/PDF)" : "Import from file (Excel/PDF)", desc: lang === "ar" ? "(قريباً) رفع ملف وتحويل محتواه إلى أسئلة." : "(Coming soon) Upload a file and convert it to questions." },
+                ]).map(src => (
+                  <button
+                    key={src.key}
+                    onClick={async () => {
+                      const next = { ...arenaImportSources, [src.key]: !arenaImportSources[src.key] };
+                      setArenaImportSources(next);
+                      setSavingArenaSources(true);
+                      try {
+                        const apiBase = import.meta.env.VITE_API_URL || "";
+                        const r = await fetch(`${apiBase}/api/admin/platform-settings`, {
+                          method: "PATCH", credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ arenaImportSources: next }),
+                        });
+                        if (!r.ok) throw new Error("save failed");
+                      } catch {
+                        setArenaImportSources(arenaImportSources); // revert
+                        toast.error(lang === "ar" ? "تعذّر حفظ الإعداد" : "Failed to save setting");
+                      } finally { setSavingArenaSources(false); }
+                    }}
+                    disabled={savingArenaSources}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3 hover:bg-muted/30 transition-colors text-start disabled:opacity-60"
+                  >
+                    <div>
+                      <p className="font-bold text-sm text-foreground">{src.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{src.desc}</p>
+                    </div>
+                    {arenaImportSources[src.key]
+                      ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
+                      : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                  </button>
+                ))}
 
+                <div className="border-t border-border/40 my-2" />
+                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "الألعاب التعليمية" : "Educational Games"}</p>
                 {([
                   { id: "flags", label: t.admin.gameFlags, desc: t.admin.gameFlagsDesc, value: showFlagsGame },
                   { id: "color", label: t.admin.gameColor, desc: t.admin.gameColorDesc, value: showColorGame },

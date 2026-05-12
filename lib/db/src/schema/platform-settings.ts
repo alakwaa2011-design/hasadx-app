@@ -14,6 +14,24 @@ export const DEFAULT_PRESENTATION_LIMITS = {
 
 export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
 
+/* Per-source toggles for the Arena Challenge category editor.
+   Lets the admin decide which question-import flows are exposed
+   to organisers. AI generation is on by default; bulk file/
+   homework imports stay off until explicitly enabled. */
+export const DEFAULT_ARENA_IMPORT_SOURCES = {
+  manual: true,
+  ai: true,
+  homework: false,
+  file: false,
+} as const;
+
+export type ArenaImportSources = {
+  manual: boolean;
+  ai: boolean;
+  homework: boolean;
+  file: boolean;
+};
+
 export const platformSettingsTable = pgTable("platform_settings", {
   id: serial("id").primaryKey(),
   publicVisibility: text("public_visibility").notNull().default("selective"),
@@ -49,4 +67,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
      is true. Non-empty = only teachers whose login email is in the list
      can connect / use Classroom. */
   classroomAllowedEmails: text("classroom_allowed_emails").array().notNull().default(sql`ARRAY[]::text[]`),
+  /* Arena Challenge — which question-import sources organisers can use
+     when creating a custom category. Admin-controllable toggles. */
+  arenaImportSources: jsonb("arena_import_sources").$type<ArenaImportSources>().notNull().default(DEFAULT_ARENA_IMPORT_SOURCES),
 });

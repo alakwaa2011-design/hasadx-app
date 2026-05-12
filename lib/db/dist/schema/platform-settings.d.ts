@@ -5,6 +5,18 @@ export declare const DEFAULT_PRESENTATION_LIMITS: {
     readonly maxSizeMbRegular: 50;
 };
 export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
+export declare const DEFAULT_ARENA_IMPORT_SOURCES: {
+    readonly manual: true;
+    readonly ai: true;
+    readonly homework: false;
+    readonly file: false;
+};
+export type ArenaImportSources = {
+    manual: boolean;
+    ai: boolean;
+    homework: boolean;
+    file: boolean;
+};
 export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "platform_settings";
     schema: undefined;
@@ -471,6 +483,25 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
                 driverParam: string;
             }, {}, {}, import("drizzle-orm").ColumnBuilderExtraConfig>;
             size: undefined;
+        }>;
+        arenaImportSources: import("drizzle-orm/pg-core").PgColumn<{
+            name: "arena_import_sources";
+            tableName: "platform_settings";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: ArenaImportSources;
+            driverParam: unknown;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            $type: ArenaImportSources;
         }>;
     };
     dialect: "pg";

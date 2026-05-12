@@ -204,6 +204,14 @@ async function runSchemaMigrations() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS activity_logs_created_at_idx ON activity_logs (created_at)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS activity_logs_user_idx ON activity_logs (user_id, user_role)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS activity_logs_action_idx ON activity_logs (action)`);
+    /* Arena Challenge — admin-controlled per-source toggles for the
+       category editor (manual / AI / homework / file). Defaults match
+       DEFAULT_ARENA_IMPORT_SOURCES in the Drizzle schema. */
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS arena_import_sources JSONB NOT NULL
+        DEFAULT '{"manual":true,"ai":true,"homework":false,"file":false}'::jsonb
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");

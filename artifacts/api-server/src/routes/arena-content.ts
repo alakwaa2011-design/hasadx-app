@@ -1,13 +1,19 @@
 import { Router, type IRouter } from "express";
-import { db, arenaCategoriesTable, arenaActivitiesTable, arenaQuestionReportsTable, teachersTable } from "@workspace/db";
+import { db, arenaCategoriesTable, arenaActivitiesTable, arenaQuestionReportsTable, teachersTable, platformSettingsTable, DEFAULT_ARENA_IMPORT_SOURCES, type ArenaImportSources } from "@workspace/db";
 import { eq, or, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
 
 const router: IRouter = Router();
 
 async function isAdmin(teacherId: number): Promise<boolean> {
   const [t] = await db.select({ isAdmin: teachersTable.isAdmin }).from(teachersTable).where(eq(teachersTable.id, teacherId));
   return !!t?.isAdmin;
+}
+
+async function getArenaImportSources(): Promise<ArenaImportSources> {
+  const [row] = await db.select({ s: platformSettingsTable.arenaImportSources }).from(platformSettingsTable).limit(1);
+  return row?.s ?? { ...DEFAULT_ARENA_IMPORT_SOURCES };
 }
 
 const CategoryBody = z.object({
@@ -151,6 +157,20 @@ router.post("/arena-content/activities", async (req, res) => {
     const admin = await isAdmin(teacherId);
     const ownsCat = cat.teacherId === teacherId || admin;
     if (!ownsCat) return res.status(403).json({ error: "Forbidden" });
+    /* Enforce per-source feature flag — admins bypass so they can still
+       moderate even when a source is globally disabled. The frontend
+       picks the source via the `source` query param; legacy callers
+       (no param) default to "manual". */
+    if (!admin) {
+      const rawSource = String(req.query.source ?? "manual").toLowerCase();
+      const source = (["manual", "ai", "homework", "file"] as const).includes(rawSource as any)
+        ? (rawSource as "manual" | "ai" | "homework" | "file")
+        : "manual";
+      const sources = await getArenaImportSources();
+      if (!sources[source]) {
+        return res.status(403).json({ error: `Import source '${source}' is currently disabled by the admin` });
+      }
+    }
     const isPublic = admin && cat.isPublic;
     const [row] = await db.insert(arenaActivitiesTable).values({
       ...body,
@@ -312,6 +332,149 @@ router.delete("/arena-content/reports/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "delete arena report");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ─── Import-source flags (public read) ──────────────────────
+   Lets any authenticated organiser see which question import
+   flows (manual / AI / homework / file) are currently enabled
+   by the platform admin. Updates flow through the existing
+   admin /admin/platform-settings PATCH. */
+router.get("/arena-content/import-sources", async (req, res) => {
+  try {
+    const sources = await getArenaImportSources();
+    res.json(sources);
+  } catch (err) {
+    req.log.error({ err }, "get arena import sources");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ─── AI question generation ────────────────────────────────
+   Generates a batch of arena questions for a custom category
+   given a topic + count. Difficulty is auto-assigned by the
+   model (200/400/600 — easy/medium/hard) and an optional bonus
+   800-pt question can be requested. Output is preview-only:
+   the organiser inspects/edits each row, then chooses what to
+   save via the existing POST /arena-content/activities. */
+const AiGenerateBody = z.object({
+  topic: z.string().min(2).max(300),
+  count: z.number().int().min(1).max(15),
+  includeBonus800: z.boolean().default(false),
+  language: z.enum(["ar", "en"]).default("ar"),
+  notes: z.string().max(500).optional(),
+}).strict();
+
+interface GeneratedQuestion {
+  q: string;
+  a: string;
+  difficulty: 200 | 400 | 600 | 800;
+  hint?: string | null;
+}
+
+function parseAiQuestions(text: string): GeneratedQuestion[] {
+  if (!text) return [];
+  const trimmed = text.trim();
+  let parsed: unknown = null;
+  try { parsed = JSON.parse(trimmed); } catch { /* try fence */ }
+  if (parsed === null) {
+    const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence?.[1]) {
+      try { parsed = JSON.parse(fence[1]); } catch { /* try slice */ }
+    }
+  }
+  if (parsed === null) {
+    const a = trimmed.indexOf("[");
+    const b = trimmed.lastIndexOf("]");
+    if (a !== -1 && b > a) {
+      try { parsed = JSON.parse(trimmed.slice(a, b + 1)); } catch { /* give up */ }
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  const out: GeneratedQuestion[] = [];
+  for (const raw of parsed) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const q = String(r.question ?? r.q ?? "").trim();
+    const a = String(r.answer ?? r.a ?? "").trim();
+    const dRaw = Number(r.difficulty ?? r.diff ?? 200);
+    const difficulty = ([200, 400, 600, 800] as const).includes(dRaw as 200 | 400 | 600 | 800)
+      ? (dRaw as 200 | 400 | 600 | 800)
+      : 200;
+    const hint = typeof r.hint === "string" ? r.hint.trim() : null;
+    if (!q || !a) continue;
+    out.push({ q, a, difficulty, hint: hint || null });
+  }
+  return out;
+}
+
+router.post("/arena-content/ai-generate-questions", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+
+    const sources = await getArenaImportSources();
+    if (!sources.ai) {
+      return res.status(403).json({ error: "AI generation is currently disabled by the admin" });
+    }
+
+    const body = AiGenerateBody.parse(req.body);
+
+    const langName = body.language === "ar" ? "Arabic" : "English";
+    const sysPrompt = [
+      `You are an expert quiz writer for an Arabic educational competition platform called "Hasad Challenge".`,
+      `Generate factually accurate, engaging short-answer trivia questions on the user-provided topic.`,
+      `Write the questions and answers in ${langName}.`,
+      `Each question must have ONE concise canonical answer (1–6 words). Avoid yes/no, avoid multi-part.`,
+      `Assign a difficulty integer to each question:`,
+      `  200 = easy (general knowledge, recall),`,
+      `  400 = medium (some specific knowledge),`,
+      `  600 = hard (deeper specialized knowledge).`,
+      `If the user requests a bonus 800-point question, that question must be exceptionally hard / expert-level.`,
+      `Distribute the difficulties roughly evenly (e.g. for 6 questions: 2×200, 2×400, 2×600).`,
+      `Optionally include a short helpful hint per question (≤10 words) — never reveal the answer in the hint.`,
+      `Output STRICT JSON only — a single JSON array. No markdown, no prose, no comments.`,
+      `Schema per item: { "question": string, "answer": string, "difficulty": 200|400|600|800, "hint": string | null }`,
+    ].join("\n");
+
+    const baseCount = body.count;
+    const totalCount = baseCount + (body.includeBonus800 ? 1 : 0);
+    const userPrompt = [
+      `Topic: ${body.topic}`,
+      `Count: ${baseCount} regular questions${body.includeBonus800 ? " + 1 bonus 800-point expert question (total " + totalCount + ")" : ""}`,
+      body.notes ? `Notes: ${body.notes}` : "",
+      `Return a JSON array with exactly ${totalCount} items, ordered by ascending difficulty.`,
+    ].filter(Boolean).join("\n");
+
+    const completion = await anthropic.messages.create({
+      model: SONNET_MODEL,
+      max_tokens: 3500,
+      system: sysPrompt,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const block = completion.content.find((c) => c.type === "text");
+    const raw = block && "text" in block ? block.text : "";
+    const questions = parseAiQuestions(raw);
+
+    if (questions.length === 0) {
+      req.log.warn({ topic: body.topic, raw: raw.slice(0, 400) }, "AI returned no parseable questions");
+      return res.status(502).json({ error: "تعذّر توليد الأسئلة — حاول مجدداً أو غيّر الموضوع" });
+    }
+
+    /* Enforce the bonus 800 if requested but model didn't include it. */
+    if (body.includeBonus800 && !questions.some(q => q.difficulty === 800)) {
+      const last = questions[questions.length - 1];
+      if (last) last.difficulty = 800;
+    }
+
+    res.json({ questions: questions.slice(0, totalCount) });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid request", details: err.issues });
+    }
+    req.log.error({ err }, "ai generate arena questions");
     res.status(500).json({ error: "Server error" });
   }
 });

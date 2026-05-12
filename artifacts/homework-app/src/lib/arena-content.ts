@@ -104,9 +104,61 @@ export async function deleteArenaCategory(id: number): Promise<boolean> {
   }
 }
 
-export async function createArenaActivity(body: Partial<DbArenaActivity>): Promise<DbArenaActivity | null> {
+export interface ArenaImportSources {
+  manual: boolean;
+  ai: boolean;
+  homework: boolean;
+  file: boolean;
+}
+
+export async function fetchArenaImportSources(): Promise<ArenaImportSources> {
   try {
-    const r = await fetch(`${API_BASE}/api/arena-content/activities`, {
+    const r = await fetch(`${API_BASE}/api/arena-content/import-sources`, { credentials: "include" });
+    if (!r.ok) return { manual: true, ai: true, homework: false, file: false };
+    return await r.json();
+  } catch {
+    return { manual: true, ai: true, homework: false, file: false };
+  }
+}
+
+export interface AiGeneratedQuestion {
+  q: string;
+  a: string;
+  difficulty: 200 | 400 | 600 | 800;
+  hint?: string | null;
+}
+
+export async function aiGenerateArenaQuestions(input: {
+  topic: string;
+  count: number;
+  includeBonus800: boolean;
+  language?: "ar" | "en";
+  notes?: string;
+}): Promise<{ questions: AiGeneratedQuestion[]; error?: string }> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/ai-generate-questions`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      return { questions: [], error: j?.error || `HTTP ${r.status}` };
+    }
+    const j = await r.json();
+    return { questions: Array.isArray(j?.questions) ? j.questions : [] };
+  } catch (e) {
+    return { questions: [], error: (e as Error).message };
+  }
+}
+
+export async function createArenaActivity(
+  body: Partial<DbArenaActivity>,
+  source: "manual" | "ai" | "homework" | "file" = "manual",
+): Promise<DbArenaActivity | null> {
+  try {
+    const r = await fetch(`${API_BASE}/api/arena-content/activities?source=${source}`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

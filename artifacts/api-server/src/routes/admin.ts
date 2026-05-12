@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
@@ -21,6 +21,12 @@ const PresentationLimitsSchema = z.object({
   maxFilesRegular: z.number().int().min(0).max(1000),
   maxSlidesRegular: z.number().int().min(1).max(500),
   maxSizeMbRegular: z.number().int().min(1).max(10240),
+}).strict();
+const ArenaImportSourcesSchema = z.object({
+  manual: z.boolean(),
+  ai: z.boolean(),
+  homework: z.boolean(),
+  file: z.boolean(),
 }).strict();
 
 const router: IRouter = Router();
@@ -492,6 +498,7 @@ async function getPlatformSettings() {
     showMaraqui: row?.showMaraqui ?? false,
     classroomEnabled: row?.classroomEnabled ?? false,
     classroomAllowedEmails: row?.classroomAllowedEmails ?? [],
+    arenaImportSources: row?.arenaImportSources ?? { ...DEFAULT_ARENA_IMPORT_SOURCES },
   };
 }
 
@@ -514,7 +521,7 @@ router.get("/admin/platform-settings", async (req, res) => {
 router.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails } = req.body;
+    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails, arenaImportSources } = req.body;
 
     const update: Record<string, unknown> = {};
 
@@ -572,6 +579,13 @@ router.patch("/admin/platform-settings", async (req, res) => {
         ),
       ).slice(0, 500);
       update.classroomAllowedEmails = cleaned;
+    }
+    if (arenaImportSources !== undefined) {
+      const parsed = ArenaImportSourcesSchema.safeParse(arenaImportSources);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "arenaImportSources غير صالح" });
+      }
+      update.arenaImportSources = parsed.data;
     }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });

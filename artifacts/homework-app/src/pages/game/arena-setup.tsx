@@ -21,7 +21,9 @@ import {
   fetchArenaCategories, fetchArenaActivities, buildDbSections,
   createArenaCategory, updateArenaCategory, deleteArenaCategory,
   createArenaActivity, updateArenaActivity, deleteArenaActivity,
-  uploadImageFile, type DbArenaCategory, type DbArenaActivity,
+  uploadImageFile, fetchArenaImportSources, aiGenerateArenaQuestions,
+  type DbArenaCategory, type DbArenaActivity, type ArenaImportSources,
+  type AiGeneratedQuestion,
 } from "@/lib/arena-content";
 import { toast } from "@/components/ui/sonner";
 
@@ -1542,6 +1544,72 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   const [activities, setActivities] = useState<DbArenaActivity[]>([]);
   const [activitiesLoaded, setActivitiesLoaded] = useState(false);
 
+  // Import-source flags + AI generation dialog
+  const [importSources, setImportSources] = useState<ArenaImportSources>({ manual: true, ai: true, homework: false, file: false });
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiCount, setAiCount] = useState(6);
+  const [aiBonus, setAiBonus] = useState(false);
+  const [aiNotes, setAiNotes] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResults, setAiResults] = useState<AiGeneratedQuestion[]>([]);
+  const [aiSavingAll, setAiSavingAll] = useState(false);
+
+  useEffect(() => {
+    let cancel = false;
+    fetchArenaImportSources().then(s => { if (!cancel) setImportSources(s); });
+    return () => { cancel = true; };
+  }, []);
+
+  const generateAi = async () => {
+    if (!aiTopic.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiResults([]);
+    const r = await aiGenerateArenaQuestions({
+      topic: aiTopic.trim(),
+      count: aiCount,
+      includeBonus800: aiBonus,
+      language: "ar",
+      notes: aiNotes.trim() || undefined,
+    });
+    setAiLoading(false);
+    if (r.error || r.questions.length === 0) {
+      toast.error(r.error || "تعذّر توليد الأسئلة");
+      return;
+    }
+    setAiResults(r.questions);
+  };
+
+  const saveAllAi = async () => {
+    if (!savedCatId || aiResults.length === 0 || aiSavingAll) return;
+    setAiSavingAll(true);
+    let created = 0;
+    for (const q of aiResults) {
+      if (!q.q.trim() || !q.a.trim()) continue;
+      const row = await createArenaActivity({
+        categoryId: savedCatId,
+        type: "text",
+        difficulty: q.difficulty,
+        question: q.q.trim(),
+        answer: q.a.trim(),
+        hint: q.hint?.trim() || null,
+      }, "ai");
+      if (row) created++;
+    }
+    setAiSavingAll(false);
+    if (created > 0) {
+      toast.success(`تمت إضافة ${created} سؤال`);
+      const acts = await fetchArenaActivities([savedCatId]);
+      setActivities(acts);
+      setAiDialogOpen(false);
+      setAiResults([]);
+      setAiTopic("");
+      setAiNotes("");
+    } else {
+      toast.error("لم تُحفظ أي أسئلة");
+    }
+  };
+
   useEffect(() => {
     if (savedCatId && !activitiesLoaded) {
       (async () => {
@@ -2000,11 +2068,48 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
               {/* Activities editor (only after save) */}
               {savedCatId && (
                 <div className="border-t border-white/10 pt-5">
-                  <h4 className="font-extrabold text-base text-white mb-3 flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-amber-300" />
-                    أسئلة الفئة
-                  </h4>
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                    <h4 className="font-extrabold text-base text-white flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-amber-300" />
+                      أسئلة الفئة
+                    </h4>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {importSources.ai && (
+                        <button
+                          onClick={() => setAiDialogOpen(true)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-gradient-to-l from-fuchsia-500/30 to-violet-500/30 border border-fuchsia-300/40 text-fuchsia-100 hover:from-fuchsia-500/45 hover:to-violet-500/45"
+                        >
+                          <Wand2 className="w-3.5 h-3.5" />
+                          توليد بالذكاء
+                        </button>
+                      )}
+                      {importSources.homework && (
+                        <button
+                          onClick={() => toast.info("استيراد من واجباتك — قريباً")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25"
+                        >
+                          <Inbox className="w-3.5 h-3.5" />
+                          من الواجبات
+                        </button>
+                      )}
+                      {importSources.file && (
+                        <button
+                          onClick={() => toast.info("الاستيراد من ملف — قريباً")}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-sky-500/15 border border-sky-400/30 text-sky-100 hover:bg-sky-500/25"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          من ملف
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
+                  {!importSources.manual && (
+                    <div className="rounded-xl bg-black/30 border border-dashed border-white/10 p-3 mb-3 text-center text-emerald-100/60 text-xs">
+                      الإدخال اليدوي معطّل من قِبَل المسؤول — استخدم زر «توليد بالذكاء» أعلاه.
+                    </div>
+                  )}
+                  {importSources.manual && (
                   <div className="rounded-xl bg-black/30 border border-white/10 p-3 mb-3 space-y-3">
                     <div className="flex flex-wrap gap-1.5">
                       {([
@@ -2104,6 +2209,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       </div>
                     )}
                   </div>
+                  )}
 
                   {activities.length === 0 ? (
                     <div className="text-center text-emerald-100/40 text-sm py-4 border border-dashed border-white/10 rounded-xl">
@@ -2164,6 +2270,148 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
           )}
         </div>
       </motion.div>
+
+      {/* AI generation dialog */}
+      <AnimatePresence>
+        {aiDialogOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4"
+            onClick={() => !aiLoading && !aiSavingAll && setAiDialogOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-2xl bg-gradient-to-b from-emerald-950 to-emerald-900 border-2 border-fuchsia-300/40 rounded-2xl shadow-2xl overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div className="flex items-center gap-2.5">
+                  <Wand2 className="w-5 h-5 text-fuchsia-300" />
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">توليد أسئلة بالذكاء الاصطناعي</h3>
+                    <p className="text-[11px] text-emerald-100/60">يُعيّن النموذج الصعوبة تلقائياً (200/400/600) — يمكنك التعديل قبل الحفظ.</p>
+                  </div>
+                </div>
+                <button onClick={() => !aiLoading && !aiSavingAll && setAiDialogOpen(false)} className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-emerald-100/80">الموضوع</label>
+                  <input
+                    value={aiTopic} onChange={e => setAiTopic(e.target.value)}
+                    placeholder="مثال: الأنبياء في القرآن، عواصم الدول العربية، فيزياء الحركة"
+                    className="w-full bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300"
+                    dir="rtl"
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-12 gap-3 items-end">
+                  <div className="sm:col-span-5 space-y-1.5">
+                    <label className="text-xs font-bold text-emerald-100/80">عدد الأسئلة</label>
+                    <input
+                      type="number" min={1} max={12} value={aiCount}
+                      onChange={e => setAiCount(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+                      className="w-full bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300"
+                    />
+                  </div>
+                  <label className="sm:col-span-7 flex items-center gap-2 cursor-pointer rounded-lg bg-amber-400/10 border border-amber-300/30 px-3 py-2">
+                    <input type="checkbox" checked={aiBonus} onChange={e => setAiBonus(e.target.checked)} className="w-4 h-4 accent-amber-400" />
+                    <span className="text-xs font-bold text-amber-200">+ سؤال بونص (800 نقطة) — صعب جداً</span>
+                  </label>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-emerald-100/80">ملاحظات للنموذج (اختياري)</label>
+                  <input
+                    value={aiNotes} onChange={e => setAiNotes(e.target.value)}
+                    placeholder="مثال: للمرحلة الابتدائية، تجنّب المعلومات المتقدمة"
+                    className="w-full bg-black/40 text-white rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-fuchsia-300 text-sm"
+                    dir="rtl"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={generateAi} disabled={aiLoading || !aiTopic.trim()}
+                    className="px-4 py-2 rounded-xl font-bold bg-gradient-to-l from-fuchsia-500 to-violet-500 text-white hover:from-fuchsia-400 hover:to-violet-400 inline-flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {aiLoading ? "جارٍ التوليد..." : (aiResults.length > 0 ? "إعادة التوليد" : "توليد")}
+                  </button>
+                  {aiResults.length > 0 && (
+                    <span className="text-xs text-emerald-100/70">عاين الأسئلة وعدّلها قبل الحفظ.</span>
+                  )}
+                </div>
+
+                {aiResults.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-white/10">
+                    <div className="text-xs font-bold text-emerald-100/80">الأسئلة المُولّدة ({aiResults.length})</div>
+                    {aiResults.map((q, i) => (
+                      <div key={i} className="rounded-lg bg-black/40 border border-white/10 p-2.5 space-y-1.5">
+                        <div className="grid sm:grid-cols-12 gap-2">
+                          <input
+                            value={q.q}
+                            onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, q: e.target.value } : x))}
+                            className="sm:col-span-5 bg-black/40 text-white rounded-md px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-fuchsia-300"
+                            placeholder="السؤال"
+                          />
+                          <input
+                            value={q.a}
+                            onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, a: e.target.value } : x))}
+                            className="sm:col-span-4 bg-black/40 text-white rounded-md px-2 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-fuchsia-300"
+                            placeholder="الإجابة"
+                          />
+                          <div className="sm:col-span-2 flex items-center">
+                            <DiffChips
+                              value={q.difficulty}
+                              onChange={(d) => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, difficulty: d } : x))}
+                            />
+                          </div>
+                          <button
+                            onClick={() => setAiResults(prev => prev.filter((_, j) => j !== i))}
+                            className="sm:col-span-1 p-1.5 rounded-md text-rose-300 hover:bg-rose-500/20 inline-flex items-center justify-center"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <input
+                          value={q.hint ?? ""}
+                          onChange={e => setAiResults(prev => prev.map((x, j) => j === i ? { ...x, hint: e.target.value } : x))}
+                          placeholder="تلميح (اختياري)"
+                          className="w-full bg-black/40 text-white rounded-md px-2 py-1 text-xs border border-white/10 focus:outline-none focus:border-fuchsia-300"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 p-4 border-t border-white/10 bg-black/30">
+                <button
+                  onClick={() => !aiSavingAll && setAiDialogOpen(false)}
+                  disabled={aiSavingAll}
+                  className="px-4 py-2 rounded-xl font-bold text-white/70 hover:text-white border border-white/15 hover:border-white/30"
+                >
+                  إغلاق
+                </button>
+                {aiResults.length > 0 && (
+                  <button
+                    onClick={saveAllAi} disabled={aiSavingAll}
+                    className="px-5 py-2 rounded-xl font-bold bg-gradient-to-l from-amber-400 to-yellow-300 text-emerald-950 hover:from-amber-300 hover:to-yellow-200 inline-flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {aiSavingAll ? "جارٍ الحفظ..." : `حفظ كل الأسئلة (${aiResults.length})`}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
