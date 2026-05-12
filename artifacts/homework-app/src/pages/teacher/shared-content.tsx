@@ -16,6 +16,96 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 
 type Tab = "assignments" | "questions" | "videos";
 
+// ---------------------------------------------------------------------------
+// Fuzzy subject matching — maps Arabic/English query aliases to subject groups
+// so "عربي" matches "اللغة العربية", "دين" matches "تربية إسلامية", etc.
+// ---------------------------------------------------------------------------
+const SUBJECT_ALIAS_GROUPS: string[][] = [
+  // اللغة العربية
+  ["عربي", "عربية", "عرب", "لغة عربية", "لغه عربيه", "اللغة العربية", "arabic", "لغة", "ايخص العربي"],
+  // تربية إسلامية
+  ["إسلامية", "اسلامية", "إسلام", "اسلام", "تربية إسلامية", "تربيه اسلاميه", "دين", "ديني", "قرآن", "قران", "quran", "islamic", "religion", "مسجد"],
+  // رياضيات
+  ["رياضيات", "رياض", "حساب", "math", "maths", "mathematics", "ماث", "جبر", "algebra", "هندسة"],
+  // علوم
+  ["علوم", "علم", "science", "فيزياء", "كيمياء", "أحياء", "احياء", "بيولوجيا", "biology", "physics", "chemistry"],
+  // اللغة الإنجليزية
+  ["انجليزي", "إنجليزي", "انجليزية", "إنجليزية", "لغة إنجليزية", "انكليزي", "english", "eng", "إنجليش"],
+  // تربية وطنية / دراسات اجتماعية
+  ["تربية وطنية", "وطنية", "اجتماعيات", "social", "دراسات اجتماعية", "مجتمع", "مواطنة"],
+  // تاريخ
+  ["تاريخ", "history"],
+  // جغرافيا
+  ["جغرافيا", "geography", "جغرافية"],
+  // حاسوب / تقنية
+  ["حاسوب", "تقنية", "تقنيه", "computer", "ict", "معلوماتية"],
+  // تربية فنية
+  ["فنون", "فنية", "تربية فنية", "رسم", "art"],
+  // تربية رياضية
+  ["رياضة", "تربية رياضية", "pe", "sport"],
+];
+
+/** Returns true if `subject` should show up when the teacher types `query`. */
+function subjectMatchesQuery(subject: string | null | undefined, query: string): boolean {
+  if (!subject) return false;
+  const q = query.trim().toLowerCase();
+  const s = subject.toLowerCase();
+  if (!q) return true;
+  if (s.includes(q) || q.includes(s)) return true;
+  for (const group of SUBJECT_ALIAS_GROUPS) {
+    const qMatch = group.some(a => q.includes(a) || a.includes(q));
+    const sMatch = group.some(a => s.includes(a) || a.includes(s));
+    if (qMatch && sMatch) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Grade normalization — converts "7", "٧", "سابع", "seventh", "7th" etc.
+// to the canonical ordinal number (1–12) used to compare across stored values.
+// ---------------------------------------------------------------------------
+const GRADE_ARABIC_ORDINALS: Record<string, number> = {
+  أول: 1, الأول: 1, "1st": 1, first: 1, "1": 1, "١": 1,
+  ثاني: 2, الثاني: 2, "2nd": 2, second: 2, "2": 2, "٢": 2,
+  ثالث: 3, الثالث: 3, "3rd": 3, third: 3, "3": 3, "٣": 3,
+  رابع: 4, الرابع: 4, "4th": 4, fourth: 4, "4": 4, "٤": 4,
+  خامس: 5, الخامس: 5, "5th": 5, fifth: 5, "5": 5, "٥": 5,
+  سادس: 6, السادس: 6, "6th": 6, sixth: 6, "6": 6, "٦": 6,
+  سابع: 7, السابع: 7, "7th": 7, seventh: 7, "7": 7, "٧": 7,
+  ثامن: 8, الثامن: 8, "8th": 8, eighth: 8, "8": 8, "٨": 8,
+  تاسع: 9, التاسع: 9, "9th": 9, ninth: 9, "9": 9, "٩": 9,
+  عاشر: 10, العاشر: 10, "10th": 10, tenth: 10, "10": 10, "١٠": 10,
+  "حادي عشر": 11, الحادي: 11, "11th": 11, eleventh: 11, "11": 11, "١١": 11,
+  "ثاني عشر": 12, "12th": 12, twelfth: 12, "12": 12, "١٢": 12,
+};
+
+/** Extracts a grade number (1-12) from any string, or null if not recognised. */
+function extractGradeNumber(value: string): number | null {
+  if (!value) return null;
+  const v = value.trim().toLowerCase()
+    // strip common prefixes
+    .replace(/^(الصف|صف|grade|gr\.?\s*)/i, "").trim();
+  // Try direct Arabic-numeral conversion
+  const westernized = v.replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+  const n = parseInt(westernized, 10);
+  if (!isNaN(n) && n >= 1 && n <= 12) return n;
+  // Try ordinal table
+  for (const [key, num] of Object.entries(GRADE_ARABIC_ORDINALS)) {
+    if (v.includes(key.toLowerCase()) || key.toLowerCase().includes(v)) return num;
+  }
+  return null;
+}
+
+/** Returns true if `stored` grade value matches the teacher's `query`. */
+function gradeMatchesQuery(stored: string | null | undefined, query: string): boolean {
+  if (!stored || !query.trim()) return true;
+  const q = extractGradeNumber(query);
+  const s = extractGradeNumber(stored);
+  if (q !== null && s !== null) return q === s;
+  // Fallback: plain substring
+  return stored.toLowerCase().includes(query.trim().toLowerCase());
+}
+
 interface SharedAssignment {
   id: number;
   title: string;
@@ -28,6 +118,9 @@ interface SharedAssignment {
   createdAt: string;
   hiddenByAdmin?: boolean;
   hideReason?: string | null;
+  subject?: string | null;
+  targetClass?: string | null;
+  targetClasses?: string[] | null;
 }
 
 interface SharedQuestion {
@@ -107,6 +200,7 @@ export default function SharedContentPage() {
   // so moderators can review and (un)hide them.
   const [showHidden, setShowHidden] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
 
   useEffect(() => {
@@ -352,21 +446,48 @@ export default function SharedContentPage() {
   };
 
   const allSubjects = Array.from(new Set([
-    ...assignments.map(a => (a as any).subject).filter(Boolean),
+    ...assignments.map(a => a.subject).filter(Boolean),
     ...questions.map(q => q.subject).filter(Boolean),
     ...videoLessons.map(v => v.subject).filter(Boolean),
-  ])).sort();
+  ])).sort() as string[];
+
+  const allGrades = Array.from(new Set([
+    ...assignments.map(a => a.targetClass).filter(Boolean),
+    ...videoLessons.map(v => v.targetClass).filter(Boolean),
+  ])).sort((a, b) => {
+    const na = extractGradeNumber(a as string) ?? 999;
+    const nb = extractGradeNumber(b as string) ?? 999;
+    return na - nb;
+  }) as string[];
+
+  // Subject fuzzy filter: if the teacher typed something in the subject
+  // search box it should also match via alias groups (e.g. "عربي" → arabic).
+  // When subjectFilter is selected from the dropdown it uses exact match for
+  // precision; the text search is the fuzzy path.
+  const matchesSubject = (subject: string | null | undefined) => {
+    if (!subjectFilter) return true;
+    // Exact match (dropdown selection path)
+    if (subject === subjectFilter) return true;
+    // Fuzzy match (typed alias path)
+    return subjectMatchesQuery(subject, subjectFilter);
+  };
 
   const filteredAssignments = assignments
-    .filter(a => (!search || a.title.includes(search) || a.teacherName?.includes(search)) &&
-      (!subjectFilter || (a as any).subject === subjectFilter))
+    .filter(a =>
+      (!search || a.title.includes(search) || a.teacherName?.includes(search)) &&
+      matchesSubject(a.subject) &&
+      (!gradeFilter || gradeMatchesQuery(a.targetClass, gradeFilter) ||
+        (a.targetClasses || []).some(tc => gradeMatchesQuery(tc, gradeFilter)))
+    )
     .sort((a, b) => sortBy === "questions"
       ? (b.questionCount - a.questionCount)
       : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const filteredQuestions = questions
-    .filter(q => (!search || (q.text || "").includes(search) || q.teacherName?.includes(search) || (q.subject || "").includes(search)) &&
-      (!subjectFilter || q.subject === subjectFilter))
+    .filter(q =>
+      (!search || (q.text || "").includes(search) || q.teacherName?.includes(search) || subjectMatchesQuery(q.subject, search)) &&
+      matchesSubject(q.subject)
+    )
     .sort((a, b) => sortBy === "questions"
       ? (b.points - a.points)
       : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -445,20 +566,39 @@ export default function SharedContentPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* ── Title / teacher search ── */}
           <div className="relative flex-1 min-w-48">
             <Search className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.sharedContent.searchPlaceholder} className={lang === "ar" ? "pr-10" : "pl-10"} />
           </div>
-          {allSubjects.length > 0 && (
-            <select
+          {/* ── Subject filter (supports fuzzy aliases via subjectMatchesQuery) ── */}
+          <div className="relative min-w-36">
+            <Search className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none`} />
+            <Input
               value={subjectFilter}
               onChange={e => setSubjectFilter(e.target.value)}
-              className="border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">{lang === "ar" ? "كل المواد" : "All Subjects"}</option>
-              {allSubjects.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )}
+              placeholder={lang === "ar" ? "ابحث في المادة…" : "Subject…"}
+              list="subject-datalist"
+              className={`text-sm ${lang === "ar" ? "pr-8" : "pl-8"}`}
+            />
+            <datalist id="subject-datalist">
+              {allSubjects.map(s => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+          {/* ── Grade filter ── */}
+          <div className="relative min-w-36">
+            <GraduationCap className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none`} />
+            <Input
+              value={gradeFilter}
+              onChange={e => setGradeFilter(e.target.value)}
+              placeholder={lang === "ar" ? "الصف (7، سابع…)" : "Grade (7, 7th…)"}
+              list="grade-datalist"
+              className={`text-sm ${lang === "ar" ? "pr-8" : "pl-8"}`}
+            />
+            <datalist id="grade-datalist">
+              {allGrades.map(g => <option key={g} value={g} />)}
+            </datalist>
+          </div>
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value as "newest" | "questions")}
@@ -467,9 +607,9 @@ export default function SharedContentPage() {
             <option value="newest">{lang === "ar" ? "الأحدث" : "Newest"}</option>
             <option value="questions">{lang === "ar" ? "الأكثر أسئلة" : "Most Questions"}</option>
           </select>
-          {(search || subjectFilter) && (
+          {(search || subjectFilter || gradeFilter) && (
             <button
-              onClick={() => { setSearch(""); setSubjectFilter(""); }}
+              onClick={() => { setSearch(""); setSubjectFilter(""); setGradeFilter(""); }}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
               {lang === "ar" ? "مسح الفلاتر" : "Clear filters"}
@@ -563,7 +703,9 @@ export default function SharedContentPage() {
                             </div>
                             <Button variant="outline" onClick={() => copyLink(a.id)} className="gap-1 text-xs py-1.5 px-3 h-auto">
                               <Copy className="w-3 h-3" />
-                              {t.sharedContent.copyLink}
+                              {isCompetitionLibrary
+                                ? t.sharedContent.copyLink
+                                : (lang === "ar" ? "نسخ الرابط كواجب" : "Copy as assignment")}
                             </Button>
                             <button
                               onClick={() => importAssignment(a.id)}
@@ -632,8 +774,11 @@ export default function SharedContentPage() {
           videoLessons.length > 0 ? (
             <div className="grid gap-3">
               {videoLessons
-                .filter(v => (!search || v.title.includes(search) || v.teacherName?.includes(search)) &&
-                  (!subjectFilter || v.subject === subjectFilter))
+                .filter(v =>
+                  (!search || v.title.includes(search) || v.teacherName?.includes(search)) &&
+                  matchesSubject(v.subject) &&
+                  (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
+                )
                 .map((v, i) => (
                 <motion.div key={v.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.03, 0.3) }}>
                   <Card className={`p-4 hover:shadow-md transition-shadow ${v.hiddenByAdmin ? "opacity-60 grayscale border-amber-400 border-dashed" : ""}`}>
