@@ -135,6 +135,10 @@ router.get("/assignments", async (req, res) => {
             // is publicly visible by default; admins curate via hide.
             eq(assignmentsTable.isShared, true),
             eq(assignmentsTable.hiddenByAdmin, false),
+            // Defensive privacy filter: private-access rows must never
+            // appear in the shared library even if a stale isShared flag
+            // ever leaks through.
+            ne(assignmentsTable.accessMode, "private"),
             ne(assignmentsTable.teacherId, requesterTeacherId),
           ),
         )
@@ -282,7 +286,11 @@ router.post("/assignments", async (req, res) => {
         // private" toggle (sends isShared:false). All shares are
         // auto-approved — admins can later HIDE individual rows via
         // POST /admin/assignments/:id/hide.
-        isShared: body.isShared === false ? false : true,
+        // Privacy invariant: an assignment with private access mode
+        // is NEVER shared in the public library, regardless of the
+        // client-supplied isShared value. Public-access assignments
+        // default to shared and respect the explicit opt-out.
+        isShared: effectiveAccessMode === "private" ? false : (body.isShared === false ? false : true),
         // Approval gating was removed — every new row is implicitly
         // approved. Admins can later HIDE individual rows via
         // PATCH /admin/assignments/:id/hide.
@@ -403,6 +411,9 @@ router.get("/assignments/shared", async (req, res) => {
     const whereClause = and(
       // Approval gating dropped (task #595): rely on hide for moderation.
       eq(assignmentsTable.isShared, true),
+      // Defensive privacy filter — private-access rows are never visible
+      // in the public library regardless of any stale isShared flag.
+      ne(assignmentsTable.accessMode, "private"),
       (wantHidden && isAdminRequester) ? undefined : eq(assignmentsTable.hiddenByAdmin, false),
       ne(assignmentsTable.teacherId, teacherId),
       kindFilter ? eq(assignmentsTable.contentKind, kindFilter) : undefined,
@@ -891,7 +902,12 @@ router.put("/assignments/:id", async (req, res) => {
       if (body.subject !== undefined) updateData.subject = body.subject;
       if (body.description !== undefined) updateData.description = body.description;
       if (body.submissionMode !== undefined) updateData.submissionMode = body.submissionMode;
-      if (body.accessMode !== undefined) updateData.accessMode = body.accessMode;
+      if (body.accessMode !== undefined) {
+        updateData.accessMode = body.accessMode;
+        // Privacy invariant: switching to private access mode forces
+        // the assignment out of the public library.
+        if (body.accessMode === "private") updateData.isShared = false;
+      }
       if (body.accessCode !== undefined) updateData.accessCode = body.accessCode;
       if (body.targetClasses !== undefined) {
         const cleaned = Array.isArray(body.targetClasses)
@@ -1212,12 +1228,25 @@ router.patch("/assignments/:id/share", async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { isShared } = req.body;
     const wantShared = !!isShared;
+    // Privacy invariant: a private-access assignment must never be
+    // marked shared, even if the client toggles the switch. Look up
+    // accessMode first and force isShared=false for private rows.
+    const [existing] = await db
+      .select({ accessMode: assignmentsTable.accessMode })
+      .from(assignmentsTable)
+      .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ message: "الواجب غير موجود" });
+      return;
+    }
+    const effectiveShared = existing.accessMode === "private" ? false : wantShared;
     // All shares are auto-approved now (admins can hide individual rows
     // via /admin/assignments/:id/hide). Keep isShareApproved in sync with
     // isShared for every teacher, not just admins.
     const [updated] = await db
       .update(assignmentsTable)
-      .set({ isShared: wantShared, isShareApproved: true })
+      .set({ isShared: effectiveShared, isShareApproved: true })
       .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
       .returning();
     if (!updated) {
@@ -1250,6 +1279,8 @@ router.post("/assignments/:id/import", async (req, res) => {
         eq(assignmentsTable.isShared, true),
         // Admin-hidden items must not be importable even if the ID is known.
         eq(assignmentsTable.hiddenByAdmin, false),
+        // Private-access rows are never importable from the public library.
+        ne(assignmentsTable.accessMode, "private"),
       ))
       .limit(1);
 

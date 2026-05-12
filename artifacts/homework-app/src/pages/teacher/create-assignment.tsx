@@ -1843,7 +1843,7 @@ export default function CreateAssignment() {
                         className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-bold flex items-center justify-center gap-2 transition-all ${accessMode === "public" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
                         <Globe className="w-4 h-4" />{t.createAssignment.public}
                       </button>
-                      <button type="button" onClick={() => setAccessMode("private")}
+                      <button type="button" onClick={() => { setAccessMode("private"); setIsShared(false); }}
                         className={`flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-bold flex items-center justify-center gap-2 transition-all ${accessMode === "private" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>
                         <Lock className="w-4 h-4" />{t.createAssignment.privateCode}
                       </button>
