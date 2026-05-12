@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, gameHistoryTable, studentsTable } from "@workspace/db";
+import { db, gameHistoryTable, studentsTable, assignmentsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
 import { getGame, findActiveGameByTeacher } from "../game/manager.js";
@@ -242,6 +242,24 @@ router.post("/game-history/save/:pin", async (req, res) => {
       gameMode: game.gameMode,
       detailedResults: detailedResults,
     }).returning({ id: gameHistoryTable.id });
+
+    /* Auto-tag: a game-history insert means the assignment was actually
+       launched as a live game, so flip stale 'homework' rows to
+       'competition' to keep the competitions library current
+       (task #599). Idempotent — no-op when already 'competition'. */
+    if (game.assignmentId && game.assignmentId > 0) {
+      try {
+        await db
+          .update(assignmentsTable)
+          .set({ contentKind: "competition" })
+          .where(and(
+            eq(assignmentsTable.id, game.assignmentId),
+            eq(assignmentsTable.contentKind, "homework"),
+          ));
+      } catch (flipErr) {
+        req.log.error({ err: flipErr, assignmentId: game.assignmentId }, "Failed to auto-tag assignment as competition");
+      }
+    }
 
     res.json({ success: true, message: "saved", id: inserted.id });
   } catch {

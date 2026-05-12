@@ -245,6 +245,25 @@ async function saveGameHistory(game: Game) {
     });
     savedGames.set(game.pin, Date.now());
 
+    /* Auto-tag: any assignment that has actually been launched as a live
+       game is a competition by definition. Flip stale 'homework' rows so
+       the competitions library stays current as new games are played
+       (task #599). Conditional WHERE keeps it idempotent and a no-op for
+       rows the teacher already marked as 'competition'. */
+    if (game.assignmentId && game.assignmentId > 0) {
+      try {
+        await db
+          .update(assignmentsTable)
+          .set({ contentKind: "competition" })
+          .where(and(
+            eq(assignmentsTable.id, game.assignmentId),
+            eq(assignmentsTable.contentKind, "homework"),
+          ));
+      } catch (flipErr) {
+        logger.error({ err: flipErr, assignmentId: game.assignmentId }, "Failed to auto-tag assignment as competition");
+      }
+    }
+
     const allPlayers = Array.from(game.players.values()).filter(p => !p.isBot);
     const sortedAll = [...allPlayers].sort((a, b) => b.score - a.score);
     const totalPlayerCount = allPlayers.length;

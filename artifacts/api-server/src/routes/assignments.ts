@@ -295,7 +295,18 @@ router.post("/assignments", async (req, res) => {
         // approved. Admins can later HIDE individual rows via
         // PATCH /admin/assignments/:id/hide.
         isShareApproved: true,
-        contentKind: body.contentKind === "competition" ? "competition" : "homework",
+        // Auto-tag: assignments auto-created from a presentation activity
+        // slide are competitions by definition (task #599) — bypass the
+        // explicit contentKind picker so the competitions library stays
+        // current without relying on the teacher form.
+        contentKind: (typeof (req.body as any)?.fromPresentationSlide === "string"
+          && (req.body as any).fromPresentationSlide.trim().length > 0)
+          ? "competition"
+          : (body.contentKind === "competition" ? "competition" : "homework"),
+        fromPresentationSlide: (typeof (req.body as any)?.fromPresentationSlide === "string"
+          && (req.body as any).fromPresentationSlide.trim().length > 0)
+          ? (req.body as any).fromPresentationSlide.trim()
+          : null,
         isAdaptive: body.isAdaptive || false,
         adaptiveConfig: body.adaptiveConfig ? JSON.stringify(body.adaptiveConfig) : null,
         activityType: body.activityType || null,
