@@ -962,9 +962,11 @@ router.patch("/admin/assignments/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
-    await db.update(assignmentsTable)
+    const rows = await db.update(assignmentsTable)
       .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
-      .where(eq(assignmentsTable.id, ctx.id));
+      .where(eq(assignmentsTable.id, ctx.id))
+      .returning({ id: assignmentsTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to hide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
 });
@@ -972,9 +974,11 @@ router.patch("/admin/assignments/:id/hide", async (req, res) => {
 router.patch("/admin/assignments/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
-    await db.update(assignmentsTable)
+    const rows = await db.update(assignmentsTable)
       .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
-      .where(eq(assignmentsTable.id, ctx.id));
+      .where(eq(assignmentsTable.id, ctx.id))
+      .returning({ id: assignmentsTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to unhide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
 });
@@ -983,9 +987,11 @@ router.patch("/admin/question-bank/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
-    await db.update(questionBankTable)
+    const rows = await db.update(questionBankTable)
       .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
-      .where(eq(questionBankTable.id, ctx.id));
+      .where(eq(questionBankTable.id, ctx.id))
+      .returning({ id: questionBankTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to hide question"); res.status(500).json({ message: "حدث خطأ" }); }
 });
@@ -993,9 +999,11 @@ router.patch("/admin/question-bank/:id/hide", async (req, res) => {
 router.patch("/admin/question-bank/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
-    await db.update(questionBankTable)
+    const rows = await db.update(questionBankTable)
       .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
-      .where(eq(questionBankTable.id, ctx.id));
+      .where(eq(questionBankTable.id, ctx.id))
+      .returning({ id: questionBankTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to unhide question"); res.status(500).json({ message: "حدث خطأ" }); }
 });
@@ -1004,9 +1012,11 @@ router.patch("/admin/video-lessons/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
-    await db.update(videoLessonsTable)
+    const rows = await db.update(videoLessonsTable)
       .set({ hiddenByAdmin: true, hiddenAt: new Date(), hiddenById: ctx.adminId, hideReason: body.reason ?? null })
-      .where(eq(videoLessonsTable.id, ctx.id));
+      .where(eq(videoLessonsTable.id, ctx.id))
+      .returning({ id: videoLessonsTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to hide video"); res.status(500).json({ message: "حدث خطأ" }); }
 });
@@ -1014,9 +1024,11 @@ router.patch("/admin/video-lessons/:id/hide", async (req, res) => {
 router.patch("/admin/video-lessons/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
-    await db.update(videoLessonsTable)
+    const rows = await db.update(videoLessonsTable)
       .set({ hiddenByAdmin: false, hiddenAt: null, hiddenById: null, hideReason: null })
-      .where(eq(videoLessonsTable.id, ctx.id));
+      .where(eq(videoLessonsTable.id, ctx.id))
+      .returning({ id: videoLessonsTable.id });
+    if (rows.length === 0) { res.status(404).json({ message: "غير موجود" }); return; }
     res.json({ success: true });
   } catch (err) { req.log.error({ err }, "Failed to unhide video"); res.status(500).json({ message: "حدث خطأ" }); }
 });
