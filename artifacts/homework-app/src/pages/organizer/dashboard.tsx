@@ -93,8 +93,6 @@ export default function OrganizerDashboard() {
   const [launchingId, setLaunchingId] = useState<number | null>(null);
   // Sidebar tab for the right-side quick-launch panel
   const [sideTab, setSideTab] = useState<"events" | "brain" | "library">("events");
-  // Inline panel — when set, main content is replaced by an iframe of the target page
-  const [activePanel, setActivePanel] = useState<{ url: string; title: string } | null>(null);
 
   useEffect(() => {
     if (error) setLocation("/login");
@@ -514,44 +512,17 @@ export default function OrganizerDashboard() {
               className="px-4 pt-5 pb-3 border-b"
               style={{ borderColor: "rgba(215,165,29,0.18)" }}
             >
-              {activePanel ? (
-                <>
-                  <p
-                    className="text-[10px] font-black uppercase tracking-widest mb-2"
-                    style={{ color: "rgba(27,107,63,0.55)" }}
-                  >
-                    {lang === "ar" ? "يعرض الآن" : "Now viewing"}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setActivePanel(null)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-extrabold transition-all hover:-translate-y-0.5"
-                    style={{
-                      background: "rgba(27,107,63,0.10)",
-                      color: "#1b6b3f",
-                      border: "1.5px solid rgba(27,107,63,0.25)",
-                    }}
-                  >
-                    <ArrowRight
-                      className="w-3 h-3"
-                      style={{ transform: dir === "rtl" ? "none" : "rotate(180deg)" }}
-                    />
-                    {lang === "ar" ? "رجوع للرئيسية" : "Back to dashboard"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p
-                    className="text-[10px] font-black uppercase tracking-widest mb-1"
-                    style={{ color: "rgba(27,107,63,0.55)" }}
-                  >
-                    {lang === "ar" ? "لوحة التشغيل السريع" : "Quick Launch"}
-                  </p>
-                  <p className="text-sm font-extrabold" style={{ color: "#103d2a" }}>
-                    {lang === "ar" ? "اختر وانطلق 🚀" : "Pick & go 🚀"}
-                  </p>
-                </>
-              )}
+              <>
+                <p
+                  className="text-[10px] font-black uppercase tracking-widest mb-1"
+                  style={{ color: "rgba(27,107,63,0.55)" }}
+                >
+                  {lang === "ar" ? "لوحة التشغيل السريع" : "Quick Launch"}
+                </p>
+                <p className="text-sm font-extrabold" style={{ color: "#103d2a" }}>
+                  {lang === "ar" ? "اختر وانطلق 🚀" : "Pick & go 🚀"}
+                </p>
+              </>
             </div>
 
             {/* Tab selector */}
@@ -727,77 +698,62 @@ export default function OrganizerDashboard() {
               </div>
             )}
 
-            {/* ── Tab 3: مكتبة + عروض (تفتح inline) ── */}
+            {/* ── Tab 3: مكتبة + عروض ── */}
             {sideTab === "library" && (
               <div className="flex-1 overflow-y-auto p-4">
-                {/* 3 inline-panel shortcut buttons */}
+                {/* 3 direct-navigation shortcut links */}
                 <p
                   className="text-[10px] font-black uppercase tracking-widest mb-2"
                   style={{ color: "rgba(27,107,63,0.55)" }}
                 >
-                  {lang === "ar" ? "افتح بنفس الصفحة" : "Open inline"}
+                  {lang === "ar" ? "المكتبات والعروض" : "Libraries & Presentations"}
                 </p>
                 <div className="space-y-1.5 mb-4">
                   {(
                     [
                       {
-                        url: "/teacher/library/competitions?embed=1",
+                        href: "/teacher/library/competitions",
                         title: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
                         Icon: Library,
                         accent: "#0e7490",
                         bg: "rgba(34,211,238,0.10)",
-                        border: "rgba(34,211,238,0.32)",
                       },
                       {
-                        url: "/teacher/library/homework?embed=1",
+                        href: "/teacher/library/homework",
                         title: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
                         Icon: BookOpen,
                         accent: "#1b6b3f",
                         bg: "rgba(27,107,63,0.09)",
-                        border: "rgba(27,107,63,0.26)",
                       },
                       {
-                        url: "/teacher/presentations?embed=1",
+                        href: "/teacher/presentations",
                         title: lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
                         Icon: Play,
                         accent: "#7c3aed",
                         bg: "rgba(124,58,237,0.08)",
-                        border: "rgba(124,58,237,0.28)",
                       },
                     ] as const
-                  ).map((item) => {
-                    const isActive = activePanel?.url === item.url;
-                    return (
-                      <button
-                        key={item.url}
-                        type="button"
-                        onClick={() => setActivePanel({ url: item.url, title: item.title })}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-start transition-all hover:-translate-y-0.5"
-                        style={{
-                          background: isActive ? item.bg : "#fff",
-                          border: `1.5px solid ${isActive ? item.border : "rgba(215,165,29,0.20)"}`,
-                          color: isActive ? item.accent : "#103d2a",
-                          boxShadow: isActive
-                            ? `0 4px 12px -6px ${item.accent}40`
-                            : "0 2px 8px -4px rgba(15,55,32,0.08)",
-                        }}
+                  ).map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-start transition-all hover:-translate-y-0.5"
+                      style={{
+                        background: "#fff",
+                        border: "1.5px solid rgba(215,165,29,0.20)",
+                        color: "#103d2a",
+                        boxShadow: "0 2px 8px -4px rgba(15,55,32,0.08)",
+                      }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: item.bg, color: item.accent }}
                       >
-                        <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: item.bg, color: item.accent }}
-                        >
-                          <item.Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="flex-1 leading-tight">{item.title}</span>
-                        {isActive && (
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ background: item.accent }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
+                        <item.Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="flex-1 leading-tight">{item.title}</span>
+                    </Link>
+                  ))}
                 </div>
 
                 {/* Divider */}
@@ -898,56 +854,7 @@ export default function OrganizerDashboard() {
           {/* ══════════ MAIN CONTENT ════════════════════════════════════════════ */}
           <div className="flex-1 min-w-0">
 
-          {/* ── Inline panel iframe — shown when a sidebar library/presentation button is clicked ── */}
-          {activePanel && (
-            <div
-              className="flex flex-col"
-              style={{ height: "calc(100vh - 56px)" }}
-            >
-              {/* Panel top bar */}
-              <div
-                className="flex items-center gap-3 px-5 py-3 border-b shrink-0"
-                dir={dir}
-                style={{
-                  background: "rgba(255,255,255,0.95)",
-                  backdropFilter: "blur(8px)",
-                  borderColor: "rgba(215,165,29,0.22)",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setActivePanel(null)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-extrabold transition-all hover:-translate-y-0.5"
-                  style={{
-                    background: "rgba(27,107,63,0.08)",
-                    color: "#1b6b3f",
-                    border: "1.5px solid rgba(27,107,63,0.22)",
-                  }}
-                >
-                  <ArrowRight
-                    className="w-3.5 h-3.5"
-                    style={{ transform: dir === "rtl" ? "none" : "rotate(180deg)" }}
-                  />
-                  {lang === "ar" ? "رجوع" : "Back"}
-                </button>
-                <span
-                  className="text-sm font-extrabold"
-                  style={{ color: "#103d2a" }}
-                >
-                  {activePanel.title}
-                </span>
-              </div>
-              {/* Embedded page — nav is hidden inside via ?embed=1 */}
-              <iframe
-                key={activePanel.url}
-                src={activePanel.url}
-                className="flex-1 w-full border-0"
-                title={activePanel.title}
-              />
-            </div>
-          )}
-
-        <div className={activePanel ? "hidden" : "container mx-auto px-4 py-10 max-w-5xl relative"}>
+        <div className="container mx-auto px-4 py-10 max-w-5xl relative">
           {/* Editorial top bar: welcome + live-counter chip. */}
           <motion.section
             initial={{ opacity: 0, y: -6 }}
@@ -1469,14 +1376,8 @@ export default function OrganizerDashboard() {
                       "linear-gradient(90deg,transparent,rgba(34,211,238,0.35),transparent)",
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActivePanel({
-                      url: "/teacher/library/competitions?embed=1",
-                      title: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
-                    })
-                  }
+                <Link
+                  href="/teacher/library/competitions"
                   className="hidden sm:inline-flex items-center gap-1.5 text-xs font-extrabold transition-all hover:-translate-y-0.5 shrink-0 px-3 py-1.5 rounded-full"
                   style={{
                     color: "#0e7490",
@@ -1491,7 +1392,7 @@ export default function OrganizerDashboard() {
                       transform: dir === "rtl" ? "rotate(180deg)" : "none",
                     }}
                   />
-                </button>
+                </Link>
               </div>
 
               {sharedLoading ? (
@@ -1674,37 +1575,7 @@ export default function OrganizerDashboard() {
                   className="overflow-hidden"
                 >
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
-                    {extras.map((e) => {
-                      const panelMap: Record<string, string> = {
-                        "/teacher/library/homework":
-                          lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
-                        "/teacher/library/competitions":
-                          lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
-                        "/teacher/presentations":
-                          lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
-                      };
-                      const panelTitle = panelMap[e.href];
-                      if (panelTitle) {
-                        return (
-                          <button
-                            key={e.href}
-                            type="button"
-                            onClick={() =>
-                              setActivePanel({ url: `${e.href}?embed=1`, title: panelTitle })
-                            }
-                            className="px-4 py-3 rounded-xl text-sm font-bold transition-all hover:-translate-y-0.5 text-start"
-                            style={{
-                              background: "#fff",
-                              border: "1.5px solid rgba(27,107,63,0.14)",
-                              color: "#1b6b3f",
-                              boxShadow: "0 4px 12px -6px rgba(27,107,63,0.14)",
-                            }}
-                          >
-                            {e.label}
-                          </button>
-                        );
-                      }
-                      return (
+                    {extras.map((e) => (
                         <Link
                           key={e.href}
                           href={e.href}
@@ -1718,8 +1589,7 @@ export default function OrganizerDashboard() {
                         >
                           {e.label}
                         </Link>
-                      );
-                    })}
+                    ))}
                   </div>
                 </motion.div>
               )}
