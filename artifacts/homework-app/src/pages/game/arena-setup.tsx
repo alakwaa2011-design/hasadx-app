@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -1545,7 +1545,9 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   const [activitiesLoaded, setActivitiesLoaded] = useState(false);
 
   // Import-source flags + AI generation dialog
-  const [importSources, setImportSources] = useState<ArenaImportSources>({ manual: true, ai: true, homework: false, file: false });
+  const [importSources, setImportSources] = useState<ArenaImportSources>({ manual: true, ai: true, homework: true, file: true });
+  const [fileImporting, setFileImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [aiTopic, setAiTopic] = useState("");
   const [aiCount, setAiCount] = useState(6);
@@ -1578,6 +1580,74 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       return;
     }
     setAiResults(r.questions);
+  };
+
+  const handleFileImport = async (file: File) => {
+    if (!savedCatId) {
+      toast.error("احفظ الفئة أولاً قبل الاستيراد");
+      return;
+    }
+    if (fileImporting) return;
+    setFileImporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      if (!sheet) throw new Error("الملف فارغ");
+      const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      // Accept Arabic or English headers: السؤال/question, الإجابة/answer,
+      // الصعوبة/difficulty (200|400|600|800), التلميح/hint (optional).
+      const norm = (s: any) => String(s ?? "").trim();
+      const pickKey = (row: any, keys: string[]) => {
+        for (const k of keys) {
+          const found = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.toLowerCase());
+          if (found && norm(row[found])) return norm(row[found]);
+        }
+        return "";
+      };
+      const parseDiff = (v: string): 200 | 400 | 600 | 800 => {
+        const n = parseInt(String(v).replace(/[^\d]/g, ""), 10);
+        if (n === 200 || n === 400 || n === 600 || n === 800) return n;
+        return 400;
+      };
+      const candidates = rows
+        .map(r => ({
+          q: pickKey(r, ["السؤال", "question", "q"]),
+          a: pickKey(r, ["الإجابة", "answer", "a"]),
+          diff: parseDiff(pickKey(r, ["الصعوبة", "difficulty", "diff", "points", "النقاط"]) || "400"),
+          hint: pickKey(r, ["التلميح", "hint"]),
+        }))
+        .filter(r => r.q && r.a);
+      if (candidates.length === 0) {
+        toast.error("لم نجد أعمدة 'السؤال' و'الإجابة' — تأكّد من رؤوس الجدول");
+        return;
+      }
+      let created = 0;
+      for (const r of candidates) {
+        const row = await createArenaActivity({
+          categoryId: savedCatId,
+          type: "text",
+          difficulty: r.diff,
+          question: r.q,
+          answer: r.a,
+          hint: r.hint || null,
+        }, "file");
+        if (row) created++;
+      }
+      if (created > 0) {
+        toast.success(`تم استيراد ${created} سؤال`);
+        const acts = await fetchArenaActivities([savedCatId]);
+        setActivities(acts);
+      } else {
+        toast.error("لم يُحفظ أي سؤال — قد تكون مصادر الاستيراد معطّلة");
+      }
+    } catch (err) {
+      toast.error("تعذّر قراءة الملف — جرّب CSV أو XLSX");
+    } finally {
+      setFileImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const saveAllAi = async () => {
@@ -2093,13 +2163,23 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         </button>
                       )}
                       {importSources.file && (
-                        <button
-                          onClick={() => toast.info("الاستيراد من ملف — قريباً")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-sky-500/15 border border-sky-400/30 text-sky-100 hover:bg-sky-500/25"
-                        >
-                          <Upload className="w-3.5 h-3.5" />
-                          من ملف
-                        </button>
+                        <>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileImport(f); }}
+                            className="hidden"
+                          />
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={fileImporting}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-sky-500/15 border border-sky-400/30 text-sky-100 hover:bg-sky-500/25 disabled:opacity-60"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            {fileImporting ? "جارٍ الاستيراد..." : "من ملف Excel/CSV"}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>

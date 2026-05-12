@@ -21,8 +21,8 @@ export type PresentationLimits = typeof DEFAULT_PRESENTATION_LIMITS;
 export const DEFAULT_ARENA_IMPORT_SOURCES = {
   manual: true,
   ai: true,
-  homework: false,
-  file: false,
+  homework: true,
+  file: true,
 } as const;
 
 export type ArenaImportSources = {

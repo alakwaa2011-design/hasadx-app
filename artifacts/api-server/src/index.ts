@@ -210,7 +210,17 @@ async function runSchemaMigrations() {
     await db.execute(sql`
       ALTER TABLE platform_settings
         ADD COLUMN IF NOT EXISTS arena_import_sources JSONB NOT NULL
-        DEFAULT '{"manual":true,"ai":true,"homework":false,"file":false}'::jsonb
+        DEFAULT '{"manual":true,"ai":true,"homework":true,"file":true}'::jsonb
+    `);
+    /* Backfill: any existing row that still has homework/file=false from
+       the original defaults gets flipped on so organisers see the buttons.
+       Admins can still toggle them off from the admin panel. */
+    await db.execute(sql`
+      UPDATE platform_settings
+        SET arena_import_sources = arena_import_sources
+          || '{"homework":true,"file":true}'::jsonb
+        WHERE (arena_import_sources->>'homework')::boolean IS DISTINCT FROM TRUE
+           OR (arena_import_sources->>'file')::boolean IS DISTINCT FROM TRUE
     `);
     logger.info("Schema migrations applied");
   } catch (err) {
