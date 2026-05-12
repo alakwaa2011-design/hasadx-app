@@ -3268,7 +3268,8 @@ function AssignmentRow({
               startGame(assignment.id, e);
             }}
             disabled={creatingGameForId === assignment.id}
-            className="shrink-0 text-xs font-bold px-3 py-2 min-h-[44px] min-w-[44px] bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-sm"
+            className="shrink-0 text-xs font-bold px-3 py-2 min-h-[44px] min-w-[44px] text-white rounded-lg transition-all disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-sm hover:brightness-110 hover:-translate-y-0.5"
+            style={{ background: "linear-gradient(135deg,#1f8246 0%,#155d32 100%)", boxShadow: "0 4px 12px -4px rgba(27,107,63,0.45)" }}
             title={t.dashboard.liveGame}
           >
             <Gamepad2 className="w-3.5 h-3.5" />
@@ -3622,7 +3623,8 @@ function GroupAccordionRow({
                             } as any)
                           }
                           disabled={creatingGameForId === a.id}
-                          className="shrink-0 p-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-md transition-colors disabled:opacity-50"
+                          className="shrink-0 p-1.5 rounded-md transition-all disabled:opacity-50 text-white hover:brightness-110"
+                          style={{ background: "linear-gradient(135deg,#1f8246 0%,#155d32 100%)" }}
                           title={t?.dashboard?.liveGame || "تشغيل"}
                         >
                           <Gamepad2 className="w-3 h-3" />

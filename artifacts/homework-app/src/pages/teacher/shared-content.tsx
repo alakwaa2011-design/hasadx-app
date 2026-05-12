@@ -681,11 +681,10 @@ export default function SharedContentPage() {
                 const isOwn = a.teacherId === currentTeacherId;
                 return (
                 <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }} className="h-full">
-                  <div className={`group relative flex flex-col rounded-2xl border bg-card transition-all duration-200 overflow-hidden h-full ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border hover:shadow-md hover:-translate-y-0.5"}`}>
-
-                    {/* Colored accent bar at top */}
-                    <div className="h-1 w-full shrink-0" style={{ background: barColor }} />
-
+                  <div
+                    className={`group relative flex flex-col rounded-2xl border bg-card transition-all duration-200 h-full ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border hover:shadow-md hover:-translate-y-0.5"}`}
+                    style={{ borderTop: `3px solid ${barColor}` }}
+                  >
                     <div className="flex flex-col flex-1 p-3.5 gap-3">
                       {/* Title — clipped at 2 lines */}
                       <p className="font-black text-[13px] text-foreground leading-snug line-clamp-2 flex-1 min-h-[2.5rem]">
