@@ -159,7 +159,13 @@ interface SharedVideoLesson {
   hiddenByAdmin?: boolean;
 }
 
-export default function SharedContentPage() {
+export default function SharedContentPage({
+  embedded,
+  forceKind,
+}: {
+  embedded?: boolean;
+  forceKind?: "homework" | "competition";
+} = {}) {
   const { t, lang } = useI18n();
   const [path, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -171,9 +177,10 @@ export default function SharedContentPage() {
   //   /teacher/shared (legacy)       → kind=null (everything, both kinds)
   // In competition mode we hide the questions/videos tabs and only show
   // assignments tagged contentKind='competition'.
-  const libraryKind: "homework" | "competition" | null =
-    path.endsWith("/library/competitions") ? "competition" :
-    path.endsWith("/library/homework") ? "homework" : null;
+  const libraryKind: "homework" | "competition" | null = forceKind
+    ? forceKind
+    : path.endsWith("/library/competitions") ? "competition" :
+      path.endsWith("/library/homework") ? "homework" : null;
   const isCompetitionLibrary = libraryKind === "competition";
 
   const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
@@ -524,21 +531,23 @@ export default function SharedContentPage() {
       ? (b.points - a.points)
       : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  if (loading) return (
-    <Layout>
+  if (loading) {
+    const spinner = (
       <div className="flex h-96 items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
       </div>
-    </Layout>
-  );
+    );
+    return embedded ? spinner : <Layout>{spinner}</Layout>;
+  }
 
-  return (
-    <Layout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl" dir={dir}>
+  const inner = (
+    <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl"} dir={dir}>
+      {!embedded && (
         <Link href="/teacher" className="text-primary hover:underline font-bold flex items-center gap-1 mb-6 w-fit">
           <BackArrow className="w-4 h-4" />
           {t.sharedContent.backToDashboard}
         </Link>
+      )}
 
         <div className="flex items-center gap-3 mb-6">
           <div
@@ -1016,6 +1025,7 @@ export default function SharedContentPage() {
         )}
 
       </div>
-    </Layout>
   );
+
+  return embedded ? inner : <Layout>{inner}</Layout>;
 }

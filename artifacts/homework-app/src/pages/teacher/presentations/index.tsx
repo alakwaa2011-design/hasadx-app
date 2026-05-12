@@ -96,7 +96,7 @@ function formatRelative(d: Date | string | undefined, isAr: boolean): string {
   return date.toLocaleDateString(isAr ? "ar" : "en");
 }
 
-export default function PresentationsIndex() {
+export default function PresentationsIndex({ embedded }: { embedded?: boolean } = {}) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
   const [, setLocation] = useLocation();
@@ -274,9 +274,9 @@ export default function PresentationsIndex() {
     [list],
   );
 
-  return (
-    <Layout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl" dir={isAr ? "rtl" : "ltr"}>
+  const presentationsInner = (
+    <>
+    <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl"} dir={isAr ? "rtl" : "ltr"}>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-start gap-3">
@@ -547,8 +547,10 @@ export default function PresentationsIndex() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Layout>
+    </>
   );
+
+  return embedded ? presentationsInner : <Layout>{presentationsInner}</Layout>;
 }
 
 // ─────────────────────────────────────────────

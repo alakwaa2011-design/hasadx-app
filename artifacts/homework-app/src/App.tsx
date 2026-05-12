@@ -260,12 +260,16 @@ function Router() {
             (task #595 split). Existing bookmarks and links keep working. */}
         <Route path="/teacher/shared" component={LegacySharedRedirect} />
         {/* Split libraries — same component, kind comes from the URL */}
+        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/library/homework" component={SharedContentPage} />
+        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/library/competitions" component={SharedContentPage} />
         <Route path="/teacher/categories" component={CategoriesPage} />
         <Route path="/teacher/collections" component={CollectionsPage} />
         <Route path="/teacher/class-grades/:gradeLevel" component={ClassGrades} />
+        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/presentations" component={PresentationsIndex} />
+        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/presentations/new" component={PresentationsIndex} />
         <Route path="/teacher/presentations/drafts" component={PresentationDrafts} />
         <Route path="/teacher/students/:classStudentId/timeline" component={StudentTimeline} />

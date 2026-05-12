@@ -64,6 +64,8 @@ import {
   Brain,
   GraduationCap,
 } from "lucide-react";
+import SharedContentPage from "@/pages/teacher/shared-content";
+import PresentationsIndex from "@/pages/teacher/presentations/index";
 import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
@@ -430,23 +432,16 @@ export default function TeacherDashboard() {
       icon: <BookText className="w-4 h-4" />,
     },
     {
-      // The mixed "shared" library has been split into two dedicated
-      // libraries. These two entries both navigate via `href` to the
-      // unified shared-content page (kind-aware). The legacy "shared"
-      // tab is kept for back-compat with deep-links such as
-      // /teacher?tab=shared but no sidebar entry points to it.
       id: "library_homework",
       label: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
       shortLabel: lang === "ar" ? "الأنشطة" : "Activities",
       icon: <BookOpen className="w-4 h-4" />,
-      href: "/teacher/library/homework",
     },
     {
       id: "library_competitions",
       label: lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library",
       shortLabel: lang === "ar" ? "المسابقات" : "Competitions",
       icon: <Trophy className="w-4 h-4" />,
-      href: "/teacher/library/competitions",
     },
     {
       id: "competitive",
@@ -465,7 +460,6 @@ export default function TeacherDashboard() {
       label: lang === "ar" ? "العروض التفاعلية" : "Interactive Presentations",
       shortLabel: lang === "ar" ? "العروض" : "Decks",
       icon: <Monitor className="w-4 h-4" />,
-      href: "/teacher/presentations",
     },
     {
       id: "videos",
@@ -597,6 +591,15 @@ export default function TeacherDashboard() {
         {activeTab === "students" && (
           <StudentsInlineTab lang={lang} setLocation={setLocation} />
         )}
+        {activeTab === "library_homework" && (
+          <SharedContentPage embedded forceKind="homework" />
+        )}
+        {activeTab === "library_competitions" && (
+          <SharedContentPage embedded forceKind="competition" />
+        )}
+        {activeTab === "presentations" && (
+          <PresentationsIndex embedded />
+        )}
       </motion.div>
     </AnimatePresence>
   );
@@ -608,30 +611,28 @@ export default function TeacherDashboard() {
         {/* Sidebar */}
         <aside className="w-56 shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto" style={{background: "#1E4D35", borderInlineEnd: "none", paddingTop: 12}}>
           {/* Logo intentionally removed — the main top header already shows the Hasad logo. */}
-          {/* User greeting + Create CTA — shown only on the main
-              "الرئيسية" (overview) tab so sub-tabs feel cleaner. */}
+          {/* User greeting — shown only on overview tab */}
           {activeTab === "overview" && (
-            <>
-              <div style={{padding: "10px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10}}>
-                <div style={{width: 30, height: 30, background: "rgba(255,255,255,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.2)"}}>
-                  {(user?.name || "?").charAt(0)}
-                </div>
-                <div style={{flex: 1, minWidth: 0}}>
-                  <p style={{fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
-                  <p style={{fontSize: 12, fontWeight: 800, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
-                </div>
+            <div style={{padding: "10px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10}}>
+              <div style={{width: 30, height: 30, background: "rgba(255,255,255,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0, border: "1.5px solid rgba(255,255,255,0.2)"}}>
+                {(user?.name || "?").charAt(0)}
               </div>
-              <div style={{padding: "12px 12px 8px"}}>
-                <button
-                  onClick={() => setLocation("/teacher/new")}
-                  style={{width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 14px", background: "#E8A80E", color: "#1E4D35", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 3px 12px rgba(232,168,14,0.35)"}}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
-                </button>
+              <div style={{flex: 1, minWidth: 0}}>
+                <p style={{fontSize: 9, color: "rgba(255,255,255,0.5)", margin: 0, fontWeight: 600}}>{isAr ? "مرحباً" : "Hello"}</p>
+                <p style={{fontSize: 12, fontWeight: 800, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{user?.name}</p>
               </div>
-            </>
+            </div>
           )}
+          {/* Create CTA — always visible in sidebar */}
+          <div style={{padding: "12px 12px 8px"}}>
+            <button
+              onClick={() => setLocation("/teacher/new")}
+              style={{width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "10px 14px", background: "#E8A80E", color: "#1E4D35", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 3px 12px rgba(232,168,14,0.35)"}}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {isAr ? "أنشئ نشاطًا جديدًا" : "Create New Activity"}
+            </button>
+          </div>
           <nav className="flex-1 space-y-0.5">
             {/* ── Section: Main ── */}
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
