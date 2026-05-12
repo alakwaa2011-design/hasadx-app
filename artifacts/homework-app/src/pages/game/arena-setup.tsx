@@ -116,6 +116,15 @@ export default function ArenaSetup() {
   const [resumeChecked, setResumeChecked] = useState(false);
 
   const [step, setStep] = useState<Step>(1);
+
+  /* Scroll to top whenever the wizard step changes so the organiser
+     immediately sees the new step's primary actions (e.g. "صنع فئتك"
+     and "قرعة عشوائية" at the top of step 2). */
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
   const [tournamentName, setTournamentName] = useState(
     () => loadArenaLastSettings()?.tournamentName ?? "",
   );

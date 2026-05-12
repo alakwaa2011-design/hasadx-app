@@ -2067,12 +2067,12 @@ export const ARENA_SECTIONS: ArenaSection[] = [
 // `shura` (الشورى) is audience voting — paired with the on-screen QR/share
 //   block so attendees can vote from their phones (organiser tallies aloud).
 export const HELPERS = [
-  { id: "harvest", name: "الحصاد", emoji: "🌾", desc: "نقاط مضاعفة لهذا السؤال" },
+  { id: "harvest", name: "الحصاد", emoji: "💎", desc: "نقاط مضاعفة لهذا السؤال" },
   { id: "friend",  name: "اتصال بصديق", emoji: "📞", desc: "اتصل بصديق خبير في هذا المجال — لديك دقيقة واحدة فقط مع عدّ تنازلي" },
-  { id: "shura",   name: "الشورى", emoji: "🗣️", desc: "تصويت الجمهور — يفتح الباركود على الشاشة لتصويت الحضور بهواتفهم" },
+  { id: "shura",   name: "الشورى", emoji: "🗳️", desc: "تصويت الجمهور — يفتح الباركود على الشاشة لتصويت الحضور بهواتفهم" },
   { id: "trap",    name: "الفخ", emoji: "🪤", desc: "تحويل السؤال للفريق الآخر — إن أجاب صح كسب النقاط، وإن أخطأ لا أحد يكسب" },
   { id: "swap",    name: "البديل", emoji: "🔄", desc: "استبدال السؤال بسؤال آخر من نفس الفئة" },
-  { id: "ghaneema", name: "الغنيمة", emoji: "🏹", desc: "إذا أخطأ الفريق الآخر في سؤاله، يستطيع فريقك الإجابة وأخذ النقاط" },
+  { id: "ghaneema", name: "الغنيمة", emoji: "⚔️", desc: "إذا أخطأ الفريق الآخر في سؤاله، يستطيع فريقك الإجابة وأخذ النقاط" },
 ] as const;
 
 export type HelperId = (typeof HELPERS)[number]["id"];
