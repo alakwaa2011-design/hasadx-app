@@ -673,7 +673,7 @@ export default function SharedContentPage() {
                             {lang === "ar" ? "استيراد الدرس" : "Import Lesson"}
                           </Button>
                         )}
-                        {isAdmin && v.teacherId !== currentTeacherId && (
+                        {isAdmin && (
                           v.hiddenByAdmin ? (
                             <button
                               onClick={() => unhideAsAdmin("video-lessons", v.id)}
