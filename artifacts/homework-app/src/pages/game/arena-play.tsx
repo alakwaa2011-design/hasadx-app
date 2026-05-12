@@ -848,33 +848,33 @@ export default function ArenaPlay() {
       };
     const base = {
       boxShadow:
-        "0 1px 3px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.14)",
+        "0 2px 6px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.08) inset, 0 1px 0 rgba(255,255,255,0.18) inset",
       borderRadius: TILE_R,
       borderColor: "transparent",
     };
     if (pts === 200)
       return {
         ...base,
-        background: "linear-gradient(160deg,#234e5e,#173a48)",
+        background: "linear-gradient(160deg,#2a5d6a,#183c46)",
         color: "#ffffff",
       };
     if (pts === 400)
       return {
         ...base,
-        background: "linear-gradient(160deg,#5b6b87,#465169)",
+        background: "linear-gradient(160deg,#6a7b9a,#4a5572)",
         color: "#ffffff",
       };
     if (pts === 600)
       return {
         ...base,
-        background: "linear-gradient(160deg,#c9a14b,#a07f37)",
+        background: "linear-gradient(160deg,#d6ad55,#a07f37)",
         color: "#ffffff",
       };
     return {
       ...base,
-      background: "linear-gradient(160deg,#e0b056,#a87a2a)",
+      background: "linear-gradient(160deg,#f0c266,#a87a2a)",
       color: "#fffbeb",
-      boxShadow: `${base.boxShadow}, 0 0 10px rgba(217,165,73,0.45)`,
+      boxShadow: `${base.boxShadow}, 0 0 14px rgba(217,165,73,0.55)`,
     };
   };
 
@@ -916,8 +916,12 @@ export default function ArenaPlay() {
             const diffs = subDifficulties(subId, sub, show800);
 
             return (
-              <div
+              <motion.div
                 key={subId}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={!activeQ ? { y: -4, boxShadow: `0 14px 28px -10px ${accentColor}55, 0 4px 12px rgba(0,0,0,0.08)` } : undefined}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
                 style={{
                   background: "#ffffff",
                   borderRadius: "16px",
@@ -1021,17 +1025,17 @@ export default function ArenaPlay() {
                             key={key}
                             whileHover={
                               !used && !activeQ
-                                ? { scale: 1.04, y: -1 }
+                                ? { scale: 1.06, y: -2 }
                                 : undefined
                             }
                             whileTap={
-                              !used && !activeQ ? { scale: 0.95 } : undefined
+                              !used && !activeQ ? { scale: 0.92, y: 0 } : undefined
                             }
                             onClick={() =>
                               !used && !activeQ && openCard(subId, pts, slot)
                             }
                             disabled={used || !!activeQ}
-                            className="font-black border transition-all flex items-center justify-center relative overflow-hidden"
+                            className="font-black border transition-all flex items-center justify-center relative overflow-hidden group"
                             style={{
                               fontFamily: "'Tajawal', sans-serif",
                               fontSize: "15px",
@@ -1043,36 +1047,51 @@ export default function ArenaPlay() {
                                 ? {
                                     boxShadow: [
                                       "0 0 0px rgba(251,191,36,0)",
-                                      "0 0 16px rgba(251,191,36,0.9)",
-                                      "0 0 28px rgba(251,191,36,0.7)",
+                                      "0 0 22px rgba(251,191,36,0.95)",
+                                      "0 0 36px rgba(251,191,36,0.75)",
                                       "0 0 0px rgba(251,191,36,0)",
                                     ],
+                                    scale: [1, 1.08, 1],
                                   }
                                 : undefined
                             }
-                            transition={{ duration: 1.1, ease: "easeOut" }}
+                            transition={{ duration: 1.2, ease: "easeOut" }}
                           >
+                            {/* Idle glossy sweep on available tiles */}
+                            {!used && !activeQ && (
+                              <motion.span
+                                className="absolute inset-y-0 -inset-x-1 pointer-events-none"
+                                initial={{ x: "-120%", opacity: 0 }}
+                                animate={{ x: "120%", opacity: [0, 0.8, 0] }}
+                                transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 3.6 + (slot * 0.4), ease: "easeInOut" }}
+                                style={{
+                                  background:
+                                    "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%)",
+                                  width: "40%",
+                                }}
+                              />
+                            )}
                             {goldenTile === key && (
                               <motion.span
                                 className="absolute inset-0 pointer-events-none"
-                                initial={{ opacity: 0.8, scaleX: 0 }}
+                                initial={{ opacity: 0.85, scaleX: 0 }}
                                 animate={{ opacity: 0, scaleX: 1 }}
                                 transition={{ duration: 1.0, ease: "easeOut" }}
                                 style={{
                                   background:
-                                    "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.55) 50%, transparent 100%)",
+                                    "linear-gradient(90deg, transparent 0%, rgba(251,191,36,0.65) 50%, transparent 100%)",
                                   transformOrigin: "left",
                                 }}
                               />
                             )}
-                            {used ? "—" : pts}
+                            <span className="relative">{used ? "—" : pts}</span>
                           </motion.button>
                         ))}
                       </React.Fragment>
                     );
                   })}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -2048,43 +2067,62 @@ function TurnIndicator({
     <div className="relative px-3 py-1.5 flex items-center justify-center">
       <motion.div
         key={`${side}-${team.name}`}
-        initial={{ scale: 0.85, opacity: 0, y: -8 }}
+        initial={{ scale: 0.7, opacity: 0, y: -10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 220, damping: 18 }}
-        className="relative inline-flex items-center gap-2 sm:gap-3 rounded-xl px-4 sm:px-5 py-1.5 sm:py-2 border"
+        transition={{ type: "spring", stiffness: 240, damping: 18 }}
+        className="relative inline-flex items-center gap-2 sm:gap-3 rounded-2xl px-4 sm:px-5 py-2 overflow-hidden"
         style={{
-          background: `linear-gradient(120deg, ${team.color}22 0%, ${team.color}44 50%, ${team.color}22 100%)`,
-          borderColor: `${team.color}88`,
-          boxShadow: `0 4px 18px -4px ${team.color}66`,
-          fontFamily: "'Tajawal', sans-serif",
+          background: "#ffffff",
+          border: `2px solid ${team.color}`,
+          boxShadow: `0 6px 22px -6px ${team.color}99, 0 0 0 4px ${team.color}1a`,
+          fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif",
         }}
       >
-        <motion.span
-          animate={{ scale: [1, 1.12, 1], rotate: [0, -4, 4, 0] }}
+        {/* Shimmer sweep */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          initial={{ x: "-120%" }}
+          animate={{ x: "120%" }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.6 }}
+          style={{
+            background: `linear-gradient(110deg, transparent 30%, ${team.color}33 50%, transparent 70%)`,
+          }}
+        />
+        {/* Pulsing color ring */}
+        <motion.div
+          className="absolute inset-0 rounded-2xl pointer-events-none"
+          animate={{ boxShadow: [`inset 0 0 0 0 ${team.color}00`, `inset 0 0 0 3px ${team.color}55`, `inset 0 0 0 0 ${team.color}00`] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-          className="text-2xl sm:text-3xl drop-shadow-lg relative"
-          style={{ willChange: "transform" }}
+        />
+        <motion.span
+          animate={{ scale: [1, 1.18, 1], rotate: [0, -8, 8, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="text-2xl sm:text-3xl relative z-10"
+          style={{ willChange: "transform", filter: `drop-shadow(0 2px 6px ${team.color}88)` }}
         >
           {team.emoji}
         </motion.span>
-        <div className="relative text-right">
-          <div className="text-[9px] font-black tracking-[0.3em] uppercase text-white/70 flex items-center gap-1">
-            <Zap className="w-2.5 h-2.5 text-amber-300" />
+        <div className="relative text-right z-10">
+          <div className="text-[9px] font-black tracking-[0.3em] flex items-center gap-1" style={{ color: "#a07f37" }}>
+            <motion.span animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1.2, repeat: Infinity }}>
+              <Zap className="w-2.5 h-2.5" style={{ color: "#c9a14b" }} fill="#c9a14b" />
+            </motion.span>
             الدور الآن
           </div>
           <div
-            className="text-lg sm:text-2xl font-black text-white drop-shadow-lg"
-            style={{ textShadow: `0 2px 18px ${team.color}`, lineHeight: 1.1 }}
+            className="text-lg sm:text-2xl font-black"
+            style={{ color: team.color, lineHeight: 1.1, fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}
           >
             {team.name}
           </div>
         </div>
         <motion.div
-          animate={{ x: [0, -4, 0] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ x: [0, -6, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-10"
           style={{ willChange: "transform" }}
         >
-          <ChevronLeft className="w-5 h-5 text-amber-300" />
+          <ChevronLeft className="w-5 h-5" style={{ color: team.color }} />
         </motion.div>
       </motion.div>
     </div>
@@ -2242,127 +2280,190 @@ function QuestionModal({
     active.revealed && !active.transferUsed && !active.trapUsed;
   const onlyAnsweringTeamCanWin = active.transferUsed || active.trapUsed;
 
+  const lowTimer = active.timeLeft <= 5 && timerRunning;
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-none"
-      style={{ background: "rgba(0,0,0,0.88)" }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm"
+      style={{ background: "rgba(31,77,79,0.55)" }}
     >
       <motion.div
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 60, opacity: 0 }}
+        initial={{ y: 60, opacity: 0, scale: 0.97 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 60, opacity: 0, scale: 0.97 }}
         transition={{ type: "spring", stiffness: 260, damping: 26 }}
-        className="w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl overflow-y-auto"
+        className="w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl overflow-y-auto relative"
         style={{
           maxHeight: "96dvh",
-          background: "rgba(13,17,23,0.98)",
-          border: "1px solid rgba(255,255,255,0.09)",
+          background: "#faf6ec",
+          border: "1px solid #ebe2cd",
           borderBottom: "none",
-          boxShadow:
-            "0 -8px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+          boxShadow: "0 -8px 60px rgba(31,77,79,0.35), 0 24px 80px -20px rgba(31,77,79,0.5)",
+          fontFamily: "'IBM Plex Sans Arabic', 'Tajawal', sans-serif",
         }}
       >
-        {/* ── Top strip ── */}
+        {/* ── Top strip — cream + accent bar ── */}
         <div
-          className="flex items-center gap-2 px-4 pt-4 pb-3 sticky top-0 z-10"
+          className="flex items-center gap-2 px-4 pt-4 pb-3 sticky top-0 z-10 relative"
           style={{
-            background: "rgba(13,17,23,0.97)",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            background: "#ffffff",
+            borderBottom: "1px solid #ebe2cd",
+            boxShadow: "0 4px 12px -8px rgba(31,77,79,0.15)",
           }}
         >
+          {/* Animated accent bar tied to answering team */}
+          <motion.div
+            key={`bar-${active.answeringTeam}`}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="absolute top-0 inset-x-0 h-1 origin-right"
+            style={{ background: `linear-gradient(90deg, ${answeringTeam.color} 0%, #c9a14b 100%)` }}
+          />
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] font-bold text-emerald-400/70 tracking-wide mb-0.5">
-              {sec?.emoji} {sub?.name}
+            <div className="text-[10px] font-extrabold tracking-wide mb-0.5 inline-flex items-center gap-1" style={{ color: "#5b6b87" }}>
+              <span className="text-base">{sec?.emoji}</span>
+              <span>{sub?.name}</span>
             </div>
             <div
               className="text-xl font-black leading-none inline-flex items-center gap-1"
               style={{
-                color: active.difficulty === 800 ? "#fde68a" : "#fbbf24",
-                textShadow:
-                  active.difficulty === 800
-                    ? "0 0 10px rgba(251,191,36,0.6)"
-                    : undefined,
+                color: active.difficulty === 800 ? "#a07f37" : "#1f4d4f",
+                fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
               }}
             >
               {active.difficulty === 800 && (
-                <span style={{ fontSize: "0.75em" }}>⭐</span>
+                <motion.span
+                  animate={{ rotate: [0, 12, -12, 0], scale: [1, 1.18, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  style={{ fontSize: "0.85em", display: "inline-block", filter: "drop-shadow(0 2px 6px rgba(201,161,75,0.6))" }}
+                >⭐</motion.span>
               )}
-              {active.difficulty}
+              <span className="tabular-nums">{active.difficulty}</span>
               {active.multiplier > 1 && (
-                <span className="text-emerald-300 ms-2">
-                  × {active.multiplier} 🌾
-                </span>
+                <motion.span
+                  initial={{ scale: 0.6, opacity: 0, rotate: -8 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="ms-2 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[12px] font-extrabold"
+                  style={{ background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)", color: "white", boxShadow: "0 4px 12px -4px rgba(201,161,75,0.6)" }}
+                >
+                  × {active.multiplier}
+                </motion.span>
               )}
             </div>
           </div>
           {/* Timer + close */}
           <div className="flex items-center gap-2 shrink-0">
-            <div
-              className={`text-3xl font-black leading-none tabular-nums ${active.timeLeft <= 5 && timerRunning ? "text-red-400 animate-pulse" : "text-white/90"}`}
+            <motion.div
+              className="relative flex items-baseline gap-1 px-3 py-1.5 rounded-2xl"
+              animate={lowTimer ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={lowTimer ? { duration: 0.6, repeat: Infinity } : {}}
+              style={{
+                background: lowTimer ? "rgba(220,38,38,0.10)" : "#faf6ec",
+                border: `1.5px solid ${lowTimer ? "#dc2626" : "#ebe2cd"}`,
+              }}
             >
-              {active.timeLeft}
-            </div>
-            <span className="text-[10px] text-white/30">ث</span>
-            <button
+              <span
+                className="text-2xl font-black leading-none tabular-nums"
+                style={{ color: lowTimer ? "#dc2626" : "#1f4d4f" }}
+              >
+                {active.timeLeft}
+              </span>
+              <span className="text-[10px] font-bold" style={{ color: lowTimer ? "#dc2626" : "#5b6b87" }}>ث</span>
+            </motion.div>
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="ms-1 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
+              className="ms-1 p-1.5 rounded-lg"
+              style={{ background: "#faf6ec", color: "#5b6b87", border: "1px solid #ebe2cd" }}
               title="إغلاق"
             >
               <X className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
         {/* ── Scrollable body ── */}
         <div className="px-4 py-4 space-y-3 flex flex-col items-center">
-          {/* Answering team badge — compact */}
+          {/* Answering team badge — animated, vibrant */}
           <motion.div
             key={`banner-${active.answeringTeam}-${active.transferUsed}-${active.trapUsed}`}
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="flex items-center justify-center gap-2.5 rounded-2xl px-5 py-2 border w-fit mx-auto"
+            initial={{ scale: 0.85, opacity: 0, y: -6 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 280, damping: 20 }}
+            className="flex items-center justify-center gap-2.5 rounded-2xl px-5 py-2 w-fit mx-auto relative overflow-hidden"
             style={{
-              borderColor: `${answeringTeam.color}55`,
-              background: `${answeringTeam.color}18`,
+              background: "#ffffff",
+              border: `2px solid ${answeringTeam.color}`,
+              boxShadow: `0 6px 18px -6px ${answeringTeam.color}88`,
             }}
           >
-            <span className="text-2xl">{answeringTeam.emoji}</span>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-white/45 tracking-wide">
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              initial={{ x: "-120%" }}
+              animate={{ x: "120%" }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
+              style={{ background: `linear-gradient(110deg, transparent 30%, ${answeringTeam.color}26 50%, transparent 70%)` }}
+            />
+            <motion.span
+              animate={{ scale: [1, 1.15, 1] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className="text-2xl relative z-10"
+            >{answeringTeam.emoji}</motion.span>
+            <div className="min-w-0 relative z-10">
+              <div className="text-[10px] font-extrabold tracking-wide" style={{ color: "#a07f37" }}>
                 يجيب الآن
               </div>
-              <div className="font-black text-base text-white truncate leading-tight">
+              <div className="font-black text-base truncate leading-tight" style={{ color: answeringTeam.color, fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
                 {answeringTeam.name}
               </div>
             </div>
             {active.trapUsed && (
-              <span className="ms-auto text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-400/30">
+              <motion.span
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fca5a5" }}
+              >
                 🪤 فخ
-              </span>
+              </motion.span>
             )}
             {active.transferUsed && !active.trapUsed && (
-              <span className="ms-auto text-[10px] font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-full border border-blue-400/30">
+              <motion.span
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #93c5fd" }}
+              >
                 ↔️ محوّل
-              </span>
+              </motion.span>
             )}
           </motion.div>
-          {/* Question area */}
-          <div
-            className="rounded-[32px] px-6 py-8 text-center mx-auto"
+          {/* Question area — white card with gold corner accents */}
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 24 }}
+            className="rounded-[28px] px-6 py-8 text-center mx-auto relative"
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              backdropFilter: "blur(10px)",
+              background: "#ffffff",
+              border: "1.5px solid #ebe2cd",
               maxWidth: "900px",
               width: "100%",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.22)",
-              animation: "questionPop 0.45s ease-out",
+              boxShadow: "0 12px 36px -12px rgba(31,77,79,0.18), 0 1px 3px rgba(0,0,0,0.04)",
+              color: "#1f2937",
             }}
           >
+            {/* Gold corner ornaments */}
+            <div className="absolute top-3 right-3 w-6 h-6 rounded-tr-xl pointer-events-none" style={{ borderTop: "2px solid #c9a14b", borderRight: "2px solid #c9a14b" }} />
+            <div className="absolute top-3 left-3 w-6 h-6 rounded-tl-xl pointer-events-none" style={{ borderTop: "2px solid #c9a14b", borderLeft: "2px solid #c9a14b" }} />
+            <div className="absolute bottom-3 right-3 w-6 h-6 rounded-br-xl pointer-events-none" style={{ borderBottom: "2px solid #c9a14b", borderRight: "2px solid #c9a14b" }} />
+            <div className="absolute bottom-3 left-3 w-6 h-6 rounded-bl-xl pointer-events-none" style={{ borderBottom: "2px solid #c9a14b", borderLeft: "2px solid #c9a14b" }} />
+
             <InteractiveActivity
               key={`${active.question.type ?? "text"}::${active.question.q}`}
               question={active.question}
@@ -2371,25 +2472,35 @@ function QuestionModal({
             <AnimatePresence>
               {active.revealed && (
                 <motion.div
-                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                  initial={{ opacity: 0, y: 18, scale: 0.94 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 220 }}
-                  className="mt-4 px-4 py-3 rounded-xl text-center"
+                  transition={{ type: "spring", stiffness: 240, damping: 22 }}
+                  className="mt-5 px-5 py-4 rounded-2xl text-center relative overflow-hidden"
                   style={{
-                    background: "rgba(251,191,36,0.12)",
-                    border: "1.5px solid rgba(251,191,36,0.4)",
+                    background: "linear-gradient(135deg, rgba(201,161,75,0.10) 0%, rgba(201,161,75,0.04) 100%)",
+                    border: "2px solid #c9a14b",
+                    boxShadow: "0 6px 20px -8px rgba(201,161,75,0.4)",
                   }}
                 >
-                  <div className="text-amber-400/80 text-[10px] font-bold tracking-wide mb-1">
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none"
+                    initial={{ x: "-120%" }}
+                    animate={{ x: "120%" }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                    style={{ background: "linear-gradient(110deg, transparent 30%, rgba(201,161,75,0.3) 50%, transparent 70%)" }}
+                  />
+                  <div className="text-[10px] font-extrabold tracking-[0.25em] mb-1.5 inline-flex items-center justify-center gap-1.5" style={{ color: "#a07f37" }}>
+                    <Sparkles className="w-3 h-3" />
                     الإجابة الصحيحة
+                    <Sparkles className="w-3 h-3" />
                   </div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-amber-200">
+                  <div className="text-xl sm:text-2xl font-extrabold relative" style={{ color: "#1f4d4f", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
                     {active.question.a}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
 
           {/* Shura voting */}
           {active.shuraVisible && (
@@ -2452,7 +2563,7 @@ function QuestionModal({
             </motion.div>
           )}
 
-          {/* Helpers — split by team */}
+          {/* Helpers — split by team, cream theme */}
           {state.teamOrder.some(
             (side) => state.teams[side]?.helpers.length > 0,
           ) && (
@@ -2464,32 +2575,38 @@ function QuestionModal({
                 const isActive = active.answeringTeam === side;
 
                 return (
-                  <div
+                  <motion.div
                     key={side}
-                    className={`rounded-2xl p-2 border ${
+                    animate={{
+                      opacity: isActive ? 1 : 0.5,
+                      scale: isActive ? 1 : 0.98,
+                    }}
+                    transition={{ type: "spring", stiffness: 240, damping: 22 }}
+                    className={`rounded-2xl p-2.5 relative overflow-hidden ${
                       index === 0 ? "text-right" : "text-left"
                     }`}
                     style={{
-                      background: isActive
-                        ? `${t.color}18`
-                        : "rgba(255,255,255,0.035)",
-                      borderColor: isActive
-                        ? `${t.color}55`
-                        : "rgba(255,255,255,0.08)",
-                      opacity: isActive ? 1 : 0.35,
+                      background: "#ffffff",
+                      border: `1.5px solid ${isActive ? t.color : "#ebe2cd"}`,
+                      boxShadow: isActive ? `0 6px 18px -8px ${t.color}66` : "0 1px 2px rgba(0,0,0,0.03)",
                     }}
                   >
+                    {isActive && (
+                      <div className="absolute top-0 inset-x-0 h-1" style={{ background: t.color }} />
+                    )}
                     <div
-                      className="text-[11px] font-black mb-2 truncate"
+                      className="text-[11px] font-black mb-2 truncate flex items-center gap-1.5 mt-1"
                       style={{
-                        color: isActive ? t.color : "rgba(255,255,255,0.55)",
+                        color: isActive ? t.color : "#5b6b87",
+                        justifyContent: index === 0 ? "flex-end" : "flex-start",
                       }}
                     >
-                      {t.emoji} {t.name}
+                      <span className="text-base">{t.emoji}</span>
+                      <span>{t.name}</span>
                     </div>
 
                     <div
-                      className={`flex flex-wrap gap-2 ${
+                      className={`flex flex-wrap gap-1.5 ${
                         index === 0 ? "justify-end" : "justify-start"
                       }`}
                     >
@@ -2501,134 +2618,200 @@ function QuestionModal({
                         const consumed = t.usedHelpers.includes(hid);
 
                         return (
-                          <button
+                          <motion.button
                             key={hid}
+                            whileHover={usable ? { y: -2, scale: 1.05 } : undefined}
+                            whileTap={usable ? { scale: 0.94 } : undefined}
                             onClick={() => onUseHelper(side, hid)}
                             disabled={!usable}
                             title={consumed ? `${h.name} — تم استخدامه` : h.desc}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold transition relative overflow-hidden"
                             style={{
-                              opacity: consumed ? 0.3 : usable ? 1 : 0.45,
-                              filter: consumed ? "grayscale(1)" : undefined,
+                              opacity: consumed ? 0.4 : usable ? 1 : 0.55,
+                              filter: consumed ? "grayscale(0.8)" : undefined,
                               cursor: usable ? "pointer" : "not-allowed",
                               background: consumed
-                                ? "rgba(255,255,255,0.04)"
-                                : `${t.color}22`,
-                              borderColor: consumed
-                                ? "rgba(255,255,255,0.10)"
-                                : `${t.color}55`,
-                              color: "white",
+                                ? "#faf6ec"
+                                : usable
+                                ? `${t.color}14`
+                                : "#faf6ec",
+                              border: `1.5px solid ${consumed ? "#ebe2cd" : usable ? `${t.color}66` : "#e9dfc7"}`,
+                              color: consumed ? "#9ca3af" : usable ? t.color : "#9ca3af",
+                              boxShadow: usable ? `0 2px 6px -2px ${t.color}44` : undefined,
                             }}
                           >
-                            <span>{h.emoji}</span>
-                            <span className="hidden sm:inline">{h.name}</span>
-                          </button>
+                            {usable && !consumed && (
+                              <motion.span
+                                className="absolute inset-0 pointer-events-none"
+                                initial={{ x: "-130%" }}
+                                animate={{ x: "130%" }}
+                                transition={{ duration: 2, repeat: Infinity, repeatDelay: 4 + (HELPERS.findIndex(x => x.id === hid) * 0.3), ease: "easeInOut" }}
+                                style={{ background: `linear-gradient(110deg, transparent 30%, ${t.color}33 50%, transparent 70%)` }}
+                              />
+                            )}
+                            <span className="relative text-base leading-none">{h.emoji}</span>
+                            <span className="hidden sm:inline relative">{h.name}</span>
+                          </motion.button>
                         );
                       })}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           )}
-          {/* Utility row */}
-          <div className="flex gap-1.5 flex-wrap">
-            <button
+          {/* Utility row — soft cream pills */}
+          <div className="flex gap-1.5 flex-wrap justify-center">
+            <motion.button
+              whileHover={{ scale: 1.04, y: -1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onReplaceQuestion}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-white/12 text-amber-200/80 border border-white/08 inline-flex items-center gap-1.5"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold inline-flex items-center gap-1.5 transition"
+              style={{ background: "#ffffff", color: "#a07f37", border: "1px solid #e9dfc7" }}
             >
               <RefreshCw className="w-3 h-3" /> استبدال السؤال
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.04, y: -1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onReport}
-              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-white/5 hover:bg-rose-500/15 text-rose-300/80 inline-flex items-center gap-1.5"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold inline-flex items-center gap-1.5 transition"
+              style={{ background: "#ffffff", color: "#b91c1c", border: "1px solid #fecaca" }}
             >
               <AlertTriangle className="w-3 h-3" /> إبلاغ
-            </button>
+            </motion.button>
           </div>
 
-          {/* Action buttons — timer + reveal + resolve */}
-          <div className="flex flex-wrap gap-2 pt-1 pb-2">
+          {/* Action buttons — timer + reveal + resolve, animated */}
+          <div className="flex flex-wrap gap-2 pt-1 pb-2 w-full max-w-[900px]">
             {!timerRunning && !active.revealed && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={onStartTimer}
-                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center justify-center gap-1.5"
+                className="flex-1 min-w-[120px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-1.5 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, #1f4d4f 0%, #2d5e3f 100%)",
+                  color: "white",
+                  boxShadow: "0 8px 20px -6px rgba(31,77,79,0.45)",
+                }}
               >
-                <Clock className="w-4 h-4" />
-                {active.timeLeft === 0 || active.timeLeft === state.timerSeconds
+                <motion.span
+                  className="absolute inset-0 pointer-events-none"
+                  initial={{ x: "-130%" }}
+                  animate={{ x: "130%" }}
+                  transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 1.4, ease: "easeInOut" }}
+                  style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%)" }}
+                />
+                <Clock className="w-4 h-4 relative" />
+                <span className="relative">{active.timeLeft === 0 || active.timeLeft === state.timerSeconds
                   ? "بدء المؤقت"
-                  : "متابعة"}
-              </button>
+                  : "متابعة"}</span>
+              </motion.button>
             )}
             {timerRunning && (
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={onStopTimer}
-                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm text-white inline-flex items-center justify-center"
+                className="flex-1 min-w-[120px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-1.5"
                 style={{
-                  background: "rgba(255,255,255,0.09)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "#ffffff",
+                  color: "#1f4d4f",
+                  border: "1.5px solid #e9dfc7",
                 }}
               >
                 إيقاف المؤقت
-              </button>
+              </motion.button>
             )}
             {!active.revealed && (
-                <button
-                  onClick={onReveal}
-                  className="flex-1 min-w-[120px] py-3 rounded-2xl font-extrabold text-sm text-white inline-flex items-center justify-center gap-1.5"
-                  style={{
-                    background: "linear-gradient(135deg, #0f5637, #1c7a52)",
-                    boxShadow: "0 10px 24px rgba(15,86,55,0.22)",
-                  }}
-                >
-                <Eye className="w-4 h-4" /> كشف الإجابة
-              </button>
+              <motion.button
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={onReveal}
+                className="flex-1 min-w-[120px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-1.5 relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, #c9a14b 0%, #b8860b 100%)",
+                  color: "white",
+                  boxShadow: "0 10px 24px -6px rgba(201,161,75,0.55)",
+                }}
+              >
+                <motion.span
+                  className="absolute inset-0 pointer-events-none"
+                  initial={{ x: "-130%" }}
+                  animate={{ x: "130%" }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
+                  style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)" }}
+                />
+                <Eye className="w-4 h-4 relative" /> <span className="relative">كشف الإجابة</span>
+              </motion.button>
             )}
             {active.revealed && (
-              <div className="w-full flex flex-wrap gap-2">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 220 }}
+                className="w-full flex flex-wrap gap-2"
+              >
                 {state.teamOrder.map((teamId) => {
                   const t = state.teams[teamId];
                   if (!t) return null;
+                  const disabled = onlyAnsweringTeamCanWin && active.answeringTeam !== teamId;
                   return (
-                    <button
+                    <motion.button
                       key={teamId}
+                      whileHover={!disabled ? { scale: 1.04, y: -2 } : undefined}
+                      whileTap={!disabled ? { scale: 0.94 } : undefined}
                       onClick={() => onResolve(teamId)}
-                      disabled={
-                        onlyAnsweringTeamCanWin &&
-                        active.answeringTeam !== teamId
-                      }
-                      className="flex-1 min-w-[110px] py-3 rounded-xl font-black text-white text-sm inline-flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-25 disabled:cursor-not-allowed"
-                      style={{ background: t.color }}
+                      disabled={disabled}
+                      className="flex-1 min-w-[110px] py-3 rounded-2xl font-black text-white text-sm inline-flex items-center justify-center gap-1.5 disabled:opacity-25 disabled:cursor-not-allowed relative overflow-hidden"
+                      style={{
+                        background: `linear-gradient(135deg, ${t.color} 0%, ${t.color}dd 100%)`,
+                        boxShadow: !disabled ? `0 8px 20px -6px ${t.color}99` : undefined,
+                      }}
                     >
-                      {t.emoji} {t.name} ✓
-                    </button>
+                      {!disabled && (
+                        <motion.span
+                          className="absolute inset-0 pointer-events-none"
+                          initial={{ x: "-130%" }}
+                          animate={{ x: "130%" }}
+                          transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 1.5, ease: "easeInOut" }}
+                          style={{ background: "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)" }}
+                        />
+                      )}
+                      <span className="relative text-base">{t.emoji}</span> <span className="relative">{t.name} ✓</span>
+                    </motion.button>
                   );
                 })}
                 {transferAvailable && (
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.04, y: -2 }}
+                    whileTap={{ scale: 0.94 }}
                     onClick={onTransfer}
-                    className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-blue-200 inline-flex items-center justify-center gap-1.5"
+                    className="flex-1 min-w-[110px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-1.5"
                     style={{
-                      background: "rgba(59,130,246,0.18)",
-                      border: "1px solid rgba(147,197,253,0.3)",
+                      background: "#eff6ff",
+                      color: "#1d4ed8",
+                      border: "1.5px solid #93c5fd",
                     }}
                   >
                     ↔️ {otherTeam.name}
-                  </button>
+                  </motion.button>
                 )}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.96 }}
                   onClick={() => onResolve(null)}
-                  className="flex-1 min-w-[110px] py-3 rounded-xl font-bold text-sm text-white/70 inline-flex items-center justify-center"
+                  className="flex-1 min-w-[110px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center"
                   style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "#ffffff",
+                    color: "#5b6b87",
+                    border: "1.5px solid #e9dfc7",
                   }}
                 >
                   لا أحد
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             )}
           </div>
         </div>
@@ -3537,12 +3720,12 @@ function InteractiveActivity({
           <img
             src={question.imageUrl}
             alt="سؤال"
-            className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl border-2 border-amber-300/30 object-contain bg-black/40"
-            style={{ boxShadow: "0 12px 40px -12px rgba(232,168,14,0.4)" }}
+            className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl object-contain"
+            style={{ boxShadow: "0 12px 40px -12px rgba(201,161,75,0.35)", border: "2px solid #c9a14b66", background: "#faf6ec" }}
           />
         </div>
       )}
-      <div className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-[1.4] mb-4">
+      <div className="text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.4] mb-4" style={{ color: "#1f2937", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
         {question.q}
       </div>
     </>
@@ -3561,17 +3744,19 @@ function SinJeemPlay({
   const prompts = payload.prompts ?? [];
   return (
     <div className="flex flex-col items-center gap-4 sm:gap-5">
-      <div className="text-amber-200/80 text-sm sm:text-base font-bold">
+      <div className="text-sm sm:text-base font-extrabold" style={{ color: "#a07f37" }}>
         أجب بكلمة تبدأ بحرف
       </div>
       <motion.div
         initial={{ scale: 0.7, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 180, damping: 14 }}
-        className="text-[120px] sm:text-[180px] leading-none font-black text-amber-300 select-none"
+        className="text-[120px] sm:text-[180px] leading-none font-black select-none"
         style={{
+          color: "#c9a14b",
           textShadow:
-            "0 4px 32px rgba(251,191,36,0.7), 0 1px 0 rgba(0,0,0,0.4)",
+            "0 6px 24px rgba(201,161,75,0.45), 0 2px 0 rgba(160,127,55,0.25)",
+          fontFamily: "'Amiri', 'Readex Pro', serif",
         }}
       >
         {letter}
@@ -3580,12 +3765,13 @@ function SinJeemPlay({
         {prompts.map((p, i) => (
           <div
             key={i}
-            className="rounded-xl border-2 border-amber-300/25 bg-black/35 px-4 py-3 text-right transition"
+            className="rounded-xl px-4 py-3 text-right transition"
+            style={{ background: "#faf6ec", border: "1.5px solid #ebe2cd" }}
           >
-            <div className="text-amber-200/80 text-[11px] font-bold mb-1">
+            <div className="text-[11px] font-extrabold mb-1" style={{ color: "#a07f37" }}>
               سؤال {i + 1}
             </div>
-            <div className="text-base sm:text-xl font-bold text-white">
+            <div className="text-base sm:text-xl font-bold" style={{ color: "#1f2937" }}>
               {p.prompt}
             </div>
             {revealed && (
@@ -3593,7 +3779,8 @@ function SinJeemPlay({
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
-                className="mt-2 text-emerald-300 font-extrabold text-base sm:text-lg"
+                className="mt-2 font-extrabold text-base sm:text-lg"
+                style={{ color: "#1f4d4f" }}
               >
                 ← {p.answer}
               </motion.div>
@@ -3656,7 +3843,7 @@ function MemoryPlay({
   };
 
   if (cards.length === 0) {
-    return <div className="text-amber-200">لا توجد بطاقات للمطابقة.</div>;
+    return <div style={{ color: "#a07f37" }}>لا توجد بطاقات للمطابقة.</div>;
   }
 
   const cols = cards.length <= 4 ? 2 : cards.length <= 6 ? 3 : 4;
@@ -3664,10 +3851,10 @@ function MemoryPlay({
 
   return (
     <div className="flex flex-col items-center gap-3 w-full">
-      <div className="text-amber-200/80 text-sm font-bold">
+      <div className="text-sm font-extrabold" style={{ color: "#a07f37" }}>
         طابق الأزواج المتشابهة
         {!revealed && (
-          <span className="ms-2 text-emerald-300">
+          <span className="ms-2" style={{ color: "#1f4d4f" }}>
             ({matched.length}/{pairs.length}){allMatched && " 🎉"}
           </span>
         )}
@@ -3693,18 +3880,16 @@ function MemoryPlay({
                 isFlipped
                   ? {
                       background: isMatched
-                        ? "linear-gradient(160deg, #064e3b, #022c22)"
-                        : "linear-gradient(160deg, #1e3a8a, #1e40af)",
-                      borderColor: isMatched
-                        ? "rgba(52,211,153,0.6)"
-                        : "rgba(245,158,11,0.6)",
+                        ? "linear-gradient(160deg, #2d5e3f, #1f4d4f)"
+                        : "linear-gradient(160deg, #ffffff, #faf6ec)",
+                      borderColor: isMatched ? "#2d5e3f" : "#c9a14b",
                       boxShadow: isMatched
-                        ? "0 0 24px -6px rgba(52,211,153,0.5)"
-                        : undefined,
+                        ? "0 6px 18px -6px rgba(45,94,63,0.5)"
+                        : "0 4px 12px -4px rgba(201,161,75,0.3)",
                     }
                   : {
-                      background: "linear-gradient(160deg, #d97706, #92400e)",
-                      borderColor: "rgba(245,158,11,0.6)",
+                      background: "linear-gradient(160deg, #c9a14b, #a07f37)",
+                      borderColor: "#a07f37",
                     }
               }
             >
@@ -3716,17 +3901,17 @@ function MemoryPlay({
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="text-white text-sm sm:text-lg font-extrabold p-2 text-center break-words">
+                  <div className="text-sm sm:text-lg font-extrabold p-2 text-center break-words" style={{ color: isMatched ? "#ffffff" : "#1f2937" }}>
                     {card.side.value}
                   </div>
                 )
               ) : (
-                <div className="text-4xl sm:text-6xl text-amber-200 font-black drop-shadow">
+                <div className="text-4xl sm:text-6xl font-black" style={{ color: "#ffffff", textShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
                   ؟
                 </div>
               )}
               {isMatched && !revealed && (
-                <div className="absolute top-1 end-1 bg-emerald-500 rounded-full p-0.5">
+                <div className="absolute top-1 end-1 rounded-full p-0.5" style={{ background: "#c9a14b" }}>
                   <CheckIcon className="w-3 h-3 text-white" />
                 </div>
               )}
@@ -3773,13 +3958,13 @@ function CategorizePlay({
   };
 
   if (groups.length === 0) {
-    return <div className="text-amber-200">لا توجد عناصر للتصنيف.</div>;
+    return <div style={{ color: "#a07f37" }}>لا توجد عناصر للتصنيف.</div>;
   }
 
   if (revealed) {
     return (
       <div className="flex flex-col items-center gap-3 w-full">
-        <div className="text-amber-200/80 text-sm font-bold mb-1">
+        <div className="text-sm font-extrabold mb-1" style={{ color: "#a07f37" }}>
           التصنيف الصحيح
         </div>
         <div
@@ -3791,16 +3976,18 @@ function CategorizePlay({
           {groups.map((g, gi) => (
             <div
               key={gi}
-              className="rounded-xl border-2 border-emerald-400/50 bg-emerald-500/10 p-3"
+              className="rounded-xl p-3"
+              style={{ background: "#faf6ec", border: "1.5px solid #2d5e3f" }}
             >
-              <div className="text-emerald-200 font-extrabold text-base sm:text-lg mb-2 text-center">
+              <div className="font-extrabold text-base sm:text-lg mb-2 text-center" style={{ color: "#2d5e3f" }}>
                 {g.name}
               </div>
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {g.items.map((it, j) => (
                   <span
                     key={j}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600/80 text-white font-bold text-sm"
+                    className="px-3 py-1.5 rounded-lg text-white font-bold text-sm"
+                    style={{ background: "linear-gradient(135deg, #2d5e3f, #1f4d4f)" }}
                   >
                     {it}
                   </span>
@@ -3821,21 +4008,21 @@ function CategorizePlay({
 
   return (
     <div className="flex flex-col gap-3 w-full max-w-4xl mx-auto">
-      <div className="text-amber-200/80 text-sm font-bold text-center">
+      <div className="text-sm font-extrabold text-center" style={{ color: "#a07f37" }}>
         اضغط عنصراً ثم اضغط مجموعته
         {Object.keys(assignments).length > 0 && (
-          <span className="ms-2 text-emerald-300">
+          <span className="ms-2" style={{ color: "#1f4d4f" }}>
             ({correctCount}/{Object.keys(assignments).length} صحيح)
           </span>
         )}
       </div>
-      <div className="rounded-xl border border-amber-300/20 bg-black/30 p-3">
-        <div className="text-[11px] font-bold text-emerald-200/70 mb-2">
+      <div className="rounded-xl p-3" style={{ background: "#faf6ec", border: "1px solid #ebe2cd" }}>
+        <div className="text-[11px] font-extrabold mb-2" style={{ color: "#5b6b87" }}>
           العناصر
         </div>
         <div className="flex flex-wrap gap-2 justify-center min-h-[3rem]">
           {unassigned.length === 0 ? (
-            <div className="text-emerald-200/50 text-sm">— تم تصنيف الكل —</div>
+            <div className="text-sm" style={{ color: "#5b6b87" }}>— تم تصنيف الكل —</div>
           ) : (
             unassigned.map((it) => (
               <button
@@ -3843,11 +4030,12 @@ function CategorizePlay({
                 onClick={() =>
                   setSelectedKey(it.key === selectedKey ? null : it.key)
                 }
-                className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 transition ${
+                className="px-3 py-1.5 rounded-lg font-bold text-sm border-2 transition"
+                style={
                   selectedKey === it.key
-                    ? "bg-amber-400 text-emerald-950 border-amber-200 scale-110 shadow-lg"
-                    : "bg-amber-300/15 text-white border-amber-300/40 hover:bg-amber-300/25"
-                }`}
+                    ? { background: "linear-gradient(135deg,#c9a14b,#a07f37)", color: "#ffffff", borderColor: "#a07f37", transform: "scale(1.08)", boxShadow: "0 6px 14px -4px rgba(201,161,75,0.5)" }
+                    : { background: "#ffffff", color: "#1f2937", borderColor: "#e9dfc7" }
+                }
               >
                 {it.item}
               </button>
@@ -3871,13 +4059,14 @@ function CategorizePlay({
               key={gi}
               onClick={() => assign(gi)}
               disabled={!selectedKey}
-              className={`rounded-xl border-2 p-3 min-h-[6rem] text-right transition ${
+              className="rounded-xl border-2 p-3 min-h-[6rem] text-right transition"
+              style={
                 selectedKey
-                  ? "border-amber-300/60 bg-amber-300/10 hover:bg-amber-300/20 cursor-pointer"
-                  : "border-white/10 bg-black/30 cursor-default"
-              }`}
+                  ? { borderColor: "#c9a14b", background: "rgba(201,161,75,0.08)", cursor: "pointer" }
+                  : { borderColor: "#ebe2cd", background: "#ffffff", cursor: "default" }
+              }
             >
-              <div className="text-white font-extrabold text-base sm:text-lg mb-2 text-center">
+              <div className="font-extrabold text-base sm:text-lg mb-2 text-center" style={{ color: "#1f4d4f" }}>
                 {g.name}
               </div>
               <div className="flex flex-wrap gap-1.5 justify-center">
@@ -3894,11 +4083,10 @@ function CategorizePlay({
                           return next;
                         });
                       }}
-                      className={`px-2.5 py-1 rounded-lg font-bold text-xs border cursor-pointer ${
-                        correct
-                          ? "bg-emerald-600 text-white border-emerald-400"
-                          : "bg-rose-600 text-white border-rose-400"
-                      }`}
+                      className="px-2.5 py-1 rounded-lg font-bold text-xs border cursor-pointer text-white"
+                      style={correct
+                        ? { background: "#2d5e3f", borderColor: "#1f4d4f" }
+                        : { background: "#dc2626", borderColor: "#b91c1c" }}
                       title="اضغط لإزالته"
                     >
                       {it.item} {correct ? "✓" : "✗"}
@@ -3929,10 +4117,10 @@ function ImagePlay({
       {question.imageUrl ? (
         <div className="relative w-full flex justify-center">
           {status === "loading" && (
-            <div className="w-64 h-44 rounded-2xl bg-white/10 animate-pulse" />
+            <div className="w-64 h-44 rounded-2xl animate-pulse" style={{ background: "#f0e8d4" }} />
           )}
           {status === "error" && (
-            <div className="w-64 h-44 rounded-2xl border-2 border-amber-300/20 bg-black/40 flex flex-col items-center justify-center gap-2 text-amber-200/50">
+            <div className="w-64 h-44 rounded-2xl flex flex-col items-center justify-center gap-2" style={{ background: "#faf6ec", border: "2px solid #ebe2cd", color: "#a07f37" }}>
               <span className="text-4xl">🖼️</span>
               <span className="text-xs">تعذّر تحميل الصورة</span>
             </div>
@@ -3942,9 +4130,11 @@ function ImagePlay({
             alt="سؤال مصوّر"
             onLoad={() => setStatus("loaded")}
             onError={() => setStatus("error")}
-            className="max-h-[38vh] sm:max-h-[46vh] max-w-full rounded-2xl border-2 border-amber-300/40 object-contain bg-black/30 shadow-2xl"
+            className="max-h-[38vh] sm:max-h-[46vh] max-w-full rounded-2xl object-contain"
             style={{
-              boxShadow: "0 12px 40px -12px rgba(232,168,14,0.5)",
+              boxShadow: "0 12px 40px -12px rgba(201,161,75,0.45)",
+              border: "2px solid #c9a14b88",
+              background: "#faf6ec",
               opacity: status === "loaded" ? 1 : 0,
               transition: "opacity 0.35s ease",
               position: status === "loaded" ? "static" : "absolute",
@@ -3952,17 +4142,17 @@ function ImagePlay({
             }}
           />
           {status === "loaded" && (
-            <span className="absolute top-2 end-2 bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full select-none">
+            <span className="absolute top-2 end-2 text-[10px] font-black px-2 py-0.5 rounded-full select-none text-white" style={{ background: "linear-gradient(135deg, #c9a14b, #a07f37)" }}>
               🖼️ سؤال مصوّر
             </span>
           )}
         </div>
       ) : (
-        <div className="w-64 h-44 rounded-2xl border-2 border-amber-300/30 bg-black/40 flex items-center justify-center text-amber-200/50 text-5xl">
+        <div className="w-64 h-44 rounded-2xl flex items-center justify-center text-5xl" style={{ background: "#faf6ec", border: "2px solid #ebe2cd", color: "#a07f37" }}>
           🖼️
         </div>
       )}
-      <div className="text-xl sm:text-3xl font-extrabold text-white leading-[1.4] text-center px-2">
+      <div className="text-xl sm:text-3xl font-extrabold leading-[1.4] text-center px-2" style={{ color: "#1f2937", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
         {question.q}
       </div>
     </div>
@@ -3987,33 +4177,38 @@ function LogoPlay({
           <img
             src={question.imageUrl}
             alt="logo"
-            className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl border-2 border-amber-300/30 object-contain bg-white/5 transition-all"
+            className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl object-contain transition-all"
             style={{
               filter: `blur(${blur}px)`,
-              boxShadow: "0 12px 40px -12px rgba(232,168,14,0.4)",
+              border: "2px solid #c9a14b66",
+              background: "#faf6ec",
+              boxShadow: "0 12px 40px -12px rgba(201,161,75,0.35)",
             }}
           />
         ) : (
-          <div className="w-64 h-40 rounded-2xl border-2 border-amber-300/30 bg-black/40 flex items-center justify-center text-amber-200/60">
+          <div className="w-64 h-40 rounded-2xl flex items-center justify-center" style={{ background: "#faf6ec", border: "2px solid #ebe2cd", color: "#a07f37" }}>
             لا توجد صورة
           </div>
         )}
       </div>
       {!revealed && question.imageUrl && (
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05, y: -1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => setRevealLevel((l) => Math.min(3, l + 1))}
           disabled={revealLevel >= 3}
-          className="px-3 py-1.5 rounded-lg bg-amber-400 text-emerald-950 font-bold text-xs hover:bg-amber-300 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-lg font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5 text-white"
+          style={{ background: "linear-gradient(135deg, #c9a14b, #a07f37)", boxShadow: "0 4px 10px -3px rgba(201,161,75,0.55)" }}
         >
           <Eye className="w-3.5 h-3.5" />
           توضيح الشعار ({revealLevel}/3)
-        </button>
+        </motion.button>
       )}
-      <div className="text-2xl sm:text-3xl font-extrabold text-white leading-[1.4]">
+      <div className="text-2xl sm:text-3xl font-extrabold leading-[1.4]" style={{ color: "#1f2937", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
         ما اسم هذا الشعار؟
       </div>
       {hint && !revealed && (
-        <div className="text-emerald-200/80 text-sm bg-emerald-500/10 border border-emerald-400/30 rounded-lg px-3 py-1.5">
+        <div className="text-sm rounded-lg px-3 py-1.5" style={{ color: "#1f4d4f", background: "rgba(31,77,79,0.08)", border: "1px solid #2d5e3f55" }}>
           💡 تلميح: {hint}
         </div>
       )}
