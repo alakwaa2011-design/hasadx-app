@@ -598,3 +598,14 @@
   .arena-brand-title { font-size: 20px; }
   .arena-brand-subtitle { font-size: 15px; max-width: 240px; }
 }
+@keyframes questionPop {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

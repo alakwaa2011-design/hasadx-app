@@ -893,15 +893,16 @@ export default function ArenaPlay() {
           overflowY: "auto",
         }}
       >
-        <div
-          style={{
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "clamp(8px, 1.5vw, 16px)",
-            padding: "clamp(8px, 1.5vw, 18px)",
-          }}
-        >
+              <div
+                className="grid grid-cols-2 lg:grid-cols-3"
+                style={{
+                  maxWidth: "1280px",
+                  width: "100%",
+                  margin: "0 auto",
+                  gap: "clamp(10px, 1.5vw, 18px)",
+                  padding: "clamp(10px, 3vw, 18px)",
+                }}
+              >
           {orderedSubCategoryIds.map((subId) => {
             const sub = findSubCategory(subId, allSections);
             const sec = findSection(subId, allSections);
@@ -932,18 +933,21 @@ export default function ArenaPlay() {
                 <div
                   className="relative"
                   style={{
-                    aspectRatio: "16 / 9",
+                    height: window.innerWidth < 640 ? "110px" : "190px",
                     overflow: "hidden",
                     background: "#f3f0e6",
                   }}
                 >
                   {imgUrl ? (
-                    <img
-                      src={imgUrl}
-                      alt={sub.name}
-                      className="absolute inset-0 w-full h-full"
-                      style={{ objectFit: "cover", objectPosition: "center" }}
-                    />
+                  <img
+                    src={imgUrl}
+                    alt={sub.name}
+                    className="absolute inset-0 w-full h-full"
+                    style={{
+                      objectFit: "cover",
+                      objectPosition: "50% 0%",
+                    }}
+                  />
                   ) : (
                     <div
                       className="absolute inset-0 flex items-center justify-center"
@@ -960,17 +964,17 @@ export default function ArenaPlay() {
                 <div
                   className="flex items-center justify-center"
                   style={{
-                    paddingTop: "14px",
-                    paddingBottom: "12px",
-                    paddingLeft: "12px",
-                    paddingRight: "12px",
+                    paddingTop: "8px",
+                    paddingBottom: "6px",
+                    paddingLeft: "10px",
+                    paddingRight: "10px",
                   }}
                 >
                   <span
                     style={{
                       fontFamily:
                         "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif",
-                      fontWeight: 7,
+                      fontWeight: 800,
                       fontSize: "19px",
                       color: "#1f2937",
                       lineHeight: 1.2,
@@ -991,7 +995,7 @@ export default function ArenaPlay() {
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     gap: "8px",
-                    padding: "0 14px 16px 14px",
+                    padding: "0 10px 8px 10px",
                   }}
                 >
                   {diffs.map((pts) => {
@@ -1031,7 +1035,7 @@ export default function ArenaPlay() {
                             style={{
                               fontFamily: "'Tajawal', sans-serif",
                               fontSize: "15px",
-                              height: "46px",
+                              height: "34px",
                               ...diffStyle(pts, used),
                             }}
                             animate={
@@ -1583,12 +1587,13 @@ export default function ArenaPlay() {
           {/* Zone A (right in RTL): Teams pill — natural width, compact */}
           <div className="flex items-center justify-end order-1 sm:order-none w-full sm:w-auto">
             <div
-              className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+              className="flex items-center gap-6 px-6 py-2 rounded-2xl"
               style={{
-                background: "linear-gradient(135deg, #faf6ec, #f5efdc)",
-                border: "1.5px solid #d9c896",
+                background:
+                  "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,244,232,0.98) 100%)",
+                border: "1px solid rgba(201,161,75,0.22)",
                 boxShadow:
-                  "0 2px 6px rgba(45,94,63,0.08), inset 0 1px 0 rgba(255,255,255,0.6)",
+                  "0 4px 14px rgba(0,0,0,0.04), 0 10px 24px rgba(15,86,55,0.06)",
                 fontFamily: ARABIC_FONT,
               }}
             >
@@ -1597,41 +1602,43 @@ export default function ArenaPlay() {
                 const t = state.teams[state.teamOrder[0]];
                 if (!t) return null;
                 const isActive = state.currentTurn === state.teamOrder[0];
+
                 return (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div
                       className="flex items-center justify-center shrink-0"
                       style={{
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "8px",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "12px",
                         background: `${t.color}1f`,
                       }}
                     >
                       <Users
-                        className="w-[16px] h-[16px]"
+                        className="w-[18px] h-[18px]"
                         style={{ color: t.color }}
                       />
                     </div>
+
                     <div className="flex flex-col leading-none">
                       <span
                         style={{
-                          fontSize: "11px",
+                          fontSize: "14px",
                           fontWeight: 700,
-                          color: isActive ? t.color : "#6b7280",
+                          color: isActive ? t.color : "#4b5563",
                           whiteSpace: "nowrap",
                           lineHeight: 1.2,
                         }}
                       >
                         {t.name}
                       </span>
+
                       <span
                         style={{
-                          fontSize: "26px",
+                          fontSize: "28px",
                           fontWeight: 800,
                           lineHeight: 1.1,
-                          marginTop: "1px",
-                          marginTop: "1px",
+                          marginTop: "2px",
                           color: isActive ? t.color : "#1f2937",
                           fontVariantNumeric: "tabular-nums",
                         }}
@@ -1647,20 +1654,22 @@ export default function ArenaPlay() {
               <div
                 className="flex items-center justify-center shrink-0"
                 style={{
-                  width: "34px",
-                  height: "34px",
-                  borderRadius: "50%",
-                  background: "#ffffff",
-                  border: "2px solid #d9c896",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  width: "48px",
+                  height: "48px",
+                  borderRadius: "16px",
+                  background:
+                    "linear-gradient(135deg, #c9a14b 0%, #e0bb69 100%)",
+                  boxShadow:
+                    "0 8px 20px rgba(201,161,75,0.28)",
                 }}
               >
                 <span
                   style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: 900,
-                    color: "#2d5e3f",
+                    color: "#ffffff",
                     fontFamily: ARABIC_DISPLAY,
+                    letterSpacing: "0.08em",
                   }}
                 >
                   VS
@@ -1672,26 +1681,28 @@ export default function ArenaPlay() {
                 const t = state.teams[state.teamOrder[1]];
                 if (!t) return null;
                 const isActive = state.currentTurn === state.teamOrder[1];
+
                 return (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="flex flex-col leading-none items-end">
                       <span
                         style={{
-                          fontSize: "13px",
+                          fontSize: "14px",
                           fontWeight: 700,
-                          color: isActive ? t.color : "#6b7280",
+                          color: isActive ? t.color : "#4b5563",
                           whiteSpace: "nowrap",
                           lineHeight: 1.2,
                         }}
                       >
                         {t.name}
                       </span>
+
                       <span
                         style={{
-                          fontSize: "26px",
+                          fontSize: "28px",
                           fontWeight: 800,
                           lineHeight: 1.1,
-                          marginTop: "1px",
+                          marginTop: "2px",
                           color: isActive ? t.color : "#1f2937",
                           fontVariantNumeric: "tabular-nums",
                         }}
@@ -1699,17 +1710,18 @@ export default function ArenaPlay() {
                         {t.score}
                       </span>
                     </div>
+
                     <div
                       className="flex items-center justify-center shrink-0"
                       style={{
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "8px",
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "12px",
                         background: `${t.color}1f`,
                       }}
                     >
                       <Users
-                        className="w-[16px] h-[16px]"
+                        className="w-[18px] h-[18px]"
                         style={{ color: t.color }}
                       />
                     </div>
@@ -1718,23 +1730,16 @@ export default function ArenaPlay() {
               })()}
             </div>
           </div>
-
           {/* Zone B (center): Brand */}
           <div className="flex items-center justify-center gap-2 sm:gap-2.5 order-2 sm:order-none">
-            <img
-              src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-              alt="حصاد"
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl object-cover shrink-0"
-              style={{ boxShadow: "0 2px 8px rgba(45,94,63,0.18)" }}
-            />
-            <div className="flex flex-col leading-none">
+            <div className="flex flex-col leading-none items-center">
               <span
                 className="arena-brand-title"
                 style={{
                   fontFamily: ARABIC_DISPLAY,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   color: "#2d5e3f",
-                  letterSpacing: "0.01em",
+                  letterSpacing: "0.02em",
                 }}
               >
                 تحدّي حصاد
@@ -1742,8 +1747,10 @@ export default function ArenaPlay() {
               <span
                 className="arena-brand-subtitle"
                 style={{
+                  fontSize: "25px",
+                  fontWeight: 800,
                   fontFamily: ARABIC_ELEGANT,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   color: "#8a6d2c",
                   marginTop: "5px",
                   paddingTop: "4px",
@@ -1806,98 +1813,69 @@ export default function ArenaPlay() {
 
         {/* ── Sub-header strip: turn pill ──────────────────────────────── */}
         <div
-          className="flex items-center justify-center px-3 py-2.5 gap-3"
-          style={{ maxWidth: "1280px", margin: "0 auto" }}
+          className="flex items-center justify-center py-2"
+          style={{
+            width: "100%",
+          }}
         >
-          {/* Decorative chevrons left */}
           <div
-            className="hidden sm:block flex-1 text-end"
+            className="flex items-center gap-2 px-4 py-2 rounded-full"
             style={{
-              color: "#c9a14b",
-              fontSize: "12px",
-              letterSpacing: "0.2em",
-              opacity: 0.5,
+              background:
+                "linear-gradient(135deg, #ffffff 0%, #f9f5ea 100%)",
+              border: "1px solid rgba(201,161,75,0.28)",
+              boxShadow:
+                "0 4px 12px rgba(0,0,0,0.04)",
+              maxWidth: "92%",
             }}
           >
-            ‹‹‹‹
-          </div>
-
-          {/* Turn pill — prominent, animated glow */}
-          <motion.div
-            key={`turn-${state.currentTurn}`}
-            initial={{ opacity: 0, scale: 0.92, y: -4 }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-              boxShadow: [
-                `0 2px 8px ${turnTeam.color}22, 0 0 0 0 ${turnTeam.color}44`,
-                `0 2px 14px ${turnTeam.color}55, 0 0 0 6px ${turnTeam.color}11`,
-                `0 2px 8px ${turnTeam.color}22, 0 0 0 0 ${turnTeam.color}44`,
-              ],
-            }}
-            transition={{
-              opacity: { duration: 0.3 },
-              scale: { duration: 0.3 },
-              y: { duration: 0.3 },
-              boxShadow: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
-            }}
-            className="flex items-center gap-3 px-5 sm:px-6 py-2.5 rounded-full"
-            style={{
-              background: `linear-gradient(135deg, #ffffff 0%, ${turnTeam.color}10 100%)`,
-              border: `2px solid ${turnTeam.color}88`,
-              fontFamily: ARABIC_FONT,
-            }}
-          >
-            <div
-              className="flex items-center justify-center shrink-0"
+            {/* Dot */}
+            <motion.div
+              animate={{
+                scale: [1, 1.25, 1],
+                opacity: [0.7, 1, 0.7],
+              }}
+              transition={{
+                duration: 1.8,
+                repeat: Infinity,
+              }}
               style={{
-                width: "34px",
-                height: "34px",
-                borderRadius: "10px",
-                background: `${turnTeam.color}1f`,
+                width: "8px",
+                height: "8px",
+                borderRadius: "999px",
+                background: "#c9a14b",
+                flexShrink: 0,
+              }}
+            />
+
+            {/* Text */}
+            <span
+              style={{
+                fontSize: window.innerWidth < 640 ? "13px" : "15px",
+                fontWeight: 700,
+                color: "#374151",
+                whiteSpace: "nowrap",
               }}
             >
-              <Users
-                className="w-[20px] h-[20px]"
-                style={{ color: turnTeam.color }}
-              />
-            </div>
-            <span
-              style={{ fontWeight: 700, fontSize: "15px", color: "#374151" }}
-            >
-              الدور الآن:
+              الدور الآن
             </span>
+
+            {/* Team */}
             <span
               style={{
-                fontFamily: ARABIC_DISPLAY,
-                fontWeight: 700,
-                fontSize: "17px",
-                color: turnTeam.color,
-                maxWidth: "180px",
+                fontSize: window.innerWidth < 640 ? "15px" : "18px",
+                fontWeight: 800,
+                color: "#0f5637",
+                whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                maxWidth: "120px",
               }}
             >
               {turnTeam.name}
             </span>
-          </motion.div>
-
-          {/* Decorative chevrons right */}
-          <div
-            className="hidden sm:block flex-1"
-            style={{
-              color: "#c9a14b",
-              fontSize: "12px",
-              letterSpacing: "0.2em",
-              opacity: 0.5,
-            }}
-          >
-            ››››
           </div>
         </div>
-
         {/* ── Audience strip ───────────────────────────────────────────── */}
         {isPublicGame && (
           <button
@@ -2340,14 +2318,14 @@ function QuestionModal({
         </div>
 
         {/* ── Scrollable body ── */}
-        <div className="px-4 py-4 space-y-3">
+        <div className="px-4 py-4 space-y-3 flex flex-col items-center">
           {/* Answering team badge — compact */}
           <motion.div
             key={`banner-${active.answeringTeam}-${active.transferUsed}-${active.trapUsed}`}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 border"
+            className="flex items-center justify-center gap-2.5 rounded-2xl px-5 py-2 border w-fit mx-auto"
             style={{
               borderColor: `${answeringTeam.color}55`,
               background: `${answeringTeam.color}18`,
@@ -2373,13 +2351,17 @@ function QuestionModal({
               </span>
             )}
           </motion.div>
-
           {/* Question area */}
           <div
-            className="rounded-xl px-3 py-4 text-center"
+            className="rounded-[32px] px-6 py-8 text-center mx-auto"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(10px)",
+              maxWidth: "900px",
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.22)",
+              animation: "questionPop 0.45s ease-out",
             }}
           >
             <InteractiveActivity
@@ -2471,65 +2453,85 @@ function QuestionModal({
             </motion.div>
           )}
 
-          {/* Helpers — compact single-row per team */}
+          {/* Helpers — split by team */}
           {state.teamOrder.some(
             (side) => state.teams[side]?.helpers.length > 0,
           ) && (
-            <div className="space-y-1.5">
-              {state.teamOrder.map((side) => {
+            <div className="grid grid-cols-2 gap-3 w-full max-w-[900px] mx-auto">
+              {state.teamOrder.slice(0, 2).map((side, index) => {
                 const t = state.teams[side];
-                if (!t || t.helpers.length === 0) return null;
+                if (!t || t.helpers.length === 0) return <div key={side} />;
+
+                const isActive = active.answeringTeam === side;
+
                 return (
                   <div
                     key={side}
-                    className="flex items-center gap-1.5 flex-wrap"
+                    className={`rounded-2xl p-2 border ${
+                      index === 0 ? "text-right" : "text-left"
+                    }`}
+                    style={{
+                      background: isActive
+                        ? `${t.color}18`
+                        : "rgba(255,255,255,0.035)",
+                      borderColor: isActive
+                        ? `${t.color}55`
+                        : "rgba(255,255,255,0.08)",
+                      opacity: isActive ? 1 : 0.35,
+                    }}
                   >
-                    <span
-                      className="text-[10px] font-black shrink-0 px-1.5 py-0.5 rounded-md"
+                    <div
+                      className="text-[11px] font-black mb-2 truncate"
                       style={{
-                        background: `${t.color}22`,
-                        color: t.color,
-                        border: `1px solid ${t.color}44`,
+                        color: isActive ? t.color : "rgba(255,255,255,0.55)",
                       }}
                     >
-                      {t.emoji}
-                    </span>
-                    {t.helpers.map((hid) => {
-                      const h = HELPERS.find((x) => x.id === hid);
-                      if (!h) return null;
-                      const usable = canUseHelper(side, hid);
-                      const consumed = t.usedHelpers.includes(hid);
-                      return (
-                        <button
-                          key={hid}
-                          onClick={() => onUseHelper(side, hid)}
-                          disabled={!usable}
-                          title={consumed ? `${h.name} — تم استخدامه` : h.desc}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold border transition"
-                          style={{
-                            opacity: consumed ? 0.28 : usable ? 1 : 0.45,
-                            filter: consumed ? "grayscale(1)" : undefined,
-                            cursor: usable ? "pointer" : "not-allowed",
-                            background: consumed
-                              ? "rgba(255,255,255,0.04)"
-                              : `${t.color}28`,
-                            borderColor: consumed
-                              ? "rgba(255,255,255,0.10)"
-                              : `${t.color}55`,
-                            color: "white",
-                          }}
-                        >
-                          <span>{h.emoji}</span>
-                          <span className="hidden sm:inline">{h.name}</span>
-                        </button>
-                      );
-                    })}
+                      {t.emoji} {t.name}
+                    </div>
+
+                    <div
+                      className={`flex flex-wrap gap-2 ${
+                        index === 0 ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {t.helpers.map((hid) => {
+                        const h = HELPERS.find((x) => x.id === hid);
+                        if (!h) return null;
+
+                        const usable = canUseHelper(side, hid);
+                        const consumed = t.usedHelpers.includes(hid);
+
+                        return (
+                          <button
+                            key={hid}
+                            onClick={() => onUseHelper(side, hid)}
+                            disabled={!usable}
+                            title={consumed ? `${h.name} — تم استخدامه` : h.desc}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition"
+                            style={{
+                              opacity: consumed ? 0.3 : usable ? 1 : 0.45,
+                              filter: consumed ? "grayscale(1)" : undefined,
+                              cursor: usable ? "pointer" : "not-allowed",
+                              background: consumed
+                                ? "rgba(255,255,255,0.04)"
+                                : `${t.color}22`,
+                              borderColor: consumed
+                                ? "rgba(255,255,255,0.10)"
+                                : `${t.color}55`,
+                              color: "white",
+                            }}
+                          >
+                            <span>{h.emoji}</span>
+                            <span className="hidden sm:inline">{h.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-
           {/* Utility row */}
           <div className="flex gap-1.5 flex-wrap">
             <button
@@ -2574,10 +2576,14 @@ function QuestionModal({
               </button>
             )}
             {!active.revealed && (
-              <button
-                onClick={onReveal}
-                className="flex-1 min-w-[120px] py-3 rounded-xl font-bold text-sm bg-amber-400 hover:bg-amber-300 text-slate-950 inline-flex items-center justify-center gap-1.5"
-              >
+                <button
+                  onClick={onReveal}
+                  className="flex-1 min-w-[120px] py-3 rounded-2xl font-extrabold text-sm text-white inline-flex items-center justify-center gap-1.5"
+                  style={{
+                    background: "linear-gradient(135deg, #0f5637, #1c7a52)",
+                    boxShadow: "0 10px 24px rgba(15,86,55,0.22)",
+                  }}
+                >
                 <Eye className="w-4 h-4" /> كشف الإجابة
               </button>
             )}
