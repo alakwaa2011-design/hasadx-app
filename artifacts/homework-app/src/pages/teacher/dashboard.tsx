@@ -438,7 +438,7 @@ export default function TeacherDashboard() {
       id: "library_homework",
       label: lang === "ar" ? "مكتبة الأنشطة" : "Activities Library",
       shortLabel: lang === "ar" ? "الأنشطة" : "Activities",
-      icon: <Globe className="w-4 h-4" />,
+      icon: <BookOpen className="w-4 h-4" />,
       href: "/teacher/library/homework",
     },
     {

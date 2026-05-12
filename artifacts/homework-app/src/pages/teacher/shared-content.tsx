@@ -160,7 +160,7 @@ export default function SharedContentPage() {
     setHidingIds(prev => new Set(prev).add(key));
     try {
       const res = await fetch(`${API_BASE}/api/admin/${itemType}/${itemId}/unhide`, {
-        method: "POST",
+        method: "PATCH",
         credentials: "include",
       });
       if (res.ok) {
@@ -196,7 +196,7 @@ export default function SharedContentPage() {
     setHidingIds(prev => new Set(prev).add(key));
     try {
       const res = await fetch(`${API_BASE}/api/admin/${itemType}/${itemId}/hide`, {
-        method: "POST",
+        method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: reason || undefined }),

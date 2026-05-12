@@ -300,7 +300,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   /admin/assignments/{id}/hide:
-    post:
+    patch:
       operationId: adminHideAssignment
       tags: [admin]
       summary: Hide a shared assignment from the public library (admin only)
@@ -324,7 +324,7 @@ paths:
         "404": { description: Assignment not found }
 
   /admin/assignments/{id}/unhide:
-    post:
+    patch:
       operationId: adminUnhideAssignment
       tags: [admin]
       summary: Restore a previously hidden assignment to the public library
@@ -340,7 +340,7 @@ paths:
         "404": { description: Assignment not found }
 
   /admin/question-bank/{id}/hide:
-    post:
+    patch:
       operationId: adminHideQuestionBankItem
       tags: [admin]
       summary: Hide a shared question-bank item from the public library
@@ -364,7 +364,7 @@ paths:
         "404": { description: Question not found }
 
   /admin/question-bank/{id}/unhide:
-    post:
+    patch:
       operationId: adminUnhideQuestionBankItem
       tags: [admin]
       summary: Restore a hidden question-bank item to the public library
@@ -380,7 +380,7 @@ paths:
         "404": { description: Question not found }
 
   /admin/video-lessons/{id}/hide:
-    post:
+    patch:
       operationId: adminHideVideoLesson
       tags: [admin]
       summary: Hide a shared video lesson from the public library
@@ -404,7 +404,7 @@ paths:
         "404": { description: Video lesson not found }
 
   /admin/video-lessons/{id}/unhide:
-    post:
+    patch:
       operationId: adminUnhideVideoLesson
       tags: [admin]
       summary: Restore a hidden video lesson to the public library

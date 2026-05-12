@@ -1158,7 +1158,7 @@ export const adminHideAssignment = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminHideAssignmentUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
     body: JSON.stringify(adminHideAssignmentBody),
   });
@@ -1244,7 +1244,7 @@ export const adminUnhideAssignment = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminUnhideAssignmentUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
   });
 };
 
@@ -1329,7 +1329,7 @@ export const adminHideQuestionBankItem = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminHideQuestionBankItemUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
     body: JSON.stringify(adminHideQuestionBankItemBody),
   });
@@ -1416,7 +1416,7 @@ export const adminUnhideQuestionBankItem = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminUnhideQuestionBankItemUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
   });
 };
 
@@ -1501,7 +1501,7 @@ export const adminHideVideoLesson = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminHideVideoLessonUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
     body: JSON.stringify(adminHideVideoLessonBody),
   });
@@ -1588,7 +1588,7 @@ export const adminUnhideVideoLesson = async (
 ): Promise<void> => {
   return customFetch<void>(getAdminUnhideVideoLessonUrl(id), {
     ...options,
-    method: "POST",
+    method: "PATCH",
   });
 };
 

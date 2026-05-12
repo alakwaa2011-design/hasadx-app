@@ -958,7 +958,7 @@ async function parseIdAndAdmin(req: Request, res: Response): Promise<{ id: numbe
   return { id, adminId };
 }
 
-router.post("/admin/assignments/:id/hide", async (req, res) => {
+router.patch("/admin/assignments/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
@@ -969,7 +969,7 @@ router.post("/admin/assignments/:id/hide", async (req, res) => {
   } catch (err) { req.log.error({ err }, "Failed to hide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
 });
 
-router.post("/admin/assignments/:id/unhide", async (req, res) => {
+router.patch("/admin/assignments/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     await db.update(assignmentsTable)
@@ -979,7 +979,7 @@ router.post("/admin/assignments/:id/unhide", async (req, res) => {
   } catch (err) { req.log.error({ err }, "Failed to unhide assignment"); res.status(500).json({ message: "حدث خطأ" }); }
 });
 
-router.post("/admin/question-bank/:id/hide", async (req, res) => {
+router.patch("/admin/question-bank/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
@@ -990,7 +990,7 @@ router.post("/admin/question-bank/:id/hide", async (req, res) => {
   } catch (err) { req.log.error({ err }, "Failed to hide question"); res.status(500).json({ message: "حدث خطأ" }); }
 });
 
-router.post("/admin/question-bank/:id/unhide", async (req, res) => {
+router.patch("/admin/question-bank/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     await db.update(questionBankTable)
@@ -1000,7 +1000,7 @@ router.post("/admin/question-bank/:id/unhide", async (req, res) => {
   } catch (err) { req.log.error({ err }, "Failed to unhide question"); res.status(500).json({ message: "حدث خطأ" }); }
 });
 
-router.post("/admin/video-lessons/:id/hide", async (req, res) => {
+router.patch("/admin/video-lessons/:id/hide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     const body = HideBody.parse(req.body ?? {});
@@ -1011,7 +1011,7 @@ router.post("/admin/video-lessons/:id/hide", async (req, res) => {
   } catch (err) { req.log.error({ err }, "Failed to hide video"); res.status(500).json({ message: "حدث خطأ" }); }
 });
 
-router.post("/admin/video-lessons/:id/unhide", async (req, res) => {
+router.patch("/admin/video-lessons/:id/unhide", async (req, res) => {
   try {
     const ctx = await parseIdAndAdmin(req, res); if (!ctx) return;
     await db.update(videoLessonsTable)

@@ -283,7 +283,10 @@ router.post("/assignments", async (req, res) => {
         // auto-approved — admins can later HIDE individual rows via
         // POST /admin/assignments/:id/hide.
         isShared: body.isShared === false ? false : true,
-        isShareApproved: body.isShared === false ? false : true,
+        // Approval gating was removed — every new row is implicitly
+        // approved. Admins can later HIDE individual rows via
+        // PATCH /admin/assignments/:id/hide.
+        isShareApproved: true,
         contentKind: body.contentKind === "competition" ? "competition" : "homework",
         isAdaptive: body.isAdaptive || false,
         adaptiveConfig: body.adaptiveConfig ? JSON.stringify(body.adaptiveConfig) : null,
@@ -1214,7 +1217,7 @@ router.patch("/assignments/:id/share", async (req, res) => {
     // isShared for every teacher, not just admins.
     const [updated] = await db
       .update(assignmentsTable)
-      .set({ isShared: wantShared, isShareApproved: wantShared })
+      .set({ isShared: wantShared, isShareApproved: true })
       .where(and(eq(assignmentsTable.id, id), eq(assignmentsTable.teacherId, req.session.teacherId!)))
       .returning();
     if (!updated) {
