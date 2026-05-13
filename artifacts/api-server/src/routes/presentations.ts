@@ -719,14 +719,22 @@ router.post(
           const themeKey = pickServerDefaultTheme();
           const validSlides: unknown[] = [];
           for (let i = 0; i < outline.cards.length; i++) {
+            /* Content-driven mapping: each card carries a 1-based
+               sourceImageIndex picked by the AI (or null). We map it to
+               the corresponding uploaded URL so a single dense image can
+               drive multiple slides, and intro/closure slides can render
+               with no background photo. */
+            const srcIdx = outline.sourceImageIndices[i];
+            const bgUrl =
+              srcIdx != null && validImages[srcIdx - 1]
+                ? validImages[srcIdx - 1].url || undefined
+                : undefined;
             const out = buildOneSlide({
               card: outline.cards[i],
               themeKey,
               density: outline.density,
               lang: outline.language,
-              /* Pass the uploaded URL so buildOneSlide stamps backgroundImage
-                 and prepends the readable semi-transparent overlay element. */
-              backgroundImageUrl: validImages[i]?.url || undefined,
+              backgroundImageUrl: bgUrl,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);
