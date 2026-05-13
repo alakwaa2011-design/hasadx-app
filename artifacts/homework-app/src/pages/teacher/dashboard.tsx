@@ -2420,10 +2420,17 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
               // AI cards wear the brand gold as a subtle gradient border
               // + faint warm tint, with a tiny sparkle in the corner.
               // Other cards stay quiet — just a hairline border.
+              // Stronger, identity-clear borders: bold gold for AI,
+              // bold dark green for everything else. Each card's edge
+              // immediately reads as "AI" or "platform".
               const restBorder = isAi
-                ? "rgba(217,165,33,0.32)"
-                : "rgba(34,87,57,0.08)";
-              const hoverBorder = `${tool.accent}66`;
+                ? "rgba(217,165,33,0.75)"
+                : "rgba(34,87,57,0.55)";
+              const hoverBorder = isAi
+                ? BRAND.gold
+                : tool.accent === BRAND.green
+                  ? BRAND.green
+                  : tool.accent;
               return (
                 <motion.button
                   key={tool.href}
