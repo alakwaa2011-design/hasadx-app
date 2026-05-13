@@ -2346,102 +2346,136 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
     },
   ].filter((g) => g.tools.length > 0);
 
+  const ChevronEnd = isAr ? ArrowLeft : ArrowRight;
   let globalIdx = 0;
 
   return (
-    <div className="space-y-7">
-      {/* Header — centered */}
-      <div className="text-center py-2">
+    <div className="space-y-9 sm:space-y-12">
+      {/* Header — left-aligned on desktop, centered on mobile for a more
+          professional feel than the centered icon-stack of before. */}
+      <div className="flex items-center gap-3 sm:gap-4 px-1">
         <div
-          className="inline-flex w-11 h-11 rounded-2xl items-center justify-center mb-3"
-          style={{ background: "rgba(34,87,57,0.10)", color: "#225739" }}
+          className="inline-flex w-11 h-11 sm:w-12 sm:h-12 rounded-2xl items-center justify-center shrink-0"
+          style={{ background: "rgba(34,87,57,0.10)", color: BRAND.green }}
         >
-          <Sparkles className="w-5 h-5" />
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
-        <h2 className="text-lg font-extrabold text-foreground mb-1">
-          {t.dashboard.toolsTitle}
-        </h2>
-        <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-          {isAr
-            ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
-            : "Everything you need to manage your class and enrich student experience"}
-        </p>
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-xl font-extrabold text-foreground leading-tight">
+            {t.dashboard.toolsTitle}
+          </h2>
+          <p className="text-[11px] sm:text-xs text-muted-foreground leading-snug mt-0.5">
+            {isAr
+              ? "كل الأدوات التي تحتاجها لإدارة فصلك وإثراء تجربة الطلاب"
+              : "Everything you need to manage your class and enrich student experience"}
+          </p>
+        </div>
       </div>
 
       {toolGroups.map((group) => (
-        <div key={group.groupId}>
-          {/* Group header */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "rgba(34,87,57,0.07)" }}>
-              <span style={{ color: "#225739" }}>{group.groupIcon}</span>
-              <h3 className="text-[11px] font-bold tracking-wider" style={{ color: "#225739" }}>
+        <section key={group.groupId}>
+          {/* Group header — clean, left-aligned with a soft accent
+              underline. Reads more like a Notion/Linear section than a
+              decorative chip-in-a-divider. */}
+          <div className="flex items-end justify-between gap-3 mb-4 px-1">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span
+                className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green }}
+              >
+                {group.groupIcon}
+              </span>
+              <h3 className="text-sm sm:text-base font-extrabold text-foreground truncate">
                 {group.groupTitle}
               </h3>
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+                style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green }}
+              >
+                {group.tools.length}
+              </span>
             </div>
-            <div className="flex-1 h-px" style={{ background: "rgba(34,87,57,0.15)" }} />
+            <div
+              className="flex-1 h-px mb-2 hidden sm:block"
+              style={{ background: "rgba(34,87,57,0.12)" }}
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Auto-fit grid — cards stretch to fill the row no matter how
+              many there are, so an odd count (3 or 5) doesn't leave an
+              awkward visual gap like a fixed 4-column layout would. The
+              `min(100%, 240px)` lower bound keeps cards comfortably
+              wide on mobile (single column) without breaking on tiny
+              viewports. */}
+          <div
+            className="grid gap-3 sm:gap-4"
+            style={{
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+            }}
+          >
             {group.tools.map((tool) => {
-              const delay = globalIdx++ * 0.04;
-              const isGold = tool.accent === "#D9A521";
+              const delay = globalIdx++ * 0.03;
               return (
-                <motion.div
+                <motion.button
                   key={tool.href}
-                  initial={{ opacity: 0, y: 10 }}
+                  type="button"
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay }}
+                  transition={{ delay, duration: 0.25 }}
+                  onClick={() => tool.href && setLocation(tool.href)}
+                  className="group relative flex flex-col gap-3 p-4 sm:p-5 rounded-2xl border bg-card text-start transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_-12px_rgba(34,87,57,0.18)] active:scale-[0.98] overflow-hidden min-h-[140px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  style={{
+                    borderColor: "rgba(34,87,57,0.10)",
+                  }}
                 >
+                  {/* Soft accent corner glow — gives each card a tiny
+                      hint of its accent colour without the heavy top
+                      bar of the previous version. */}
                   <div
-                    className="group relative flex flex-col p-4 rounded-xl border border-border/50 bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md overflow-hidden min-h-[108px]"
-                    onClick={() => tool.href && setLocation(tool.href)}
-                  >
-                    {/* Top accent bar */}
-                    <div
-                      className="absolute top-0 inset-x-0 h-[2.5px] rounded-t-xl"
-                      style={{ background: tool.accent, opacity: 0.85 }}
-                    />
-                    {/* Hover glow */}
-                    <div
-                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-xl"
-                      style={{ background: `${tool.accent}09` }}
-                    />
+                    className="absolute -top-14 w-32 h-32 rounded-full opacity-[0.08] blur-2xl pointer-events-none transition-opacity duration-300 group-hover:opacity-[0.18]"
+                    style={{
+                      background: tool.accent,
+                      ...(isAr ? { left: "-3.5rem" } : { right: "-3.5rem" }),
+                    }}
+                  />
 
-                    {/* Icon + text row */}
-                    <div className="relative flex items-center gap-3 mb-3 pt-0.5 flex-1">
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: `${tool.accent}12`, color: tool.accent }}
-                      >
-                        {tool.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-foreground text-[13px] leading-snug line-clamp-2">
-                          {tool.title}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        tool.href && setLocation(tool.href);
-                      }}
-                      className="relative w-full py-2.5 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-lg text-sm sm:text-xs font-bold transition-all duration-200 hover:opacity-90"
+                  {/* Icon + chevron row */}
+                  <div className="relative flex items-start justify-between">
+                    <div
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-[-3deg]"
                       style={{
-                        background: tool.accent,
-                        color: isGold ? "#1a3020" : "#FCFAF8",
+                        background: `${tool.accent}15`,
+                        color: tool.accent,
                       }}
                     >
-                      {isAr ? "فتح" : "Open"}
-                    </button>
+                      {tool.icon}
+                    </div>
+                    <span
+                      className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200"
+                      style={{ color: tool.accent }}
+                    >
+                      <ChevronEnd className="w-4 h-4" />
+                    </span>
                   </div>
-                </motion.div>
+
+                  {/* Title + description (description was previously in
+                      the data but never rendered — now it is). */}
+                  <div className="relative flex-1 flex flex-col gap-1">
+                    <h4 className="font-extrabold text-foreground text-sm sm:text-[15px] leading-snug line-clamp-2">
+                      {tool.title}
+                    </h4>
+                    {tool.desc && (
+                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                        {tool.desc}
+                      </p>
+                    )}
+                  </div>
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
