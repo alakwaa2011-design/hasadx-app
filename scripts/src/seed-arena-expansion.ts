@@ -57,6 +57,12 @@ const G_LIME = "linear-gradient(135deg, #365314 0%, #84CC16 100%)";
 const U = (id: string, w = 600) =>
   `https://images.unsplash.com/${id}?w=${w}&auto=format&fit=crop`;
 const FLAG = (cc: string) => `https://flagcdn.com/w640/${cc}.png`;
+// Local section cover assets, downloaded under
+// artifacts/homework-app/public/arena-covers/sec_*.png. The frontend's
+// toCoverThumb() automatically rewrites to the .webp thumbnail variant.
+const COVER = (slug: string) => `/arena-covers/sec_${slug}.png`;
+// Local brand-logo assets for the شعارات سيارات image-questions.
+const LOGO = (slug: string) => `/arena-covers/logo_${slug}.png`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTIONS
@@ -68,7 +74,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🎬",
     coverColor: "#4C1D95",
     coverGradient: G_PURPLE,
-    coverImageUrl: U("photo-1489599849927-2ee91cede3ba"),
+    coverImageUrl: COVER("cinema-arabic"),
     subs: [
       {
         name: "أفلام مصرية كلاسيكية",
@@ -135,21 +141,25 @@ const SECTIONS: SectionDef[] = [
     emoji: "🏎️",
     coverColor: "#1F2937",
     coverGradient: G_SLATE,
-    coverImageUrl: U("photo-1492144534655-ae79c964c9d7"),
+    coverImageUrl: COVER("cars-engines"),
     subs: [
       {
-        name: "صور سيارات",
-        emoji: "📸",
+        // Brand-logo image-question category — every Q carries an image
+        // pulled from local `/arena-covers/logo_*.png` files (downloaded
+        // from cdn.simpleicons.org so they're stable and don't depend on
+        // hotlink-restricted hosts).
+        name: "شعارات سيارات",
+        emoji: "🚗",
         coverColor: "#1F2937",
         coverGradient: G_SLATE,
-        coverImageUrl: U("photo-1503376780353-7e6692767b70"),
+        coverImageUrl: LOGO("ferrari"),
         questions: [
-          [200, "ما نوع هذه السيارة الفاخرة (سيارة فيراري حمراء)؟", "فيراري", "إيطالية حمراء", U("photo-1583121274602-3e2820c69888")],
-          [200, "ما الفئة العامة لهذه السيارة (سيارة دفع رباعي)؟", "دفع رباعي", "SUV", U("photo-1606664515524-ed2f786a0bd6")],
-          [400, "ما نوع هذه السيارة الكلاسيكية الزرقاء الرياضية؟", "موستانج", "أمريكية كلاسيكية", U("photo-1494976388531-d1058494cdd8")],
-          [400, "ما الفئة الرياضية لهذه السيارة (سيارة سباق فورمولا)؟", "فورمولا 1", "F1", U("photo-1568605117036-5fe5e7bab0b3")],
-          [600, "هذا تصميم مميز لسيارة كهربائية حديثة — ما الشركة الأشهر بهذا المظهر؟", "تسلا", "شركة أمريكية كهربائية", U("photo-1560958089-b8a1929cea89")],
-          [600, "هذه سيارة كلاسيكية رياضية — ما الشركة الألمانية الشهيرة بسيارات السباق ذات اللون الفضي؟", "بورشه", "ألمانية فاخرة", U("photo-1503376780353-7e6692767b70")],
+          [200, "ما اسم شركة السيارات اليابانية صاحبة هذا الشعار؟", "تويوتا", "Toyota", LOGO("toyota")],
+          [200, "ما اسم هذه الشركة اليابانية الشهيرة بصناعة السيارات والدراجات؟", "هوندا", "Honda", LOGO("honda")],
+          [400, "ما اسم شركة السيارات الألمانية صاحبة هذا الشعار الأزرق والأبيض؟", "بي إم دبليو", "BMW — بافاريا", LOGO("bmw")],
+          [400, "ما اسم هذه الشركة اليابانية الشهيرة بسيارات الدفع الرباعي مثل باترول؟", "نيسان", "Nissan", LOGO("nissan")],
+          [600, "ما اسم هذه الشركة الألمانية ذات شعار الحلقات الأربع؟", "أودي", "Audi", LOGO("audi")],
+          [600, "ما اسم هذه الشركة الألمانية الفاخرة الشهيرة بسيارات السباق؟", "بورشه", "Porsche", LOGO("porsche")],
         ],
       },
       {
@@ -203,7 +213,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🪐",
     coverColor: "#1E2A5C",
     coverGradient: G_INDIGO,
-    coverImageUrl: U("photo-1465101046530-73398c7f28ca"),
+    coverImageUrl: COVER("space-planets"),
     subs: [
       {
         name: "الكواكب",
@@ -270,7 +280,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🦁",
     coverColor: "#365314",
     coverGradient: G_LIME,
-    coverImageUrl: U("photo-1474511320723-9a56873867b5"),
+    coverImageUrl: COVER("animals"),
     subs: [
       {
         name: "ثدييات",
@@ -337,7 +347,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🍲",
     coverColor: "#92400E",
     coverGradient: G_AMBER,
-    coverImageUrl: U("photo-1504674900247-0877df9cc836"),
+    coverImageUrl: COVER("world-cuisine"),
     subs: [
       {
         name: "مطبخ عربي",
@@ -404,7 +414,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🌙",
     coverColor: "#1E4D35",
     coverGradient: G_GREEN,
-    coverImageUrl: U("photo-1542816417-0983c9c9ad53"),
+    coverImageUrl: COVER("ramadan"),
     subs: [
       {
         name: "شهر رمضان",
@@ -471,7 +481,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🧠",
     coverColor: "#4C1D95",
     coverGradient: G_PURPLE,
-    coverImageUrl: U("photo-1606326608606-aa0b62935f2b"),
+    coverImageUrl: COVER("riddles"),
     subs: [
       {
         name: "ألغاز رياضية",
@@ -538,7 +548,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🖼️",
     coverColor: "#0C4A6E",
     coverGradient: G_SKY,
-    coverImageUrl: U("photo-1502602898657-3e91760cbb34"),
+    coverImageUrl: COVER("picture-q"),
     subs: [
       {
         name: "معالم عالمية",
@@ -605,7 +615,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "🧒",
     coverColor: "#E11D48",
     coverGradient: G_ROSE,
-    coverImageUrl: U("photo-1503454537195-1dcabb73ffb9"),
+    coverImageUrl: COVER("kids"),
     subs: [
       {
         name: "حروف الهجاء",
@@ -672,7 +682,7 @@ const SECTIONS: SectionDef[] = [
     emoji: "📚",
     coverColor: "#134E4A",
     coverGradient: G_TEAL,
-    coverImageUrl: U("photo-1503676260728-1c00da094a0b"),
+    coverImageUrl: COVER("curriculum"),
     subs: [
       {
         name: "ابتدائي",
