@@ -3819,6 +3819,14 @@ function InteractiveActivity({
             alt="سؤال"
             decoding="async"
             {...({ fetchpriority: "high" } as any)}
+            onError={(e) => {
+              /* If the image URL is broken (e.g. blocked CDN), hide gracefully
+               * instead of showing the torn-icon placeholder. */
+              const el = e.currentTarget;
+              el.style.display = "none";
+              const wrap = el.parentElement;
+              if (wrap) wrap.style.display = "none";
+            }}
             className="max-h-[40vh] sm:max-h-[50vh] max-w-full rounded-2xl object-contain"
             style={{ boxShadow: "0 12px 40px -12px rgba(201,161,75,0.35)", border: "2px solid #c9a14b66", background: "#faf6ec" }}
           />

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "seed:arena-expansion": "tsx ./src/seed-arena-expansion.ts",
     "seed:hasad-expansion": "tsx ./src/seed-hasad-challenge-expansion.ts",
     "seed:hasad-hard": "tsx ./src/seed-hasad-challenge-hard.ts",
     "backfill:content-kind": "tsx ./src/backfill-assignment-content-kind.ts",
