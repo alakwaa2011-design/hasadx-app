@@ -450,15 +450,16 @@ export async function multiImagesToOutline(
       : `لديك ${n} صور تعليمية مرفوعة تشكّل معاً مصدر المحتوى. اقرأ كل الصور كأنها فصل واحد متصل، استخرج كل المعلومات والمفاهيم الموجودة فيها، ثم رتّبها في عرض تقديمي **منظَّم ومتكامل** من ${minSlides}-${maxSlides} شريحة.`,
     "",
     `قواعد البناء (مهمة جداً):`,
-    `1. ابدأ دائماً بشريحة kind="title" تلخّص موضوع العرض.`,
-    `2. أنهِ دائماً بشريحة kind="closure".`,
-    `3. وسّط: استخدم خليطاً متنوعاً (objectives, concept-card, visual-hero, steps, comparison, formula, stat, quote, callout, timeline, interactive). لا تكرر نفس الـ kind أكثر من مرتين متتاليتين.`,
-    `4. **لا تختصر الصور إلى شريحة واحدة لكل صورة.** إذا الصورة تحتوي 3 أمثلة مثلاً، اجعل كل مثال شريحة منفصلة. إذا الصور كثيرة وتشترك في موضوع واحد، اجمع المتشابه.`,
-    `5. **استخرج المحتوى الفعلي من الصور** — لا تختلق معلومات غير موجودة. اقتبس النصوص والأرقام كما هي.`,
-    `6. أضف 1-2 شريحة تفاعلية (kind="interactive", interactionHint="quiz") تختبر فهم الطلاب لمحتوى الصور.`,
-    `7. talkingPoints: 2-5 نقاط لكل شريحة بأسلوب عناوين قصيرة (لا فقرات).`,
-    `8. اللغة: عربية إذا كان محتوى الصور بالعربية، إنجليزية إذا كان بالإنجليزية.`,
-    `9. slideTheme = null دائماً، gameSuggestion = null دائماً.`,
+    `1. **لا تستخدم kind="title" ولا kind="closure" أبداً.** كل شرائح العرض يجب أن تكون من نفس عائلة التخطيطات حتى يبدو العرض متجانساً (نفس الإطار والتباعد).`,
+    `2. استخدم خليطاً متنوعاً من: concept-card, visual-hero, objectives, steps, comparison, formula, stat, quote, callout, timeline, interactive. لا تكرر نفس الـ kind أكثر من مرتين متتاليتين.`,
+    `3. الشريحة الأولى تكون عادةً kind="concept-card" أو "objectives" (تعرض الموضوع الرئيسي والأهداف بنفس تخطيط بقية العرض).`,
+    `4. الشريحة الأخيرة تكون عادةً kind="callout" أو "concept-card" تلخّص الفكرة (لا تستخدم closure).`,
+    `5. **لا تختصر الصور إلى شريحة واحدة لكل صورة.** إذا الصورة تحتوي 3 أمثلة مثلاً، اجعل كل مثال شريحة منفصلة. إذا الصور كثيرة وتشترك في موضوع واحد، اجمع المتشابه.`,
+    `6. **استخرج المحتوى الفعلي من الصور** — لا تختلق معلومات غير موجودة. اقتبس النصوص والأرقام كما هي.`,
+    `7. أضف 1-2 شريحة تفاعلية (kind="interactive", interactionHint="quiz") تختبر فهم الطلاب لمحتوى الصور.`,
+    `8. talkingPoints: 2-5 نقاط لكل شريحة بأسلوب عناوين قصيرة (لا فقرات).`,
+    `9. اللغة: عربية إذا كان محتوى الصور بالعربية، إنجليزية إذا كان بالإنجليزية.`,
+    `10. slideTheme = null دائماً، gameSuggestion = null دائماً.`,
     "",
     `الربط بالصور (sourceImageIndex):`,
     `- لكل شريحة، اختر **رقم الصورة (1 إلى ${n})** التي تستند إليها هذه الشريحة، أو null إذا كانت الشريحة مقدمة/خاتمة/جامعة عامة.`,
@@ -525,6 +526,12 @@ export async function multiImagesToOutline(
     if (s.talkingPoints.length === 0) {
       s.talkingPoints = [s.purpose || s.title];
     }
+    /* Enforce visual consistency — even if the AI ignored the prompt and
+       returned title/closure kinds (which use centered/contrast layouts),
+       remap them to neutral content kinds so every slide in the deck shares
+       the same frame, padding, and typography. */
+    if (s.kind === "title") s.kind = "concept-card";
+    else if (s.kind === "closure") s.kind = "callout";
     cleaned.push(s);
   }
 
