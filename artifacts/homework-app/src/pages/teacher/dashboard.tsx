@@ -2415,62 +2415,60 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
             }}
           >
             {group.tools.map((tool) => {
-              const delay = globalIdx++ * 0.03;
+              const delay = globalIdx++ * 0.025;
               return (
                 <motion.button
                   key={tool.href}
                   type="button"
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay, duration: 0.25 }}
+                  transition={{ delay, duration: 0.22 }}
                   onClick={() => tool.href && setLocation(tool.href)}
-                  className="group relative flex flex-col gap-3 p-4 sm:p-5 rounded-2xl border bg-card text-start transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_-12px_rgba(34,87,57,0.18)] active:scale-[0.98] overflow-hidden min-h-[140px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  className="group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start transition-colors duration-200 hover:bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[96px]"
                   style={{
-                    borderColor: "rgba(34,87,57,0.10)",
+                    borderColor: "rgba(34,87,57,0.08)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = `${tool.accent}55`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor =
+                      "rgba(34,87,57,0.08)";
                   }}
                 >
-                  {/* Soft accent corner glow — gives each card a tiny
-                      hint of its accent colour without the heavy top
-                      bar of the previous version. */}
+                  {/* Outlined icon — no filled background, just a subtle
+                      thin ring in the accent colour. Keeps each card
+                      light and uncluttered. */}
                   <div
-                    className="absolute -top-14 w-32 h-32 rounded-full opacity-[0.08] blur-2xl pointer-events-none transition-opacity duration-300 group-hover:opacity-[0.18]"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200"
                     style={{
-                      background: tool.accent,
-                      ...(isAr ? { left: "-3.5rem" } : { right: "-3.5rem" }),
+                      color: tool.accent,
+                      background: `${tool.accent}0A`,
                     }}
-                  />
-
-                  {/* Icon + chevron row */}
-                  <div className="relative flex items-start justify-between">
-                    <div
-                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-[-3deg]"
-                      style={{
-                        background: `${tool.accent}15`,
-                        color: tool.accent,
-                      }}
-                    >
-                      {tool.icon}
-                    </div>
-                    <span
-                      className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200"
-                      style={{ color: tool.accent }}
-                    >
-                      <ChevronEnd className="w-4 h-4" />
-                    </span>
+                  >
+                    {tool.icon}
                   </div>
 
-                  {/* Title + description (description was previously in
-                      the data but never rendered — now it is). */}
-                  <div className="relative flex-1 flex flex-col gap-1">
-                    <h4 className="font-extrabold text-foreground text-sm sm:text-[15px] leading-snug line-clamp-2">
+                  {/* Title + description stacked. No accent bars, no
+                      glows — just clean type. */}
+                  <div className="relative flex-1 min-w-0 pt-0.5">
+                    <h4 className="font-bold text-foreground text-sm sm:text-[14.5px] leading-snug line-clamp-2 mb-1">
                       {tool.title}
                     </h4>
                     {tool.desc && (
-                      <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      <p className="text-[11.5px] sm:text-xs text-muted-foreground/90 leading-relaxed line-clamp-2">
                         {tool.desc}
                       </p>
                     )}
                   </div>
+
+                  {/* Chevron — always present at low opacity, brightens
+                      on hover. Direction follows reading order. */}
+                  <span
+                    className="shrink-0 self-center text-muted-foreground/40 group-hover:text-foreground transition-colors duration-200"
+                  >
+                    <ChevronEnd className="w-4 h-4" />
+                  </span>
                 </motion.button>
               );
             })}
