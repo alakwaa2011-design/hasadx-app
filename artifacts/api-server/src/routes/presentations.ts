@@ -742,9 +742,14 @@ router.post(
 
           const validSlides: unknown[] = [];
           for (let i = 0; i < outline.cards.length; i++) {
-            /* Background-image priority:
-               1. AI-picked uploaded photo (sourceImageIndex)
+            /* Image priority:
+               1. AI-picked uploaded photo (sourceImageIndex) → forced
+                  to full-bleed "background" so the teacher's photo
+                  dominates the slide.
                2. AI-suggested web image (imageQuery → Brave/Wikimedia)
+                  with placement honouring the AI's `imagePlacement`
+                  hint (defaults to "side" for content slides, picked
+                  by the materializer per slide kind).
                3. None — slide renders with the deck gradient only. */
             const srcIdx = outline.sourceImageIndices[i];
             const uploadedUrl =
@@ -752,12 +757,14 @@ router.post(
                 ? validImages[srcIdx - 1].url || undefined
                 : undefined;
             const bgUrl = uploadedUrl ?? webHits[i]?.url ?? undefined;
+            const placement = outline.imagePlacements[i];
             const out = buildOneSlide({
               card: outline.cards[i],
               themeKey,
               density: outline.density,
               lang: outline.language,
               backgroundImageUrl: bgUrl,
+              imagePlacement: placement,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);
@@ -948,12 +955,16 @@ router.post(
 
           const validSlides: unknown[] = [];
           for (let i = 0; i < outline.slides.length; i++) {
+            const placement = (outline.slides[i] as {
+              imagePlacement?: "side" | "background" | "none";
+            }).imagePlacement;
             const out = buildOneSlide({
               card: outline.slides[i],
               themeKey: themeForOutline,
               density: outline.density,
               lang: outline.language,
               backgroundImageUrl: docHits[i]?.url ?? undefined,
+              imagePlacement: placement,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);

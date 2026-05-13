@@ -112,6 +112,17 @@ const outlineCardSchema = z.object({
       if (typeof v !== "string") return "";
       return v.trim().replace(/\s+/g, " ").slice(0, 80);
     }),
+  /* How to place the photo: "side" inserts an inline image column,
+     "background" paints it full-bleed, "none" suppresses it. Tolerant
+     parse — any unknown value falls back to undefined so the server
+     can pick a default per slide kind. */
+  imagePlacement: z
+    .any()
+    .optional()
+    .transform((v): "side" | "background" | "none" | undefined => {
+      if (v === "side" || v === "background" || v === "none") return v;
+      return undefined;
+    }),
 });
 
 export const fileOutlineSchema = z.object({
@@ -177,7 +188,8 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
       "slideTheme": null,
       "visualDirection": { "icon": "Lightbulb", "shape": "rect", "layoutHint": "..." },
       "source": "",
-      "imageQuery": "renewable energy classroom"
+      "imageQuery": "renewable energy classroom",
+      "imagePlacement": "side"
     }
   ]
 }`;
@@ -216,7 +228,8 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
         `slideTheme = null على كل شريحة بلا استثناء.`,
         `gameSuggestion = null دائماً.`,
         `visualDirection.icon: اسم أيقونة Lucide بصيغة PascalCase مثل Lightbulb, Target, BookOpen, Brain, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Zap, BarChart3, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Microscope.`,
-        `imageQuery: استعلام بحث **بالإنجليزية من 2-5 كلمات** يصف صورة احترافية ملموسة تناسب الشريحة (مثل "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). تجنّب المفاهيم المجردة ("introduction", "summary"). هذا الحقل مهم جداً لجمالية العرض.`,
+        `imageQuery: استعلام بحث **بالإنجليزية من 2-5 كلمات** يصف صورة احترافية ملموسة تناسب الشريحة وتشرح/توضّح إحدى نقاطها (مثل "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). تجنّب المفاهيم المجردة ("introduction", "summary"). هذا الحقل مهم جداً لجمالية العرض.`,
+        `imagePlacement: "side" (الافتراضي، عمود صورة بجانب النص — استخدمه لكل شرائح المحتوى) أو "background" (تعبئة كاملة — للشرائح ذات العبارة القوية الموجزة فقط مثل visual-hero/stat/quote) أو "none" (نادراً).`,
       ]
     : [
         `Produce exactly ${slideCount} slides drawn from the actual file content — do NOT invent information not present in the document.`,
@@ -229,7 +242,8 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
         `slideTheme = null on every slide, no exceptions.`,
         `gameSuggestion = null always.`,
         `visualDirection.icon: a Lucide icon name in PascalCase such as Lightbulb, Target, BookOpen, Brain, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Zap, BarChart3, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Microscope.`,
-        `imageQuery: a **2-5 word English** web search phrase describing a concrete, professional photo that fits the slide (e.g. "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). Avoid abstract terms ("introduction", "summary"). This field is critical to the deck's visual quality.`,
+        `imageQuery: a **2-5 word English** web search phrase describing a concrete, professional photo that fits the slide and helps explain one of its bullets (e.g. "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). Avoid abstract terms ("introduction", "summary"). This field is critical to the deck's visual quality.`,
+        `imagePlacement: "side" (default — inline photo column next to the text, use for content slides) | "background" (full-bleed — only for hero/stat/quote-style slides with one strong line) | "none" (rare).`,
       ];
 
   return [
@@ -413,6 +427,17 @@ const multiImageSlideSchema = z.object({
       if (typeof v !== "string") return "";
       return v.trim().replace(/\s+/g, " ").slice(0, 80);
     }),
+  /* Where the photo should sit on the slide. "side" inserts a real
+     image column next to the text (default), "background" paints it
+     full-bleed (use for hero/cover-style slides only), "none"
+     suppresses image rendering. Tolerant parse. */
+  imagePlacement: z
+    .any()
+    .optional()
+    .transform((v): "side" | "background" | "none" | undefined => {
+      if (v === "side" || v === "background" || v === "none") return v;
+      return undefined;
+    }),
 });
 
 const multiImageResponseSchema = z.object({
@@ -440,6 +465,11 @@ export interface MultiImageOutlineResult {
       as `backgroundImage` when no uploaded image is associated. Empty
       string ⇒ skip web lookup for that slide. Length === cards.length. */
   imageQueries: string[];
+  /** Per-card hint for where the resolved photo should live on the
+      slide ("side" = inline column, "background" = full-bleed,
+      "none" = suppress, undefined = let the materializer pick a
+      sensible default per slide kind). Length === cards.length. */
+  imagePlacements: Array<"side" | "background" | "none" | undefined>;
 }
 
 export async function multiImagesToOutline(
@@ -469,7 +499,8 @@ export async function multiImagesToOutline(
       "slideTheme": null,
       "visualDirection": { "icon": "Lightbulb", "layoutHint": "left-icon" },
       "sourceImageIndex": null,
-      "imageQuery": "renewable energy classroom"
+      "imageQuery": "renewable energy classroom",
+      "imagePlacement": "side"
     }
   ]
 }`;
@@ -497,12 +528,17 @@ export async function multiImagesToOutline(
     `- اجعل sourceImageIndex=null على الشرائح التمهيدية أو التلخيصية التي لا تطابق صورة معينة.`,
     "",
     `الصور الاحترافية من الويب (imageQuery) — مهم جداً للحصول على عرض جذاب:`,
-    `- لكل شريحة (خاصةً sourceImageIndex=null) أنشئ **استعلام بحث بالإنجليزية من 2-5 كلمات** يصف صورة احترافية تناسب موضوع الشريحة.`,
+    `- لكل شريحة (خاصةً sourceImageIndex=null) أنشئ **استعلام بحث بالإنجليزية من 2-5 كلمات** يصف صورة احترافية تناسب موضوع الشريحة وتشرح أو توضّح نقطة من نقاطها.`,
     `- الكلمات يجب أن تكون مرئية وملموسة (وصف بصري لمشهد/كائن)، لا مفاهيم مجردة.`,
     `- أمثلة جيدة: "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids", "mathematics blackboard equations", "microscope laboratory close-up", "library books shelves".`,
     `- أمثلة سيئة: "introduction", "summary", "lesson 3", "important note" (مفاهيم مجردة لا تعطي صورة).`,
     `- إذا كانت الشريحة تستخدم sourceImageIndex فعلياً (لها صورة مرفوعة)، اجعل imageQuery="" لتجنب البحث.`,
     `- اجتهد في كل استعلام — هذه الصور هي ما يجعل العرض احترافياً ومميزاً.`,
+    "",
+    `موضع الصورة (imagePlacement) — اختر ذلك بعناية:`,
+    `- **"side"** (الافتراضي): تظهر الصورة كعمود حقيقي بجانب النص، مثل عروض Gamma/Canva. استخدمها لكل شرائح المحتوى (concept-card, callout, comparison, formula, steps, objectives, timeline, interactive).`,
+    `- **"background"**: تغطّي الصورة كامل الشريحة كخلفية. استخدمها فقط للشرائح التي تحتوي عبارة قوية موجزة (visual-hero, stat, quote) أو شريحة افتتاحية ذات أثر بصري.`,
+    `- **"none"**: لا تعرض صورة على هذه الشريحة. استخدمها نادراً عند رغبتك في إبراز النص فقط.`,
     "",
     `الأيقونات (visualDirection.icon):`,
     `- لكل شريحة اختر اسم أيقونة بالإنجليزية بصيغة PascalCase من Lucide مثل: Lightbulb, Target, BookOpen, Brain, Heart, Trophy, GraduationCap, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Moon, Zap, BarChart3, PieChart, TrendingUp, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Camera, Code, Microscope.`,
@@ -621,11 +657,22 @@ export async function multiImagesToOutline(
     return s.imageQuery || "";
   });
 
+  /* Per-card placement hint. For uploaded source photos we force
+     "background" because the teacher's original photo should dominate
+     the slide; for AI-fetched web images we honour whatever the model
+     picked (or leave undefined so the materializer chooses a sensible
+     default per slide kind). */
+  const imagePlacements: Array<"side" | "background" | "none" | undefined> =
+    sorted.map((s, i) =>
+      sourceImageIndices[i] != null ? "background" : s.imagePlacement,
+    );
+
   return {
     cards,
     language: parsed.data.language,
     density: "balanced" as Density,
     sourceImageIndices,
     imageQueries,
+    imagePlacements,
   };
 }

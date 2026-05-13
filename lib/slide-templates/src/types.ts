@@ -112,6 +112,19 @@ export type IconElement = BaseElement & {
   color?: string;
 };
 
+/* A real photo placed inline as a slide element (not a background).
+   Used by the import pipeline to drop AI-fetched web images or the
+   teacher's uploaded photos onto a side column of content slides so
+   the deck looks editorial, not just text-on-gradient. */
+export type ImageElement = BaseElement & {
+  kind: "image";
+  url: string;
+  objectFit?: "cover" | "contain" | "fill" | "none";
+  objectPosition?: string;
+  imageOpacity?: number;
+  imageBorderRadius?: number;
+};
+
 export type ShapeElement = BaseElement & {
   kind: "shape";
   shape: "rect" | "circle" | "line" | "arrow" | "divider";
@@ -169,8 +182,8 @@ export type VideoEmbedElement = BaseElement & {
 };
 
 export type Element =
-  | TextElement | IconElement | ShapeElement | ActivityElement
-  | HasadGameElement | VideoEmbedElement;
+  | TextElement | IconElement | ImageElement | ShapeElement
+  | ActivityElement | HasadGameElement | VideoEmbedElement;
 
 export interface MaterializedSlide {
   id: string;

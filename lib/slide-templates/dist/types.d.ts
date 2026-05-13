@@ -69,6 +69,14 @@ export type IconElement = BaseElement & {
     iconName: string;
     color?: string;
 };
+export type ImageElement = BaseElement & {
+    kind: "image";
+    url: string;
+    objectFit?: "cover" | "contain" | "fill" | "none";
+    objectPosition?: string;
+    imageOpacity?: number;
+    imageBorderRadius?: number;
+};
 export type ShapeElement = BaseElement & {
     kind: "shape";
     shape: "rect" | "circle" | "line" | "arrow" | "divider";
@@ -110,7 +118,7 @@ export type VideoEmbedElement = BaseElement & {
     videoId?: string;
     title?: string;
 };
-export type Element = TextElement | IconElement | ShapeElement | ActivityElement | HasadGameElement | VideoEmbedElement;
+export type Element = TextElement | IconElement | ImageElement | ShapeElement | ActivityElement | HasadGameElement | VideoEmbedElement;
 export interface MaterializedSlide {
     id: string;
     layout: string;
