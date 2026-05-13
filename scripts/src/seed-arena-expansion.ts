@@ -62,7 +62,8 @@ const FLAG = (cc: string) => `https://flagcdn.com/w640/${cc}.png`;
 // toCoverThumb() automatically rewrites to the .webp thumbnail variant.
 const COVER = (slug: string) => `/arena-covers/sec_${slug}.png`;
 // Local brand-logo assets for the شعارات سيارات image-questions.
-const LOGO = (slug: string) => `/arena-covers/logo_${slug}.png`;
+// SVG (cdn.simpleicons.org returns vector SVG, not raster).
+const LOGO = (slug: string) => `/arena-covers/logo_${slug}.svg`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTIONS
