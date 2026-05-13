@@ -2258,6 +2258,15 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           href: "/teacher/categories",
         },
         {
+          icon: <Sparkles className="w-6 h-6" />,
+          title: isAr ? "محتوى تحدي حصاد" : "Hasad Arena Content",
+          desc: isAr
+            ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
+            : "Manage Arena sections, sub-categories & questions with images and AI",
+          accent: BRAND.green,
+          href: "/teacher/arena-content",
+        },
+        {
           icon: <Library className="w-6 h-6" />,
           title: isAr ? "مكتبة المعلم" : "Teacher Library",
           desc: isAr
