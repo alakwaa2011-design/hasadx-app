@@ -103,6 +103,15 @@ const outlineCardSchema = z.object({
     layoutHint: z.string().max(40).optional(),
   }),
   source: z.string().max(200).optional(),
+  /* English 2-5 word web image query — server fetches the photo and uses
+     it as the slide background. Optional / tolerant. */
+  imageQuery: z
+    .any()
+    .optional()
+    .transform((v) => {
+      if (typeof v !== "string") return "";
+      return v.trim().replace(/\s+/g, " ").slice(0, 80);
+    }),
 });
 
 export const fileOutlineSchema = z.object({
@@ -166,8 +175,9 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
       "gameSuggestion": null,
       "gameQuestions": [{ "prompt": "...", "options": ["أ","ب","ج","د"], "correctIndex": 0 }],
       "slideTheme": null,
-      "visualDirection": { "icon": "lightbulb", "shape": "rect", "layoutHint": "..." },
-      "source": ""
+      "visualDirection": { "icon": "Lightbulb", "shape": "rect", "layoutHint": "..." },
+      "source": "",
+      "imageQuery": "renewable energy classroom"
     }
   ]
 }`;
@@ -205,6 +215,8 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
         `كل index يظهر في مرحلة واحدة فقط من teachingFlow.`,
         `slideTheme = null على كل شريحة بلا استثناء.`,
         `gameSuggestion = null دائماً.`,
+        `visualDirection.icon: اسم أيقونة Lucide بصيغة PascalCase مثل Lightbulb, Target, BookOpen, Brain, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Zap, BarChart3, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Microscope.`,
+        `imageQuery: استعلام بحث **بالإنجليزية من 2-5 كلمات** يصف صورة احترافية ملموسة تناسب الشريحة (مثل "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). تجنّب المفاهيم المجردة ("introduction", "summary"). هذا الحقل مهم جداً لجمالية العرض.`,
       ]
     : [
         `Produce exactly ${slideCount} slides drawn from the actual file content — do NOT invent information not present in the document.`,
@@ -216,6 +228,8 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
         `Each slide index must appear in exactly one teachingFlow stage.`,
         `slideTheme = null on every slide, no exceptions.`,
         `gameSuggestion = null always.`,
+        `visualDirection.icon: a Lucide icon name in PascalCase such as Lightbulb, Target, BookOpen, Brain, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Zap, BarChart3, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Microscope.`,
+        `imageQuery: a **2-5 word English** web search phrase describing a concrete, professional photo that fits the slide (e.g. "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids"). Avoid abstract terms ("introduction", "summary"). This field is critical to the deck's visual quality.`,
       ];
 
   return [
@@ -389,6 +403,16 @@ const multiImageSlideSchema = z.object({
       const intVal = Math.floor(num);
       return intVal >= 1 ? intVal : null;
     }),
+  /* Free-text web search query (2-5 English words) the server uses to fetch
+     a relevant photo from Brave/Wikimedia and stamp as the slide background.
+     Empty / non-string ⇒ no web image lookup for this slide. */
+  imageQuery: z
+    .any()
+    .optional()
+    .transform((v) => {
+      if (typeof v !== "string") return "";
+      return v.trim().replace(/\s+/g, " ").slice(0, 80);
+    }),
 });
 
 const multiImageResponseSchema = z.object({
@@ -411,6 +435,11 @@ export interface MultiImageOutlineResult {
       backing image. Length === cards.length. The route handler maps each
       entry to the corresponding uploaded URL to stamp `backgroundImage`. */
   sourceImageIndices: (number | null)[];
+  /** Per-card free-text web search query (English keywords) the route
+      handler uses to fetch a real photo from Brave/Wikimedia and stamp
+      as `backgroundImage` when no uploaded image is associated. Empty
+      string ⇒ skip web lookup for that slide. Length === cards.length. */
+  imageQueries: string[];
 }
 
 export async function multiImagesToOutline(
@@ -431,15 +460,16 @@ export async function multiImagesToOutline(
   "slides": [
     {
       "index": 1,
-      "kind": "title",
-      "title": "عنوان العرض",
+      "kind": "concept-card",
+      "title": "عنوان الشريحة",
       "purpose": "وصف موجز",
       "talkingPoints": ["نقطة 1", "نقطة 2", "نقطة 3"],
       "interactionHint": null,
       "gameSuggestion": null,
       "slideTheme": null,
-      "visualDirection": { "icon": "book", "layoutHint": "center-title" },
-      "sourceImageIndex": 1
+      "visualDirection": { "icon": "Lightbulb", "layoutHint": "left-icon" },
+      "sourceImageIndex": null,
+      "imageQuery": "renewable energy classroom"
     }
   ]
 }`;
@@ -461,10 +491,22 @@ export async function multiImagesToOutline(
     `9. اللغة: عربية إذا كان محتوى الصور بالعربية، إنجليزية إذا كان بالإنجليزية.`,
     `10. slideTheme = null دائماً، gameSuggestion = null دائماً.`,
     "",
-    `الربط بالصور (sourceImageIndex):`,
-    `- لكل شريحة، اختر **رقم الصورة (1 إلى ${n})** التي تستند إليها هذه الشريحة، أو null إذا كانت الشريحة مقدمة/خاتمة/جامعة عامة.`,
+    `الربط بالصور المرفوعة (sourceImageIndex):`,
+    `- لكل شريحة، اختر **رقم الصورة (1 إلى ${n})** التي تستند إليها هذه الشريحة من الصور المرفوعة، أو null.`,
     `- يمكن استخدام نفس الصورة في أكثر من شريحة (مثلاً صورة بها 3 أمثلة → 3 شرائح كلها sourceImageIndex=1).`,
-    `- يمكن أن تكون شريحة بدون صورة (sourceImageIndex=null) — مثل العنوان والخاتمة.`,
+    `- اجعل sourceImageIndex=null على الشرائح التمهيدية أو التلخيصية التي لا تطابق صورة معينة.`,
+    "",
+    `الصور الاحترافية من الويب (imageQuery) — مهم جداً للحصول على عرض جذاب:`,
+    `- لكل شريحة (خاصةً sourceImageIndex=null) أنشئ **استعلام بحث بالإنجليزية من 2-5 كلمات** يصف صورة احترافية تناسب موضوع الشريحة.`,
+    `- الكلمات يجب أن تكون مرئية وملموسة (وصف بصري لمشهد/كائن)، لا مفاهيم مجردة.`,
+    `- أمثلة جيدة: "solar panels desert", "human heart anatomy", "ancient Egyptian pyramids", "mathematics blackboard equations", "microscope laboratory close-up", "library books shelves".`,
+    `- أمثلة سيئة: "introduction", "summary", "lesson 3", "important note" (مفاهيم مجردة لا تعطي صورة).`,
+    `- إذا كانت الشريحة تستخدم sourceImageIndex فعلياً (لها صورة مرفوعة)، اجعل imageQuery="" لتجنب البحث.`,
+    `- اجتهد في كل استعلام — هذه الصور هي ما يجعل العرض احترافياً ومميزاً.`,
+    "",
+    `الأيقونات (visualDirection.icon):`,
+    `- لكل شريحة اختر اسم أيقونة بالإنجليزية بصيغة PascalCase من Lucide مثل: Lightbulb, Target, BookOpen, Brain, Heart, Trophy, GraduationCap, FlaskConical, Atom, Calculator, Globe2, Leaf, Sun, Moon, Zap, BarChart3, PieChart, TrendingUp, Clock, CheckCircle2, Megaphone, ListChecks, Users, Quote, Camera, Code, Microscope.`,
+    `- اختر الأيقونة الأنسب لمحتوى الشريحة، لا تكرر نفس الأيقونة على شرائح متجاورة.`,
     "",
     DESIGN_RULES_AR,
     "",
@@ -571,10 +613,19 @@ export async function multiImagesToOutline(
     return clamped;
   });
 
+  /* Per-card web image search query. Empty string means "no lookup". When
+     a slide already has a real uploaded image, we deliberately drop the
+     query so we don't override the user's photo. */
+  const imageQueries: string[] = sorted.map((s, i) => {
+    if (sourceImageIndices[i] != null) return "";
+    return s.imageQuery || "";
+  });
+
   return {
     cards,
     language: parsed.data.language,
     density: "balanced" as Density,
     sourceImageIndices,
+    imageQueries,
   };
 }

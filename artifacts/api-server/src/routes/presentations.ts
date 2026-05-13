@@ -20,6 +20,7 @@ import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentat
 import { extractFileContent } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
+import { findWebImagesBatch } from "../lib/web-image-search";
 
 const router: IRouter = Router();
 
@@ -717,18 +718,40 @@ router.post(
           );
           deckLanguage = outline.language;
           const themeKey = pickServerDefaultTheme();
+
+          /* Fetch web images in parallel for slides without an uploaded
+             source image. Each lookup has a 4 s timeout and concurrency
+             is bounded so a deck of 15 slides finishes in 1-2 round-trips
+             rather than 15 sequential calls. Failed lookups are silently
+             treated as null (slide renders without background). */
+          const webQueries = outline.cards.map((_, i) =>
+            outline.sourceImageIndices[i] == null ? outline.imageQueries[i] : "",
+          );
+          const webHits = await findWebImagesBatch(webQueries, {
+            concurrency: 6,
+            timeoutMs: 4000,
+          });
+          req.log.info(
+            {
+              slides: outline.cards.length,
+              webRequested: webQueries.filter(Boolean).length,
+              webResolved: webHits.filter(Boolean).length,
+            },
+            "Import: web images fetched",
+          );
+
           const validSlides: unknown[] = [];
           for (let i = 0; i < outline.cards.length; i++) {
-            /* Content-driven mapping: each card carries a 1-based
-               sourceImageIndex picked by the AI (or null). We map it to
-               the corresponding uploaded URL so a single dense image can
-               drive multiple slides, and intro/closure slides can render
-               with no background photo. */
+            /* Background-image priority:
+               1. AI-picked uploaded photo (sourceImageIndex)
+               2. AI-suggested web image (imageQuery → Brave/Wikimedia)
+               3. None — slide renders with the deck gradient only. */
             const srcIdx = outline.sourceImageIndices[i];
-            const bgUrl =
+            const uploadedUrl =
               srcIdx != null && validImages[srcIdx - 1]
                 ? validImages[srcIdx - 1].url || undefined
                 : undefined;
+            const bgUrl = uploadedUrl ?? webHits[i]?.url ?? undefined;
             const out = buildOneSlide({
               card: outline.cards[i],
               themeKey,
@@ -903,13 +926,34 @@ router.post(
           deckLanguage = extracted.detectedLanguage ?? "ar";
           const outline = await fileToOutline(extracted, titleFromFile);
           const themeForOutline = pickServerDefaultTheme();
+
+          /* Fetch a real web photo for every slide that supplied an
+             imageQuery so single-doc imports look just as polished as
+             the multi-image flow. Bounded concurrency keeps latency low. */
+          const docQueries = outline.slides.map(
+            (c) => (c as { imageQuery?: string }).imageQuery || "",
+          );
+          const docHits = await findWebImagesBatch(docQueries, {
+            concurrency: 6,
+            timeoutMs: 4000,
+          });
+          req.log.info(
+            {
+              slides: outline.slides.length,
+              webRequested: docQueries.filter(Boolean).length,
+              webResolved: docHits.filter(Boolean).length,
+            },
+            "Import (doc): web images fetched",
+          );
+
           const validSlides: unknown[] = [];
-          for (const card of outline.slides) {
+          for (let i = 0; i < outline.slides.length; i++) {
             const out = buildOneSlide({
-              card,
+              card: outline.slides[i],
               themeKey: themeForOutline,
               density: outline.density,
               lang: outline.language,
+              backgroundImageUrl: docHits[i]?.url ?? undefined,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);
