@@ -942,6 +942,9 @@ export default function GamePlay() {
   const hasJoinedOnceRef = useRef(false);
   const tickPlayedRef = useRef(false);
   const pendingQuestionRef = useRef<any>(null);
+  // Echoed back on student:submit-answer so the server can reject stale submits
+  // (cause of "correct visual choice marked wrong" race in hack mode).
+  const hackQuestionInstanceRef = useRef<number | null>(null);
   const myPasswordRef = useRef<string | null>(null);
   const hackWrongAnswerRef = useRef(false);
   const hackModeRef = useRef(false);
@@ -1211,6 +1214,8 @@ export default function GamePlay() {
       if (typeof q.hackDeadline === "number") setHackDeadline(q.hackDeadline);
       if (typeof q.hackRemainingMs === "number")
         setHackRemainingMs(q.hackRemainingMs);
+      hackQuestionInstanceRef.current =
+        typeof q.questionInstanceId === "number" ? q.questionInstanceId : null;
       if (timerRef.current) clearInterval(timerRef.current);
       setEncouragementMsg(null);
       stopSpeech();
@@ -1801,7 +1806,11 @@ export default function GamePlay() {
       selectedAnswerRef.current = answer;
       setSelectedAnswer(answer);
       const socket = getSocket();
-      socket.emit("student:submit-answer", { pin, answer });
+      socket.emit("student:submit-answer", {
+        pin,
+        answer,
+        questionInstanceId: hackQuestionInstanceRef.current ?? undefined,
+      });
 
       // 🎨 تأثيرات وميض
       setTimeout(() => {

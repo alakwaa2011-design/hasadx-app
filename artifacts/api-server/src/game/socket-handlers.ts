@@ -153,6 +153,8 @@ interface PinData {
 interface SubmitAnswerData {
   pin: string;
   answer: string;
+  // Echoed from game:player-question to detect stale hack-mode submits.
+  questionInstanceId?: number;
 }
 
 interface UseGiftData {
@@ -486,7 +488,7 @@ function emitPersonalQuestion(io: Server, game: Game, player: GamePlayer): boole
   const next = getNextPersonalQuestion(game, player);
   if (!next) return false;
   const shuffled = shuffleOptionsForPlayer(next.question);
-  setPersonalShuffledOptions(player, {
+  const instanceId = setPersonalShuffledOptions(player, {
     optionA: shuffled.optionA,
     optionB: shuffled.optionB,
     optionC: shuffled.optionC,
@@ -512,6 +514,7 @@ function emitPersonalQuestion(io: Server, game: Game, player: GamePlayer): boole
     totalUnique: game.questions.length,
     hackDeadline: game.hackDeadline,
     hackRemainingMs: remainingMs,
+    questionInstanceId: instanceId,
   });
   return true;
 }
@@ -1176,6 +1179,11 @@ export function setupGameSocket(io: Server) {
           const q = game.questions[player.personalCurrentQuestionId];
           const opts = player.personalShuffledOptions ?? { optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD };
           const remainingMs = game.hackDeadline ? Math.max(0, game.hackDeadline - Date.now()) : null;
+          // Bump the instance id so any submit from the pre-disconnect session
+          // is treated as stale and ignored — the client re-renders against the
+          // resumed payload and will echo this new id on its next submit.
+          player.personalQuestionInstanceId = (player.personalQuestionInstanceId ?? 0) + 1;
+          const resumedInstanceId = player.personalQuestionInstanceId;
           setTimeout(() => {
             io.to(socket.id).emit("game:player-question", {
               text: q.text,
@@ -1197,6 +1205,7 @@ export function setupGameSocket(io: Server) {
               hackDeadline: game.hackDeadline,
               hackRemainingMs: remainingMs,
               resumed: true,
+              questionInstanceId: resumedInstanceId,
             });
           }, 500);
         } else if (!hasPending && player.personalCurrentQuestionId === undefined) {
@@ -1468,7 +1477,7 @@ export function setupGameSocket(io: Server) {
         // Capture the player's shuffled options BEFORE submit clears them
         const playerForOpts = game.players.get(socket.id);
         const shuffledOptsSnapshot = playerForOpts?.personalShuffledOptions ?? null;
-        const personalResult = submitPersonalAnswer(game, socket.id, data.answer);
+        const personalResult = submitPersonalAnswer(game, socket.id, data.answer, data.questionInstanceId);
         if (!personalResult) {
           // Recovery: a duplicate or stale submit arrived (e.g. double-tap or
           // post-reconnect). Without this, the client UI would be stuck with a
@@ -1572,6 +1581,14 @@ export function setupGameSocket(io: Server) {
             const p = g.players.get(socket.id);
             if (!p || p.disconnected) return;
             p.hackReadyForNextTimerId = null;
+            // Idempotency guard: if the player has already been advanced via
+            // student:ready-for-next or any other path, don't double-advance
+            // (which would cause a question to be skipped or, worse, race a
+            // pending submit and grade it against the next question's shuffled
+            // correct answer).
+            if (p.personalCurrentQuestionId !== undefined) return;
+            if (p.pendingMysteryBoxes && p.pendingMysteryBoxes.length > 0) return;
+            if (p.pendingHackSession && !p.pendingHackSession.used) return;
             emitPersonalQuestion(io, g, p);
           }, 4000);
         }
@@ -1614,6 +1631,13 @@ export function setupGameSocket(io: Server) {
         clearTimeout(player.hackReadyForNextTimerId);
         player.hackReadyForNextTimerId = null;
       }
+      // Only advance when the player is between questions. If a question is
+      // already active (e.g. the server's auto-advance timer fired first, or
+      // a stale countdown re-fired after a correct answer), ignore — otherwise
+      // we'd skip a question or race a pending submit.
+      if (player.personalCurrentQuestionId !== undefined) return;
+      if (player.pendingMysteryBoxes && player.pendingMysteryBoxes.length > 0) return;
+      if (player.pendingHackSession && !player.pendingHackSession.used) return;
       emitPersonalQuestion(io, game, player);
     });
 

@@ -144,6 +144,11 @@ export interface GamePlayer {
   personalCycle?: number;
   personalShuffledCorrectAnswer?: string | null;
   personalShuffledOptions?: { optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null } | null;
+  // Monotonic id incremented every time the server emits a new personal-question
+  // event for this player. Echoed back by the client on submit-answer so the
+  // server can reject stale submits that would otherwise be graded against the
+  // wrong question's shuffled correct answer (cause of "correct marked wrong").
+  personalQuestionInstanceId?: number;
   personalFinished?: boolean;
   personalPriorityQueue?: number[];
   hackReadyForNextTimerId?: ReturnType<typeof setTimeout> | null;
@@ -1033,19 +1038,32 @@ export function getNextPersonalQuestion(game: Game, player: GamePlayer): { quest
   return { question, orderIndex: qIdx, cycle: player.personalCycle ?? 0 };
 }
 
-export function setPersonalShuffledOptions(player: GamePlayer, opts: { optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null }, correct: string | null): void {
+export function setPersonalShuffledOptions(player: GamePlayer, opts: { optionA: string | null; optionB: string | null; optionC: string | null; optionD: string | null }, correct: string | null): number {
   player.personalShuffledOptions = opts;
   player.personalShuffledCorrectAnswer = correct;
+  player.personalQuestionInstanceId = (player.personalQuestionInstanceId ?? 0) + 1;
+  return player.personalQuestionInstanceId;
 }
 
 export function submitPersonalAnswer(
   game: Game,
   socketId: string,
-  answer: string
+  answer: string,
+  questionInstanceId?: number
 ): { correct: boolean; points: number; streak: number; totalScore: number; questionId: number; correctAnswer: string | null } | null {
   const player = game.players.get(socketId);
   if (!player) return null;
   if (player.personalCurrentQuestionId === undefined) return null;
+  // Reject stale submits whose instance id doesn't match the current question.
+  // Without this, a slow submit can be graded against a NEWER question's
+  // shuffled correct answer, causing a correct visual choice to be marked wrong.
+  if (
+    typeof questionInstanceId === "number" &&
+    typeof player.personalQuestionInstanceId === "number" &&
+    questionInstanceId !== player.personalQuestionInstanceId
+  ) {
+    return null;
+  }
   const qIndex = player.personalCurrentQuestionId;
   const question = game.questions[qIndex];
   if (!question) return null;
