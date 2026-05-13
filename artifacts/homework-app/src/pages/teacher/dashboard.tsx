@@ -2217,7 +2217,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           desc: isAr
             ? "أنشئ درساً بأسئلة تتوقف تلقائياً أثناء الفيديو"
             : "Create a lesson with auto-pausing questions during the video",
-          accent: BRAND.green,
+          accent: BRAND.gold,
           href: "/teacher/video-lesson/new",
         },
         {
@@ -2226,7 +2226,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           desc: isAr
             ? "أنشئ عروضاً تقديمية تفاعلية لطلابك في الفصل"
             : "Build interactive slide decks for your classroom",
-          accent: BRAND.green,
+          accent: BRAND.gold,
           href: "/teacher/presentations",
         },
       ],
@@ -2416,6 +2416,14 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           >
             {group.tools.map((tool) => {
               const delay = globalIdx++ * 0.025;
+              const isAi = group.groupId === "ai-tools";
+              // AI cards wear the brand gold as a subtle gradient border
+              // + faint warm tint, with a tiny sparkle in the corner.
+              // Other cards stay quiet — just a hairline border.
+              const restBorder = isAi
+                ? "rgba(217,165,33,0.32)"
+                : "rgba(34,87,57,0.08)";
+              const hoverBorder = `${tool.accent}66`;
               return (
                 <motion.button
                   key={tool.href}
@@ -2424,33 +2432,44 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay, duration: 0.22 }}
                   onClick={() => tool.href && setLocation(tool.href)}
-                  className="group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start transition-colors duration-200 hover:bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[96px]"
+                  className="group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start transition-colors duration-200 hover:bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[96px] overflow-hidden"
                   style={{
-                    borderColor: "rgba(34,87,57,0.08)",
+                    borderColor: restBorder,
+                    background: isAi
+                      ? "linear-gradient(135deg, rgba(217,165,33,0.05) 0%, rgba(252,250,248,0) 55%)"
+                      : undefined,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = `${tool.accent}55`;
+                    e.currentTarget.style.borderColor = hoverBorder;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(34,87,57,0.08)";
+                    e.currentTarget.style.borderColor = restBorder;
                   }}
                 >
-                  {/* Outlined icon — no filled background, just a subtle
-                      thin ring in the accent colour. Keeps each card
-                      light and uncluttered. */}
+                  {/* AI sparkle — only on AI tool cards. Sits in the
+                      top corner opposite the icon as a subtle "made
+                      with AI" mark. Brightens on hover. */}
+                  {isAi && (
+                    <span
+                      className={`absolute top-2 ${isAr ? "left-2" : "right-2"} text-[#D9A521]/40 group-hover:text-[#D9A521] transition-all duration-300 group-hover:rotate-12`}
+                      aria-hidden
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </span>
+                  )}
+
+                  {/* Icon — slightly stronger gold tint on AI cards so
+                      it reads as "AI" without being heavy. */}
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200"
                     style={{
                       color: tool.accent,
-                      background: `${tool.accent}0A`,
+                      background: `${tool.accent}${isAi ? "14" : "0A"}`,
                     }}
                   >
                     {tool.icon}
                   </div>
 
-                  {/* Title + description stacked. No accent bars, no
-                      glows — just clean type. */}
                   <div className="relative flex-1 min-w-0 pt-0.5">
                     <h4 className="font-bold text-foreground text-sm sm:text-[14.5px] leading-snug line-clamp-2 mb-1">
                       {tool.title}
@@ -2462,8 +2481,6 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
                     )}
                   </div>
 
-                  {/* Chevron — always present at low opacity, brightens
-                      on hover. Direction follows reading order. */}
                   <span
                     className="shrink-0 self-center text-muted-foreground/40 group-hover:text-foreground transition-colors duration-200"
                   >
