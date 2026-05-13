@@ -589,9 +589,9 @@ export default function ArenaSetup() {
                 "0 1px 3px rgba(0,0,0,0.04), 0 12px 32px -16px rgba(31,77,79,0.18)",
             }}
           >
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-5">
-              {/* Title block */}
-              <div className="text-center md:text-right min-w-0">
+            <div className="flex flex-col items-center gap-5 mb-5">
+              {/* Title block — centered on all viewports */}
+              <div className="text-center min-w-0">
                 <div
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold mb-2"
                   style={{
@@ -622,7 +622,7 @@ export default function ArenaSetup() {
               </div>
 
               {/* Tournament name input */}
-              <div className="w-full md:max-w-sm shrink-0">
+              <div className="w-full max-w-md shrink-0">
                 <label
                   className="flex items-center gap-1.5 mb-1.5 text-[11px] font-extrabold tracking-wider"
                   style={{ color: "#a07f37" }}
@@ -717,9 +717,9 @@ export default function ArenaSetup() {
                               boxShadow: showEmoji[idx] ? `0 4px 12px -4px ${team.color}55` : "none",
                             }}
                           >
-                            <span className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-xl shrink-0">{team.emoji}</span>
-                              <span className="text-[11px] font-extrabold truncate">الشعار</span>
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="w-6 h-6 rounded-md flex items-center justify-center text-base shrink-0" style={{ background: `${team.color}18`, border: `1px solid ${team.color}55` }}>{team.emoji}</span>
+                              <span className="text-[12px] font-extrabold truncate">الشعار</span>
                             </span>
                             <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showEmoji[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
                           </button>
@@ -786,9 +786,9 @@ export default function ArenaSetup() {
                               boxShadow: showColors[idx] ? `0 4px 12px -4px ${team.color}55` : "none",
                             }}
                           >
-                            <span className="flex items-center gap-1.5 min-w-0">
-                              <span className="w-4 h-4 rounded-full shrink-0" style={{ background: team.color, boxShadow: "inset 0 0 0 1.5px white, 0 0 0 1px #ebe2cd" }} />
-                              <span className="text-[11px] font-extrabold truncate">اللون</span>
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="w-6 h-6 rounded-md shrink-0" style={{ background: team.color, boxShadow: "inset 0 0 0 2px white, 0 0 0 1px #ebe2cd" }} />
+                              <span className="text-[12px] font-extrabold truncate">اللون</span>
                             </span>
                             <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${showColors[idx] ? "rotate-180" : ""}`} style={{ color: "#a07f37" }} />
                           </button>
