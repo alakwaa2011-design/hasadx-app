@@ -316,26 +316,63 @@ export async function fileToOutline(
    the AI-generated text layout.                                     */
 
 const multiImageSlideSchema = z.object({
-  index: z.number().int().min(1).max(30),
+  /* Tolerant index — coerce strings/floats, default to 0 if missing. The
+     post-parse pipeline reassigns indices sequentially anyway. */
+  index: z
+    .any()
+    .optional()
+    .transform((v) => {
+      const n = typeof v === "number" ? v : Number(v);
+      return Number.isFinite(n) ? Math.max(1, Math.floor(n)) : 0;
+    }),
   /* Coerce unexpected values to "concept-card" instead of failing. */
   kind: slideKindSchema.catch("concept-card" as const),
-  title: z.string().min(1).max(80),
-  purpose: z.string().min(1).max(140).optional(),
-  talkingPoints: z.array(z.string().min(1).max(140)).min(1).max(6),
-  interactionHint: z
-    .enum(["poll", "quiz", "discussion", "activity"])
-    .nullable()
+  /* Title may arrive empty/whitespace — keep optional; we drop slides with
+     no usable title in the post-parse cleanup. */
+  title: z
+    .any()
     .optional()
-    .transform((v) => v ?? null),
+    .transform((v) => (typeof v === "string" ? v.trim().slice(0, 80) : "")),
+  purpose: z
+    .any()
+    .optional()
+    .transform((v) => (typeof v === "string" ? v.trim().slice(0, 140) : "")),
+  /* talkingPoints — fully tolerant. Accept null, missing, or a string.
+     Filter out non-string / empty entries. Empty arrays survive parse and
+     the post-parse cleanup uses the title as a fallback bullet so the
+     slide is never dropped just because the AI forgot bullets. */
+  talkingPoints: z
+    .any()
+    .optional()
+    .transform((v) => {
+      const arr = Array.isArray(v) ? v : v == null ? [] : [v];
+      return arr
+        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .map((x) => x.trim().slice(0, 140))
+        .slice(0, 6);
+    }),
+  interactionHint: z
+    .any()
+    .optional()
+    .transform((v) => {
+      const allowed = ["poll", "quiz", "discussion", "activity"] as const;
+      return typeof v === "string" && (allowed as readonly string[]).includes(v)
+        ? (v as (typeof allowed)[number])
+        : null;
+    }),
   gameSuggestion: z.any().optional().transform(() => null),
   slideTheme: z.any().optional().transform(() => null),
   visualDirection: z
-    .object({
-      icon: z.string().max(40).optional(),
-      layoutHint: z.string().max(40).optional(),
-    })
+    .any()
     .optional()
-    .default({}),
+    .transform((v) => {
+      if (!v || typeof v !== "object") return {};
+      const obj = v as Record<string, unknown>;
+      const out: { icon?: string; layoutHint?: string } = {};
+      if (typeof obj.icon === "string") out.icon = obj.icon.slice(0, 40);
+      if (typeof obj.layoutHint === "string") out.layoutHint = obj.layoutHint.slice(0, 40);
+      return out;
+    }),
   /* 1-based index of the uploaded image to use as this slide's background,
      or null if the slide is purely AI-text (no source image). Parse-tolerant
      on purpose — any garbage value (string, 0, negative, NaN, out-of-range)
@@ -355,11 +392,15 @@ const multiImageSlideSchema = z.object({
 });
 
 const multiImageResponseSchema = z.object({
-  language: z.enum(["ar", "en"]).default("ar"),
-  /* Require at least 3 slides — even a single uploaded image should yield
-     a real intro+content+closure deck, not a one-slide title page. If the
-     AI returns fewer, we throw and the caller falls back gracefully. */
-  slides: z.array(multiImageSlideSchema).min(3).max(20),
+  language: z
+    .any()
+    .optional()
+    .transform((v) => (v === "en" ? "en" : "ar") as "ar" | "en"),
+  /* Tolerant — accept whatever array we get (even empty). Post-parse cleanup
+     drops invalid slides and the caller throws only when the *cleaned*
+     count is below the minimum, so a single bad slide can't blank a 12-
+     slide response. */
+  slides: z.any().optional().transform((v) => (Array.isArray(v) ? v : [])),
 });
 
 export interface MultiImageOutlineResult {
@@ -463,20 +504,48 @@ export async function multiImagesToOutline(
   const parsed = multiImageResponseSchema.safeParse(raw);
 
   if (!parsed.success) {
+    /* Should be unreachable now that the response schema is fully tolerant,
+       but guard anyway. */
     throw new Error(
       `multiImagesToOutline parse failed: ${JSON.stringify(parsed.error.issues.slice(0, 3))}`,
     );
   }
 
-  /* Sort by index. We no longer enforce slides.length === images.length —
-     the AI is free to expand or compress based on actual content. */
-  const sorted = [...parsed.data.slides].sort((a, b) => a.index - b.index);
+  /* Per-slide tolerant cleanup. We safeParse each entry independently so
+     a single malformed slide cannot wipe out the whole response. Slides
+     are kept whenever they have a usable title; missing talkingPoints are
+     repaired by reusing the title (better than dropping the slide). */
+  type ParsedSlide = z.infer<typeof multiImageSlideSchema>;
+  const cleaned: ParsedSlide[] = [];
+  for (const rawSlide of parsed.data.slides) {
+    const r = multiImageSlideSchema.safeParse(rawSlide);
+    if (!r.success) continue;
+    const s = r.data;
+    if (!s.title) continue;
+    if (s.talkingPoints.length === 0) {
+      s.talkingPoints = [s.purpose || s.title];
+    }
+    cleaned.push(s);
+  }
+
+  /* Require at least 3 usable slides so a single uploaded image still
+     produces a real intro+content+closure deck. The caller catches this
+     and falls back to the safe blank-slides path with a logged warning. */
+  if (cleaned.length < 3) {
+    throw new Error(
+      `multiImagesToOutline: only ${cleaned.length} usable slides after cleanup (need ≥ 3)`,
+    );
+  }
+
+  /* Sort by index then reassign sequentially so duplicates / gaps don't
+     break downstream `s${index}` element IDs. */
+  const sorted = [...cleaned].sort((a, b) => (a.index || 0) - (b.index || 0));
 
   const cards: OutlineCard[] = sorted.map((s, i) => ({
     index: i + 1,
     kind: s.kind as SlideKind,
     title: s.title,
-    purpose: s.purpose ?? s.title,
+    purpose: s.purpose || s.title,
     talkingPoints: s.talkingPoints,
     interactionHint: (s.interactionHint ?? null) as InteractionHint,
     gameSuggestion: null,
