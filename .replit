@@ -28,26 +28,6 @@ timeoutMs = 20000
 [nix]
 channel = "stable-25_05"
 
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 8081
-
-[[ports]]
-localPort = 8082
-externalPort = 3002
-
-[[ports]]
-localPort = 18313
-externalPort = 80
-
-[[ports]]
-localPort = 18314
-externalPort = 3001
-
 [userenv]
 
 [userenv.production]
