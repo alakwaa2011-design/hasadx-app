@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Crown, GraduationCap, Users, ShieldCheck } from "lucide-react";
+import { Crown, Users, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -33,24 +33,18 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
   if (!isAdmin) return null;
 
-  const current: Surface = location.startsWith("/organizer")
+  const current: Surface | null = location.startsWith("/organizer")
     ? "organizer"
     : location.startsWith("/teacher/admin")
       ? "admin"
-      : "teacher";
+      : null;
 
   const items: {
     key: Surface;
     label: string;
     href: string;
-    Icon: typeof GraduationCap;
+    Icon: LucideIcon;
   }[] = [
-    {
-      key: "teacher",
-      label: lang === "ar" ? "كمعلّم" : "As teacher",
-      href: "/teacher",
-      Icon: GraduationCap,
-    },
     {
       key: "organizer",
       label: lang === "ar" ? "كمنظّم" : "As organizer",
