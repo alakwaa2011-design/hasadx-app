@@ -33,7 +33,6 @@ import { NotificationBell } from "./notification-bell";
 import { XpToastListener } from "./xp-toast-listener";
 import { AuthSideRail } from "./auth-side-rail";
 import { AdminUiSwitcher } from "./admin-ui-switcher";
-import { AdminPreviewBanner } from "./admin-preview-banner";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme-provider";
 import { useDarkMode } from "@/lib/dark-mode";
@@ -670,7 +669,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
         </header>
       )}
 
-      {!noHeader && <AdminPreviewBanner />}
+      {/* AdminPreviewBanner intentionally removed: the role switcher pills
+          in the header already make the current surface clear and the
+          banner created an awkward stripe between the green header and the
+          green sidebar. */}
 
       <main className="flex-1">{children}</main>
 
