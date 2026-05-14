@@ -253,6 +253,7 @@ function Router() {
         <Route path="/teacher/settings" component={TeacherSettings} />
         <Route path="/teacher/achievements" component={TeacherAchievements} />
         <Route path="/leaderboard" component={Leaderboard} />
+        <Route path="/t/:idOrSlug" component={TeacherPublicProfile} />
         <Route path="/u/:idOrSlug" component={TeacherPublicProfile} />
         <Route path="/teacher/games" component={TeacherGamesPage} />
         <Route path="/teacher/sessions" component={TeacherSessions} />

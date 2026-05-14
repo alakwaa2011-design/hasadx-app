@@ -57,7 +57,7 @@ export default function Leaderboard() {
         ) : (
           <div className="space-y-2">
             {rows.map((r) => {
-              const linkTo = `/u/${r.profileSlug ?? r.teacherId}`;
+              const linkTo = `/t/${r.profileSlug ?? r.teacherId}`;
               const bg = r.rank <= 3 ? RANK_BG[r.rank - 1] : "bg-white";
               return (
                 <Card key={r.teacherId} className={`p-3 flex items-center gap-3 border-2 ${bg}`}>

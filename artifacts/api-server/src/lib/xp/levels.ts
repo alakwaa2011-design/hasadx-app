@@ -8,13 +8,14 @@ export interface Level {
   minXp: number;
 }
 
+// Titles aligned with the Hasad rewards catalog (task #605 plan).
 export const LEVELS: readonly Level[] = [
-  { level: 1, nameAr: "مبتدئ", minXp: 0 },
-  { level: 2, nameAr: "ناشئ", minXp: 250 },
-  { level: 3, nameAr: "متمرّس", minXp: 750 },
-  { level: 4, nameAr: "خبير", minXp: 2000 },
-  { level: 5, nameAr: "بطل", minXp: 5000 },
-  { level: 6, nameAr: "أسطورة", minXp: 12000 },
+  { level: 1, nameAr: "معلّم مبتدئ", minXp: 0 },
+  { level: 2, nameAr: "معلّم نشط", minXp: 250 },
+  { level: 3, nameAr: "معلّم ملهم", minXp: 750 },
+  { level: 4, nameAr: "خبير حصاد", minXp: 2000 },
+  { level: 5, nameAr: "سفير حصاد", minXp: 5000 },
+  { level: 6, nameAr: "أسطورة حصاد", minXp: 12000 },
 ];
 
 export function levelForXp(totalXp: number): Level {
