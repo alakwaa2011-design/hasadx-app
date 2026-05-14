@@ -432,6 +432,41 @@ export default function ArenaContentAdmin() {
     );
   }
 
+  // Gate: admins only — regular teachers cannot manage Hasad Challenge content
+  if (isLoggedIn && !teacherLoading && !isAdmin) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center p-6" dir="rtl">
+          <div className="max-w-md w-full text-center bg-white rounded-2xl border-2 p-8" style={{ borderColor: "#C9A050" }}>
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "linear-gradient(135deg,#1E4D35,#225739)" }}>
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1E4D35" }}>خاص بالمسؤول</h1>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              إدارة محتوى تحدي حصاد مقتصرة على المسؤول فقط.
+              <br />
+              أسئلتك الخاصة محفوظة في حسابك وتظهر في اللعبة.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setLocation("/teacher")}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm"
+                style={{ background: "#1E4D35" }}
+              >
+                <ArrowRight className="w-4 h-4" /> العودة للوحة التحكم
+              </button>
+              <Link href="/game/arena">
+                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm border-2" style={{ borderColor: "#C9A050", color: "#1E4D35" }}>
+                  <Eye className="w-4 h-4" /> معاينة اللعبة
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div dir="rtl" className="min-h-[calc(100vh-4rem)]" style={{ background: BRAND.light }}>

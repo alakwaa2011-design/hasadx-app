@@ -65,9 +65,11 @@ router.post("/arena-content/categories", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    if (!(await isAdmin(teacherId))) {
+      return res.status(403).json({ error: "ممنوع — إدارة تحدي حصاد للمسؤول فقط" });
+    }
     const body = CategoryBody.parse(req.body);
-    const admin = await isAdmin(teacherId);
-    const isPublic = admin ? body.isPublic : false;
+    const isPublic = body.isPublic ?? false;
     const [row] = await db.insert(arenaCategoriesTable).values({
       ...body,
       isPublic,
@@ -151,10 +153,13 @@ router.post("/arena-content/activities", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
+    const admin = await isAdmin(teacherId);
+    if (!admin) {
+      return res.status(403).json({ error: "ممنوع — إدارة تحدي حصاد للمسؤول فقط" });
+    }
     const body = ActivityBody.parse(req.body);
     const [cat] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, body.categoryId));
     if (!cat) return res.status(404).json({ error: "Category not found" });
-    const admin = await isAdmin(teacherId);
     const ownsCat = cat.teacherId === teacherId || admin;
     if (!ownsCat) return res.status(403).json({ error: "Forbidden" });
     /* Enforce per-source feature flag — admins bypass so they can still

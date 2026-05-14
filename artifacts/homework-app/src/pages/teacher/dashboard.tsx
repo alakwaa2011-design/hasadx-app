@@ -2424,7 +2424,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           accent: BRAND.green,
           href: "/teacher/categories",
         },
-        {
+        ...(isAdmin ? [{
           icon: <Sparkles className="w-6 h-6" />,
           title: isAr ? "محتوى تحدي حصاد" : "Hasad Arena Content",
           desc: isAr
@@ -2432,7 +2432,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
             : "Manage Arena sections, sub-categories & questions with images and AI",
           accent: BRAND.green,
           href: "/teacher/arena-content",
-        },
+        }] : []),
         {
           icon: <Library className="w-6 h-6" />,
           title: isAr ? "مكتبة المعلم" : "Teacher Library",
