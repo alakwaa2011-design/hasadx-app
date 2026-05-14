@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationBell } from "./notification-bell";
 import { XpToastListener } from "./xp-toast-listener";
+import { XpPill } from "./xp-pill";
 import { AuthSideRail } from "./auth-side-rail";
 import { AdminUiSwitcher } from "./admin-ui-switcher";
 import { useI18n } from "@/lib/i18n";
@@ -223,6 +224,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         link so an explicit "Dashboard" button would be
                         redundant. */}
                     <AdminUiSwitcher />
+                    <XpPill />
                     <NotificationBell />
                     <div className="h-5 w-px bg-white/20 mx-1" />
 

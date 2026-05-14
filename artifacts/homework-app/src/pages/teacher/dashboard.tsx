@@ -6,7 +6,7 @@ import {
   useDeleteAssignment,
 } from "@workspace/api-client-react";
 import type { Assignment } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import { Link, useLocation } from "wouter";
@@ -63,6 +63,8 @@ import {
   Monitor,
   Brain,
   GraduationCap,
+  Flame,
+  ChevronRight,
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
@@ -91,6 +93,168 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+
+/* ── Sidebar XP Card ──────────────────────────────────────────────────────── */
+
+const API_BASE_DASH = import.meta.env.VITE_API_URL || "";
+
+const LEVEL_STARTS = [0, 250, 750, 2000, 5000, 12000];
+const LEVEL_EMOJIS = ["🌱", "📖", "✨", "🎯", "🚀", "🏆"];
+
+interface SidebarXpStats {
+  totalXp: number;
+  level: number;
+  levelNameAr: string;
+  nextLevelMinXp: number | null;
+  currentStreakDays: number;
+  badgeCount: number;
+}
+
+function xpPct(s: SidebarXpStats): number {
+  if (!s.nextLevelMinXp) return 100;
+  const start = LEVEL_STARTS[Math.min(s.level - 1, LEVEL_STARTS.length - 1)] ?? 0;
+  const span = s.nextLevelMinXp - start;
+  if (span <= 0) return 100;
+  return Math.min(100, Math.round(((s.totalXp - start) / span) * 100));
+}
+
+/** SVG donut arc — degrees helper */
+function arcPath(pct: number, r = 18): string {
+  const angle = (pct / 100) * 2 * Math.PI - Math.PI / 2;
+  const x = 22 + r * Math.cos(angle);
+  const y = 22 + r * Math.sin(angle);
+  const large = pct > 50 ? 1 : 0;
+  return pct >= 99.9
+    ? `M 22 4 A ${r} ${r} 0 1 1 21.99 4`
+    : `M 22 4 A ${r} ${r} 0 ${large} 1 ${x} ${y}`;
+}
+
+function SidebarXpCard({
+  setLocation,
+  isAr,
+}: {
+  setLocation: (path: string) => void;
+  isAr: boolean;
+}) {
+  const { data } = useQuery<SidebarXpStats>({
+    queryKey: ["sidebar-xp"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE_DASH}/api/me/achievements`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("xp");
+      const json = await res.json();
+      return json.stats as SidebarXpStats;
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  if (!data) return null;
+
+  const pct = xpPct(data);
+  const emoji = LEVEL_EMOJIS[Math.min(data.level - 1, LEVEL_EMOJIS.length - 1)];
+
+  return (
+    <div style={{ padding: "12px 12px 14px", borderTop: "1px solid rgba(255,255,255,0.08)", marginTop: "auto" }}>
+      <button
+        type="button"
+        onClick={() => setLocation("/teacher/achievements")}
+        style={{
+          width: "100%",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(201,160,80,0.35)",
+          borderRadius: 12,
+          padding: "12px 14px",
+          cursor: "pointer",
+          textAlign: "right" as const,
+          fontFamily: "inherit",
+          transition: "background 0.15s",
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* SVG donut ring */}
+          <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0 }}>
+            <svg viewBox="0 0 44 44" style={{ width: 44, height: 44, transform: "rotate(0deg)" }}>
+              {/* Track */}
+              <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="3.5" />
+              {/* Progress arc */}
+              <path
+                d={arcPath(pct)}
+                fill="none"
+                stroke="url(#xpGold)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+              <defs>
+                <linearGradient id="xpGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#E8A80E" />
+                  <stop offset="100%" stopColor="#F5C842" />
+                </linearGradient>
+              </defs>
+            </svg>
+            {/* Level number inside ring */}
+            <span style={{
+              position: "absolute", inset: 0, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: 13, fontWeight: 900, color: "#F5C842",
+            }}>
+              {data.level}
+            </span>
+          </div>
+
+          {/* Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)", marginBottom: 2 }}>
+              {emoji} {data.levelNameAr}
+            </p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: "#fff", marginBottom: 5 }}>
+              {data.totalXp.toLocaleString("ar-SA")}{" "}
+              <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
+                {isAr ? "نقطة XP" : "XP"}
+              </span>
+            </p>
+            {/* Progress bar */}
+            <div style={{ height: 4, background: "rgba(255,255,255,0.10)", borderRadius: 99, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 99,
+                background: "linear-gradient(90deg,#E8A80E,#F5C842)",
+                width: `${pct}%`,
+                transition: "width 0.6s ease",
+              }} />
+            </div>
+          </div>
+
+          <ChevronRight style={{ width: 14, height: 14, color: "rgba(255,255,255,0.35)", flexShrink: 0 }} />
+        </div>
+
+        {/* Streak + badges row */}
+        {(data.currentStreakDays > 0 || data.badgeCount > 0) && (
+          <div style={{ display: "flex", gap: 10, marginTop: 10, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            {data.currentStreakDays > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#fb923c" }}>
+                <Flame style={{ width: 11, height: 11 }} />
+                {data.currentStreakDays} {isAr ? "يوم متتالي" : "day streak"}
+              </span>
+            )}
+            {data.badgeCount > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: "#F5C842" }}>
+                🏅 {data.badgeCount} {isAr ? "شارة" : "badges"}
+              </span>
+            )}
+          </div>
+        )}
+
+        <p style={{ margin: "8px 0 0", fontSize: 10, fontWeight: 700, color: "rgba(201,160,80,0.8)", textAlign: "center" as const }}>
+          {isAr ? "عرض الإنجازات كاملة ←" : "View all achievements →"}
+        </p>
+      </button>
+    </div>
+  );
+}
+
+/* ── End Sidebar XP Card ──────────────────────────────────────────────────── */
 
 type TabId =
   | "overview"
@@ -697,6 +861,9 @@ export default function TeacherDashboard() {
               );
             })}
           </nav>
+
+          {/* ── XP / Achievements sidebar card ── */}
+          <SidebarXpCard setLocation={setLocation} isAr={isAr} />
 
         </aside>
 
