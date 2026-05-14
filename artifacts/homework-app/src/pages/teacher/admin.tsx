@@ -8,10 +8,11 @@ import {
   Mail, BarChart3, HelpCircle, UserX, Crown, Eye, ChevronDown, Copy,
   Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2, ToggleLeft, ToggleRight,
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
-  CreditCard, Activity, Reply, Send, Loader2, AtSign,
+  CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy,
 } from "lucide-react";
 import { BillingTab } from "@/components/admin/billing-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
+import { RewardsTab } from "@/components/admin/rewards-tab";
 import { useThemeUpdater } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -60,7 +61,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards";
 
 interface FeedbackItem {
   id: number;
@@ -1269,6 +1270,12 @@ export default function AdminPage() {
                 ],
               },
               {
+                title: lang === "ar" ? "التحفيز والمكافآت" : "Rewards",
+                tabs: [
+                  { key: "rewards" as Tab, label: lang === "ar" ? "التحفيز والمكافآت" : "Rewards", icon: Trophy },
+                ],
+              },
+              {
                 title: lang === "ar" ? "النظام" : "System",
                 tabs: [
                   { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: MessageSquare },
@@ -1320,6 +1327,8 @@ export default function AdminPage() {
         </div>
 
         {activeTab === "billing" && <BillingTab />}
+
+        {activeTab === "rewards" && <RewardsTab />}
 
         {activeTab === "online" && (
           <div className="space-y-4">

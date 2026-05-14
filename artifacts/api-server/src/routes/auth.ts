@@ -56,6 +56,7 @@ import { isSmsConfigured, sendSms } from "../lib/sms";
 import { parseUserAgent, lookupIpLocations } from "../lib/device-info";
 import { logIslamicEvent } from "../lib/islamicEvents";
 import { logActivity } from "../lib/activity-logger";
+import { awardXpAndNotify } from "../lib/xp/socket";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_GENERIC_RESPONSE = {
@@ -591,6 +592,11 @@ router.post("/auth/login", authLimiter, async (req, res) => {
     await db.update(teachersTable).set({ lastLoginAt: new Date() }).where(eq(teachersTable.id, teacher.id));
 
     void trackLoginDevice(req, teacher, req.log);
+    void awardXpAndNotify({
+      teacherId: teacher.id,
+      actionKey: "login.daily",
+      refId: `daily-login:${new Date().toISOString().slice(0, 10)}`,
+    });
 
     res.json({
       teacher: {

@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { awardXpAndNotify } from "../lib/xp/socket";
 import {
   parsePptx,
   parsePdf,
@@ -1049,6 +1050,12 @@ router.post("/presentations", requireTeacher, async (req, res) => {
         status: "draft",
       })
       .returning();
+    void awardXpAndNotify({
+      teacherId,
+      actionKey: "presentation.create",
+      refId: `presentation:${row.id}`,
+      reason: row.title,
+    });
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {

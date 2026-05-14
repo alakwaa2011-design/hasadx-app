@@ -13,6 +13,7 @@ import { publicReadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
 import { featureAccess } from "@workspace/billing";
 import { logActivity } from "../lib/activity-logger";
+import { awardXpAndNotify } from "../lib/xp/socket";
 
 const UpdateAssignmentBody = z.object({
   title: z.string().min(1).optional(),
@@ -345,6 +346,13 @@ router.post("/assignments", async (req, res) => {
       .from(teachersTable)
       .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
+
+    void awardXpAndNotify({
+      teacherId: req.session.teacherId,
+      actionKey: "assignment.create",
+      refId: `assignment:${assignment.id}`,
+      reason: assignment.title,
+    });
 
     res.status(201).json({
       id: assignment.id,

@@ -30,6 +30,11 @@ export const teachersTable = pgTable("teachers", {
   teamsAccessToken: text("teams_access_token"),
   teamsRefreshToken: text("teams_refresh_token"),
   teamsTokenExpiry: timestamp("teams_token_expiry"),
+  // Public profile / leaderboard fields (rewards system)
+  displaySchool: text("display_school"),
+  profileSlug: text("profile_slug").unique(),
+  publicProfileEnabled: boolean("public_profile_enabled").notNull().default(false),
+  showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });

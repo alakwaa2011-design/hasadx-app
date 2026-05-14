@@ -28,6 +28,9 @@ import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
 import { startLibraryOrphanSweepJob } from "./lib/library-orphan-sweep";
 import { startActivityLogsCleanupJob } from "./lib/activity-logger";
+import { XP_MIGRATION_SQL } from "@workspace/db";
+import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
+import { bindXpSocket } from "./lib/xp/socket";
 
 const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
 
@@ -302,9 +305,20 @@ setupMillionClassSocket(io);
 setupArenaSocket(io);
 setupHotSeatSocket(io);
 setupPresentationSocket(io);
+bindXpSocket(io);
+
+// Subscribe each authenticated teacher to their own room so XP toasts route correctly.
+io.on("connection", (socket) => {
+  const sess = (socket.request as any)?.session;
+  const teacherId = sess?.teacherId;
+  if (typeof teacherId === "number") {
+    socket.join(`teacher:${teacherId}`);
+  }
+});
 
 ensureSessionTable()
   .then(() => runSchemaMigrations())
+  .then(() => db.execute(XP_MIGRATION_SQL))
   .then(() => {
     httpServer.listen(port, () => {
       logger.info({ port }, "Server listening");
@@ -314,6 +328,7 @@ ensureSessionTable()
       seedIslamicIfNeeded();
       seedIslamicExtraIfNeeded();
       seedArenaContentIfNeeded();
+      seedXpDefaultsIfNeeded();
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
       startActivityLogsCleanupJob();

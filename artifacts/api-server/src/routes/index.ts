@@ -56,6 +56,7 @@ import presentationSessionsRouter from "./presentation-sessions";
 import studentTimelineRouter from "./student-timeline";
 import classroomRouter from "./classroom";
 import teamsRouter from "./teams";
+import xpRouter from "./xp";
 
 const router: IRouter = Router();
 
@@ -119,5 +120,6 @@ router.use(presentationSessionsRouter);
 router.use(studentTimelineRouter);
 router.use(classroomRouter);
 router.use(teamsRouter);
+router.use(xpRouter);
 
 export default router;

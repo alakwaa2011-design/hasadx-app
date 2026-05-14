@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, worksheetsTable, teachersTable } from "@workspace/db";
 import { and, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
+import { awardXpAndNotify } from "../lib/xp/socket";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
@@ -250,6 +251,12 @@ router.post("/worksheets", requireTeacher, async (req, res) => {
         settings: body.settings,
       })
       .returning();
+    void awardXpAndNotify({
+      teacherId,
+      actionKey: "worksheet.generate",
+      refId: `worksheet:${row.id}`,
+      reason: row.title,
+    });
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {

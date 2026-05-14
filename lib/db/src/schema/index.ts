@@ -69,3 +69,4 @@ export * from "./arena-categories";
 export * from "./arena-question-reports";
 export * from "./activity-logs";
 export * from "./arena-saves";
+export * from "./xp";

@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, lessonPlansTable, teachersTable } from "@workspace/db";
 import { and, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
+import { awardXpAndNotify } from "../lib/xp/socket";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
@@ -225,6 +226,12 @@ router.post("/lesson-plans", requireTeacher, async (req, res) => {
         settings: body.settings,
       })
       .returning();
+    void awardXpAndNotify({
+      teacherId,
+      actionKey: "lesson_plan.generate",
+      refId: `lesson_plan:${row.id}`,
+      reason: row.title,
+    });
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {

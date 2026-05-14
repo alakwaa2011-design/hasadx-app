@@ -195,8 +195,8 @@ export declare const videoSubmissionsTable: import("drizzle-orm/pg-core").PgTabl
 }>;
 export declare const insertVideoSubmissionSchema: z.ZodObject<{
     totalPoints: z.ZodOptional<z.ZodNumber>;
-    studentName: z.ZodString;
     studentClass: z.ZodOptional<z.ZodString>;
+    studentName: z.ZodString;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     score: z.ZodNumber;
     totalQuestions: z.ZodInt;
