@@ -130,7 +130,22 @@ export function Layout({ children, noHeader }: LayoutProps) {
     >
       {user && <XpToastListener />}
       {!noHeader && !isEmbed && (
-        <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <header
+          className={cn(
+            "sticky top-0 z-50 w-full border-b shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+            user
+              ? "border-[rgba(232,168,14,0.25)] text-white [--header-muted:rgba(255,255,255,0.75)]"
+              : "border-border/60 bg-card",
+          )}
+          style={
+            user
+              ? {
+                  background:
+                    "linear-gradient(180deg,#0d2a1c 0%,#0a2316 100%)",
+                }
+              : undefined
+          }
+        >
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-12 sm:h-14">
               {/* Compact brand: logo + name only. The subtitle was removed
@@ -159,7 +174,12 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover"
                   />
                 )}
-                <span className="text-sm sm:text-base font-extrabold text-foreground tracking-tight">
+                <span
+                  className={cn(
+                    "text-sm sm:text-base font-extrabold tracking-tight",
+                    user ? "text-white" : "text-foreground",
+                  )}
+                >
                   {lang === "ar" ? "حصاد" : "Hasad"}
                 </span>
               </Link>
@@ -167,7 +187,12 @@ export function Layout({ children, noHeader }: LayoutProps) {
               <nav className="hidden md:flex items-center gap-2.5">
                 <button
                   onClick={toggleLang}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors",
+                    user
+                      ? "text-white/75 hover:text-white hover:bg-white/10"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
                   <Languages className="w-3.5 h-3.5" />
                   {lang === "ar" ? "EN" : "عربي"}
@@ -182,57 +207,23 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         dashboard so it doesn't kick the user back to the
                         teacher screen. A separate "as Teacher" link lets
                         them jump to the teacher view on demand. */}
+                    {/* Dashboard link only — switching between teacher /
+                        organizer / admin surfaces is reserved for the
+                        AdminUiSwitcher pills below so an organizer can never
+                        slip into the teacher view by accident. */}
                     {location.startsWith("/organizer") ? (
-                      <>
-                        <Link
-                          href="/organizer"
-                          className={cn(
-                            "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                            location === "/organizer"
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                          )}
-                        >
-                          <LayoutDashboard className="w-4 h-4" />
-                          {lang === "ar" ? "لوحة المنظّم" : "Organizer Dashboard"}
-                        </Link>
-                        <Link
-                          href="/teacher"
-                          className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-md text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
-                        >
-                          <GraduationCap className="w-3.5 h-3.5" />
-                          {lang === "ar" ? "كمعلّم" : "As Teacher"}
-                        </Link>
-                      </>
-                    ) : location.startsWith("/teacher") &&
-                      !location.startsWith("/teacher/admin") &&
-                      (Boolean(user.isAdmin) || user.role === "admin") ? (
-                      <>
-                        <Link
-                          href="/teacher"
-                          className={cn(
-                            "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                            location === "/teacher" ||
-                              location.startsWith("/teacher/")
-                              ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                          )}
-                        >
-                          <LayoutDashboard className="w-4 h-4" />
-                          {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                        </Link>
-                        {/* Symmetric "as Organizer" jump link so an admin who
-                            entered the teacher view from the organizer page
-                            can return in one tap. Same amber styling as the
-                            "as Teacher" link on /organizer. */}
-                        <Link
-                          href="/organizer"
-                          className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-md text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {lang === "ar" ? "كمنظّم" : "As Organizer"}
-                        </Link>
-                      </>
+                      <Link
+                        href="/organizer"
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
+                          location === "/organizer"
+                            ? "bg-[#E8A80E]/15 text-[#E8A80E]"
+                            : "text-white/75 hover:text-white hover:bg-white/10",
+                        )}
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        {lang === "ar" ? "لوحة المنظّم" : "Organizer Dashboard"}
+                      </Link>
                     ) : (
                       <Link
                         href="/teacher"
@@ -240,8 +231,8 @@ export function Layout({ children, noHeader }: LayoutProps) {
                           "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
                           location === "/teacher" ||
                             location.startsWith("/teacher/")
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                            ? "bg-[#E8A80E]/15 text-[#E8A80E]"
+                            : "text-white/75 hover:text-white hover:bg-white/10",
                         )}
                       >
                         <LayoutDashboard className="w-4 h-4" />
@@ -250,15 +241,15 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     )}
                     <AdminUiSwitcher />
                     <NotificationBell />
-                    <div className="h-5 w-px bg-border mx-1" />
+                    <div className="h-5 w-px bg-white/20 mx-1" />
 
                     <div className="relative" ref={userMenuRef}>
                       <button
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md px-2 py-1.5 hover:bg-muted"
+                        className="flex items-center gap-1.5 text-sm font-medium text-white/85 hover:text-white transition-colors rounded-full px-2 py-1 hover:bg-white/10 border border-white/15"
                       >
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                          <User className="w-3.5 h-3.5" />
+                        <div className="w-7 h-7 rounded-full bg-[hsl(146,44%,24%)] text-white font-bold flex items-center justify-center">
+                          {user.name?.[0] ?? <User className="w-3.5 h-3.5" />}
                         </div>
                         <span className="hidden lg:inline">{user.name}</span>
                         <ChevronDown
@@ -419,14 +410,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 (location.startsWith("/teacher") ||
                   location.startsWith("/organizer")) ? (
                   <>
-                    <span className="text-sm font-extrabold text-foreground max-w-[34vw] truncate">
+                    <span className="text-sm font-extrabold text-white max-w-[34vw] truncate">
                       {user.name}
                     </span>
                     <AdminUiSwitcher variant="compact" />
                     <NotificationBell />
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                      className="p-2.5 text-foreground hover:bg-muted rounded-lg transition-colors"
+                      className="p-2.5 text-white hover:bg-white/10 rounded-lg transition-colors"
                       aria-label={lang === "ar" ? "القائمة" : "Menu"}
                     >
                       <motion.div

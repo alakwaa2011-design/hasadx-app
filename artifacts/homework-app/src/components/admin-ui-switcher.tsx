@@ -1,5 +1,12 @@
 import { useLocation } from "wouter";
-import { Crown, Users, ShieldCheck, type LucideIcon } from "lucide-react";
+import {
+  Crown,
+  GraduationCap,
+  Users,
+  ShieldCheck,
+  Check,
+  type LucideIcon,
+} from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -33,11 +40,11 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
   if (!isAdmin) return null;
 
-  const current: Surface | null = location.startsWith("/organizer")
+  const current: Surface = location.startsWith("/organizer")
     ? "organizer"
     : location.startsWith("/teacher/admin")
       ? "admin"
-      : null;
+      : "teacher";
 
   const items: {
     key: Surface;
@@ -46,14 +53,20 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
     Icon: LucideIcon;
   }[] = [
     {
+      key: "teacher",
+      label: lang === "ar" ? "معلّم" : "Teacher",
+      href: "/teacher",
+      Icon: GraduationCap,
+    },
+    {
       key: "organizer",
-      label: lang === "ar" ? "كمنظّم" : "As organizer",
+      label: lang === "ar" ? "منظّم" : "Organizer",
       href: "/organizer",
       Icon: Users,
     },
     {
       key: "admin",
-      label: lang === "ar" ? "كمسؤول" : "As admin",
+      label: lang === "ar" ? "مسؤول" : "Admin",
       href: "/teacher/admin",
       Icon: ShieldCheck,
     },
@@ -66,24 +79,13 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
       role="toolbar"
       aria-label={lang === "ar" ? "بدّل الواجهة (مسؤول)" : "Switch UI (admin)"}
       className={cn(
-        "flex items-center rounded-full border shadow-sm",
-        isCompact ? "gap-0.5 px-1 py-0.5" : "gap-1 px-1.5 py-1",
+        "flex items-center",
+        isCompact ? "gap-1" : "gap-1.5",
       )}
-      style={{
-        background: "rgba(20, 30, 25, 0.92)",
-        borderColor: "rgba(232,168,14,0.45)",
-      }}
     >
-      <span
-        className={cn(
-          "flex items-center font-extrabold uppercase tracking-wider select-none",
-          isCompact ? "px-1.5 text-[9px] gap-0.5" : "px-2 text-[10px] gap-1",
-        )}
-        style={{ color: "#E8A80E" }}
-      >
-        <Crown className="w-3 h-3" />
-        {!isCompact && (lang === "ar" ? "مسؤول" : "Admin")}
-      </span>
+      <Crown
+        className={cn("text-[#E8A80E]", isCompact ? "w-3 h-3" : "w-3.5 h-3.5")}
+      />
       {items.map((it) => {
         const active = it.key === current;
         const Icon = it.Icon;
@@ -98,16 +100,19 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
             aria-pressed={active}
             title={it.label}
             className={cn(
-              "inline-flex items-center font-bold rounded-full transition-all whitespace-nowrap",
+              "inline-flex items-center font-bold rounded-full transition-all whitespace-nowrap border",
               isCompact
-                ? "gap-1 px-2 py-1 text-[10px]"
-                : "gap-1.5 px-2.5 py-1 text-xs",
+                ? "gap-1 px-2.5 py-1 text-[10px]"
+                : "gap-1.5 px-3 py-1 text-xs",
             )}
             style={{
               background: active
                 ? "linear-gradient(135deg,#E8A80E 0%,#f5c34a 100%)"
                 : "transparent",
-              color: active ? "#1a4731" : "rgba(255,255,255,0.85)",
+              color: active ? "#1a4731" : "rgba(255,255,255,0.92)",
+              borderColor: active
+                ? "transparent"
+                : "rgba(232,168,14,0.55)",
               boxShadow: active
                 ? "0 4px 12px -4px rgba(232,168,14,0.55)"
                 : "none",
@@ -115,6 +120,14 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
           >
             <Icon className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
             <span>{it.label}</span>
+            {active && (
+              <Check
+                className={cn(
+                  "stroke-[3]",
+                  isCompact ? "w-2.5 h-2.5" : "w-3 h-3",
+                )}
+              />
+            )}
           </button>
         );
       })}
