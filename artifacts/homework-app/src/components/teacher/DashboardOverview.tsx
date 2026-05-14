@@ -318,7 +318,7 @@ export default function DashboardOverview({
                         {isAr ? "ابدأ رحلتك" : "Get started"}
                       </span>
                     </div>
-                    <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 900, color: C.text, margin: 0, marginBottom: 4, lineHeight: 1.25 }}>
+                    <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 800, color: C.text, margin: 0, marginBottom: 4, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                       {isAr ? `أهلاً ${firstName} في حصاد!` : `Welcome to Hasad, ${firstName}!`}
                     </h2>
                     <p style={{ fontSize: 12.5, color: C.muted, margin: 0 }}>

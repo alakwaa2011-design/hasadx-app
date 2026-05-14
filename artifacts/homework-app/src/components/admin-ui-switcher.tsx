@@ -90,12 +90,18 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
             : "gap-1.5 px-3 py-1.5 text-xs",
         )}
         style={{
-          background: "rgba(255,255,255,0.08)",
+          background: "rgba(255,255,255,0.06)",
           color: "rgba(255,255,255,0.95)",
-          borderColor: "rgba(201,160,80,0.6)",
+          borderColor: "#C9A050",
+          borderWidth: 1,
         }}
       >
-        <CurrentIcon className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
+        <CurrentIcon
+          className={cn(
+            "text-[#C9A050]",
+            isCompact ? "w-3 h-3" : "w-3.5 h-3.5",
+          )}
+        />
         <span>
           {lang === "ar"
             ? `الدور الحالي: ${currentItem.label}`
@@ -103,7 +109,7 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
         </span>
         <ChevronDown
           className={cn(
-            "transition-transform",
+            "text-[#C9A050] transition-transform",
             isCompact ? "w-3 h-3" : "w-3.5 h-3.5",
             open && "rotate-180",
           )}

@@ -188,13 +188,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
               </Link>
 
               {user && (
-                <div className="hidden md:flex flex-1 max-w-md mx-6">
-                  <div className="relative w-full">
+                <div className="hidden md:flex flex-1 justify-center px-10">
+                  <div className="relative w-full max-w-sm">
                     <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-white/55 pointer-events-none" />
                     <input
                       type="search"
                       placeholder={lang === "ar" ? "ابحث في حصاد…" : "Search Hasad…"}
-                      className="w-full h-9 ps-9 pe-3 rounded-full text-sm text-white placeholder:text-white/55 bg-white/10 border border-white/15 focus:outline-none focus:bg-white/15 focus:border-[#C9A050]/60 transition-colors"
+                      className="w-full h-9 ps-9 pe-3 rounded-full text-sm text-white placeholder:text-white/55 bg-black/20 border border-white/10 focus:outline-none focus:bg-black/25 focus:border-[#C9A050]/70 transition-colors"
                     />
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         <span className="hidden lg:inline">{user.name}</span>
                         <ChevronDown
                           className={cn(
-                            "w-3.5 h-3.5 transition-transform",
+                            "w-3.5 h-3.5 text-[#C9A050] transition-transform",
                             userMenuOpen && "rotate-180",
                           )}
                         />
