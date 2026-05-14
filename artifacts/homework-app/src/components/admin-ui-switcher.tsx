@@ -37,8 +37,10 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
-  if (!isAdmin) return null;
+  if (!user) return null;
+
+  const isAdmin = Boolean(user.isAdmin) || user.role === "admin";
+  const isOrganizer = isAdmin || user.role === "organizer";
 
   const current: Surface = location.startsWith("/organizer")
     ? "organizer"
@@ -46,31 +48,37 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
       ? "admin"
       : "teacher";
 
-  const items: {
+  const allItems: {
     key: Surface;
     label: string;
     href: string;
     Icon: LucideIcon;
+    visible: boolean;
   }[] = [
     {
       key: "teacher",
       label: lang === "ar" ? "معلّم" : "Teacher",
       href: "/teacher",
       Icon: GraduationCap,
+      visible: true,
     },
     {
       key: "organizer",
       label: lang === "ar" ? "منظّم" : "Organizer",
       href: "/organizer",
       Icon: Users,
+      visible: isOrganizer,
     },
     {
       key: "admin",
       label: lang === "ar" ? "مسؤول" : "Admin",
       href: "/teacher/admin",
       Icon: ShieldCheck,
+      visible: isAdmin,
     },
   ];
+  const items = allItems.filter((i) => i.visible);
+  if (items.length < 2) return null;
 
   const currentItem = items.find((i) => i.key === current) ?? items[0];
   const CurrentIcon = currentItem.Icon;
