@@ -138,7 +138,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
           )}
           style={
             user
-              ? { background: "hsl(145,45%,32%)" }
+              ? { background: "#1E4D35" }
               : undefined
           }
         >
