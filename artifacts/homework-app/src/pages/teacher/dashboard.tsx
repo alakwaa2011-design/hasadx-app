@@ -2424,15 +2424,19 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
           accent: BRAND.green,
           href: "/teacher/categories",
         },
-        ...(isAdmin ? [{
+        {
           icon: <Sparkles className="w-6 h-6" />,
-          title: isAr ? "محتوى تحدي حصاد" : "Hasad Arena Content",
+          title: isAr ? (isAdmin ? "محتوى تحدي حصاد" : "فئاتي في تحدي حصاد") : (isAdmin ? "Hasad Arena Content" : "My Arena Categories"),
           desc: isAr
-            ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
-            : "Manage Arena sections, sub-categories & questions with images and AI",
+            ? (isAdmin
+                ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"
+                : "أنشئ فئاتك وأسئلتك الخاصة في تحدي حصاد — تبقى في حسابك")
+            : (isAdmin
+                ? "Manage Arena sections, sub-categories & questions with images and AI"
+                : "Create your own private Arena categories and questions"),
           accent: BRAND.green,
           href: "/teacher/arena-content",
-        }] : []),
+        },
         {
           icon: <Library className="w-6 h-6" />,
           title: isAr ? "مكتبة المعلم" : "Teacher Library",

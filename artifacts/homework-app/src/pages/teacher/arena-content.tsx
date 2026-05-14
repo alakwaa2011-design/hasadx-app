@@ -361,8 +361,10 @@ export default function ArenaContentAdmin() {
     [cats],
   );
 
-  // Show ALL visible sections (own + public) — edit gating happens per-action
-  const visibleSections = sections;
+  // Admins see everything; teachers see only their own private sections
+  const visibleSections = isAdmin
+    ? sections
+    : sections.filter(c => c.teacherId === teacherId);
   const canEditCat = (c: DbArenaCategory | null | undefined) =>
     !!c && (isAdmin || c.teacherId === teacherId);
 
@@ -432,40 +434,7 @@ export default function ArenaContentAdmin() {
     );
   }
 
-  // Gate: admins only — regular teachers cannot manage Hasad Challenge content
-  if (isLoggedIn && !teacherLoading && !isAdmin) {
-    return (
-      <Layout>
-        <div className="min-h-[60vh] flex items-center justify-center p-6" dir="rtl">
-          <div className="max-w-md w-full text-center bg-white rounded-2xl border-2 p-8" style={{ borderColor: "#C9A050" }}>
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "linear-gradient(135deg,#1E4D35,#225739)" }}>
-              <Lock className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-extrabold mb-2" style={{ color: "#1E4D35" }}>خاص بالمسؤول</h1>
-            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              إدارة محتوى تحدي حصاد مقتصرة على المسؤول فقط.
-              <br />
-              أسئلتك الخاصة محفوظة في حسابك وتظهر في اللعبة.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => setLocation("/teacher")}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-white text-sm"
-                style={{ background: "#1E4D35" }}
-              >
-                <ArrowRight className="w-4 h-4" /> العودة للوحة التحكم
-              </button>
-              <Link href="/game/arena">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm border-2" style={{ borderColor: "#C9A050", color: "#1E4D35" }}>
-                  <Eye className="w-4 h-4" /> معاينة اللعبة
-                </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
+  // Non-admins see only their own private categories — handled via filter below
 
   return (
     <Layout>
@@ -486,7 +455,7 @@ export default function ArenaContentAdmin() {
                   إدارة محتوى تحدي حصاد
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  {isAdmin ? "أنت مدير — تدير المحتوى العام والخاص" : "تدير محتواك الخاص فقط"}
+                  {isAdmin ? "أنت مدير — تدير المحتوى العام والخاص" : "فئاتك الخاصة — محفوظة في حسابك وتظهر في لعبتك"}
                 </p>
               </div>
             </div>
@@ -506,6 +475,19 @@ export default function ArenaContentAdmin() {
               </Link>
             </div>
           </div>
+
+          {/* Info banner for non-admin teachers */}
+          {!isAdmin && (
+            <div className="mb-4 flex items-start gap-3 px-4 py-3 rounded-xl border text-sm" style={{ background: "#FFF9EC", borderColor: "#C9A050", color: "#7C5A0A" }}>
+              <span className="text-lg shrink-0">🔒</span>
+              <div>
+                <p className="font-bold mb-0.5">هذه فئاتك الخاصة فقط</p>
+                <p className="font-medium opacity-80">
+                  يمكنك إنشاء أقسام وأسئلة خاصة بك وتبقى في حسابك — المحتوى العام لتحدي حصاد يُدار من المسؤول فقط ولا يظهر هنا.
+                </p>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex items-center justify-center py-20">

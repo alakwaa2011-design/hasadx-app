@@ -65,11 +65,10 @@ router.post("/arena-content/categories", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
-    if (!(await isAdmin(teacherId))) {
-      return res.status(403).json({ error: "ممنوع — إدارة تحدي حصاد للمسؤول فقط" });
-    }
     const body = CategoryBody.parse(req.body);
-    const isPublic = body.isPublic ?? false;
+    const admin = await isAdmin(teacherId);
+    // Non-admins can create private categories only (owned by them, never public)
+    const isPublic = admin ? (body.isPublic ?? false) : false;
     const [row] = await db.insert(arenaCategoriesTable).values({
       ...body,
       isPublic,
@@ -153,15 +152,13 @@ router.post("/arena-content/activities", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ error: "Unauthorized" });
-    const admin = await isAdmin(teacherId);
-    if (!admin) {
-      return res.status(403).json({ error: "ممنوع — إدارة تحدي حصاد للمسؤول فقط" });
-    }
     const body = ActivityBody.parse(req.body);
     const [cat] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, body.categoryId));
     if (!cat) return res.status(404).json({ error: "Category not found" });
+    const admin = await isAdmin(teacherId);
+    // Non-admins can only add activities to their own private categories
     const ownsCat = cat.teacherId === teacherId || admin;
-    if (!ownsCat) return res.status(403).json({ error: "Forbidden" });
+    if (!ownsCat) return res.status(403).json({ error: "Forbidden — يمكنك فقط إضافة أسئلة لفئاتك الخاصة" });
     /* Enforce per-source feature flag — admins bypass so they can still
        moderate even when a source is globally disabled. The frontend
        picks the source via the `source` query param; legacy callers
