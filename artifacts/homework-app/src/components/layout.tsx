@@ -138,14 +138,17 @@ export function Layout({ children, noHeader }: LayoutProps) {
           )}
           style={
             user
-              ? {
-                  background:
-                    "linear-gradient(180deg,#0d2a1c 0%,#0a2316 100%)",
-                }
+              ? { background: "hsl(145,45%,32%)" }
               : undefined
           }
         >
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              user
+                ? "w-full ps-2 pe-3 sm:pe-4 lg:pe-6"
+                : "container mx-auto px-4 sm:px-6 lg:px-8",
+            )}
+          >
             <div className="flex items-center justify-between h-12 sm:h-14">
               {/* Compact brand: logo + name only. The subtitle was removed
                   to free vertical space on dashboards where every pixel
