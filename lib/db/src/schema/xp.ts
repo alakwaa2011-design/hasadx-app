@@ -323,11 +323,12 @@ export const emailOutboxTable = pgTable(
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
     sentAt: timestamp("sent_at"),
+    nextAttemptAt: timestamp("next_attempt_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => ({
     uniqKindRef: uniqueIndex("email_outbox_uniq_kind_ref").on(t.kind, t.refKey),
-    statusIdx: index("email_outbox_status_idx").on(t.status, t.createdAt),
+    statusIdx: index("email_outbox_status_idx").on(t.status, t.nextAttemptAt),
   }),
 );
 
@@ -542,10 +543,14 @@ CREATE TABLE IF NOT EXISTS email_outbox (
   attempts     INTEGER NOT NULL DEFAULT 0,
   last_error   TEXT,
   sent_at      TIMESTAMP,
+  next_attempt_at TIMESTAMP,
   created_at   TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE email_outbox ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMP;
+UPDATE email_outbox SET next_attempt_at = created_at WHERE next_attempt_at IS NULL AND status = 'pending';
 CREATE UNIQUE INDEX IF NOT EXISTS email_outbox_uniq_kind_ref ON email_outbox(kind, ref_key);
-CREATE INDEX IF NOT EXISTS email_outbox_status_idx ON email_outbox(status, created_at);
+DROP INDEX IF EXISTS email_outbox_status_idx;
+CREATE INDEX IF NOT EXISTS email_outbox_status_idx ON email_outbox(status, next_attempt_at);
 
 CREATE TABLE IF NOT EXISTS teacher_followers (
   id          SERIAL PRIMARY KEY,

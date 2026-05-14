@@ -31,6 +31,7 @@ import { startActivityLogsCleanupJob } from "./lib/activity-logger";
 import { XP_MIGRATION_SQL } from "@workspace/db";
 import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
 import { bindXpSocket } from "./lib/xp/socket";
+import { startEmailOutboxWorker } from "./lib/xp/email-worker";
 
 const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
 
@@ -332,6 +333,7 @@ ensureSessionTable()
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
       startActivityLogsCleanupJob();
+      startEmailOutboxWorker();
     });
   })
   .catch((err) => {
