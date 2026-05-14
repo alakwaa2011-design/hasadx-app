@@ -76,11 +76,46 @@ export function emitXpToTeacher(
  * Use this from instrumentation points instead of calling awardXp directly,
  * unless you specifically don't want a socket emit.
  */
-import { awardXp, type AwardXpInput } from "./engine";
+import {
+  awardXp,
+  runAwardXpSideEffects,
+  type AwardXpInput,
+  type XpTx,
+} from "./engine";
 export async function awardXpAndNotify(
   input: AwardXpInput,
 ): Promise<AwardXpResult> {
   const result = await awardXp(input);
   if (result.awarded) emitXpToTeacher(input.teacherId, result);
   return result;
+}
+
+/**
+ * Award XP atomically with the caller's open transaction. The ledger row +
+ * stats update commit together with the originating action — if the outer
+ * tx rolls back, no XP is granted.
+ *
+ * Returns a `runAfterCommit` callback the caller MUST invoke after their
+ * transaction commits. That callback runs the post-grant side-effects
+ * (badges, threshold rewards, quests) and emits the debounced socket event.
+ * Skipping it just means the socket toast is missed — the XP itself is safe.
+ */
+export async function awardXpInTxAndNotifyAfterCommit(
+  tx: XpTx,
+  input: AwardXpInput,
+): Promise<{ result: AwardXpResult; runAfterCommit: () => Promise<void> }> {
+  const result = await awardXp(input, { tx });
+  const runAfterCommit = async (): Promise<void> => {
+    if (!result.awarded) return;
+    const { newBadgeKeys, newGrantIds } = await runAwardXpSideEffects(
+      input.teacherId,
+      input.actionKey,
+    );
+    emitXpToTeacher(input.teacherId, {
+      ...result,
+      newBadgeKeys,
+      newGrantIds,
+    });
+  };
+  return { result, runAfterCommit };
 }

@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import {
   parsePptx,
   parsePdf,
@@ -1035,27 +1035,31 @@ router.post("/presentations", requireTeacher, async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     const body = createBody.parse(req.body);
-    const [row] = await db
-      .insert(presentationsTable)
-      .values({
+    const { row, runAfterCommit } = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(presentationsTable)
+        .values({
+          teacherId,
+          title: body.title,
+          language: body.language,
+          subject: body.subject ?? null,
+          gradeLevel: body.gradeLevel ?? null,
+          theme: body.theme ?? pickServerDefaultTheme(),
+          pattern: body.pattern ?? "solid",
+          coverEmoji: body.coverEmoji ?? "📚",
+          slides: defaultSlides(body.language),
+          status: "draft",
+        })
+        .returning();
+      const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
         teacherId,
-        title: body.title,
-        language: body.language,
-        subject: body.subject ?? null,
-        gradeLevel: body.gradeLevel ?? null,
-        theme: body.theme ?? pickServerDefaultTheme(),
-        pattern: body.pattern ?? "solid",
-        coverEmoji: body.coverEmoji ?? "📚",
-        slides: defaultSlides(body.language),
-        status: "draft",
-      })
-      .returning();
-    void awardXpAndNotify({
-      teacherId,
-      actionKey: "presentation.create",
-      refId: `presentation:${row.id}`,
-      reason: row.title,
+        actionKey: "presentation.create",
+        refId: `presentation:${inserted.id}`,
+        reason: inserted.title,
+      });
+      return { row: inserted, runAfterCommit: xp.runAfterCommit };
     });
+    void runAfterCommit();
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, lessonPlansTable, teachersTable } from "@workspace/db";
 import { and, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
@@ -213,25 +213,29 @@ router.post("/lesson-plans", requireTeacher, async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
     const body = upsertBody.parse(req.body);
-    const [row] = await db
-      .insert(lessonPlansTable)
-      .values({
+    const { row, runAfterCommit } = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(lessonPlansTable)
+        .values({
+          teacherId,
+          title: body.title,
+          language: body.language,
+          gradeLevel: body.gradeLevel ?? null,
+          subject: body.subject ?? null,
+          durationMinutes: body.durationMinutes ?? null,
+          sections: body.sections,
+          settings: body.settings,
+        })
+        .returning();
+      const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
         teacherId,
-        title: body.title,
-        language: body.language,
-        gradeLevel: body.gradeLevel ?? null,
-        subject: body.subject ?? null,
-        durationMinutes: body.durationMinutes ?? null,
-        sections: body.sections,
-        settings: body.settings,
-      })
-      .returning();
-    void awardXpAndNotify({
-      teacherId,
-      actionKey: "lesson_plan.generate",
-      refId: `lesson_plan:${row.id}`,
-      reason: row.title,
+        actionKey: "lesson_plan.generate",
+        refId: `lesson_plan:${inserted.id}`,
+        reason: inserted.title,
+      });
+      return { row: inserted, runAfterCommit: xp.runAfterCommit };
     });
+    void runAfterCommit();
     res.status(201).json(row);
   } catch (err: any) {
     if (err?.issues) {

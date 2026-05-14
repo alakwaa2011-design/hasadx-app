@@ -153,10 +153,211 @@ async function findActiveSeasonId(): Promise<number | null> {
 }
 
 /**
+ * A drizzle transaction handle, structurally compatible with `db` for the
+ * subset of methods we use (insert/select/update). Callers that already own
+ * an open transaction can pass it via `awardXp(input, { tx })` so the XP
+ * ledger row is committed atomically with the originating action.
+ */
+export type XpTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+type GrantOutcome =
+  | { capped: "daily" | "weekly" }
+  | { duplicate: true }
+  | {
+      duplicate: false;
+      oldLevel: number;
+      newLevel: number;
+      newTotal: number;
+      currentStreak: number;
+      longestStreak: number;
+    };
+
+/**
+ * Run the ledger insert + stats update on the given tx. Does NOT run the
+ * post-grant side-effects (badges, threshold rewards, quests) — those must
+ * happen after the outer transaction commits, via runAwardXpSideEffects().
+ */
+async function grantOnTx(
+  tx: XpTx,
+  input: AwardXpInput,
+  rule: EffectiveRule,
+  points: number,
+  refId: string,
+  dailyBucket: string,
+  weeklyBucket: string,
+  seasonId: number | null,
+): Promise<GrantOutcome> {
+  // 1. Lock the teacher row first. This serialises all awards for the
+  //    same teacher across processes — every cap check below is read
+  //    after this lock, so SUMs are stable for the duration of the tx.
+  const todayDate = riyadhDateString();
+  // Ensure the stats row exists exactly once, then lock it. Doing the
+  // upsert first guarantees the FOR UPDATE select below always finds a
+  // row, so we never hit a duplicate-PK insert later in the flow.
+  await tx
+    .insert(teacherStatsTable)
+    .values({ teacherId: input.teacherId })
+    .onConflictDoNothing({ target: teacherStatsTable.teacherId });
+  const [existing] = await tx
+    .select()
+    .from(teacherStatsTable)
+    .where(eq(teacherStatsTable.teacherId, input.teacherId))
+    .limit(1)
+    .for("update");
+
+  // 2. Cap checks under the lock. Sum by created_at range so daily and
+  //    weekly caps are checked independently regardless of which bucket
+  //    string the inserted row carries.
+  if (rule.dailyCap != null) {
+    const [{ sum: daySum }] = await tx
+      .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+      .from(xpEventsTable)
+      .where(
+        and(
+          eq(xpEventsTable.teacherId, input.teacherId),
+          eq(xpEventsTable.actionKey, input.actionKey),
+          sql`${xpEventsTable.createdAt} >= (now() AT TIME ZONE 'Asia/Riyadh')::date AT TIME ZONE 'Asia/Riyadh'`,
+        ),
+      );
+    if ((daySum ?? 0) + points > rule.dailyCap) {
+      return { capped: "daily" };
+    }
+  }
+  if (rule.weeklyCap != null) {
+    const [{ sum: weekSum }] = await tx
+      .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+      .from(xpEventsTable)
+      .where(
+        and(
+          eq(xpEventsTable.teacherId, input.teacherId),
+          eq(xpEventsTable.actionKey, input.actionKey),
+          sql`${xpEventsTable.createdAt} >= date_trunc('week', (now() AT TIME ZONE 'Asia/Riyadh')) AT TIME ZONE 'Asia/Riyadh'`,
+        ),
+      );
+    if ((weekSum ?? 0) + points > rule.weeklyCap) {
+      return { capped: "weekly" };
+    }
+  }
+
+  // 3. Insert ledger; if conflict on (teacher,action,ref_id) → duplicate.
+  //    cap_bucket carries weekly when present, otherwise daily — used for
+  //    informational lookups only; the cap math above does not rely on it.
+  const inserted = await tx
+    .insert(xpEventsTable)
+    .values({
+      teacherId: input.teacherId,
+      actionKey: input.actionKey,
+      refId,
+      delta: points,
+      reason: input.reason,
+      seasonId: seasonId ?? undefined,
+      capBucket: rule.weeklyCap != null ? weeklyBucket : dailyBucket,
+      metadata: input.metadata,
+    })
+    .onConflictDoNothing({
+      target: [
+        xpEventsTable.teacherId,
+        xpEventsTable.actionKey,
+        xpEventsTable.refId,
+      ],
+    })
+    .returning({ id: xpEventsTable.id });
+
+  if (inserted.length === 0) {
+    return { duplicate: true };
+  }
+
+  // Streak math
+  let currentStreak = 1;
+  let longestStreak = Math.max(1, existing?.longestStreakDays ?? 0);
+  if (existing?.lastActiveDate) {
+    const last = String(existing.lastActiveDate);
+    if (last === todayDate) {
+      currentStreak = existing.currentStreakDays;
+    } else {
+      // yesterday in Riyadh tz?
+      const yest = riyadhDateString(new Date(Date.now() - 86_400_000));
+      if (last === yest) {
+        currentStreak = existing.currentStreakDays + 1;
+      } else {
+        currentStreak = 1;
+      }
+    }
+  }
+  longestStreak = Math.max(longestStreak, currentStreak);
+
+  const oldTotal = existing?.totalXp ?? 0;
+  const newTotal = oldTotal + points;
+  const newSeasonXp = (existing?.seasonXp ?? 0) + (seasonId ? points : 0);
+  const oldLevel = existing?.level ?? 1;
+  const newLevel = levelForXp(newTotal).level;
+
+  // Stats row is guaranteed to exist (upserted+locked above), so always
+  // UPDATE — never INSERT a second time, which would raise PK conflict.
+  await tx
+    .update(teacherStatsTable)
+    .set({
+      totalXp: newTotal,
+      seasonXp: newSeasonXp,
+      level: newLevel,
+      currentStreakDays: currentStreak,
+      longestStreakDays: longestStreak,
+      lastActiveDate: todayDate,
+      updatedAt: new Date(),
+    })
+    .where(eq(teacherStatsTable.teacherId, input.teacherId));
+
+  return {
+    duplicate: false,
+    oldLevel,
+    newLevel,
+    newTotal,
+    currentStreak,
+    longestStreak,
+  };
+}
+
+/**
+ * Run the post-grant side-effects (badges, threshold rewards, quests).
+ * Each helper is idempotent. Intended to be called AFTER the originating
+ * transaction commits so a downstream failure can't roll back the XP grant.
+ */
+export async function runAwardXpSideEffects(
+  teacherId: number,
+  actionKey: string,
+): Promise<{ newBadgeKeys: string[]; newGrantIds: number[] }> {
+  const [newBadgeKeys, newGrantIds] = await Promise.all([
+    evaluateAndAwardBadges(teacherId).catch((err) => {
+      logger.error({ err, teacherId }, "badge eval failed");
+      return [] as string[];
+    }),
+    evaluateAndGrantThresholdRewards(teacherId).catch((err) => {
+      logger.error({ err, teacherId }, "threshold reward eval failed");
+      return [] as number[];
+    }),
+  ]);
+
+  void progressQuestsForAction(teacherId, actionKey).catch((err) =>
+    logger.error({ err }, "quest progress failed"),
+  );
+
+  return { newBadgeKeys, newGrantIds };
+}
+
+/**
  * Award XP to a teacher. Safe to call multiple times with the same refId —
  * the unique index on (teacher_id, action_key, ref_id) makes it a no-op.
+ *
+ * When `opts.tx` is provided, the ledger insert + stats update run on the
+ * caller's open transaction (atomic with the originating action). In that
+ * mode this function does NOT run badge/threshold/quest side-effects — the
+ * caller is responsible for invoking `runAwardXpSideEffects()` after their
+ * transaction commits (typically via `awardXpInTxAndNotifyAfterCommit()`).
  */
-export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
+export async function awardXp(
+  input: AwardXpInput,
+  opts?: { tx?: XpTx },
+): Promise<AwardXpResult> {
   if (!isXpEnabled()) return { awarded: false, delta: 0, reason: "disabled" };
 
   try {
@@ -180,140 +381,34 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
     const weeklyBucket = `${riyadhWeekString()}:${input.actionKey}`;
     const seasonId = await findActiveSeasonId();
 
-    // Insert ledger row + update stats inside a single transaction.
+    // Insert ledger row + update stats inside a transaction.
     // Cap checks happen INSIDE the tx, after we lock the teacher_stats row,
     // so concurrent awards for the same teacher are serialised and cannot
-    // over-grant past the cap.
-    const result = await db.transaction(async (tx) => {
-      // 1. Lock the teacher row first. This serialises all awards for the
-      //    same teacher across processes — every cap check below is read
-      //    after this lock, so SUMs are stable for the duration of the tx.
-      const todayDate = riyadhDateString();
-      // Ensure the stats row exists exactly once, then lock it. Doing the
-      // upsert first guarantees the FOR UPDATE select below always finds a
-      // row, so we never hit a duplicate-PK insert later in the flow.
-      await tx
-        .insert(teacherStatsTable)
-        .values({ teacherId: input.teacherId })
-        .onConflictDoNothing({ target: teacherStatsTable.teacherId });
-      const [existing] = await tx
-        .select()
-        .from(teacherStatsTable)
-        .where(eq(teacherStatsTable.teacherId, input.teacherId))
-        .limit(1)
-        .for("update");
-
-      // 2. Cap checks under the lock. Sum by created_at range so daily and
-      //    weekly caps are checked independently regardless of which bucket
-      //    string the inserted row carries.
-      if (rule.dailyCap != null) {
-        const [{ sum: daySum }] = await tx
-          .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
-          .from(xpEventsTable)
-          .where(
-            and(
-              eq(xpEventsTable.teacherId, input.teacherId),
-              eq(xpEventsTable.actionKey, input.actionKey),
-              sql`${xpEventsTable.createdAt} >= (now() AT TIME ZONE 'Asia/Riyadh')::date AT TIME ZONE 'Asia/Riyadh'`,
-            ),
-          );
-        if ((daySum ?? 0) + points > rule.dailyCap) {
-          return { capped: "daily" } as const;
-        }
-      }
-      if (rule.weeklyCap != null) {
-        const [{ sum: weekSum }] = await tx
-          .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
-          .from(xpEventsTable)
-          .where(
-            and(
-              eq(xpEventsTable.teacherId, input.teacherId),
-              eq(xpEventsTable.actionKey, input.actionKey),
-              sql`${xpEventsTable.createdAt} >= date_trunc('week', (now() AT TIME ZONE 'Asia/Riyadh')) AT TIME ZONE 'Asia/Riyadh'`,
-            ),
-          );
-        if ((weekSum ?? 0) + points > rule.weeklyCap) {
-          return { capped: "weekly" } as const;
-        }
-      }
-
-      // 3. Insert ledger; if conflict on (teacher,action,ref_id) → duplicate.
-      //    cap_bucket carries weekly when present, otherwise daily — used for
-      //    informational lookups only; the cap math above does not rely on it.
-      const inserted = await tx
-        .insert(xpEventsTable)
-        .values({
-          teacherId: input.teacherId,
-          actionKey: input.actionKey,
+    // over-grant past the cap. When the caller supplied their own tx, reuse
+    // it so the XP ledger row commits atomically with their action.
+    const result: GrantOutcome = opts?.tx
+      ? await grantOnTx(
+          opts.tx,
+          input,
+          rule,
+          points,
           refId,
-          delta: points,
-          reason: input.reason,
-          seasonId: seasonId ?? undefined,
-          capBucket: rule.weeklyCap != null ? weeklyBucket : dailyBucket,
-          metadata: input.metadata,
-        })
-        .onConflictDoNothing({
-          target: [
-            xpEventsTable.teacherId,
-            xpEventsTable.actionKey,
-            xpEventsTable.refId,
-          ],
-        })
-        .returning({ id: xpEventsTable.id });
-
-      if (inserted.length === 0) {
-        return { duplicate: true } as const;
-      }
-
-      // Streak math
-      let currentStreak = 1;
-      let longestStreak = Math.max(1, existing?.longestStreakDays ?? 0);
-      if (existing?.lastActiveDate) {
-        const last = String(existing.lastActiveDate);
-        if (last === todayDate) {
-          currentStreak = existing.currentStreakDays;
-        } else {
-          // yesterday in Riyadh tz?
-          const yest = riyadhDateString(new Date(Date.now() - 86_400_000));
-          if (last === yest) {
-            currentStreak = existing.currentStreakDays + 1;
-          } else {
-            currentStreak = 1;
-          }
-        }
-      }
-      longestStreak = Math.max(longestStreak, currentStreak);
-
-      const oldTotal = existing?.totalXp ?? 0;
-      const newTotal = oldTotal + points;
-      const newSeasonXp = (existing?.seasonXp ?? 0) + (seasonId ? points : 0);
-      const oldLevel = existing?.level ?? 1;
-      const newLevel = levelForXp(newTotal).level;
-
-      // Stats row is guaranteed to exist (upserted+locked above), so always
-      // UPDATE — never INSERT a second time, which would raise PK conflict.
-      await tx
-        .update(teacherStatsTable)
-        .set({
-          totalXp: newTotal,
-          seasonXp: newSeasonXp,
-          level: newLevel,
-          currentStreakDays: currentStreak,
-          longestStreakDays: longestStreak,
-          lastActiveDate: todayDate,
-          updatedAt: new Date(),
-        })
-        .where(eq(teacherStatsTable.teacherId, input.teacherId));
-
-      return {
-        duplicate: false,
-        oldLevel,
-        newLevel,
-        newTotal,
-        currentStreak,
-        longestStreak,
-      } as const;
-    });
+          dailyBucket,
+          weeklyBucket,
+          seasonId,
+        )
+      : await db.transaction((tx) =>
+          grantOnTx(
+            tx,
+            input,
+            rule,
+            points,
+            refId,
+            dailyBucket,
+            weeklyBucket,
+            seasonId,
+          ),
+        );
 
     if ("capped" in result) {
       return {
@@ -326,25 +421,21 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
       return { awarded: false, delta: 0, reason: "duplicate" };
     }
 
-    // Side-effects (badges, thresholds, quests) — outside the main tx so a
-    // failure here doesn't roll back the XP grant. Each helper is idempotent.
-    const [newBadgeKeys, newGrantIds] = await Promise.all([
-      evaluateAndAwardBadges(input.teacherId).catch((err) => {
-        logger.error({ err, teacherId: input.teacherId }, "badge eval failed");
-        return [] as string[];
-      }),
-      evaluateAndGrantThresholdRewards(input.teacherId).catch((err) => {
-        logger.error(
-          { err, teacherId: input.teacherId },
-          "threshold reward eval failed",
-        );
-        return [] as number[];
-      }),
-    ]);
-
-    void progressQuestsForAction(input.teacherId, input.actionKey).catch((err) =>
-      logger.error({ err }, "quest progress failed"),
-    );
+    // Side-effects (badges, thresholds, quests) only run when we own the
+    // transaction. When the caller passed their own tx, they must invoke
+    // runAwardXpSideEffects() AFTER their tx commits — otherwise we'd
+    // potentially mutate persisted state for a transaction that later rolls
+    // back. The socket helper awardXpInTxAndNotifyAfterCommit() handles this.
+    let newBadgeKeys: string[] = [];
+    let newGrantIds: number[] = [];
+    if (!opts?.tx) {
+      const sideEffects = await runAwardXpSideEffects(
+        input.teacherId,
+        input.actionKey,
+      );
+      newBadgeKeys = sideEffects.newBadgeKeys;
+      newGrantIds = sideEffects.newGrantIds;
+    }
 
     return {
       awarded: true,
@@ -358,6 +449,11 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
     };
   } catch (err) {
     logger.error({ err, input }, "awardXp failed");
+    // When the caller passed their own tx, propagate so the outer
+    // transaction rolls back — XP must commit atomically with the action.
+    // For fire-and-forget callers (no tx), preserve the legacy soft-fail
+    // behaviour so a transient XP failure can't break unrelated requests.
+    if (opts?.tx) throw err;
     return { awarded: false, delta: 0, reason: "error" };
   }
 }

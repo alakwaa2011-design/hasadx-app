@@ -13,7 +13,7 @@ import { publicReadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
 import { featureAccess } from "@workspace/billing";
 import { logActivity } from "../lib/activity-logger";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 
 const UpdateAssignmentBody = z.object({
   title: z.string().min(1).optional(),
@@ -259,7 +259,8 @@ router.post("/assignments", async (req, res) => {
       effectiveAccessCode = body.accessCode.trim().toUpperCase();
     }
 
-    const [assignment] = await db
+    const { assignment, runAfterCommit } = await db.transaction(async (tx) => {
+    const [assignmentRow] = await tx
       .insert(assignmentsTable)
       .values({
         title: body.title,
@@ -315,14 +316,14 @@ router.post("/assignments", async (req, res) => {
         listeningVoice: body.listeningVoice || null,
         listeningSpeed: body.listeningSpeed || null,
         listeningSettings: body.listeningSettings ? JSON.stringify(body.listeningSettings) : null,
-        teacherId: req.session.teacherId,
+        teacherId,
       })
       .returning();
 
     if (body.questions && body.questions.length > 0) {
-      await db.insert(questionsTable).values(
+      await tx.insert(questionsTable).values(
         body.questions.map((q) => ({
-          assignmentId: assignment.id,
+          assignmentId: assignmentRow.id,
           questionType: q.questionType || "mcq",
           text: q.text,
           optionA: q.optionA || null,
@@ -341,18 +342,22 @@ router.post("/assignments", async (req, res) => {
       );
     }
 
+      const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
+        teacherId,
+        actionKey: "assignment.create",
+        refId: `assignment:${assignmentRow.id}`,
+        reason: assignmentRow.title,
+      });
+      return { assignment: assignmentRow, runAfterCommit: xp.runAfterCommit };
+    });
+
     const [teacher] = await db
       .select()
       .from(teachersTable)
       .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
 
-    void awardXpAndNotify({
-      teacherId: req.session.teacherId,
-      actionKey: "assignment.create",
-      refId: `assignment:${assignment.id}`,
-      reason: assignment.title,
-    });
+    void runAfterCommit();
 
     res.status(201).json({
       id: assignment.id,

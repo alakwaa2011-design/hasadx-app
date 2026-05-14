@@ -56,7 +56,7 @@ import { isSmsConfigured, sendSms } from "../lib/sms";
 import { parseUserAgent, lookupIpLocations } from "../lib/device-info";
 import { logIslamicEvent } from "../lib/islamicEvents";
 import { logActivity } from "../lib/activity-logger";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpAndNotify, awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const RESET_GENERIC_RESPONSE = {
@@ -589,14 +589,21 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
     }
 
-    await db.update(teachersTable).set({ lastLoginAt: new Date() }).where(eq(teachersTable.id, teacher.id));
+    const { runAfterCommit } = await db.transaction(async (tx) => {
+      await tx
+        .update(teachersTable)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(teachersTable.id, teacher.id));
+      const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
+        teacherId: teacher.id,
+        actionKey: "login.daily",
+        refId: `daily-login:${new Date().toISOString().slice(0, 10)}`,
+      });
+      return { runAfterCommit: xp.runAfterCommit };
+    });
 
     void trackLoginDevice(req, teacher, req.log);
-    void awardXpAndNotify({
-      teacherId: teacher.id,
-      actionKey: "login.daily",
-      refId: `daily-login:${new Date().toISOString().slice(0, 10)}`,
-    });
+    void runAfterCommit();
 
     res.json({
       teacher: {
