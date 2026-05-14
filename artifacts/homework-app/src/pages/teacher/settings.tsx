@@ -10,7 +10,7 @@ import { Card, Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, User, Mail, Phone, Save, ArrowRight, ArrowLeft,
   Shield, Lock, Eye, EyeOff, Settings, Sun, Moon, Monitor,
-  BookOpen, Crown, GraduationCap,
+  BookOpen, Crown, GraduationCap, Globe, Link as LinkIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -42,6 +42,12 @@ export default function TeacherSettings() {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+  // Public-profile / rewards visibility settings.
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(true);
+  const [displaySchool, setDisplaySchool] = useState("");
+  const [profileSlug, setProfileSlug] = useState("");
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
   const currentRole: TeacherProfileRole = user?.role ?? "teacher";
   const isAdminUser = Boolean(user?.isAdmin);
   // Treat any user with isAdmin=true as admin in the UI even if the legacy
@@ -82,8 +88,73 @@ export default function TeacherSettings() {
       setName(user.name || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
+      const u = user as typeof user & {
+        publicProfileEnabled?: boolean | null;
+        showOnLeaderboard?: boolean | null;
+        displaySchool?: string | null;
+        profileSlug?: string | null;
+      };
+      setPublicProfileEnabled(Boolean(u.publicProfileEnabled));
+      setShowOnLeaderboard(u.showOnLeaderboard !== false);
+      setDisplaySchool(u.displaySchool ?? "");
+      setProfileSlug(u.profileSlug ?? "");
     }
   }, [user]);
+
+  const handleSavePublicProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedSlug = profileSlug.trim().toLowerCase();
+    if (trimmedSlug && !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(trimmedSlug)) {
+      toast.error(
+        lang === "ar"
+          ? "المعرّف يجب أن يحتوي حروفاً إنجليزية صغيرة وأرقاماً وشُرَطاً فقط"
+          : "Slug can only contain lowercase letters, numbers, and dashes",
+      );
+      return;
+    }
+    if (trimmedSlug && (trimmedSlug.length < 3 || trimmedSlug.length > 40)) {
+      toast.error(
+        lang === "ar"
+          ? "المعرّف يجب أن يكون بين 3 و40 حرفاً"
+          : "Slug must be between 3 and 40 characters",
+      );
+      return;
+    }
+    setSavingPrivacy(true);
+    try {
+      const body: Record<string, unknown> = {
+        publicProfileEnabled,
+        showOnLeaderboard,
+        displaySchool: displaySchool.trim() ? displaySchool.trim() : null,
+      };
+      const previousSlug =
+        ((user as { profileSlug?: string | null } | undefined)?.profileSlug ?? "")
+          .trim()
+          .toLowerCase();
+      if (trimmedSlug !== previousSlug) {
+        body.profileSlug = trimmedSlug ? trimmedSlug : null;
+      }
+      const res = await fetch(`${API_BASE}/api/me/privacy`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed");
+      toast.success(
+        lang === "ar" ? "تم حفظ إعدادات الملف العام" : "Public profile settings saved",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (lang === "ar" ? "تعذّر حفظ الإعدادات" : "Failed to save settings"),
+      );
+    } finally {
+      setSavingPrivacy(false);
+    }
+  };
 
   useEffect(() => {
     if (error) setLocation("/login");
@@ -365,6 +436,125 @@ export default function TeacherSettings() {
                 {lang === "ar" ? "جارٍ التحديث..." : "Updating..."}
               </div>
             )}
+          </Card>
+
+          {/* Public Profile Section */}
+          <Card className="p-6 sm:p-8 shadow-xl border-t-4 border-t-emerald-500 mb-6">
+            <h2 className="text-lg font-extrabold text-foreground mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5 text-emerald-500" />
+              {lang === "ar" ? "الملف العام" : "Public Profile"}
+            </h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              {lang === "ar"
+                ? "تحكّم في كيفية ظهور ملفك العام ولوحة المتصدرين."
+                : "Control how your public profile and leaderboard listing appear."}
+            </p>
+            <form onSubmit={handleSavePublicProfile} className="space-y-5">
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-5 w-5 accent-emerald-600"
+                  checked={publicProfileEnabled}
+                  onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                  disabled={savingPrivacy}
+                />
+                <span>
+                  <span className="block font-bold text-sm text-foreground">
+                    {lang === "ar" ? "تفعيل الملف العام" : "Enable public profile"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "اسمح للزوار والمعلمين الآخرين بزيارة صفحتك العامة."
+                      : "Allow visitors and other teachers to view your public profile page."}
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-5 w-5 accent-emerald-600"
+                  checked={showOnLeaderboard}
+                  onChange={(e) => setShowOnLeaderboard(e.target.checked)}
+                  disabled={savingPrivacy}
+                />
+                <span>
+                  <span className="block font-bold text-sm text-foreground">
+                    {lang === "ar" ? "الظهور في المتصدرين" : "Show on leaderboard"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "اعرض اسمك ونقاطك في لوحة الترتيب العامة."
+                      : "Display your name and XP on the public leaderboard."}
+                  </span>
+                </span>
+              </label>
+
+              <div>
+                <Label htmlFor="settings-school">
+                  {lang === "ar" ? "اسم المدرسة (اختياري)" : "School name (optional)"}
+                </Label>
+                <Input
+                  id="settings-school"
+                  type="text"
+                  value={displaySchool}
+                  onChange={(e) => setDisplaySchool(e.target.value.slice(0, 120))}
+                  maxLength={120}
+                  placeholder={lang === "ar" ? "مثال: مدرسة الأمل" : "e.g. Hope School"}
+                  disabled={savingPrivacy}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="settings-slug">
+                  {lang === "ar" ? "معرّف الملف العام (اختياري)" : "Profile slug (optional)"}
+                </Label>
+                <div className="relative">
+                  <LinkIcon className={`absolute ${iconPos} top-3.5 w-5 h-5 text-muted-foreground`} />
+                  <Input
+                    id="settings-slug"
+                    type="text"
+                    value={profileSlug}
+                    onChange={(e) =>
+                      setProfileSlug(
+                        e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]/g, "")
+                          .slice(0, 40),
+                      )
+                    }
+                    maxLength={40}
+                    placeholder="my-name"
+                    className={`${inputPad} text-left`}
+                    dir="ltr"
+                    disabled={savingPrivacy}
+                  />
+                </div>
+                {profileSlug && (
+                  <p className="text-xs text-muted-foreground mt-1.5" dir="ltr">
+                    /t/{profileSlug}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full py-3 gap-2 bg-emerald-600 hover:bg-emerald-700"
+                disabled={savingPrivacy}
+              >
+                {savingPrivacy ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    {lang === "ar" ? "جارٍ الحفظ..." : "Saving..."}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    {lang === "ar" ? "حفظ إعدادات الملف العام" : "Save public profile"}
+                  </>
+                )}
+              </Button>
+            </form>
           </Card>
 
           {/* Account Section */}

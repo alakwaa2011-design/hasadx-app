@@ -16,6 +16,7 @@ import {
   seasonsTable,
   seasonResultsTable,
   emailOutboxTable,
+  teacherFollowersTable,
 } from "@workspace/db";
 import { and, desc, eq, sql, inArray, isNull, gte } from "drizzle-orm";
 import { z } from "zod";
@@ -252,14 +253,22 @@ router.patch("/me/privacy", async (req, res) => {
   try {
     const teacherId = await requireTeacher(req, res);
     if (!teacherId) return;
+    const slugSchema = z
+      .string()
+      .min(3)
+      .max(40)
+      .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "صيغة المعرّف غير صالحة");
     const schema = z.object({
       publicProfileEnabled: z.boolean().optional(),
       showOnLeaderboard: z.boolean().optional(),
       displaySchool: z.string().max(120).nullable().optional(),
+      profileSlug: slugSchema.nullable().optional(),
     }).strict();
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ message: "بيانات غير صحيحة" });
+      res.status(400).json({
+        message: parsed.error.issues[0]?.message ?? "بيانات غير صحيحة",
+      });
       return;
     }
     const update: Record<string, unknown> = {};
@@ -269,14 +278,36 @@ router.patch("/me/privacy", async (req, res) => {
       update.showOnLeaderboard = parsed.data.showOnLeaderboard;
     if (parsed.data.displaySchool !== undefined)
       update.displaySchool = parsed.data.displaySchool;
+    if (parsed.data.profileSlug !== undefined)
+      update.profileSlug = parsed.data.profileSlug;
     if (Object.keys(update).length === 0) {
       res.json({ ok: true });
       return;
     }
-    await db
-      .update(teachersTable)
-      .set(update)
-      .where(eq(teachersTable.id, teacherId));
+    // If slug is being set, ensure it isn't taken by someone else.
+    if (parsed.data.profileSlug) {
+      const [taken] = await db
+        .select({ id: teachersTable.id })
+        .from(teachersTable)
+        .where(eq(teachersTable.profileSlug, parsed.data.profileSlug))
+        .limit(1);
+      if (taken && taken.id !== teacherId) {
+        res.status(409).json({ message: "المعرّف مستخدم من قبل معلم آخر" });
+        return;
+      }
+    }
+    try {
+      await db
+        .update(teachersTable)
+        .set(update)
+        .where(eq(teachersTable.id, teacherId));
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        res.status(409).json({ message: "المعرّف مستخدم من قبل معلم آخر" });
+        return;
+      }
+      throw err;
+    }
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err, "PATCH /me/privacy failed");
@@ -363,6 +394,12 @@ async function publicProfileHandler(
       res.status(404).json({ message: "الملف غير موجود أو غير عام" });
       return;
     }
+    const viewerId: number | null =
+      typeof (req as any).session?.teacherId === "number"
+        ? (req as any).session.teacherId
+        : null;
+    const isOwner = viewerId !== null && viewerId === t.id;
+
     const [stats] = await db
       .select()
       .from(teacherStatsTable)
@@ -382,6 +419,54 @@ async function publicProfileHandler(
       .where(eq(teacherBadgesTable.teacherId, t.id))
       .orderBy(desc(teacherBadgesTable.awardedAt));
 
+    const [{ count: followerCount }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(teacherFollowersTable)
+      .where(eq(teacherFollowersTable.teacherId, t.id));
+
+    let isFollowing = false;
+    if (viewerId !== null && !isOwner) {
+      const [f] = await db
+        .select({ id: teacherFollowersTable.id })
+        .from(teacherFollowersTable)
+        .where(
+          and(
+            eq(teacherFollowersTable.teacherId, t.id),
+            eq(teacherFollowersTable.followerId, viewerId),
+          ),
+        )
+        .limit(1);
+      isFollowing = !!f;
+    }
+
+    let followers:
+      | Array<{
+          id: number;
+          name: string;
+          profileSlug: string | null;
+          displaySchool: string | null;
+          followedAt: Date;
+        }>
+      | undefined;
+    if (isOwner) {
+      followers = await db
+        .select({
+          id: teachersTable.id,
+          name: teachersTable.name,
+          profileSlug: teachersTable.profileSlug,
+          displaySchool: teachersTable.displaySchool,
+          followedAt: teacherFollowersTable.createdAt,
+        })
+        .from(teacherFollowersTable)
+        .innerJoin(
+          teachersTable,
+          eq(teachersTable.id, teacherFollowersTable.followerId),
+        )
+        .where(eq(teacherFollowersTable.teacherId, t.id))
+        .orderBy(desc(teacherFollowersTable.createdAt))
+        .limit(100);
+    }
+
     res.json({
       teacher: {
         id: t.id,
@@ -398,6 +483,11 @@ async function publicProfileHandler(
         badgeCount: stats?.badgeCount ?? 0,
       },
       badges: earned,
+      followerCount,
+      isOwner,
+      isFollowing,
+      canFollow: viewerId !== null && !isOwner,
+      ...(followers ? { followers } : {}),
     });
   } catch (err) {
     req.log.error(err, "GET /profile/:idOrSlug failed");
@@ -406,6 +496,88 @@ async function publicProfileHandler(
 }
 router.get("/profile/:idOrSlug", publicProfileHandler);
 router.get("/t/:idOrSlug", publicProfileHandler);
+
+/** Resolve a profile id-or-slug to a teacher id, ensuring the profile is
+ *  public. Used by the follow/unfollow endpoints. */
+async function resolvePublicTeacherId(
+  idOrSlug: string,
+): Promise<number | null> {
+  const isNumeric = /^\d+$/.test(idOrSlug);
+  const [t] = await db
+    .select({
+      id: teachersTable.id,
+      publicProfileEnabled: teachersTable.publicProfileEnabled,
+    })
+    .from(teachersTable)
+    .where(
+      isNumeric
+        ? eq(teachersTable.id, Number(idOrSlug))
+        : eq(teachersTable.profileSlug, idOrSlug),
+    )
+    .limit(1);
+  if (!t || !t.publicProfileEnabled) return null;
+  return t.id;
+}
+
+router.post("/profile/:idOrSlug/follow", async (req, res) => {
+  try {
+    const followerId = await requireTeacher(req, res);
+    if (!followerId) return;
+    const targetId = await resolvePublicTeacherId(String(req.params.idOrSlug ?? ""));
+    if (!targetId) {
+      res.status(404).json({ message: "الملف غير موجود أو غير عام" });
+      return;
+    }
+    if (targetId === followerId) {
+      res.status(400).json({ message: "لا يمكنك متابعة نفسك" });
+      return;
+    }
+    await db
+      .insert(teacherFollowersTable)
+      .values({ teacherId: targetId, followerId })
+      .onConflictDoNothing();
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(teacherFollowersTable)
+      .where(eq(teacherFollowersTable.teacherId, targetId));
+    res.json({ ok: true, isFollowing: true, followerCount: count });
+  } catch (err) {
+    req.log.error(err, "POST /profile/:idOrSlug/follow failed");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
+router.delete("/profile/:idOrSlug/follow", async (req, res) => {
+  try {
+    const followerId = await requireTeacher(req, res);
+    if (!followerId) return;
+    const targetId = await resolvePublicTeacherId(String(req.params.idOrSlug ?? ""));
+    if (!targetId) {
+      res.status(404).json({ message: "الملف غير موجود أو غير عام" });
+      return;
+    }
+    if (targetId === followerId) {
+      res.status(400).json({ message: "لا يمكنك إلغاء متابعة نفسك" });
+      return;
+    }
+    await db
+      .delete(teacherFollowersTable)
+      .where(
+        and(
+          eq(teacherFollowersTable.teacherId, targetId),
+          eq(teacherFollowersTable.followerId, followerId),
+        ),
+      );
+    const [{ count }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(teacherFollowersTable)
+      .where(eq(teacherFollowersTable.teacherId, targetId));
+    res.json({ ok: true, isFollowing: false, followerCount: count });
+  } catch (err) {
+    req.log.error(err, "DELETE /profile/:idOrSlug/follow failed");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
 
 /* ──────────────────────────────────────────────────────────────────────── */
 /* Admin console                                                            */

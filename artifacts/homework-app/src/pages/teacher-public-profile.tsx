@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, Link } from "wouter";
 import { Layout } from "@/components/layout";
-import { Card } from "@/components/ui-elements";
-import { Trophy, Flame, Star } from "lucide-react";
+import { Card, Button } from "@/components/ui-elements";
+import { Trophy, Flame, Star, Users, UserPlus, UserMinus, Loader2 } from "lucide-react";
+import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+interface FollowerSummary {
+  id: number;
+  name: string;
+  profileSlug: string | null;
+  displaySchool: string | null;
+  followedAt: string;
+}
 
 interface ProfileResp {
   teacher: { id: number; name: string; displaySchool: string | null; profileSlug: string | null };
@@ -17,6 +26,11 @@ interface ProfileResp {
     badgeCount: number;
   };
   badges: Array<{ nameAr: string; icon: string; tier: string; awardedAt: string }>;
+  followerCount: number;
+  isOwner: boolean;
+  isFollowing: boolean;
+  canFollow: boolean;
+  followers?: FollowerSummary[];
 }
 
 export default function TeacherPublicProfile() {
@@ -24,12 +38,16 @@ export default function TeacherPublicProfile() {
   const [data, setData] = useState<ProfileResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [following, setFollowing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/profile/${encodeURIComponent(idOrSlug)}`);
+        const res = await fetch(
+          `${API_BASE}/api/profile/${encodeURIComponent(idOrSlug)}`,
+          { credentials: "include" },
+        );
         if (res.status === 404) {
           if (!cancelled) setNotFound(true);
           return;
@@ -47,6 +65,37 @@ export default function TeacherPublicProfile() {
       cancelled = true;
     };
   }, [idOrSlug]);
+
+  const toggleFollow = async () => {
+    if (!data || following) return;
+    setFollowing(true);
+    const wasFollowing = data.isFollowing;
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/profile/${encodeURIComponent(idOrSlug)}/follow`,
+        {
+          method: wasFollowing ? "DELETE" : "POST",
+          credentials: "include",
+        },
+      );
+      const j = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        toast.error("سجّل الدخول لتتمكن من المتابعة");
+        return;
+      }
+      if (!res.ok) throw new Error(j?.message || "Failed");
+      setData({
+        ...data,
+        isFollowing: !!j.isFollowing,
+        followerCount: typeof j.followerCount === "number" ? j.followerCount : data.followerCount,
+      });
+      toast.success(j.isFollowing ? "تمت المتابعة" : "تم إلغاء المتابعة");
+    } catch (err: any) {
+      toast.error(err?.message || "تعذّر تنفيذ الإجراء");
+    } finally {
+      setFollowing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -74,11 +123,43 @@ export default function TeacherPublicProfile() {
             {data.stats.levelNameAr} · المستوى {data.stats.level}
           </p>
           <p className="text-gray-700">{data.stats.totalXp.toLocaleString("ar")} نقطة خبرة</p>
-          <div className="flex justify-center gap-6 mt-4">
+          <div className="flex justify-center gap-6 mt-4 flex-wrap">
             <Stat icon={<Trophy className="text-amber-600" />} label="شارات" value={data.stats.badgeCount} />
             <Stat icon={<Flame className="text-orange-500" />} label="السلسلة" value={`${data.stats.currentStreakDays}`} />
             <Stat icon={<Star className="text-yellow-500" />} label="الأطول" value={`${data.stats.longestStreakDays}`} />
+            <Stat icon={<Users className="text-emerald-600" />} label="متابعون" value={data.followerCount.toLocaleString("ar")} />
           </div>
+          {data.canFollow && (
+            <div className="mt-5">
+              <Button
+                onClick={toggleFollow}
+                disabled={following}
+                className={
+                  data.isFollowing
+                    ? "gap-2 bg-gray-200 text-gray-800 hover:bg-gray-300"
+                    : "gap-2 bg-indigo-600 hover:bg-indigo-700"
+                }
+              >
+                {following ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : data.isFollowing ? (
+                  <UserMinus className="w-4 h-4" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
+                {data.isFollowing ? "إلغاء المتابعة" : "متابعة"}
+              </Button>
+            </div>
+          )}
+          {data.isOwner && (
+            <p className="mt-4 text-xs text-gray-500">
+              هذا ملفك العام. يمكنك تعديل إعداداته من{" "}
+              <Link href="/teacher/settings" className="text-indigo-700 underline">
+                الإعدادات
+              </Link>
+              .
+            </p>
+          )}
         </Card>
         {data.badges.length > 0 && (
           <Card className="p-5">
@@ -91,6 +172,41 @@ export default function TeacherPublicProfile() {
                 </div>
               ))}
             </div>
+          </Card>
+        )}
+        {data.isOwner && (
+          <Card className="p-5">
+            <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-600" />
+              المتابعون ({data.followerCount.toLocaleString("ar")})
+            </h3>
+            {data.followers && data.followers.length > 0 ? (
+              <ul className="divide-y divide-gray-200">
+                {data.followers.map((f) => {
+                  const target = f.profileSlug ?? String(f.id);
+                  return (
+                    <li key={f.id} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/t/${target}`}
+                          className="font-semibold text-indigo-700 hover:underline truncate block"
+                        >
+                          {f.name}
+                        </Link>
+                        {f.displaySchool && (
+                          <p className="text-xs text-gray-500 truncate">{f.displaySchool}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500 shrink-0">
+                        {new Date(f.followedAt).toLocaleDateString("ar")}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-600">لا يوجد متابعون بعد. شارك ملفك ليبدأ الناس بمتابعتك!</p>
+            )}
           </Card>
         )}
       </div>

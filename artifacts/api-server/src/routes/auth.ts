@@ -647,6 +647,10 @@ router.get("/auth/me", async (req, res) => {
     role: teacher.role,
     aiTier: teacher.aiTier,
     hasProDesign: teacher.hasProDesign,
+    displaySchool: teacher.displaySchool,
+    profileSlug: teacher.profileSlug,
+    publicProfileEnabled: teacher.publicProfileEnabled,
+    showOnLeaderboard: teacher.showOnLeaderboard,
   });
 });
 
