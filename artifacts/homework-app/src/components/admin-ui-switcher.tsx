@@ -1,10 +1,12 @@
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Crown,
   GraduationCap,
   Users,
   ShieldCheck,
   Check,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
@@ -16,26 +18,24 @@ import {
 } from "@/lib/admin-last-surface";
 
 interface AdminUiSwitcherProps {
-  /**
-   * `header` (default) renders a compact pill row designed to live inside the
-   * top navigation bar. `compact` is the same idea but shrinks the labels for
-   * tight mobile headers.
-   */
   variant?: "header" | "compact";
 }
 
-/**
- * Admin-only quick switcher between the three main UI surfaces
- * (teacher dashboard / organizer dashboard / admin view). Renders nothing for
- * non-admins. The active surface is auto-detected from the current URL so
- * callers don't need to thread a `current` prop through every page.
- *
- * Designed to be mounted inside the top header of the shared Layout.
- */
 export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   const { lang } = useI18n();
   const [location, setLocation] = useLocation();
   const { data: user } = useGetCurrentTeacher();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
   const isAdmin = Boolean(user?.isAdmin) || user?.role === "admin";
   if (!isAdmin) return null;
@@ -72,65 +72,89 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
     },
   ];
 
+  const currentItem = items.find((i) => i.key === current) ?? items[0];
+  const CurrentIcon = currentItem.Icon;
   const isCompact = variant === "compact";
 
   return (
-    <div
-      role="toolbar"
-      aria-label={lang === "ar" ? "بدّل الواجهة (مسؤول)" : "Switch UI (admin)"}
-      className={cn(
-        "flex items-center",
-        isCompact ? "gap-1" : "gap-1.5",
-      )}
-    >
-      <Crown
-        className={cn("text-[#E8A80E]", isCompact ? "w-3 h-3" : "w-3.5 h-3.5")}
-      />
-      {items.map((it) => {
-        const active = it.key === current;
-        const Icon = it.Icon;
-        return (
-          <button
-            key={it.key}
-            type="button"
-            onClick={() => {
-              setAdminLastSurface(it.key);
-              if (!active) setLocation(it.href);
-            }}
-            aria-pressed={active}
-            title={it.label}
-            className={cn(
-              "inline-flex items-center font-bold rounded-full transition-all whitespace-nowrap border",
-              isCompact
-                ? "gap-1 px-2.5 py-1 text-[10px]"
-                : "gap-1.5 px-3 py-1 text-xs",
-            )}
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex items-center font-bold rounded-full transition-all whitespace-nowrap border",
+          isCompact
+            ? "gap-1 px-2.5 py-1 text-[10px]"
+            : "gap-1.5 px-3 py-1.5 text-xs",
+        )}
+        style={{
+          background: "rgba(255,255,255,0.08)",
+          color: "rgba(255,255,255,0.95)",
+          borderColor: "rgba(201,160,80,0.6)",
+        }}
+      >
+        <CurrentIcon className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
+        <span>
+          {lang === "ar"
+            ? `الدور الحالي: ${currentItem.label}`
+            : `Current role: ${currentItem.label}`}
+        </span>
+        <ChevronDown
+          className={cn(
+            "transition-transform",
+            isCompact ? "w-3 h-3" : "w-3.5 h-3.5",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.12 }}
+            role="menu"
+            className="absolute end-0 top-full mt-2 w-56 rounded-xl py-1.5 z-50 shadow-lg"
             style={{
-              background: active
-                ? "linear-gradient(135deg,#E8A80E 0%,#f5c34a 100%)"
-                : "transparent",
-              color: active ? "#1a4731" : "rgba(255,255,255,0.92)",
-              borderColor: active
-                ? "transparent"
-                : "rgba(232,168,14,0.55)",
-              boxShadow: active
-                ? "0 4px 12px -4px rgba(232,168,14,0.55)"
-                : "none",
+              background: "#ffffff",
+              border: "1px solid #C9A050",
             }}
           >
-            <Icon className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
-            <span>{it.label}</span>
-            {active && (
-              <Check
-                className={cn(
-                  "stroke-[3]",
-                  isCompact ? "w-2.5 h-2.5" : "w-3 h-3",
-                )}
-              />
-            )}
-          </button>
-        );
-      })}
+            {items.map((it) => {
+              const active = it.key === current;
+              const Icon = it.Icon;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setAdminLastSurface(it.key);
+                    setOpen(false);
+                    if (!active) setLocation(it.href);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-bold transition-colors text-right",
+                    active
+                      ? "bg-[#FFF7E3] text-[#1E4D35]"
+                      : "text-[#1E4D35] hover:bg-[#F7F4EC]",
+                  )}
+                >
+                  <Icon className="w-4 h-4 text-[#C9A050]" />
+                  <span className="flex-1">{it.label}</span>
+                  {active && (
+                    <Check className="w-4 h-4 stroke-[3] text-[#C9A050]" />
+                  )}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

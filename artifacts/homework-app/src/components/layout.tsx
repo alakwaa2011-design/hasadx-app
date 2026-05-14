@@ -26,6 +26,7 @@ import {
   Monitor,
   Zap,
   Star,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -131,14 +132,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
       {!noHeader && !isEmbed && (
         <header
           className={cn(
-            "sticky top-0 z-50 w-full border-b shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+            "sticky top-0 z-50 w-full border-b shadow-sm",
             user
-              ? "border-[rgba(232,168,14,0.25)] text-white [--header-muted:rgba(255,255,255,0.75)]"
+              ? "text-white [--header-muted:rgba(255,255,255,0.75)]"
               : "border-border/60 bg-card",
           )}
           style={
             user
-              ? { background: "#1E4D35" }
+              ? { background: "#1E4D35", borderBottomColor: "#C9A050" }
               : undefined
           }
         >
@@ -186,6 +187,19 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 </span>
               </Link>
 
+              {user && (
+                <div className="hidden md:flex flex-1 max-w-md mx-6">
+                  <div className="relative w-full">
+                    <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-white/55 pointer-events-none" />
+                    <input
+                      type="search"
+                      placeholder={lang === "ar" ? "ابحث في حصاد…" : "Search Hasad…"}
+                      className="w-full h-9 ps-9 pe-3 rounded-full text-sm text-white placeholder:text-white/55 bg-white/10 border border-white/15 focus:outline-none focus:bg-white/15 focus:border-[#C9A050]/60 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
               <nav className="hidden md:flex items-center gap-2.5">
                 <button
                   onClick={toggleLang}
@@ -203,44 +217,11 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 {isLoading ? (
                   <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 ) : user ? (
-                  <div className="flex items-center gap-1.5">
-                    {/* Context-aware Dashboard link.
-                        On /organizer*, the button stays on the organizer
-                        dashboard so it doesn't kick the user back to the
-                        teacher screen. A separate "as Teacher" link lets
-                        them jump to the teacher view on demand. */}
-                    {/* Dashboard link only — switching between teacher /
-                        organizer / admin surfaces is reserved for the
-                        AdminUiSwitcher pills below so an organizer can never
-                        slip into the teacher view by accident. */}
-                    {location.startsWith("/organizer") ? (
-                      <Link
-                        href="/organizer"
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                          location === "/organizer"
-                            ? "bg-[#E8A80E]/15 text-[#E8A80E]"
-                            : "text-white/75 hover:text-white hover:bg-white/10",
-                        )}
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        {lang === "ar" ? "لوحة المنظّم" : "Organizer Dashboard"}
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/teacher"
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-md transition-colors",
-                          location === "/teacher" ||
-                            location.startsWith("/teacher/")
-                            ? "bg-[#E8A80E]/15 text-[#E8A80E]"
-                            : "text-white/75 hover:text-white hover:bg-white/10",
-                        )}
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        {lang === "ar" ? "لوحة التحكم" : "Dashboard"}
-                      </Link>
-                    )}
+                  <div className="flex items-center gap-2">
+                    {/* Role switcher dropdown (admins only). Hasad logo on
+                        the start side already serves as the home/dashboard
+                        link so an explicit "Dashboard" button would be
+                        redundant. */}
                     <AdminUiSwitcher />
                     <NotificationBell />
                     <div className="h-5 w-px bg-white/20 mx-1" />
@@ -248,9 +229,9 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     <div className="relative" ref={userMenuRef}>
                       <button
                         onClick={() => setUserMenuOpen(!userMenuOpen)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-white/85 hover:text-white transition-colors rounded-full px-2 py-1 hover:bg-white/10 border border-white/15"
+                        className="flex items-center gap-1.5 text-sm font-medium text-white/90 hover:text-white transition-colors rounded-full px-2 py-1 hover:bg-white/10 border border-[#C9A050]/60"
                       >
-                        <div className="w-7 h-7 rounded-full bg-[hsl(146,44%,24%)] text-white font-bold flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-[hsl(146,44%,24%)] text-white font-bold flex items-center justify-center ring-2 ring-[#C9A050]">
                           {user.name?.[0] ?? <User className="w-3.5 h-3.5" />}
                         </div>
                         <span className="hidden lg:inline">{user.name}</span>
