@@ -334,10 +334,15 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
-/** Public profile by slug or numeric id. */
-router.get("/profile/:idOrSlug", async (req, res) => {
+/** Public profile by slug or numeric id. Mounted at both /profile/:idOrSlug
+ *  and /t/:idOrSlug per the spec; the latter is the canonical short path
+ *  shared on social. */
+async function publicProfileHandler(
+  req: import("express").Request,
+  res: import("express").Response,
+): Promise<void> {
   try {
-    const idOrSlug = req.params.idOrSlug;
+    const idOrSlug = String(req.params.idOrSlug ?? "");
     const isNumeric = /^\d+$/.test(idOrSlug);
     const [t] = await db
       .select({
@@ -398,7 +403,9 @@ router.get("/profile/:idOrSlug", async (req, res) => {
     req.log.error(err, "GET /profile/:idOrSlug failed");
     res.status(500).json({ message: "حدث خطأ" });
   }
-});
+}
+router.get("/profile/:idOrSlug", publicProfileHandler);
+router.get("/t/:idOrSlug", publicProfileHandler);
 
 /* ──────────────────────────────────────────────────────────────────────── */
 /* Admin console                                                            */

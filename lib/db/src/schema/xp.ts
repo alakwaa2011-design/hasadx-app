@@ -231,9 +231,11 @@ export const xpAdjustmentsTable = pgTable("xp_adjustments", {
     .references(() => teachersTable.id, { onDelete: "cascade" }),
   delta: integer("delta").notNull(),
   reason: text("reason").notNull(),
-  adminId: integer("admin_id")
-    .notNull()
-    .references(() => teachersTable.id, { onDelete: "set null" }),
+  // admin_id is nullable so the FK ON DELETE SET NULL is consistent —
+  // historical adjustments outlive the admin who made them.
+  adminId: integer("admin_id").references(() => teachersTable.id, {
+    onDelete: "set null",
+  }),
   xpEventId: integer("xp_event_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -483,7 +485,7 @@ CREATE TABLE IF NOT EXISTS xp_adjustments (
   teacher_id    INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
   delta         INTEGER NOT NULL,
   reason        TEXT NOT NULL,
-  admin_id      INTEGER NOT NULL REFERENCES teachers(id) ON DELETE SET NULL,
+  admin_id      INTEGER REFERENCES teachers(id) ON DELETE SET NULL,
   xp_event_id   INTEGER,
   created_at    TIMESTAMP NOT NULL DEFAULT NOW()
 );

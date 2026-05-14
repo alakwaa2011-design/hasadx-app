@@ -189,19 +189,19 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
       //    same teacher across processes — every cap check below is read
       //    after this lock, so SUMs are stable for the duration of the tx.
       const todayDate = riyadhDateString();
+      // Ensure the stats row exists exactly once, then lock it. Doing the
+      // upsert first guarantees the FOR UPDATE select below always finds a
+      // row, so we never hit a duplicate-PK insert later in the flow.
+      await tx
+        .insert(teacherStatsTable)
+        .values({ teacherId: input.teacherId })
+        .onConflictDoNothing({ target: teacherStatsTable.teacherId });
       const [existing] = await tx
         .select()
         .from(teacherStatsTable)
         .where(eq(teacherStatsTable.teacherId, input.teacherId))
         .limit(1)
         .for("update");
-      if (!existing) {
-        // Create the row up-front so subsequent awards lock the same row.
-        await tx
-          .insert(teacherStatsTable)
-          .values({ teacherId: input.teacherId })
-          .onConflictDoNothing({ target: teacherStatsTable.teacherId });
-      }
 
       // 2. Cap checks under the lock. Sum by created_at range so daily and
       //    weekly caps are checked independently regardless of which bucket
@@ -290,30 +290,20 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
       const oldLevel = existing?.level ?? 1;
       const newLevel = levelForXp(newTotal).level;
 
-      if (existing) {
-        await tx
-          .update(teacherStatsTable)
-          .set({
-            totalXp: newTotal,
-            seasonXp: newSeasonXp,
-            level: newLevel,
-            currentStreakDays: currentStreak,
-            longestStreakDays: longestStreak,
-            lastActiveDate: todayDate,
-            updatedAt: new Date(),
-          })
-          .where(eq(teacherStatsTable.teacherId, input.teacherId));
-      } else {
-        await tx.insert(teacherStatsTable).values({
-          teacherId: input.teacherId,
+      // Stats row is guaranteed to exist (upserted+locked above), so always
+      // UPDATE — never INSERT a second time, which would raise PK conflict.
+      await tx
+        .update(teacherStatsTable)
+        .set({
           totalXp: newTotal,
           seasonXp: newSeasonXp,
           level: newLevel,
           currentStreakDays: currentStreak,
           longestStreakDays: longestStreak,
           lastActiveDate: todayDate,
-        });
-      }
+          updatedAt: new Date(),
+        })
+        .where(eq(teacherStatsTable.teacherId, input.teacherId));
 
       return {
         duplicate: false,

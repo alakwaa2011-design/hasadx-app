@@ -1479,7 +1479,7 @@ export declare const xpAdjustmentsTable: import("drizzle-orm/pg-core").PgTableWi
             columnType: "PgInteger";
             data: number;
             driverParam: string | number;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
