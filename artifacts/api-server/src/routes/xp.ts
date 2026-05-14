@@ -766,7 +766,7 @@ router.post("/admin/seasons", async (req, res) => {
         nameAr: parsed.data.nameAr,
         startsAt: new Date(parsed.data.startsAt),
         endsAt: new Date(parsed.data.endsAt),
-        prizesConfig: (parsed.data.prizesConfig ?? null) as any,
+        prizesConfig: parsed.data.prizesConfig ?? null,
         status: "upcoming",
       })
       .returning();

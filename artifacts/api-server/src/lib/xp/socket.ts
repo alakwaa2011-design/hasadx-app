@@ -23,6 +23,22 @@ interface PendingGrant {
 const pending = new Map<number, PendingGrant>();
 const DEBOUNCE_MS = 500;
 
+function flush(teacherId: number): void {
+  const p = pending.get(teacherId);
+  if (!p) return;
+  clearTimeout(p.timer);
+  pending.delete(teacherId);
+  if (!ioRef) return;
+  ioRef.to(`teacher:${teacherId}`).emit("teacher:xp", {
+    delta: p.totalDelta,
+    totalXp: p.newTotalXp,
+    level: p.newLevel,
+    leveledUp: p.leveledUp ?? false,
+    newBadgeKeys: p.newBadgeKeys,
+    newGrantIds: p.newGrantIds,
+  });
+}
+
 export function emitXpToTeacher(
   teacherId: number,
   result: AwardXpResult,
@@ -43,21 +59,16 @@ export function emitXpToTeacher(
       ...(existing?.newGrantIds ?? []),
       ...(result.newGrantIds ?? []),
     ],
-    timer: setTimeout(() => {
-      const p = pending.get(teacherId);
-      pending.delete(teacherId);
-      if (!p || !ioRef) return;
-      ioRef.to(`teacher:${teacherId}`).emit("teacher:xp", {
-        delta: p.totalDelta,
-        totalXp: p.newTotalXp,
-        level: p.newLevel,
-        leveledUp: p.leveledUp ?? false,
-        newBadgeKeys: p.newBadgeKeys,
-        newGrantIds: p.newGrantIds,
-      });
-    }, DEBOUNCE_MS),
+    timer: setTimeout(() => flush(teacherId), DEBOUNCE_MS),
   };
   pending.set(teacherId, merged);
+  // Milestone events (level-up, new badge, new reward grant) bypass the
+  // debounce window so the user sees the celebratory toast immediately.
+  const milestone =
+    result.leveledUp ||
+    (result.newBadgeKeys?.length ?? 0) > 0 ||
+    (result.newGrantIds?.length ?? 0) > 0;
+  if (milestone) flush(teacherId);
 }
 
 /**

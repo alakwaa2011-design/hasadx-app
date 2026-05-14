@@ -65,6 +65,16 @@ function riyadhWeekString(d = new Date()): string {
   return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+/** Escape user-controlled strings before embedding in email HTML bodies. */
+function escHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function isXpEnabled(): boolean {
   // Default: enabled unless explicitly disabled
   return process.env.XP_ENGINE_ENABLED !== "false";
@@ -170,45 +180,66 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
     const weeklyBucket = `${riyadhWeekString()}:${input.actionKey}`;
     const seasonId = await findActiveSeasonId();
 
-    // Cap check (read-only before tx; not perfectly atomic but acceptable —
-    // the DB-level partial unique index on cap_bucket isn't used here because
-    // we want to ALLOW multiple events per bucket up to the cap. Race risk:
-    // tiny over-grant on concurrent writes; we accept it.)
-    if (rule.dailyCap != null) {
-      const [{ sum: daySum }] = await db
-        .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
-        .from(xpEventsTable)
-        .where(
-          and(
-            eq(xpEventsTable.teacherId, input.teacherId),
-            eq(xpEventsTable.capBucket, dailyBucket),
-          ),
-        );
-      if ((daySum ?? 0) + points > rule.dailyCap) {
-        return { awarded: false, delta: 0, reason: "daily_cap" };
-      }
-    }
-    if (rule.weeklyCap != null) {
-      const [{ sum: weekSum }] = await db
-        .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
-        .from(xpEventsTable)
-        .where(
-          and(
-            eq(xpEventsTable.teacherId, input.teacherId),
-            eq(
-              xpEventsTable.capBucket,
-              `${riyadhWeekString()}:${input.actionKey}`,
-            ),
-          ),
-        );
-      if ((weekSum ?? 0) + points > rule.weeklyCap) {
-        return { awarded: false, delta: 0, reason: "weekly_cap" };
-      }
-    }
-
     // Insert ledger row + update stats inside a single transaction.
+    // Cap checks happen INSIDE the tx, after we lock the teacher_stats row,
+    // so concurrent awards for the same teacher are serialised and cannot
+    // over-grant past the cap.
     const result = await db.transaction(async (tx) => {
-      // Insert ledger; if conflict on (teacher,action,ref_id) → duplicate.
+      // 1. Lock the teacher row first. This serialises all awards for the
+      //    same teacher across processes — every cap check below is read
+      //    after this lock, so SUMs are stable for the duration of the tx.
+      const todayDate = riyadhDateString();
+      const [existing] = await tx
+        .select()
+        .from(teacherStatsTable)
+        .where(eq(teacherStatsTable.teacherId, input.teacherId))
+        .limit(1)
+        .for("update");
+      if (!existing) {
+        // Create the row up-front so subsequent awards lock the same row.
+        await tx
+          .insert(teacherStatsTable)
+          .values({ teacherId: input.teacherId })
+          .onConflictDoNothing({ target: teacherStatsTable.teacherId });
+      }
+
+      // 2. Cap checks under the lock. Sum by created_at range so daily and
+      //    weekly caps are checked independently regardless of which bucket
+      //    string the inserted row carries.
+      if (rule.dailyCap != null) {
+        const [{ sum: daySum }] = await tx
+          .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+          .from(xpEventsTable)
+          .where(
+            and(
+              eq(xpEventsTable.teacherId, input.teacherId),
+              eq(xpEventsTable.actionKey, input.actionKey),
+              sql`${xpEventsTable.createdAt} >= (now() AT TIME ZONE 'Asia/Riyadh')::date AT TIME ZONE 'Asia/Riyadh'`,
+            ),
+          );
+        if ((daySum ?? 0) + points > rule.dailyCap) {
+          return { capped: "daily" } as const;
+        }
+      }
+      if (rule.weeklyCap != null) {
+        const [{ sum: weekSum }] = await tx
+          .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+          .from(xpEventsTable)
+          .where(
+            and(
+              eq(xpEventsTable.teacherId, input.teacherId),
+              eq(xpEventsTable.actionKey, input.actionKey),
+              sql`${xpEventsTable.createdAt} >= date_trunc('week', (now() AT TIME ZONE 'Asia/Riyadh')) AT TIME ZONE 'Asia/Riyadh'`,
+            ),
+          );
+        if ((weekSum ?? 0) + points > rule.weeklyCap) {
+          return { capped: "weekly" } as const;
+        }
+      }
+
+      // 3. Insert ledger; if conflict on (teacher,action,ref_id) → duplicate.
+      //    cap_bucket carries weekly when present, otherwise daily — used for
+      //    informational lookups only; the cap math above does not rely on it.
       const inserted = await tx
         .insert(xpEventsTable)
         .values({
@@ -233,17 +264,6 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
       if (inserted.length === 0) {
         return { duplicate: true } as const;
       }
-
-      // Upsert teacher_stats — lock the row to prevent lost updates under
-      // concurrent awards. SELECT … FOR UPDATE serialises mutations on the
-      // same teacher row.
-      const todayDate = riyadhDateString();
-      const [existing] = await tx
-        .select()
-        .from(teacherStatsTable)
-        .where(eq(teacherStatsTable.teacherId, input.teacherId))
-        .limit(1)
-        .for("update");
 
       // Streak math
       let currentStreak = 1;
@@ -305,6 +325,13 @@ export async function awardXp(input: AwardXpInput): Promise<AwardXpResult> {
       } as const;
     });
 
+    if ("capped" in result) {
+      return {
+        awarded: false,
+        delta: 0,
+        reason: result.capped === "daily" ? "daily_cap" : "weekly_cap",
+      };
+    }
     if (result.duplicate) {
       return { awarded: false, delta: 0, reason: "duplicate" };
     }
@@ -602,7 +629,7 @@ async function queueBadgeEmail(
     .values({
       toEmail: t.email,
       subject: `🏅 ${badgeName} — شارة جديدة في حصاد`,
-      htmlBody: `<div dir="rtl"><p>مرحباً ${t.name}،</p><p>تهانينا! حصلت على شارة <strong>${badgeName}</strong> على منصة حصاد.</p></div>`,
+      htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! حصلت على شارة <strong>${escHtml(badgeName)}</strong> على منصة حصاد.</p></div>`,
       textBody: `تهانينا ${t.name}! حصلت على شارة ${badgeName}.`,
       kind: "badge_awarded",
       refKey: `${teacherId}:${badgeId}`,
@@ -628,7 +655,7 @@ async function queueThresholdEmail(
     .values({
       toEmail: t.email,
       subject: `🎁 جائزة جديدة في حصاد: ${label}`,
-      htmlBody: `<div dir="rtl"><p>مرحباً ${t.name}،</p><p>تهانينا! بلغت أحد العتبات في حصاد وفُتحت لك جائزة: <strong>${label}</strong>.</p></div>`,
+      htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! بلغت أحد العتبات في حصاد وفُتحت لك جائزة: <strong>${escHtml(label)}</strong>.</p></div>`,
       textBody: `تهانينا ${t.name}! جائزة جديدة: ${label}.`,
       kind: "threshold_granted",
       refKey: `${teacherId}:${rewardId}`,
@@ -667,12 +694,17 @@ export async function applyAdminAdjustment(args: {
       .from(teacherStatsTable)
       .where(eq(teacherStatsTable.teacherId, args.teacherId))
       .limit(1);
+    // Append-only ledger: aggregate must match SUM(delta), so we do NOT
+    // clamp to zero. If a deduction would take totals negative, reject the
+    // adjustment and roll back the inserted ledger row to keep the invariant
+    // sum(xp_events.delta) == teacher_stats.total_xp intact.
     const oldTotal = existing?.totalXp ?? 0;
-    const newTotal = Math.max(0, oldTotal + args.delta);
-    const newSeasonXp = Math.max(
-      0,
-      (existing?.seasonXp ?? 0) + (seasonId ? args.delta : 0),
-    );
+    const newTotal = oldTotal + args.delta;
+    const newSeasonXp =
+      (existing?.seasonXp ?? 0) + (seasonId ? args.delta : 0);
+    if (newTotal < 0 || newSeasonXp < 0) {
+      throw new Error("adjustment_would_make_total_negative");
+    }
     const newLevel = levelForXp(newTotal).level;
     if (existing) {
       await tx
