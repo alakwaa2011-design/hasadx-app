@@ -1053,7 +1053,7 @@ router.post("/presentations", requireTeacher, async (req, res) => {
         .returning();
       const xp = await awardXpInTxAndNotifyAfterCommit(tx, {
         teacherId,
-        actionKey: "presentation.create",
+        actionKey: "presentation.session_created",
         refId: `presentation:${inserted.id}`,
         reason: inserted.title,
       });

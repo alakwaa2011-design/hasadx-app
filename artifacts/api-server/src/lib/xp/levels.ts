@@ -1,6 +1,7 @@
 /**
- * 6-level progression with Arabic titles. Each level has a totalXp threshold;
- * level is computed as the highest level whose threshold ≤ totalXp.
+ * 6-level progression with Arabic titles.
+ * Thresholds from task #605 plan (non-negotiable):
+ * 0 → 500 → 2000 → 6000 → 15000 → 35000 → 75000 XP
  */
 export interface Level {
   level: number;
@@ -8,14 +9,13 @@ export interface Level {
   minXp: number;
 }
 
-// Titles aligned with the Hasad rewards catalog (task #605 plan).
 export const LEVELS: readonly Level[] = [
   { level: 1, nameAr: "معلّم مبتدئ", minXp: 0 },
-  { level: 2, nameAr: "معلّم نشط", minXp: 250 },
-  { level: 3, nameAr: "معلّم ملهم", minXp: 750 },
-  { level: 4, nameAr: "خبير حصاد", minXp: 2000 },
-  { level: 5, nameAr: "سفير حصاد", minXp: 5000 },
-  { level: 6, nameAr: "أسطورة حصاد", minXp: 12000 },
+  { level: 2, nameAr: "معلّم نشط", minXp: 500 },
+  { level: 3, nameAr: "معلّم ملهم", minXp: 2000 },
+  { level: 4, nameAr: "خبير حصاد", minXp: 6000 },
+  { level: 5, nameAr: "سفير حصاد", minXp: 15000 },
+  { level: 6, nameAr: "أسطورة حصاد", minXp: 35000 },
 ];
 
 export function levelForXp(totalXp: number): Level {

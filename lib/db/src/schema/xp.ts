@@ -386,6 +386,15 @@ DROP INDEX IF EXISTS xp_events_idem_uniq;
 CREATE UNIQUE INDEX IF NOT EXISTS xp_events_idem_uniq
   ON xp_events(teacher_id, action_key, ref_id);
 
+-- DB-level cap enforcement: cap_bucket encodes the slot number
+-- (e.g. "2026-05-14:assignment.create:0", ":1", ":2"...).
+-- A concurrent request that wins the row-lock race and receives the same
+-- slot will hit this UNIQUE violation, ensuring no burst over-grant even
+-- when two requests interleave between count-check and insert.
+CREATE UNIQUE INDEX IF NOT EXISTS xp_events_cap_bucket_uniq
+  ON xp_events(teacher_id, action_key, cap_bucket)
+  WHERE cap_bucket IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS teacher_stats (
   teacher_id            INTEGER PRIMARY KEY REFERENCES teachers(id) ON DELETE CASCADE,
   total_xp              INTEGER NOT NULL DEFAULT 0,

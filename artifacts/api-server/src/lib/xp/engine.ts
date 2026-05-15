@@ -209,43 +209,60 @@ async function grantOnTx(
     .limit(1)
     .for("update");
 
-  // 2. Cap checks under the lock. Sum by created_at range so daily and
-  //    weekly caps are checked independently regardless of which bucket
-  //    string the inserted row carries.
+  // 2. Cap checks under the lock.
+  //    Caps are enforced on EVENT COUNT (number of times the action was
+  //    performed today/this week), NOT on XP sum, so "max 5 worksheets/day"
+  //    means 5 events regardless of how many points each is worth.
+  //    The SELECT runs inside the row-locked tx so the count is stable.
+  let dayCnt = 0;
+  let weekCnt = 0;
   if (rule.dailyCap != null) {
-    const [{ sum: daySum }] = await tx
-      .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+    const [{ cnt }] = await tx
+      .select({ cnt: sql<number>`COUNT(*)::int` })
       .from(xpEventsTable)
       .where(
         and(
           eq(xpEventsTable.teacherId, input.teacherId),
           eq(xpEventsTable.actionKey, input.actionKey),
+          sql`${xpEventsTable.delta} > 0`,
           sql`${xpEventsTable.createdAt} >= (now() AT TIME ZONE 'Asia/Riyadh')::date AT TIME ZONE 'Asia/Riyadh'`,
         ),
       );
-    if ((daySum ?? 0) + points > rule.dailyCap) {
+    dayCnt = cnt ?? 0;
+    if (dayCnt >= rule.dailyCap) {
       return { capped: "daily" };
     }
   }
   if (rule.weeklyCap != null) {
-    const [{ sum: weekSum }] = await tx
-      .select({ sum: sql<number>`COALESCE(SUM(${xpEventsTable.delta}),0)::int` })
+    const [{ cnt }] = await tx
+      .select({ cnt: sql<number>`COUNT(*)::int` })
       .from(xpEventsTable)
       .where(
         and(
           eq(xpEventsTable.teacherId, input.teacherId),
           eq(xpEventsTable.actionKey, input.actionKey),
+          sql`${xpEventsTable.delta} > 0`,
           sql`${xpEventsTable.createdAt} >= date_trunc('week', (now() AT TIME ZONE 'Asia/Riyadh')) AT TIME ZONE 'Asia/Riyadh'`,
         ),
       );
-    if ((weekSum ?? 0) + points > rule.weeklyCap) {
+    weekCnt = cnt ?? 0;
+    if (weekCnt >= rule.weeklyCap) {
       return { capped: "weekly" };
     }
   }
 
   // 3. Insert ledger; if conflict on (teacher,action,ref_id) → duplicate.
-  //    cap_bucket carries weekly when present, otherwise daily — used for
-  //    informational lookups only; the cap math above does not rely on it.
+  //    cap_bucket encodes the slot (count position) so the DB-level UNIQUE
+  //    index on (teacher_id, action_key, cap_bucket) also prevents
+  //    over-grant under concurrent burst writes — belt-and-suspenders.
+  const capSlot = rule.weeklyCap != null ? weekCnt : dayCnt;
+  const capBucketValue =
+    rule.weeklyCap != null
+      ? `${weeklyBucket}:${capSlot}`
+      : rule.dailyCap != null
+        ? `${dailyBucket}:${capSlot}`
+        : null;
+
   const inserted = await tx
     .insert(xpEventsTable)
     .values({
@@ -255,16 +272,13 @@ async function grantOnTx(
       delta: points,
       reason: input.reason,
       seasonId: seasonId ?? undefined,
-      capBucket: rule.weeklyCap != null ? weeklyBucket : dailyBucket,
+      capBucket: capBucketValue,
       metadata: input.metadata,
     })
-    .onConflictDoNothing({
-      target: [
-        xpEventsTable.teacherId,
-        xpEventsTable.actionKey,
-        xpEventsTable.refId,
-      ],
-    })
+    // No-target: handles BOTH the idempotency unique index and the
+    // cap_bucket unique index (belt-and-suspenders for burst concurrency).
+    // Either conflict returns no rows → detected below.
+    .onConflictDoNothing()
     .returning({ id: xpEventsTable.id });
 
   if (inserted.length === 0) {
@@ -614,16 +628,13 @@ async function buildStatLookup(
       lookup[`count_action:${row.actionKey}:season`] = row.count;
     }
 
-    // seasonal_rank: how many teachers have MORE season XP than this teacher
+    // seasonal_rank: how many teachers have MORE season XP than this teacher.
+    // teacher_stats is one row per teacher (no season_id column); seasonXp
+    // is reset/snapshotted at season boundaries by the season-close job.
     const [rankRow] = await db
       .select({ rank: sql<number>`COUNT(*)::int` })
       .from(teacherStatsTable)
-      .where(
-        and(
-          eq(teacherStatsTable.seasonId, activeSeason.id),
-          sql`${teacherStatsTable.seasonXp} > ${statsRow.seasonXp}`,
-        ),
-      );
+      .where(sql`${teacherStatsTable.seasonXp} > ${statsRow.seasonXp}`);
     lookup["seasonal_rank"] = (rankRow?.rank ?? 0) + 1;
   }
 

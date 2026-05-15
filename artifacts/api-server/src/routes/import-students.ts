@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { awardXpAndNotify } from "../lib/xp/socket";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import mammoth from "mammoth";
@@ -157,6 +158,16 @@ router.post("/students/import", upload.single("file"), async (req, res) => {
     }));
 
     const inserted = await db.insert(studentsTable).values(values).returning();
+
+    // Award XP for bulk import (≥10 students), one-shot per import batch
+    if (inserted.length >= 10) {
+      const batchKey = `bulk_import:${teacherId}:${inserted[0]?.id ?? Date.now()}`;
+      void awardXpAndNotify({
+        teacherId,
+        actionKey: "students.bulk_import",
+        refId: batchKey,
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       students: inserted,

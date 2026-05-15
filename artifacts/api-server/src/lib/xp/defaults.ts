@@ -12,22 +12,51 @@ export interface XpRuleSeed {
   weeklyCap?: number;
 }
 
+/**
+ * XP values and daily caps match the spec table in task #605 exactly.
+ * Streak milestones and one-shot events have no cap (undefined = unlimited,
+ * but idempotency via ref_id prevents double-award).
+ */
 export const DEFAULT_XP_RULES: readonly XpRuleSeed[] = [
-  { actionKey: "login.daily", labelAr: "تسجيل دخول يومي", points: 5, dailyCap: 1 },
-  { actionKey: "streak.day", labelAr: "يوم متواصل في السلسلة", points: 10, dailyCap: 10 },
-  { actionKey: "assignment.create", labelAr: "إنشاء واجب جديد", points: 25, dailyCap: 100 },
-  { actionKey: "assignment.share", labelAr: "مشاركة واجب", points: 15 },
-  { actionKey: "assignment.import", labelAr: "استيراد واجب من المكتبة", points: 5, dailyCap: 25 },
-  { actionKey: "submission.graded", labelAr: "تصحيح تسليم طالب", points: 3, dailyCap: 60 },
-  { actionKey: "presentation.create", labelAr: "إنشاء عرض تفاعلي", points: 30 },
-  { actionKey: "presentation.host", labelAr: "تشغيل جلسة عرض حية", points: 20, dailyCap: 60 },
-  { actionKey: "arena.host", labelAr: "تشغيل تحدّي حصاد", points: 25, dailyCap: 75 },
-  { actionKey: "arena.question.create", labelAr: "إضافة سؤال للأرينا", points: 4, dailyCap: 40 },
-  { actionKey: "worksheet.generate", labelAr: "توليد ورقة عمل", points: 15, dailyCap: 60 },
-  { actionKey: "lesson_plan.generate", labelAr: "توليد خطة درس", points: 20, dailyCap: 60 },
-  { actionKey: "video_lesson.create", labelAr: "إنشاء درس فيديو", points: 25 },
-  { actionKey: "student.add", labelAr: "إضافة طالب جديد", points: 2, dailyCap: 50 },
-  { actionKey: "feedback.submit", labelAr: "إرسال ملاحظة للمنصة", points: 10, weeklyCap: 30 },
+  // ── Core daily activity ─────────────────────────────────────────────────
+  { actionKey: "login.daily",              labelAr: "تسجيل دخول يومي",                   points: 5,    dailyCap: 1  },
+
+  // ── Assignments ─────────────────────────────────────────────────────────
+  { actionKey: "assignment.create",        labelAr: "إنشاء واجب جديد",                  points: 25,   dailyCap: 5  },
+  { actionKey: "submission.graded",        labelAr: "تصحيح تسليم طالب",                 points: 2,    dailyCap: 50 },
+
+  // ── Live sessions / presentations ───────────────────────────────────────
+  { actionKey: "presentation.session_created", labelAr: "بدء جلسة عرض تفاعلي",         points: 30,   dailyCap: 5  },
+  { actionKey: "session.min_10_students",  labelAr: "جلسة بـ١٠+ طلاب",                  points: 50   },
+
+  // ── Arena ────────────────────────────────────────────────────────────────
+  { actionKey: "arena.category.create",   labelAr: "إنشاء فئة تحدّي حصاد",             points: 40,   dailyCap: 5  },
+  { actionKey: "arena.question.create",   labelAr: "إضافة سؤال للأرينا",               points: 5,    dailyCap: 30 },
+  { actionKey: "arena.game.host",         labelAr: "تشغيل تحدّي حصاد",                 points: 35,   dailyCap: 5  },
+
+  // ── AI tools ─────────────────────────────────────────────────────────────
+  { actionKey: "worksheet.generate",      labelAr: "توليد ورقة عمل",                    points: 15,   dailyCap: 5  },
+  { actionKey: "lesson_plan.generate",    labelAr: "توليد خطة درس",                     points: 20,   dailyCap: 5  },
+
+  // ── Video lessons ────────────────────────────────────────────────────────
+  { actionKey: "video_lesson.create",     labelAr: "إنشاء درس فيديو",                   points: 50,   dailyCap: 3  },
+
+  // ── Mini-games ───────────────────────────────────────────────────────────
+  { actionKey: "mini_game.host",          labelAr: "استضافة لعبة تفاعلية",              points: 25,   dailyCap: 5  },
+
+  // ── Student management ───────────────────────────────────────────────────
+  { actionKey: "students.bulk_import",    labelAr: "استيراد ١٠+ طلاب دفعةً واحدة",     points: 30,   dailyCap: 1  },
+
+  // ── Streak milestones (one-shot; idempotency via ref_id) ─────────────────
+  { actionKey: "streak.milestone_7",      labelAr: "سلسلة ٧ أيام متواصلة",             points: 100  },
+  { actionKey: "streak.milestone_30",     labelAr: "سلسلة ٣٠ يومًا",                   points: 500  },
+  { actionKey: "streak.milestone_100",    labelAr: "سلسلة ١٠٠ يوم",                    points: 2000 },
+
+  // ── Shared content ───────────────────────────────────────────────────────
+  { actionKey: "content.shared_approved", labelAr: "محتوى مشارك معتمد من الإدارة",      points: 100  },
+  { actionKey: "content.plays_50",        labelAr: "٥٠ لعبة لمحتوى مشترك",              points: 75   },
+  { actionKey: "content.plays_250",       labelAr: "٢٥٠ لعبة لمحتوى مشترك",             points: 75   },
+  { actionKey: "content.plays_1000",      labelAr: "١٠٠٠ لعبة لمحتوى مشترك",            points: 75   },
 ];
 
 export interface BadgeSeed {

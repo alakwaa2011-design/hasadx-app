@@ -3,6 +3,7 @@ import { db, arenaCategoriesTable, arenaActivitiesTable, arenaQuestionReportsTab
 import { eq, or, and, isNull, asc, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
+import { awardXpAndNotify } from "../lib/xp/socket";
 
 const router: IRouter = Router();
 
@@ -74,6 +75,14 @@ router.post("/arena-content/categories", async (req, res) => {
       isPublic,
       teacherId: isPublic ? null : teacherId,
     }).returning();
+    // Award XP only for own (non-public admin) categories
+    if (!isPublic && row?.id) {
+      void awardXpAndNotify({
+        teacherId,
+        actionKey: "arena.category.create",
+        refId: `arena_category:${row.id}`,
+      }).catch(() => {});
+    }
     res.status(201).json(row);
   } catch (err) {
     req.log.error({ err }, "create arena category");
@@ -180,6 +189,14 @@ router.post("/arena-content/activities", async (req, res) => {
       isPublic,
       teacherId: isPublic ? null : teacherId,
     }).returning();
+    // Award XP for own questions only (not admin public questions)
+    if (!isPublic && row?.id) {
+      void awardXpAndNotify({
+        teacherId,
+        actionKey: "arena.question.create",
+        refId: `arena_activity:${row.id}`,
+      }).catch(() => {});
+    }
     res.status(201).json(row);
   } catch (err) {
     req.log.error({ err }, "create arena activity");
