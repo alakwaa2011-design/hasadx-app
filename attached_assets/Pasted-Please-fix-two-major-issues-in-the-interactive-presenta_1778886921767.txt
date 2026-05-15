@@ -1,0 +1,63 @@
+Please fix two major issues in the interactive presentation system.
+
+Important:
+- Do not rewrite the whole editor.
+- Make the smallest safe changes.
+- After finishing, run TypeScript/build checks if available.
+- Tell me exactly which files were changed.
+
+1. Fix element editing in:
+artifacts/homework-app/src/pages/teacher/presentations/editor.tsx
+
+Current bugs:
+- Users cannot edit text properly.
+- Users cannot select images/icons/activities/video embeds by clicking them.
+
+Required fixes:
+- In ElementContent, remove pointerEvents: "none" from image, icon, activity, and video-embed renderers if it prevents click/selection.
+- Make sure clicks on rendered content bubble to EditableShell.
+- In EditableText, fix onDoubleClick and onPointerDown so:
+  - single click selects the text element
+  - double click enters text editing mode
+  - text can be selected and edited normally
+  - dragging/moving still works when not editing
+
+2. Fix repetitive AI slide layouts.
+
+Current bug:
+AI-generated presentations use almost the same layout on every slide:
+- title around y: 100
+- body around y: 250
+- same centered structure repeatedly
+
+Find the AI presentation generation logic, likely in:
+artifacts/api-server/src/lib/presentations-tier.ts
+or the relevant presentations API route.
+
+Update the AI system prompt and JSON/schema instructions so generated slides use varied professional layouts.
+
+Requirements:
+- The AI must vary x, y, w, h coordinates across slides.
+- The AI must not reuse the same title/body coordinates on every slide.
+- Each deck should include several layout patterns, such as:
+  1. Split layout:
+     text area on one side, visual/image/icon on the other.
+  2. Grid layout:
+     4 cards/elements arranged in a 2x2 grid.
+  3. Full background:
+     large image/shape covering most of the slide with text overlay.
+  4. Asymmetric layout:
+     different element sizes and positions.
+  5. Quote/focus slide:
+     one large statement with minimal supporting text.
+  6. Comparison slide:
+     two columns or opposing cards.
+- Keep coordinates within CANVAS_W = 1280 and CANVAS_H = 720.
+- Keep text readable and avoid overlapping elements.
+- Prefer professional Arabic-friendly layouts.
+
+Acceptance criteria:
+- I can click/select images, icons, activities, and video embeds in the editor.
+- I can double-click text and edit it.
+- AI-generated decks show visibly different slide layouts, not repeated title/body positions.
+- No TypeScript errors.

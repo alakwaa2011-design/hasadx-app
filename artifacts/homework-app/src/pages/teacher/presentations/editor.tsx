@@ -2823,9 +2823,12 @@ function ElementContent({
           style={{
             width: "100%", height: "100%",
             objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
-            pointerEvents: "none",
+            // pointerEvents intentionally NOT "none" — the shell's pointerdown
+            // handler bubbles up and selects the element on click. The native
+            // image drag is suppressed via draggable={false}.
             transform: transforms.length ? transforms.join(" ") : undefined,
             filter: filters.length ? filters.join(" ") : undefined,
+            userSelect: "none",
           }}
           draggable={false}
         />
@@ -2845,7 +2848,9 @@ function ElementContent({
           width: "100%", height: "100%",
           color: el.color ?? defaultTextColor,
           display: "flex", alignItems: "center", justifyContent: "center",
-          pointerEvents: "none",
+          // Allow pointer events so clicks reach the EditableShell wrapper
+          // and trigger selection. Drag still works because the shell stops
+          // propagation in its own pointerdown handler.
         }}
       >
         <Icon size={size} strokeWidth={1.75} />
@@ -2875,7 +2880,8 @@ function ElementContent({
         padding: "18px 22px",
         display: "flex", flexDirection: "column", gap: 12,
         overflow: "hidden",
-        pointerEvents: "none",
+        userSelect: "none",
+        // pointerEvents auto so clicking the activity card selects it.
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span style={{
@@ -2933,7 +2939,8 @@ function ElementContent({
         borderRadius: 12,
         overflow: "hidden",
         position: "relative",
-        pointerEvents: "none",
+        userSelect: "none",
+        // pointerEvents auto so clicking the video thumbnail selects it.
       }}>
         {thumbUrl ? (
           <img
@@ -2972,7 +2979,7 @@ function ElementContent({
   }
   // shape
   return (
-    <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
+    <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
       <ShapeRenderer el={el} />
     </div>
   );
@@ -3040,18 +3047,25 @@ function EditableText({
         cursor: editing ? "text" : "inherit",
         userSelect: editing ? "text" : "none",
         WebkitUserSelect: editing ? "text" : "none",
-        pointerEvents: editing ? "auto" : "none",
+        /* Always auto so onDoubleClick fires. When NOT editing, the
+           pointerdown still bubbles up to the EditableShell which
+           handles selection + drag. When editing, we swallow it so
+           the contentEditable owns the caret. */
+        pointerEvents: "auto",
       }}
       contentEditable={!readOnly && editing}
       suppressContentEditableWarning
       onDoubleClick={(e) => {
         if (readOnly || editing) return;
         e.stopPropagation();
+        e.preventDefault();
         onEnterEdit();
       }}
       onPointerDown={(e) => {
         /* While editing, swallow pointer-down so the shell's drag
-           handler doesn't interpret a caret placement as a drag. */
+           handler doesn't interpret a caret placement as a drag.
+           When NOT editing, let it bubble so the shell selects + can
+           start a drag — the browser still fires dblclick afterwards. */
         if (editing) e.stopPropagation();
       }}
       onBlur={onBlur}

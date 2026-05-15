@@ -170,37 +170,63 @@ export function systemPromptFor(lang: OutlineLanguage): string {
    concept-card for everything and the deck looks monotonous. */
 const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) — اقرأها قبل كل شريحة:
 - title         → فقط شريحة الافتتاح. عنوان كبير + عنوان فرعي قصير.
-- objectives    → سرد أهداف الدرس (2-4 أهداف فقط).
-- concept-card  → فكرة محورية واحدة تحتاج شرحاً سريعاً بعدة نقاط مرتبطة.
-- comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد. ممنوع استخدامه لقائمة عادية.
-- steps         → عملية أو إجراء من 2-4 خطوات متتالية.
-- timeline      → تطوّر زمني/تاريخي من 3-5 أحداث على محور.
-- visual-hero   → تعريف مفهوم جديد بصورة بصرية كبيرة + نقاط داعمة.
-- formula       → قاعدة/معادلة رياضية أو علمية مع شرح بسيط.
-- stat          → إبراز رقم/إحصائية صادمة (1-3 أرقام). كل نقطة بصيغة "92% — رضا المعلمين".
-- quote         → اقتباس أو حكمة قصيرة. talkingPoints[0] = نص الاقتباس، talkingPoints[1] = القائل.
+- objectives    → سرد أهداف الدرس (2-4 أهداف فقط) — يُرسم كشبكة بطاقات.
+- concept-card  → فكرة محورية واحدة تحتاج شرحاً سريعاً بعدة نقاط مرتبطة (تخطيط مقسوم: نص ⇄ بصري).
+- comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد، يُرسم عمودين متقابلين. ممنوع استخدامه لقائمة عادية.
+- steps         → عملية أو إجراء من 2-4 خطوات متتالية (تخطيط أفقي بترقيم).
+- timeline      → تطوّر زمني/تاريخي من 3-5 أحداث على محور أفقي.
+- visual-hero   → تعريف مفهوم جديد بصورة بصرية كبيرة تملأ الخلفية + نص فوقها (تخطيط Full-Background).
+- formula       → قاعدة/معادلة رياضية أو علمية بارزة في الوسط مع شرح صغير حولها.
+- stat          → إبراز رقم/إحصائية صادمة (1-3 أرقام بأحجام مختلفة، تخطيط لا متماثل). كل نقطة بصيغة "92% — رضا المعلمين".
+- quote         → اقتباس أو حكمة قصيرة كعبارة كبيرة في المنتصف. talkingPoints[0] = نص الاقتباس، talkingPoints[1] = القائل.
 - callout       → ملاحظة مهمة جداً يجب لفت الانتباه إليها (تنبيه، نصيحة، خطر شائع).
 - interactive   → سؤال/استطلاع/نشاط. talkingPoints[0] = نص السؤال.
 - closure       → الشريحة الأخيرة فقط. ملخص نهائي مختصر.
 
-ممنوع تكرار نفس kind أكثر من 3 مرات متتالية. نوّع التخطيطات لتعطي إيقاعاً بصرياً.`;
+أنماط التخطيط المرئية المتاحة (كل kind يستخدم نمطاً مختلفاً، فاختر بتنوّع):
+1. تخطيط مقسوم (Split): نص جانب + بصري جانب — لـ concept-card.
+2. شبكة 2×2 (Grid): أربع بطاقات متساوية — لـ objectives.
+3. خلفية كاملة (Full-Background): صورة/شكل يغطي معظم الشريحة + نص فوقه — لـ visual-hero و title.
+4. لا متماثل (Asymmetric): أحجام ومواقع متباينة — لـ stat و callout.
+5. تركيز/اقتباس (Quote/Focus): عبارة واحدة كبيرة في المنتصف بحد أدنى من النص الداعم — لـ quote.
+6. عمودان متقابلان (Comparison): بطاقتان جنباً إلى جنب — لـ comparison.
+
+قواعد التنوّع الإلزامية (مهمة جداً):
+- ممنوع تكرار نفس kind أكثر من مرتين متتاليتين على الإطلاق.
+- لعرض من 6 شرائح: استخدم ≥ 4 أنواع مختلفة. لعرض من 8 شرائح: ≥ 5 أنواع. لعرض من 10+ شرائح: ≥ 6 أنواع.
+- يجب أن يحتوي كل عرض على عينة من 3 على الأقل من أنماط التخطيط الستة أعلاه (Split/Grid/Full-Background/Asymmetric/Quote/Comparison).
+- إذا كان المحتوى يقبل comparison أو steps أو timeline أو stat أو quote، استخدمها بدلاً من concept-card.
+- concept-card هي الخيار الأخير، لا الافتراضي. لا تستخدمها أكثر من مرتين في عرض كامل.`;
 
 const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 - title         → Only the opening slide. Big title + short subtitle.
-- objectives    → Listing 2-4 lesson objectives.
-- concept-card  → One central idea explained in a few related points.
-- comparison    → Two sides/ideas/options/before-after. NOT for plain lists.
-- steps         → A 2-4 step process or procedure.
-- timeline      → A 3-5 event chronological progression on an axis.
-- visual-hero   → Introducing a new concept with a big visual + supporting points.
-- formula       → A math/science rule or formula plus brief explanation.
-- stat          → Highlighting striking numbers (1-3 stats). Format: "92% — teacher satisfaction".
-- quote         → Short quote or wisdom. talkingPoints[0] = quote text, talkingPoints[1] = attribution.
+- objectives    → Listing 2-4 lesson objectives — rendered as a card grid.
+- concept-card  → One central idea explained in a few related points (split layout: text ⇄ visual).
+- comparison    → Two sides/ideas/options/before-after, rendered as opposing columns. NOT for plain lists.
+- steps         → A 2-4 step process or procedure (numbered horizontal layout).
+- timeline      → A 3-5 event chronological progression on a horizontal axis.
+- visual-hero   → Introducing a new concept with a large visual filling the background + text overlay (full-background layout).
+- formula       → A math/science formula prominently centered with brief context around it.
+- stat          → Highlighting striking numbers (1-3 stats at varied sizes, asymmetric layout). Format: "92% — teacher satisfaction".
+- quote         → Short quote/wisdom as one large centered statement with minimal supporting text. talkingPoints[0] = quote, talkingPoints[1] = attribution.
 - callout       → A high-importance note (warning, key tip, common pitfall).
 - interactive   → Question/poll/activity. talkingPoints[0] = the question text.
 - closure       → Only the final slide. Concise final recap.
 
-Never repeat the same kind more than 3 times in a row. Vary layouts so the deck has visual rhythm.`;
+Available visual layout patterns (each kind uses a DIFFERENT pattern — vary your picks):
+1. Split layout: text on one side, visual on the other — for concept-card.
+2. 2×2 Grid: four equal cards — for objectives.
+3. Full-Background: large image/shape covering most of the slide with text overlay — for visual-hero and title.
+4. Asymmetric: varied element sizes and positions — for stat and callout.
+5. Quote/Focus: one large centered statement with minimal supporting text — for quote.
+6. Comparison: two opposing columns/cards — for comparison.
+
+MANDATORY variety rules (critical):
+- NEVER repeat the same kind more than twice in a row.
+- 6-slide deck: use ≥ 4 different kinds. 8-slide deck: ≥ 5 kinds. 10+ slide deck: ≥ 6 kinds.
+- Every deck must contain at least 3 of the 6 visual layout patterns above (Split/Grid/Full-Background/Asymmetric/Quote/Comparison).
+- If the content fits comparison, steps, timeline, stat, or quote — use those INSTEAD of concept-card.
+- concept-card is the fallback, NOT the default. Do not use it more than twice in any single deck.`;
 
 /* Phase 7 — Activity questions are now SLIDE-NATIVE content, not a
    "pick a platform game" decision. The teacher feedback was clear:
@@ -334,7 +360,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     ? [
         `كل شريحة لها فكرة واحدة فقط. لا تخلط فكرتين على نفس الشريحة.`,
         `talkingPoints بأسلوب عناوين قصيرة — وليس جملاً كاملة. تخيّل أنها تظهر على شاشة كبيرة وتُقرأ من آخر الصف.`,
-        `نوّع الـ kind: على عرض من 8 شرائح يجب أن نرى ≥ 4 أنواع مختلفة.`,
+        `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
         `استخدم visualDirection.icon من المفردات: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. اختر ما يناسب فكرة الشريحة بدقة.`,
         `لا تكرر نفس العنوان أو نفس الأيقونة في شرائح متتالية.`,
@@ -343,7 +369,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     : [
         `One idea per slide. Never mix two ideas on the same slide.`,
         `talkingPoints are short headlines — NOT full sentences. Imagine they appear on a big screen, readable from the back row.`,
-        `Vary kind: in an 8-slide deck we expect ≥ 4 different kinds.`,
+        `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,
         `Use visualDirection.icon from this vocabulary: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. Pick the one that best fits the slide's idea.`,
         `Don't reuse the same title or icon in consecutive slides.`,
