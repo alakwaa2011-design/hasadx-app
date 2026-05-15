@@ -2331,6 +2331,7 @@ function CompetitiveTab({
 
 function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
   const isAr = lang === "ar";
+  const isAdmin = !!user?.isAdmin;
 
   // Brand palette for tools — green primary, gold accent, warm white bg
   const BRAND = { green: "#225739", gold: "#D9A521", light: "#FCFAF8" };
