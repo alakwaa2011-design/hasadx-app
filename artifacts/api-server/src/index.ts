@@ -28,6 +28,7 @@ import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
 import { startLibraryOrphanSweepJob } from "./lib/library-orphan-sweep";
 import { startActivityLogsCleanupJob } from "./lib/activity-logger";
+import { startOnlineSessionsCleanupJob } from "./lib/analytics";
 import { XP_MIGRATION_SQL } from "@workspace/db";
 import { seedXpDefaultsIfNeeded } from "./lib/xp/seed";
 import { bindXpSocket } from "./lib/xp/socket";
@@ -37,6 +38,44 @@ const ADMIN_EMAILS = ["alakwaa2011@gmail.com", "marwanakwaa@yahoo.com"];
 
 async function runSchemaMigrations() {
   try {
+    // ── Unified analytics & presence (task: realtime analytics) ──
+    await db.execute(sql`
+      ALTER TABLE activity_logs
+        ADD COLUMN IF NOT EXISTS event_category TEXT,
+        ADD COLUMN IF NOT EXISTS session_id TEXT,
+        ADD COLUMN IF NOT EXISTS ip_hash TEXT
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS activity_logs_category_idx ON activity_logs(event_category)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS activity_logs_session_idx ON activity_logs(session_id)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS online_sessions (
+        id SERIAL PRIMARY KEY,
+        session_id TEXT NOT NULL UNIQUE,
+        user_id INTEGER,
+        user_role TEXT NOT NULL DEFAULT 'visitor',
+        user_name TEXT,
+        page TEXT,
+        device TEXT,
+        browser TEXT,
+        ip_hash TEXT,
+        started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_heartbeat_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS online_sessions_heartbeat_idx ON online_sessions(last_heartbeat_at)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS online_sessions_role_idx ON online_sessions(user_role)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS online_sessions_user_idx ON online_sessions(user_id)
+    `);
+
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS presentation_drafts (
         id              SERIAL PRIMARY KEY,
@@ -333,6 +372,7 @@ ensureSessionTable()
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
       startActivityLogsCleanupJob();
+      startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();
     });
   })

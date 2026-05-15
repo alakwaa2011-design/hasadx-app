@@ -10,6 +10,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { GlobalAiAssistant } from "@/components/ai-assistant";
 import { PageViewTracker } from "@/components/page-view-tracker";
+import { HeartbeatTracker } from "@/components/heartbeat-tracker";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
@@ -534,6 +535,7 @@ function App() {
                   <Router />
                   <GlobalAiAssistant />
                   <PageViewTracker />
+                  <HeartbeatTracker />
                 </WouterRouter>
                 <I18nAwareToaster />
               </TooltipProvider>

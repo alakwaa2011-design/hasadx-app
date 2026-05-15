@@ -57,6 +57,7 @@ import {
 } from "./manager";
 import { logger } from "../lib/logger";
 import { logActivity } from "../lib/activity-logger";
+import { trackEvent } from "../lib/analytics";
 
 interface CreateGameData {
   assignmentId: number;
@@ -535,6 +536,16 @@ function endHackGame(io: Server, game: Game) {
     hackTimeUp: true,
   });
   saveGameHistory(game);
+  trackEvent({
+    userRole: "teacher",
+    eventName: "game_completed",
+    eventCategory: "game",
+    metadata: {
+      gameSessionId: String(game.pin),
+      gameType: game.gameMode || "wameedh",
+      playerCount: game.players.size,
+    },
+  });
   game.finishDeleteTimerId = setTimeout(() => deleteGame(game.pin), 60000);
 }
 
@@ -834,6 +845,8 @@ export function setupGameSocket(io: Server) {
           action: "start_game",
           details: { gameType: data.gameMode || "wameedh", assignmentId: data.assignmentId ?? null },
         });
+        // We delay the trackEvent call until after the game is created so we
+        // can include the pin (used as gameSessionId) for the live-games KPI.
 
         const { assignmentId, questionDuration, autoAdvance, gameMode, teamCount, customTeamNames, hackMode, bankSubject, bankLevel, bankQuestionCount, targetClass: clientTargetClass } = data;
         const trimmedClientClass = typeof clientTargetClass === "string" ? clientTargetClass.trim() : "";
@@ -1007,6 +1020,14 @@ export function setupGameSocket(io: Server) {
         userRole: "student",
         action: "join_game",
         details: { pin, gameType: "wameedh" },
+      });
+      trackEvent({
+        userId: studentAccountId ?? studentId ?? null,
+        userName: name?.toString().slice(0, 100) ?? null,
+        userRole: "student",
+        eventName: "student_joined_game",
+        eventCategory: "game",
+        metadata: { pin, gameType: "wameedh" },
       });
       if (game.state === "finished") {
         callback?.({ error: "اللعبة انتهت بالفعل" });

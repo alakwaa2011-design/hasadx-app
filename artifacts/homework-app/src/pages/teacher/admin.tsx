@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { BillingTab } from "@/components/admin/billing-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
+import { RealtimeTab } from "@/components/admin/realtime-tab";
 import { RewardsTab } from "@/components/admin/rewards-tab";
 import { useThemeUpdater } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -61,7 +62,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime";
 
 interface FeedbackItem {
   id: number;
@@ -1280,6 +1281,7 @@ export default function AdminPage() {
                 tabs: [
                   { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: MessageSquare },
                   { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
+                  { key: "realtime" as Tab, label: lang === "ar" ? "اللحظي" : "Realtime", icon: Activity },
                   { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط" : "Activity Log", icon: Activity },
                   { key: "appearance" as Tab, label: t.admin.tabAppearance, icon: Palette },
                   { key: "__hidden__" as Tab, label: lang === "ar" ? "المخفي بواسطة المسؤول" : "Hidden by admin", icon: Eye, href: "/admin/hidden" },
@@ -3335,6 +3337,7 @@ export default function AdminPage() {
         {activeTab === "ai-chat" && <AdminAiChatTab lang={lang} />}
 
         {activeTab === "activity-log" && <ActivityTab lang={lang} />}
+        {activeTab === "realtime" && <RealtimeTab lang={lang} />}
 
         {activeTab === "letrly" && <AdminLetrlyTab lang={lang} />}
 

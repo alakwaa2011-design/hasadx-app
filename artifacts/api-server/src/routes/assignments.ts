@@ -13,6 +13,7 @@ import { publicReadLimiter } from "../lib/rate-limiter";
 import { safeAccessCodeEqual } from "../lib/access-code";
 import { featureAccess } from "@workspace/billing";
 import { logActivity } from "../lib/activity-logger";
+import { trackEvent } from "../lib/analytics";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 
 const UpdateAssignmentBody = z.object({
@@ -391,10 +392,38 @@ router.post("/assignments", async (req, res) => {
       action: "create_homework",
       details: { assignmentId: assignment.id, title: assignment.title, subject: assignment.subject, questionCount: body.questions?.length || 0 },
     });
+    trackEvent({
+      req,
+      userId: teacherId,
+      userName: teacher?.name ?? null,
+      userRole: "teacher",
+      eventName: "assignment_created_success",
+      eventCategory: "assignment",
+      metadata: {
+        assignmentId: assignment.id,
+        subject: assignment.subject,
+        questionCount: body.questions?.length || 0,
+        examMode: assignment.examMode,
+      },
+    });
   } catch (error: unknown) {
     // Refund the slot we incremented at the top of the handler since the
     // creation failed and no homework was actually persisted.
     await featureAccess.refund(teacherId, "create_homework").catch(() => {});
+    trackEvent({
+      req,
+      userId: teacherId,
+      userRole: "teacher",
+      eventName: "assignment_created_failed",
+      eventCategory: "assignment",
+      metadata: {
+        reason: error instanceof z.ZodError
+          ? "validation"
+          : error instanceof Error
+            ? error.message.slice(0, 200)
+            : "unknown",
+      },
+    });
     const isZodError = error instanceof z.ZodError;
     const message = error instanceof Error ? error.message : "خطأ في إنشاء الواجب";
     req.log.error({ err: error, isAdaptive: req.body?.isAdaptive, stage: isZodError ? "validation" : "db_insert" }, "Create assignment error");

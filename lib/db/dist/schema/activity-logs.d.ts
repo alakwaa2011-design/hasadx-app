@@ -1,3 +1,9 @@
+/**
+ * Unified event/activity log. Backwards-compatible with the original
+ * "page-view" tracker (action="view") while also supporting the new unified
+ * event-tracking taxonomy. New columns are nullable so legacy rows and legacy
+ * inserters keep working unchanged.
+ */
 export declare const activityLogsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "activity_logs";
     schema: undefined;
@@ -87,6 +93,40 @@ export declare const activityLogsTable: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        eventCategory: import("drizzle-orm/pg-core").PgColumn<{
+            name: "event_category";
+            tableName: "activity_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        sessionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "session_id";
+            tableName: "activity_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         details: import("drizzle-orm/pg-core").PgColumn<{
             name: "details";
             tableName: "activity_logs";
@@ -106,6 +146,23 @@ export declare const activityLogsTable: import("drizzle-orm/pg-core").PgTableWit
         }, {}, {}>;
         ipAddress: import("drizzle-orm/pg-core").PgColumn<{
             name: "ip_address";
+            tableName: "activity_logs";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ipHash: import("drizzle-orm/pg-core").PgColumn<{
+            name: "ip_hash";
             tableName: "activity_logs";
             dataType: "string";
             columnType: "PgText";
@@ -193,4 +250,205 @@ export declare const activityLogsTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export type ActivityLog = typeof activityLogsTable.$inferSelect;
+/**
+ * Online presence tracking. Each browser tab generates a session_id and pings
+ * /api/analytics/heartbeat every 30 seconds. Rows older than ~90s without a
+ * heartbeat are considered offline. Anonymous visitors are tracked too
+ * (user_id is null), so we always carry the session_id as the unique key.
+ */
+export declare const onlineSessionsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "online_sessions";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "online_sessions";
+            dataType: "number";
+            columnType: "PgSerial";
+            data: number;
+            driverParam: number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        sessionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "session_id";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_id";
+            tableName: "online_sessions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userRole: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_role";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        userName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "user_name";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        page: import("drizzle-orm/pg-core").PgColumn<{
+            name: "page";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        device: import("drizzle-orm/pg-core").PgColumn<{
+            name: "device";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        browser: import("drizzle-orm/pg-core").PgColumn<{
+            name: "browser";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        ipHash: import("drizzle-orm/pg-core").PgColumn<{
+            name: "ip_hash";
+            tableName: "online_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        startedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "started_at";
+            tableName: "online_sessions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        lastHeartbeatAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "last_heartbeat_at";
+            tableName: "online_sessions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export type OnlineSession = typeof onlineSessionsTable.$inferSelect;
 //# sourceMappingURL=activity-logs.d.ts.map

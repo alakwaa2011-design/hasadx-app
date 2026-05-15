@@ -4,6 +4,7 @@ import { db, assignmentsTable, questionsTable, millionBankQuestionsTable } from 
 import { eq, and, notInArray } from "drizzle-orm";
 import { createClassSession, getClassSession, setCachedQuestions } from "../game/million-class-handlers";
 import { logActivity } from "../lib/activity-logger";
+import { trackEvent } from "../lib/analytics";
 
 const router = Router();
 
@@ -78,6 +79,14 @@ router.post("/million/class-session", createLimiter, async (req, res) => {
       userRole: "teacher",
       action: "start_game",
       details: { gameType: "million" },
+    });
+    trackEvent({
+      req,
+      userId: req.session.teacherId,
+      userRole: "teacher",
+      eventName: "live_game_started",
+      eventCategory: "game",
+      metadata: { gameType: "million" },
     });
 
     const { questionSource, assignmentId, bankLevel, bankCategory, autoAdvance, mode, teamAName, teamBName, teamAMembers, teamBMembers, questionCount, pointsScheme, basePoints, targetClass } = req.body as {

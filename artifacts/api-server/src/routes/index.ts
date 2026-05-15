@@ -50,6 +50,7 @@ import arenaContentRouter from "./arena-content";
 import arenaSessionRouter from "./arena-session";
 import arenaSaveRouter from "./arena-save";
 import activityRouter from "./activity";
+import analyticsRouter from "./analytics";
 import presentationsRouter from "./presentations";
 import aiPresentationsRouter from "./ai-presentations";
 import presentationSessionsRouter from "./presentation-sessions";
@@ -111,6 +112,7 @@ router.use(arenaContentRouter);
 router.use(arenaSessionRouter);
 router.use(arenaSaveRouter);
 router.use(activityRouter);
+router.use(analyticsRouter);
 // Mount aiPresentationsRouter BEFORE presentationsRouter so that
 // the literal /presentations/drafts and /presentations/ai/* paths
 // match before falling into presentationsRouter's GET /:id handler.

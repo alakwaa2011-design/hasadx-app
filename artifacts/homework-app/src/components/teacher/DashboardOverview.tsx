@@ -868,7 +868,7 @@ export default function DashboardOverview({
                   boxShadow: "0 14px 28px rgba(15,86,47,0.26)",
                 }}
               >
-                {isAr ? "استكشف الآن" : "Explore now"}
+                {isAr ? "ابدأ المسابقة الآن" : "Explore now"}
               </div>
             </div>
 

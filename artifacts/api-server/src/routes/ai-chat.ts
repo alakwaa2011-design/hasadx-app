@@ -14,6 +14,7 @@ import {
 import { anthropic, SONNET_MODEL, estimateCostMicroUsd } from "../lib/anthropic-client";
 import { buildSystemPrompt } from "../lib/ai-system-prompt";
 import { logActivity } from "../lib/activity-logger";
+import { trackEvent } from "../lib/analytics";
 
 const router: Router = Router();
 
@@ -197,6 +198,14 @@ router.post("/messages", async (req, res) => {
     userRole: "teacher",
     action: "ai_use",
     details: { feature: "ai_chat", messageLength: message.length },
+  });
+  trackEvent({
+    req,
+    userId: teacherId,
+    userRole: "teacher",
+    eventName: "ai_generation_requested",
+    eventCategory: "ai",
+    metadata: { feature: "ai_chat", messageLength: message.length },
   });
 
   // Find or create conversation FIRST so we can detect first-turn for cache lookup.
