@@ -877,12 +877,12 @@ export default function DashboardOverview({
               style={{
                 position: "relative",
                 zIndex: 2,
-                width: isMobile ? 108 : 150,
-                height: isMobile ? 108 : 150,
+                width: isMobile ? 108 : 180,
+                height: isMobile ? 200 : 150,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                flexShrink: 0,
+                flexShrink: 200,
               }}
             >
               <div
