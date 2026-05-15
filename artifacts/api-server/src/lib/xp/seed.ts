@@ -86,7 +86,9 @@ export async function seedXpDefaultsIfNeeded(): Promise<void> {
       .limit(1);
     if (!activeSeason) {
       const now = new Date();
-      const ends = new Date(now.getTime() + 90 * 86_400_000);
+      // Default season length: 1 calendar month (spec §open-questions default).
+      const ends = new Date(now);
+      ends.setMonth(ends.getMonth() + 1);
       await db.insert(seasonsTable).values({
         nameAr: "الموسم الأول",
         startsAt: now,

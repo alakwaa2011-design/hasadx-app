@@ -27,6 +27,7 @@ import {
   emailOutboxTable,
   seasonsTable,
   teachersTable,
+  notificationsTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { logger } from "../logger";
@@ -336,14 +337,25 @@ async function grantOnTx(
 }
 
 /**
- * Run the post-grant side-effects (badges, threshold rewards, quests).
+ * Run the post-grant side-effects (badges, threshold rewards, quests, level-up notification).
  * Each helper is idempotent. Intended to be called AFTER the originating
  * transaction commits so a downstream failure can't roll back the XP grant.
  */
 export async function runAwardXpSideEffects(
   teacherId: number,
   actionKey: string,
+  opts?: { leveledUp?: boolean; newLevel?: number },
 ): Promise<{ newBadgeKeys: string[]; newGrantIds: number[] }> {
+  // Fire level-up notification (milestone — bypass debounce on socket side)
+  if (opts?.leveledUp && opts.newLevel != null) {
+    const lvl = LEVELS.find((l) => l.level === opts.newLevel);
+    if (lvl) {
+      void notifyLevelUp(teacherId, lvl.level, lvl.nameAr).catch((err) =>
+        logger.error({ err, teacherId, newLevel: opts.newLevel }, "notifyLevelUp failed"),
+      );
+    }
+  }
+
   const [newBadgeKeys, newGrantIds] = await Promise.all([
     evaluateAndAwardBadges(teacherId).catch((err) => {
       logger.error({ err, teacherId }, "badge eval failed");
@@ -450,6 +462,10 @@ export async function awardXp(
       const sideEffects = await runAwardXpSideEffects(
         input.teacherId,
         input.actionKey,
+        {
+          leveledUp: result.newLevel > result.oldLevel,
+          newLevel: result.newLevel,
+        },
       );
       newBadgeKeys = sideEffects.newBadgeKeys;
       newGrantIds = sideEffects.newGrantIds;
@@ -698,8 +714,11 @@ async function evaluateAndAwardBadges(teacherId: number): Promise<string[]> {
       await applyFeaturePayload(teacherId, fn as Record<string, unknown>);
     }
 
-    // Queue email
+    // Queue email + in-app notification
     await queueBadgeEmail(teacherId, badge.id, badge.nameAr);
+    void notifyBadgeEarned(teacherId, badge.id, badge.nameAr, badge.icon ?? "🏅").catch(
+      (err) => logger.error({ err, teacherId, badgeId: badge.id }, "notifyBadgeEarned failed"),
+    );
   }
 
   if (newKeys.length > 0) {
@@ -878,6 +897,10 @@ async function progressQuestsForAction(
           .update(teacherStatsTable)
           .set({ questsCompleted: sql`${teacherStatsTable.questsCompleted} + 1` })
           .where(eq(teacherStatsTable.teacherId, teacherId));
+        // In-app notification + email (fire-and-forget — quest XP already committed)
+        void notifyQuestComplete(teacherId, q.id, q.nameAr, q.rewardXp).catch((err) =>
+          logger.error({ err, teacherId, questId: q.id }, "notifyQuestComplete failed"),
+        );
       }
     }
   }
@@ -937,6 +960,122 @@ async function queueThresholdEmail(
     .onConflictDoNothing({
       target: [emailOutboxTable.kind, emailOutboxTable.refKey],
     });
+}
+
+/**
+ * Write in-app notification + email for a level-up milestone.
+ * Idempotent: ref_key on email_outbox prevents duplicate emails.
+ */
+async function notifyLevelUp(
+  teacherId: number,
+  newLevel: number,
+  levelNameAr: string,
+): Promise<void> {
+  const [t] = await db
+    .select({ email: teachersTable.email, name: teachersTable.name })
+    .from(teachersTable)
+    .where(eq(teachersTable.id, teacherId))
+    .limit(1);
+  if (!t) return;
+
+  // In-app notification
+  await db
+    .insert(notificationsTable)
+    .values({
+      teacherId,
+      type: "level_up",
+      title: `ترقّيت إلى المستوى ${newLevel}!`,
+      body: `مبروك! أصبحت الآن "${levelNameAr}". استمر لتفتح مزايا جديدة.`,
+      isRead: false,
+    })
+    .onConflictDoNothing();
+
+  // Email (outbox pattern — no inline SMTP)
+  if (t.email) {
+    await db
+      .insert(emailOutboxTable)
+      .values({
+        toEmail: t.email,
+        subject: `🎉 ترقّيت إلى مستوى ${levelNameAr} في حصاد`,
+        htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! لقد ترقّيت إلى المستوى <strong>${newLevel} — ${escHtml(levelNameAr)}</strong> في منصة حصاد.</p><p>افتح منصة حصاد لاكتشاف المزايا الجديدة.</p></div>`,
+        textBody: `مرحباً ${t.name}، ترقّيت إلى المستوى ${newLevel} — ${levelNameAr}.`,
+        kind: "level_up",
+        refKey: `${teacherId}:level:${newLevel}`,
+      })
+      .onConflictDoNothing({
+        target: [emailOutboxTable.kind, emailOutboxTable.refKey],
+      });
+  }
+}
+
+/**
+ * Write in-app notification + email for badge earning.
+ * Called alongside queueBadgeEmail so both channels fire.
+ */
+async function notifyBadgeEarned(
+  teacherId: number,
+  badgeId: number,
+  badgeNameAr: string,
+  badgeIcon: string,
+): Promise<void> {
+  await db
+    .insert(notificationsTable)
+    .values({
+      teacherId,
+      type: "badge_earned",
+      title: `${badgeIcon} حصلت على شارة: ${badgeNameAr}`,
+      body: `تهانينا! أنجزت معياراً جديداً وحصلت على شارة "${badgeNameAr}".`,
+      isRead: false,
+    })
+    .onConflictDoNothing();
+  // Email queued separately by queueBadgeEmail — no duplication needed here.
+  void badgeId; // referenced to avoid unused-var lint warning
+}
+
+/**
+ * Write in-app notification + email for a quest completion.
+ */
+async function notifyQuestComplete(
+  teacherId: number,
+  questId: number,
+  questNameAr: string,
+  rewardXp: number,
+): Promise<void> {
+  const [t] = await db
+    .select({ email: teachersTable.email, name: teachersTable.name })
+    .from(teachersTable)
+    .where(eq(teachersTable.id, teacherId))
+    .limit(1);
+  if (!t) return;
+
+  // In-app notification
+  await db
+    .insert(notificationsTable)
+    .values({
+      teacherId,
+      type: "quest_complete",
+      title: `✅ أكملت مهمة: ${questNameAr}`,
+      body: `أحسنت! حصلت على ${rewardXp} نقطة مكافأة على إتمام المهمة.`,
+      isRead: false,
+    })
+    .onConflictDoNothing();
+
+  // Email outbox
+  if (t.email) {
+    await db
+      .insert(emailOutboxTable)
+      .values({
+        toEmail: t.email,
+        subject: `✅ أكملت مهمة أسبوعية في حصاد: ${questNameAr}`,
+        htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>أكملت المهمة <strong>${escHtml(questNameAr)}</strong> وحصلت على <strong>${rewardXp} نقطة</strong> مكافأة.</p></div>`,
+        textBody: `${t.name}، أكملت مهمة "${questNameAr}" وحصلت على ${rewardXp} نقطة.`,
+        kind: "quest_complete",
+        refKey: `${teacherId}:quest:${questId}`,
+      })
+      .onConflictDoNothing({
+        target: [emailOutboxTable.kind, emailOutboxTable.refKey],
+      });
+  }
 }
 
 /* ------------------------------------------------------------------------ */

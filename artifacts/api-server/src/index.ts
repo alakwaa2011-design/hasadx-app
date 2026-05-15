@@ -310,8 +310,8 @@ bindXpSocket(io);
 
 // Subscribe each authenticated teacher to their own room so XP toasts route correctly.
 io.on("connection", (socket) => {
-  const sess = (socket.request as any)?.session;
-  const teacherId = sess?.teacherId;
+  const req = socket.request as unknown as { session?: { teacherId?: number } };
+  const teacherId = req.session?.teacherId;
   if (typeof teacherId === "number") {
     socket.join(`teacher:${teacherId}`);
   }

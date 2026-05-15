@@ -135,6 +135,7 @@ export async function awardXpInTxAndNotifyAfterCommit(
     const { newBadgeKeys, newGrantIds } = await runAwardXpSideEffects(
       input.teacherId,
       input.actionKey,
+      { leveledUp: result.leveledUp, newLevel: result.newLevel },
     );
     emitXpToTeacher(input.teacherId, {
       ...result,
