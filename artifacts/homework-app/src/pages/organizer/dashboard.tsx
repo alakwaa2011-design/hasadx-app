@@ -963,184 +963,170 @@ export default function OrganizerDashboard() {
             </Link>
           </nav>
 
-          {/* Hero card: تحدّي حصاد — cream + gold trophy theme matching the game */}
+          {/* Hero card: تحدّي حصاد — soft mint background + golden trophy in cream disc */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
             className="mb-12 -mx-2 sm:-mx-6 lg:-mx-10"
           >
-            <Link href="/game/arena">
+            <div
+              className="group relative overflow-hidden rounded-[28px] transition-all duration-300 hover:-translate-y-0.5"
+              style={{
+                background:
+                  "linear-gradient(135deg,#eaf2e6 0%,#e4eedf 50%,#dde9d6 100%)",
+                border: "1px solid rgba(155,180,140,0.35)",
+                boxShadow:
+                  "0 18px 50px -22px rgba(80,110,75,0.25), 0 2px 0 rgba(255,255,255,0.8) inset",
+              }}
+            >
+              {/* Faint cream glow behind trophy */}
               <div
-                className="group relative overflow-hidden rounded-[28px] cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                aria-hidden
+                className="absolute pointer-events-none"
                 style={{
+                  top: -60,
+                  [dir === "rtl" ? "left" : "right"]: -40,
+                  width: 280,
+                  height: 280,
+                  borderRadius: "50%",
                   background:
-                    "linear-gradient(135deg,#fdf6e2 0%,#fbeec6 45%,#f6e1a8 100%)",
-                  border: "1.5px solid rgba(201,161,75,0.45)",
-                  boxShadow:
-                    "0 28px 70px -24px rgba(160,127,55,0.40), 0 2px 0 rgba(255,255,255,0.85) inset, 0 0 0 1px rgba(255,255,255,0.55) inset",
+                    "radial-gradient(circle, rgba(245,225,180,0.45) 0%, transparent 70%)",
+                  filter: "blur(8px)",
+                }}
+              />
+
+              <div
+                className="relative grid items-center gap-5 sm:gap-7 px-5 py-6 sm:px-9 sm:py-8"
+                style={{
+                  gridTemplateColumns: "auto 1fr auto",
                 }}
               >
-                {/* Subtle ornamental gold rim — top edge only, very thin */}
-                <div
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-[3px] pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(90deg,transparent 0%,#c9a14b 18%,#f5d77a 50%,#c9a14b 82%,transparent 100%)",
-                    opacity: 0.7,
-                  }}
-                />
-                {/* Soft gold glow behind trophy */}
-                <div
-                  aria-hidden
-                  className="absolute pointer-events-none"
-                  style={{
-                    top: -120,
-                    [dir === "rtl" ? "right" : "left"]: -100,
-                    width: 380,
-                    height: 380,
-                    borderRadius: "50%",
-                    background:
-                      "radial-gradient(circle, rgba(245,205,108,0.50) 0%, transparent 65%)",
-                    filter: "blur(4px)",
-                  }}
-                />
-                {/* Subtle teal accent on opposite side */}
-                <div
-                  aria-hidden
-                  className="absolute pointer-events-none"
-                  style={{
-                    bottom: -90,
-                    [dir === "rtl" ? "left" : "right"]: -60,
-                    width: 240,
-                    height: 240,
-                    borderRadius: "50%",
-                    background:
-                      "radial-gradient(circle, rgba(31,77,79,0.10) 0%, transparent 70%)",
-                  }}
-                />
-                {/* Sparkle dots scattered (decorative) */}
-                <div aria-hidden className="absolute inset-0 pointer-events-none opacity-60">
-                  <div className="absolute" style={{ top: "18%", [dir === "rtl" ? "right" : "left"]: "12%", width: 4, height: 4, borderRadius: "50%", background: "#d9b860", boxShadow: "0 0 8px #f5d77a" }} />
-                  <div className="absolute" style={{ top: "62%", [dir === "rtl" ? "right" : "left"]: "8%", width: 3, height: 3, borderRadius: "50%", background: "#c9a14b" }} />
-                  <div className="absolute" style={{ top: "32%", [dir === "rtl" ? "left" : "right"]: "22%", width: 5, height: 5, borderRadius: "50%", background: "#e5c573", boxShadow: "0 0 10px #f5d77a" }} />
-                  <div className="absolute" style={{ bottom: "20%", [dir === "rtl" ? "left" : "right"]: "38%", width: 3, height: 3, borderRadius: "50%", background: "#c9a14b" }} />
+                {/* ── LEFT: action buttons stacked ── */}
+                <div className="flex flex-col items-stretch gap-2.5 shrink-0 order-1">
+                  {/* Open/external icon button */}
+                  <Link
+                    href="/game/arena"
+                    aria-label={lang === "ar" ? "فتح" : "Open"}
+                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all hover:-translate-y-0.5 hover:scale-[1.04]"
+                    style={{
+                      background: "rgba(255,255,255,0.7)",
+                      border: "1px solid rgba(155,180,140,0.40)",
+                      color: "#3a5a3e",
+                      boxShadow:
+                        "0 4px 12px -6px rgba(80,110,75,0.25), 0 1px 0 rgba(255,255,255,0.9) inset",
+                    }}
+                  >
+                    <ArrowUpRight className="w-5 h-5" strokeWidth={2.2} />
+                  </Link>
+                  {/* Explore now pill button */}
+                  <Link
+                    href="/game/arena"
+                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-2xl text-[13px] font-extrabold transition-all hover:-translate-y-0.5 hover:scale-[1.02] whitespace-nowrap"
+                    style={{
+                      background: "rgba(255,255,255,0.9)",
+                      color: "#1f4d4f",
+                      border: "1px solid rgba(155,180,140,0.40)",
+                      boxShadow:
+                        "0 6px 16px -8px rgba(80,110,75,0.30), 0 1px 0 rgba(255,255,255,0.9) inset",
+                    }}
+                  >
+                    {lang === "ar" ? "استكشف الآن" : "Explore now"}
+                  </Link>
                 </div>
 
-                <div className="relative grid sm:grid-cols-[auto_1fr_auto] items-center gap-6 sm:gap-9 px-6 py-7 sm:px-12 sm:py-10">
-                  {/* ── Golden Trophy ── */}
-                  <div className="relative shrink-0 flex items-center justify-center">
-                    {/* Outer gold halo */}
-                    <div
-                      aria-hidden
-                      className="absolute rounded-full transition-transform duration-500 group-hover:scale-110"
-                      style={{
-                        width: 120,
-                        height: 120,
-                        background:
-                          "radial-gradient(circle, rgba(245,205,108,0.55) 0%, rgba(245,205,108,0) 70%)",
-                        filter: "blur(2px)",
-                      }}
-                    />
-                    {/* Trophy disc */}
-                    <div
-                      className="relative w-[92px] h-[92px] sm:w-[108px] sm:h-[108px] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-[-4deg]"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 30% 28%, #fff5cc 0%, #f3cf6c 38%, #c9a14b 75%, #8c6a26 100%)",
-                        border: "2px solid rgba(255,250,225,0.85)",
-                        boxShadow:
-                          "0 14px 34px -8px rgba(160,110,30,0.55), 0 0 0 1px rgba(140,106,38,0.35), 0 4px 0 rgba(255,255,255,0.55) inset, 0 -8px 16px rgba(140,106,38,0.30) inset",
-                      }}
-                    >
-                      <Trophy
-                        className="w-12 h-12 sm:w-14 sm:h-14 transition-transform duration-300"
-                        style={{
-                          color: "#5a3e0e",
-                          filter:
-                            "drop-shadow(0 2px 0 rgba(255,250,225,0.6)) drop-shadow(0 4px 8px rgba(90,62,14,0.35))",
-                          strokeWidth: 1.8,
-                        }}
-                      />
-                      {/* Shine highlight */}
-                      <div
-                        aria-hidden
-                        className="absolute pointer-events-none"
-                        style={{
-                          top: 8,
-                          [dir === "rtl" ? "right" : "left"]: 16,
-                          width: 28,
-                          height: 14,
-                          borderRadius: "50%",
-                          background:
-                            "radial-gradient(ellipse, rgba(255,255,255,0.85) 0%, transparent 70%)",
-                          filter: "blur(1px)",
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* ── Text block ── */}
-                  <div className="min-w-0">
-                    <div
-                      className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase mb-3 px-2.5 py-1 rounded-full"
-                      style={{
-                        background: "rgba(255,255,255,0.75)",
-                        color: "#9a6f0c",
-                        border: "1px solid rgba(201,161,75,0.45)",
-                        boxShadow: "0 2px 6px -2px rgba(160,127,55,0.25)",
-                      }}
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      {lang === "ar"
-                        ? "اللعبة الأبرز · شاشة كبيرة"
-                        : "Featured · Big-screen game"}
-                    </div>
+                {/* ── CENTER: text block (right-aligned in RTL) ── */}
+                <div className="min-w-0 order-2 text-end">
+                  <div className="inline-flex items-center gap-2 mb-2 flex-row-reverse">
                     <h2
-                      className="text-3xl sm:text-[40px] font-black leading-[1.1] tracking-tight mb-2.5"
+                      className="text-2xl sm:text-[32px] font-black leading-tight tracking-tight"
                       style={{
                         color: "#1f4d4f",
                         fontFamily:
                           "'Readex Pro','IBM Plex Sans Arabic',sans-serif",
-                        textShadow: "0 1px 0 rgba(255,255,255,0.6)",
                       }}
                     >
                       {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
                     </h2>
-                    <p
-                      className="text-sm sm:text-[15px] leading-relaxed max-w-2xl"
-                      style={{ color: "#5a4a2e" }}
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
+                      style={{
+                        background: "rgba(120,140,115,0.18)",
+                        color: "#3a5a3e",
+                        border: "1px solid rgba(120,140,115,0.25)",
+                      }}
                     >
-                      {lang === "ar"
-                        ? "تحدٍّ بين فريقين أو أكثر — ٦ فئات، أسئلة بقيم متصاعدة، ومساعدات استراتيجية. مثالي للحفلات والفعاليات."
-                        : "A two-or-more-team challenge — 6 categories, escalating values, strategic helpers. Built for parties and events."}
-                    </p>
+                      {lang === "ar" ? "مميّز" : "Featured"}
+                    </span>
                   </div>
+                  <p
+                    className="text-sm sm:text-[15px] leading-relaxed"
+                    style={{ color: "#516257" }}
+                  >
+                    {lang === "ar"
+                      ? "مسابقة جماعية بين فريقين أمام الجمهور. مناسبة للحفلات والملتقيات. ليست للواجبات."
+                      : "A team contest in front of an audience — perfect for parties and gatherings, not for homework."}
+                  </p>
+                </div>
 
-                  {/* ── Start button ── */}
+                {/* ── RIGHT: golden trophy in cream disc ── */}
+                <Link
+                  href="/game/arena"
+                  aria-label={lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
+                  className="relative shrink-0 flex items-center justify-center order-3"
+                >
+                  {/* Soft outer cream halo */}
                   <div
-                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-extrabold text-sm shrink-0 transition-all duration-200 group-hover:scale-[1.04]"
+                    aria-hidden
+                    className="absolute rounded-full transition-transform duration-500 group-hover:scale-110"
+                    style={{
+                      width: 140,
+                      height: 140,
+                      background:
+                        "radial-gradient(circle, rgba(245,225,180,0.55) 0%, transparent 70%)",
+                      filter: "blur(4px)",
+                    }}
+                  />
+                  {/* Cream disc */}
+                  <div
+                    className="relative w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-[-4deg]"
                     style={{
                       background:
-                        "linear-gradient(135deg,#1f4d4f 0%,#173d3f 100%)",
-                      color: "#fdf6e2",
+                        "radial-gradient(circle at 30% 28%, #fefaee 0%, #f5e6c5 60%, #e8d3a4 100%)",
+                      border: "1.5px solid rgba(220,200,160,0.65)",
                       boxShadow:
-                        "0 12px 28px -10px rgba(31,77,79,0.55), 0 0 0 1.5px rgba(201,161,75,0.55), 0 -2px 0 rgba(0,0,0,0.18) inset, 0 2px 0 rgba(255,255,255,0.10) inset",
+                        "0 10px 28px -10px rgba(160,130,70,0.35), 0 2px 0 rgba(255,255,255,0.7) inset, 0 -4px 12px rgba(160,130,70,0.18) inset",
                     }}
                   >
-                    {lang === "ar" ? "ابدأ التحدّي" : "Start challenge"}
-                    <ArrowRight
-                      className="w-4 h-4 transition-transform group-hover:translate-x-0.5"
+                    <Trophy
+                      className="w-11 h-11 sm:w-[52px] sm:h-[52px] transition-transform duration-300"
                       style={{
-                        color: "#f5d77a",
-                        transform: dir === "rtl" ? "rotate(180deg)" : "none",
+                        color: "#c89a3a",
+                        fill: "#e5b756",
+                        filter:
+                          "drop-shadow(0 2px 0 rgba(255,250,225,0.7)) drop-shadow(0 4px 6px rgba(140,100,30,0.35))",
+                        strokeWidth: 1.6,
+                      }}
+                    />
+                    {/* Soft shine highlight */}
+                    <div
+                      aria-hidden
+                      className="absolute pointer-events-none"
+                      style={{
+                        top: 10,
+                        [dir === "rtl" ? "right" : "left"]: 18,
+                        width: 24,
+                        height: 12,
+                        borderRadius: "50%",
+                        background:
+                          "radial-gradient(ellipse, rgba(255,255,255,0.85) 0%, transparent 70%)",
+                        filter: "blur(1.5px)",
                       }}
                     />
                   </div>
-                </div>
+                </Link>
               </div>
-            </Link>
+            </div>
           </motion.div>
 
           {/* Section: live games. */}
