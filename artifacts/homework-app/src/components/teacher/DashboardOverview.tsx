@@ -670,31 +670,31 @@ export default function DashboardOverview({
               {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
             </button>
           </motion.div>
-          {/* Hasad Challenge — slim premium banner */}
+          {/* Hasad Challenge — premium hero banner */}
           <motion.button
             type="button"
             onClick={() => setLocation("/game/arena")}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, delay: 0.08 }}
-            whileHover={{ y: -2, scale: 1.003 }}
+            whileHover={{ y: -3, scale: 1.004 }}
             whileTap={{ scale: 0.99 }}
             style={{
               width: "100%",
               position: "relative",
               overflow: "hidden",
               borderRadius: 24,
-              padding: isMobile ? "20px 18px" : "22px 30px",
-              minHeight: isMobile ? 180 : 150,
-              border: "1.5px solid rgba(201,146,10,0.45)",
+              padding: isMobile ? "24px 20px" : "32px 38px",
+              minHeight: isMobile ? 220 : 190,
+              border: "1px solid rgba(201,146,10,0.32)",
               background:
-                "linear-gradient(135deg, #F4F7EF 0%, #FFFDF7 50%, #FFF4D9 100%)",
+                "linear-gradient(135deg, #F4F7EF 0%, #FFFDF7 48%, #FFF4D9 100%)",
               boxShadow:
-                "0 18px 44px rgba(30,77,53,0.12), 0 0 0 1px rgba(255,255,255,0.75) inset",
+                "0 20px 50px rgba(30,77,53,0.12), 0 0 0 1px rgba(255,255,255,0.75) inset",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: isMobile ? 18 : 30,
+              gap: isMobile ? 18 : 34,
               cursor: "pointer",
               textAlign: isAr ? "right" : "left",
               fontFamily: "inherit",
@@ -706,83 +706,43 @@ export default function DashboardOverview({
                 position: "absolute",
                 inset: 0,
                 background:
-                  "radial-gradient(circle at 10% 55%, rgba(30,77,53,0.14), transparent 32%)",
+                  "radial-gradient(circle at 12% 55%, rgba(30,77,53,0.15), transparent 34%)",
                 pointerEvents: "none",
               }}
             />
 
-            {/* gold glow behind trophy */}
+            {/* soft gold glow */}
             <div
               style={{
                 position: "absolute",
-                left: isAr ? 28 : "auto",
-                right: isAr ? "auto" : 28,
+                right: isAr ? 28 : "auto",
+                left: isAr ? "auto" : 28,
                 top: "50%",
                 transform: "translateY(-50%)",
-                width: isMobile ? 130 : 180,
-                height: isMobile ? 130 : 180,
+                width: isMobile ? 150 : 210,
+                height: isMobile ? 150 : 210,
                 borderRadius: "50%",
                 background:
-                  "radial-gradient(circle, rgba(232,168,14,0.34) 0%, rgba(232,168,14,0.14) 42%, transparent 72%)",
-                filter: "blur(7px)",
+                  "radial-gradient(circle, rgba(232,168,14,0.30) 0%, rgba(232,168,14,0.13) 42%, transparent 72%)",
+                filter: "blur(8px)",
                 pointerEvents: "none",
               }}
             />
 
-            {/* top gold line */}
+            {/* gold top line */}
             <div
               style={{
                 position: "absolute",
                 top: 0,
                 right: isAr ? 0 : "auto",
                 left: isAr ? "auto" : 0,
-                width: "40%",
+                width: "42%",
                 height: 3,
                 background:
-                  "linear-gradient(90deg, transparent, rgba(232,168,14,0.9), transparent)",
+                  "linear-gradient(90deg, transparent, rgba(232,168,14,0.85), transparent)",
                 pointerEvents: "none",
               }}
             />
-
-            {/* Trophy Image — بدون سنابل */}
-            <div
-              style={{
-                position: "relative",
-                zIndex: 2,
-                width: isMobile ? 94 : 130,
-                height: isMobile ? 94 : 130,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              {/* توهج ذهبي خلف الكأس فقط */}
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 4,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(255,223,132,0.78) 0%, rgba(232,168,14,0.24) 44%, transparent 72%)",
-                  filter: "blur(5px)",
-                }}
-              />
-
-              {/* صورة الكأس الحقيقية */}
-              <img
-                src="/assets/trophy.png"
-                alt="trophy"
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  filter:
-                    "drop-shadow(0 10px 18px rgba(122,79,0,0.28)) drop-shadow(0 3px 2px rgba(255,255,255,0.6))",
-                }}
-              />
-            </div>
 
             {/* Text area */}
             <div
@@ -793,31 +753,31 @@ export default function DashboardOverview({
                 minWidth: 0,
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "flex-start",
-                textAlign: isAr ? "right" : "left",
-                gap: 8,
+                alignItems: "center",
+                textAlign: "center",
+                gap: 10,
               }}
             >
               <span
                 style={{
                   width: "fit-content",
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 900,
-                  padding: "4px 12px",
+                  padding: "5px 13px",
                   borderRadius: 999,
                   background: "rgba(30,77,53,0.09)",
                   color: "#0F5A32",
                   border: "1px solid rgba(30,77,53,0.10)",
                 }}
               >
-                ★ {isAr ? "مميز" : "Featured"}
+                {isAr ? "مميز" : "Featured"}
               </span>
 
               <h2
                 style={{
                   margin: 0,
                   color: "#103F2B",
-                  fontSize: isMobile ? 30 : 38,
+                  fontSize: isMobile ? 34 : 46,
                   fontWeight: 950,
                   lineHeight: 1.05,
                   letterSpacing: "-0.04em",
@@ -831,16 +791,21 @@ export default function DashboardOverview({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "flex-start",
-                  gap: 9,
+                  justifyContent: "center",
+                  gap: 10,
                   flexWrap: "wrap",
                   marginTop: 2,
                 }}
               >
                 {[
-                  { icon: "⚡", text: isAr ? "تجربة تفاعلية" : "Interactive" },
-                  { icon: "👥", text: isAr ? "للحفلات والملتقيات" : "For Events" },
-                  { icon: "🏅", text: isAr ? "لوحة متصدرين" : "Leaderboard" },
+                  {
+                    icon: "🏆",
+                    text: isAr ? "تجربة تفاعلية" : "Interactive",
+                  },
+                  {
+                    icon: "👥",
+                    text: isAr ? "للحفلات والملتقيات" : "For Events",
+                  },
                 ].map((item, index) => (
                   <div
                     key={index}
@@ -848,7 +813,7 @@ export default function DashboardOverview({
                       display: "flex",
                       alignItems: "center",
                       gap: 7,
-                      padding: "7px 13px",
+                      padding: "8px 14px",
                       borderRadius: 999,
                       background: "rgba(255,255,255,0.78)",
                       border: "1px solid rgba(15,86,47,0.08)",
@@ -856,10 +821,10 @@ export default function DashboardOverview({
                       boxShadow: "0 4px 14px rgba(30,77,53,0.05)",
                     }}
                   >
-                    <span style={{ fontSize: 13 }}>{item.icon}</span>
+                    <span style={{ fontSize: 14 }}>{item.icon}</span>
                     <span
                       style={{
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: 800,
                         color: "#254A37",
                         whiteSpace: "nowrap",
@@ -874,10 +839,10 @@ export default function DashboardOverview({
               <p
                 style={{
                   margin: 0,
-                  maxWidth: 610,
+                  maxWidth: 620,
                   color: "#64766C",
-                  fontSize: isMobile ? 13 : 15,
-                  lineHeight: 1.7,
+                  fontSize: isMobile ? 14 : 16,
+                  lineHeight: 1.9,
                   fontWeight: 500,
                 }}
               >
@@ -888,25 +853,75 @@ export default function DashboardOverview({
 
               <div
                 style={{
-                  marginTop: 6,
+                  marginTop: 10,
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
                   width: "fit-content",
-                  padding: "10px 20px",
-                  borderRadius: 14,
+                  padding: "12px 24px",
+                  borderRadius: 16,
                   background: "linear-gradient(135deg,#0F5A32,#064B28)",
                   color: "#fff",
-                  fontSize: 13.5,
+                  fontSize: 14,
                   fontWeight: 900,
-                  boxShadow: "0 12px 24px rgba(15,86,47,0.24)",
+                  boxShadow: "0 14px 28px rgba(15,86,47,0.26)",
                 }}
               >
-                {isAr ? "استكشف الآن ↗" : "Explore now ↗"}
+                {isAr ? "استكشف الآن" : "Explore now"}
               </div>
             </div>
+
+            {/* Premium trophy */}
+            <div
+              style={{
+                position: "relative",
+                zIndex: 2,
+                width: isMobile ? 108 : 150,
+                height: isMobile ? 108 : 150,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 4,
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(circle, rgba(255,223,132,0.75) 0%, rgba(232,168,14,0.22) 42%, transparent 72%)",
+                  filter: "blur(5px)",
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 16,
+                  width: "68%",
+                  height: 18,
+                  borderRadius: "50%",
+                  background: "rgba(122,79,0,0.16)",
+                  filter: "blur(10px)",
+                }}
+              />
+
+              <span
+                style={{
+                  position: "relative",
+                  fontSize: isMobile ? 72 : 104,
+                  lineHeight: 1,
+                  filter:
+                    "drop-shadow(0 18px 18px rgba(122,79,0,0.22)) drop-shadow(0 3px 2px rgba(255,255,255,0.75))",
+                }}
+              >
+                🏆
+              </span>
+            </div>
           </motion.button>
+
           {/* Recent assignments — collapsible (closed by default) */}
           <motion.div
             initial={{ opacity: 0, y: 6 }}

@@ -118,8 +118,8 @@ router.use(aiPresentationsRouter);
 router.use(presentationsRouter);
 router.use(presentationSessionsRouter);
 router.use(studentTimelineRouter);
+router.use(xpRouter);
 router.use(classroomRouter);
 router.use(teamsRouter);
-router.use(xpRouter);
 
 export default router;

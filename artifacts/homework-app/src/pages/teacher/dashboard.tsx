@@ -393,6 +393,35 @@ export default function TeacherDashboard() {
     window.history.replaceState({}, "", path);
   }, [user]);
 
+  /* ── XP socket: real-time reward toasts ─────────────────────────────── */
+  useEffect(() => {
+    if (!user?.id) return;
+    const socket = getSocket();
+    socket.emit("join-teacher-room", { teacherId: user.id });
+    function handleXp(payload: {
+      delta: number;
+      leveledUp?: boolean;
+      newLevel?: number;
+      newBadgeKeys?: string[];
+    }) {
+      if ((payload.delta ?? 0) > 0) {
+        toast.success(`+${payload.delta} نقطة XP 🎉`, { duration: 3000 });
+      }
+      if (payload.leveledUp && payload.newLevel != null) {
+        setTimeout(() => {
+          toast.success(`🏆 ترقّيت إلى المستوى ${payload.newLevel}!`, { duration: 5000 });
+        }, 400);
+      }
+      if ((payload.newBadgeKeys?.length ?? 0) > 0) {
+        setTimeout(() => {
+          toast.success(`🏅 حصلت على شارة جديدة!`, { duration: 5000 });
+        }, 800);
+      }
+    }
+    socket.on("teacher:xp", handleXp);
+    return () => { socket.off("teacher:xp", handleXp); };
+  }, [user?.id]);
+
   useEffect(() => {
     if (activeTab !== "shared" || !user) return;
     if (sharedAssignments.length > 0) return;

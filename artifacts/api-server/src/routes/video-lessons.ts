@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
+import { awardXpAndNotify } from "../lib/xp/socket";
 
 const router: IRouter = Router();
 
@@ -378,6 +379,12 @@ router.post("/video-lessons", async (req, res) => {
     }
 
     res.status(201).json(lesson);
+
+    void awardXpAndNotify({
+      teacherId: req.session.teacherId,
+      actionKey: "video_lesson.create",
+      refId: `video_lesson:${lesson.id}`,
+    }).catch(() => {});
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });

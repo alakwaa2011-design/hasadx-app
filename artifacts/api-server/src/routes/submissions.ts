@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
+import { awardXpAndNotify } from "../lib/xp/socket";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import {
   SubmitAssignmentParams,
@@ -1116,6 +1117,12 @@ router.patch("/submissions/:submissionId", async (req, res) => {
       aiFeedback: updated.aiFeedback,
       submittedAt: updated.submittedAt.toISOString(),
     });
+
+    void awardXpAndNotify({
+      teacherId: req.session.teacherId,
+      actionKey: "submission.graded",
+      refId: `submission.graded:${submissionId}`,
+    }).catch(() => {});
   } catch (error: any) {
     req.log.error({ err: error }, "Update submission error");
     res.status(500).json({ message: "خطأ في تعديل الدرجة" });
