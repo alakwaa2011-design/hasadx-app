@@ -1201,8 +1201,8 @@ export default function OrganizerDashboard() {
             ))}
           </div>
 
-          {/* Section: solo brain games — visible on mobile only; desktop uses sidebar */}
-          <section className="mt-12 lg:hidden">
+          {/* Section: solo brain games — always visible */}
+          <section className="mt-12">
             <div className="mb-5 flex items-end justify-between gap-3">
               <div>
                 <div
@@ -1214,14 +1214,19 @@ export default function OrganizerDashboard() {
                   }}
                 >
                   <Brain className="w-3 h-3" />
-                  {lang === "ar" ? "فردي" : "Solo"}
+                  {lang === "ar" ? "فردي · ذكاء" : "Solo · Brain"}
                 </div>
                 <h2
                   className="text-xl sm:text-2xl font-black tracking-tight"
                   style={{ color: "#103d2a" }}
                 >
-                  {lang === "ar" ? "ألعاب الذكاء 🧠" : "Brain games 🧠"}
+                  {lang === "ar" ? "ألعاب الذكاء الفردية 🧠" : "Solo brain games 🧠"}
                 </h2>
+                <p className="text-sm mt-0.5" style={{ color: "#3a6a4d" }}>
+                  {lang === "ar"
+                    ? "العبها لوحدك أو تحدَّ أصحابك — بدون انتظار"
+                    : "Play alone or challenge friends — no waiting"}
+                </p>
               </div>
               <span
                 className="hidden sm:block flex-1 h-px self-end mb-2 mx-4"
@@ -1232,16 +1237,17 @@ export default function OrganizerDashboard() {
               />
               <Link
                 href="/games"
-                className="inline-flex items-center gap-1.5 text-xs font-extrabold transition-all hover:-translate-y-0.5 shrink-0 px-3 py-1.5 rounded-full"
+                className="inline-flex items-center gap-2 text-sm font-extrabold transition-all hover:-translate-y-0.5 shrink-0 px-4 py-2 rounded-xl"
                 style={{
-                  color: "#6d28d9",
-                  background: "rgba(167,139,250,0.14)",
-                  border: "1px solid rgba(167,139,250,0.32)",
+                  color: "#fff",
+                  background: "linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%)",
+                  boxShadow: "0 8px 20px -8px rgba(124,58,237,0.55)",
                 }}
               >
+                <Gamepad2 className="w-4 h-4" />
                 {lang === "ar" ? "كل الألعاب" : "All games"}
                 <ArrowRight
-                  className="w-3.5 h-3.5"
+                  className="w-4 h-4"
                   style={{
                     transform: dir === "rtl" ? "rotate(180deg)" : "none",
                   }}
