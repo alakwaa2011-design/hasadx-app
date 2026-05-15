@@ -3063,10 +3063,26 @@ function EditableText({
       }}
       onPointerDown={(e) => {
         /* While editing, swallow pointer-down so the shell's drag
-           handler doesn't interpret a caret placement as a drag.
-           When NOT editing, let it bubble so the shell selects + can
-           start a drag — the browser still fires dblclick afterwards. */
-        if (editing) e.stopPropagation();
+           handler doesn't interpret a caret placement as a drag. */
+        if (editing) {
+          e.stopPropagation();
+          return;
+        }
+        /* Detect double-click on pointerdown (e.detail counts clicks
+           in the same sequence). We can't rely on onDoubleClick because
+           the shell's startGesture calls e.preventDefault() on
+           pointerdown, which suppresses the synthetic click/dblclick
+           events in Chromium. Stop propagation so the shell never sees
+           this pointerdown, and enter edit mode immediately — the
+           existing useEffect on `editing` will focus the contentEditable
+           and place the caret at the end. */
+        if (e.detail >= 2 && !readOnly) {
+          e.stopPropagation();
+          onEnterEdit();
+          return;
+        }
+        /* Single click: let it bubble so the shell selects + can start
+           a drag. */
       }}
       onBlur={onBlur}
       onKeyDown={(e) => {

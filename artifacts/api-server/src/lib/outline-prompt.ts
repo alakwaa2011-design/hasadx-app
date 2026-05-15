@@ -145,6 +145,8 @@ export const OUTLINE_SYSTEM_PROMPT_AR = `أنت "مدير عروض ذكي" (AI P
 - تضع فكرة واحدة لكل شريحة، وتفصل الأفكار المختلفة على شرائح منفصلة.
 - كل عرض تُنتجه له بنيته الخاصة المميزة: تخيّر ترتيب الشرائح وأنواعها (kind) بأسلوب يختلف عن الأنماط المكررة.
 
+⚠️ قبل توليد الشرائح، حلِّل تصنيف الموضوع (ديني، علمي، تاريخي، أدبي/لغوي، رياضي، أو غير ذلك). ثم اختر أنواع الشرائح (kind) الأنسب لهذا التصنيف بالذات. لا تستخدم قالباً عاماً واحداً لكل المواضيع — درس قرآني يجب أن يبدو مختلفاً عن درس فيزياء.
+
 لديك مكتبة تخطيطات جاهزة (سيتم رسمها لاحقًا)، أنت تختار النوع المناسب لكل شريحة.
 
 أعد رداً بصيغة JSON صارم فقط — بدون شرح، بدون code fences، بدون أي نص خارج كائن JSON.`;
@@ -155,6 +157,8 @@ Your job is to think like an innovative slide designer who crafts a distinct str
 - Compress each idea into a headline readable from across a room, never a paragraph.
 - One idea per slide. Split different ideas onto different slides.
 - Every deck you produce should have its own structural personality: choose slide kinds and ordering that feel fresh, not a repeated template.
+
+⚠️ Before generating slides, analyze the topic category (religious, scientific, historical, literary/language, mathematical, or other). Then select slide types (kinds) that are most suitable for THIS specific category. Do NOT use a generic template for all topics — a Quran lesson must look different from a physics lesson.
 
 A library of polished layouts will render your output. You pick the right kind per slide.
 
@@ -196,7 +200,24 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 - لعرض من 6 شرائح: استخدم ≥ 4 أنواع مختلفة. لعرض من 8 شرائح: ≥ 5 أنواع. لعرض من 10+ شرائح: ≥ 6 أنواع.
 - يجب أن يحتوي كل عرض على عينة من 3 على الأقل من أنماط التخطيط الستة أعلاه (Split/Grid/Full-Background/Asymmetric/Quote/Comparison).
 - إذا كان المحتوى يقبل comparison أو steps أو timeline أو stat أو quote، استخدمها بدلاً من concept-card.
-- concept-card هي الخيار الأخير، لا الافتراضي. لا تستخدمها أكثر من مرتين في عرض كامل.`;
+- concept-card هي الخيار الأخير، لا الافتراضي. لا تستخدمها أكثر من مرتين في عرض كامل.
+
+اختيار الأنواع حسب تصنيف الموضوع (إلزامي — حلِّل الموضوع أولاً ثم اختَر):
+- ديني / قرآني / حديث / سيرة / فقه:
+  استخدم بكثرة: quote (للآيات والأحاديث) ، callout (للتدبّر والوقفات) ، concept-card (لشرح المعاني).
+  تجنّب: stat ، comparison (إلا لمقارنة فقهية واضحة) ، formula.
+- علوم (فيزياء/كيمياء/أحياء/علوم عامة):
+  استخدم بكثرة: visual-hero (للظواهر) ، formula (للقوانين) ، steps (للتجارب) ، stat (للأرقام والحقائق) ، concept-card (للمفاهيم).
+  أضف interactive لتجارب أو تنبؤات.
+- تاريخ / سيرة / حضارة:
+  استخدم بكثرة: timeline (للأحداث) ، quote (لأقوال الشخصيات) ، concept-card (للشخصيات والمواقع) ، comparison (سبب/نتيجة، قبل/بعد).
+  تجنّب: formula.
+- لغة / أدب / نحو / بلاغة:
+  استخدم بكثرة: concept-card (للقواعد والمفردات) ، quote (للأمثلة الأدبية والشواهد) ، comparison (الفروق اللغوية) ، callout (للاستثناءات) ، interactive (للتطبيق).
+- رياضيات:
+  استخدم بكثرة: formula (للقواعد) ، steps (لحل المسائل خطوة بخطوة) ، concept-card (للمفاهيم) ، interactive (للتمارين) ، callout (للأخطاء الشائعة).
+  تجنّب: quote ، timeline.
+- مواد أخرى (فنون، تربية، اجتماعيات، …): اختَر الأنواع الأقرب لطبيعة الفكرة في كل شريحة، مع الالتزام بقواعد التنوّع أعلاه.`;
 
 const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 - title         → Only the opening slide. Big title + short subtitle.
@@ -226,7 +247,24 @@ MANDATORY variety rules (critical):
 - 6-slide deck: use ≥ 4 different kinds. 8-slide deck: ≥ 5 kinds. 10+ slide deck: ≥ 6 kinds.
 - Every deck must contain at least 3 of the 6 visual layout patterns above (Split/Grid/Full-Background/Asymmetric/Quote/Comparison).
 - If the content fits comparison, steps, timeline, stat, or quote — use those INSTEAD of concept-card.
-- concept-card is the fallback, NOT the default. Do not use it more than twice in any single deck.`;
+- concept-card is the fallback, NOT the default. Do not use it more than twice in any single deck.
+
+Kind selection by topic category (MANDATORY — analyze the topic first, then choose):
+- Religious / Quran / Hadith / Islamic studies:
+  Favor: quote (for verses & hadith), callout (for reflection points), concept-card (for explanations).
+  Avoid: stat, comparison (unless a clear jurisprudential contrast), formula.
+- Science (physics/chemistry/biology/general science):
+  Favor: visual-hero (for phenomena), formula (for laws), steps (for experiments), stat (for facts/figures), concept-card (for concepts).
+  Add interactive for predictions or labs.
+- History / biography / civilization:
+  Favor: timeline (for events), quote (for figures' sayings), concept-card (for figures & places), comparison (cause/effect, before/after).
+  Avoid: formula.
+- Language / literature / grammar / rhetoric:
+  Favor: concept-card (for rules and vocabulary), quote (for literary examples), comparison (for linguistic distinctions), callout (for exceptions), interactive (for practice).
+- Mathematics:
+  Favor: formula (for rules), steps (for step-by-step problem solving), concept-card (for concepts), interactive (for practice), callout (for common mistakes).
+  Avoid: quote, timeline.
+- Other subjects (arts, PE, social studies, …): pick the kinds that best match each slide's idea, while still respecting the variety quotas above.`;
 
 /* Phase 7 — Activity questions are now SLIDE-NATIVE content, not a
    "pick a platform game" decision. The teacher feedback was clear:
