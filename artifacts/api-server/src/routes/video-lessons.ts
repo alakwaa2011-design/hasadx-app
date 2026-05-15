@@ -10,7 +10,8 @@ import {
 } from "@workspace/db";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { z } from "zod";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
+import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 
 const router: IRouter = Router();
 
@@ -341,50 +342,58 @@ router.post("/video-lessons", async (req, res) => {
 
     const body = CreateVideoLessonBody.parse(req.body);
 
-    const [lesson] = await db
-      .insert(videoLessonsTable)
-      .values({
-        title: body.title,
-        subject: body.subject || null,
-        description: body.description || null,
-        videoUrl: body.videoUrl,
-        videoType: body.videoType,
-        targetClass: body.targetClass || null,
-        accessMode: body.accessMode,
-        accessCode: body.accessCode || null,
-        teacherId: req.session.teacherId,
-        isShared: body.isShared === false ? false : true,
-        skipSegments: body.skipSegments && body.skipSegments.length > 0
-          ? JSON.stringify(body.skipSegments)
-          : null,
-      })
-      .returning();
+    const teacherId = req.session.teacherId;
+    // Wrap insert + XP in a single transaction: if either fails, both roll back.
+    const { lesson, runAfterCommit } = await db.transaction(async (tx) => {
+      const [l] = await tx
+        .insert(videoLessonsTable)
+        .values({
+          title: body.title,
+          subject: body.subject || null,
+          description: body.description || null,
+          videoUrl: body.videoUrl,
+          videoType: body.videoType,
+          targetClass: body.targetClass || null,
+          accessMode: body.accessMode,
+          accessCode: body.accessCode || null,
+          teacherId,
+          isShared: body.isShared === false ? false : true,
+          skipSegments: body.skipSegments && body.skipSegments.length > 0
+            ? JSON.stringify(body.skipSegments)
+            : null,
+        })
+        .returning();
 
-    if (body.questions && body.questions.length > 0) {
-      await db.insert(videoQuestionsTable).values(
-        body.questions.map((q, idx) => ({
-          videoLessonId: lesson.id,
-          timestampSeconds: q.timestampSeconds,
-          questionType: q.questionType,
-          text: q.text,
-          optionA: q.optionA || null,
-          optionB: q.optionB || null,
-          optionC: q.optionC || null,
-          optionD: q.optionD || null,
-          correctAnswer: q.correctAnswer || null,
-          points: q.points,
-          questionOrder: idx,
-        }))
-      );
-    }
+      if (body.questions && body.questions.length > 0) {
+        await tx.insert(videoQuestionsTable).values(
+          body.questions.map((q, idx) => ({
+            videoLessonId: l.id,
+            timestampSeconds: q.timestampSeconds,
+            questionType: q.questionType,
+            text: q.text,
+            optionA: q.optionA || null,
+            optionB: q.optionB || null,
+            optionC: q.optionC || null,
+            optionD: q.optionD || null,
+            correctAnswer: q.correctAnswer || null,
+            points: q.points,
+            questionOrder: idx,
+          }))
+        );
+      }
+
+      const { runAfterCommit: rac } = await awardXpInTxAndNotifyAfterCommit(tx, {
+        teacherId,
+        actionKey: "video_lesson.create",
+        refId: `video_lesson:${l.id}`,
+      });
+      return { lesson: l, runAfterCommit: rac };
+    });
+
+    // Run badge/quest/threshold checks AFTER the tx commits (never inside).
+    void runAfterCommit().catch(() => {});
 
     res.status(201).json(lesson);
-
-    void awardXpAndNotify({
-      teacherId: req.session.teacherId,
-      actionKey: "video_lesson.create",
-      refId: `video_lesson:${lesson.id}`,
-    }).catch(() => {});
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
@@ -491,6 +500,12 @@ router.delete("/video-lessons/:id", async (req, res) => {
     }
 
     await db.delete(videoLessonsTable).where(eq(videoLessonsTable.id, id));
+    // Reverse XP if deleted within 5-minute anti-abuse window (fire-and-forget)
+    void reverseXpIfWithinWindow(
+      existing.teacherId,
+      "video_lesson.create",
+      `video_lesson:${id}`,
+    ).catch(() => {});
     res.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "خطأ في الخادم";

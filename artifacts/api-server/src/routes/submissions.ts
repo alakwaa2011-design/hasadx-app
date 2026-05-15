@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, questionsTable, submissionsTable, answersTable, assignmentsTable, notificationsTable, examSessionsTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
-import { awardXpAndNotify } from "../lib/xp/socket";
+import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import {
   SubmitAssignmentParams,
@@ -1097,11 +1097,24 @@ router.patch("/submissions/:submissionId", async (req, res) => {
       }
     }
 
-    const [updated] = await db
-      .update(submissionsTable)
-      .set(updateData)
-      .where(eq(submissionsTable.id, submissionId))
-      .returning();
+    const teacherId = req.session.teacherId;
+    // Wrap update + XP in one transaction so a partial failure rolls both back.
+    const { updated, runAfterCommit } = await db.transaction(async (tx) => {
+      const [u] = await tx
+        .update(submissionsTable)
+        .set(updateData)
+        .where(eq(submissionsTable.id, submissionId))
+        .returning();
+      const { runAfterCommit: rac } = await awardXpInTxAndNotifyAfterCommit(tx, {
+        teacherId,
+        actionKey: "submission.graded",
+        refId: `submission.graded:${submissionId}`,
+      });
+      return { updated: u, runAfterCommit: rac };
+    });
+
+    // Badges / quests / threshold checks run outside the tx — never inside.
+    void runAfterCommit().catch(() => {});
 
     res.json({
       id: updated.id,
@@ -1117,14 +1130,8 @@ router.patch("/submissions/:submissionId", async (req, res) => {
       aiFeedback: updated.aiFeedback,
       submittedAt: updated.submittedAt.toISOString(),
     });
-
-    void awardXpAndNotify({
-      teacherId: req.session.teacherId,
-      actionKey: "submission.graded",
-      refId: `submission.graded:${submissionId}`,
-    }).catch(() => {});
-  } catch (error: any) {
-    req.log.error({ err: error }, "Update submission error");
+  } catch (err) {
+    req.log.error({ err }, "Update submission error");
     res.status(500).json({ message: "خطأ في تعديل الدرجة" });
   }
 });

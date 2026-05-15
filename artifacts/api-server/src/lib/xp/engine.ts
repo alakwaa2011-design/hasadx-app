@@ -104,7 +104,11 @@ export interface AwardXpResult {
     | "weekly_cap"
     | "no_teacher"
     | "error";
+  /** The action key that generated this result — included for socket batching. */
+  actionKey?: string;
+  /** Never included in socket payload — client refetches /me/achievements for trusted state. */
   newTotalXp?: number;
+  /** Never included in socket payload — client refetches /me/achievements for trusted state. */
   newLevel?: number;
   leveledUp?: boolean;
   newBadgeKeys?: string[];
@@ -441,6 +445,7 @@ export async function awardXp(
       awarded: true,
       delta: points,
       reason: "ok",
+      actionKey: input.actionKey,
       newTotalXp: result.newTotal,
       newLevel: result.newLevel,
       leveledUp: result.newLevel > result.oldLevel,
@@ -458,9 +463,172 @@ export async function awardXp(
   }
 }
 
+/**
+ * Reverse an earlier XP grant within the 5-minute protection window.
+ * Spec §3: "insert a new event with xp_value = -original_value,
+ * action_key = '<action>:reversed', ref_id pointing to the original event."
+ *
+ * @param teacherId  Teacher whose XP should be reversed.
+ * @param actionKey  The original action key (e.g. "worksheet.generate").
+ * @param refId      The ref_id used when the XP was originally granted.
+ * @returns          Whether a reversal was inserted (false = outside window or no event found).
+ */
+export async function reverseXpIfWithinWindow(
+  teacherId: number,
+  actionKey: string,
+  refId: string,
+  windowMs = 5 * 60 * 1_000,
+): Promise<boolean> {
+  if (!isXpEnabled()) return false;
+  try {
+    const [original] = await db
+      .select({ id: xpEventsTable.id, delta: xpEventsTable.delta, createdAt: xpEventsTable.createdAt })
+      .from(xpEventsTable)
+      .where(
+        and(
+          eq(xpEventsTable.teacherId, teacherId),
+          eq(xpEventsTable.actionKey, actionKey),
+          eq(xpEventsTable.refId, refId),
+          sql`${xpEventsTable.delta} > 0`,
+        ),
+      )
+      .limit(1);
+
+    if (!original) return false;
+
+    const ageMs = Date.now() - new Date(original.createdAt).getTime();
+    if (ageMs > windowMs) return false;
+
+    const reversalDelta = -original.delta;
+    const reversalRef = `rev:${original.id}`;
+    const reversalActionKey = `${actionKey}:reversed`;
+
+    await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(xpEventsTable)
+        .values({
+          teacherId,
+          actionKey: reversalActionKey,
+          refId: reversalRef,
+          delta: reversalDelta,
+          reason: `Reversed within 5-min window — original event #${original.id}`,
+          seasonId: null,
+          capBucket: null,
+          metadata: { originalEventId: original.id, originalActionKey: actionKey },
+        })
+        .onConflictDoNothing({
+          target: [xpEventsTable.teacherId, xpEventsTable.actionKey, xpEventsTable.refId],
+        })
+        .returning({ id: xpEventsTable.id });
+
+      if (inserted.length === 0) return; // already reversed
+
+      // Update stats aggregate (append-only sum)
+      await tx
+        .update(teacherStatsTable)
+        .set({
+          totalXp: sql`GREATEST(0, ${teacherStatsTable.totalXp} + ${reversalDelta})`,
+          seasonXp: sql`GREATEST(0, ${teacherStatsTable.seasonXp} + ${reversalDelta})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(teacherStatsTable.teacherId, teacherId));
+    });
+
+    logger.info({ teacherId, actionKey, refId, reversalDelta }, "XP reversal applied");
+    return true;
+  } catch (err) {
+    logger.error({ err, teacherId, actionKey, refId }, "reverseXpIfWithinWindow failed");
+    return false;
+  }
+}
+
 /* ------------------------------------------------------------------------ */
 /* Badges                                                                   */
 /* ------------------------------------------------------------------------ */
+
+async function buildStatLookup(
+  teacherId: number,
+  statsRow: typeof teacherStatsTable.$inferSelect,
+  earnedBadges: Array<{ badgeId: number; key: string }>,
+  activeSeason: { id: number } | null,
+): Promise<Record<string, number>> {
+  // Base stats from teacher_stats row (camelCase keys for backward compat)
+  const lookup: Record<string, number> = {
+    totalXp: statsRow.totalXp,
+    seasonXp: statsRow.seasonXp,
+    level: statsRow.level,
+    currentStreakDays: statsRow.currentStreakDays,
+    longestStreakDays: statsRow.longestStreakDays,
+    badgeCount: statsRow.badgeCount,
+    questsCompleted: statsRow.questsCompleted,
+    // snake_case aliases for DSL predicate nodes
+    total_xp: statsRow.totalXp,
+    season_xp: statsRow.seasonXp,
+    current_streak_days: statsRow.currentStreakDays,
+    longest_streak_days: statsRow.longestStreakDays,
+    badge_count: statsRow.badgeCount,
+    quests_completed: statsRow.questsCompleted,
+  };
+
+  // has_badge:{key} → 1 if earned, 0 otherwise
+  for (const b of earnedBadges) {
+    lookup[`has_badge:${b.key}`] = 1;
+  }
+
+  // count_action:{action} and count_action:{action}:season
+  const actionCounts = await db
+    .select({
+      actionKey: xpEventsTable.actionKey,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(xpEventsTable)
+    .where(
+      and(
+        eq(xpEventsTable.teacherId, teacherId),
+        sql`${xpEventsTable.delta} > 0`,
+      ),
+    )
+    .groupBy(xpEventsTable.actionKey);
+
+  for (const row of actionCounts) {
+    lookup[`count_action:${row.actionKey}`] = row.count;
+  }
+
+  if (activeSeason) {
+    const seasonActionCounts = await db
+      .select({
+        actionKey: xpEventsTable.actionKey,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(xpEventsTable)
+      .where(
+        and(
+          eq(xpEventsTable.teacherId, teacherId),
+          eq(xpEventsTable.seasonId, activeSeason.id),
+          sql`${xpEventsTable.delta} > 0`,
+        ),
+      )
+      .groupBy(xpEventsTable.actionKey);
+
+    for (const row of seasonActionCounts) {
+      lookup[`count_action:${row.actionKey}:season`] = row.count;
+    }
+
+    // seasonal_rank: how many teachers have MORE season XP than this teacher
+    const [rankRow] = await db
+      .select({ rank: sql<number>`COUNT(*)::int` })
+      .from(teacherStatsTable)
+      .where(
+        and(
+          eq(teacherStatsTable.seasonId, activeSeason.id),
+          sql`${teacherStatsTable.seasonXp} > ${statsRow.seasonXp}`,
+        ),
+      );
+    lookup["seasonal_rank"] = (rankRow?.rank ?? 0) + 1;
+  }
+
+  return lookup;
+}
 
 async function evaluateAndAwardBadges(teacherId: number): Promise<string[]> {
   const [stats] = await db
@@ -470,25 +638,34 @@ async function evaluateAndAwardBadges(teacherId: number): Promise<string[]> {
     .limit(1);
   if (!stats) return [];
 
-  const lookup: Record<string, number> = {
-    totalXp: stats.totalXp,
-    seasonXp: stats.seasonXp,
-    level: stats.level,
-    currentStreakDays: stats.currentStreakDays,
-    longestStreakDays: stats.longestStreakDays,
-    badgeCount: stats.badgeCount,
-    questsCompleted: stats.questsCompleted,
-  };
+  const [activeSeason] = await db
+    .select({ id: seasonsTable.id })
+    .from(seasonsTable)
+    .where(
+      and(
+        sql`${seasonsTable.startedAt} <= NOW()`,
+        sql`${seasonsTable.endsAt} > NOW()`,
+      ),
+    )
+    .limit(1);
 
   const all = await db
     .select()
     .from(badgesTable)
     .where(eq(badgesTable.isActive, true));
   const earned = await db
-    .select({ badgeId: teacherBadgesTable.badgeId })
+    .select({ badgeId: teacherBadgesTable.badgeId, key: badgesTable.key })
     .from(teacherBadgesTable)
+    .innerJoin(badgesTable, eq(teacherBadgesTable.badgeId, badgesTable.id))
     .where(eq(teacherBadgesTable.teacherId, teacherId));
   const earnedSet = new Set(earned.map((r) => r.badgeId));
+
+  const lookup = await buildStatLookup(
+    teacherId,
+    stats,
+    earned,
+    activeSeason ?? null,
+  );
 
   const newKeys: string[] = [];
   for (const badge of all) {

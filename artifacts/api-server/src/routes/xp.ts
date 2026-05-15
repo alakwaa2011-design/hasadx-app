@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import {
   db,
   teachersTable,
@@ -30,15 +30,15 @@ const router: IRouter = Router();
 /* Helpers                                                                  */
 /* ──────────────────────────────────────────────────────────────────────── */
 
-async function requireTeacher(req: any, res: any): Promise<number | null> {
+async function requireTeacher(req: Request, res: Response): Promise<number | null> {
   if (!req.session?.teacherId) {
     res.status(401).json({ message: "غير مسجل الدخول" });
     return null;
   }
-  return req.session.teacherId as number;
+  return req.session.teacherId;
 }
 
-async function requireAdmin(req: any, res: any): Promise<boolean> {
+async function requireAdmin(req: Request, res: Response): Promise<boolean> {
   if (!req.session?.teacherId) {
     res.status(401).json({ message: "غير مسجل الدخول" });
     return false;
@@ -55,8 +55,21 @@ async function requireAdmin(req: any, res: any): Promise<boolean> {
   return true;
 }
 
+interface LeaderboardRow {
+  rank: number;
+  teacherId: number;
+  displayName: string;
+  avatarInitials: string;
+  city: string | null;
+  school: string | null;
+  level: number;
+  levelTitle: string;
+  seasonXp: number;
+  badgeCount: number;
+}
+
 interface CachedLeaderboard {
-  rows: any[];
+  rows: LeaderboardRow[];
   expiresAt: number;
   seasonId: number | null;
 }
@@ -301,8 +314,9 @@ router.patch("/me/privacy", async (req, res) => {
         .update(teachersTable)
         .set(update)
         .where(eq(teachersTable.id, teacherId));
-    } catch (err: any) {
-      if (err?.code === "23505") {
+    } catch (err) {
+      const pgErr = err as { code?: string };
+      if (pgErr?.code === "23505") {
         res.status(409).json({ message: "المعرّف مستخدم من قبل معلم آخر" });
         return;
       }
@@ -395,8 +409,8 @@ async function publicProfileHandler(
       return;
     }
     const viewerId: number | null =
-      typeof (req as any).session?.teacherId === "number"
-        ? (req as any).session.teacherId
+      typeof req.session?.teacherId === "number"
+        ? req.session.teacherId
         : null;
     const isOwner = viewerId !== null && viewerId === t.id;
 

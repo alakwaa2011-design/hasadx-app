@@ -3,6 +3,7 @@ import { db, worksheetsTable, teachersTable } from "@workspace/db";
 import { and, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
+import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { resolveTier, modelForTier, isClaudeTier, type AiTier } from "../lib/ai-tier";
 import { anthropic, SONNET_MODEL } from "../lib/anthropic-client";
@@ -343,6 +344,12 @@ router.delete("/worksheets/:id", requireTeacher, async (req, res) => {
       return;
     }
     await db.delete(worksheetsTable).where(eq(worksheetsTable.id, id));
+    // Reverse XP if deleted within 5-minute anti-abuse window (fire-and-forget)
+    void reverseXpIfWithinWindow(
+      teacherId,
+      "worksheet.generate",
+      `worksheet:${id}`,
+    ).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Delete worksheet failed");

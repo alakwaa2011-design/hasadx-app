@@ -1,6 +1,13 @@
 /**
  * Debounced socket emit for XP grants. Coalesces multiple grants within
- * 500ms into a single "teacher:xp" event so the toast UI doesn't spam.
+ * 3 seconds into a single "teacher:xp" event so the toast UI doesn't spam.
+ *
+ * Payload contract (spec §5):
+ *   { totalDelta, items, newBadgeKeys, newGrantIds }
+ *
+ * Authoritative totals (totalXp, level) are NEVER included — the client
+ * must refetch /me/achievements after a milestone to get trusted state.
+ * This neutralises any client-side tampering with the socket stream.
  */
 import type { Server as IoServer } from "socket.io";
 import type { AwardXpResult } from "./engine";
@@ -10,18 +17,27 @@ export function bindXpSocket(io: IoServer): void {
   ioRef = io;
 }
 
+interface ActionCount {
+  action: string;
+  count: number;
+}
+
 interface PendingGrant {
   totalDelta: number;
-  newTotalXp?: number;
-  newLevel?: number;
-  leveledUp?: boolean;
+  items: Map<string, number>; // action → count
+  leveledUp: boolean;
   newBadgeKeys: string[];
   newGrantIds: number[];
   timer: NodeJS.Timeout;
 }
 
 const pending = new Map<number, PendingGrant>();
-const DEBOUNCE_MS = 500;
+/**
+ * 3-second debounce window — long enough to coalesce bulk-grading runs
+ * (teacher grades 12 submissions quickly) into one toast, short enough
+ * that feedback still feels immediate.
+ */
+const DEBOUNCE_MS = 3_000;
 
 function flush(teacherId: number): void {
   const p = pending.get(teacherId);
@@ -29,11 +45,15 @@ function flush(teacherId: number): void {
   clearTimeout(p.timer);
   pending.delete(teacherId);
   if (!ioRef) return;
+
+  const items: ActionCount[] = Array.from(p.items.entries()).map(
+    ([action, count]) => ({ action, count }),
+  );
+
   ioRef.to(`teacher:${teacherId}`).emit("teacher:xp", {
-    delta: p.totalDelta,
-    totalXp: p.newTotalXp,
-    level: p.newLevel,
-    leveledUp: p.leveledUp ?? false,
+    totalDelta: p.totalDelta,
+    items,
+    leveledUp: p.leveledUp,
     newBadgeKeys: p.newBadgeKeys,
     newGrantIds: p.newGrantIds,
   });
@@ -46,11 +66,15 @@ export function emitXpToTeacher(
   if (!ioRef || !result.awarded) return;
   const existing = pending.get(teacherId);
   if (existing) clearTimeout(existing.timer);
+
+  const items: Map<string, number> = new Map(existing?.items ?? []);
+  const prev = items.get(result.actionKey ?? "") ?? 0;
+  if (result.actionKey) items.set(result.actionKey, prev + 1);
+
   const merged: PendingGrant = {
     totalDelta: (existing?.totalDelta ?? 0) + result.delta,
-    newTotalXp: result.newTotalXp ?? existing?.newTotalXp,
-    newLevel: result.newLevel ?? existing?.newLevel,
-    leveledUp: existing?.leveledUp || result.leveledUp,
+    items,
+    leveledUp: (existing?.leveledUp ?? false) || (result.leveledUp ?? false),
     newBadgeKeys: [
       ...(existing?.newBadgeKeys ?? []),
       ...(result.newBadgeKeys ?? []),
@@ -62,6 +86,7 @@ export function emitXpToTeacher(
     timer: setTimeout(() => flush(teacherId), DEBOUNCE_MS),
   };
   pending.set(teacherId, merged);
+
   // Milestone events (level-up, new badge, new reward grant) bypass the
   // debounce window so the user sees the celebratory toast immediately.
   const milestone =
@@ -86,7 +111,7 @@ export async function awardXpAndNotify(
   input: AwardXpInput,
 ): Promise<AwardXpResult> {
   const result = await awardXp(input);
-  if (result.awarded) emitXpToTeacher(input.teacherId, result);
+  if (result.awarded) emitXpToTeacher(input.teacherId, { ...result, actionKey: input.actionKey });
   return result;
 }
 
@@ -113,6 +138,7 @@ export async function awardXpInTxAndNotifyAfterCommit(
     );
     emitXpToTeacher(input.teacherId, {
       ...result,
+      actionKey: input.actionKey,
       newBadgeKeys,
       newGrantIds,
     });
