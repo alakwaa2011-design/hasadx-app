@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
@@ -181,6 +181,7 @@ export default function StudentVideoLesson() {
   const triggeredQsRef = useRef<Set<number>>(new Set());
 
   const playerRef = useRef<YTPlayer | null>(null);
+  const ytPlayerMountRef = useRef<HTMLDivElement>(null);
   const html5VideoRef = useRef<HTMLVideoElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
@@ -245,8 +246,11 @@ export default function StudentVideoLesson() {
       .catch(() => {});
   }, [lesson?.targetClass, id, accessCode]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!started || !isYoutube || !youtubeId) return;
+
+    const mountEl = ytPlayerMountRef.current;
+    if (!mountEl) return;
 
     const existing = document.getElementById("yt-iframe-api");
     if (!existing) {
@@ -257,14 +261,18 @@ export default function StudentVideoLesson() {
     }
 
     const initPlayer = () => {
-      if (playerRef.current) {
-        try {
-          playerRef.current.destroy();
-        } catch {
-          /* ignore */
-        }
+      const el = ytPlayerMountRef.current;
+      if (!el) return;
+      try {
+        playerRef.current?.destroy?.();
+      } catch {
+        /* ignore */
       }
-      playerRef.current = new ytWindow.YT!.Player("yt-player-watch", {
+      playerRef.current = null;
+      setPlayerReady(false);
+      el.innerHTML = "";
+
+      playerRef.current = new ytWindow.YT!.Player(el, {
         videoId: youtubeId,
         playerVars: { controls: 1, modestbranding: 1, rel: 0 },
         events: {
@@ -279,7 +287,7 @@ export default function StudentVideoLesson() {
     };
 
     if (ytWindow.YT?.Player) {
-      setTimeout(initPlayer, 100);
+      initPlayer();
     } else {
       ytWindow.onYouTubeIframeAPIReady = initPlayer;
     }
@@ -293,6 +301,10 @@ export default function StudentVideoLesson() {
         }
         playerRef.current = null;
       }
+      if (ytPlayerMountRef.current) {
+        ytPlayerMountRef.current.innerHTML = "";
+      }
+      setPlayerReady(false);
     };
   }, [started, youtubeId, isYoutube]);
 
@@ -1016,7 +1028,9 @@ export default function StudentVideoLesson() {
           >
             <div className="relative aspect-video bg-black">
               {isYoutube ? (
-                <div id="yt-player-watch" className="h-full w-full" />
+                <div className="absolute inset-0 z-0 h-full w-full">
+                  <div ref={ytPlayerMountRef} className="h-full w-full min-h-0" />
+                </div>
               ) : (
                 <video ref={html5VideoRef} src={lesson.videoUrl} controls className="h-full w-full object-contain" />
               )}

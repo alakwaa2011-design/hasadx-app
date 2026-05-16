@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -538,6 +538,8 @@ export default function CreateVideoLesson() {
 
   const youtubeId = videoSource === "youtube" ? extractYouTubeId(videoUrl) : null;
   const playerRef = useRef<YTPlayer | null>(null);
+  /** حاوية فارغة يحقن فيها YT.Player فقط — تجنّب تعارض React مع الـ iframe عند إعادة الترتيب */
+  const ytPlayerMountRef = useRef<HTMLDivElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
@@ -599,11 +601,14 @@ export default function CreateVideoLesson() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (videoSource !== "youtube" || !youtubeId) {
       setPlayerReady(false);
       return;
     }
+
+    const mountEl = ytPlayerMountRef.current;
+    if (!mountEl) return;
 
     const existing = document.getElementById("yt-iframe-api");
     if (!existing) {
@@ -614,10 +619,18 @@ export default function CreateVideoLesson() {
     }
 
     const initPlayer = () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
+      const el = ytPlayerMountRef.current;
+      if (!el) return;
+      try {
+        playerRef.current?.destroy?.();
+      } catch {
+        /* ignore */
       }
-      playerRef.current = new ytWindow.YT!.Player("yt-player-create", {
+      playerRef.current = null;
+      setPlayerReady(false);
+      el.innerHTML = "";
+
+      playerRef.current = new ytWindow.YT!.Player(el, {
         videoId: youtubeId,
         playerVars: { controls: 1, modestbranding: 1, rel: 0 },
         events: {
@@ -649,6 +662,10 @@ export default function CreateVideoLesson() {
         }
         playerRef.current = null;
       }
+      if (ytPlayerMountRef.current) {
+        ytPlayerMountRef.current.innerHTML = "";
+      }
+      setPlayerReady(false);
     };
   }, [youtubeId, videoSource]);
 
@@ -1043,6 +1060,29 @@ export default function CreateVideoLesson() {
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
                 <div className="relative aspect-video w-full bg-black">
+                  {videoSource === "youtube" && youtubeId ? (
+                    <div className="absolute inset-0 z-0 h-full w-full">
+                      <div ref={ytPlayerMountRef} className="h-full w-full min-h-0" />
+                    </div>
+                  ) : (videoSource === "upload" || videoSource === "external") && videoUrl.trim() ? (
+                    <video ref={html5VideoRef} src={videoUrl} controls className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0f2918] to-[#1a2e24] px-6 text-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                        <Play className="h-10 w-10 text-white opacity-90" fill="currentColor" />
+                      </div>
+                      <p className="max-w-sm text-sm font-bold leading-relaxed text-white/85">
+                        {isAr ? "أضف رابط فيديو أو ارفع ملفاً للبدء" : "Add a video link or upload a file to start"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={scrollToVideoSource}
+                        className="min-h-[44px] rounded-2xl bg-white px-6 text-sm font-black text-[#0f2918] shadow-lg hover:bg-[#eef5f0]"
+                      >
+                        {isAr ? "إضافة فيديو" : "Add video"}
+                      </button>
+                    </div>
+                  )}
                   {sortedQuestionIndices.length > 0 && (
                     <div className="pointer-events-auto absolute left-3 top-3 z-20 max-w-[min(46%,13.5rem)]">
                       <div className="rounded-lg bg-white/95 px-2 py-1.5 shadow-lg ring-1 ring-black/10 backdrop-blur-sm">
@@ -1070,27 +1110,6 @@ export default function CreateVideoLesson() {
                           })}
                         </div>
                       </div>
-                    </div>
-                  )}
-                  {videoSource === "youtube" && youtubeId ? (
-                    <div id="yt-player-create" className="absolute inset-0 h-full w-full" />
-                  ) : (videoSource === "upload" || videoSource === "external") && videoUrl.trim() ? (
-                    <video ref={html5VideoRef} src={videoUrl} controls className="h-full w-full object-contain" />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0f2918] to-[#1a2e24] px-6 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
-                        <Play className="h-10 w-10 text-white opacity-90" fill="currentColor" />
-                      </div>
-                      <p className="max-w-sm text-sm font-bold leading-relaxed text-white/85">
-                        {isAr ? "أضف رابط فيديو أو ارفع ملفاً للبدء" : "Add a video link or upload a file to start"}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={scrollToVideoSource}
-                        className="min-h-[44px] rounded-2xl bg-white px-6 text-sm font-black text-[#0f2918] shadow-lg hover:bg-[#eef5f0]"
-                      >
-                        {isAr ? "إضافة فيديو" : "Add video"}
-                      </button>
                     </div>
                   )}
                 </div>
