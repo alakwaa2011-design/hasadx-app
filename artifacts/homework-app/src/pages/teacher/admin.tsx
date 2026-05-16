@@ -2544,7 +2544,10 @@ export default function AdminPage() {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
                       credentials: "include",
-                      body: JSON.stringify({ teacherXpRewardsEnabled: next }),
+                      body: JSON.stringify({
+                        teacherXpRewardsEnabled: next,
+                        teacher_xp_rewards_enabled: next,
+                      }),
                     });
                     const data = res.ok ? await res.json().catch(() => null) : null;
                     if (res.ok && data) {
