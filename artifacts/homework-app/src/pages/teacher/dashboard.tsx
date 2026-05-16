@@ -57,8 +57,6 @@ import {
   X,
   Rocket,
   ChevronLeft,
-  Lock,
-  ExternalLink,
   FileText,
   BookOpen,
   Monitor,
@@ -69,8 +67,6 @@ import {
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
-import GroupQuickEditModal from "@/components/teacher/GroupQuickEditModal";
-import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
 import { Card, Button } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
@@ -725,7 +721,6 @@ export default function TeacherDashboard() {
             t={t}
             setLocation={setLocation}
             setActiveTab={setActiveTab}
-            BackArrow={BackArrow}
             queryClient={queryClient}
             deleteAssignment={(id: number) => {
               if (
@@ -738,7 +733,6 @@ export default function TeacherDashboard() {
                 deleteAssignmentMutation.mutate({ id });
               }
             }}
-            user={user}
           />
         )}
         {activeTab === "shared" && (
@@ -936,15 +930,15 @@ export default function TeacherDashboard() {
           {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions"].includes(activeTab) && (
           <div
             className={cn(
-              "grid grid-cols-3 gap-3 mb-7",
-              activeTab === "assignments" && "gap-3 sm:gap-4",
+              "grid grid-cols-3 gap-3",
+              activeTab === "assignments" ? "gap-3 sm:gap-3.5 mb-4 sm:mb-5" : "mb-7",
             )}
           >
             <div
               className={cn(
-                "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color]",
+                "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200",
                 activeTab === "assignments"
-                  ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-primary/15"
+                  ? "border-border/30 bg-gradient-to-br from-card via-card to-primary/[0.045] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(30,77,53,0.12)] hover:border-primary/18 hover:shadow-[0_14px_36px_-18px_rgba(30,77,53,0.14)]"
                   : "border-border/60 bg-card hover:border-primary/40",
               )}
             >
@@ -952,7 +946,7 @@ export default function TeacherDashboard() {
                 className={cn(
                   "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
                   activeTab === "assignments"
-                    ? "bg-primary/[0.09] text-primary ring-1 ring-primary/10"
+                    ? "bg-primary/[0.09] text-primary ring-1 ring-primary/[0.09]"
                     : "bg-primary/10 text-primary",
                 )}
               >
@@ -974,9 +968,9 @@ export default function TeacherDashboard() {
             </div>
             <div
               className={cn(
-                "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color]",
+                "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200",
                 activeTab === "assignments"
-                  ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-[#D9A521]/25"
+                  ? "border-border/30 bg-gradient-to-br from-card via-card to-[#D9A521]/[0.04] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(217,165,33,0.08)] hover:border-[#D9A521]/22 hover:shadow-[0_14px_36px_-18px_rgba(217,165,33,0.10)]"
                   : "border-border/60 bg-card hover:border-amber-400/50",
               )}
             >
@@ -984,7 +978,7 @@ export default function TeacherDashboard() {
                 className={cn(
                   "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
                   activeTab === "assignments"
-                    ? "bg-[#D9A521]/[0.11] text-[#8a6a12] dark:text-[#e8c76a] ring-1 ring-[#D9A521]/20"
+                    ? "bg-[#D9A521]/[0.09] text-[#7a6220] dark:text-[#d4b76a] ring-1 ring-[#D9A521]/14"
                     : "bg-amber-500/10 text-amber-600",
                 )}
               >
@@ -1007,9 +1001,9 @@ export default function TeacherDashboard() {
             <Link href="/teacher/students" className="block">
               <div
                 className={cn(
-                  "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color] h-full",
+                  "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200 h-full",
                   activeTab === "assignments"
-                    ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-emerald-500/25"
+                    ? "border-border/30 bg-gradient-to-br from-card via-card to-emerald-700/[0.04] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(22,101,52,0.10)] hover:border-emerald-600/22 hover:shadow-[0_14px_36px_-18px_rgba(22,101,52,0.12)]"
                     : "border-border/60 bg-card hover:border-emerald-400/50",
                 )}
               >
@@ -1017,7 +1011,7 @@ export default function TeacherDashboard() {
                   className={cn(
                     "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
                     activeTab === "assignments"
-                      ? "bg-emerald-600/[0.08] text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-600/15"
+                      ? "bg-emerald-700/[0.07] text-emerald-800 dark:text-emerald-400 ring-1 ring-emerald-700/12"
                       : "bg-emerald-500/10 text-emerald-600",
                   )}
                 >
@@ -1498,22 +1492,15 @@ function AssignmentsTab({
   t,
   setLocation,
   setActiveTab,
-  BackArrow,
   deleteAssignment,
   queryClient,
-  user,
 }: any) {
   const [collections, setCollections] = useState<DashboardCollection[]>([]);
-  const [publicCollections, setPublicCollections] = useState<DashboardCollection[]>([]);
-  const [filterCollectionId, setFilterCollectionId] = useState<
-    number | "all" | "none"
-  >("all");
   const [creatingGroupName, setCreatingGroupName] = useState("");
   const [savingGroup, setSavingGroup] = useState(false);
 
   useEffect(() => {
     loadCollections();
-    loadPublicCollections();
   }, []);
 
   function loadCollections() {
@@ -1526,36 +1513,6 @@ function AssignmentsTab({
         setCollections(Array.isArray(data) ? data : []),
       )
       .catch(() => {});
-  }
-
-  function loadPublicCollections() {
-    fetch(`${BASE_URL}/api/collections/public-from-others`, {
-      credentials: "include",
-      cache: "no-store",
-    })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: DashboardCollection[]) =>
-        setPublicCollections(Array.isArray(data) ? data : []),
-      )
-      .catch(() => {});
-  }
-
-  async function createGroup(name: string, isPublic: boolean) {
-    const r = await fetch(`${BASE_URL}/api/collections`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), isPublic }),
-    });
-    if (r.ok) {
-      const newCol = await r.json();
-      toast.success(
-        lang === "ar" ? `تم إنشاء "${newCol.name}"` : `Created "${newCol.name}"`,
-      );
-      loadCollections();
-      return newCol;
-    }
-    throw new Error("create failed");
   }
 
   async function addToCollection(collectionId: number, assignmentId: number) {
@@ -1748,9 +1705,6 @@ function AssignmentsTab({
       assignments={assignments}
       filteredAssignments={filteredAssignments}
       collections={collections}
-      publicCollections={publicCollections}
-      filterCollectionId={filterCollectionId}
-      setFilterCollectionId={setFilterCollectionId}
       creatingGameForId={creatingGameForId}
       startGame={startGame}
       deleteAssignment={deleteAssignment}
@@ -1764,10 +1718,7 @@ function AssignmentsTab({
       creatingGroupName={creatingGroupName}
       setCreatingGroupName={setCreatingGroupName}
       createGroupAndAdd={createGroupAndAdd}
-      createGroup={createGroup}
       savingGroup={savingGroup}
-      user={user}
-      reloadCollections={loadCollections}
     />
   );
 }
@@ -3472,15 +3423,15 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-card rounded-xl border border-border/45 shadow-sm overflow-hidden ring-1 ring-black/[0.02] dark:ring-white/[0.03]">
+    <div className="bg-card rounded-xl border border-border/35 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_8px_28px_-18px_rgba(30,77,53,0.06)] overflow-hidden ring-1 ring-black/[0.02] dark:ring-white/[0.03]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/[0.35] transition-colors min-h-[44px] border-s-[3px] border-s-[#D9A521]/35"
+        className="w-full flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-[11px] hover:bg-muted/[0.28] transition-colors min-h-[44px] border-s-[3px] border-s-[#D9A521]/30"
       >
         <div className="flex items-center gap-2.5">
           <span className="font-bold text-foreground text-sm tracking-tight">{title}</span>
           {count !== undefined && (
-            <span className="text-[11px] font-semibold bg-muted/80 text-muted-foreground px-2 py-0.5 rounded-full tabular-nums">
+            <span className="text-[11px] font-semibold bg-muted/70 text-muted-foreground px-2 py-0.5 rounded-full tabular-nums border border-border/35">
               {count}
             </span>
           )}
@@ -3498,8 +3449,8 @@ function Section({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border/50" />
-            <div className="px-3 py-3 sm:px-4 sm:py-4 bg-muted/[0.03]">{children}</div>
+            <div className="border-t border-border/45" />
+            <div className="px-3 py-2.5 sm:px-4 sm:py-3.5 bg-muted/[0.035]">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3561,21 +3512,23 @@ function AssignmentRow({
   const deadlineExpired =
     assignment.deadline && new Date(assignment.deadline) < new Date();
   const statusActive = !deadlineExpired;
+  const isExam = assignment.examMode === true;
 
   return (
     <div
       draggable
       onDragStart={onDragStart}
       className={cn(
-        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-[box-shadow,border-color,background-color] shadow-sm",
+        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-all duration-200 ease-out",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_7px_24px_-14px_rgba(30,77,53,0.08)]",
         isExpanded
-          ? "border-primary/20 bg-muted/[0.15] shadow-md"
-          : "border-border/55 hover:border-primary/18 hover:shadow-md",
+          ? "border-primary/22 bg-muted/[0.10] shadow-[0_6px_28px_-14px_rgba(30,77,53,0.14)] ring-1 ring-primary/[0.08]"
+          : "border-border/40 hover:border-primary/12 hover:bg-muted/[0.22] hover:shadow-[0_12px_36px_-20px_rgba(30,77,53,0.12)]",
       )}
     >
-      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2.5 min-h-[56px]">
+      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 min-h-[58px]">
         <span
-          className="hidden sm:inline-flex shrink-0 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors p-2 -m-2"
+          className="hidden sm:inline-flex shrink-0 text-muted-foreground/40 hover:text-muted-foreground/75 transition-colors p-2 -m-2"
           title={lang === "ar" ? "اسحب إلى مجموعة" : "Drag to group"}
         >
           <GripVertical className="w-3.5 h-3.5" />
@@ -3583,7 +3536,12 @@ function AssignmentRow({
         <button
           type="button"
           onClick={onToggleFavorite}
-          className="shrink-0 transition-all hover:scale-110 active:scale-95 inline-flex items-center justify-center min-w-[44px] min-h-[44px]"
+          className={cn(
+            "shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full border transition-colors duration-200",
+            isFavorite
+              ? "border-[#D9A521]/20 bg-[#D9A521]/[0.07]"
+              : "border-transparent text-muted-foreground/40 hover:bg-muted/40 hover:text-[#D9A521]/75 hover:border-border/35",
+          )}
           title={
             lang === "ar"
               ? isFavorite
@@ -3596,10 +3554,10 @@ function AssignmentRow({
         >
           <Star
             className={cn(
-              "w-4 h-4 transition-colors",
+              "w-[17px] h-[17px] transition-colors",
               isFavorite
-                ? "fill-[#D9A521]/85 text-[#D9A521]/85"
-                : "text-muted-foreground/35 hover:text-[#D9A521]/70",
+                ? "fill-[#c9a032]/90 text-[#c9a032]"
+                : "",
             )}
           />
         </button>
@@ -3609,31 +3567,46 @@ function AssignmentRow({
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-sm text-foreground truncate">
+              <span className="font-semibold text-[13px] sm:text-sm text-foreground truncate">
                 {assignment.title}
               </span>
               {statusActive && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/[0.09] text-emerald-800 dark:text-emerald-300 border border-emerald-600/15">
+                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-600/[0.07] text-emerald-900 dark:text-emerald-300 border border-emerald-600/11">
                   {lang === "ar" ? "نشط" : "Active"}
                 </span>
               )}
               {deadlineExpired && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-500/[0.08] text-stone-700 dark:text-stone-300 border border-stone-500/20">
+                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-stone-500/[0.07] text-stone-800 dark:text-stone-400 border border-stone-500/13">
                   {lang === "ar" ? "منتهي" : "Ended"}
                 </span>
               )}
+              {isExam ? (
+                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/[0.08] text-amber-950 dark:text-amber-200/95 border border-amber-600/12">
+                  {lang === "ar" ? "اختبار" : "Exam"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/[0.06] text-[#1a4d36] dark:text-emerald-300/95 border border-primary/12">
+                  <Monitor className="w-3 h-3 opacity-75 shrink-0" />
+                  {lang === "ar" ? "عرض تفاعلي" : "Interactive"}
+                </span>
+              )}
+              {isFavorite && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#D9A521]/[0.09] text-[#63531c] dark:text-[#e6cf7a] border border-[#D9A521]/16">
+                  {lang === "ar" ? "مفضلة" : "Favorite"}
+                </span>
+              )}
               {assignment.subject && (
-                <span className="text-[11px] text-muted-foreground bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground bg-muted/55 px-2 py-0.5 rounded-full border border-border/40">
                   {assignment.subject}
                 </span>
               )}
               {groupName && (
-                <span className="text-[11px] text-primary bg-primary/[0.06] px-2 py-0.5 rounded-md border border-primary/15">
+                <span className="text-[10px] sm:text-[11px] text-primary bg-primary/[0.06] px-2 py-0.5 rounded-full border border-primary/12">
                   {groupName}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-[11px] text-muted-foreground/95 mt-1">
               {assignment.questionCount} {t.dashboard.question} ·{" "}
               {assignment.submissionCount} {t.dashboard.submission}
             </p>
@@ -3647,10 +3620,11 @@ function AssignmentRow({
               startGame(assignment.id, e);
             }}
             disabled={creatingGameForId === assignment.id}
-            className="shrink-0 text-xs font-semibold px-3 py-2 min-h-[44px] min-w-[44px] text-white rounded-xl transition-[filter,box-shadow] disabled:opacity-45 inline-flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 hover:shadow-md"
+            className="shrink-0 text-xs font-semibold px-3.5 py-2 min-h-[44px] min-w-[44px] text-white rounded-xl transition-all duration-200 disabled:opacity-45 inline-flex items-center justify-center gap-1.5 hover:brightness-[1.02] active:brightness-[0.97]"
             style={{
-              background: "#1E4D35",
-              boxShadow: "0 6px 18px -10px rgba(30, 77, 53, 0.55)",
+              background: "linear-gradient(180deg, #1E4D35 0%, #17382a 100%)",
+              boxShadow:
+                "0 5px 18px -10px rgba(30, 77, 53, 0.48), 0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
             title={t.dashboard.liveGame}
           >
@@ -3664,7 +3638,7 @@ function AssignmentRow({
         )}
         <button
           onClick={onToggle}
-          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg hover:bg-muted/60 transition-colors"
+          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl hover:bg-muted/55 transition-colors duration-200"
           aria-label="toggle"
         >
           <ChevronDown
@@ -3873,185 +3847,11 @@ function AssignmentRow({
   );
 }
 
-/* ── Group accordion row component ── */
-function GroupAccordionRow({
-  col,
-  assignments,
-  lang,
-  expanded,
-  onToggle,
-  onEdit,
-  onRemoveAssignment,
-  addToCollection,
-  creatingGameForId,
-  startGame,
-  setLocation,
-  t,
-}: any) {
-  const colAssignments = (assignments || []).filter((a: any) =>
-    (col.assignmentIds || []).includes(a.id),
-  );
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    (e.currentTarget as HTMLElement).classList.remove(
-      "ring-2",
-      "ring-emerald-400",
-    );
-    const aid = parseInt(
-      e.dataTransfer.getData("application/x-assignment-id") || "0",
-    );
-    if (!aid) return;
-    if ((col.assignmentIds || []).includes(aid)) {
-      toast.info(lang === "ar" ? "موجود بالفعل في المجموعة" : "Already in group");
-      return;
-    }
-    addToCollection(col.id, aid);
-  };
-
-  return (
-    <div
-      className="rounded-xl border border-border overflow-hidden transition-all"
-      onDrop={handleDrop}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("application/x-assignment-id")) {
-          e.preventDefault();
-          (e.currentTarget as HTMLElement).classList.add(
-            "ring-2",
-            "ring-emerald-400",
-          );
-        }
-      }}
-      onDragLeave={(e) =>
-        (e.currentTarget as HTMLElement).classList.remove(
-          "ring-2",
-          "ring-emerald-400",
-        )
-      }
-    >
-      {/* Header */}
-      <div
-        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-muted/30 select-none"
-        onClick={onToggle}
-      >
-        {col.isPublic ? (
-          <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-        ) : (
-          <Lock className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-        )}
-        <span className="flex-1 text-sm font-semibold text-foreground truncate">
-          {col.name}
-        </span>
-        {col.isPublic && (
-          <span className="text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md shrink-0">
-            {lang === "ar" ? "عام" : "PUBLIC"}
-          </span>
-        )}
-        <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
-          {col.assignmentIds?.length || 0}
-        </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit();
-          }}
-          className="shrink-0 p-1 rounded-md hover:bg-muted/60 text-muted-foreground"
-          title={lang === "ar" ? "تعديل" : "Edit"}
-        >
-          <Pencil className="w-3 h-3" />
-        </button>
-        <ChevronDown
-          className={`w-4 h-4 text-muted-foreground/70 transition-transform duration-150 shrink-0 ${expanded ? "rotate-180" : ""}`}
-        />
-      </div>
-
-      {/* Content */}
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border/40">
-              {colAssignments.length === 0 ? (
-                <div className="px-4 py-3 text-xs text-muted-foreground text-center">
-                  {lang === "ar"
-                    ? "🎯 اسحب واجبًا من القائمة أدناه وأفلته هنا"
-                    : "🎯 Drag an assignment from the list below and drop it here"}
-                </div>
-              ) : (
-                <div className="divide-y divide-border/30">
-                  {colAssignments.map((a: any) => (
-                    <div
-                      key={a.id}
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-muted/20"
-                    >
-                      <span className="flex-1 text-xs font-medium text-foreground truncate">
-                        {a.title}
-                      </span>
-                      {a.subject && (
-                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md hidden sm:block shrink-0">
-                          {a.subject}
-                        </span>
-                      )}
-                      {a.questionCount > 0 && (
-                        <button
-                          onClick={() =>
-                            startGame(a.id, {
-                              stopPropagation: () => {},
-                            } as any)
-                          }
-                          disabled={creatingGameForId === a.id}
-                          className="shrink-0 p-1.5 rounded-md transition-all disabled:opacity-50 text-white hover:brightness-110"
-                          style={{ background: "linear-gradient(135deg,#1f8246 0%,#155d32 100%)" }}
-                          title={t?.dashboard?.liveGame || "تشغيل"}
-                        >
-                          <Gamepad2 className="w-3 h-3" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() =>
-                          setLocation(`/teacher/assignments/${a.id}`)
-                        }
-                        className="shrink-0 p-1.5 hover:bg-muted/60 rounded-md text-muted-foreground"
-                        title={lang === "ar" ? "فتح" : "Open"}
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => onRemoveAssignment(col.id, a.id)}
-                        className="shrink-0 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-muted-foreground hover:text-red-500 transition-colors"
-                        title={
-                          lang === "ar"
-                            ? "إزالة من المجموعة"
-                            : "Remove from group"
-                        }
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 /* ── Main mockup-style render ── */
 function AssignmentsTabRender({
   assignments,
   filteredAssignments,
   collections,
-  publicCollections,
-  filterCollectionId,
-  setFilterCollectionId,
   creatingGameForId,
   startGame,
   deleteAssignment,
@@ -4065,26 +3865,14 @@ function AssignmentsTabRender({
   creatingGroupName,
   setCreatingGroupName,
   createGroupAndAdd,
-  createGroup,
   savingGroup,
-  user,
-  reloadCollections,
 }: any) {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
-  const [editingCollection, setEditingCollection] = useState<any>(null);
   const [showAllAssignments, setShowAllAssignments] = useState(false);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "expired" | "favorites"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showNewGroupForm, setShowNewGroupForm] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [newGroupIsPublic, setNewGroupIsPublic] = useState(false);
-  const [savingNewGroup, setSavingNewGroup] = useState(false);
-  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const [showPublicGroups, setShowPublicGroups] = useState(false);
   const [favorites, setFavorites] = useState<Set<number>>(() => {
     try {
       const stored = localStorage.getItem("assignment_favorites");
@@ -4107,24 +3895,6 @@ function AssignmentsTabRender({
       return next;
     });
   };
-
-  async function handleCreateGroup() {
-    if (!newGroupName.trim()) return;
-    setSavingNewGroup(true);
-    try {
-      const col = await createGroup(newGroupName.trim(), newGroupIsPublic);
-      setShowNewGroupForm(false);
-      setNewGroupName("");
-      setNewGroupIsPublic(false);
-      if (col?.id) {
-        setExpandedGroupIds((prev) => new Set([...prev, col.id]));
-      }
-    } catch {
-      toast.error(lang === "ar" ? "خطأ في الإنشاء" : "Creation failed");
-    } finally {
-      setSavingNewGroup(false);
-    }
-  }
 
   const now = new Date();
   const statusFiltered = filteredAssignments.filter((a: any) => {
@@ -4244,12 +4014,12 @@ function AssignmentsTabRender({
   };
 
   return (
-    <div className="space-y-3" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="space-y-2" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Hero — aligns with Activities Library; dashboard tab title hidden for this tab */}
-      <div className="rounded-xl border border-border/40 bg-gradient-to-r from-primary/[0.06] via-card to-background/95 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl border border-border/45 bg-gradient-to-r from-primary/[0.07] via-card to-background/98 px-3 py-2.5 sm:px-4 sm:py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0 flex items-center justify-center text-white shadow-md ring-2 ring-primary/15"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0 flex items-center justify-center text-white shadow-[0_6px_20px_-10px_rgba(22,55,40,0.55)] ring-2 ring-primary/18"
             style={{
               background: "linear-gradient(145deg, #1f6f4a 0%, #1a4d36 55%, #163728 100%)",
             }}
@@ -4257,23 +4027,22 @@ function AssignmentsTabRender({
             <BookText className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-extrabold text-foreground leading-tight tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#143728] dark:text-foreground leading-tight">
               {lang === "ar" ? "واجباتي" : "My Assignments"}
             </h2>
-            <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">
+            <p className="text-xs sm:text-[13px] text-foreground/78 dark:text-muted-foreground mt-1 leading-relaxed max-w-xl">
               {lang === "ar"
-                ? "أنشئ الأنشطة، نظّمها في مجموعات، وتابع التسليمات بسهولة."
-                : "Create activities, organize them in groups, and track submissions with ease."}
+                ? "أنشئ الأنشطة، تابع التسليمات، وابدأ جلسات لعب حية مع طلابك — كل ذلك من مكان واحد."
+                : "Create activities, track submissions, and run live sessions with your students — all in one place."}
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setLocation("/teacher/new")}
-          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white transition-[box-shadow,filter] hover:brightness-[1.04] active:brightness-[0.98] shadow-md hover:shadow-lg"
+          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white transition-[box-shadow,filter] hover:brightness-[1.03] active:brightness-[0.98] shadow-[0_8px_22px_-14px_rgba(21,74,51,0.55)] hover:shadow-[0_12px_28px_-14px_rgba(21,74,51,0.5)]"
           style={{
             background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
-            boxShadow: "0 10px 26px -12px rgba(21, 74, 51, 0.55)",
           }}
         >
           <Plus className="w-4 h-4" />
@@ -4288,193 +4057,8 @@ function AssignmentsTabRender({
         count={filteredAssignments.length}
         defaultOpen
       >
-        {/* ── Groups Section ── */}
-        <div className="mb-3 space-y-2">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 min-w-0">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/[0.08] text-primary shrink-0 ring-1 ring-primary/10">
-                <FolderOpen className="w-4 h-4" />
-              </span>
-              <span className="truncate">
-                {lang === "ar" ? "مجموعاتي" : "My Groups"}
-                {collections.length > 0 && (
-                  <span className="text-muted-foreground font-semibold ms-1 tabular-nums">
-                    ({collections.length})
-                  </span>
-                )}
-              </span>
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowNewGroupForm((v: boolean) => !v)}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white shadow-sm transition-[filter,box-shadow] hover:brightness-105 shrink-0"
-              style={{
-                background: "linear-gradient(180deg, #1e4d35 0%, #173f2c 100%)",
-                boxShadow: "0 6px 18px -10px rgba(30, 77, 53, 0.65)",
-              }}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {lang === "ar" ? "مجموعة جديدة" : "New Group"}
-            </button>
-          </div>
-
-          {/* New Group inline form */}
-          <AnimatePresence>
-            {showNewGroupForm && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="overflow-hidden"
-              >
-                <div className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3 rounded-xl border border-dashed border-primary/25 bg-muted/25">
-                  <input
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && handleCreateGroup()
-                    }
-                    placeholder={
-                      lang === "ar" ? "اسم المجموعة..." : "Group name..."
-                    }
-                    autoFocus
-                    className="flex-1 min-w-[12rem] px-2.5 py-2 rounded-lg border border-border/70 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer shrink-0 text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={newGroupIsPublic}
-                      onChange={(e) => setNewGroupIsPublic(e.target.checked)}
-                      className="w-3.5 h-3.5 accent-primary"
-                    />
-                    <Globe className="w-3.5 h-3.5 text-primary/80" />
-                    <span>{lang === "ar" ? "عام" : "Public"}</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleCreateGroup}
-                    disabled={savingNewGroup || !newGroupName.trim()}
-                    className="px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 transition-colors shrink-0 shadow-sm"
-                  >
-                    {savingNewGroup
-                      ? "..."
-                      : lang === "ar"
-                        ? "إنشاء"
-                        : "Create"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewGroupForm(false);
-                      setNewGroupName("");
-                    }}
-                    className="p-2 hover:bg-muted rounded-lg shrink-0 text-muted-foreground"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* My Groups list */}
-          {collections.length === 0 && !showNewGroupForm ? (
-            <div className="text-center py-4 px-3 rounded-xl border border-dashed border-border/60 bg-muted/[0.04] text-xs text-muted-foreground leading-relaxed">
-              {lang === "ar"
-                ? "لا توجد مجموعات بعد — استخدم «مجموعة جديدة» لتنظيم واجباتك."
-                : "No groups yet — use «New Group» to organize your work."}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {collections.map((col: any) => (
-                <GroupAccordionRow
-                  key={col.id}
-                  col={col}
-                  assignments={assignments}
-                  lang={lang}
-                  expanded={expandedGroupIds.has(col.id)}
-                  onToggle={() =>
-                    setExpandedGroupIds((prev: Set<number>) => {
-                      const next = new Set(prev);
-                      if (next.has(col.id)) next.delete(col.id);
-                      else next.add(col.id);
-                      return next;
-                    })
-                  }
-                  onEdit={() => setEditingCollection(col)}
-                  onRemoveAssignment={removeFromCollection}
-                  addToCollection={addToCollection}
-                  creatingGameForId={creatingGameForId}
-                  startGame={startGame}
-                  setLocation={setLocation}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Public Groups from other teachers */}
-          {(publicCollections?.length ?? 0) > 0 && (
-            <div className="mt-3">
-              <button
-                onClick={() => setShowPublicGroups((v: boolean) => !v)}
-                className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors w-full"
-              >
-                <Globe className="w-3.5 h-3.5 text-emerald-500" />
-                {lang === "ar"
-                  ? `مجموعات عامة من معلمين آخرين (${publicCollections.length})`
-                  : `Public groups from other teachers (${publicCollections.length})`}
-                <ChevronDown
-                  className={`w-3.5 h-3.5 ms-auto transition-transform ${showPublicGroups ? "rotate-180" : ""}`}
-                />
-              </button>
-              <AnimatePresence>
-                {showPublicGroups && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="overflow-hidden mt-2 space-y-2"
-                  >
-                    {publicCollections.map((col: any) => (
-                      <div
-                        key={col.id}
-                        className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10 overflow-hidden"
-                      >
-                        <div className="flex items-center gap-2 px-3 py-2.5">
-                          <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                          <span className="flex-1 text-sm font-semibold text-foreground truncate">
-                            {col.name}
-                          </span>
-                          {col.teacherName && (
-                            <span className="text-[10px] text-muted-foreground shrink-0 inline-flex items-center gap-1">
-                              <User className="w-3 h-3 opacity-70" />
-                              {col.teacherName}
-                            </span>
-                          )}
-                          <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
-                            {col.assignmentIds?.length || 0}
-                          </span>
-                        </div>
-                        {col.description && (
-                          <p className="px-3 pb-2 text-[11px] text-muted-foreground">
-                            {col.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-
         {/* Search + filters — Activities Library–style shell */}
-        <div className="rounded-xl border border-border/45 bg-muted/[0.06] p-3 shadow-sm space-y-3 mb-3">
+        <div className="rounded-xl border border-border/40 bg-muted/[0.055] p-2.5 sm:p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)] space-y-2.5 mb-2">
           <div className="relative">
             <Search
               className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/55 ${lang === "ar" ? "right-3" : "left-3"}`}
@@ -4536,7 +4120,7 @@ function AssignmentsTabRender({
         </div>
 
         {/* Assignments list */}
-        <div className="space-y-2.5 mb-4">
+        <div className="space-y-2 mb-3">
           {statusFiltered.length === 0 ? (
             (assignments?.length || 0) === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/[0.04] px-5 py-9 text-center">
@@ -4654,7 +4238,7 @@ function AssignmentsTabRender({
         </div>
 
         {/* Games grid */}
-        <div className="border-t border-border/50 pt-3 mt-1">
+        <div className="border-t border-border/45 pt-2.5 mt-0.5">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
             {lang === "ar" ? "الألعاب والمسابقات" : "Games & Competitions"}
           </p>
@@ -4693,16 +4277,6 @@ function AssignmentsTabRender({
         </div>
       </Section>
 
-      <GroupQuickEditModal
-        open={!!editingCollection}
-        collection={editingCollection}
-        isAdmin={!!user?.isAdmin}
-        lang={lang}
-        onClose={() => setEditingCollection(null)}
-        onSaved={() => {
-          reloadCollections?.();
-        }}
-      />
     </div>
   );
 }
