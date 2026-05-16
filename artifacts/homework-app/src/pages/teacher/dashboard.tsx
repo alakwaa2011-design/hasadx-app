@@ -904,22 +904,28 @@ export default function TeacherDashboard() {
             <div
               className={cn(
                 "px-6 xl:px-10 2xl:px-14",
-                activeTab === "library_competitions" || activeTab === "library_homework"
+                activeTab === "library_competitions" ||
+                  activeTab === "library_homework" ||
+                  activeTab === "assignments"
                   ? "py-4 pt-4"
                   : "py-8",
               )}
             >
               <div
                 className={cn(
-                  activeTab === "library_competitions" || activeTab === "library_homework"
+                  activeTab === "library_competitions" ||
+                    activeTab === "library_homework" ||
+                    activeTab === "assignments"
                     ? "mb-3"
                     : "mb-6",
                 )}
               >
                 <GuestDraftImportBanner />
               </div>
-              {/* Tab heading — skipped for split libraries: SharedContentPage shows title, icon, subtitle & actions (embedded). */}
-              {activeTab !== "library_competitions" && activeTab !== "library_homework" && (
+              {/* Tab heading — skipped when the tab renders its own hero (libraries + assignments). */}
+              {activeTab !== "library_competitions" &&
+                activeTab !== "library_homework" &&
+                activeTab !== "assignments" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -928,43 +934,105 @@ export default function TeacherDashboard() {
               )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
           {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions"].includes(activeTab) && (
-          <div className="grid grid-cols-3 gap-3 mb-7">
-            <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <div
+            className={cn(
+              "grid grid-cols-3 gap-3 mb-7",
+              activeTab === "assignments" && "gap-3 sm:gap-4",
+            )}
+          >
+            <div
+              className={cn(
+                "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color]",
+                activeTab === "assignments"
+                  ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-primary/15"
+                  : "border-border/60 bg-card hover:border-primary/40",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                  activeTab === "assignments"
+                    ? "bg-primary/[0.09] text-primary ring-1 ring-primary/10"
+                    : "bg-primary/10 text-primary",
+                )}
+              >
                 <BookText className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   {isAr ? "الواجبات" : "Assignments"}
                 </p>
-                <p className="text-2xl font-black text-foreground leading-tight">
+                <p
+                  className={cn(
+                    "font-black text-foreground leading-tight tracking-tight",
+                    activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                  )}
+                >
                   {assignments?.length || 0}
                 </p>
               </div>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-amber-400/50 transition-colors">
-              <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+            <div
+              className={cn(
+                "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color]",
+                activeTab === "assignments"
+                  ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-[#D9A521]/25"
+                  : "border-border/60 bg-card hover:border-amber-400/50",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                  activeTab === "assignments"
+                    ? "bg-[#D9A521]/[0.11] text-[#8a6a12] dark:text-[#e8c76a] ring-1 ring-[#D9A521]/20"
+                    : "bg-amber-500/10 text-amber-600",
+                )}
+              >
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   {isAr ? "التسليمات" : "Submissions"}
                 </p>
-                <p className="text-2xl font-black text-foreground leading-tight">
+                <p
+                  className={cn(
+                    "font-black text-foreground leading-tight tracking-tight",
+                    activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                  )}
+                >
                   {totalSubmissions}
                 </p>
               </div>
             </div>
             <Link href="/teacher/students" className="block">
-              <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-emerald-400/50 transition-colors h-full">
-                <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+              <div
+                className={cn(
+                  "rounded-2xl border p-4 flex items-center gap-3 transition-[box-shadow,border-color] h-full",
+                  activeTab === "assignments"
+                    ? "border-border/45 bg-gradient-to-br from-card via-card to-muted/25 shadow-sm hover:shadow-md hover:border-emerald-500/25"
+                    : "border-border/60 bg-card hover:border-emerald-400/50",
+                )}
+              >
+                <div
+                  className={cn(
+                    "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                    activeTab === "assignments"
+                      ? "bg-emerald-600/[0.08] text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-600/15"
+                      : "bg-emerald-500/10 text-emerald-600",
+                  )}
+                >
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     {isAr ? "النشطة" : "Active"}
                   </p>
-                  <p className="text-2xl font-black text-foreground leading-tight">
+                  <p
+                    className={cn(
+                      "font-black text-foreground leading-tight tracking-tight",
+                      activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                    )}
+                  >
                     {activeAssignments.length}
                   </p>
                 </div>
@@ -1015,12 +1083,14 @@ export default function TeacherDashboard() {
           <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
+          {activeTab !== "assignments" && (
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
               {tabs.find((t) => t.id === activeTab)?.icon}
             </span>
             {tabs.find((t) => t.id === activeTab)?.label}
           </h1>
+          )}
         </div>
 
         {/* Tab content */}
@@ -1624,11 +1694,11 @@ function AssignmentsTab({
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[1, 2, 3].map((i) => (
           <Card
             key={i}
-            className="p-5 border-border/40"
+            className="p-4 sm:p-5 border-border/45 rounded-xl shadow-sm"
             style={{ animationDelay: `${i * 100}ms` }}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1649,15 +1719,24 @@ function AssignmentsTab({
 
   if (!assignments || assignments.length === 0) {
     return (
-      <Card className="py-16 text-center border-dashed">
-        <BookText className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-        <h3 className="text-xl font-bold text-foreground mb-2">
+      <Card className="py-14 text-center border-dashed border-border/60 rounded-xl bg-muted/[0.03] shadow-sm">
+        <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-primary/[0.08] flex items-center justify-center ring-1 ring-primary/12">
+          <BookText className="w-7 h-7 text-primary/75" />
+        </div>
+        <h3 className="text-base font-bold text-foreground mb-1">
           {t.dashboard.noAssignments}
         </h3>
-        <p className="text-muted-foreground mb-6">
+        <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto leading-relaxed">
           {t.dashboard.noAssignmentsDesc}
         </p>
-        <Button onClick={() => setLocation("/teacher/new")}>
+        <Button
+          onClick={() => setLocation("/teacher/new")}
+          className="font-bold rounded-xl shadow-md"
+          style={{
+            background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
+            boxShadow: "0 10px 24px -14px rgba(21, 74, 51, 0.5)",
+          }}
+        >
           {t.dashboard.createAssignment}
         </Button>
       </Card>
@@ -3393,15 +3472,15 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-card rounded-2xl border border-border/60 overflow-hidden">
+    <div className="bg-card rounded-xl border border-border/45 shadow-sm overflow-hidden ring-1 ring-black/[0.02] dark:ring-white/[0.03]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-3 sm:px-5 sm:py-4 hover:bg-muted/40 transition-colors min-h-[44px]"
+        className="w-full flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/[0.35] transition-colors min-h-[44px] border-s-[3px] border-s-[#D9A521]/35"
       >
         <div className="flex items-center gap-2.5">
-          <span className="font-semibold text-foreground text-sm">{title}</span>
+          <span className="font-bold text-foreground text-sm tracking-tight">{title}</span>
           {count !== undefined && (
-            <span className="text-[11px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-semibold bg-muted/80 text-muted-foreground px-2 py-0.5 rounded-full tabular-nums">
               {count}
             </span>
           )}
@@ -3419,8 +3498,8 @@ function Section({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border/60" />
-            <div className="px-3 py-3 sm:px-5 sm:py-4">{children}</div>
+            <div className="border-t border-border/50" />
+            <div className="px-3 py-3 sm:px-4 sm:py-4 bg-muted/[0.03]">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3479,13 +3558,22 @@ function AssignmentRow({
     e.dataTransfer.effectAllowed = "copy";
   };
 
+  const deadlineExpired =
+    assignment.deadline && new Date(assignment.deadline) < new Date();
+  const statusActive = !deadlineExpired;
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      className={`rounded-xl border transition-all duration-150 ${isExpanded ? "border-border bg-muted/30" : "border-border/60 hover:border-border"} cursor-grab active:cursor-grabbing`}
+      className={cn(
+        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-[box-shadow,border-color,background-color] shadow-sm",
+        isExpanded
+          ? "border-primary/20 bg-muted/[0.15] shadow-md"
+          : "border-border/55 hover:border-primary/18 hover:shadow-md",
+      )}
     >
-      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 min-h-[56px]">
+      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2.5 min-h-[56px]">
         <span
           className="hidden sm:inline-flex shrink-0 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors p-2 -m-2"
           title={lang === "ar" ? "اسحب إلى مجموعة" : "Drag to group"}
@@ -3507,7 +3595,12 @@ function AssignmentRow({
           }
         >
           <Star
-            className={`w-4 h-4 transition-colors ${isFavorite ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30 hover:text-amber-400"}`}
+            className={cn(
+              "w-4 h-4 transition-colors",
+              isFavorite
+                ? "fill-[#D9A521]/85 text-[#D9A521]/85"
+                : "text-muted-foreground/35 hover:text-[#D9A521]/70",
+            )}
           />
         </button>
         <button
@@ -3515,26 +3608,30 @@ function AssignmentRow({
           className="flex-1 min-w-0 min-h-[44px] flex items-center gap-2 text-start"
         >
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm text-foreground truncate">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-sm text-foreground truncate">
                 {assignment.title}
               </span>
+              {statusActive && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/[0.09] text-emerald-800 dark:text-emerald-300 border border-emerald-600/15">
+                  {lang === "ar" ? "نشط" : "Active"}
+                </span>
+              )}
+              {deadlineExpired && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-500/[0.08] text-stone-700 dark:text-stone-300 border border-stone-500/20">
+                  {lang === "ar" ? "منتهي" : "Ended"}
+                </span>
+              )}
               {assignment.subject && (
-                <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                <span className="text-[11px] text-muted-foreground bg-muted/70 px-2 py-0.5 rounded-md border border-border/50">
                   {assignment.subject}
                 </span>
               )}
               {groupName && (
-                <span className="text-[11px] text-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 px-2 py-0.5 rounded-md">
+                <span className="text-[11px] text-primary bg-primary/[0.06] px-2 py-0.5 rounded-md border border-primary/15">
                   {groupName}
                 </span>
               )}
-              {assignment.deadline &&
-                new Date(assignment.deadline) < new Date() && (
-                  <span className="text-[11px] text-red-500 bg-red-50 dark:bg-red-900/20 dark:text-red-300 px-2 py-0.5 rounded-md">
-                    {t.dashboard.deadlineExpired}
-                  </span>
-                )}
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {assignment.questionCount} {t.dashboard.question} ·{" "}
@@ -3544,16 +3641,20 @@ function AssignmentRow({
         </button>
         {assignment.questionCount > 0 && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               startGame(assignment.id, e);
             }}
             disabled={creatingGameForId === assignment.id}
-            className="shrink-0 text-xs font-bold px-3 py-2 min-h-[44px] min-w-[44px] text-white rounded-lg transition-all disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-sm hover:brightness-110 hover:-translate-y-0.5"
-            style={{ background: "linear-gradient(135deg,#1f8246 0%,#155d32 100%)", boxShadow: "0 4px 12px -4px rgba(27,107,63,0.45)" }}
+            className="shrink-0 text-xs font-semibold px-3 py-2 min-h-[44px] min-w-[44px] text-white rounded-xl transition-[filter,box-shadow] disabled:opacity-45 inline-flex items-center justify-center gap-1.5 shadow-sm hover:brightness-105 hover:shadow-md"
+            style={{
+              background: "#1E4D35",
+              boxShadow: "0 6px 18px -10px rgba(30, 77, 53, 0.55)",
+            }}
             title={t.dashboard.liveGame}
           >
-            <Gamepad2 className="w-3.5 h-3.5" />
+            <Gamepad2 className="w-3.5 h-3.5 opacity-95" />
             <span className="hidden sm:inline">
               {creatingGameForId === assignment.id
                 ? t.dashboard.creating
@@ -3580,8 +3681,8 @@ function AssignmentRow({
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border/60" />
-            <div className="px-3 py-3 sm:px-4 flex flex-wrap gap-2">
+            <div className="border-t border-border/50" />
+            <div className="px-3 py-3 sm:px-4 flex flex-wrap gap-2 bg-muted/[0.04]">
               <button
                 onClick={() =>
                   setLocation(`/teacher/assignment/${assignment.id}`)
@@ -4143,14 +4244,39 @@ function AssignmentsTabRender({
   };
 
   return (
-    <div className="space-y-4">
-      {/* ── Assignments Section with create button in header ── */}
-      <div className="flex items-center justify-end mb-0">
+    <div className="space-y-3" dir={lang === "ar" ? "rtl" : "ltr"}>
+      {/* Hero — aligns with Activities Library; dashboard tab title hidden for this tab */}
+      <div className="rounded-xl border border-border/40 bg-gradient-to-r from-primary/[0.06] via-card to-background/95 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0 flex items-center justify-center text-white shadow-md ring-2 ring-primary/15"
+            style={{
+              background: "linear-gradient(145deg, #1f6f4a 0%, #1a4d36 55%, #163728 100%)",
+            }}
+          >
+            <BookText className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-extrabold text-foreground leading-tight tracking-tight">
+              {lang === "ar" ? "واجباتي" : "My Assignments"}
+            </h2>
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 leading-snug">
+              {lang === "ar"
+                ? "أنشئ الأنشطة، نظّمها في مجموعات، وتابع التسليمات بسهولة."
+                : "Create activities, organize them in groups, and track submissions with ease."}
+            </p>
+          </div>
+        </div>
         <button
+          type="button"
           onClick={() => setLocation("/teacher/new")}
-          className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 min-h-[44px] bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold rounded-xl transition-colors shadow-sm"
+          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white transition-[box-shadow,filter] hover:brightness-[1.04] active:brightness-[0.98] shadow-md hover:shadow-lg"
+          style={{
+            background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
+            boxShadow: "0 10px 26px -12px rgba(21, 74, 51, 0.55)",
+          }}
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
           {lang === "ar" ? "إنشاء واجب / نشاط" : "New Assignment"}
         </button>
       </div>
@@ -4163,23 +4289,32 @@ function AssignmentsTabRender({
         defaultOpen
       >
         {/* ── Groups Section ── */}
-        <div className="mb-4 space-y-2">
+        <div className="mb-3 space-y-2">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <FolderOpen className="w-4 h-4 text-violet-500" />
-              {lang === "ar" ? "مجموعاتي" : "My Groups"}
-              {collections.length > 0 && (
-                <span className="text-xs text-muted-foreground font-normal">
-                  ({collections.length})
-                </span>
-              )}
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2 min-w-0">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/[0.08] text-primary shrink-0 ring-1 ring-primary/10">
+                <FolderOpen className="w-4 h-4" />
+              </span>
+              <span className="truncate">
+                {lang === "ar" ? "مجموعاتي" : "My Groups"}
+                {collections.length > 0 && (
+                  <span className="text-muted-foreground font-semibold ms-1 tabular-nums">
+                    ({collections.length})
+                  </span>
+                )}
+              </span>
             </h3>
             <button
+              type="button"
               onClick={() => setShowNewGroupForm((v: boolean) => !v)}
-              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-white shadow-sm transition-[filter,box-shadow] hover:brightness-105 shrink-0"
+              style={{
+                background: "linear-gradient(180deg, #1e4d35 0%, #173f2c 100%)",
+                boxShadow: "0 6px 18px -10px rgba(30, 77, 53, 0.65)",
+              }}
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
               {lang === "ar" ? "مجموعة جديدة" : "New Group"}
             </button>
           </div>
@@ -4194,7 +4329,7 @@ function AssignmentsTabRender({
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-dashed border-violet-300 bg-violet-50 dark:bg-violet-900/20">
+                <div className="flex flex-wrap items-center gap-2 p-2.5 sm:p-3 rounded-xl border border-dashed border-primary/25 bg-muted/25">
                   <input
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
@@ -4205,22 +4340,23 @@ function AssignmentsTabRender({
                       lang === "ar" ? "اسم المجموعة..." : "Group name..."
                     }
                     autoFocus
-                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-border bg-background text-sm"
+                    className="flex-1 min-w-[12rem] px-2.5 py-2 rounded-lg border border-border/70 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer shrink-0">
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer shrink-0 text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={newGroupIsPublic}
                       onChange={(e) => setNewGroupIsPublic(e.target.checked)}
-                      className="w-3.5 h-3.5 accent-emerald-600"
+                      className="w-3.5 h-3.5 accent-primary"
                     />
-                    <Globe className="w-3 h-3 text-emerald-600" />
+                    <Globe className="w-3.5 h-3.5 text-primary/80" />
                     <span>{lang === "ar" ? "عام" : "Public"}</span>
                   </label>
                   <button
+                    type="button"
                     onClick={handleCreateGroup}
                     disabled={savingNewGroup || !newGroupName.trim()}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition-colors shrink-0"
+                    className="px-3 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs font-bold disabled:opacity-50 transition-colors shrink-0 shadow-sm"
                   >
                     {savingNewGroup
                       ? "..."
@@ -4229,13 +4365,14 @@ function AssignmentsTabRender({
                         : "Create"}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowNewGroupForm(false);
                       setNewGroupName("");
                     }}
-                    className="p-1.5 hover:bg-muted rounded-lg shrink-0"
+                    className="p-2 hover:bg-muted rounded-lg shrink-0 text-muted-foreground"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
@@ -4244,10 +4381,10 @@ function AssignmentsTabRender({
 
           {/* My Groups list */}
           {collections.length === 0 && !showNewGroupForm ? (
-            <div className="text-center py-5 border-2 border-dashed border-border rounded-xl text-xs text-muted-foreground">
+            <div className="text-center py-4 px-3 rounded-xl border border-dashed border-border/60 bg-muted/[0.04] text-xs text-muted-foreground leading-relaxed">
               {lang === "ar"
-                ? "لا توجد مجموعات بعد — اضغط «مجموعة جديدة» لإنشاء مجموعة"
-                : "No groups yet — click «New Group» to create one"}
+                ? "لا توجد مجموعات بعد — استخدم «مجموعة جديدة» لتنظيم واجباتك."
+                : "No groups yet — use «New Group» to organize your work."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -4313,8 +4450,9 @@ function AssignmentsTabRender({
                             {col.name}
                           </span>
                           {col.teacherName && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">
-                              👤 {col.teacherName}
+                            <span className="text-[10px] text-muted-foreground shrink-0 inline-flex items-center gap-1">
+                              <User className="w-3 h-3 opacity-70" />
+                              {col.teacherName}
                             </span>
                           )}
                           <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground shrink-0">
@@ -4335,91 +4473,102 @@ function AssignmentsTabRender({
           )}
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-3">
-          <Search
-            className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 ${lang === "ar" ? "right-3" : "left-3"}`}
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              lang === "ar" ? "ابحث عن واجب..." : "Search assignments..."
-            }
-            className={`w-full py-2 bg-muted/40 border border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 focus:bg-background transition-all ${lang === "ar" ? "pr-9 pl-3 text-right" : "pl-9 pr-3"}`}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground ${lang === "ar" ? "left-3" : "right-3"}`}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        {/* Search + filters — Activities Library–style shell */}
+        <div className="rounded-xl border border-border/45 bg-muted/[0.06] p-3 shadow-sm space-y-3 mb-3">
+          <div className="relative">
+            <Search
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/55 ${lang === "ar" ? "right-3" : "left-3"}`}
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                lang === "ar" ? "ابحث عن واجب أو مادة..." : "Search assignment or subject..."
+              }
+              className={`w-full py-2.5 bg-background/90 border border-border/55 rounded-xl text-sm placeholder:text-muted-foreground/45 focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30 transition-all ${lang === "ar" ? "pr-10 pl-3 text-right" : "pl-10 pr-3"}`}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className={`absolute top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground ${lang === "ar" ? "left-3" : "right-3"}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
-        {/* Status filters */}
-        <div
-          className="flex items-center gap-2 mb-3 flex-wrap"
-          dir={lang === "ar" ? "rtl" : "ltr"}
-        >
-          {[
-            { key: "all", label: lang === "ar" ? "الكل" : "All" },
-            {
-              key: "favorites",
-              label: lang === "ar" ? "⭐ المفضلة" : "⭐ Favorites",
-            },
-            { key: "active", label: lang === "ar" ? "نشط" : "Active" },
-            { key: "expired", label: lang === "ar" ? "منتهي" : "Expired" },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setStatusFilter(f.key as any)}
-              className={cn(
-                "px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all border",
-                statusFilter === f.key
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-muted/40 text-muted-foreground border-border/60 hover:border-foreground/30 hover:text-foreground",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-          <span className="text-xs text-muted-foreground ms-1">
-            {statusFiltered.length}
-          </span>
+          <div
+            className="flex items-center gap-2 flex-wrap"
+            dir={lang === "ar" ? "rtl" : "ltr"}
+          >
+            {[
+              { key: "all", label: lang === "ar" ? "الكل" : "All" },
+              {
+                key: "favorites",
+                label: lang === "ar" ? "المفضلة" : "Favorites",
+              },
+              { key: "active", label: lang === "ar" ? "نشط" : "Active" },
+              { key: "expired", label: lang === "ar" ? "منتهي" : "Expired" },
+            ].map((f) => (
+              <button
+                type="button"
+                key={f.key}
+                onClick={() => setStatusFilter(f.key as any)}
+                className={cn(
+                  "px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all border",
+                  statusFilter === f.key
+                    ? "bg-[#1E4D35] text-white border-[#1E4D35] shadow-sm ring-1 ring-black/[0.04]"
+                    : "bg-background/80 text-muted-foreground border-border/55 hover:border-primary/25 hover:text-foreground",
+                )}
+              >
+                {f.key === "favorites" && (
+                  <Star className="inline-block w-3 h-3 me-1 opacity-90 align-[-2px]" />
+                )}
+                {f.label}
+              </button>
+            ))}
+            <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ms-0.5 px-2 py-1 rounded-lg bg-background/60 border border-border/40">
+              {statusFiltered.length}
+            </span>
+          </div>
         </div>
 
         {/* Assignments list */}
-        <div className="space-y-2 mb-5">
+        <div className="space-y-2.5 mb-4">
           {statusFiltered.length === 0 ? (
             (assignments?.length || 0) === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-primary/20 bg-gradient-to-br from-primary/5 via-amber-50/40 to-emerald-50/30 dark:from-primary/10 dark:via-amber-900/10 dark:to-emerald-900/10 px-6 py-10 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary to-emerald-700 flex items-center justify-center shadow-lg shadow-primary/30">
-                  <Sparkles className="w-8 h-8 text-white" />
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/[0.04] px-5 py-9 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-primary/[0.09] flex items-center justify-center ring-1 ring-primary/15">
+                  <BookText className="w-7 h-7 text-primary/80" />
                 </div>
-                <h4 className="font-extrabold text-foreground text-base mb-1.5">
+                <h4 className="font-bold text-foreground text-sm mb-1">
                   {lang === "ar"
-                    ? "ابدأ مغامرتك التعليمية!"
-                    : "Start your teaching adventure!"}
+                    ? "لا توجد واجبات بعد"
+                    : "No assignments yet"}
                 </h4>
                 <p className="text-xs text-muted-foreground mb-4 max-w-sm mx-auto leading-relaxed">
                   {lang === "ar"
-                    ? "أنشئ واجبك الأول أو لعبتك الأولى واستمتع بمشاركة طلابك بطريقة ممتعة وتفاعلية."
-                    : "Create your first assignment or game and engage your students in a fun, interactive way."}
+                    ? "ابدأ بإنشاء نشاطك الأول وشاركه مع طلابك."
+                    : "Create your first activity and share it with your students."}
                 </p>
                 <button
+                  type="button"
                   onClick={() => setLocation("/teacher/new")}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-sm shadow-md shadow-primary/25 transition-all hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white shadow-md transition-[filter] hover:brightness-105"
+                  style={{
+                    background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
+                    boxShadow: "0 10px 24px -14px rgba(21, 74, 51, 0.55)",
+                  }}
                 >
                   <Plus className="w-4 h-4" />
-                  {lang === "ar" ? "أنشئ نشاطًا الآن" : "Create Activity Now"}
+                  {lang === "ar" ? "إنشاء نشاط" : "Create activity"}
                 </button>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-7 text-center">
-                <Search className="w-7 h-7 mx-auto text-muted-foreground/60 mb-2" />
+              <div className="rounded-xl border border-dashed border-border/60 bg-muted/[0.04] px-5 py-6 text-center">
+                <Search className="w-6 h-6 mx-auto text-muted-foreground/55 mb-2" />
                 <p className="text-sm font-bold text-foreground mb-1">
                   {lang === "ar"
                     ? "لا توجد نتائج مطابقة"
@@ -4427,8 +4576,8 @@ function AssignmentsTabRender({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {lang === "ar"
-                    ? "جرّب تغيير الفلتر أو مسح كلمات البحث."
-                    : "Try clearing the filter or your search."}
+                    ? "جرّب تغيير الفلتر أو مسح البحث."
+                    : "Try another filter or clear search."}
                 </p>
               </div>
             )
@@ -4473,8 +4622,9 @@ function AssignmentsTabRender({
                   ))}
                   {!showAllAssignments && hiddenCount > 0 && (
                     <button
+                      type="button"
                       onClick={() => setShowAllAssignments(true)}
-                      className="w-full py-2.5 bg-muted/40 border border-border/60 rounded-xl text-xs font-semibold text-primary hover:bg-muted/70 hover:border-primary/40 transition-all"
+                      className="w-full py-2.5 bg-background/90 border border-border/55 rounded-xl text-xs font-semibold text-primary hover:bg-muted/40 hover:border-primary/25 transition-all shadow-sm"
                     >
                       {lang === "ar"
                         ? `عرض الكل (${statusFiltered.length})`
@@ -4483,8 +4633,9 @@ function AssignmentsTabRender({
                   )}
                   {showAllAssignments && statusFiltered.length > PAGE && (
                     <button
+                      type="button"
                       onClick={() => setShowAllAssignments(false)}
-                      className="w-full py-2.5 bg-muted/30 border border-border/40 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="w-full py-2.5 bg-muted/25 border border-border/45 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {lang === "ar" ? "عرض أقل" : "Show less"}
                     </button>
@@ -4494,16 +4645,17 @@ function AssignmentsTabRender({
             })()
           )}
           <button
+            type="button"
             onClick={() => setLocation("/teacher/new")}
-            className="w-full py-2.5 border border-dashed border-border rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors"
+            className="w-full py-2.5 border border-dashed border-border/65 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/[0.03] transition-colors"
           >
             + {lang === "ar" ? "إضافة واجب" : "Add Assignment"}
           </button>
         </div>
 
         {/* Games grid */}
-        <div className="border-t border-border/60 pt-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-3">
+        <div className="border-t border-border/50 pt-3 mt-1">
+          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide mb-2">
             {lang === "ar" ? "الألعاب والمسابقات" : "Games & Competitions"}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -4511,25 +4663,26 @@ function AssignmentsTabRender({
               const Icon = game.icon;
               return (
                 <button
+                  type="button"
                   key={i}
                   onClick={() => launchGame(game.type)}
-                  className="flex items-start gap-2.5 p-3 min-h-[56px] bg-muted/40 border border-border/60 rounded-xl hover:bg-card hover:border-border hover:shadow-sm transition-all text-start"
+                  className="flex items-start gap-2.5 p-3 min-h-[56px] bg-background/80 border border-border/55 rounded-xl hover:bg-card hover:border-primary/15 hover:shadow-sm transition-all text-start"
                 >
-                  <div className="p-1.5 rounded-lg bg-card text-foreground/70 shrink-0">
+                  <div className="p-2 rounded-lg bg-primary/[0.06] text-primary shrink-0 ring-1 ring-primary/10">
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-xs font-medium text-foreground leading-tight">
+                      <p className="text-xs font-semibold text-foreground leading-tight">
                         {game.title}
                       </p>
                       {game.tag && (
-                        <span className="text-[9px] font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-md">
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-[#D9A521]/12 text-amber-900/85 dark:text-amber-100/90 border border-[#D9A521]/25 px-1.5 py-0.5 rounded-md">
                           {game.tag}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">
                       {game.desc}
                     </p>
                   </div>
