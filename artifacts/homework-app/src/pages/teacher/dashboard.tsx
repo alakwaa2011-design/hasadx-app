@@ -565,6 +565,22 @@ export default function TeacherDashboard() {
     );
   };
 
+  // Admin-controlled feature flag for the Google Classroom integration.
+  // Hidden by default; surfaced only when the admin enables it.
+  const [classroomEnabled, setClassroomEnabled] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE_URL}/api/public/settings`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setClassroomEnabled(!!d.classroomEnabled);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (userError) return null;
 
   if (isUserLoading)
@@ -692,18 +708,6 @@ export default function TeacherDashboard() {
       : 0;
 
   const isAr = lang === "ar";
-
-  // Admin-controlled feature flag for the Google Classroom integration.
-  // Hidden by default; surfaced only when the admin enables it.
-  const [classroomEnabled, setClassroomEnabled] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${BASE_URL}/api/public/settings`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setClassroomEnabled(!!d.classroomEnabled); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   const tabContent = (
     <AnimatePresence mode="wait">
