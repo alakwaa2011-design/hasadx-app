@@ -97,7 +97,7 @@ function usePublicContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/public/assignments`)
+    fetch(`${API_BASE}/api/public/assignments?contentKind=competition`)
       .then((r) => r.json())
       .catch(() => [])
       .then((a) => setAssignments(Array.isArray(a) ? a : []))
@@ -656,6 +656,8 @@ function modeLabel(
   return th.modeBoth;
 }
 
+const READY_QUIZZES_HOME_PREVIEW = 4;
+
 function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
   const [assignments, setAssignments] = useState<PublicAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -664,12 +666,13 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
   const [botDialogAssignment, setBotDialogAssignment] =
     useState<PublicAssignment | null>(null);
   const [botCount, setBotCount] = useState(4);
+  const [showAllReadyQuizzes, setShowAllReadyQuizzes] = useState(false);
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/public/assignments`)
+    fetch(`${API_BASE}/api/public/assignments?contentKind=competition`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((a) => setAssignments(Array.isArray(a) ? a.slice(0, 12) : []))
+      .then((a) => setAssignments(Array.isArray(a) ? a : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -711,6 +714,11 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
     }
   };
 
+  const displayedReadyQuizzes = showAllReadyQuizzes
+    ? assignments
+    : assignments.slice(0, READY_QUIZZES_HOME_PREVIEW);
+  const readyQuizOverflow = assignments.length - READY_QUIZZES_HOME_PREVIEW;
+
   if (!loading && assignments.length === 0) return null;
 
   return (
@@ -724,7 +732,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
           <div>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold mb-3 border border-amber-500/15">
               <Zap className="w-3.5 h-3.5" />
-              {lang === "ar" ? "مسابقات المجتمع" : "Community Quizzes"}
+              {lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library"}
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {lang === "ar" ? "أسئلة ومسابقات جاهزة" : "Ready-made Quizzes"}
@@ -745,7 +753,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className="h-40 rounded-2xl border border-border/40 bg-card animate-pulse"
@@ -755,7 +763,7 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {assignments.map((a, i) => (
+            {displayedReadyQuizzes.map((a, i) => (
               <motion.div
                 key={a.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -822,6 +830,27 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
           </div>
         )}
 
+        {!loading && readyQuizOverflow > 0 && (
+          <div className="flex justify-center mt-6">
+            <button
+              type="button"
+              onClick={() => setShowAllReadyQuizzes((v) => !v)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-background hover:bg-muted/70 text-sm font-bold text-foreground transition-colors"
+            >
+              {showAllReadyQuizzes
+                ? lang === "ar"
+                  ? "عرض أقل"
+                  : "Show less"
+                : lang === "ar"
+                  ? `عرض المزيد (+${readyQuizOverflow})`
+                  : `Show more (+${readyQuizOverflow})`}
+              <ChevronDown
+                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${showAllReadyQuizzes ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
+        )}
+
         {!loading && assignments.length > 0 && (
           <div className="text-center mt-8">
             <Link
@@ -829,7 +858,9 @@ function ReadyQuizzesSection({ lang, dir }: { lang: string; dir: string }) {
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border hover:border-amber-400/40 text-sm font-bold text-muted-foreground hover:text-foreground transition-all hover:-translate-y-0.5"
             >
               <Globe className="w-4 h-4" />
-              {lang === "ar" ? "عرض جميع المسابقات" : "View All Quizzes"}
+              {lang === "ar"
+                ? "صفحة المسابقات — بحث وتصفح كامل"
+                : "Full quizzes page — search & browse"}
             </Link>
           </div>
         )}

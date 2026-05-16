@@ -42,7 +42,7 @@ export default function PublicGamesPage() {
   const [botCount, setBotCount] = useState(4);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/public/assignments`)
+    fetch(`${API_BASE}/api/public/assignments?contentKind=competition`)
       .then(r => r.ok ? r.json() : [])
       .then(a => setAssignments(Array.isArray(a) ? a : []))
       .catch(() => {})

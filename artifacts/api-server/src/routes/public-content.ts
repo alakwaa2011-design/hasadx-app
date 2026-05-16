@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable } from "@workspace/db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, or, ne } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -17,13 +17,44 @@ async function getPublicVisibility(): Promise<string> {
 
 /* ── GET /public/assignments ─────────────────────────────────
    Returns assignments visible publicly.
-   Respects platform-level publicVisibility setting. No auth required. */
+   Respects platform-level publicVisibility setting. No auth required.
+
+   Query:
+   - ?contentKind=competition | ?kind=competition — only مكتبة المسابقات
+     rows (content_kind competition or both). Same rule as /assignments/shared.
+   - ?contentKind=homework — أنشطة / واجبات فقط (+ both).
+   - Omit kind → unchanged legacy behaviour (all kinds still respecting visibility). */
 router.get("/public/assignments", async (req, res) => {
   try {
     const visibility = await getPublicVisibility();
     if (visibility === "none") return res.json([]);
 
-    const query = db
+    const rawKind =
+      typeof req.query.contentKind === "string"
+        ? req.query.contentKind
+        : typeof req.query.kind === "string"
+          ? req.query.kind
+          : "";
+    const kindFilter =
+      rawKind === "competition" || rawKind === "homework" ? rawKind : null;
+
+    const clauses = [
+      eq(assignmentsTable.hiddenByAdmin, false),
+      ne(assignmentsTable.accessMode, "private"),
+    ];
+    if (visibility !== "all") {
+      clauses.push(eq(assignmentsTable.isShared, true));
+    }
+    if (kindFilter) {
+      clauses.push(
+        or(
+          eq(assignmentsTable.contentKind, kindFilter),
+          eq(assignmentsTable.contentKind, "both"),
+        ),
+      );
+    }
+
+    const rows = await db
       .select({
         id: assignmentsTable.id,
         title: assignmentsTable.title,
@@ -40,12 +71,9 @@ router.get("/public/assignments", async (req, res) => {
       })
       .from(assignmentsTable)
       .leftJoin(teachersTable, eq(assignmentsTable.teacherId, teachersTable.id))
-      .orderBy(sql`${assignmentsTable.createdAt} DESC`)
+      .where(and(...clauses))
+      .orderBy(desc(assignmentsTable.createdAt))
       .limit(30);
-
-    const rows = visibility === "all"
-      ? await query
-      : await query.where(eq(assignmentsTable.isShared, true));
 
     res.json(rows.map(r => ({ ...r, isAdminContent: !!r.isAdminContent })));
   } catch (err) {
