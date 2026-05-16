@@ -577,7 +577,11 @@ export default function SharedContentPage({
     <div
       className={cn(
         embedded
-          ? cn("py-4", isCompetitionLibrary && "pt-1 pb-3")
+          ? cn(
+              "py-4",
+              isCompetitionLibrary && "pt-1 pb-3",
+              isActivitiesLibrary && "pt-1 pb-3",
+            )
           : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl",
         isActivitiesLibrary &&
           !embedded &&
@@ -594,17 +598,21 @@ export default function SharedContentPage({
 
         <div
           className={cn(
-            "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6",
+            "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between",
+            isActivitiesLibrary ? "mb-4 sm:mb-4" : "mb-6",
             embedded && isCompetitionLibrary && "mb-4",
+            embedded && isActivitiesLibrary && "mb-3",
             isActivitiesLibrary &&
-              "rounded-2xl border border-border/35 bg-gradient-to-r from-teal-500/[0.07] via-card/60 to-background/90 px-4 py-4 sm:px-5 sm:py-4 shadow-sm",
+              "rounded-xl border border-border/35 bg-gradient-to-r from-teal-500/[0.07] via-card/60 to-background/90 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm",
           )}
         >
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div
             className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shrink-0",
-              isActivitiesLibrary && "ring-2 ring-primary/10 shadow-md",
+              "flex items-center justify-center shrink-0",
+              isActivitiesLibrary
+                ? "w-10 h-10 sm:w-11 sm:h-11 rounded-xl shadow-md ring-2 ring-primary/10"
+                : "w-12 h-12 rounded-2xl shadow-lg",
             )}
             style={{
               background: isCompetitionLibrary
@@ -612,17 +620,27 @@ export default function SharedContentPage({
                 : "linear-gradient(135deg,#06b6d4,#0d9488)",
             }}
           >
-            <Globe className="w-6 h-6 text-white" />
+            <Globe className={cn("text-white", isActivitiesLibrary ? "w-5 h-5 sm:w-[22px] sm:h-[22px]" : "w-6 h-6")} />
           </div>
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+            <h1
+              className={cn(
+                "font-extrabold text-foreground leading-tight",
+                isActivitiesLibrary ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl",
+              )}
+            >
               {libraryKind === "competition"
                 ? (lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library")
                 : libraryKind === "homework"
                 ? (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library")
                 : t.sharedContent.title}
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
+            <p
+              className={cn(
+                "text-muted-foreground leading-snug",
+                isActivitiesLibrary ? "text-[11px] sm:text-xs mt-0.5" : "text-sm mt-0.5",
+              )}
+            >
               {libraryKind === "competition"
                 ? (lang === "ar"
                     ? "تصفح وشغّل مسابقات جاهزة شاركها معلمون آخرون"

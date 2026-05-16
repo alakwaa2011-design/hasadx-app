@@ -904,14 +904,22 @@ export default function TeacherDashboard() {
             <div
               className={cn(
                 "px-6 xl:px-10 2xl:px-14",
-                activeTab === "library_competitions" ? "py-4 pt-4" : "py-8",
+                activeTab === "library_competitions" || activeTab === "library_homework"
+                  ? "py-4 pt-4"
+                  : "py-8",
               )}
             >
-              <div className={cn(activeTab === "library_competitions" ? "mb-3" : "mb-6")}>
+              <div
+                className={cn(
+                  activeTab === "library_competitions" || activeTab === "library_homework"
+                    ? "mb-3"
+                    : "mb-6",
+                )}
+              >
                 <GuestDraftImportBanner />
               </div>
-              {/* Tab heading — skipped for competitions library: SharedContentPage already shows title, icon & subtitle (embedded). */}
-              {activeTab !== "library_competitions" && (
+              {/* Tab heading — skipped for split libraries: SharedContentPage shows title, icon, subtitle & actions (embedded). */}
+              {activeTab !== "library_competitions" && activeTab !== "library_homework" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
