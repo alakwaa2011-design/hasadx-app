@@ -19,6 +19,15 @@ function coerceBodyBool(v: unknown): boolean {
   return Boolean(v);
 }
 
+/** Safe JSON body object — avoids destructuring from null; supports loose clients. */
+function platformSettingsPatchBody(req: Request): Record<string, unknown> {
+  const b = req.body;
+  if (b != null && typeof b === "object" && !Array.isArray(b)) {
+    return b as Record<string, unknown>;
+  }
+  return {};
+}
+
 const TeacherIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
@@ -587,7 +596,34 @@ router.get("/admin/platform-settings", async (req, res) => {
 router.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails, arenaImportSources, teacherXpRewardsEnabled } = req.body;
+    const patchBody = platformSettingsPatchBody(req);
+    const {
+      publicVisibility,
+      guestLimit,
+      primaryColor,
+      accentColor,
+      fontFamily,
+      platformName,
+      logoUrl,
+      showAdventureGamesHome,
+      showSpaceRaceGamesHome,
+      showFlagsGame,
+      showColorGame,
+      showMemoryGame,
+      showMultiplyGame,
+      showScrambleGame,
+      showTugGame,
+      showCapitalsGame,
+      proAiForAll,
+      presentationsProForAll,
+      presentationLimits,
+      showQuranSection,
+      showGeneralCertificates,
+      showMaraqui,
+      classroomEnabled,
+      classroomAllowedEmails,
+      arenaImportSources,
+    } = patchBody;
 
     const update: Record<string, unknown> = {};
 
@@ -653,8 +689,15 @@ router.patch("/admin/platform-settings", async (req, res) => {
       }
       update.arenaImportSources = parsed.data;
     }
-    if (teacherXpRewardsEnabled !== undefined) {
-      update.teacherXpRewardsEnabled = coerceBodyBool(teacherXpRewardsEnabled);
+    /* XP toggle: must use property checks — value `false` is valid; some proxies send snake_case. */
+    if (
+      Object.prototype.hasOwnProperty.call(patchBody, "teacherXpRewardsEnabled") ||
+      Object.prototype.hasOwnProperty.call(patchBody, "teacher_xp_rewards_enabled")
+    ) {
+      const raw = Object.prototype.hasOwnProperty.call(patchBody, "teacherXpRewardsEnabled")
+        ? patchBody.teacherXpRewardsEnabled
+        : patchBody.teacher_xp_rewards_enabled;
+      update.teacherXpRewardsEnabled = coerceBodyBool(raw);
     }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });
