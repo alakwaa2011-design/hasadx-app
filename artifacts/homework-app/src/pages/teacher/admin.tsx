@@ -6,7 +6,7 @@ import {
   Search, ArrowRight, ArrowLeft, Users, BookText, FileCheck,
   Shield, ShieldOff, Trash2, Ban, CheckCircle2, GraduationCap, Phone,
   Mail, BarChart3, HelpCircle, UserX, Crown, Eye, ChevronDown, Copy,
-  Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2, ToggleLeft, ToggleRight,
+  Globe, FileText, Settings2, Palette, RotateCcw, Type, Link2, Zap, Gamepad2,
   MessageSquare, Clock, FolderTree, Plus, Folder, FolderOpen, ChevronRight, MoveRight, X, CheckSquare, Square, Sparkles, Bot,
   CreditCard, Activity, Reply, Send, Loader2, AtSign, Trophy,
 } from "lucide-react";
@@ -14,6 +14,7 @@ import { BillingTab } from "@/components/admin/billing-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { RealtimeTab } from "@/components/admin/realtime-tab";
 import { RewardsTab } from "@/components/admin/rewards-tab";
+import { AdminOnOffPill } from "@/components/admin/admin-on-off-pill";
 import { useThemeUpdater } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
@@ -286,7 +287,8 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
                   disabled={sending}
                 />
                 <div className="flex items-center gap-3 flex-wrap">
-                  <label className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs font-medium cursor-pointer flex-wrap">
+                    {fb.email ? <AdminOnOffPill on={sendByEmail} lang={lang} size="sm" /> : null}
                     <input
                       type="checkbox"
                       checked={sendByEmail}
@@ -366,6 +368,7 @@ function FeedbackCard({ fb, i, lang, tl, sl, formatDate, onMarkStatus, onDelete,
 
 export default function AdminPage() {
   const { t, lang } = useI18n();
+  const adminLang = lang === "ar" ? "ar" : "en";
   const updateTheme = useThemeUpdater();
   const [location, setLocation] = useLocation();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -2224,12 +2227,15 @@ export default function AdminPage() {
                       : "When on, every teacher can choose the Pro tier when generating."}
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={proAiForAll}
-                  onChange={(e) => handleToggleProAiForAll(e.target.checked)}
-                  className="w-5 h-5 accent-violet-600 cursor-pointer"
-                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <AdminOnOffPill on={proAiForAll} lang={adminLang} />
+                  <input
+                    type="checkbox"
+                    checked={proAiForAll}
+                    onChange={(e) => handleToggleProAiForAll(e.target.checked)}
+                    className="w-5 h-5 accent-violet-600 cursor-pointer"
+                  />
+                </div>
               </label>
             </Card>
 
@@ -2259,12 +2265,15 @@ export default function AdminPage() {
                       : "When on, every teacher gets the uncapped Pro tier."}
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={presentationsProForAll}
-                  onChange={(e) => handleTogglePresentationsProForAll(e.target.checked)}
-                  className="w-5 h-5 accent-fuchsia-600 cursor-pointer"
-                />
+                <div className="flex items-center gap-2 shrink-0">
+                  <AdminOnOffPill on={presentationsProForAll} lang={adminLang} />
+                  <input
+                    type="checkbox"
+                    checked={presentationsProForAll}
+                    onChange={(e) => handleTogglePresentationsProForAll(e.target.checked)}
+                    className="w-5 h-5 accent-fuchsia-600 cursor-pointer"
+                  />
+                </div>
               </label>
 
               <div className="space-y-3">
@@ -2365,7 +2374,7 @@ export default function AdminPage() {
                     <p className="font-bold text-sm text-foreground">{t.admin.gameWameeth}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t.admin.gameWameethDesc}</p>
                   </div>
-                  <ToggleRight className="w-8 h-8 text-amber-500 shrink-0" />
+                  <AdminOnOffPill lockedOn on={true} lang={adminLang} />
                 </div>
                 {/* Adventure Games */}
                 <button
@@ -2377,9 +2386,7 @@ export default function AdminPage() {
                     <p className="font-bold text-sm text-foreground">{t.admin.gameAdventure}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t.admin.gameAdventureDesc}</p>
                   </div>
-                  {showAdventureGamesHome
-                    ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                    : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                  <AdminOnOffPill on={showAdventureGamesHome} lang={adminLang} />
                 </button>
                 {/* Space Race Games */}
                 <button
@@ -2391,9 +2398,7 @@ export default function AdminPage() {
                     <p className="font-bold text-sm text-foreground">{t.admin.gameSpaceRace}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{t.admin.gameSpaceRaceDesc}</p>
                   </div>
-                  {showSpaceRaceGamesHome
-                    ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                    : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                  <AdminOnOffPill on={showSpaceRaceGamesHome} lang={adminLang} />
                 </button>
 
                 <div className="border-t border-border/40 my-2" />
@@ -2430,9 +2435,7 @@ export default function AdminPage() {
                       <p className="font-bold text-sm text-foreground">{src.label}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{src.desc}</p>
                     </div>
-                    {arenaImportSources[src.key]
-                      ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                      : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                    <AdminOnOffPill on={arenaImportSources[src.key]} lang={adminLang} />
                   </button>
                 ))}
 
@@ -2457,9 +2460,7 @@ export default function AdminPage() {
                       <p className="font-bold text-sm text-foreground">{game.label}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{game.desc}</p>
                     </div>
-                    {game.value
-                      ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                      : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                    <AdminOnOffPill on={game.value} lang={adminLang} />
                   </button>
                 ))}
 
@@ -2511,9 +2512,7 @@ export default function AdminPage() {
                       <p className="font-bold text-sm text-foreground">{t2.label}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{t2.desc}</p>
                     </div>
-                    {t2.value
-                      ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                      : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                    <AdminOnOffPill on={t2.value} lang={adminLang} />
                   </button>
                 ))}
               </div>
@@ -2568,9 +2567,7 @@ export default function AdminPage() {
                       : "When off, no new XP is granted and achievement UI is hidden."}
                   </p>
                 </div>
-                {teacherXpRewardsEnabled
-                  ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                  : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                <AdminOnOffPill on={teacherXpRewardsEnabled} lang={adminLang} />
               </button>
             </Card>
 
@@ -2615,9 +2612,7 @@ export default function AdminPage() {
                       : "When off, the Classroom card is hidden from the teacher dashboard and all related requests are rejected."}
                   </p>
                 </div>
-                {classroomEnabled
-                  ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
-                  : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+                <AdminOnOffPill on={classroomEnabled} lang={adminLang} />
               </button>
 
               <div className={`rounded-xl border border-border/60 bg-muted/10 p-4 ${!classroomEnabled ? "opacity-60" : ""}`}>
@@ -3573,7 +3568,7 @@ function AdminLetrlyOptions({ lang }: { lang: string }) {
                 <span className="text-sm font-bold">
                   {lang === "ar" ? LETRLY_CAT_LABEL_AR[c] : LETRLY_CAT_LABEL_EN[c]}
                 </span>
-                {enabled ? <ToggleRight className="w-5 h-5 text-emerald-600" /> : <ToggleLeft className="w-5 h-5 text-zinc-400" />}
+                <AdminOnOffPill on={enabled} lang={lang === "ar" ? "ar" : "en"} size="sm" />
               </button>
             );
           })}
@@ -3596,7 +3591,7 @@ function AdminLetrlyOptions({ lang }: { lang: string }) {
                 <span className="text-sm font-bold">
                   {lang === "ar" ? `${l} حروف` : `${l} letters`}
                 </span>
-                {enabled ? <ToggleRight className="w-5 h-5 text-emerald-600" /> : <ToggleLeft className="w-5 h-5 text-zinc-400" />}
+                <AdminOnOffPill on={enabled} lang={lang === "ar" ? "ar" : "en"} size="sm" />
               </button>
             );
           })}
