@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/layout";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowRight, ArrowLeft, BookText, HelpCircle, Globe,
   Search, User, Copy, Download, Loader2, CheckCircle2, X, Video, Play, GraduationCap,
-  Gamepad2, EyeOff, FolderOpen, MoreVertical, Zap, Users,
+  Gamepad2, EyeOff, FolderOpen, MoreVertical, Zap, Users, Plus,
 } from "lucide-react";
 import { Card, Button, Input } from "@/components/ui-elements";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSocket, disconnectSocket } from "@/lib/socket";
+import { cn } from "@/lib/utils";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -182,6 +183,38 @@ export default function SharedContentPage({
     : path.endsWith("/library/competitions") ? "competition" :
       path.endsWith("/library/homework") ? "homework" : null;
   const isCompetitionLibrary = libraryKind === "competition";
+  const isActivitiesLibrary = libraryKind === "homework";
+
+  /** Sparse labels for מكتبة الأنشطة only — data-driven, capped counts. */
+  const activitiesPopularIds = useMemo(() => {
+    if (!isActivitiesLibrary) return new Set<number>();
+    const ids = [...assignments]
+      .filter((a) => !a.isAdminContent && !a.hiddenByAdmin && a.questionCount >= 10)
+      .sort((a, b) => b.questionCount - a.questionCount)
+      .slice(0, 2)
+      .map((a) => a.id);
+    return new Set(ids);
+  }, [assignments, isActivitiesLibrary]);
+
+  const activitiesNewIds = useMemo(() => {
+    if (!isActivitiesLibrary) return new Set<number>();
+    const windowMs = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const ids = [...assignments]
+      .filter((a) => !a.isAdminContent && now - new Date(a.createdAt).getTime() < windowMs)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6)
+      .map((a) => a.id);
+    return new Set(ids);
+  }, [assignments, isActivitiesLibrary]);
+
+  function activitiesAssignmentBadge(a: SharedAssignment): "featured" | "popular" | "new" | null {
+    if (!isActivitiesLibrary) return null;
+    if (a.isAdminContent) return "featured";
+    if (activitiesPopularIds.has(a.id)) return "popular";
+    if (activitiesNewIds.has(a.id)) return "new";
+    return null;
+  }
 
   const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
     if (isAdminContent) return null;
@@ -541,7 +574,15 @@ export default function SharedContentPage({
   }
 
   const inner = (
-    <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl"} dir={dir}>
+    <div
+      className={cn(
+        embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl",
+        isActivitiesLibrary &&
+          !embedded &&
+          "rounded-2xl border border-border/40 bg-gradient-to-b from-primary/[0.04] via-background to-muted/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]",
+      )}
+      dir={dir}
+    >
       {!embedded && (
         <Link href="/teacher" className="text-primary hover:underline font-bold flex items-center gap-1 mb-6 w-fit">
           <BackArrow className="w-4 h-4" />
@@ -549,9 +590,19 @@ export default function SharedContentPage({
         </Link>
       )}
 
-        <div className="flex items-center gap-3 mb-6">
+        <div
+          className={cn(
+            "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6",
+            isActivitiesLibrary &&
+              "rounded-2xl border border-border/35 bg-gradient-to-r from-teal-500/[0.07] via-card/60 to-background/90 px-4 py-4 sm:px-5 sm:py-4 shadow-sm",
+          )}
+        >
+          <div className="flex items-center gap-3 min-w-0">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shrink-0",
+              isActivitiesLibrary && "ring-2 ring-primary/10 shadow-md",
+            )}
             style={{
               background: isCompetitionLibrary
                 ? "linear-gradient(135deg,#f59e0b,#ea580c)"
@@ -560,7 +611,7 @@ export default function SharedContentPage({
           >
             <Globe className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {libraryKind === "competition"
                 ? (lang === "ar" ? "مكتبة المسابقات الجاهزة" : "Competitions Library")
@@ -568,21 +619,45 @@ export default function SharedContentPage({
                 ? (lang === "ar" ? "مكتبة الأنشطة" : "Activities Library")
                 : t.sharedContent.title}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
               {libraryKind === "competition"
                 ? (lang === "ar"
                     ? "تصفح وشغّل مسابقات جاهزة شاركها معلمون آخرون"
                     : "Browse ready-to-play competitions shared by other teachers")
                 : libraryKind === "homework"
                 ? (lang === "ar"
-                    ? "تصفح أنشطة وأسئلة وفيديوهات جاهزة من معلمين آخرين"
-                    : "Browse activities, questions and videos shared by other teachers")
+                    ? "استورد إلى حسابك أو شغّل مباشرة — صُممت للفصل دون تعقيد."
+                    : "Import to your account or play live — built for class flow without clutter.")
                 : t.sharedContent.subtitle}
             </p>
           </div>
+          </div>
+          {isActivitiesLibrary && (
+            <Link href="/teacher/new">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 font-semibold border-primary/25 bg-background/85 hover:bg-background shadow-none shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {lang === "ar" ? "شارك نشاطاً" : "Share activity"}
+              </Button>
+            </Link>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 mb-6 border-b border-border pb-0">
+        <div
+          className={cn(
+            isActivitiesLibrary &&
+              "rounded-xl border border-border/45 bg-muted/[0.06] p-3 sm:p-4 mb-5 space-y-3 shadow-sm",
+          )}
+        >
+        <div
+          className={cn(
+            "flex items-center gap-2 border-b border-border pb-0",
+            isActivitiesLibrary ? "border-border/55 mb-0" : "mb-6",
+          )}
+        >
           {([
             { key: "assignments" as Tab, label: t.sharedContent.tabAssignments, icon: BookText, count: assignments.length },
             // Competition library: only show the assignments tab —
@@ -606,7 +681,7 @@ export default function SharedContentPage({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className={cn("flex flex-wrap items-center gap-2 mb-4", isActivitiesLibrary && "mb-0 pt-0.5")}>
           {/* ── Title / teacher search ── */}
           <div className="relative flex-1 min-w-48">
             <Search className={`absolute ${lang === "ar" ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
@@ -672,6 +747,7 @@ export default function SharedContentPage({
             </label>
           )}
         </div>
+        </div>
 
         {/* Competitions library is intentionally a question-bank only —
             no quick-launch game cards. Each competition row gets its own
@@ -688,15 +764,46 @@ export default function SharedContentPage({
                   a.type === "fill_blank" ? "#8b5cf6" :
                                            "#14b8a6";
                 const isOwn = a.teacherId === currentTeacherId;
+                const libBadge = isActivitiesLibrary ? activitiesAssignmentBadge(a) : null;
                 return (
                 <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }} className="h-full">
                   <div
-                    className={`group relative flex flex-col rounded-2xl border bg-card transition-all duration-200 h-full ${a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-400" : "border-border/60 hover:border-border hover:shadow-md hover:-translate-y-0.5"}`}
+                    className={cn(
+                      "group relative flex flex-col rounded-2xl border bg-card h-full overflow-hidden",
+                      a.hiddenByAdmin
+                        ? "opacity-55 border-dashed border-amber-400 transition-all duration-200"
+                        : isActivitiesLibrary
+                          ? "border-border/55 bg-gradient-to-br from-card via-card to-muted/[0.35] shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:border-primary/22 hover:shadow-[0_14px_28px_-12px_rgba(15,118,110,0.12)] hover:-translate-y-1"
+                          : "border-border/60 transition-all duration-200 hover:border-border hover:shadow-md hover:-translate-y-0.5",
+                    )}
                     style={{ borderTop: `3px solid ${barColor}` }}
                   >
+                    {libBadge && (
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute top-2 z-[1] max-w-[min(7rem,42%)] truncate rounded-md border px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide backdrop-blur-[2px]",
+                          lang === "ar" ? "left-2" : "right-2",
+                          libBadge === "featured" &&
+                            "border-amber-400/40 bg-amber-500/[0.11] text-amber-950 dark:text-amber-50",
+                          libBadge === "popular" &&
+                            "border-emerald-400/35 bg-emerald-600/[0.07] text-emerald-950 dark:text-emerald-50",
+                          libBadge === "new" &&
+                            "border-sky-400/35 bg-sky-500/[0.09] text-sky-950 dark:text-sky-50",
+                        )}
+                      >
+                        {libBadge === "featured" && (lang === "ar" ? "مميز" : "Featured")}
+                        {libBadge === "popular" && (lang === "ar" ? "الأكثر استخدامًا" : "Popular")}
+                        {libBadge === "new" && (lang === "ar" ? "جديد" : "New")}
+                      </span>
+                    )}
                     <div className="flex flex-col flex-1 p-3.5 gap-3">
                       {/* Title — clipped at 2 lines */}
-                      <p className="font-black text-[13px] text-foreground leading-snug line-clamp-2 flex-1 min-h-[2.5rem]">
+                      <p
+                        className={cn(
+                          "font-black text-[13px] text-foreground leading-snug line-clamp-2 flex-1 min-h-[2.5rem]",
+                          libBadge && (lang === "ar" ? "ps-[4.25rem]" : "pe-[4.25rem]"),
+                        )}
+                      >
                         {a.title}
                       </p>
 
