@@ -135,6 +135,12 @@ function formatCorrectReveal(q: VideoQuestionData, raw: string | null | undefine
   return t;
 }
 
+function normalizeMcqLetter(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const t = raw.trim().toUpperCase();
+  return /^[ABCD]$/.test(t) ? t : null;
+}
+
 export default function StudentVideoLesson() {
   const [, params] = useRoute("/video/:id");
   const [, setLocation] = useLocation();
@@ -1003,17 +1009,257 @@ export default function StudentVideoLesson() {
             )}
           </AnimatePresence>
 
-          {/* مشغل + تايم لاين */}
+          {/* مشغل + تايم لاين — السؤال يظهر طبقة فوق الفيديو */}
           <section
             className="overflow-hidden rounded-[24px] border bg-white shadow-lg"
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
           >
-            <div className="aspect-video bg-black">
+            <div className="relative aspect-video bg-black">
               {isYoutube ? (
                 <div id="yt-player-watch" className="h-full w-full" />
               ) : (
                 <video ref={html5VideoRef} src={lesson.videoUrl} controls className="h-full w-full object-contain" />
               )}
+              {sortedQs.length > 0 && !activeQuestion && (
+                <div className="pointer-events-auto absolute left-3 top-3 z-[15] max-w-[min(46%,13.5rem)]">
+                  <div className="rounded-lg bg-white/95 px-2 py-1.5 shadow-lg ring-1 ring-black/10 backdrop-blur-sm">
+                    <p className="text-[10px] font-black text-[#1E4D35]">
+                      {isAr ? `الأسئلة (${sortedQs.length})` : `Questions (${sortedQs.length})`}
+                    </p>
+                    <div className="mt-1 flex flex-col gap-0.5">
+                      {sortedQs.map((q, i) => (
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => seekTo(q.timestampSeconds)}
+                          className="flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-[#374151] transition-colors hover:bg-[#eef5f0]"
+                        >
+                          <span dir="ltr" className="font-mono tabular-nums">
+                            {formatTimestamp(q.timestampSeconds)}
+                          </span>
+                          <span className="shrink-0 rounded bg-[#eef5f0] px-1 text-[9px] font-black text-[#1E4D35]">
+                            ({i + 1})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <AnimatePresence>
+                {activeQuestion && (
+                  <>
+                    <motion.div
+                      key={`dim-${activeQuestion.id}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-20 bg-black/45 backdrop-blur-[1px]"
+                      aria-hidden
+                    />
+                    <motion.div
+                      key={activeQuestion.id}
+                      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                      transition={{ duration: 0.22 }}
+                      className="absolute inset-0 z-30 flex items-center justify-center p-3 sm:p-4"
+                    >
+                      <div
+                        className="max-h-[78%] w-full max-w-md overflow-y-auto rounded-2xl border bg-white/97 p-4 shadow-2xl ring-1 ring-black/10"
+                        style={{ borderColor: CARD_BORDER }}
+                      >
+                        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[#f1f4f2] pb-2">
+                          <span className="rounded-full bg-[#eef5f0] px-2.5 py-0.5 text-[10px] font-black text-[#1E4D35]">
+                            {isAr ? "سؤال" : "Q"} {activeQuestionOrder}/{lesson.questions.length}
+                          </span>
+                          <span dir="ltr" className="rounded-full bg-[#f9faf9] px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-[#64748B]">
+                            {formatTimestamp(activeQuestion.timestampSeconds)}
+                          </span>
+                          <span className="rounded-full bg-[#fcfdfc] px-2 py-0.5 text-[10px] font-bold text-[#94a3ab]">
+                            {activeQuestion.points} {isAr ? "نقطة" : "pts"}
+                          </span>
+                        </div>
+                        <p className="mb-4 text-right text-base font-black leading-relaxed text-[#0f2918]">{activeQuestion.text}</p>
+
+                        {activeQuestion.questionType === "mcq" && (
+                          <div className="mb-4 grid grid-cols-1 gap-2">
+                            {(["A", "B", "C", "D"] as const).map((opt) => {
+                              const optText = activeQuestion[`option${opt}` as keyof VideoQuestionData] as string | null;
+                              if (!optText) return null;
+                              const fb = answerFeedback;
+                              const cor = normalizeMcqLetter(fb?.correctAnswer);
+                              const sel = normalizeMcqLetter(selectedAnswer);
+                              const show = !!fb;
+                              const correctOpt = show && cor === opt;
+                              const wrongSel = show && sel === opt && cor !== opt;
+                              return (
+                                <button
+                                  key={opt}
+                                  type="button"
+                                  disabled={verifying || !!fb}
+                                  onClick={() => setSelectedAnswer(opt)}
+                                  className={cn(
+                                    "flex min-h-[44px] w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-right text-sm font-bold transition-all",
+                                    !show && selectedAnswer === opt && "border-[#1E4D35] bg-[#eef5f0]",
+                                    !show && selectedAnswer !== opt && "border-[#eef2ef] bg-[#fafdfb] hover:border-[#1E4D35]/25",
+                                    correctOpt && "border-emerald-600/70 bg-emerald-50 text-emerald-900",
+                                    wrongSel && "border-rose-400/70 bg-rose-50 text-rose-900",
+                                    show && !correctOpt && !wrongSel && "border-[#eef2ef] bg-[#f9faf9] opacity-60",
+                                  )}
+                                >
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-black text-[#1E4D35] ring-1 ring-[#e8ece9]">
+                                    {opt}
+                                  </span>
+                                  <span className="flex-1 leading-snug">{optText}</span>
+                                  {correctOpt && (
+                                    <span className="text-lg font-black text-emerald-700" aria-hidden>
+                                      ✓
+                                    </span>
+                                  )}
+                                  {wrongSel && (
+                                    <span className="text-lg font-black text-rose-700" aria-hidden>
+                                      ✕
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {activeQuestion.questionType === "true_false" && (
+                          <div className="mb-4 grid grid-cols-2 gap-2">
+                            {(["true", "false"] as const).map((value) => {
+                              const fb = answerFeedback;
+                              const cor = fb?.correctAnswer?.trim().toLowerCase();
+                              const sel = selectedAnswer.trim().toLowerCase();
+                              const show = !!fb;
+                              const isCor = show && cor === value;
+                              const isWrong = show && sel === value && cor !== value;
+                              const labelAr = value === "true" ? "صح" : "خطأ";
+                              const labelEn = value === "true" ? "True" : "False";
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  disabled={verifying || !!fb}
+                                  onClick={() => setSelectedAnswer(value)}
+                                  className={cn(
+                                    "flex min-h-[48px] flex-col items-center justify-center rounded-xl border-2 py-2 text-sm font-black transition-all",
+                                    !show && selectedAnswer === value && "border-[#1E4D35] bg-[#eef5f0] text-[#0f2918]",
+                                    !show && selectedAnswer !== value && "border-[#eef2ef] bg-[#fafdfb] text-[#64748B]",
+                                    isCor && "border-emerald-600/70 bg-emerald-50 text-emerald-900",
+                                    isWrong && "border-rose-400/70 bg-rose-50 text-rose-900",
+                                    show && !isCor && !isWrong && "border-[#eef2ef] bg-[#f9faf9] opacity-55",
+                                  )}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    {isCor && (
+                                      <span className="text-lg text-emerald-700" aria-hidden>
+                                        ✓
+                                      </span>
+                                    )}
+                                    {isWrong && (
+                                      <span className="text-lg text-rose-700" aria-hidden>
+                                        ✕
+                                      </span>
+                                    )}
+                                    {isAr ? labelAr : labelEn}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {activeQuestion.questionType === "fill_blank" && (
+                          <div className="mb-4 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={selectedAnswer}
+                                onChange={(e) => setSelectedAnswer(e.target.value)}
+                                placeholder={isAr ? "اكتب إجابتك…" : "Type your answer…"}
+                                dir="rtl"
+                                disabled={!!answerFeedback}
+                                className={cn(
+                                  "min-h-[48px] flex-1 rounded-xl border-2 text-base font-semibold",
+                                  FIELD_RTL,
+                                  answerFeedback?.isCorrect && "border-emerald-600/60 bg-emerald-50/50",
+                                  answerFeedback && !answerFeedback.isCorrect && "border-rose-400/60 bg-rose-50/40",
+                                )}
+                                autoFocus={!answerFeedback}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && selectedAnswer.trim() && !answerFeedback) void verifyAnswer();
+                                }}
+                              />
+                              {answerFeedback?.isCorrect && (
+                                <span className="text-xl font-black text-emerald-700" aria-hidden>
+                                  ✓
+                                </span>
+                              )}
+                              {answerFeedback && !answerFeedback.isCorrect && (
+                                <span className="text-xl font-black text-rose-700" aria-hidden>
+                                  ✕
+                                </span>
+                              )}
+                            </div>
+                            {answerFeedback && !answerFeedback.isCorrect && answerFeedback.correctAnswer && (
+                              <p className="text-[12px] font-semibold leading-relaxed text-[#64748B]">
+                                <span className="font-black text-[#0f2918]">{isAr ? "الصحيح: " : "Correct: "}</span>
+                                {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {answerFeedback && !answerFeedback.isCorrect && answerFeedback.correctAnswer && activeQuestion.questionType === "mcq" && (
+                          <p className="mb-3 text-[11px] leading-relaxed text-[#64748B]">
+                            <span className="font-black text-[#0f2918]">{isAr ? "الإجابة الصحيحة: " : "Correct: "}</span>
+                            {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
+                          </p>
+                        )}
+
+                        {!answerFeedback ? (
+                          <button
+                            type="button"
+                            onClick={() => void verifyAnswer()}
+                            disabled={!selectedAnswer.trim() || verifying}
+                            className={cn(
+                              "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md disabled:opacity-45",
+                              TRANSITION,
+                            )}
+                            style={{ background: BRAND }}
+                          >
+                            {verifying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+                            {isAr ? "تحقق من الإجابة" : "Check answer"}
+                          </button>
+                        ) : (
+                          <div className="space-y-3">
+                            {answerFeedback.isCorrect && answerFeedback.earnedPoints > 0 && (
+                              <p className="text-center text-sm font-black text-emerald-800">
+                                +{answerFeedback.earnedPoints} {isAr ? "نقطة" : "pts"}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={continueAfterFeedback}
+                              className={cn(
+                                "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md",
+                                TRANSITION,
+                              )}
+                              style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #2a6144 100%)` }}
+                            >
+                              <Play className="h-5 w-5" fill="currentColor" />
+                              {isAr ? "متابعة الفيديو" : "Continue video"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
             <div className="border-t border-[#eef2ef] px-4 py-4">
               <p className="mb-2 text-right text-[11px] font-black uppercase tracking-wide text-[#94a3ab]">
@@ -1059,223 +1305,7 @@ export default function StudentVideoLesson() {
               </div>
             </div>
           </section>
-
-          {/* سؤال + ملاحظات — أسفل الفيديو */}
-          <AnimatePresence mode="wait">
-            {activeQuestion && (
-              <motion.div
-                key={activeQuestion.id}
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.22 }}
-                className="mt-5 overflow-hidden rounded-[24px] border bg-white shadow-lg"
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                {!answerFeedback ? (
-                  <div className="p-5 sm:p-6">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#f1f4f2] pb-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-[11px] font-black text-[#1E4D35]">
-                          {isAr ? "سؤال" : "Q"} {activeQuestionOrder}/{lesson.questions.length}
-                        </span>
-                        <span dir="ltr" className="rounded-full bg-[#f9faf9] px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums text-[#64748B]">
-                          {formatTimestamp(activeQuestion.timestampSeconds)}
-                        </span>
-                        <span className="rounded-full bg-[#fcfdfc] px-2.5 py-1 text-[11px] font-bold text-[#94a3ab]">
-                          {activeQuestion.points} {isAr ? "نقطة" : "pts"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p className="mb-5 text-right text-lg font-black leading-relaxed text-[#0f2918]">{activeQuestion.text}</p>
-
-                    {activeQuestion.questionType === "mcq" && (
-                      <div className="mb-5 grid grid-cols-1 gap-2">
-                        {(["A", "B", "C", "D"] as const).map((opt) => {
-                          const optText = activeQuestion[`option${opt}` as keyof VideoQuestionData] as string | null;
-                          if (!optText) return null;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              disabled={verifying}
-                              onClick={() => setSelectedAnswer(opt)}
-                              className={cn(
-                                "flex min-h-[48px] w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-right text-sm font-bold transition-all",
-                                selectedAnswer === opt
-                                  ? "border-[#1E4D35] bg-[#eef5f0] text-[#0f2918] shadow-sm"
-                                  : "border-[#eef2ef] bg-[#fafdfb] text-[#374151] hover:border-[#1E4D35]/25",
-                              )}
-                            >
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-xs font-black text-[#1E4D35] shadow-sm ring-1 ring-[#e8ece9]">
-                                {opt}
-                              </span>
-                              <span className="flex-1 leading-snug">{optText}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {activeQuestion.questionType === "true_false" && (
-                      <div className="mb-5 grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          disabled={verifying}
-                          onClick={() => setSelectedAnswer("true")}
-                          className={cn(
-                            "flex min-h-[52px] flex-col items-center justify-center rounded-2xl border-2 py-3 text-sm font-black transition-all",
-                            selectedAnswer === "true"
-                              ? "border-emerald-600 bg-emerald-50/90 text-emerald-900"
-                              : "border-[#eef2ef] bg-[#fafdfb] text-[#64748B]",
-                          )}
-                        >
-                          <CheckCircle2 className="mb-1 h-6 w-6" />
-                          {isAr ? "صح" : "True"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={verifying}
-                          onClick={() => setSelectedAnswer("false")}
-                          className={cn(
-                            "flex min-h-[52px] flex-col items-center justify-center rounded-2xl border-2 py-3 text-sm font-black transition-all",
-                            selectedAnswer === "false"
-                              ? "border-rose-400/80 bg-rose-50/90 text-rose-900"
-                              : "border-[#eef2ef] bg-[#fafdfb] text-[#64748B]",
-                          )}
-                        >
-                          <XCircle className="mb-1 h-6 w-6" />
-                          {isAr ? "خطأ" : "False"}
-                        </button>
-                      </div>
-                    )}
-
-                    {activeQuestion.questionType === "fill_blank" && (
-                      <div className="mb-5">
-                        <Input
-                          value={selectedAnswer}
-                          onChange={(e) => setSelectedAnswer(e.target.value)}
-                          placeholder={isAr ? "اكتب إجابتك…" : "Type your answer…"}
-                          dir="rtl"
-                          className={cn("min-h-[52px] rounded-2xl border-2 text-base font-semibold", FIELD_RTL)}
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && selectedAnswer.trim()) void verifyAnswer();
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => void verifyAnswer()}
-                      disabled={!selectedAnswer.trim() || verifying}
-                      className={cn(
-                        "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl font-black text-white shadow-md disabled:opacity-45",
-                        TRANSITION,
-                      )}
-                      style={{ background: BRAND }}
-                    >
-                      {verifying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                      {isAr ? "تحقق من الإجابة" : "Check answer"}
-                    </button>
-                  </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className={cn(
-                      "p-6 sm:p-7",
-                      answerFeedback.isCorrect ? "bg-emerald-50/50" : "bg-rose-50/40",
-                    )}
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <motion.div
-                        initial={{ scale: 0.7 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                        className={cn(
-                          "mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-inner",
-                          answerFeedback.isCorrect ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700",
-                        )}
-                      >
-                        {answerFeedback.isCorrect ? (
-                          <CheckCircle2 className="h-9 w-9" strokeWidth={2.5} />
-                        ) : (
-                          <XCircle className="h-9 w-9" strokeWidth={2.5} />
-                        )}
-                      </motion.div>
-                      <p className="mb-1 text-xl font-black text-[#0f2918]">
-                        {answerFeedback.isCorrect
-                          ? isAr
-                            ? "إجابة صحيحة!"
-                            : "That's correct!"
-                          : isAr
-                            ? "إجابة غير صحيحة"
-                            : "Not quite"}
-                      </p>
-                      {answerFeedback.isCorrect && answerFeedback.earnedPoints > 0 && (
-                        <p className="mb-4 text-lg font-black text-emerald-800">
-                          +{answerFeedback.earnedPoints} {isAr ? "نقطة" : "pts"}
-                        </p>
-                      )}
-                      {!answerFeedback.isCorrect && answerFeedback.correctAnswer && (
-                        <p className="mb-4 max-w-md text-sm font-semibold leading-relaxed text-[#4b5563]">
-                          <span className="font-black text-[#0f2918]">{isAr ? "الإجابة الصحيحة: " : "Correct answer: "}</span>
-                          {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
-                        </p>
-                      )}
-                      {!answerFeedback.isCorrect && !answerFeedback.correctAnswer && (
-                        <p className="mb-4 text-sm text-[#64748B]">{isAr ? "حاول التركيز في الأسئلة القادمة." : "Keep going with the next questions."}</p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={continueAfterFeedback}
-                        className={cn(
-                          "flex min-h-[52px] w-full max-w-sm items-center justify-center gap-2 rounded-2xl font-black text-white shadow-lg sm:w-auto sm:min-w-[240px]",
-                          TRANSITION,
-                        )}
-                        style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #2a6144 100%)` }}
-                      >
-                        <Play className="h-5 w-5" fill="currentColor" />
-                        {isAr ? "متابعة الفيديو" : "Continue video"}
-                      </button>
-                      {sortedQs.some((q) => !answeredQuestions.has(q.id) && q.id !== activeQuestion.id) && (
-                        <p className="mt-3 text-[12px] font-semibold text-[#94a3ab]">
-                          {isAr ? "سيظهر السؤال التالي أثناء التشغيل." : "The next question appears as you watch."}
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap justify-end gap-2">
-              {sortedQs.map((q) => (
-                <button
-                  key={q.id}
-                  type="button"
-                  onClick={() => seekTo(q.timestampSeconds)}
-                  className={cn(
-                    "inline-flex min-h-[40px] items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black transition-colors",
-                    answeredQuestions.has(q.id)
-                      ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80"
-                      : "bg-white text-[#64748B] shadow-sm ring-1 ring-[#eef2ef] hover:text-[#1E4D35]",
-                  )}
-                >
-                  {answeredQuestions.has(q.id) && <CheckCircle2 className="h-3.5 w-3.5" />}
-                  <span dir="ltr" className="tabular-nums">
-                    {formatTimestamp(q.timestampSeconds)}
-                  </span>
-                </button>
-              ))}
-            </div>
-
+          <div className="mt-6 flex justify-end">
             {allAnswered && !result && (
               <Button
                 onClick={() => void handleSubmit()}
