@@ -74,6 +74,40 @@ const COLOR_PRIMARY = BRAND;
 
 const MAX_CHARS = 5000;
 const MAX_QUESTION_CHARS = 300;
+/** حد معقول للواجهة — الـ API يقبل min(0) فقط */
+const MAX_QUESTION_POINTS = 100;
+const POINT_STEP = 0.5;
+
+type AccessFlavor = "general" | "link" | "private";
+
+const ACCESS_FLAVOR_OPTIONS: { id: AccessFlavor; label: string; hint: string }[] = [
+  {
+    id: "general",
+    label: "عام",
+    hint: "متاح للطلاب المصرّح لهم وفق سياسات المنصة.",
+  },
+  {
+    id: "link",
+    label: "بالرابط فقط",
+    hint: "يُشارَك عبر الرابط؛ تقنياً مثل «عام» مع تمييز للمعلّم.",
+  },
+  {
+    id: "private",
+    label: "خاص",
+    hint: "تقييد الوصول حسب إعدادات حسابك.",
+  },
+];
+
+function clampQuestionPoints(n: number): number {
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(MAX_QUESTION_POINTS, Math.round(n * 100) / 100);
+}
+
+/** حقول عربية: محاذاة يمين + اتجاه RTL للنص والـ placeholder */
+const FIELD_RTL_CLASS =
+  "text-right [direction:rtl] placeholder:text-right placeholder:text-[#94a3ab]";
+
+const PREVIEW_SPEEDS = [0.75, 1, 1.25, 1.5] as const;
 
 // ===================== Types =====================
 
@@ -370,6 +404,41 @@ function QuestionTypeBadge({ type }: { type: QuestionType }) {
   );
 }
 
+function ListeningOptionCard({
+  icon,
+  title,
+  hint,
+  footer,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  footer: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn("flex min-h-[148px] flex-col rounded-[20px] border bg-[#fafdfb] p-4", TRANSITION)}
+      style={{ borderColor: CARD_BORDER }}
+    >
+      <div className="flex flex-1 items-start gap-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white text-[#1E4D35]"
+          style={{ borderColor: CARD_BORDER }}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1 text-right">
+          <p className="text-sm font-bold text-[#0f2918]">{title}</p>
+          <p className="text-[11px] leading-relaxed text-[#64748B]">{hint}</p>
+        </div>
+      </div>
+      <div className="mt-auto border-t pt-3" style={{ borderColor: CARD_BORDER }}>
+        {footer}
+      </div>
+    </div>
+  );
+}
+
 // ===================== Main Component =====================
 
 export default function DictationCreate() {
@@ -405,7 +474,7 @@ export default function DictationCreate() {
   const [settings, setSettings] = useState<ListeningSettings>(DEFAULT_SETTINGS);
 
   const [isShared, setIsShared] = useState(false);
-  const [accessMode, setAccessMode] = useState<"public" | "private">("public");
+  const [accessFlavor, setAccessFlavor] = useState<AccessFlavor>("general");
 
   useEffect(() => {
     if (!isEditing || hydrated) return;
@@ -455,7 +524,7 @@ export default function DictationCreate() {
           setSettings(merged);
         }
         setIsShared(!!a.isShared);
-        setAccessMode(a.accessMode === "private" ? "private" : "public");
+        setAccessFlavor(a.accessMode === "private" ? "private" : "general");
         const qs: QuestionItem[] = (a.questions || []).map((q) => {
           const t = (q.questionType || "open") as QuestionType;
           let grading = { ...DEFAULT_GRADING };
@@ -518,6 +587,10 @@ export default function DictationCreate() {
       .then((r) => (r.ok ? r.json() : []))
       .then(setGradeLevels)
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setPreviewSpeed((ps) => ((PREVIEW_SPEEDS as readonly number[]).includes(ps) ? ps : 1));
   }, []);
 
   useEffect(() => {
@@ -628,7 +701,7 @@ export default function DictationCreate() {
     createMutation.mutate({
       title: title.trim(),
       submissionMode: "electronic",
-      accessMode,
+      accessMode: accessFlavor === "private" ? "private" : "public",
       targetClass: targetClasses[0] || undefined,
       targetClasses: targetClasses.length > 0 ? targetClasses : undefined,
       isShared,
@@ -695,7 +768,7 @@ export default function DictationCreate() {
           questions,
           settings,
           isShared,
-          accessMode,
+          accessFlavor,
         }),
       );
       toast.success("تم حفظ المسودة في هذا المتصفح");
@@ -739,6 +812,8 @@ export default function DictationCreate() {
 
   const selectUiClass =
     "w-full h-12 px-3 rounded-2xl bg-white border text-sm font-semibold text-[#0f2918] appearance-none focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/20 focus:border-[#1E4D35]/25 " +
+    FIELD_RTL_CLASS +
+    " " +
     TRANSITION;
 
   const approxDurationSec = estimateReadSeconds(audioText, audioSpeed);
@@ -746,11 +821,26 @@ export default function DictationCreate() {
   const primaryClassLabel =
     targetClasses.length === 0 ? "بدون صف" : targetClasses.join("، ");
 
-  const waveformBars = [4, 7, 5, 9, 6, 11, 8, 5, 10, 6, 8, 4, 9, 7, 6];
+  const accessFlavorLabel =
+    accessFlavor === "private" ? "خاص" : accessFlavor === "link" ? "بالرابط فقط" : "عام";
+
+  const formattedApproxDuration =
+    approxDurationSec < 60
+      ? `≈ ${approxDurationSec} ث`
+      : `≈ ${Math.floor(approxDurationSec / 60)} د ${approxDurationSec % 60} ث`;
+
+  /** سطر مختصر لإعدادات الاستماع — للنشر والمراجعة */
+  const listeningSettingsSummary =
+    `${settings.maxListens === 0 ? "استماع غير محدود" : `${settings.maxListens} مرات`}` +
+    ` · سرعة ${settings.allowSpeedControl ? "مسموحة" : "مغلقة"}` +
+    ` · تخطي ${settings.allowSeek ? "مسموح" : "مغلق"}` +
+    ` · النص ${settings.showTranscript ? "بعد الإجابة" : "مخفى"}`;
+
+  const waveformBars = [5, 9, 6, 11, 8, 7, 10, 6];
 
   return (
     <div
-      className="min-h-[100dvh] overflow-x-hidden pb-[calc(6rem+env(safe-area-inset-bottom))]"
+      className="min-h-[100dvh] overflow-x-hidden pb-[calc(7.25rem+env(safe-area-inset-bottom))]"
       style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
       dir="rtl"
     >
@@ -855,9 +945,12 @@ export default function DictationCreate() {
                   maxLength={120}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="مثال: قصة قصيرة — فهم المسموع والاستنتاج"
-                  dir="auto"
+                  dir="rtl"
+                  autoComplete="off"
                   className={cn(
-                    "min-h-[52px] w-full rounded-2xl border bg-white px-4 py-3 text-base font-semibold text-[#111827] placeholder:text-[#94a3b8] focus:border-[#1E4D35]/30 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
+                    "min-h-[52px] w-full rounded-2xl border bg-white px-4 py-3 text-base font-semibold text-[#111827]",
+                    FIELD_RTL_CLASS,
+                    "focus:border-[#1E4D35]/30 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                     TRANSITION,
                   )}
                   style={{ borderColor: COLOR_CARD_BORDER }}
@@ -986,7 +1079,9 @@ export default function DictationCreate() {
                   onChange={(e) => setAudioText(e.target.value.slice(0, MAX_CHARS))}
                   placeholder={`اكتب نصاً كاملاً للاستماع — قصة، حوار، أو تعليمات.\n\nمثال: كان يا ما كان في قديم الزمان قصةً علّمتنا الصبر والتفكير الناضج...`}
                   className={cn(
-                    "min-h-[220px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.75] text-[#111827] placeholder:text-[#94a3ab] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
+                    "min-h-[220px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.75] text-[#111827]",
+                    FIELD_RTL_CLASS,
+                    "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
                     TRANSITION,
                   )}
                   style={{ borderColor: COLOR_CARD_BORDER }}
@@ -1043,31 +1138,58 @@ export default function DictationCreate() {
               </div>
 
               <div
-                className={cn("rounded-[24px] border bg-[#fafdfb] p-4 sm:p-5", TRANSITION)}
+                className={cn("rounded-[24px] border bg-[#fafdfb] p-4 sm:p-4", TRANSITION)}
                 style={{ borderColor: CARD_BORDER }}
               >
-                <p className="mb-4 text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
+                <p className="mb-3 text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
 
-                <div className="mb-3 flex items-center gap-3">
-                  <button
-                    type="button"
-                    disabled={!audioText.trim()}
-                    onClick={() => previewTts("main-audio", audioText, audioSpeed, audioVoice)}
-                    className={cn(
-                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-md",
-                      TRANSITION,
-                      "hover:opacity-95 active:scale-[0.98]",
-                      isAudioPlaying ? "bg-red-500" : "bg-[#1E4D35]",
-                    )}
-                  >
-                    {isAudioPlaying ? <Square className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                  </button>
-                  <div className="relative min-h-[44px] min-w-0 flex-1">
-                    <div className="flex h-10 items-end justify-between gap-px opacity-90">
+                {/* صف مدمج — عمودي على الهاتف */}
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!audioText.trim()}
+                      onClick={() => previewTts("main-audio", audioText, audioSpeed, audioVoice)}
+                      className={cn(
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-md",
+                        TRANSITION,
+                        "min-h-[44px] min-w-[44px] hover:opacity-95 active:scale-[0.98]",
+                        isAudioPlaying ? "bg-red-500" : "bg-[#1E4D35]",
+                      )}
+                      aria-label={isAudioPlaying ? "إيقاف" : "تشغيل"}
+                    >
+                      {isAudioPlaying ? <Square className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => seek(-10)}
+                        disabled={!isAudioPlaying}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border bg-white text-[#1E4D35] disabled:opacity-30"
+                        style={{ borderColor: COLOR_CARD_BORDER }}
+                        title="رجوع ١٠ ثوانٍ"
+                      >
+                        <SkipBack className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => seek(10)}
+                        disabled={!isAudioPlaying}
+                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border bg-white text-[#1E4D35] disabled:opacity-30"
+                        style={{ borderColor: COLOR_CARD_BORDER }}
+                        title="تقدم ١٠ ثوانٍ"
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 flex-col gap-1 lg:max-w-[280px]">
+                    <div className="flex h-9 items-end justify-center gap-px sm:justify-start">
                       {waveformBars.map((h, wi) => (
                         <div
                           key={wi}
-                          className="w-[5px] rounded-full bg-[#dce8e0]"
+                          className="w-1 rounded-full bg-[#dce8e0] sm:w-1.5"
                           style={{
                             height: `${h}px`,
                             opacity: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? 1 : 0.35,
@@ -1076,75 +1198,55 @@ export default function DictationCreate() {
                         />
                       ))}
                     </div>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 overflow-hidden rounded-full bg-[#e8ece9]">
+                    <div className="relative h-1 overflow-hidden rounded-full bg-[#e8ece9]">
                       <div
                         className={cn("h-full rounded-full bg-[#1E4D35]", TRANSITION)}
                         style={{ width: `${isAudioPlaying ? progress : 0}%` }}
                       />
                     </div>
+                    <div className="flex justify-between text-[10px] font-bold tabular-nums text-[#64748B]">
+                      <span>{formatAudioTime(currentSec)}</span>
+                      <span className="text-[#94a3ab]">{formatAudioTime(durationSec)}</span>
+                    </div>
                   </div>
-                  <div className="shrink-0 text-left text-[11px] font-bold tabular-nums text-[#64748B]">
-                    <div>{formatAudioTime(currentSec)}</div>
-                    <div className="text-[#94a3ab]">{formatAudioTime(durationSec)}</div>
-                  </div>
-                </div>
 
-                <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER }}>
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => seek(-10)}
-                      disabled={!isAudioPlaying}
-                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border bg-white text-[#1E4D35] disabled:opacity-30"
-                      style={{ borderColor: COLOR_CARD_BORDER }}
-                      title="رجوع ١٠ ثوانٍ"
-                    >
-                      <SkipBack className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => seek(10)}
-                      disabled={!isAudioPlaying}
-                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border bg-white text-[#1E4D35] disabled:opacity-30"
-                      style={{ borderColor: COLOR_CARD_BORDER }}
-                      title="تقدم ١٠ ثوانٍ"
-                    >
-                      <SkipForward className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-xs">
-                    <label className="text-[11px] font-bold text-[#64748B] text-right">مستوى الصوت</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      className="h-2 w-full cursor-pointer accent-[#1E4D35]"
-                    />
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {([0.75, 1, 1.25, 1.5] as const).map((sp) => (
-                      <button
-                        key={sp}
-                        type="button"
-                        onClick={() => {
+                  <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+                    <div className="relative min-w-[100px] flex-1 sm:flex-none">
+                      <select
+                        value={String(previewSpeed)}
+                        onChange={(e) => {
+                          const sp = Number(e.target.value);
                           setPreviewSpeed(sp);
                           setSpeed(sp);
                         }}
                         className={cn(
-                          "min-h-[36px] rounded-full px-3 text-xs font-black",
+                          "h-10 w-full rounded-xl border bg-white px-3 py-1 text-xs font-black text-[#374151] sm:w-[100px]",
+                          FIELD_RTL_CLASS,
+                          "appearance-none pe-8 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                           TRANSITION,
-                          previewSpeed === sp
-                            ? "bg-[#1E4D35] text-white shadow-sm"
-                            : "border bg-white text-[#374151] hover:bg-[#f3f7f4]",
                         )}
-                        style={previewSpeed === sp ? undefined : { borderColor: COLOR_CARD_BORDER }}
+                        style={{ borderColor: COLOR_CARD_BORDER }}
+                        aria-label="سرعة المعاينة"
                       >
-                        ×{sp}
-                      </button>
-                    ))}
+                        {PREVIEW_SPEEDS.map((sp) => (
+                          <option key={sp} value={sp}>×{sp}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94a3ab]" />
+                    </div>
+                    <div className="flex min-w-[120px] flex-1 items-center gap-2 sm:max-w-[140px]">
+                      <Volume2 className="h-4 w-4 shrink-0 text-[#94a3ab]" aria-hidden />
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={volume}
+                        onChange={(e) => setVolume(Number(e.target.value))}
+                        className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[#1E4D35]"
+                        aria-label="مستوى الصوت"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1160,50 +1262,78 @@ export default function DictationCreate() {
               <p className="mt-1 text-[13px] text-[#64748B]">تحكم مختصر في تجربة الطالب أثناء الاستماع.</p>
             </div>
 
-            <div className="mb-8 space-y-3 text-right">
-              <p className="text-xs font-bold text-[#64748B]">عدد مرات الاستماع</p>
-              <div className="flex flex-wrap gap-1 rounded-2xl border bg-[#fafdfb] p-1" style={{ borderColor: CARD_BORDER }}>
-                {LISTEN_SEGMENTS.map((seg) => {
-                  const active = settings.maxListens === seg.value;
-                  return (
-                    <button
-                      key={seg.value}
-                      type="button"
-                      onClick={() => setSettings((s) => ({ ...s, maxListens: seg.value }))}
-                      className={cn(
-                        "min-h-[44px] flex-1 rounded-xl px-2 text-[11px] font-black sm:text-xs",
-                        TRANSITION,
-                        active ? "bg-[#1E4D35] text-white shadow-sm" : "text-[#475569] hover:bg-white",
-                      )}
-                    >
-                      {seg.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <ToggleCell
+              <ListeningOptionCard
                 icon={<Gauge className="h-4 w-4" />}
-                label="التحكم بالسرعة"
+                title="التحكم بالسرعة"
                 hint="الطالب يغيّر سرعة التشغيل أثناء الاستماع."
-                checked={settings.allowSpeedControl}
-                onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
+                footer={
+                  <div className="flex justify-end">
+                    <Switch
+                      checked={settings.allowSpeedControl}
+                      onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
+                      className="data-[state=checked]:bg-[#1E4D35]"
+                    />
+                  </div>
+                }
               />
-              <ToggleCell
+              <ListeningOptionCard
                 icon={<SkipForward className="h-4 w-4" />}
-                label="الرجوع والتقديم"
+                title="الرجوع والتقديم"
                 hint="تخطّي ±١٠ ثانية داخل التسجيل."
-                checked={settings.allowSeek}
-                onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
+                footer={
+                  <div className="flex justify-end">
+                    <Switch
+                      checked={settings.allowSeek}
+                      onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
+                      className="data-[state=checked]:bg-[#1E4D35]"
+                    />
+                  </div>
+                }
               />
-              <ToggleCell
+              <ListeningOptionCard
                 icon={<AlignLeft className="h-4 w-4" />}
-                label="عرض النص بعد الإجابة"
-                hint="إظهار النص الكامل للمراجعة بعد التسليم عندما يُسمح بذلك."
-                checked={settings.showTranscript}
-                onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
+                title="عرض النص بعد الإجابة"
+                hint="إظهار النص للمراجعة بعد التسليم حسب سياسة العرض."
+                footer={
+                  <div className="flex justify-end">
+                    <Switch
+                      checked={settings.showTranscript}
+                      onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
+                      className="data-[state=checked]:bg-[#1E4D35]"
+                    />
+                  </div>
+                }
+              />
+              <ListeningOptionCard
+                icon={<Headphones className="h-4 w-4" />}
+                title="عدد مرات الاستماع"
+                hint="كم مرة يمكن للطالب إعادة تشغيل النص."
+                footer={
+                  <div className="relative w-full max-w-full">
+                    <select
+                      value={settings.maxListens}
+                      onChange={(e) =>
+                        setSettings((s) => ({ ...s, maxListens: Number(e.target.value) }))
+                      }
+                      className={cn(
+                        "h-10 w-full rounded-xl border bg-white px-3 py-2 text-xs font-black text-[#374151]",
+                        FIELD_RTL_CLASS,
+                        "appearance-none pe-9 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
+                        TRANSITION,
+                      )}
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                      aria-label="عدد مرات الاستماع"
+                    >
+                      {LISTEN_SEGMENTS.map((seg) => (
+                        <option key={seg.value} value={seg.value}>
+                          {seg.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute end-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
+                  </div>
+                }
               />
             </div>
           </section>
@@ -1327,7 +1457,11 @@ export default function DictationCreate() {
                                     ? "مثال: ما الموضوع الرئيسي في المقطع؟"
                                     : "صِغ سؤالاً يقيّم فهماً صوتياً أو استنتاجاً من النص."
                               }
-                              className="min-h-[100px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-3 text-sm leading-relaxed text-[#111827] placeholder:text-[#94a3ab] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10"
+                              className={cn(
+                                "min-h-[100px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-3 text-sm leading-relaxed text-[#111827]",
+                                FIELD_RTL_CLASS,
+                                "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10",
+                              )}
                               style={{ borderColor: COLOR_CARD_BORDER }}
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -1348,20 +1482,24 @@ export default function DictationCreate() {
                                     onClick={(e) => { e.stopPropagation(); updateQuestion(q.id, { correctAnswer: letter }); }}
                                     className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                                       isCorrect
-                                        ? "bg-[#14532D] border-[#14532D] text-white"
-                                        : "border-[#D1D5DB] text-[#D1D5DB] hover:border-[#14532D]"
+                                        ? "bg-[#1E4D35] border-[#1E4D35] text-white"
+                                        : "border-[#D1D5DB] text-[#D1D5DB] hover:border-[#1E4D35]"
                                     }`}
                                   >
                                     {isCorrect ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span className="text-xs font-black">{letter}</span>}
                                   </button>
                                   <input
                                     type="text"
+                                    dir="rtl"
                                     value={q[field] as string}
                                     onChange={(e) => updateQuestion(q.id, { [field]: e.target.value })}
                                     onClick={(e) => e.stopPropagation()}
                                     placeholder={`الخيار ${letter}`}
-                                    className="flex-1 px-3 py-2 rounded-[10px] border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#14532D]/25"
-                                    style={{ borderColor: isCorrect ? "#14532D" : COLOR_CARD_BORDER }}
+                                    className={cn(
+                                      "flex-1 rounded-xl border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/20",
+                                      FIELD_RTL_CLASS,
+                                    )}
+                                    style={{ borderColor: isCorrect ? "#1E4D35" : COLOR_CARD_BORDER }}
                                   />
                                 </div>
                               );
@@ -1384,8 +1522,8 @@ export default function DictationCreate() {
                                   onClick={(e) => { e.stopPropagation(); updateQuestion(q.id, { correctAnswer: opt.value }); }}
                                   className={`py-3 rounded-xl border-2 font-black text-sm flex flex-col items-center gap-1 transition-colors ${
                                     isCorrect
-                                      ? "border-[#14532D] bg-[#ecfdf5] text-[#14532D]"
-                                      : "border-[#E5E7EB] bg-white text-[#64748B] hover:border-[#14532D]/40"
+                                      ? "border-[#1E4D35] bg-[#ecfdf5] text-[#1E4D35]"
+                                      : "border-[#E5E7EB] bg-white text-[#64748B] hover:border-[#1E4D35]/40"
                                   }`}
                                 >
                                   <span className="text-xl">{opt.icon}</span>
@@ -1409,6 +1547,7 @@ export default function DictationCreate() {
                             </CollapsibleTrigger>
                             <CollapsibleContent className="border-t px-4 pb-4 pt-2" style={{ borderColor: CARD_BORDER }}>
                               <textarea
+                                dir="rtl"
                                 value={q.correctAnswer}
                                 onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
                                 onClick={(e) => e.stopPropagation()}
@@ -1418,7 +1557,11 @@ export default function DictationCreate() {
                                     ? "النص الصحيح المتوقع كما سيُصحَّح ضده الإملاء…"
                                     : "مرجع سريع للمعلم أثناء المراجعة — لا يُعرض للطالب تلقائياً."
                                 }
-                                className="w-full resize-y rounded-xl border bg-white px-3 py-3 text-sm leading-relaxed text-[#111827] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10"
+                                className={cn(
+                                  "w-full resize-y rounded-xl border bg-white px-3 py-3 text-sm leading-relaxed text-[#111827]",
+                                  FIELD_RTL_CLASS,
+                                  "focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10",
+                                )}
                                 style={{ borderColor: COLOR_CARD_BORDER }}
                               />
                             </CollapsibleContent>
@@ -1473,29 +1616,66 @@ export default function DictationCreate() {
                         )}
 
                         {/* الدرجة */}
-                        <div className="flex items-center justify-between gap-3 border-t border-dashed pt-4" style={{ borderColor: CARD_BORDER }}>
+                        <div className="flex flex-wrap items-center gap-2 border-t border-dashed pt-4" style={{ borderColor: CARD_BORDER }}>
                           <span className="text-xs font-bold text-[#64748B]">الدرجة</span>
-                          <div className="inline-flex items-center gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: COLOR_CARD_BORDER }}>
+                          <div
+                            className="inline-flex items-center gap-1 rounded-2xl border bg-white p-1"
+                            style={{ borderColor: COLOR_CARD_BORDER }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                updateQuestion(q.id, { points: Math.max(1, q.points - 1) });
+                                updateQuestion(q.id, {
+                                  points: clampQuestionPoints(q.points - POINT_STEP),
+                                });
                               }}
-                              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
                               style={{ borderColor: COLOR_CARD_BORDER }}
+                              aria-label="تقليل الدرجة"
                             >
                               <Minus className="h-4 w-4" />
                             </button>
-                            <span className="min-w-[2ch] text-center text-base font-black tabular-nums text-[#0f2918]">{q.points}</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step={0.01}
+                              min={0}
+                              max={MAX_QUESTION_POINTS}
+                              value={Number.isFinite(q.points) ? q.points : 0}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                if (e.target.value === "" || Number.isNaN(v)) return;
+                                updateQuestion(q.id, { points: clampQuestionPoints(v) });
+                              }}
+                              onBlur={(e) => {
+                                const v = parseFloat(e.target.value);
+                                updateQuestion(q.id, {
+                                  points: clampQuestionPoints(
+                                    e.target.value === "" || Number.isNaN(v) ? q.points : v,
+                                  ),
+                                });
+                              }}
+                              className={cn(
+                                "h-10 w-[4.25rem] rounded-xl border bg-[#fafdfb] text-center text-sm font-black tabular-nums text-[#0f2918]",
+                                FIELD_RTL_CLASS,
+                                "focus:border-[#1E4D35]/35 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                              )}
+                              style={{ borderColor: COLOR_CARD_BORDER }}
+                              aria-label="قيمة الدرجة"
+                            />
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                updateQuestion(q.id, { points: Math.min(20, q.points + 1) });
+                                updateQuestion(q.id, {
+                                  points: clampQuestionPoints(q.points + POINT_STEP),
+                                });
                               }}
-                              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
                               style={{ borderColor: COLOR_CARD_BORDER }}
+                              aria-label="زيادة الدرجة"
                             >
                               <Plus className="h-4 w-4" />
                             </button>
@@ -1523,50 +1703,115 @@ export default function DictationCreate() {
             className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
             style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
           >
-            <div className="mb-6 rounded-[20px] border bg-[#fafdfb] p-5 text-right space-y-3" style={{ borderColor: CARD_BORDER }}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-lg font-black text-[#0f2918]">{title.trim() || "بدون عنوان"}</p>
-                <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-[11px] font-black text-[#1E4D35]">مسودة</span>
+            <div className="mb-6 space-y-4 text-right">
+              <div
+                className="rounded-[20px] border bg-[#fafdfb] p-5 sm:p-6"
+                style={{ borderColor: CARD_BORDER }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-[11px] font-bold text-[#94a3ab]">اسم النشاط</p>
+                    <p className="text-lg font-black leading-snug text-[#0f2918] sm:text-xl">
+                      {title.trim() || "بدون عنوان"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[#eef5f0] px-3 py-1 text-[11px] font-black text-[#1E4D35]">
+                    مسودة
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-[#64748B]">
-                {questions.length} سؤال · {totalPoints} درجة · {audioText.length.toLocaleString("ar-SA")} حرف صوتي
-              </p>
-              <p className="text-[12px] leading-relaxed text-[#64748B]">
-                الصف: {primaryClassLabel} · الاستماع:{" "}
-                {settings.maxListens === 0 ? "غير محدود" : `${settings.maxListens} مرات`} · سرعة:{" "}
-                {settings.allowSpeedControl ? "مسموح" : "مغلق"} · تخطي: {settings.allowSeek ? "مسموح" : "مغلق"} · النص:{" "}
-                {settings.showTranscript ? "يُعرض بعد الإجابة" : "مخفى"}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    k: "questions",
+                    label: "الأسئلة",
+                    value: `${questions.length} سؤال · ${totalPoints} درجة`,
+                  },
+                  {
+                    k: "duration",
+                    label: "مدة النص التقريبية",
+                    value: formattedApproxDuration,
+                  },
+                  {
+                    k: "class",
+                    label: "الصف",
+                    value: primaryClassLabel,
+                  },
+                  {
+                    k: "listening",
+                    label: "إعدادات الاستماع",
+                    value: listeningSettingsSummary,
+                    wide: true,
+                  },
+                ].map((cell) => (
+                  <div
+                    key={cell.k}
+                    className={cn(
+                      "rounded-2xl border bg-[#fcfdfc] p-4 text-right",
+                      cell.wide && "sm:col-span-2",
+                    )}
+                    style={{ borderColor: CARD_BORDER }}
+                  >
+                    <p className="text-[11px] font-bold text-[#94a3ab]">{cell.label}</p>
+                    <p className="mt-1 text-sm font-black leading-relaxed text-[#0f2918]">{cell.value}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-center text-[11px] tabular-nums text-[#94a3ab]">
+                {audioText.length.toLocaleString("ar-SA")} حرف في النص الصوتي
               </p>
             </div>
 
             <div className="space-y-5">
               <div
-                className="flex flex-col gap-4 rounded-[20px] border bg-[#fcfdfc] p-5 sm:flex-row sm:items-center sm:justify-between"
+                className="rounded-[20px] border bg-[#fcfdfc] p-5 sm:flex sm:items-center sm:justify-between sm:gap-4"
                 style={{ borderColor: CARD_BORDER }}
               >
-                <div className="text-right space-y-1">
+                <div className="mb-4 text-right sm:mb-0 sm:min-w-0 sm:flex-1 sm:space-y-1">
                   <p className="text-sm font-black text-[#0f2918]">المشاركة في المكتبة العامة</p>
-                  <p className="text-[12px] leading-relaxed text-[#64748B]">يتمكن المعلمون من استيراد النشاط إلى حساباتهم.</p>
+                  <p className="text-[12px] leading-relaxed text-[#64748B]">
+                    يتمكن المعلمون من استيراد النشاط إلى حساباتهم.
+                  </p>
                 </div>
-                <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
+                <div className="flex justify-end sm:shrink-0">
+                  <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
+                </div>
               </div>
 
-              <div className="space-y-2 text-right">
+              <div className="space-y-3 text-right">
                 <label className="text-xs font-bold text-[#64748B]">وضع الوصول</label>
-                <div className="relative max-w-full sm:max-w-xs sm:ms-auto">
-                  <select
-                    value={accessMode}
-                    onChange={(e) => setAccessMode(e.target.value as "public" | "private")}
-                    className={cn(selectUiClass, "px-4 pe-10 font-bold")}
-                    style={{ borderColor: COLOR_CARD_BORDER }}
-                  >
-                    <option value="public">عام — بالرابط للطلاب</option>
-                    <option value="private">خاص — حسب إعدادات المنصة</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {ACCESS_FLAVOR_OPTIONS.map((opt) => {
+                    const active = accessFlavor === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setAccessFlavor(opt.id)}
+                        className={cn(
+                          "min-h-[44px] rounded-2xl border px-3 py-2.5 text-right transition-colors",
+                          active
+                            ? "border-[#1E4D35] bg-[#eef5f0] shadow-sm shadow-[#1E4D35]/10"
+                            : "border-transparent bg-[#f9faf9] hover:border-[#1E4D35]/15 hover:bg-[#fafdfb]",
+                          TRANSITION,
+                        )}
+                        style={{ borderColor: active ? BRAND : CARD_BORDER }}
+                      >
+                        <span className="block text-sm font-black text-[#0f2918]">{opt.label}</span>
+                        <span className="mt-0.5 block text-[11px] font-semibold leading-relaxed text-[#64748B]">
+                          {opt.hint}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-[11px] text-[#94a3ab] leading-relaxed">
-                  «عام» يعني إتاحة الوصول للنشاط عبر الرابط وفق سياسات المنصة. «خاص» يقيّد الوصول حسب إعدادات حسابك.
+                <p className="text-[11px] leading-relaxed text-[#94a3ab]">
+                  {accessFlavor === "private"
+                    ? "خاص: يُرسَل للمنصة كوصول مقيّد (private) حيث يدعمه الخادم."
+                    : accessFlavor === "link"
+                      ? "بالرابط فقط: يشارك الطلاب عبر الرابط؛ النشر على الخادم بوضع عام (public) مثل «عام»."
+                      : "عام: وصول عبر المنصة وفق سياسات حسابك؛ يُخزَّن كـ public في الخادم."}
                 </p>
               </div>
             </div>
@@ -1619,7 +1864,7 @@ export default function DictationCreate() {
               },
               {
                 title: "إعدادات الاستماع",
-                desc: LISTEN_SEGMENTS.find((s) => s.value === settings.maxListens)?.label ?? "—",
+                desc: listeningSettingsSummary,
                 icon: <Settings2 className="h-5 w-5" />,
                 go: 2 as const,
               },
@@ -1631,7 +1876,7 @@ export default function DictationCreate() {
               },
               {
                 title: "إعدادات النشر",
-                desc: `${accessMode === "public" ? "وصول عام بالرابط" : "وصول خاص"} · ${isShared ? "مشاركة مع المكتبة" : "غير مشارَك"}`,
+                desc: `${accessFlavorLabel} · ${isShared ? "مشاركة مع المكتبة" : "غير مشارَك"}`,
                 icon: <Globe className="h-5 w-5" />,
                 go: 3 as const,
               },
