@@ -925,7 +925,8 @@ export default function TeacherDashboard() {
               {/* Tab heading — skipped when the tab renders its own hero (libraries + assignments). */}
               {activeTab !== "library_competitions" &&
                 activeTab !== "library_homework" &&
-                activeTab !== "assignments" && (
+                activeTab !== "assignments" &&
+                activeTab !== "competitive" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
@@ -1083,7 +1084,7 @@ export default function TeacherDashboard() {
           <div className="mb-3">
             <GuestDraftImportBanner />
           </div>
-          {activeTab !== "assignments" && (
+          {activeTab !== "assignments" && activeTab !== "competitive" && (
           <h1 className="text-lg font-extrabold text-foreground flex items-center gap-2">
             <span className="[&_svg]:w-5 [&_svg]:h-5 text-primary">
               {tabs.find((t) => t.id === activeTab)?.icon}
