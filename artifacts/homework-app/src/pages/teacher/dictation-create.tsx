@@ -2,6 +2,16 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DndContext,
   closestCenter,
@@ -20,7 +30,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  ArrowRight,
   Plus,
   Trash2,
   GripVertical,
@@ -29,8 +38,8 @@ import {
   Mic,
   Pencil,
   Check,
-  GraduationCap,
   Minus,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   SkipBack,
@@ -39,17 +48,29 @@ import {
   ListChecks,
   AlignLeft,
   Settings2,
-  Infinity,
+  MoreVertical,
+  Gauge,
+  Save,
+  Globe,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-const COLOR_BG = "#FAFAF8";
-const COLOR_PRIMARY = "#14532D";
-const COLOR_AMBER = "#D97706";
-const COLOR_CARD_BORDER = "#E5E7EB";
+/** منصة حصاد — أخضر غامق */
+const BRAND = "#1E4D35";
+const BRAND_MID = "#225739";
+const PAGE_BG = "linear-gradient(to bottom, #f8faf8, #f3f7f4)";
+const CARD_BORDER = "rgba(30, 77, 53, 0.08)";
+const CARD_SHADOW = "0 1px 2px rgba(15, 40, 28, 0.04), 0 8px 24px rgba(15, 40, 28, 0.06)";
+const DRAFT_KEY = "hasad-listening-wizard-draft-v1";
+
+const TRANSITION = "transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
+
+/** أسماء متوافقة مع بقية الملف أثناء استبدال الواجهة */
+const COLOR_CARD_BORDER = "rgba(30, 77, 53, 0.1)";
+const COLOR_PRIMARY = BRAND;
 
 const MAX_CHARS = 5000;
 const MAX_QUESTION_CHARS = 300;
@@ -133,6 +154,15 @@ const VOICES = [
   { id: "onyx", label: "أونيكس — رجالي عميق" },
 ];
 
+const SPEED_PRESETS = [0.75, 0.85, 0.9, 1, 1.1, 1.25] as const;
+
+const LISTEN_SEGMENTS: { label: string; value: number }[] = [
+  { label: "مرة واحدة", value: 1 },
+  { label: "مرتان", value: 2 },
+  { label: "3 مرات", value: 3 },
+  { label: "غير محدود", value: 0 },
+];
+
 function speedLabelAr(v: number): string {
   if (v <= 0.76) return "بطيء جداً ٠.٧٥×";
   if (v <= 0.88) return "بطيء ٠.٨٥×";
@@ -141,11 +171,28 @@ function speedLabelAr(v: number): string {
   return "سريع جداً ١.٢٥×";
 }
 
+function formatAudioTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return "٠:٠٠";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function estimateReadSeconds(text: string, speed: number): number {
+  const len = text.trim().length;
+  if (!len || speed <= 0) return 0;
+  const cps = 11;
+  return Math.round(len / cps / speed);
+}
+
 // ===================== Hooks =====================
 
 function useTtsPreview() {
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [currentSec, setCurrentSec] = useState(0);
+  const [durationSec, setDurationSec] = useState(0);
+  const [volume, setVolumeState] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -160,6 +207,8 @@ function useTtsPreview() {
     }
     setSpeakingId(null);
     setProgress(0);
+    setCurrentSec(0);
+    setDurationSec(0);
   }, []);
 
   const seek = useCallback((seconds: number) => {
@@ -175,6 +224,12 @@ function useTtsPreview() {
     if (audioRef.current) {
       audioRef.current.playbackRate = speed;
     }
+  }, []);
+
+  const setVolume = useCallback((v: number) => {
+    const nv = Math.min(1, Math.max(0, v));
+    setVolumeState(nv);
+    if (audioRef.current) audioRef.current.volume = nv;
   }, []);
 
   const play = useCallback(
@@ -197,9 +252,17 @@ function useTtsPreview() {
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audio.playbackRate = speed;
+        audio.volume = volume;
         audioRef.current = audio;
+        audio.onloadedmetadata = () => {
+          setDurationSec(audio.duration || 0);
+        };
         intervalRef.current = setInterval(() => {
-          if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100);
+          if (audio.duration) {
+            setProgress((audio.currentTime / audio.duration) * 100);
+            setCurrentSec(audio.currentTime);
+            setDurationSec(audio.duration);
+          }
         }, 200);
         audio.onended = () => {
           stopAudio();
@@ -215,10 +278,10 @@ function useTtsPreview() {
         toast.error("تعذّر تشغيل الصوت");
       }
     },
-    [speakingId, stopAudio],
+    [speakingId, stopAudio, volume],
   );
 
-  return { speakingId, progress, play, stopAudio, seek, setSpeed };
+  return { speakingId, progress, currentSec, durationSec, volume, play, stopAudio, seek, setSpeed, setVolume };
 }
 
 // ===================== Sub-components =====================
@@ -228,18 +291,23 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
   return (
     <div
       ref={setNodeRef}
-      className={`relative rounded-[12px] border bg-white shadow-sm ${isDragging ? "ring-2 ring-amber-200 shadow-lg z-10" : ""}`}
+      className={cn(
+        "relative rounded-[24px] bg-white border min-w-0",
+        TRANSITION,
+        isDragging ? "ring-2 ring-[#1E4D35]/15 shadow-lg z-10 scale-[1.01]" : "shadow-sm",
+      )}
       style={{
-        borderColor: COLOR_CARD_BORDER,
+        borderColor: CARD_BORDER,
+        boxShadow: isDragging ? undefined : CARD_SHADOW,
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.92 : 1,
+        opacity: isDragging ? 0.95 : 1,
       }}
     >
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-4 end-3 z-10 cursor-grab active:cursor-grabbing p-1 rounded text-[#64748B] hover:bg-[#F1F5F9]"
+        className="absolute top-4 end-3 z-10 cursor-grab active:cursor-grabbing p-2 rounded-xl text-[#64748B] hover:bg-[#f3f7f4]"
         aria-label="إعادة ترتيب"
       >
         <GripVertical className="w-5 h-5" />
@@ -250,41 +318,53 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
 }
 
 function ToggleCell({
+  icon,
   label,
   hint,
   checked,
   onCheckedChange,
 }: {
+  icon: React.ReactNode;
   label: string;
   hint?: string;
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-[#F8FAF9] border border-[#E8EDE9]">
+    <div
+      className={cn(
+        "flex items-start gap-3 p-4 rounded-[24px] bg-[#fafdfb] border min-h-[88px]",
+        TRANSITION,
+        "hover:border-[#1E4D35]/12",
+      )}
+      style={{ borderColor: CARD_BORDER }}
+    >
+      <span className="shrink-0 w-10 h-10 rounded-2xl bg-white border flex items-center justify-center text-[#1E4D35]" style={{ borderColor: CARD_BORDER }}>
+        {icon}
+      </span>
+      <div dir="rtl" className="min-w-0 flex-1 text-right space-y-1">
+        <p className="text-sm font-bold text-[#0f2918] leading-snug">{label}</p>
+        {hint && <p className="text-[11px] text-[#64748B] leading-relaxed">{hint}</p>}
+      </div>
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="shrink-0 mt-0.5 data-[state=checked]:bg-[#14532D]"
+        className="shrink-0 mt-1 data-[state=checked]:bg-[#1E4D35]"
       />
-      <div dir="rtl" className="min-w-0 text-right">
-        <p className="text-sm font-bold text-[#0f2918]">{label}</p>
-        {hint && <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug">{hint}</p>}
-      </div>
     </div>
   );
 }
 
 function QuestionTypeBadge({ type }: { type: QuestionType }) {
-  const map: Record<QuestionType, { label: string; color: string; icon: React.ReactNode }> = {
-    mcq: { label: "اختيار متعدد", color: "bg-blue-50 text-blue-700 border-blue-200", icon: <ListChecks className="w-3.5 h-3.5" /> },
-    dictation: { label: "إملاء", color: "bg-amber-50 text-amber-700 border-amber-200", icon: <Mic className="w-3.5 h-3.5" /> },
-    open: { label: "إجابة مفتوحة", color: "bg-purple-50 text-purple-700 border-purple-200", icon: <AlignLeft className="w-3.5 h-3.5" /> },
-    true_false: { label: "صح / خطأ", color: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <Check className="w-3.5 h-3.5" /> },
+  const map: Record<QuestionType, { label: string; className: string; icon: React.ReactNode }> = {
+    mcq: { label: "اختيار متعدد", className: "bg-sky-50/90 text-sky-800 border-sky-100", icon: <ListChecks className="w-3.5 h-3.5" /> },
+    dictation: { label: "إملاء", className: "bg-amber-50/90 text-amber-900 border-amber-100", icon: <Mic className="w-3.5 h-3.5" /> },
+    open: { label: "إجابة مفتوحة", className: "bg-[#eef5f0] text-[#1E4D35] border-[#dce8e0]", icon: <AlignLeft className="w-3.5 h-3.5" /> },
+    true_false: { label: "صح / خطأ", className: "bg-emerald-50/90 text-emerald-900 border-emerald-100", icon: <Check className="w-3.5 h-3.5" /> },
   };
-  const { label, color, icon } = map[type];
+  const { label, className, icon } = map[type];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${color}`}>
+    <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border", className)}>
       {icon} {label}
     </span>
   );
@@ -306,7 +386,7 @@ export default function DictationCreate() {
   const isEditing = editId !== null;
   const [hydrated, setHydrated] = useState(!isEditing);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [title, setTitle] = useState("");
   const [targetClasses, setTargetClasses] = useState<string[]>([]);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
@@ -369,7 +449,10 @@ export default function DictationCreate() {
         const sp = parseFloat(a.listeningSpeed || "0.9");
         setAudioSpeed(Number.isFinite(sp) ? sp : 0.9);
         if (a.listeningSettings && typeof a.listeningSettings === "object") {
-          setSettings({ ...DEFAULT_SETTINGS, ...a.listeningSettings });
+          const merged = { ...DEFAULT_SETTINGS, ...a.listeningSettings };
+          const ml = typeof merged.maxListens === "number" ? merged.maxListens : DEFAULT_SETTINGS.maxListens;
+          merged.maxListens = [0, 1, 2, 3].includes(ml) ? ml : ml > 3 ? 3 : ml < 0 ? 0 : 1;
+          setSettings(merged);
         }
         setIsShared(!!a.isShared);
         setAccessMode(a.accessMode === "private" ? "private" : "public");
@@ -413,7 +496,17 @@ export default function DictationCreate() {
     return () => { cancelled = true; };
   }, [editId, isEditing, hydrated, setLocation]);
 
-  const { speakingId, progress, play: previewTts, seek, setSpeed } = useTtsPreview();
+  const {
+    speakingId,
+    progress,
+    currentSec,
+    durationSec,
+    volume,
+    play: previewTts,
+    seek,
+    setSpeed,
+    setVolume,
+  } = useTtsPreview();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -531,6 +624,7 @@ export default function DictationCreate() {
   };
 
   const handleSubmitPublish = () => {
+    if (!validateStep1() || !validateStep2()) return;
     createMutation.mutate({
       title: title.trim(),
       submissionMode: "electronic",
@@ -578,409 +672,667 @@ export default function DictationCreate() {
     });
   };
 
-  const STEPS_LABELS = ["الأساسيات", "المحتوى", "النشر"] as const;
+  const applyQuestionType = (q: QuestionItem, newType: QuestionType) => {
+    const patch: Partial<QuestionItem> = { type: newType };
+    if (newType === "true_false") patch.correctAnswer = q.correctAnswer === "false" ? "false" : "true";
+    else if (newType === "mcq") patch.correctAnswer = ["A", "B", "C", "D"].includes(q.correctAnswer) ? q.correctAnswer : "A";
+    else patch.correctAnswer = "";
+    updateQuestion(q.id, patch);
+  };
+
+  const saveDraftLocal = () => {
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          step,
+          title,
+          targetClasses,
+          audioText,
+          audioVoice,
+          audioSpeed,
+          previewSpeed,
+          questions,
+          settings,
+          isShared,
+          accessMode,
+        }),
+      );
+      toast.success("تم حفظ المسودة في هذا المتصفح");
+    } catch {
+      toast.error("تعذّر حفظ المسودة");
+    }
+  };
+
+  const totalPoints = questions.reduce((s, q) => s + q.points, 0);
+
+  const STEPS_META = [
+    { num: 1 as const, label: "الأساسيات" },
+    { num: 2 as const, label: "المحتوى والأسئلة" },
+    { num: 3 as const, label: "إعدادات النشر" },
+    { num: 4 as const, label: "مراجعة" },
+  ];
 
   const footerBack = () => {
     if (step === 1) setLocation("/teacher/new");
-    else setStep(((step - 1) as 1 | 2 | 3));
+    else setStep((step - 1) as 1 | 2 | 3 | 4);
   };
 
-  const footerPrimaryAction = () => {
+  const goNextStep = () => {
     if (step === 1) {
       if (!validateStep1()) return;
       setStep(2);
     } else if (step === 2) {
       if (!validateStep2()) return;
       setStep(3);
-    } else {
-      handleSubmitPublish();
+    } else if (step === 3) {
+      setStep(4);
     }
+  };
+
+  const footerPrimaryAction = () => {
+    if (step === 4) handleSubmitPublish();
+    else goNextStep();
   };
 
   const isAudioPlaying = speakingId === "main-audio";
 
-  return (
-    <div className="min-h-[100dvh] pb-[88px]" style={{ backgroundColor: COLOR_BG }} dir="rtl">
+  const selectUiClass =
+    "w-full h-12 px-3 rounded-2xl bg-white border text-sm font-semibold text-[#0f2918] appearance-none focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/20 focus:border-[#1E4D35]/25 " +
+    TRANSITION;
 
-      {/* ── Header / Step Bar ── */}
+  const approxDurationSec = estimateReadSeconds(audioText, audioSpeed);
+
+  const primaryClassLabel =
+    targetClasses.length === 0 ? "بدون صف" : targetClasses.join("، ");
+
+  const waveformBars = [4, 7, 5, 9, 6, 11, 8, 5, 10, 6, 8, 4, 9, 7, 6];
+
+  return (
+    <div
+      className="min-h-[100dvh] overflow-x-hidden pb-[calc(6rem+env(safe-area-inset-bottom))]"
+      style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+      dir="rtl"
+    >
       <header
-        className="sticky top-0 z-30 shadow-sm border-b border-[#0a2815]/20"
-        style={{ backgroundColor: COLOR_PRIMARY }}
+        className={cn("sticky top-0 z-40 border-b bg-[#fcfdfc]/90 backdrop-blur-xl", TRANSITION)}
+        style={{ borderColor: CARD_BORDER }}
       >
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-10 shrink-0" aria-hidden />
-          <div className="flex-1 flex items-center justify-center gap-1 flex-wrap">
-            {STEPS_LABELS.map((label, idx) => {
-              const sn = idx + 1;
-              const done = step > sn;
-              const current = step === sn;
-              return (
-                <div key={label} className="flex items-center">
-                  {idx < 2 && (
-                    <span className={`mx-2 text-lg font-black ${done || current ? "text-white/55" : "text-white/30"}`}>
-                      ←
-                    </span>
-                  )}
-                  <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black transition-colors ${
-                      current ? "text-[#78350f] shadow-sm" : done ? "text-white/90" : "text-white/45"
-                    }`}
-                    style={current ? { backgroundColor: COLOR_AMBER } : undefined}
-                  >
-                    {done ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : <span>{sn}</span>}
-                    <span className="whitespace-nowrap">{label}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-3 px-4 py-3">
           <button
             type="button"
             onClick={footerBack}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white shrink-0 transition-colors"
+            className={cn(
+              "flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-2xl border bg-white text-[#1E4D35] hover:bg-[#f3f7f4]",
+              TRANSITION,
+            )}
+            style={{ borderColor: CARD_BORDER }}
             aria-label="رجوع"
           >
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="h-5 w-5" />
           </button>
+
+          <nav
+            className="flex min-w-0 flex-1 justify-center gap-1 overflow-x-auto pb-0.5 sm:flex-wrap sm:justify-center sm:overflow-visible [-webkit-overflow-scrolling:touch]"
+            aria-label="خطوات المعالج"
+          >
+            {STEPS_META.map((st, idx) => {
+              const done = step > st.num;
+              const current = step === st.num;
+              const canJump = st.num < step;
+              return (
+                <div key={st.num} className="flex shrink-0 items-center">
+                  {idx > 0 && (
+                    <span
+                      className={cn(
+                        "mx-1 hidden text-[10px] font-bold sm:inline",
+                        done ? "text-[#1E4D35]/35" : "text-[#1E4D35]/15",
+                      )}
+                    >
+                      ·
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!canJump && !current}
+                    onClick={() => {
+                      if (canJump) setStep(st.num);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold sm:text-xs",
+                      TRANSITION,
+                      current && "bg-[#1E4D35] text-white shadow-sm shadow-[#1E4D35]/15",
+                      done && !current && "bg-[#eef5f0] text-[#1E4D35]",
+                      !done && !current && "bg-transparent text-[#94a3ab]",
+                      canJump && "cursor-pointer hover:bg-[#eef5f0]",
+                    )}
+                  >
+                    <span className="tabular-nums">{st.num}</span>
+                    <span className="max-w-[88px] truncate sm:max-w-none">{st.label}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="hidden w-11 shrink-0 sm:block" aria-hidden />
         </div>
       </header>
 
-      {/* ══════════════════════════════════════════
-          STEP 1 — الأساسيات
-      ══════════════════════════════════════════ */}
       {step === 1 && (
-        <div className="max-w-3xl mx-auto px-4 pt-8 space-y-5">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#ecfdf5] border-2 border-[#14532D]/60 text-[#14532D]">
-              <Headphones className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-[#0f2918]">نشاط الاستماع</h1>
-              <p className="text-sm text-[#4b5563] font-medium">الطالب يستمع ثم يجيب على الأسئلة</p>
-            </div>
-          </div>
-
-          <div className="space-y-1.5 text-right">
-            <label className="text-sm font-bold text-[#0f2918]">عنوان النشاط *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="مثال: قصة الأرنب والسلحفاة — فهم المسموع"
-              dir="auto"
-              className="w-full px-4 py-3 rounded-[12px] bg-white border text-sm focus:outline-none focus:ring-2 focus:ring-[#14532D]/35"
-              style={{ borderColor: COLOR_CARD_BORDER }}
-            />
-          </div>
-
-          <div className="space-y-2 text-right">
-            <label className="flex items-center justify-end gap-2 text-sm font-bold text-[#0f2918]">
-              <GraduationCap className="w-4 h-4 text-[#14532D]" />
-              الصف الدراسي (اختياري)
-            </label>
-            {targetClasses.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-end">
-                {targetClasses.map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#ecfdf5] text-[#14532d] text-xs font-bold border border-emerald-200">
-                    {c}
-                    <button type="button" onClick={() => setTargetClasses((p) => p.filter((x) => x !== c))}>×</button>
-                  </span>
-                ))}
+        <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
+          <section
+            className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
+            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+          >
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-[#f3f7f4] text-[#1E4D35]"
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <Headphones className="h-5 w-5" />
+                </div>
+                <div className="space-y-1 text-right">
+                  <h1 className="text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">أساسيات نشاط الاستماع</h1>
+                  <p className="text-sm leading-relaxed text-[#64748B]">ابدأ بتسمية النشاط وتحديد الصف عند الحاجة.</p>
+                </div>
               </div>
-            )}
-            <select
-              value=""
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v && !targetClasses.includes(v)) setTargetClasses((prev) => [...prev, v]);
-              }}
-              className="px-3 py-2 rounded-[12px] bg-white border w-full max-w-xs ms-auto block text-sm"
-              style={{ borderColor: COLOR_CARD_BORDER }}
-            >
-              <option value="">+ أضف صفاً</option>
-              {gradeLevels
-                .filter((g) => !targetClasses.includes(g.gradeLevel))
-                .map((g) => (
-                  <option key={g.gradeLevel} value={g.gradeLevel}>
-                    {g.gradeLevel} ({g.count})
-                  </option>
-                ))}
-            </select>
-          </div>
-        </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2 text-right">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-sm font-bold text-[#0f2918]" htmlFor="listening-title">
+                    عنوان النشاط <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] font-semibold tabular-nums text-[#94a3b8]">{title.length} / 120</span>
+                </div>
+                <input
+                  id="listening-title"
+                  type="text"
+                  value={title}
+                  maxLength={120}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="مثال: قصة قصيرة — فهم المسموع والاستنتاج"
+                  dir="auto"
+                  className={cn(
+                    "min-h-[52px] w-full rounded-2xl border bg-white px-4 py-3 text-base font-semibold text-[#111827] placeholder:text-[#94a3b8] focus:border-[#1E4D35]/30 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
+                    TRANSITION,
+                  )}
+                  style={{ borderColor: COLOR_CARD_BORDER }}
+                />
+              </div>
+
+              <div className="text-right">
+                <div
+                  className={cn("rounded-[24px] border bg-[#fafdfb] p-5 sm:p-6", TRANSITION)}
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <div className="mb-4 flex flex-col gap-1">
+                    <span className="text-xs font-bold uppercase tracking-wide text-[#94a3b8]">الصف الدراسي</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-lg font-black text-[#0f2918]">{primaryClassLabel}</span>
+                      {targetClasses.length > 0 && (
+                        <Check className="h-4 w-4 text-[#1E4D35]" strokeWidth={3} aria-hidden />
+                      )}
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-[#64748B]">
+                      {targetClasses.length === 0
+                        ? "سيكون النشاط متاحاً بدون ربطه بصف محدد."
+                        : "النشاط مرتبط بالصفوف التي اخترتها أدناه."}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(
+                            "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border bg-white px-4 text-sm font-bold text-[#1E4D35] hover:bg-[#f3f7f4]",
+                            TRANSITION,
+                          )}
+                          style={{ borderColor: CARD_BORDER }}
+                        >
+                          {targetClasses.length === 0 ? "اختيار صف" : "تغيير"}
+                          <ChevronDown className="h-4 w-4 opacity-60" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[min(100vw-2rem,320px)] rounded-2xl border p-2 shadow-lg" align="end" dir="rtl">
+                        <p className="mb-2 px-2 text-[11px] font-bold text-[#94a3b8]">صفوفك المحفوظة</p>
+                        <div className="max-h-[240px] overflow-y-auto">
+                          {gradeLevels.length === 0 ? (
+                            <p className="px-2 py-6 text-center text-sm text-[#64748B]">لا توجد صفوف محفوظة</p>
+                          ) : (
+                            gradeLevels.map((g) => {
+                              const selected = targetClasses.includes(g.gradeLevel);
+                              return (
+                                <button
+                                  key={g.gradeLevel}
+                                  type="button"
+                                  onClick={() => {
+                                    setTargetClasses((prev) =>
+                                      prev.includes(g.gradeLevel)
+                                        ? prev.filter((x) => x !== g.gradeLevel)
+                                        : [...prev, g.gradeLevel],
+                                    );
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-right text-sm font-bold transition-colors hover:bg-[#f3f7f4]",
+                                    selected && "bg-[#eef5f0] text-[#1E4D35]",
+                                  )}
+                                >
+                                  <span className="truncate">
+                                    {g.gradeLevel}{" "}
+                                    <span className="text-[11px] font-semibold text-[#94a3b8]">({g.count})</span>
+                                  </span>
+                                  {selected && <Check className="h-4 w-4 shrink-0" strokeWidth={3} />}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+
+                    {targetClasses.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTargetClasses([])}
+                        className="min-h-[44px] rounded-2xl px-3 text-sm font-bold text-[#64748B] underline-offset-4 hover:text-[#1E4D35] hover:underline"
+                      >
+                        إزالة الصف
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
       )}
 
       {/* ══════════════════════════════════════════
           STEP 2 — المحتوى
       ══════════════════════════════════════════ */}
       {step === 2 && (
-        <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-
-          {/* ── قسم النص الصوتي الرئيسي ── */}
-          <div className="rounded-2xl border-2 border-[#14532D]/20 bg-white shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E5E7EB] bg-[#f0fdf4] flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#14532D] flex items-center justify-center text-white shrink-0">
-                <Headphones className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="font-black text-[#0f2918] text-base">النص الصوتي الرئيسي</h2>
-                <p className="text-xs text-[#4b5563] mt-0.5">اكتب القصة أو الحوار أو النص الذي سيستمع إليه الطالب</p>
+        <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
+          <section
+            className={cn("rounded-[24px] border bg-white overflow-hidden", TRANSITION)}
+            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+          >
+            <div className="flex flex-col gap-2 border-b px-6 py-5 text-right sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER, background: "linear-gradient(180deg, #fafdfb 0%, #fff 100%)" }}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1E4D35] text-white shadow-sm shadow-[#1E4D35]/20">
+                  <Headphones className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-[#0f2918]">النص الصوتي الرئيسي</h2>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#64748B]">اكتب النص الذي سيُقرَأ للطلاب بصوت واضح ومريح.</p>
+                </div>
               </div>
             </div>
 
-            <div className="p-5 space-y-4">
-              <textarea
-                value={audioText}
-                dir="rtl"
-                onChange={(e) => setAudioText(e.target.value.slice(0, MAX_CHARS))}
-                rows={6}
-                placeholder={`مثال:\nكان يا ما كان، في قديم الزمان، أرنبٌ سريع وسلحفاةٌ بطيئة...\n\nيمكنك كتابة قصة كاملة أو حوار أو نص تعليمي.`}
-                className="w-full px-4 py-3 rounded-[12px] bg-[#fdfdfd] border text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#14532D]/30 resize-none text-[#111827]"
-                style={{ borderColor: COLOR_CARD_BORDER }}
-              />
-              <div className="flex justify-between items-center text-xs font-bold text-[#94a3b8]">
-                <span>{audioText.length} / {MAX_CHARS} حرف</span>
+            <div className="space-y-5 p-6 sm:p-8">
+              <div className="space-y-2 text-right">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-[#0f2918]">نص التسجيل</span>
+                  <span className="text-[11px] font-semibold tabular-nums text-[#94a3ab]">{audioText.length} / {MAX_CHARS}</span>
+                </div>
+                <textarea
+                  value={audioText}
+                  dir="rtl"
+                  onChange={(e) => setAudioText(e.target.value.slice(0, MAX_CHARS))}
+                  placeholder={`اكتب نصاً كاملاً للاستماع — قصة، حوار، أو تعليمات.\n\nمثال: كان يا ما كان في قديم الزمان قصةً علّمتنا الصبر والتفكير الناضج...`}
+                  className={cn(
+                    "min-h-[220px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-4 text-base leading-[1.75] text-[#111827] placeholder:text-[#94a3ab] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/12",
+                    TRANSITION,
+                  )}
+                  style={{ borderColor: COLOR_CARD_BORDER }}
+                />
               </div>
 
-              {/* إعدادات الصوت */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-[#374151]">الصوت</label>
-                  <select
-                    value={audioVoice}
-                    onChange={(e) => setAudioVoice(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-[10px] bg-white border text-sm focus:outline-none focus:ring-2 focus:ring-[#14532D]/30"
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="space-y-1.5 text-right">
+                  <label className="text-xs font-bold text-[#64748B]">الصوت</label>
+                  <div className="relative">
+                    <select
+                      value={audioVoice}
+                      onChange={(e) => setAudioVoice(e.target.value)}
+                      className={cn(selectUiClass, "px-4 pe-10")}
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                    >
+                      {VOICES.map((v) => (
+                        <option key={v.id} value={v.id}>{v.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-right">
+                  <label className="text-xs font-bold text-[#64748B]">سرعة القراءة (عند الإنشاء)</label>
+                  <div className="relative">
+                    <select
+                      value={String(audioSpeed)}
+                      onChange={(e) => setAudioSpeed(Number(e.target.value))}
+                      className={cn(selectUiClass, "px-4 pe-10")}
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                    >
+                      {SPEED_PRESETS.map((sp) => (
+                        <option key={sp} value={sp}>{speedLabelAr(sp)}</option>
+                      ))}
+                    </select>
+                    <Gauge className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 text-right">
+                  <label className="text-xs font-bold text-[#64748B]">مدة القراءة التقريبية</label>
+                  <div
+                    className="flex h-12 items-center justify-between rounded-2xl border bg-[#f9faf9] px-4 text-sm font-bold text-[#374151]"
                     style={{ borderColor: COLOR_CARD_BORDER }}
                   >
-                    {VOICES.map((v) => (
-                      <option key={v.id} value={v.id}>{v.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-[#374151]">سرعة القراءة</span>
-                    <span className="text-xs font-black text-[#D97706]">{speedLabelAr(audioSpeed)}</span>
-                  </div>
-                  <Slider
-                    value={[Math.round(audioSpeed * 100)]}
-                    onValueChange={([v]) => setAudioSpeed(Math.min(1.25, Math.max(0.6, (v ?? 90) / 100)))}
-                    min={60}
-                    max={125}
-                    step={5}
-                    className="w-full pt-1"
-                  />
-                  <div className="flex justify-between text-[10px] font-bold text-[#94a3b8]">
-                    <span>سريع</span>
-                    <span>بطيء</span>
+                    <span className="tabular-nums">
+                      {approxDurationSec < 60
+                        ? `≈ ${approxDurationSec} ث`
+                        : `≈ ${Math.floor(approxDurationSec / 60)} د ${approxDurationSec % 60} ث`}
+                    </span>
+                    <span className="text-[11px] font-semibold text-[#94a3ab]">وفق طول النص</span>
                   </div>
                 </div>
               </div>
 
-              {/* مشغّل المعاينة */}
-              <div className="rounded-xl border bg-[#F8FAF9] p-4 space-y-3" style={{ borderColor: COLOR_CARD_BORDER }}>
-                <p className="text-xs font-bold text-[#64748B] text-right">معاينة الصوت للمعلم</p>
+              <div
+                className={cn("rounded-[24px] border bg-[#fafdfb] p-4 sm:p-5", TRANSITION)}
+                style={{ borderColor: CARD_BORDER }}
+              >
+                <p className="mb-4 text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
 
-                {/* شريط التقدم */}
-                <div className="w-full h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-200"
-                    style={{ width: `${isAudioPlaying ? progress : 0}%`, backgroundColor: COLOR_PRIMARY }}
-                  />
-                </div>
-
-                {/* أزرار التحكم */}
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => seek(-10)}
-                    disabled={!isAudioPlaying}
-                    className="w-10 h-10 rounded-xl border flex items-center justify-center text-[#14532D] border-[#E5E7EB] hover:bg-[#ecfdf5] disabled:opacity-30"
-                    title="رجوع ١٠ ثوانٍ"
-                  >
-                    <SkipBack className="w-4 h-4" />
-                  </button>
-
+                <div className="mb-3 flex items-center gap-3">
                   <button
                     type="button"
                     disabled={!audioText.trim()}
                     onClick={() => previewTts("main-audio", audioText, audioSpeed, audioVoice)}
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white shadow-md transition-colors disabled:opacity-40 ${
-                      isAudioPlaying ? "bg-red-500 hover:bg-red-600" : "bg-[#14532D] hover:bg-[#166534]"
-                    }`}
+                    className={cn(
+                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-white shadow-md",
+                      TRANSITION,
+                      "hover:opacity-95 active:scale-[0.98]",
+                      isAudioPlaying ? "bg-red-500" : "bg-[#1E4D35]",
+                    )}
                   >
-                    {isAudioPlaying ? <Square className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                    {isAudioPlaying ? <Square className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => seek(10)}
-                    disabled={!isAudioPlaying}
-                    className="w-10 h-10 rounded-xl border flex items-center justify-center text-[#14532D] border-[#E5E7EB] hover:bg-[#ecfdf5] disabled:opacity-30"
-                    title="تقدم ١٠ ثوانٍ"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                  </button>
+                  <div className="relative min-h-[44px] min-w-0 flex-1">
+                    <div className="flex h-10 items-end justify-between gap-px opacity-90">
+                      {waveformBars.map((h, wi) => (
+                        <div
+                          key={wi}
+                          className="w-[5px] rounded-full bg-[#dce8e0]"
+                          style={{
+                            height: `${h}px`,
+                            opacity: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? 1 : 0.35,
+                            backgroundColor: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? BRAND : undefined,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 overflow-hidden rounded-full bg-[#e8ece9]">
+                      <div
+                        className={cn("h-full rounded-full bg-[#1E4D35]", TRANSITION)}
+                        style={{ width: `${isAudioPlaying ? progress : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-left text-[11px] font-bold tabular-nums text-[#64748B]">
+                    <div>{formatAudioTime(currentSec)}</div>
+                    <div className="text-[#94a3ab]">{formatAudioTime(durationSec)}</div>
+                  </div>
                 </div>
 
-                {/* تحكم السرعة للمعاينة */}
-                <div className="flex items-center justify-center gap-2">
-                  {[0.75, 1, 1.25, 1.5].map((sp) => (
+                <div className="flex flex-col gap-4 border-t pt-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER }}>
+                  <div className="flex items-center justify-center gap-2">
                     <button
-                      key={sp}
                       type="button"
-                      onClick={() => { setPreviewSpeed(sp); setSpeed(sp); }}
-                      className={`px-3 py-1 rounded-lg text-xs font-black border transition-colors ${
-                        previewSpeed === sp
-                          ? "bg-[#14532D] text-white border-[#14532D]"
-                          : "bg-white text-[#374151] border-[#E5E7EB] hover:bg-[#F1F5F9]"
-                      }`}
+                      onClick={() => seek(-10)}
+                      disabled={!isAudioPlaying}
+                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border bg-white text-[#1E4D35] disabled:opacity-30"
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                      title="رجوع ١٠ ثوانٍ"
                     >
-                      {sp}×
+                      <SkipBack className="h-4 w-4" />
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => seek(10)}
+                      disabled={!isAudioPlaying}
+                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border bg-white text-[#1E4D35] disabled:opacity-30"
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                      title="تقدم ١٠ ثوانٍ"
+                    >
+                      <SkipForward className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-xs">
+                    <label className="text-[11px] font-bold text-[#64748B] text-right">مستوى الصوت</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={volume}
+                      onChange={(e) => setVolume(Number(e.target.value))}
+                      className="h-2 w-full cursor-pointer accent-[#1E4D35]"
+                    />
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {([0.75, 1, 1.25, 1.5] as const).map((sp) => (
+                      <button
+                        key={sp}
+                        type="button"
+                        onClick={() => {
+                          setPreviewSpeed(sp);
+                          setSpeed(sp);
+                        }}
+                        className={cn(
+                          "min-h-[36px] rounded-full px-3 text-xs font-black",
+                          TRANSITION,
+                          previewSpeed === sp
+                            ? "bg-[#1E4D35] text-white shadow-sm"
+                            : "border bg-white text-[#374151] hover:bg-[#f3f7f4]",
+                        )}
+                        style={previewSpeed === sp ? undefined : { borderColor: COLOR_CARD_BORDER }}
+                      >
+                        ×{sp}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* ── إعدادات الاستماع ── */}
-          <div className="rounded-2xl border border-[#E5E7EB] bg-white shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E5E7EB] bg-[#fffbeb] flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#D97706] flex items-center justify-center text-white shrink-0">
-                <Settings2 className="w-5 h-5" />
+          <section
+            className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
+            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+          >
+            <div className="mb-6 text-right">
+              <h2 className="text-lg font-black text-[#0f2918]">إعدادات الاستماع للطالب</h2>
+              <p className="mt-1 text-[13px] text-[#64748B]">تحكم مختصر في تجربة الطالب أثناء الاستماع.</p>
+            </div>
+
+            <div className="mb-8 space-y-3 text-right">
+              <p className="text-xs font-bold text-[#64748B]">عدد مرات الاستماع</p>
+              <div className="flex flex-wrap gap-1 rounded-2xl border bg-[#fafdfb] p-1" style={{ borderColor: CARD_BORDER }}>
+                {LISTEN_SEGMENTS.map((seg) => {
+                  const active = settings.maxListens === seg.value;
+                  return (
+                    <button
+                      key={seg.value}
+                      type="button"
+                      onClick={() => setSettings((s) => ({ ...s, maxListens: seg.value }))}
+                      className={cn(
+                        "min-h-[44px] flex-1 rounded-xl px-2 text-[11px] font-black sm:text-xs",
+                        TRANSITION,
+                        active ? "bg-[#1E4D35] text-white shadow-sm" : "text-[#475569] hover:bg-white",
+                      )}
+                    >
+                      {seg.label}
+                    </button>
+                  );
+                })}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <ToggleCell
+                icon={<Gauge className="h-4 w-4" />}
+                label="التحكم بالسرعة"
+                hint="الطالب يغيّر سرعة التشغيل أثناء الاستماع."
+                checked={settings.allowSpeedControl}
+                onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
+              />
+              <ToggleCell
+                icon={<SkipForward className="h-4 w-4" />}
+                label="الرجوع والتقديم"
+                hint="تخطّي ±١٠ ثانية داخل التسجيل."
+                checked={settings.allowSeek}
+                onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
+              />
+              <ToggleCell
+                icon={<AlignLeft className="h-4 w-4" />}
+                label="عرض النص بعد الإجابة"
+                hint="إظهار النص الكامل للمراجعة بعد التسليم عندما يُسمح بذلك."
+                checked={settings.showTranscript}
+                onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            <div className="flex flex-col gap-3 text-right sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-black text-[#0f2918] text-base">إعدادات الاستماع للطالب</h2>
-                <p className="text-xs text-[#4b5563] mt-0.5">تحكم في ما يستطيع الطالب فعله أثناء الاستماع</p>
+                <h2 className="text-lg font-black text-[#0f2918]">الأسئلة</h2>
+                <p className="text-[12px] text-[#94a3ab]">اسحب المقبض لإعادة ترتيب الأسئلة.</p>
               </div>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* عدد مرات الاستماع */}
-              <div className="flex items-center justify-between gap-4 p-3 rounded-lg bg-[#F8FAF9] border border-[#E8EDE9]">
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#0f2918]">عدد مرات الاستماع</p>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">٠ = بلا حد</p>
-                </div>
-                <div className="inline-flex items-center gap-3 border rounded-[12px] px-2 py-1.5 bg-white" style={{ borderColor: COLOR_CARD_BORDER }}>
-                  <button
-                    type="button"
-                    className="w-9 h-9 rounded-xl border flex items-center justify-center font-black text-[#14532D] border-[#E5E7EB] hover:bg-[#F1F5F9]"
-                    onClick={() => setSettings((s) => ({ ...s, maxListens: Math.max(0, s.maxListens - 1) }))}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className="text-lg font-black text-[#0f2918] min-w-[2.5ch] text-center tabular-nums">
-                    {settings.maxListens === 0 ? "∞" : settings.maxListens}
-                  </span>
-                  <button
-                    type="button"
-                    className="w-9 h-9 rounded-xl border flex items-center justify-center font-black text-[#14532D] border-[#E5E7EB] hover:bg-[#F1F5F9]"
-                    onClick={() => setSettings((s) => ({ ...s, maxListens: Math.min(20, s.maxListens + 1) }))}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-xs font-black text-[#1E4D35]">{questions.length} أسئلة</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex min-h-[44px] items-center gap-2 rounded-2xl border bg-white px-4 text-sm font-black text-[#1E4D35] hover:bg-[#f3f7f4]",
+                        TRANSITION,
+                      )}
+                      style={{ borderColor: CARD_BORDER }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      إضافة سؤال
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-52 rounded-2xl border p-1 shadow-lg" align="end" dir="rtl">
+                    <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("open")}>
+                      إجابة مفتوحة
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("mcq")}>
+                      اختيار متعدد
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("true_false")}>
+                      صح وخطأ
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("dictation")}>
+                      إملاء
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <ToggleCell
-                  label="تحكم السرعة"
-                  hint="الطالب يختار ٠.٧٥× أو ١× أو ١.٢٥× أو ١.٥×"
-                  checked={settings.allowSpeedControl}
-                  onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSpeedControl: v }))}
-                />
-                <ToggleCell
-                  label="رجوع / تقدم ١٠ ثوانٍ"
-                  hint="الطالب يتنقل داخل التسجيل"
-                  checked={settings.allowSeek}
-                  onCheckedChange={(v) => setSettings((s) => ({ ...s, allowSeek: v }))}
-                />
-                <ToggleCell
-                  label="عرض النص بعد الإجابة"
-                  hint="الطالب يرى النص الأصلي للمراجعة"
-                  checked={settings.showTranscript}
-                  onCheckedChange={(v) => setSettings((s) => ({ ...s, showTranscript: v }))}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ── الأسئلة ── */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-black text-[#0f2918] text-lg">الأسئلة</h2>
-              <span className="text-sm text-[#64748B] font-bold">{questions.length} سؤال</span>
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {questions.map((q, i) => (
                     <SortableItem key={q.id} id={q.id}>
                       <div
-                        className={`p-5 pt-10 sm:pr-14 sm:ps-6 cursor-pointer ${activeIndex === i ? "ring-2 ring-[#D97706]/40 rounded-[12px]" : ""}`}
+                        className={cn(
+                          "cursor-pointer rounded-[24px] pt-12 sm:ps-6 sm:pe-5 sm:pb-6",
+                          activeIndex === i && "ring-2 ring-[#1E4D35]/12",
+                        )}
                         role="presentation"
                         onClick={() => setActiveIndex(i)}
                       >
-                        {/* Header */}
-                        <div className="flex items-center gap-3 mb-4 justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-[#64748B]">السؤال {i + 1}</span>
+                        <div className="mb-5 flex flex-col gap-3 border-b px-5 pb-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: CARD_BORDER }}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#f3f7f4] px-2.5 py-1 text-[11px] font-black text-[#1E4D35]">
+                              سؤال {i + 1}
+                            </span>
                             <QuestionTypeBadge type={q.type} />
                           </div>
-                          <div className="flex items-center gap-2">
-                            {/* تغيير النوع */}
-                            <select
-                              value={q.type}
-                              onChange={(e) => {
-                                const newType = e.target.value as QuestionType;
-                                const patch: Partial<QuestionItem> = { type: newType };
-                                if (newType === "true_false") patch.correctAnswer = q.correctAnswer === "false" ? "false" : "true";
-                                else if (newType === "mcq") patch.correctAnswer = ["A","B","C","D"].includes(q.correctAnswer) ? q.correctAnswer : "A";
-                                else patch.correctAnswer = "";
-                                updateQuestion(q.id, patch);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs px-2 py-1 rounded-lg border bg-white text-[#374151] focus:outline-none"
-                              style={{ borderColor: COLOR_CARD_BORDER }}
-                            >
-                              <option value="open">إجابة مفتوحة</option>
-                              <option value="mcq">اختيار متعدد</option>
-                              <option value="true_false">صح / خطأ</option>
-                              <option value="dictation">إملاء</option>
-                            </select>
-                            {questions.length > 1 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); deleteQuestion(q.id); }}
-                                className="text-[#64748B] hover:text-red-600 p-1"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border bg-white text-[#64748B] hover:bg-[#fafdfb]"
+                                style={{ borderColor: COLOR_CARD_BORDER }}
+                                aria-label="خيارات السؤال"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <MoreVertical className="h-5 w-5" />
                               </button>
-                            )}
-                          </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-48 rounded-2xl border p-1 shadow-lg" align="end" dir="rtl">
+                              <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "open")}>
+                                تحويل إلى مفتوحة
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "mcq")}>
+                                تحويل إلى متعدد
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "true_false")}>
+                                تحويل إلى صح/خطأ
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "dictation")}>
+                                تحويل إلى إملاء
+                              </DropdownMenuItem>
+                              {questions.length > 1 && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="rounded-xl font-bold text-red-600 focus:text-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteQuestion(q.id);
+                                    }}
+                                  >
+                                    حذف السؤال
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
 
-                        {/* نص السؤال */}
-                        <div className="mb-4">
-                          <textarea
-                            value={q.text}
-                            dir="rtl"
-                            onChange={(e) => updateQuestion(q.id, { text: e.target.value.slice(0, MAX_QUESTION_CHARS) })}
-                            rows={2}
-                            placeholder={
-                              q.type === "dictation"
-                                ? "مثال: اكتب ما سمعته في الجملة الأولى"
-                                : q.type === "mcq"
-                                ? "مثال: من هو بطل القصة؟"
-                                : "مثال: ما الدرس المستفاد من القصة؟"
-                            }
-                            className="w-full px-4 py-3 rounded-[12px] bg-[#fdfdfd] border text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#14532D]/30 resize-none text-[#111827]"
-                            style={{ borderColor: COLOR_CARD_BORDER }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
+                        <div className="space-y-5 px-5 pb-6">
+                          <div className="space-y-2 text-right">
+                            <label className="text-xs font-bold text-[#64748B]">صياغة السؤال</label>
+                            <textarea
+                              value={q.text}
+                              dir="rtl"
+                              onChange={(e) => updateQuestion(q.id, { text: e.target.value.slice(0, MAX_QUESTION_CHARS) })}
+                              rows={3}
+                              placeholder={
+                                q.type === "dictation"
+                                  ? "مثال: اكتب الجملة التي سمعتها بحرفية..."
+                                  : q.type === "mcq"
+                                    ? "مثال: ما الموضوع الرئيسي في المقطع؟"
+                                    : "صِغ سؤالاً يقيّم فهماً صوتياً أو استنتاجاً من النص."
+                              }
+                              className="min-h-[100px] w-full resize-y rounded-2xl border bg-[#fcfdfc] px-4 py-3 text-sm leading-relaxed text-[#111827] placeholder:text-[#94a3ab] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10"
+                              style={{ borderColor: COLOR_CARD_BORDER }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <p className="text-[11px] tabular-nums text-[#94a3ab]">{q.text.length} / {MAX_QUESTION_CHARS}</p>
+                          </div>
 
                         {/* خيارات MCQ */}
                         {q.type === "mcq" && (
@@ -1045,45 +1397,59 @@ export default function DictationCreate() {
                           </div>
                         )}
 
-                        {/* إجابة مفتوحة / إملاء — إجابة المعلم المرجعية */}
+                        {/* إجابة نموذجية — Accordion */}
                         {(q.type === "open" || q.type === "dictation") && (
-                          <div className="mb-4" dir="rtl">
-                            <label className="block text-xs font-bold text-[#64748B] mb-1.5">
-                              الإجابة النموذجية (اختياري — للمراجعة فقط)
-                            </label>
-                            <textarea
-                              value={q.correctAnswer}
-                              onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
+                          <Collapsible className="rounded-2xl border bg-[#fafdfb]" style={{ borderColor: CARD_BORDER }}>
+                            <CollapsibleTrigger
                               onClick={(e) => e.stopPropagation()}
-                              rows={2}
-                              placeholder={q.type === "dictation" ? "النص الصحيح كما يجب أن يُكتب…" : "إجابة مرجعية تساعدك عند المراجعة…"}
-                              className="w-full px-3 py-2 rounded-[10px] bg-[#fdfdfd] border text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#14532D]/30 resize-none text-[#111827]"
-                              style={{ borderColor: COLOR_CARD_BORDER }}
-                            />
-                          </div>
+                              className="flex w-full min-h-[48px] items-center justify-between gap-2 rounded-2xl px-4 py-3 text-right text-sm font-black text-[#1E4D35] hover:bg-[#f3f7f4] data-[state=open]:rounded-b-none data-[state=open]:[&_.chev-icon]:rotate-180"
+                            >
+                              إجابة نموذجية (اختياري)
+                              <ChevronDown className="chev-icon h-4 w-4 shrink-0 opacity-60 transition-transform duration-200" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="border-t px-4 pb-4 pt-2" style={{ borderColor: CARD_BORDER }}>
+                              <textarea
+                                value={q.correctAnswer}
+                                onChange={(e) => updateQuestion(q.id, { correctAnswer: e.target.value })}
+                                onClick={(e) => e.stopPropagation()}
+                                rows={3}
+                                placeholder={
+                                  q.type === "dictation"
+                                    ? "النص الصحيح المتوقع كما سيُصحَّح ضده الإملاء…"
+                                    : "مرجع سريع للمعلم أثناء المراجعة — لا يُعرض للطالب تلقائياً."
+                                }
+                                className="w-full resize-y rounded-xl border bg-white px-3 py-3 text-sm leading-relaxed text-[#111827] focus:border-[#1E4D35]/25 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/10"
+                                style={{ borderColor: COLOR_CARD_BORDER }}
+                              />
+                            </CollapsibleContent>
+                          </Collapsible>
                         )}
 
                         {/* إعدادات الإملاء */}
                         {q.type === "dictation" && (
                           <div className="mt-4 space-y-3 border-t border-dashed border-[#E5E7EB] pt-4" dir="rtl">
                             <p className="text-xs font-bold text-[#64748B]">إعدادات التصحيح</p>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               <ToggleCell
+                                icon={<Pencil className="h-4 w-4" />}
                                 label="تجاهل الحركات"
                                 checked={q.grading.ignoreDiacritics}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreDiacritics: v })}
                               />
                               <ToggleCell
+                                icon={<Minus className="h-4 w-4" />}
                                 label="تجاهل التنوين"
                                 checked={q.grading.ignoreTanween}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreTanween: v })}
                               />
                               <ToggleCell
+                                icon={<Mic className="h-4 w-4" />}
                                 label="تجاهل الشدة"
                                 checked={q.grading.ignoreShadda}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignoreShadda: v })}
                               />
                               <ToggleCell
+                                icon={<AlignLeft className="h-4 w-4" />}
                                 label="تجاهل الترقيم"
                                 checked={q.grading.ignorePunctuation}
                                 onCheckedChange={(v) => updateGrading(q.id, { ignorePunctuation: v })}
@@ -1107,25 +1473,34 @@ export default function DictationCreate() {
                         )}
 
                         {/* الدرجة */}
-                        <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-dashed border-[#E5E7EB]">
+                        <div className="flex items-center justify-between gap-3 border-t border-dashed pt-4" style={{ borderColor: CARD_BORDER }}>
                           <span className="text-xs font-bold text-[#64748B]">الدرجة</span>
-                          <div className="inline-flex items-center gap-2 border rounded-[10px] px-2 py-1 bg-white" style={{ borderColor: COLOR_CARD_BORDER }}>
+                          <div className="inline-flex items-center gap-1 rounded-2xl border bg-white p-1" style={{ borderColor: COLOR_CARD_BORDER }}>
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); updateQuestion(q.id, { points: Math.max(1, q.points - 1) }); }}
-                              className="w-7 h-7 rounded-lg border flex items-center justify-center text-[#14532D] border-[#E5E7EB] hover:bg-[#F1F5F9]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateQuestion(q.id, { points: Math.max(1, q.points - 1) });
+                              }}
+                              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
+                              style={{ borderColor: COLOR_CARD_BORDER }}
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              <Minus className="h-4 w-4" />
                             </button>
-                            <span className="text-sm font-black text-[#0f2918] min-w-[1.5ch] text-center">{q.points}</span>
+                            <span className="min-w-[2ch] text-center text-base font-black tabular-nums text-[#0f2918]">{q.points}</span>
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); updateQuestion(q.id, { points: Math.min(20, q.points + 1) }); }}
-                              className="w-7 h-7 rounded-lg border flex items-center justify-center text-[#14532D] border-[#E5E7EB] hover:bg-[#F1F5F9]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateQuestion(q.id, { points: Math.min(20, q.points + 1) });
+                              }}
+                              className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-xl border text-[#1E4D35] hover:bg-[#f3f7f4]"
+                              style={{ borderColor: COLOR_CARD_BORDER }}
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="h-4 w-4" />
                             </button>
                           </div>
+                        </div>
                         </div>
                       </div>
                     </SortableItem>
@@ -1133,117 +1508,250 @@ export default function DictationCreate() {
                 </div>
               </SortableContext>
             </DndContext>
-
-            {/* أزرار إضافة سؤال */}
-            <div className="mt-5 flex flex-wrap gap-3 justify-center">
-              {(["open", "mcq", "true_false", "dictation"] as QuestionType[]).map((type) => {
-                const labels: Record<QuestionType, string> = {
-                  open: "+ إجابة مفتوحة",
-                  mcq: "+ اختيار متعدد",
-                  true_false: "+ صح / خطأ",
-                  dictation: "+ إملاء",
-                };
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => addQuestion(type)}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[12px] border-2 border-dashed text-sm font-black text-[#14532D] border-[#14532D]/40 hover:bg-[#ecfdf5] transition-colors"
-                  >
-                    {labels[type]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+          </section>
+        </main>
       )}
 
-      {/* ══════════════════════════════════════════
-          STEP 3 — النشر
-      ══════════════════════════════════════════ */}
       {step === 3 && (
-        <div className="max-w-3xl mx-auto px-4 pt-8 space-y-5">
-          <h2 className="text-xl font-black text-[#0f2918] text-right">إعدادات النشر</h2>
+        <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
+          <div className="text-right space-y-2">
+            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">إعدادات النشر</h2>
+            <p className="text-sm leading-relaxed text-[#64748B]">حدد طريقة وصول الطلاب إلى النشاط ومشاركته مع المعلمين.</p>
+          </div>
 
-          <div className="rounded-2xl border bg-white shadow-sm overflow-hidden" style={{ borderColor: COLOR_CARD_BORDER }}>
-            <div className="p-5 space-y-4">
-              {/* ملخص */}
-              <div className="p-4 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] text-right space-y-2">
-                <p className="font-black text-[#0f2918]">{title}</p>
-                <p className="text-sm text-[#4b5563]">
-                  {questions.length} سؤال · {audioText.length} حرف في النص الصوتي
-                </p>
-                <p className="text-xs text-[#64748B]">
-                  مرات الاستماع: {settings.maxListens === 0 ? "بلا حد" : settings.maxListens} ·
-                  تحكم السرعة: {settings.allowSpeedControl ? "✓" : "✗"} ·
-                  رجوع/تقدم: {settings.allowSeek ? "✓" : "✗"} ·
-                  عرض النص بعد الإجابة: {settings.showTranscript ? "✓" : "✗"}
-                </p>
+          <section
+            className={cn("rounded-[24px] border bg-white p-6 sm:p-8", TRANSITION)}
+            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+          >
+            <div className="mb-6 rounded-[20px] border bg-[#fafdfb] p-5 text-right space-y-3" style={{ borderColor: CARD_BORDER }}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-lg font-black text-[#0f2918]">{title.trim() || "بدون عنوان"}</p>
+                <span className="rounded-full bg-[#eef5f0] px-3 py-1 text-[11px] font-black text-[#1E4D35]">مسودة</span>
+              </div>
+              <p className="text-sm text-[#64748B]">
+                {questions.length} سؤال · {totalPoints} درجة · {audioText.length.toLocaleString("ar-SA")} حرف صوتي
+              </p>
+              <p className="text-[12px] leading-relaxed text-[#64748B]">
+                الصف: {primaryClassLabel} · الاستماع:{" "}
+                {settings.maxListens === 0 ? "غير محدود" : `${settings.maxListens} مرات`} · سرعة:{" "}
+                {settings.allowSpeedControl ? "مسموح" : "مغلق"} · تخطي: {settings.allowSeek ? "مسموح" : "مغلق"} · النص:{" "}
+                {settings.showTranscript ? "يُعرض بعد الإجابة" : "مخفى"}
+              </p>
+            </div>
+
+            <div className="space-y-5">
+              <div
+                className="flex flex-col gap-4 rounded-[20px] border bg-[#fcfdfc] p-5 sm:flex-row sm:items-center sm:justify-between"
+                style={{ borderColor: CARD_BORDER }}
+              >
+                <div className="text-right space-y-1">
+                  <p className="text-sm font-black text-[#0f2918]">المشاركة في المكتبة العامة</p>
+                  <p className="text-[12px] leading-relaxed text-[#64748B]">يتمكن المعلمون من استيراد النشاط إلى حساباتهم.</p>
+                </div>
+                <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
               </div>
 
-              <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-[#F8FAF9] border border-[#E8EDE9]">
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#0f2918]">مشاركة في المكتبة العامة</p>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">يستطيع المعلمون الآخرون استخدام هذا النشاط</p>
+              <div className="space-y-2 text-right">
+                <label className="text-xs font-bold text-[#64748B]">وضع الوصول</label>
+                <div className="relative max-w-full sm:max-w-xs sm:ms-auto">
+                  <select
+                    value={accessMode}
+                    onChange={(e) => setAccessMode(e.target.value as "public" | "private")}
+                    className={cn(selectUiClass, "px-4 pe-10 font-bold")}
+                    style={{ borderColor: COLOR_CARD_BORDER }}
+                  >
+                    <option value="public">عام — بالرابط للطلاب</option>
+                    <option value="private">خاص — حسب إعدادات المنصة</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
                 </div>
-                <Switch
-                  checked={isShared}
-                  onCheckedChange={setIsShared}
-                  className="data-[state=checked]:bg-[#14532D]"
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-[#F8FAF9] border border-[#E8EDE9]">
-                <div className="text-right">
-                  <p className="text-sm font-bold text-[#0f2918]">وضع الوصول</p>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">عام = أي طالب بالرابط · خاص = طلابك فقط</p>
-                </div>
-                <select
-                  value={accessMode}
-                  onChange={(e) => setAccessMode(e.target.value as "public" | "private")}
-                  className="px-3 py-2 rounded-[10px] border text-sm bg-white focus:outline-none"
-                  style={{ borderColor: COLOR_CARD_BORDER }}
-                >
-                  <option value="public">عام</option>
-                  <option value="private">خاص</option>
-                </select>
+                <p className="text-[11px] text-[#94a3ab] leading-relaxed">
+                  «عام» يعني إتاحة الوصول للنشاط عبر الرابط وفق سياسات المنصة. «خاص» يقيّد الوصول حسب إعدادات حسابك.
+                </p>
               </div>
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
       )}
 
-      {/* ── Footer ── */}
-      <div
-        className="fixed bottom-0 inset-x-0 z-30 border-t border-[#E5E7EB] bg-white/95 backdrop-blur-sm"
+      {step === 4 && (
+        <main className="mx-auto max-w-[1100px] space-y-7 px-4 py-7 sm:py-8">
+          <div className="text-right space-y-2">
+            <h2 className="text-xl font-black text-[#0f2918] sm:text-2xl">مراجعة النشاط قبل النشر</h2>
+            <p className="text-sm leading-relaxed text-[#64748B]">راجع النشاط وتأكد من جاهزيته قبل أن يصبح متاحاً للطلاب.</p>
+          </div>
+
+          <section
+            className={cn("rounded-[24px] border bg-gradient-to-br from-[#1E4D35] via-[#225739] to-[#17382a] p-6 text-white shadow-lg sm:p-8", TRANSITION)}
+            style={{ boxShadow: "0 12px 40px rgba(30, 77, 53, 0.25)" }}
+          >
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+                  <Headphones className="h-7 w-7" />
+                </div>
+                <div className="space-y-2 text-right">
+                  <p className="text-xs font-bold text-white/70">نشاط استماع</p>
+                  <h3 className="text-2xl font-black leading-snug">{title.trim() || "بدون عنوان"}</h3>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{questions.length} أسئلة</span>
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">{totalPoints} درجة</span>
+                    <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">
+                      {settings.maxListens === 0 ? "استماع غير محدود" : `${settings.maxListens} استماع`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-right text-[11px] leading-relaxed backdrop-blur-sm">
+                <p className="font-bold text-white/90">آخر مراجعة للمعالج</p>
+                <p className="mt-1 text-white/75">{new Date().toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" })}</p>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                title: "النص الصوتي",
+                desc: `${audioText.length.toLocaleString("ar-SA")} حرف · قراءة تقريبية ~${approxDurationSec} ث`,
+                icon: <Volume2 className="h-5 w-5" />,
+                go: 2 as const,
+              },
+              {
+                title: "إعدادات الاستماع",
+                desc: LISTEN_SEGMENTS.find((s) => s.value === settings.maxListens)?.label ?? "—",
+                icon: <Settings2 className="h-5 w-5" />,
+                go: 2 as const,
+              },
+              {
+                title: "الأسئلة",
+                desc: `${questions.length} سؤالًا · ${totalPoints} درجة`,
+                icon: <ListChecks className="h-5 w-5" />,
+                go: 2 as const,
+              },
+              {
+                title: "إعدادات النشر",
+                desc: `${accessMode === "public" ? "وصول عام بالرابط" : "وصول خاص"} · ${isShared ? "مشاركة مع المكتبة" : "غير مشارَك"}`,
+                icon: <Globe className="h-5 w-5" />,
+                go: 3 as const,
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className={cn("flex flex-col rounded-[24px] border bg-white p-5 text-right", TRANSITION)}
+                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+              >
+                <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f3f7f4] text-[#1E4D35]">{card.icon}</div>
+                <h4 className="font-black text-[#0f2918]">{card.title}</h4>
+                <p className="mt-1 flex-1 text-[13px] leading-relaxed text-[#64748B]">{card.desc}</p>
+                <button
+                  type="button"
+                  onClick={() => setStep(card.go)}
+                  className="mt-4 min-h-[44px] rounded-xl border border-[#1E4D35]/20 bg-white text-sm font-black text-[#1E4D35] hover:bg-[#eef5f0]"
+                >
+                  تعديل
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <section className={cn("rounded-[24px] border bg-white p-6 text-right", TRANSITION)} style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}>
+            <h4 className="mb-4 font-black text-[#0f2918]">معاينة الأسئلة</h4>
+            <div className="space-y-3">
+              {questions.slice(0, 2).map((qq, idx) => (
+                <div key={qq.id} className="rounded-2xl border bg-[#fafdfb] px-4 py-3" style={{ borderColor: CARD_BORDER }}>
+                  <div className="mb-1 flex flex-wrap items-center gap-2 justify-end">
+                    <span className="text-[11px] font-bold text-[#94a3ab]">سؤال {idx + 1}</span>
+                    <QuestionTypeBadge type={qq.type} />
+                  </div>
+                  <p className="text-sm font-semibold leading-relaxed text-[#111827] line-clamp-3">{qq.text || "—"}</p>
+                </div>
+              ))}
+              {questions.length > 2 && (
+                <p className="text-center text-[12px] text-[#94a3ab]">+ {questions.length - 2} أسئلة إضافية</p>
+              )}
+            </div>
+          </section>
+
+          <p className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-center text-[13px] font-semibold text-amber-950">
+            سيصبح النشاط متاحاً للطلاب فور نشره.
+          </p>
+
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setStep(3)}
+              className="text-sm font-bold text-[#1E4D35] underline-offset-4 hover:underline"
+            >
+              العودة لتعديل إعدادات النشر
+            </button>
+          </div>
+        </main>
+      )}
+
+      <footer
+        className={cn(
+          "fixed bottom-0 inset-x-0 z-40 border-t bg-[#fcfdfc]/88 backdrop-blur-xl",
+          TRANSITION,
+        )}
+        style={{ borderColor: CARD_BORDER }}
         dir="rtl"
       >
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={footerBack}
-            className="flex items-center gap-2 px-5 py-3 rounded-[12px] border-2 border-[#E5E7EB] text-[#374151] font-black text-sm hover:bg-[#F9FAFB] transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" /> رجوع
-          </button>
+        <div className="mx-auto flex max-w-[1100px] flex-wrap items-center gap-2 px-4 py-3 sm:justify-between sm:gap-3">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-1">
+            <button
+              type="button"
+              onClick={footerBack}
+              className={cn(
+                "flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border bg-white px-4 text-sm font-black text-[#374151] hover:bg-[#f3f7f4] sm:flex-none",
+                TRANSITION,
+              )}
+              style={{ borderColor: COLOR_CARD_BORDER }}
+            >
+              <ChevronRight className="h-4 w-4" /> رجوع
+            </button>
+            <button
+              type="button"
+              onClick={saveDraftLocal}
+              className={cn(
+                "flex min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-dashed px-4 text-sm font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:flex-none",
+                TRANSITION,
+              )}
+              style={{ borderColor: CARD_BORDER }}
+            >
+              حفظ كمسودة
+            </button>
+          </div>
           <button
             type="button"
             onClick={footerPrimaryAction}
             disabled={createMutation.isPending}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[12px] font-black text-sm text-white shadow-sm transition-colors disabled:opacity-50"
-            style={{ backgroundColor: COLOR_PRIMARY }}
+            className={cn(
+              "flex min-h-[44px] w-full min-w-[160px] flex-1 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-black text-white shadow-md hover:opacity-[0.97] active:scale-[0.99] disabled:opacity-50 sm:w-auto sm:flex-none",
+              TRANSITION,
+            )}
+            style={{
+              background: step === 4 ? `linear-gradient(90deg, ${BRAND} 0%, ${BRAND_MID} 100%)` : BRAND,
+              boxShadow: "0 8px 24px rgba(30, 77, 53, 0.22)",
+            }}
           >
-            {step === 3 ? (
-              createMutation.isPending ? "جارٍ النشر..." : "نشر النشاط 🎉"
+            {step === 4 ? (
+              createMutation.isPending ? (
+                "جارٍ النشر..."
+              ) : (
+                <>
+                  <Save className="h-4 w-4" /> نشر النشاط
+                </>
+              )
             ) : (
               <>
-                التالي <ChevronLeft className="w-4 h-4" />
+                التالي
+                <ChevronLeft className="h-4 w-4" />
               </>
             )}
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
