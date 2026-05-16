@@ -576,7 +576,9 @@ export default function SharedContentPage({
   const inner = (
     <div
       className={cn(
-        embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl",
+        embedded
+          ? cn("py-4", isCompetitionLibrary && "pt-1 pb-3")
+          : "container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-5xl",
         isActivitiesLibrary &&
           !embedded &&
           "rounded-2xl border border-border/40 bg-gradient-to-b from-primary/[0.04] via-background to-muted/30 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]",
@@ -593,6 +595,7 @@ export default function SharedContentPage({
         <div
           className={cn(
             "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6",
+            embedded && isCompetitionLibrary && "mb-4",
             isActivitiesLibrary &&
               "rounded-2xl border border-border/35 bg-gradient-to-r from-teal-500/[0.07] via-card/60 to-background/90 px-4 py-4 sm:px-5 sm:py-4 shadow-sm",
           )}

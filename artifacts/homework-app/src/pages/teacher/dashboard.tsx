@@ -901,16 +901,23 @@ export default function TeacherDashboard() {
         {/* Main content */}
         <main className="flex-1 min-w-0" style={{display: activeTab === "overview" ? "flex" : "block", flexDirection: "column"}}>
           {activeTab !== "overview" && (
-            <div className="py-8 px-6 xl:px-10 2xl:px-14">
-              <div className="mb-6">
+            <div
+              className={cn(
+                "px-6 xl:px-10 2xl:px-14",
+                activeTab === "library_competitions" ? "py-4 pt-4" : "py-8",
+              )}
+            >
+              <div className={cn(activeTab === "library_competitions" ? "mb-3" : "mb-6")}>
                 <GuestDraftImportBanner />
               </div>
-              {/* Tab heading */}
+              {/* Tab heading — skipped for competitions library: SharedContentPage already shows title, icon & subtitle (embedded). */}
+              {activeTab !== "library_competitions" && (
               <div className="mb-5">
                 <h1 className="text-2xl font-extrabold text-foreground">
                   {tabs.find((t) => t.id === activeTab)?.label}
                 </h1>
               </div>
+              )}
           {/* Prominent stat cards — hidden on tabs where they aren't relevant */}
           {!["tools", "competitive", "students", "shared", "library_homework", "library_competitions"].includes(activeTab) && (
           <div className="grid grid-cols-3 gap-3 mb-7">
