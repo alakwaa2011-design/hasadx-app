@@ -54,6 +54,7 @@ import {
   Library,
   Home,
   Star,
+  Medal,
   X,
   Rocket,
   ChevronLeft,
@@ -2133,64 +2134,78 @@ function CompetitiveTab({
 
   return (
     <div className="space-y-10">
-      {/* تحدّي حصاد أولاً، ثم مسابقات عامة — أعلى التبويب، صفّ واحد على الشاشات العريضة */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
-        <Card
-          onClick={() => openGameFromCatalog(arenaGame)}
-          className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${arenaGame.color} flex items-center justify-center text-2xl shadow-lg shrink-0`}
-              aria-hidden
-            >
-              {arenaGame.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                <h3 className="text-base sm:text-lg font-black text-foreground">
-                  {arenaGame.title}
-                </h3>
-                {arenaGame.pill && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    {arenaGame.pill}
-                  </span>
-                )}
+      {/* ألعاب ومسابقات جماهيرية — تحدّي حصاد + مسابقات عامة */}
+      <section className="space-y-4">
+        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+          <h3 className="text-lg sm:text-xl font-black tracking-tight text-foreground">
+            {lang === "ar"
+              ? "ألعاب ومسابقات جماهيرية"
+              : "Public games & quiz contests"}
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-3xl leading-relaxed">
+            {lang === "ar"
+              ? "تحدٍّ على الشاشة الكبيرة للجميع، ومكتبة مسابقات عامة يمكن مشاركتها بالرابط أو الرمز."
+              : "Big-screen challenges for audiences plus ready quizzes you can share by link or PIN."}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+          <Card
+            onClick={() => openGameFromCatalog(arenaGame)}
+            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${arenaGame.color} flex items-center justify-center text-2xl shadow-lg shrink-0`}
+                aria-hidden
+              >
+                {arenaGame.icon}
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                {arenaGame.desc}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                    {arenaGame.title}
+                  </h3>
+                  {arenaGame.pill && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      {arenaGame.pill}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                  {arenaGame.desc}
+                </p>
+              </div>
+              <ChevronLeft
+                className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+              />
             </div>
-            <ChevronLeft
-              className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
-            />
-          </div>
-        </Card>
+          </Card>
 
-        <Card
-          onClick={() => setLocation("/islamic")}
-          className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-primary/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-teal-500/10 via-card to-cyan-500/5"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shrink-0">
-              <Globe className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+          <Card
+            onClick={() => setLocation("/islamic")}
+            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-amber-500/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-amber-500/12 via-card to-orange-500/8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shrink-0">
+                <Medal className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-black text-foreground">
+                  {lang === "ar" ? "مسابقات عامة" : "Public Quizzes"}
+                </h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                  {lang === "ar"
+                    ? "مكتبة مسابقات جاهزة للزوار والطلاب — شاركها برابط أو رمز."
+                    : "Ready-made quizzes for visitors and students — share by link or PIN."}
+                </p>
+              </div>
+              <ChevronLeft
+                className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base sm:text-lg font-black text-foreground">
-                {lang === "ar" ? "مسابقات عامة" : "Public Quizzes"}
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                {lang === "ar"
-                  ? "مكتبة مسابقات جاهزة للزوار والطلاب — شاركها برابط أو رمز."
-                  : "Ready-made quizzes for visitors and students — share by link or PIN."}
-              </p>
-            </div>
-            <ChevronLeft
-              className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
-            />
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      </section>
 
       <div className="text-center py-2 sm:py-4">
         <motion.div
