@@ -937,21 +937,21 @@ export default function TeacherDashboard() {
           >
             <div
               className={cn(
-                "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200",
+                "rounded-xl border flex items-center transition-[box-shadow,border-color,background-color] duration-150 ease-out",
                 activeTab === "assignments"
-                  ? "border-border/30 bg-gradient-to-br from-card via-card to-primary/[0.045] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(30,77,53,0.12)] hover:border-primary/18 hover:shadow-[0_14px_36px_-18px_rgba(30,77,53,0.14)]"
-                  : "border-border/60 bg-card hover:border-primary/40",
+                  ? "py-5 px-4 sm:py-[22px] sm:px-5 min-h-[108px] gap-3.5 sm:gap-4 border-border/28 bg-gradient-to-br from-card via-card to-primary/[0.055] shadow-[0_1px_2px_rgba(15,23,42,0.055),0_14px_36px_-20px_rgba(30,77,53,0.11)] hover:border-primary/16 hover:shadow-[0_18px_44px_-22px_rgba(30,77,53,0.13)]"
+                  : "p-4 sm:p-[18px] gap-3 sm:gap-3.5 border-border/60 bg-card hover:border-primary/40",
               )}
             >
               <div
                 className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                  "rounded-xl flex items-center justify-center shrink-0",
                   activeTab === "assignments"
-                    ? "bg-primary/[0.09] text-primary ring-1 ring-primary/[0.09]"
-                    : "bg-primary/10 text-primary",
+                    ? "w-12 h-12 shadow-[0_2px_10px_-6px_rgba(30,77,53,0.35)] bg-primary/[0.1] text-primary ring-1 ring-primary/[0.11]"
+                    : "w-11 h-11 bg-primary/10 text-primary",
                 )}
               >
-                <BookText className="w-5 h-5" />
+                <BookText className={cn(activeTab === "assignments" ? "w-6 h-6" : "w-5 h-5")} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -959,8 +959,8 @@ export default function TeacherDashboard() {
                 </p>
                 <p
                   className={cn(
-                    "font-black text-foreground leading-tight tracking-tight",
-                    activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                    "font-black text-foreground leading-none tracking-tight tabular-nums mt-1",
+                    activeTab === "assignments" ? "text-[1.7rem] sm:text-[1.875rem]" : "text-2xl",
                   )}
                 >
                   {assignments?.length || 0}
@@ -969,21 +969,21 @@ export default function TeacherDashboard() {
             </div>
             <div
               className={cn(
-                "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200",
+                "rounded-xl border flex items-center transition-[box-shadow,border-color,background-color] duration-150 ease-out",
                 activeTab === "assignments"
-                  ? "border-border/30 bg-gradient-to-br from-card via-card to-[#D9A521]/[0.04] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(217,165,33,0.08)] hover:border-[#D9A521]/22 hover:shadow-[0_14px_36px_-18px_rgba(217,165,33,0.10)]"
-                  : "border-border/60 bg-card hover:border-amber-400/50",
+                  ? "py-5 px-4 sm:py-[22px] sm:px-5 min-h-[108px] gap-3.5 sm:gap-4 border-border/28 bg-gradient-to-br from-card via-card to-[#D9A521]/[0.052] shadow-[0_1px_2px_rgba(15,23,42,0.055),0_14px_36px_-20px_rgba(217,165,33,0.07)] hover:border-[#D9A521]/20 hover:shadow-[0_18px_44px_-22px_rgba(217,165,33,0.09)]"
+                  : "p-4 sm:p-[18px] gap-3 sm:gap-3.5 border-border/60 bg-card hover:border-amber-400/50",
               )}
             >
               <div
                 className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                  "rounded-xl flex items-center justify-center shrink-0",
                   activeTab === "assignments"
-                    ? "bg-[#D9A521]/[0.09] text-[#7a6220] dark:text-[#d4b76a] ring-1 ring-[#D9A521]/14"
-                    : "bg-amber-500/10 text-amber-600",
+                    ? "w-12 h-12 shadow-[0_2px_10px_-6px_rgba(217,165,33,0.28)] bg-[#D9A521]/[0.1] text-[#6e5820] dark:text-[#d9c06e] ring-1 ring-[#D9A521]/13"
+                    : "w-11 h-11 bg-amber-500/10 text-amber-600",
                 )}
               >
-                <CheckCircle2 className="w-5 h-5" />
+                <CheckCircle2 className={cn(activeTab === "assignments" ? "w-6 h-6" : "w-5 h-5")} />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -991,8 +991,8 @@ export default function TeacherDashboard() {
                 </p>
                 <p
                   className={cn(
-                    "font-black text-foreground leading-tight tracking-tight",
-                    activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                    "font-black text-foreground leading-none tracking-tight tabular-nums mt-1",
+                    activeTab === "assignments" ? "text-[1.7rem] sm:text-[1.875rem]" : "text-2xl",
                   )}
                 >
                   {totalSubmissions}
@@ -1002,21 +1002,21 @@ export default function TeacherDashboard() {
             <Link href="/teacher/students" className="block">
               <div
                 className={cn(
-                  "rounded-xl border p-4 sm:p-[18px] flex items-center gap-3 sm:gap-3.5 transition-[box-shadow,border-color,background-color] duration-200 h-full",
+                  "rounded-xl border flex items-center transition-[box-shadow,border-color,background-color] duration-150 ease-out h-full",
                   activeTab === "assignments"
-                    ? "border-border/30 bg-gradient-to-br from-card via-card to-emerald-700/[0.04] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_-16px_rgba(22,101,52,0.10)] hover:border-emerald-600/22 hover:shadow-[0_14px_36px_-18px_rgba(22,101,52,0.12)]"
-                    : "border-border/60 bg-card hover:border-emerald-400/50",
+                    ? "py-5 px-4 sm:py-[22px] sm:px-5 min-h-[108px] gap-3.5 sm:gap-4 border-border/28 bg-gradient-to-br from-card via-card to-emerald-700/[0.048] shadow-[0_1px_2px_rgba(15,23,42,0.055),0_14px_36px_-20px_rgba(22,101,52,0.09)] hover:border-emerald-600/20 hover:shadow-[0_18px_44px_-22px_rgba(22,101,52,0.11)]"
+                    : "p-4 sm:p-[18px] gap-3 sm:gap-3.5 border-border/60 bg-card hover:border-emerald-400/50",
                 )}
               >
                 <div
                   className={cn(
-                    "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                    "rounded-xl flex items-center justify-center shrink-0",
                     activeTab === "assignments"
-                      ? "bg-emerald-700/[0.07] text-emerald-800 dark:text-emerald-400 ring-1 ring-emerald-700/12"
-                      : "bg-emerald-500/10 text-emerald-600",
+                      ? "w-12 h-12 shadow-[0_2px_10px_-6px_rgba(22,101,52,0.28)] bg-emerald-700/[0.085] text-emerald-900 dark:text-emerald-400 ring-1 ring-emerald-700/11"
+                      : "w-11 h-11 bg-emerald-500/10 text-emerald-600",
                   )}
                 >
-                  <TrendingUp className="w-5 h-5" />
+                  <TrendingUp className={cn(activeTab === "assignments" ? "w-6 h-6" : "w-5 h-5")} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -1024,8 +1024,8 @@ export default function TeacherDashboard() {
                   </p>
                   <p
                     className={cn(
-                      "font-black text-foreground leading-tight tracking-tight",
-                      activeTab === "assignments" ? "text-2xl sm:text-[1.65rem]" : "text-2xl",
+                      "font-black text-foreground leading-none tracking-tight tabular-nums mt-1",
+                      activeTab === "assignments" ? "text-[1.7rem] sm:text-[1.875rem]" : "text-2xl",
                     )}
                   >
                     {activeAssignments.length}
@@ -3424,10 +3424,10 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-card rounded-xl border border-border/35 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_8px_28px_-18px_rgba(30,77,53,0.06)] overflow-hidden ring-1 ring-black/[0.02] dark:ring-white/[0.03]">
+    <div className="bg-card rounded-xl border border-border/32 shadow-[0_1px_2px_rgba(15,23,42,0.055),0_12px_36px_-22px_rgba(30,77,53,0.075)] overflow-hidden ring-1 ring-black/[0.025] dark:ring-white/[0.035]">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-[11px] hover:bg-muted/[0.28] transition-colors min-h-[44px] border-s-[3px] border-s-[#D9A521]/30"
+        className="w-full flex items-center justify-between px-3 py-2.5 sm:px-4 sm:py-[11px] hover:bg-muted/[0.24] transition-colors duration-150 min-h-[44px] border-s-[3px] border-s-[#D9A521]/28"
       >
         <div className="flex items-center gap-2.5">
           <span className="font-bold text-foreground text-sm tracking-tight">{title}</span>
@@ -3520,14 +3520,14 @@ function AssignmentRow({
       draggable
       onDragStart={onDragStart}
       className={cn(
-        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-all duration-200 ease-out",
-        "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_7px_24px_-14px_rgba(30,77,53,0.08)]",
+        "rounded-xl border bg-card cursor-grab active:cursor-grabbing transition-[box-shadow,border-color,background-color] duration-150 ease-[cubic-bezier(0.33,1,0.68,1)]",
+        "shadow-[0_1px_2px_rgba(15,23,42,0.045),0_10px_30px_-18px_rgba(30,77,53,0.085)]",
         isExpanded
-          ? "border-primary/22 bg-muted/[0.10] shadow-[0_6px_28px_-14px_rgba(30,77,53,0.14)] ring-1 ring-primary/[0.08]"
-          : "border-border/40 hover:border-primary/12 hover:bg-muted/[0.22] hover:shadow-[0_12px_36px_-20px_rgba(30,77,53,0.12)]",
+          ? "border-primary/24 bg-muted/[0.09] shadow-[0_8px_32px_-18px_rgba(30,77,53,0.13)] ring-1 ring-primary/[0.07]"
+          : "border-border/38 hover:border-primary/14 hover:bg-muted/[0.16] hover:shadow-[0_14px_40px_-22px_rgba(30,77,53,0.11)]",
       )}
     >
-      <div className="w-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 min-h-[58px]">
+      <div className="w-full flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-3.5 min-h-[62px]">
         <span
           className="hidden sm:inline-flex shrink-0 text-muted-foreground/40 hover:text-muted-foreground/75 transition-colors p-2 -m-2"
           title={lang === "ar" ? "اسحب إلى مجموعة" : "Drag to group"}
@@ -3538,7 +3538,7 @@ function AssignmentRow({
           type="button"
           onClick={onToggleFavorite}
           className={cn(
-            "shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full border transition-colors duration-200",
+            "shrink-0 inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full border transition-colors duration-150 ease-out",
             isFavorite
               ? "border-[#D9A521]/20 bg-[#D9A521]/[0.07]"
               : "border-transparent text-muted-foreground/40 hover:bg-muted/40 hover:text-[#D9A521]/75 hover:border-border/35",
@@ -3572,37 +3572,37 @@ function AssignmentRow({
                 {assignment.title}
               </span>
               {statusActive && (
-                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-600/[0.07] text-emerald-900 dark:text-emerald-300 border border-emerald-600/11">
+                <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-emerald-600/[0.09] text-emerald-950 dark:text-emerald-300 border border-emerald-600/14 leading-none">
                   {lang === "ar" ? "نشط" : "Active"}
                 </span>
               )}
               {deadlineExpired && (
-                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-stone-500/[0.07] text-stone-800 dark:text-stone-400 border border-stone-500/13">
+                <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-stone-500/[0.09] text-stone-900 dark:text-stone-400 border border-stone-500/16 leading-none">
                   {lang === "ar" ? "منتهي" : "Ended"}
                 </span>
               )}
               {isExam ? (
-                <span className="inline-flex items-center text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/[0.08] text-amber-950 dark:text-amber-200/95 border border-amber-600/12">
+                <span className="inline-flex items-center text-[11px] font-semibold px-3 py-1 rounded-full bg-amber-500/[0.1] text-amber-950 dark:text-amber-200 border border-amber-600/15 leading-none">
                   {lang === "ar" ? "اختبار" : "Exam"}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/[0.06] text-[#1a4d36] dark:text-emerald-300/95 border border-primary/12">
-                  <Monitor className="w-3 h-3 opacity-75 shrink-0" />
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1 rounded-full bg-primary/[0.075] text-[#143728] dark:text-emerald-300 border border-primary/14 leading-none">
+                  <Monitor className="w-3.5 h-3.5 opacity-80 shrink-0" />
                   {lang === "ar" ? "عرض تفاعلي" : "Interactive"}
                 </span>
               )}
               {isFavorite && (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-[#D9A521]/[0.09] text-[#63531c] dark:text-[#e6cf7a] border border-[#D9A521]/16">
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold px-3 py-1 rounded-full bg-[#D9A521]/[0.11] text-[#5c4a14] dark:text-[#ebd587] border border-[#D9A521]/18 leading-none">
                   {lang === "ar" ? "مفضلة" : "Favorite"}
                 </span>
               )}
               {assignment.subject && (
-                <span className="text-[10px] sm:text-[11px] text-muted-foreground bg-muted/55 px-2 py-0.5 rounded-full border border-border/40">
+                <span className="text-[11px] text-muted-foreground bg-muted/60 px-3 py-1 rounded-full border border-border/45 leading-none">
                   {assignment.subject}
                 </span>
               )}
               {groupName && (
-                <span className="text-[10px] sm:text-[11px] text-primary bg-primary/[0.06] px-2 py-0.5 rounded-full border border-primary/12">
+                <span className="text-[11px] text-primary bg-primary/[0.075] px-3 py-1 rounded-full border border-primary/14 leading-none font-medium">
                   {groupName}
                 </span>
               )}
@@ -3621,11 +3621,9 @@ function AssignmentRow({
               startGame(assignment.id, e);
             }}
             disabled={creatingGameForId === assignment.id}
-            className="shrink-0 text-xs font-semibold px-3.5 py-2 min-h-[44px] min-w-[44px] text-white rounded-xl transition-all duration-200 disabled:opacity-45 inline-flex items-center justify-center gap-1.5 hover:brightness-[1.02] active:brightness-[0.97]"
+            className="shrink-0 text-xs font-semibold px-3.5 py-2 min-h-[44px] min-w-[44px] text-white rounded-xl transition-[box-shadow,filter] duration-150 ease-out disabled:opacity-45 inline-flex items-center justify-center gap-1.5 hover:brightness-[1.03] active:brightness-[0.98] shadow-[0_4px_18px_-10px_rgba(30,77,53,0.48),0_1px_2px_rgba(15,23,42,0.06)] hover:shadow-[0_10px_28px_-14px_rgba(30,77,53,0.42),0_1px_2px_rgba(15,23,42,0.06)]"
             style={{
               background: "linear-gradient(180deg, #1E4D35 0%, #17382a 100%)",
-              boxShadow:
-                "0 5px 18px -10px rgba(30, 77, 53, 0.48), 0 1px 2px rgba(15, 23, 42, 0.05)",
             }}
             title={t.dashboard.liveGame}
           >
@@ -3639,7 +3637,7 @@ function AssignmentRow({
         )}
         <button
           onClick={onToggle}
-          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl hover:bg-muted/55 transition-colors duration-200"
+          className="shrink-0 inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl hover:bg-muted/50 transition-colors duration-150"
           aria-label="toggle"
         >
           <ChevronDown
@@ -4015,23 +4013,23 @@ function AssignmentsTabRender({
   };
 
   return (
-    <div className="space-y-2" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div className="space-y-2.5" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Hero — aligns with Activities Library; dashboard tab title hidden for this tab */}
-      <div className="rounded-xl border border-border/45 bg-gradient-to-r from-primary/[0.07] via-card to-background/98 px-3 py-2.5 sm:px-4 sm:py-3 shadow-[0_1px_3px_rgba(15,23,42,0.05)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <div className="rounded-xl border border-border/42 bg-gradient-to-r from-primary/[0.075] via-card to-background shadow-[0_1px_2px_rgba(15,23,42,0.055),0_12px_36px_-22px_rgba(30,77,53,0.06)] px-3.5 py-3 sm:px-5 sm:py-[14px] flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between ring-1 ring-black/[0.025] dark:ring-white/[0.04]">
+        <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0">
           <div
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0 flex items-center justify-center text-white shadow-[0_6px_20px_-10px_rgba(22,55,40,0.55)] ring-2 ring-primary/18"
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl shrink-0 flex items-center justify-center text-white shadow-[0_8px_24px_-12px_rgba(22,55,40,0.45)] ring-2 ring-primary/16 mt-0.5 sm:mt-0"
             style={{
               background: "linear-gradient(145deg, #1f6f4a 0%, #1a4d36 55%, #163728 100%)",
             }}
           >
-            <BookText className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
+            <BookText className="w-[22px] h-[22px] sm:w-6 sm:h-6" />
           </div>
-          <div className="min-w-0">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-[#143728] dark:text-foreground leading-tight">
+          <div className="min-w-0 pt-0.5 sm:pt-0">
+            <h2 className="text-[1.35rem] sm:text-[1.625rem] font-black tracking-tight text-[#102921] dark:text-foreground leading-[1.2]">
               {lang === "ar" ? "واجباتي" : "My Assignments"}
             </h2>
-            <p className="text-xs sm:text-[13px] text-foreground/78 dark:text-muted-foreground mt-1 leading-relaxed max-w-xl">
+            <p className="text-[13px] sm:text-sm text-foreground/82 dark:text-muted-foreground mt-1.5 leading-[1.65] max-w-[34rem]">
               {lang === "ar"
                 ? "أنشئ الأنشطة، تابع التسليمات، وابدأ جلسات لعب حية مع طلابك — كل ذلك من مكان واحد."
                 : "Create activities, track submissions, and run live sessions with your students — all in one place."}
@@ -4041,7 +4039,7 @@ function AssignmentsTabRender({
         <button
           type="button"
           onClick={() => setLocation("/teacher/new")}
-          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white transition-[box-shadow,filter] hover:brightness-[1.03] active:brightness-[0.98] shadow-[0_8px_22px_-14px_rgba(21,74,51,0.55)] hover:shadow-[0_12px_28px_-14px_rgba(21,74,51,0.5)]"
+          className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white transition-[box-shadow,filter] duration-150 ease-out hover:brightness-[1.03] active:brightness-[0.98] shadow-[0_8px_24px_-14px_rgba(21,74,51,0.52)] hover:shadow-[0_12px_32px_-16px_rgba(21,74,51,0.46)]"
           style={{
             background: "linear-gradient(180deg, #1b5c3d 0%, #154a33 100%)",
           }}
@@ -4059,10 +4057,10 @@ function AssignmentsTabRender({
         defaultOpen
       >
         {/* Search + filters — Activities Library–style shell */}
-        <div className="rounded-xl border border-border/40 bg-muted/[0.055] p-2.5 sm:p-3 shadow-[0_1px_3px_rgba(15,23,42,0.04)] space-y-2.5 mb-2">
+        <div className="rounded-xl border border-border/35 bg-gradient-to-b from-background/95 to-muted/[0.06] p-3 shadow-[0_1px_2px_rgba(15,23,42,0.055),0_10px_32px_-24px_rgba(30,77,53,0.07)] ring-1 ring-black/[0.025] dark:ring-white/[0.035] [box-shadow:inset_0_1px_0_rgba(255,255,255,0.04)] dark:[box-shadow:inset_0_1px_0_rgba(255,255,255,0.03)] space-y-2.5 mb-2">
           <div className="relative">
             <Search
-              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/55 ${lang === "ar" ? "right-3" : "left-3"}`}
+              className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-[17px] h-[17px] text-muted-foreground/60 ${lang === "ar" ? "right-3.5" : "left-3.5"}`}
             />
             <input
               type="text"
@@ -4071,7 +4069,7 @@ function AssignmentsTabRender({
               placeholder={
                 lang === "ar" ? "ابحث عن واجب أو مادة..." : "Search assignment or subject..."
               }
-              className={`w-full py-2.5 bg-background/90 border border-border/55 rounded-xl text-sm placeholder:text-muted-foreground/45 focus:outline-none focus:ring-2 focus:ring-primary/15 focus:border-primary/30 transition-all ${lang === "ar" ? "pr-10 pl-3 text-right" : "pl-10 pr-3"}`}
+              className={`w-full py-[11px] bg-background border border-border/42 rounded-xl text-sm placeholder:text-muted-foreground/42 focus:outline-none focus:ring-2 focus:ring-primary/[0.12] focus:border-primary/26 transition-[border-color,box-shadow] duration-150 shadow-[inset_0_1px_2px_rgba(15,23,42,0.045)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.18)] ${lang === "ar" ? "pr-11 pl-3.5 text-right" : "pl-11 pr-3.5"}`}
             />
             {searchQuery && (
               <button
@@ -4102,10 +4100,10 @@ function AssignmentsTabRender({
                 key={f.key}
                 onClick={() => setStatusFilter(f.key as any)}
                 className={cn(
-                  "px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all border",
+                  "px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-[border-color,box-shadow,background-color] duration-150 border",
                   statusFilter === f.key
-                    ? "bg-[#1E4D35] text-white border-[#1E4D35] shadow-sm ring-1 ring-black/[0.04]"
-                    : "bg-background/80 text-muted-foreground border-border/55 hover:border-primary/25 hover:text-foreground",
+                    ? "bg-[#1E4D35] text-white border-[#1E4D35] shadow-[0_4px_14px_-10px_rgba(30,77,53,0.55)] ring-1 ring-black/[0.05]"
+                    : "bg-background/85 text-muted-foreground border-border/48 hover:border-primary/22 hover:text-foreground shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]",
                 )}
               >
                 {f.key === "favorites" && (
@@ -4114,14 +4112,14 @@ function AssignmentsTabRender({
                 {f.label}
               </button>
             ))}
-            <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ms-0.5 px-2 py-1 rounded-lg bg-background/60 border border-border/40">
+            <span className="text-[11px] font-semibold text-muted-foreground tabular-nums ms-0.5 px-2.5 py-1 rounded-xl bg-background/75 border border-border/38 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]">
               {statusFiltered.length}
             </span>
           </div>
         </div>
 
         {/* Assignments list */}
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2.5 mb-3">
           {statusFiltered.length === 0 ? (
             (assignments?.length || 0) === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-muted/[0.04] px-5 py-9 text-center">
