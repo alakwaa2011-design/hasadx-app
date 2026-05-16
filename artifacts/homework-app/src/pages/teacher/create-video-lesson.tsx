@@ -43,6 +43,8 @@ import {
   Eye,
   MoreHorizontal,
   Settings2,
+  Users,
+  Sparkles,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -972,7 +974,7 @@ export default function CreateVideoLesson() {
             {editId ? (isAr ? "العودة للدرس" : "Back to lesson") : isAr ? "العودة للوحة التحكم" : "Back to dashboard"}
           </button>
 
-          <h1 className="mb-4 text-right text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">
+          <h1 className="mb-3 text-right text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">
             {editId
               ? isAr
                 ? "تعديل درس فيديو تفاعلي"
@@ -981,6 +983,83 @@ export default function CreateVideoLesson() {
                 ? "درس فيديو تفاعلي"
                 : "Interactive video lesson"}
           </h1>
+
+          {/* دعوة واضحة لقلب الدرس — أسئلة تفاعلية */}
+          <div
+            className={cn(
+              "relative mb-5 overflow-hidden rounded-2xl border-2 bg-white p-4 shadow-md sm:p-5",
+              TRANSITION,
+            )}
+            style={{
+              borderColor: "rgba(30, 77, 53, 0.22)",
+              boxShadow: "0 4px 24px rgba(30, 77, 53, 0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+            }}
+          >
+            <div
+              className="pointer-events-none absolute -start-16 top-0 h-40 w-40 rounded-full opacity-[0.12]"
+              style={{ background: `radial-gradient(circle at center, ${BRAND}, transparent 70%)` }}
+            />
+            <div
+              className="pointer-events-none absolute -end-10 -bottom-10 h-32 w-32 rounded-full opacity-[0.08]"
+              style={{ background: `radial-gradient(circle at center, ${BRAND}, transparent 70%)` }}
+            />
+            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0 flex-1 space-y-2 text-right">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wide text-white shadow-sm",
+                      !isAr && "uppercase",
+                    )}
+                    style={{ background: `linear-gradient(90deg, ${BRAND}, #2a6b47)` }}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    {isAr ? "الخطوة الأساسية" : "Core step"}
+                  </span>
+                  <span className="rounded-full bg-[#eef5f0] px-2 py-0.5 text-[11px] font-bold text-[#1E4D35]">
+                    {questions.length}{" "}
+                    {isAr
+                      ? questions.length === 1
+                        ? "سؤال"
+                        : "أسئلة"
+                      : questions.length === 1
+                        ? "question"
+                        : "questions"}
+                  </span>
+                </div>
+                <p className="text-base font-black leading-snug text-[#0f2918] sm:text-lg">
+                  {isAr
+                    ? "أوقف الفيديو عند اللحظة المناسبة وأضِف سؤالاً — هذا ما يجعل الدرس تفاعلياً للطالب."
+                    : "Pause the video at the right moment and add a question — that's what makes it interactive."}
+                </p>
+                <p className="text-[13px] leading-relaxed text-[#64748B]">
+                  {isAr
+                    ? "شغّل الفيديو من الأسفل، ثم اضغط الزر هنا عندما يصل الطالب لنقطة الفهم التي تريد تقييمها."
+                    : "Play the video below, then tap here when students reach the moment you want to check understanding."}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                <button
+                  type="button"
+                  onClick={openAddQuestionModal}
+                  className={cn(
+                    "flex min-h-[48px] min-w-[min(100%,220px)] items-center justify-center gap-2 rounded-xl px-6 text-sm font-black text-white shadow-lg hover:brightness-[1.03] active:scale-[0.99]",
+                    TRANSITION,
+                  )}
+                  style={{
+                    background: `linear-gradient(135deg, ${BRAND} 0%, #174030 100%)`,
+                    boxShadow: "0 8px 28px rgba(30, 77, 53, 0.35)",
+                  }}
+                >
+                  <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
+                  {isAr ? "إضافة سؤال تفاعلي" : "Add interactive question"}
+                </button>
+                <p className="text-center text-[10px] font-semibold text-[#94a3ab] sm:text-end">
+                  {isAr ? "يمكنك تعديل التوقيت لاحقاً من قائمة الأسئلة." : "You can adjust timing later from the list."}
+                </p>
+              </div>
+            </div>
+          </div>
 
           <Collapsible open={extraSettingsOpen} onOpenChange={setExtraSettingsOpen} className="mb-4">
             <div className="flex justify-end">
@@ -1003,155 +1082,21 @@ export default function CreateVideoLesson() {
             </div>
             <CollapsibleContent className="mt-3">
               <div
-                className={cn("space-y-4 rounded-2xl border bg-white p-4 sm:p-5", TRANSITION)}
+                className={cn("rounded-2xl border bg-white p-4 sm:p-5", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
-                <div>
-                  <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">{isAr ? "الوصف" : "Description"}</Label>
-                  <Textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder={isAr ? "وصف مختصر للدرس (اختياري)" : "Short description (optional)"}
-                    rows={3}
-                    className={cn(
-                      "resize-y rounded-xl border-2 bg-background px-3 py-2.5 text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
-                      isAr && FIELD_RTL,
-                    )}
-                    dir={isAr ? "rtl" : undefined}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3 rounded-xl border border-[#eef2ef] bg-[#fafdfb] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-0.5 text-right">
-                    <p className="text-sm font-black text-[#0f2918]">{isAr ? "المشاركة مع المعلمين" : "Teacher sharing"}</p>
-                    <p className="text-[11px] leading-relaxed text-[#64748B]">
-                      {isAr
-                        ? "السماح للمعلمين الآخرين بمشاهدة هذا الدرس واستخدامه في حصصهم."
-                        : "Let other teachers discover and reuse this lesson."}
-                    </p>
-                  </div>
-                  <div className="flex justify-end">
-                    <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 px-3 py-3">
-                  <div className="mb-2 flex flex-wrap items-center gap-2 text-right">
-                    <SkipForward className="h-4 w-4 text-amber-600" />
-                    <span className="text-xs font-black text-amber-950">
-                      {isAr ? "مقاطع التخطي أثناء التشغيل" : "Skip segments during playback"}
-                    </span>
-                  </div>
-                  <p className="mb-3 text-[11px] leading-relaxed text-amber-900/80">
-                    {isAr
-                      ? "عرّف مقاطعاً يتخطّاها المشغّل تلقائياً أثناء الإنشاء أو المعاينة."
-                      : "Define ranges the player skips automatically while authoring or previewing."}
-                  </p>
-                  {hasVideoPreview && isPlayerReady && (
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      {pendingSegmentStart === null ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingSegmentStart(currentTime);
-                            setSegmentEndInput("");
-                          }}
-                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-amber-300/60 bg-white px-3 text-[11px] font-black text-amber-900 hover:bg-amber-50"
-                        >
-                          <SkipForward className="h-3.5 w-3.5" />
-                          {isAr ? "بدء مقطع تخطٍ" : "Start skip range"}
-                        </button>
-                      ) : (
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300/50 bg-white px-2 py-1.5">
-                          <span className="text-[11px] font-bold text-amber-950">
-                            {isAr ? "من" : "From"}{" "}
-                            <span dir="ltr" className="tabular-nums">
-                              {formatTimestamp(pendingSegmentStart)}
-                            </span>
-                          </span>
-                          <span className="text-[11px] text-amber-800/80">{isAr ? "إلى" : "To"}</span>
-                          <Input
-                            value={segmentEndInput}
-                            onChange={(e) => setSegmentEndInput(e.target.value)}
-                            placeholder="00:45"
-                            dir="ltr"
-                            className="h-9 w-[4.5rem] rounded-lg border text-center text-xs font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setSegmentEndInput(formatTimestamp(currentTime))}
-                            className="text-[11px] font-black text-amber-700 underline-offset-2 hover:underline"
-                          >
-                            {isAr ? "الحالي" : "Now"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const end = parseTimestamp(segmentEndInput);
-                              if (end === null || end <= pendingSegmentStart) {
-                                toast.error(
-                                  isAr ? "يجب أن يكون وقت النهاية بعد البداية" : "End must be after start",
-                                );
-                                return;
-                              }
-                              const overlaps = skipSegments.some(
-                                (s) => end > s.start && pendingSegmentStart < s.end,
-                              );
-                              if (overlaps) {
-                                toast.error(isAr ? "يتداخل مع مقطع آخر" : "Overlaps another segment");
-                                return;
-                              }
-                              setSkipSegments((prev) =>
-                                [...prev, { start: pendingSegmentStart, end }].sort((a, b) => a.start - b.start),
-                              );
-                              setPendingSegmentStart(null);
-                              setSegmentEndInput("");
-                            }}
-                            className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-amber-600 px-2.5 text-[11px] font-black text-white hover:bg-amber-700"
-                          >
-                            <Plus className="h-3 w-3" />
-                            {isAr ? "إضافة" : "Add"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingSegmentStart(null);
-                              setSegmentEndInput("");
-                            }}
-                            className="flex min-h-[44px] min-w-[44px] items-center justify-center text-amber-800/70 hover:text-amber-950"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">{isAr ? "الوصف" : "Description"}</Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={isAr ? "وصف مختصر للدرس (اختياري)" : "Short description (optional)"}
+                  rows={3}
+                  className={cn(
+                    "resize-y rounded-xl border-2 bg-background px-3 py-2.5 text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
+                    isAr && FIELD_RTL,
                   )}
-                  {skipSegments.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {skipSegments.map((seg, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 rounded-lg border border-amber-300/50 bg-white px-2.5 py-1.5 text-[11px] font-bold text-amber-950"
-                        >
-                          <span dir="ltr" className="font-mono tabular-nums">
-                            {formatTimestamp(seg.start)} → {formatTimestamp(seg.end)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSkipSegments((prev) => prev.filter((_, j) => j !== i))}
-                            className="rounded p-1 text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] font-semibold text-amber-800/70">
-                      {isAr ? "لا توجد مقاطع تخطٍ بعد." : "No skip segments yet."}
-                    </p>
-                  )}
-                </div>
+                  dir={isAr ? "rtl" : undefined}
+                />
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -1255,15 +1200,129 @@ export default function CreateVideoLesson() {
                 </div>
 
                 {hasVideoPreview && isPlayerReady && (
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef2ef] bg-[#fafdfb] px-3 py-2"
-                    style={{ borderColor: CARD_BORDER }}
-                  >
-                    <div className="flex items-center gap-2 text-xs font-black tabular-nums text-[#64748B]" dir="ltr">
-                      <Clock className="h-3.5 w-3.5 shrink-0 text-[#1E4D35]" />
-                      <span>{formatTimestamp(currentTime)}</span>
-                      <span className="text-[#94a3ab]">/</span>
-                      <span>{formatTimestamp(videoDuration || currentTime)}</span>
+                  <div className="border-t border-[#eef2ef] bg-[#fafdfb]" style={{ borderColor: CARD_BORDER }}>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs font-black tabular-nums text-[#64748B]" dir="ltr">
+                        <Clock className="h-3.5 w-3.5 shrink-0 text-[#1E4D35]" />
+                        <span>{formatTimestamp(currentTime)}</span>
+                        <span className="text-[#94a3ab]">/</span>
+                        <span>{formatTimestamp(videoDuration || currentTime)}</span>
+                      </div>
+                    </div>
+
+                    {/* قطع / تخطّي مقاطع — ظاهر دائماً تحت المشغّل */}
+                    <div className="border-t border-amber-200/40 bg-gradient-to-b from-amber-50/80 to-[#fafdfb] px-3 py-2.5">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-right">
+                        <div className="flex items-center gap-1.5 rounded-lg bg-white/80 px-2 py-1 ring-1 ring-amber-200/60">
+                          <SkipForward className="h-3.5 w-3.5 text-amber-600" />
+                          <span className="text-[11px] font-black text-amber-950">
+                            {isAr ? "تخطّي جزء من الفيديو" : "Skip part of the video"}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-semibold leading-snug text-amber-900/75">
+                          {isAr
+                            ? "حدّد بداية ونهاية المقطع لتعدّيه أثناء التشغيل أو المعاينة."
+                            : "Set start and end to jump over it during playback or preview."}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {pendingSegmentStart === null ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingSegmentStart(currentTime);
+                              setSegmentEndInput("");
+                            }}
+                            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-amber-400/55 bg-white px-3 text-[11px] font-black text-amber-950 shadow-sm hover:bg-amber-50"
+                          >
+                            <SkipForward className="h-3.5 w-3.5" />
+                            {isAr ? "قطع مقطع من هنا" : "Cut segment from here"}
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/55 bg-white px-2 py-1.5 shadow-sm">
+                            <span className="text-[11px] font-bold text-amber-950">
+                              {isAr ? "من" : "From"}{" "}
+                              <span dir="ltr" className="tabular-nums">
+                                {formatTimestamp(pendingSegmentStart)}
+                              </span>
+                            </span>
+                            <span className="text-[11px] text-amber-800/80">{isAr ? "إلى" : "To"}</span>
+                            <Input
+                              value={segmentEndInput}
+                              onChange={(e) => setSegmentEndInput(e.target.value)}
+                              placeholder="00:45"
+                              dir="ltr"
+                              className="h-9 w-[4.5rem] rounded-lg border text-center text-xs font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSegmentEndInput(formatTimestamp(currentTime))}
+                              className="text-[11px] font-black text-amber-700 underline-offset-2 hover:underline"
+                            >
+                              {isAr ? "الحالي" : "Now"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const end = parseTimestamp(segmentEndInput);
+                                if (end === null || end <= pendingSegmentStart) {
+                                  toast.error(
+                                    isAr ? "يجب أن يكون وقت النهاية بعد البداية" : "End must be after start",
+                                  );
+                                  return;
+                                }
+                                const overlaps = skipSegments.some(
+                                  (s) => end > s.start && pendingSegmentStart < s.end,
+                                );
+                                if (overlaps) {
+                                  toast.error(isAr ? "يتداخل مع مقطع آخر" : "Overlaps another segment");
+                                  return;
+                                }
+                                setSkipSegments((prev) =>
+                                  [...prev, { start: pendingSegmentStart, end }].sort((a, b) => a.start - b.start),
+                                );
+                                setPendingSegmentStart(null);
+                                setSegmentEndInput("");
+                              }}
+                              className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-amber-600 px-2.5 text-[11px] font-black text-white hover:bg-amber-700"
+                            >
+                              <Plus className="h-3 w-3" />
+                              {isAr ? "تأكيد" : "Confirm"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPendingSegmentStart(null);
+                                setSegmentEndInput("");
+                              }}
+                              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-amber-800/70 hover:bg-amber-100 hover:text-amber-950"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {skipSegments.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2 border-t border-amber-200/40 pt-2">
+                          {skipSegments.map((seg, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 rounded-lg border border-amber-300/45 bg-white px-2.5 py-1 text-[11px] font-bold text-amber-950 shadow-sm"
+                            >
+                              <span dir="ltr" className="font-mono tabular-nums">
+                                {formatTimestamp(seg.start)} → {formatTimestamp(seg.end)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setSkipSegments((prev) => prev.filter((_, j) => j !== i))}
+                                className="rounded p-1 text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1354,20 +1413,16 @@ export default function CreateVideoLesson() {
 
               {/* قائمة الأسئلة */}
               <section className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eef2ef] pb-3">
                   <h3 className="text-right text-sm font-black text-[#0f2918]">
                     {isAr ? `الأسئلة التفاعلية (${questions.length})` : `Interactive questions (${questions.length})`}
                   </h3>
                   <button
                     type="button"
                     onClick={openAddQuestionModal}
-                    className={cn(
-                      "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#dce8e0] bg-white px-3 py-2 text-xs font-black text-[#1E4D35] shadow-sm hover:bg-[#f3f7f4]",
-                      TRANSITION,
-                    )}
+                    className="text-[11px] font-black text-[#1E4D35] underline-offset-4 hover:underline"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    {isAr ? "+ إضافة سؤال" : "+ Add question"}
+                    {isAr ? "+ إضافة سريعة" : "+ Quick add"}
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -1651,6 +1706,39 @@ export default function CreateVideoLesson() {
                     </p>
                   </div>
                 )}
+              </section>
+
+              <section
+                className={cn(
+                  "rounded-2xl border-2 bg-gradient-to-br from-[#f8faf8] to-white p-3 sm:p-4",
+                  TRANSITION,
+                )}
+                style={{ borderColor: "rgba(30, 77, 53, 0.14)", boxShadow: "0 2px 14px rgba(30, 77, 53, 0.06)" }}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-1 items-start gap-2.5 text-right">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1E4D35]/10 text-[#1E4D35]"
+                      aria-hidden
+                    >
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm font-black text-[#0f2918]">{isAr ? "مشاركة مع المعلمين" : "Share with teachers"}</p>
+                      <p className="text-[11px] leading-relaxed text-[#64748B]">
+                        {isAr
+                          ? "فعّلها إذا أردت أن يطلع زملاؤك على الدرس ويعيدوا استخدامه."
+                          : "Enable so colleagues can discover and reuse this lesson."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-[#e8ece9] bg-white px-3 py-2 sm:justify-end sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+                    <span className="text-[11px] font-bold text-[#64748B] sm:hidden">
+                      {isShared ? (isAr ? "مفعّل" : "On") : isAr ? "معطّل" : "Off"}
+                    </span>
+                    <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
+                  </div>
+                </div>
               </section>
 
               <section
