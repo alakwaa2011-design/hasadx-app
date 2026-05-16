@@ -313,13 +313,13 @@ export declare const videoLessonsTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertVideoLessonSchema: z.ZodObject<{
-    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     accessMode: z.ZodOptional<z.ZodString>;
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    teacherId: z.ZodInt;
     isShared: z.ZodOptional<z.ZodBoolean>;
     hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
     hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;

@@ -366,10 +366,10 @@ export declare const presentationsTable: import("drizzle-orm/pg-core").PgTableWi
 export declare const insertPresentationSchema: z.ZodObject<{
     mode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     pattern: z.ZodOptional<z.ZodString>;
-    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    teacherId: z.ZodInt;
     isShared: z.ZodOptional<z.ZodBoolean>;
     gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodOptional<z.ZodString>;

@@ -1,4 +1,5 @@
 import { db, platformSettingsTable } from "@workspace/db";
+import { asc } from "drizzle-orm";
 
 let cached: { value: boolean; expiresAt: number } | null = null;
 const TTL_MS = 15_000;
@@ -15,6 +16,7 @@ export async function isTeacherXpRewardsEnabled(): Promise<boolean> {
     const [row] = await db
       .select({ on: platformSettingsTable.teacherXpRewardsEnabled })
       .from(platformSettingsTable)
+      .orderBy(asc(platformSettingsTable.id))
       .limit(1);
     const value = row?.on ?? true;
     cached = { value, expiresAt: now + TTL_MS };

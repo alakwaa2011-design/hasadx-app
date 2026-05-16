@@ -24,7 +24,7 @@ export declare const dismissedSharedTable: import("drizzle-orm/pg-core").PgTable
             tableName: "dismissed_shared";
             dataType: "string";
             columnType: "PgText";
-            data: "assignment" | "question" | "game";
+            data: "question" | "assignment" | "game";
             driverParam: string;
             notNull: true;
             hasDefault: false;

@@ -1,11 +1,23 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
-import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
+import { eq, sql, desc, asc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
 import { invalidateTeacherXpRewardsCache } from "../lib/xp/teacher-xp-rewards-flag";
 
 const adminObjectStorage = new ObjectStorageService();
+
+/** JSON bodies sometimes send "false"/"0" as strings — plain Boolean("false") is true. */
+function coerceBodyBool(v: unknown): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "false" || s === "0" || s === "no" || s === "off" || s === "") return false;
+    if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  }
+  if (typeof v === "number") return v !== 0;
+  return Boolean(v);
+}
 
 const TeacherIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
@@ -521,7 +533,11 @@ router.delete("/admin/teachers/:id", async (req, res) => {
 /* ── Platform Settings ──────────────────────────────────────── */
 
 async function getPlatformSettings() {
-  const [row] = await db.select().from(platformSettingsTable).limit(1);
+  const [row] = await db
+    .select()
+    .from(platformSettingsTable)
+    .orderBy(asc(platformSettingsTable.id))
+    .limit(1);
   return {
     publicVisibility: row?.publicVisibility ?? "selective",
     guestLimit: row?.guestLimit ?? 1,
@@ -595,17 +611,17 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (fontFamily !== undefined) update.fontFamily = fontFamily || null;
     if (platformName !== undefined) update.platformName = platformName || null;
     if (logoUrl !== undefined) update.logoUrl = logoUrl || null;
-    if (showAdventureGamesHome !== undefined) update.showAdventureGamesHome = Boolean(showAdventureGamesHome);
-    if (showSpaceRaceGamesHome !== undefined) update.showSpaceRaceGamesHome = Boolean(showSpaceRaceGamesHome);
-    if (showFlagsGame !== undefined) update.showFlagsGame = Boolean(showFlagsGame);
-    if (showColorGame !== undefined) update.showColorGame = Boolean(showColorGame);
-    if (showMemoryGame !== undefined) update.showMemoryGame = Boolean(showMemoryGame);
-    if (showMultiplyGame !== undefined) update.showMultiplyGame = Boolean(showMultiplyGame);
-    if (showScrambleGame !== undefined) update.showScrambleGame = Boolean(showScrambleGame);
-    if (showTugGame !== undefined) update.showTugGame = Boolean(showTugGame);
-    if (showCapitalsGame !== undefined) update.showCapitalsGame = Boolean(showCapitalsGame);
-    if (proAiForAll !== undefined) update.proAiForAll = Boolean(proAiForAll);
-    if (presentationsProForAll !== undefined) update.presentationsProForAll = Boolean(presentationsProForAll);
+    if (showAdventureGamesHome !== undefined) update.showAdventureGamesHome = coerceBodyBool(showAdventureGamesHome);
+    if (showSpaceRaceGamesHome !== undefined) update.showSpaceRaceGamesHome = coerceBodyBool(showSpaceRaceGamesHome);
+    if (showFlagsGame !== undefined) update.showFlagsGame = coerceBodyBool(showFlagsGame);
+    if (showColorGame !== undefined) update.showColorGame = coerceBodyBool(showColorGame);
+    if (showMemoryGame !== undefined) update.showMemoryGame = coerceBodyBool(showMemoryGame);
+    if (showMultiplyGame !== undefined) update.showMultiplyGame = coerceBodyBool(showMultiplyGame);
+    if (showScrambleGame !== undefined) update.showScrambleGame = coerceBodyBool(showScrambleGame);
+    if (showTugGame !== undefined) update.showTugGame = coerceBodyBool(showTugGame);
+    if (showCapitalsGame !== undefined) update.showCapitalsGame = coerceBodyBool(showCapitalsGame);
+    if (proAiForAll !== undefined) update.proAiForAll = coerceBodyBool(proAiForAll);
+    if (presentationsProForAll !== undefined) update.presentationsProForAll = coerceBodyBool(presentationsProForAll);
     if (presentationLimits !== undefined) {
       const parsed = PresentationLimitsSchema.safeParse(presentationLimits);
       if (!parsed.success) {
@@ -613,10 +629,10 @@ router.patch("/admin/platform-settings", async (req, res) => {
       }
       update.presentationLimits = parsed.data;
     }
-    if (showQuranSection !== undefined) update.showQuranSection = Boolean(showQuranSection);
-    if (showGeneralCertificates !== undefined) update.showGeneralCertificates = Boolean(showGeneralCertificates);
-    if (showMaraqui !== undefined) update.showMaraqui = Boolean(showMaraqui);
-    if (classroomEnabled !== undefined) update.classroomEnabled = Boolean(classroomEnabled);
+    if (showQuranSection !== undefined) update.showQuranSection = coerceBodyBool(showQuranSection);
+    if (showGeneralCertificates !== undefined) update.showGeneralCertificates = coerceBodyBool(showGeneralCertificates);
+    if (showMaraqui !== undefined) update.showMaraqui = coerceBodyBool(showMaraqui);
+    if (classroomEnabled !== undefined) update.classroomEnabled = coerceBodyBool(classroomEnabled);
     if (classroomAllowedEmails !== undefined) {
       if (!Array.isArray(classroomAllowedEmails)) {
         return res.status(400).json({ message: "classroomAllowedEmails يجب أن يكون قائمة" });
@@ -638,17 +654,33 @@ router.patch("/admin/platform-settings", async (req, res) => {
       update.arenaImportSources = parsed.data;
     }
     if (teacherXpRewardsEnabled !== undefined) {
-      update.teacherXpRewardsEnabled = Boolean(teacherXpRewardsEnabled);
+      update.teacherXpRewardsEnabled = coerceBodyBool(teacherXpRewardsEnabled);
     }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });
     }
 
     const current = await getPlatformSettings();
-    await db
-      .insert(platformSettingsTable)
-      .values({ id: 1, publicVisibility: current.publicVisibility, guestLimit: current.guestLimit, ...update })
-      .onConflictDoUpdate({ target: platformSettingsTable.id, set: update });
+
+    const [settingsRow] = await db
+      .select({ id: platformSettingsTable.id })
+      .from(platformSettingsTable)
+      .orderBy(asc(platformSettingsTable.id))
+      .limit(1);
+
+    if (settingsRow) {
+      await db
+        .update(platformSettingsTable)
+        .set(update as Partial<typeof platformSettingsTable.$inferInsert>)
+        .where(eq(platformSettingsTable.id, settingsRow.id));
+    } else {
+      await db.insert(platformSettingsTable).values({
+        id: 1,
+        publicVisibility: current.publicVisibility,
+        guestLimit: current.guestLimit,
+        ...update,
+      } as typeof platformSettingsTable.$inferInsert);
+    }
 
     const updated = await getPlatformSettings();
     if ("teacherXpRewardsEnabled" in update) invalidateTeacherXpRewardsCache();

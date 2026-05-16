@@ -2546,10 +2546,23 @@ export default function AdminPage() {
                       credentials: "include",
                       body: JSON.stringify({ teacherXpRewardsEnabled: next }),
                     });
-                    if (res.ok) toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
-                    else setTeacherXpRewardsEnabled(!next);
+                    const data = res.ok ? await res.json().catch(() => null) : null;
+                    if (res.ok && data) {
+                      if (typeof data.teacherXpRewardsEnabled === "boolean") {
+                        setTeacherXpRewardsEnabled(data.teacherXpRewardsEnabled);
+                      }
+                      toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+                    } else {
+                      setTeacherXpRewardsEnabled(!next);
+                      const err = !res.ok ? await res.json().catch(() => ({})) : {};
+                      toast.error(
+                        (err as { message?: string }).message ||
+                          (lang === "ar" ? "تعذّر حفظ الإعداد — تحقق من الخادم أو قاعدة البيانات" : "Could not save setting — check server / database"),
+                      );
+                    }
                   } catch {
                     setTeacherXpRewardsEnabled(!next);
+                    toast.error(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Network error");
                   } finally {
                     setSavingTeacherXpRewards(false);
                   }
