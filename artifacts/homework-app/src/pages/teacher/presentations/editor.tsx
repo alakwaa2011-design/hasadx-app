@@ -2998,6 +2998,12 @@ function EditableText({
   onCommit: (text: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  /* Track time of last pointerdown so we can detect a double-click
+     manually. We can't rely on e.detail because the EditableShell's
+     startGesture calls e.preventDefault() on the first pointerdown,
+     which stops the browser from counting subsequent clicks as part
+     of the same sequence — so e.detail stays at 1 forever. */
+  const lastPointerDownTime = useRef(0);
   /* contentEditable is uncontrolled to avoid caret-jump; we sync
      the DOM only when the underlying text changes externally
      (e.g. another element selected, slide switched). */
@@ -3068,19 +3074,24 @@ function EditableText({
           e.stopPropagation();
           return;
         }
-        /* Detect double-click on pointerdown (e.detail counts clicks
-           in the same sequence). We can't rely on onDoubleClick because
-           the shell's startGesture calls e.preventDefault() on
-           pointerdown, which suppresses the synthetic click/dblclick
-           events in Chromium. Stop propagation so the shell never sees
-           this pointerdown, and enter edit mode immediately — the
-           existing useEffect on `editing` will focus the contentEditable
-           and place the caret at the end. */
-        if (e.detail >= 2 && !readOnly) {
+        if (readOnly) return;
+        /* Manual double-click detection: if a second pointerdown
+           arrives within 400ms of the first, enter edit mode. We
+           can't use e.detail or onDoubleClick because the shell's
+           startGesture calls e.preventDefault() on pointerdown,
+           which breaks the browser's click-sequence tracking and
+           suppresses the synthetic dblclick event. Stop propagation
+           so the shell never starts a drag for this pointerdown —
+           the existing useEffect on `editing` will focus the
+           contentEditable and place the caret at the end. */
+        const now = Date.now();
+        if (now - lastPointerDownTime.current < 400) {
           e.stopPropagation();
+          lastPointerDownTime.current = 0;
           onEnterEdit();
           return;
         }
+        lastPointerDownTime.current = now;
         /* Single click: let it bubble so the shell selects + can start
            a drag. */
       }}
