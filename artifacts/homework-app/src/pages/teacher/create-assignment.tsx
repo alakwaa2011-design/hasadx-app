@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useLocation } from "wouter";
 import { useCreateAssignment } from "@workspace/api-client-react";
 import type { CreateQuestionBody } from "@workspace/api-client-react";
@@ -27,6 +27,13 @@ import { toast } from "@/components/ui/sonner";
 import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/suggestions";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+/** Hasad brand — dark forest green (matches dashboard / layout), not teal/cyan */
+const HASAD_GREEN = "#1E4D35";
+const HASAD_GREEN_MID = "#225739";
+const HASAD_GREEN_DEEP = "#17382a";
+const HASAD_HEADER_GRADIENT = `linear-gradient(135deg, ${HASAD_GREEN} 0%, ${HASAD_GREEN_MID} 55%, #1a4530 100%)`;
+const HASAD_CTA_GRADIENT = `linear-gradient(90deg, ${HASAD_GREEN} 0%, ${HASAD_GREEN_DEEP} 100%)`;
 
 type SubmissionMode = "electronic" | "paper" | "both";
 type AccessMode = "public" | "private";
@@ -870,10 +877,10 @@ export default function CreateAssignment() {
       }
     };
     return (
-      <div className="bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-xl p-3 space-y-3">
+      <div className="bg-primary/8 dark:bg-primary/15 border border-primary/25 rounded-xl p-3 space-y-3">
         <div className="flex items-center gap-2 mb-1">
-          <Volume2 className="w-4 h-4 text-teal-600" />
-          <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
+          <Volume2 className="w-4 h-4 text-primary" />
+          <span className="text-xs font-bold text-primary">
             {l === "ar" ? "نص الإملاء الصوتي" : "Dictation Text"}
           </span>
         </div>
@@ -883,14 +890,15 @@ export default function CreateAssignment() {
           placeholder={l === "ar" ? "اكتب الجملة أو الفقرة التي سيسمعها الطالب..." : "Write the sentence or paragraph the student will hear..."}
           rows={3}
           dir="auto"
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-400/40 focus:border-teal-400 transition-colors"
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/35 focus:border-primary transition-colors"
         />
         <div className="flex flex-wrap gap-3 items-center">
           <button
             type="button"
             onClick={previewTts}
             disabled={!text.trim()}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${speaking ? "bg-red-100 text-red-700 border border-red-300" : "bg-teal-600 text-white hover:bg-teal-700"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-40 ${speaking ? "bg-red-100 text-red-700 border border-red-300" : "text-white hover:opacity-92"}`}
+            style={!speaking ? { backgroundColor: HASAD_GREEN } : undefined}
           >
             {speaking ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {speaking ? (l === "ar" ? "إيقاف" : "Stop") : (l === "ar" ? "استمع للمعاينة" : "Preview Audio")}
@@ -909,14 +917,15 @@ export default function CreateAssignment() {
             <button
               type="button"
               onClick={() => onAllowErrorsChange(!allowErrors)}
-              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${allowErrors ? "bg-teal-500" : "bg-gray-300 dark:bg-gray-600"}`}
+              className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${allowErrors ? "" : "bg-gray-300 dark:bg-gray-600"}`}
+              style={allowErrors ? { backgroundColor: HASAD_GREEN } : undefined}
             >
               <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${allowErrors ? (l === "ar" ? "right-0.5" : "left-[18px]") : (l === "ar" ? "left-0.5" : "left-0.5")}`} />
             </button>
             <span className="text-xs text-muted-foreground">{l === "ar" ? "قبول الأخطاء الإملائية البسيطة" : "Allow minor spelling errors"}</span>
           </div>
         </div>
-        <p className="text-[10px] text-teal-600/70 dark:text-teal-400/60">
+        <p className="text-[10px] text-primary/75">
           🎙 {l === "ar" ? "سيسمع الطالب النص ثم يكتب ما سمعه. يُصحَّح تلقائياً." : "Student hears the text then types what they heard. Auto-graded."}
         </p>
       </div>
@@ -926,15 +935,30 @@ export default function CreateAssignment() {
   // ── Toggle helper ──
   const Toggle = ({ on, onChange, color = "green" }: { on: boolean; onChange: () => void; color?: string }) => (
     <button type="button" onClick={onChange}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${on ? `bg-${color}-500` : "bg-gray-300 dark:bg-gray-600"}`}
-      style={on ? { backgroundColor: color === "green" ? "#22c55e" : color === "orange" ? "#f97316" : color === "cyan" ? "#06b6d4" : "#22c55e" } : {}}>
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${on ? "" : "bg-gray-300 dark:bg-gray-600"}`}
+      style={
+        on
+          ? {
+              backgroundColor:
+                color === "orange" ? "#f97316" : HASAD_GREEN,
+            }
+          : undefined
+      }>
       <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${on ? (lang === "ar" ? "right-0.5" : "left-[22px]") : (lang === "ar" ? "left-0.5" : "left-0.5")}`} />
     </button>
   );
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50/70 via-background to-amber-50/40 dark:from-emerald-950/30 dark:via-background dark:to-amber-950/20">
+      <div
+        className="min-h-screen bg-gradient-to-br from-[#eef5f0]/95 via-background to-amber-50/35 dark:from-[#0c1814]/50 dark:via-background dark:to-amber-950/20"
+        style={
+          {
+            ["--primary" as string]: "154 43% 21%",
+            ["--ring" as string]: "154 35% 32%",
+          } as CSSProperties
+        }
+      >
       <div className="container mx-auto px-4 py-6 max-w-3xl">
 
         {/* ══ Hero Header ══ */}
@@ -942,7 +966,8 @@ export default function CreateAssignment() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-emerald-700 text-white p-5 sm:p-7 shadow-lg mb-6"
+          className="relative overflow-hidden rounded-2xl text-white p-5 sm:p-7 shadow-lg mb-6 shadow-black/20"
+          style={{ background: HASAD_HEADER_GRADIENT }}
         >
           <div className="absolute -top-16 -end-16 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
           <div className="absolute -bottom-12 -start-12 w-48 h-48 rounded-full bg-amber-300/15 blur-2xl pointer-events-none" />
@@ -990,7 +1015,7 @@ export default function CreateAssignment() {
                           wizardStep === step.num
                             ? "bg-white text-primary border-white shadow-lg shadow-black/10 scale-110"
                             : wizardStep > step.num
-                            ? "bg-amber-300 text-emerald-900 border-amber-300 cursor-pointer hover:scale-105"
+                            ? "bg-amber-300 text-[#0d281c] border-amber-300 cursor-pointer hover:scale-105"
                             : "bg-white/10 text-white/70 border-white/30 cursor-not-allowed backdrop-blur-sm"
                         }`}
                       >
@@ -1028,7 +1053,7 @@ export default function CreateAssignment() {
                         <button
                           type="button"
                           onClick={() => setIsContestMode(false)}
-                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${!isContestMode ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-border hover:border-cyan-300"}`}
+                          className={`flex items-center gap-2 p-3 rounded-xl border-2 text-start transition-all ${!isContestMode ? "border-primary bg-primary/10 dark:bg-primary/15" : "border-border hover:border-primary/45"}`}
                         >
                           <span className="text-xl">📘</span>
                           <div className="min-w-0">
@@ -1390,7 +1415,7 @@ export default function CreateAssignment() {
 
                                   {/* Read aloud */}
                                   <button type="button" onClick={() => handleQuestionChange(qIndex, 'readAloud', !q.readAloud)}
-                                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold border transition-colors ${q.readAloud ? "bg-teal-50 border-teal-400 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300" : "border-dashed border-border text-muted-foreground hover:text-teal-600 hover:border-teal-400 hover:bg-teal-50/50 dark:hover:bg-teal-900/20"}`}>
+                                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold border transition-colors ${q.readAloud ? "bg-primary/12 border-primary/45 text-primary" : "border-dashed border-border text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/8"}`}>
                                     🔊 {t.createAssignment.readAloud}
                                   </button>
 
@@ -1753,13 +1778,13 @@ export default function CreateAssignment() {
                     {accessMode !== "private" && (
                       <div className="flex items-center justify-between py-3">
                         <div className="flex items-center gap-2.5">
-                          <Globe className={`w-4 h-4 ${isShared ? "text-cyan-500" : "text-muted-foreground"}`} />
+                          <Globe className={`w-4 h-4 ${isShared ? "text-primary" : "text-muted-foreground"}`} />
                           <div>
                             <span className="text-sm font-bold block">{lang === "ar" ? (isShared ? "منشور في المكتبة" : "خاص بك") : (isShared ? "Published in Library" : "Private")}</span>
                             <span className="text-[11px] text-muted-foreground">{isShared ? (lang === "ar" ? "ستظهر تلقائياً للمعلمين الآخرين. اضغط لجعلها خاصة 🔒" : "Will be auto-published to other teachers. Tap to make private 🔒") : (lang === "ar" ? "خاص بك فقط — لن يراها أحد" : "Only visible to you")}</span>
                           </div>
                         </div>
-                        <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="cyan" />
+                        <Toggle on={isShared} onChange={() => setIsShared(!isShared)} color="green" />
                       </div>
                     )}
 
@@ -1918,11 +1943,11 @@ export default function CreateAssignment() {
                           {lang === "ar" ? "بدون" : "None"}
                         </button>
                         {availableCategories.map((cat: any) => {
-                          const colorMap: Record<string, string> = { teal: "#14b8a6", blue: "#3b82f6", violet: "#8b5cf6", green: "#22c55e", orange: "#f97316", red: "#ef4444", yellow: "#eab308", pink: "#ec4899", indigo: "#6366f1", rose: "#f43f5e" };
+                          const colorMap: Record<string, string> = { teal: HASAD_GREEN, blue: "#3b82f6", violet: "#8b5cf6", green: HASAD_GREEN, orange: "#f97316", red: "#ef4444", yellow: "#eab308", pink: "#ec4899", indigo: "#6366f1", rose: "#f43f5e" };
                           return (
                             <button key={cat.id} type="button" onClick={() => setCategoryId(categoryId === cat.id ? null : cat.id)}
                               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors ${categoryId === cat.id ? "bg-foreground text-background border-foreground" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}>
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorMap[cat.color] || "#14b8a6" }} />{cat.name}
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorMap[cat.color] || HASAD_GREEN }} />{cat.name}
                             </button>
                           );
                         })}
@@ -1975,7 +2000,7 @@ export default function CreateAssignment() {
                       click without opening Advanced Settings. Hidden when
                       the assignment is access-private (cannot be shared). */}
                   {accessMode !== "private" && (
-                    <Card className={`p-4 border-2 ${isShared ? "border-cyan-400 bg-cyan-50/50 dark:bg-cyan-900/10" : "border-border bg-muted/30"}`}>
+                    <Card className={`p-4 border-2 ${isShared ? "border-primary/50 bg-primary/6 dark:bg-primary/12" : "border-border bg-muted/30"}`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-start gap-2.5 min-w-0">
                           <span className="text-2xl shrink-0">{isShared ? "🌍" : "🔒"}</span>
@@ -2003,7 +2028,7 @@ export default function CreateAssignment() {
                               ? (lang === "ar" ? "🌍 سيُشارك مع المعلمين" : "🌍 Will be shared")
                               : (lang === "ar" ? "🔒 تم جعله خاصًا" : "🔒 Made private"));
                           }}
-                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-cyan-400 text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"}`}
+                          className={`shrink-0 text-xs font-bold px-3 py-2 rounded-xl border-2 transition-all ${isShared ? "border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20" : "border-primary/55 text-primary hover:bg-primary/10 dark:hover:bg-primary/15"}`}
                         >
                           {isShared
                             ? (lang === "ar" ? "اجعله خاصًا 🔒" : "Make Private 🔒")
@@ -2015,7 +2040,8 @@ export default function CreateAssignment() {
 
                   {/* Publish button */}
                   <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-primary via-primary to-emerald-700 hover:opacity-95 text-primary-foreground font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2">
+                    className="w-full py-4 rounded-2xl hover:opacity-95 text-white font-black text-base shadow-xl shadow-primary/25 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+                    style={{ background: HASAD_CTA_GRADIENT }}>
                     {createMutation.isPending ? <><Loader2 className="w-5 h-5 animate-spin" />{t.createAssignment.savingAssignment}</> : <><Save className="w-5 h-5" />{lang === "ar" ? "نشر الواجب الآن 🚀" : "Publish Assignment 🚀"}</>}
                   </button>
                   {createMutation.isError && (
@@ -2036,7 +2062,7 @@ export default function CreateAssignment() {
 
                 <div className="flex items-center gap-1">
                   {STEPS.map(step => (
-                    <div key={step.num} className={`h-1.5 rounded-full transition-all ${wizardStep === step.num ? "w-6 bg-primary" : wizardStep > step.num ? "w-3 bg-emerald-400" : "w-3 bg-muted-foreground/30"}`} />
+                    <div key={step.num} className={`h-1.5 rounded-full transition-all ${wizardStep === step.num ? "w-6 bg-primary" : wizardStep > step.num ? "w-3 bg-primary/55" : "w-3 bg-muted-foreground/30"}`} />
                   ))}
                 </div>
 
@@ -2055,7 +2081,8 @@ export default function CreateAssignment() {
                   </div>
                 ) : (
                   <button type="button" onClick={handlePublish} disabled={createMutation.isPending}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-primary/25 disabled:opacity-60">
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-primary/25 disabled:opacity-60"
+                    style={{ background: HASAD_CTA_GRADIENT }}>
                     {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     {lang === "ar" ? "نشر" : "Publish"}
                   </button>
