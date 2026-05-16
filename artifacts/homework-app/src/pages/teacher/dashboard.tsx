@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   useListAssignments,
@@ -2426,6 +2427,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
             : "Build interactive slide decks for your classroom",
           accent: BRAND.gold,
           href: "/teacher/presentations",
+          /** Single subtle spotlight card — calm SaaS accent, not a banner. */
+          featured: true,
         },
       ],
     },
@@ -2625,23 +2628,19 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
                 "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
             }}
           >
-            {group.tools.map((tool) => {
+            {group.tools.map((tool: {
+              icon: ReactNode;
+              title: string;
+              desc?: string;
+              accent: string;
+              href: string;
+              featured?: boolean;
+            }) => {
               const delay = globalIdx++ * 0.025;
-              const isAi = group.groupId === "ai-tools";
-              // AI cards wear the brand gold as a subtle gradient border
-              // + faint warm tint, with a tiny sparkle in the corner.
-              // Other cards stay quiet — just a hairline border.
-              // Stronger, identity-clear borders: bold gold for AI,
-              // bold dark green for everything else. Each card's edge
-              // immediately reads as "AI" or "platform".
-              const restBorder = isAi
-                ? "rgba(217,165,33,0.75)"
-                : "rgba(34,87,57,0.55)";
-              const hoverBorder = isAi
-                ? BRAND.gold
-                : tool.accent === BRAND.green
-                  ? BRAND.green
-                  : tool.accent;
+              const isFeatured = tool.featured === true;
+              const restBorder = "rgba(34,87,57,0.14)";
+              const featuredBadgeSide = isAr ? "left-2.5" : "right-2.5";
+
               return (
                 <motion.button
                   key={tool.href}
@@ -2650,40 +2649,41 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay, duration: 0.22 }}
                   onClick={() => tool.href && setLocation(tool.href)}
-                  className="group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start transition-colors duration-200 hover:bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 min-h-[96px] overflow-hidden"
-                  style={{
-                    borderColor: restBorder,
-                    background: isAi
-                      ? "linear-gradient(135deg, rgba(217,165,33,0.05) 0%, rgba(252,250,248,0) 55%)"
-                      : undefined,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = hoverBorder;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = restBorder;
-                  }}
+                  className={cn(
+                    "group relative flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-xl border bg-card/60 text-start min-h-[96px] overflow-hidden",
+                    "transition-[transform,box-shadow,border-color,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                    "hover:-translate-y-1 hover:bg-card",
+                    "hover:shadow-[0_12px_28px_-8px_rgba(34,87,57,0.12),0_0_0_1px_rgba(217,165,33,0.08)]",
+                    "hover:border-[rgba(34,87,57,0.28)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    isFeatured &&
+                      "border-[rgba(217,165,33,0.35)] bg-gradient-to-br from-[rgba(217,165,33,0.06)] via-card/40 to-card/60 shadow-[0_0_0_1px_rgba(217,165,33,0.12)_inset]",
+                    isFeatured &&
+                      "hover:border-[rgba(217,165,33,0.45)] hover:shadow-[0_14px_32px_-10px_rgba(34,87,57,0.14),0_0_0_1px_rgba(217,165,33,0.18)]",
+                  )}
+                  style={
+                    {
+                      borderColor: isFeatured ? "rgba(217,165,33,0.35)" : restBorder,
+                    } as CSSProperties
+                  }
                 >
-                  {/* AI sparkle — only on AI tool cards. Sits in the
-                      top corner opposite the icon as a subtle "made
-                      with AI" mark. Brightens on hover. */}
-                  {isAi && (
+                  {isFeatured && (
                     <span
-                      className={`absolute top-2 ${isAr ? "left-2" : "right-2"} text-[#D9A521]/40 group-hover:text-[#D9A521] transition-all duration-300 group-hover:rotate-12`}
-                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute top-2.5 z-[1] inline-flex items-center rounded-md border border-[rgba(217,165,33,0.28)] bg-[rgba(217,165,33,0.12)] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-[#225739]",
+                        featuredBadgeSide,
+                      )}
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
+                      {isAr ? "موصى به" : "Featured"}
                     </span>
                   )}
 
-                  {/* Icon — slightly stronger gold tint on AI cards so
-                      it reads as "AI" without being heavy. */}
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200"
-                    style={{
-                      color: tool.accent,
-                      background: `${tool.accent}${isAi ? "14" : "0A"}`,
-                    }}
+                    className={cn(
+                      "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06] group-hover:-rotate-[2deg]",
+                      "bg-[rgba(34,87,57,0.07)]",
+                      isFeatured && "bg-[rgba(217,165,33,0.11)]",
+                    )}
+                    style={{ color: tool.accent }}
                   >
                     {tool.icon}
                   </div>
@@ -2699,10 +2699,8 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
                     )}
                   </div>
 
-                  <span
-                    className="shrink-0 self-center text-muted-foreground/40 group-hover:text-foreground transition-colors duration-200"
-                  >
-                    <ChevronEnd className="w-4 h-4" />
+                  <span className="shrink-0 self-center text-muted-foreground/40 transition-colors duration-300 group-hover:text-foreground">
+                    <ChevronEnd className="w-4 h-4 transition-transform duration-300 motion-safe:group-hover:-translate-x-0.5 rtl:motion-safe:group-hover:translate-x-0.5" />
                   </span>
                 </motion.button>
               );
