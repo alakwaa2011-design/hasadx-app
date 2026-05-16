@@ -185,7 +185,36 @@ export default function SharedContentPage({
   const isCompetitionLibrary = libraryKind === "competition";
   const isActivitiesLibrary = libraryKind === "homework";
 
-  /** Sparse labels for מكتبة الأنشطة only — data-driven, capped counts. */
+  const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
+    if (isAdminContent) return null;
+    return <span className="flex items-center gap-1"><User className="w-3 h-3" /> {teacherName}</span>;
+  };
+  const [activeTab, setActiveTab] = useState<Tab>("assignments");
+  const [assignments, setAssignments] = useState<SharedAssignment[]>([]);
+  const [questions, setQuestions] = useState<SharedQuestion[]>([]);
+  const [videoLessons, setVideoLessons] = useState<SharedVideoLesson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [importingIds, setImportingIds] = useState<Set<number>>(new Set());
+  const [importedIds, setImportedIds] = useState<Set<number>>(new Set());
+  const [importingQIds, setImportingQIds] = useState<Set<number>>(new Set());
+  const [importingVIds, setImportingVIds] = useState<Set<number>>(new Set());
+  const [importedVIds, setImportedVIds] = useState<Set<number>>(new Set());
+  const [importedQIds, setImportedQIds] = useState<Set<number>>(new Set());
+  const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
+  const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
+  const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
+  const [changingKindIds, setChangingKindIds] = useState<Set<number>>(new Set());
+  const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  // Admin-only toggle: when ON, the page also fetches admin-hidden rows
+  // so moderators can review and (un)hide them.
+  const [showHidden, setShowHidden] = useState(false);
+  const [subjectFilter, setSubjectFilter] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
+
+  /** Sparse labels for مكتبة الأنشطة only — must run after `assignments` state exists. */
   const activitiesPopularIds = useMemo(() => {
     if (!isActivitiesLibrary) return new Set<number>();
     const ids = [...assignments]
@@ -215,35 +244,6 @@ export default function SharedContentPage({
     if (activitiesNewIds.has(a.id)) return "new";
     return null;
   }
-
-  const AuthorBadge = ({ isAdminContent, teacherName }: { isAdminContent?: boolean; teacherName?: string | null }) => {
-    if (isAdminContent) return null;
-    return <span className="flex items-center gap-1"><User className="w-3 h-3" /> {teacherName}</span>;
-  };
-  const [activeTab, setActiveTab] = useState<Tab>("assignments");
-  const [assignments, setAssignments] = useState<SharedAssignment[]>([]);
-  const [questions, setQuestions] = useState<SharedQuestion[]>([]);
-  const [videoLessons, setVideoLessons] = useState<SharedVideoLesson[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [importingIds, setImportingIds] = useState<Set<number>>(new Set());
-  const [importedIds, setImportedIds] = useState<Set<number>>(new Set());
-  const [importingQIds, setImportingQIds] = useState<Set<number>>(new Set());
-  const [importingVIds, setImportingVIds] = useState<Set<number>>(new Set());
-  const [importedVIds, setImportedVIds] = useState<Set<number>>(new Set());
-  const [importedQIds, setImportedQIds] = useState<Set<number>>(new Set());
-  const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
-  const [launchingIds, setLaunchingIds] = useState<Set<number>>(new Set());
-  const [hidingIds, setHidingIds] = useState<Set<string>>(new Set());
-  const [changingKindIds, setChangingKindIds] = useState<Set<number>>(new Set());
-  const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  // Admin-only toggle: when ON, the page also fetches admin-hidden rows
-  // so moderators can review and (un)hide them.
-  const [showHidden, setShowHidden] = useState(false);
-  const [subjectFilter, setSubjectFilter] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "questions">("newest");
 
   useEffect(() => {
     (async () => {
