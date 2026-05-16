@@ -1795,20 +1795,22 @@ function CompetitiveTab({
     else if (type === "arena") setLocation("/game/arena");
   };
 
+  /** تحدّي حصاد — يُعرَض بجوار مسابقات عامة (لا يُكرَّر في شبكة المسابقات الحية) */
+  const arenaGame = {
+    icon: "⚔️",
+    title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
+    desc:
+      lang === "ar"
+        ? "مسابقة فريقين على شاشة كبيرة — 6 فئات، 6 بطاقات لكل فئة (200 و 400 و 600)، وسائل مساعدة استراتيجية، ومناسبة للكبار والمؤسسات والصفوف."
+        : "Two-team big-screen quiz — 6 categories with 6 cards each (200/400/600), strategic helpers, suitable for adults, institutions, and classrooms.",
+    color: "from-emerald-700 to-amber-600",
+    type: "arena",
+    available: true,
+    pill: lang === "ar" ? "شاشة كبيرة · جديد" : "Big screen · New",
+  };
+
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
-    {
-      icon: "⚔️",
-      title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
-      desc:
-        lang === "ar"
-          ? "مسابقة فريقين على شاشة كبيرة — 6 فئات، 6 بطاقات لكل فئة (200 و 400 و 600)، وسائل مساعدة استراتيجية، ومناسبة للكبار والمؤسسات والصفوف."
-          : "Two-team big-screen quiz — 6 categories with 6 cards each (200/400/600), strategic helpers, suitable for adults, institutions, and classrooms.",
-      color: "from-emerald-700 to-amber-600",
-      type: "arena",
-      available: true,
-      pill: lang === "ar" ? "شاشة كبيرة · جديد" : "Big screen · New",
-    },
     {
       icon: "⚡",
       title:
@@ -2131,6 +2133,65 @@ function CompetitiveTab({
 
   return (
     <div className="space-y-10">
+      {/* تحدّي حصاد أولاً، ثم مسابقات عامة — أعلى التبويب، صفّ واحد على الشاشات العريضة */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+        <Card
+          onClick={() => openGameFromCatalog(arenaGame)}
+          className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
+        >
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${arenaGame.color} flex items-center justify-center text-2xl shadow-lg shrink-0`}
+              aria-hidden
+            >
+              {arenaGame.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <h3 className="text-base sm:text-lg font-black text-foreground">
+                  {arenaGame.title}
+                </h3>
+                {arenaGame.pill && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {arenaGame.pill}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                {arenaGame.desc}
+              </p>
+            </div>
+            <ChevronLeft
+              className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+            />
+          </div>
+        </Card>
+
+        <Card
+          onClick={() => setLocation("/islamic")}
+          className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-primary/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-teal-500/10 via-card to-cyan-500/5"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shrink-0">
+              <Globe className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-black text-foreground">
+                {lang === "ar" ? "مسابقات عامة" : "Public Quizzes"}
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                {lang === "ar"
+                  ? "مكتبة مسابقات جاهزة للزوار والطلاب — شاركها برابط أو رمز."
+                  : "Ready-made quizzes for visitors and students — share by link or PIN."}
+              </p>
+            </div>
+            <ChevronLeft
+              className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+            />
+          </div>
+        </Card>
+      </div>
+
       <div className="text-center py-2 sm:py-4">
         <motion.div
           animate={{ y: [0, -5, 0] }}
@@ -2148,31 +2209,6 @@ function CompetitiveTab({
             : "A structured game library: live class modes like leading platforms, plus solo brain challenges."}
         </p>
       </div>
-
-      {/* مسابقات عامة — بطاقة وصول سريع في أعلى التبويب */}
-      <Card
-        onClick={() => setLocation("/islamic")}
-        className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-primary/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-teal-500/10 via-card to-cyan-500/5"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shrink-0">
-            <Globe className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base sm:text-lg font-black text-foreground">
-              {lang === "ar" ? "مسابقات عامة" : "Public Quizzes"}
-            </h3>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
-              {lang === "ar"
-                ? "مكتبة مسابقات جاهزة للزوار والطلاب — شاركها برابط أو رمز."
-                : "Ready-made quizzes for visitors and students — share by link or PIN."}
-            </p>
-          </div>
-          <ChevronLeft
-            className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
-          />
-        </div>
-      </Card>
 
       <GameCatalogSection
         title={
