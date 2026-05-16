@@ -503,6 +503,23 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
         }, {}, {
             $type: ArenaImportSources;
         }>;
+        teacherXpRewardsEnabled: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_xp_rewards_enabled";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
     };
     dialect: "pg";
 }>;
