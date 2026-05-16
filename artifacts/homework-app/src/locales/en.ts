@@ -16,7 +16,7 @@ export const en: typeof ar = {
   },
   publicGames: {
     title: "Public Games & Competitions",
-    subtitle: "Browse publicly available competitions and join directly",
+    subtitle: "Quizzes from the shared Competitions Library — play live or copy a link",
     searchPlaceholder: "Search by title or subject...",
     filterAll: "All",
     filterAdventure: "Adventure",
