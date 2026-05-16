@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
@@ -18,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -28,23 +30,20 @@ import {
   CheckCircle2,
   X,
   Globe,
-  Lock,
   KeyRound,
   GraduationCap,
   Play,
   Clock,
-  Video,
   Loader2,
   ChevronDown,
   Upload,
   Link2,
-  Share2,
   Pencil,
   SkipForward,
   Eye,
   MoreHorizontal,
+  Settings2,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 
@@ -80,8 +79,8 @@ const FIELD_RTL =
 
 type AccessMode = "public" | "private";
 type VideoSource = "youtube" | "upload" | "external";
-/** واجهة أوضاع الوصول — يُرسَل للخادم كـ public/private فقط */
-type AccessUi = "public" | "code" | "closed";
+/** واجهة الوصول: عام | خاص بكود فقط */
+type AccessUi = "public" | "code";
 
 interface SkipSegment {
   start: number;
@@ -174,6 +173,304 @@ function emptyQuestion(ts: number): VideoQuestion {
   };
 }
 
+type PreviewRow = VideoQuestion & { _ord: number };
+
+function TeacherStudentPreviewDialog({
+  open,
+  onOpenChange,
+  isAr,
+  titleHint,
+  videoUrl,
+  videoSource,
+  youtubeId,
+  questions,
+  skipSegments,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  isAr: boolean;
+  titleHint: string;
+  videoUrl: string;
+  videoSource: VideoSource;
+  youtubeId: string | null;
+  questions: VideoQuestion[];
+  skipSegments: SkipSegment[];
+}) {
+  const sorted: PreviewRow[] = useMemo(
+    () =>
+      [...questions]
+        .sort((a, b) => a.timestampSeconds - b.timestampSeconds)
+        .map((q, i) => ({ ...q, _ord: i })),
+    [questions],
+  );
+
+  const prevYtRef = useRef<YTPlayer | null>(null);
+  const prevHtmlRef = useRef<HTMLVideoElement>(null);
+  const [prevReady, setPrevReady] = useState(false);
+  const [activeRow, setActiveRow] = useState<PreviewRow | null>(null);
+  const activeRowRef = useRef<PreviewRow | null>(null);
+  const triggeredRef = useRef<Set<number>>(new Set());
+  const lastTRef = useRef(-1);
+
+  useEffect(() => {
+    activeRowRef.current = activeRow;
+  }, [activeRow]);
+
+  const isYt = videoSource === "youtube" && !!youtubeId;
+  const hasMedia =
+    (videoSource === "youtube" && !!youtubeId) || ((videoSource === "upload" || videoSource === "external") && !!videoUrl.trim());
+
+  useEffect(() => {
+    if (!open) {
+      triggeredRef.current = new Set();
+      lastTRef.current = -1;
+      setActiveRow(null);
+      setPrevReady(false);
+      if (prevYtRef.current) {
+        try {
+          prevYtRef.current.destroy();
+        } catch {
+          /* ignore */
+        }
+        prevYtRef.current = null;
+      }
+      return;
+    }
+    triggeredRef.current = new Set();
+    lastTRef.current = -1;
+    setActiveRow(null);
+    setPrevReady(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !isYt || !youtubeId) return;
+
+    const existing = document.getElementById("yt-iframe-api");
+    if (!existing) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      tag.id = "yt-iframe-api";
+      document.head.appendChild(tag);
+    }
+
+    const init = () => {
+      if (prevYtRef.current) {
+        try {
+          prevYtRef.current.destroy();
+        } catch {
+          /* ignore */
+        }
+      }
+      prevYtRef.current = new ytWindow.YT!.Player("yt-player-teacher-preview", {
+        videoId: youtubeId,
+        playerVars: { controls: 1, modestbranding: 1, rel: 0 },
+        events: {
+          onReady: () => setPrevReady(true),
+        },
+      });
+    };
+
+    if (ytWindow.YT?.Player) init();
+    else ytWindow.onYouTubeIframeAPIReady = init;
+
+    return () => {
+      if (prevYtRef.current) {
+        try {
+          prevYtRef.current.destroy();
+        } catch {
+          /* ignore */
+        }
+        prevYtRef.current = null;
+      }
+    };
+  }, [open, isYt, youtubeId]);
+
+  useEffect(() => {
+    if (!open || isYt) return;
+    const vid = prevHtmlRef.current;
+    if (!vid || !videoUrl.trim()) return;
+    const onReady = () => setPrevReady(true);
+    const onMeta = () => setPrevReady(true);
+    vid.addEventListener("canplay", onReady);
+    vid.addEventListener("loadedmetadata", onMeta);
+    return () => {
+      vid.removeEventListener("canplay", onReady);
+      vid.removeEventListener("loadedmetadata", onMeta);
+    };
+  }, [open, isYt, videoUrl]);
+
+  useEffect(() => {
+    if (!open || !prevReady || sorted.length === 0) return;
+
+    const tick = setInterval(() => {
+      if (activeRowRef.current) return;
+      try {
+        let time = 0;
+        if (isYt) {
+          time = Math.floor(prevYtRef.current?.getCurrentTime?.() || 0);
+        } else {
+          time = Math.floor(prevHtmlRef.current?.currentTime || 0);
+        }
+        if (time === lastTRef.current) return;
+        lastTRef.current = time;
+
+        for (const seg of skipSegments) {
+          if (time >= seg.start && time < seg.end) {
+            if (isYt) prevYtRef.current?.seekTo?.(seg.end, true);
+            else if (prevHtmlRef.current) prevHtmlRef.current.currentTime = seg.end;
+            lastTRef.current = seg.end;
+            return;
+          }
+        }
+
+        for (const row of sorted) {
+          if (triggeredRef.current.has(row._ord)) continue;
+          if (time >= row.timestampSeconds) {
+            triggeredRef.current.add(row._ord);
+            if (isYt) prevYtRef.current?.pauseVideo?.();
+            else prevHtmlRef.current?.pause();
+            setActiveRow(row);
+            break;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 300);
+
+    return () => clearInterval(tick);
+  }, [open, prevReady, sorted, skipSegments, isYt]);
+
+  const continuePreview = () => {
+    setActiveRow(null);
+    setTimeout(() => {
+      try {
+        if (isYt) prevYtRef.current?.playVideo?.();
+        else prevHtmlRef.current?.play();
+      } catch {
+        /* ignore */
+      }
+    }, 200);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          "max-h-[92vh] overflow-y-auto rounded-[22px] border sm:max-w-[920px]",
+          isAr && "[&>button]:start-4 [&>button]:end-auto",
+        )}
+        style={{ borderColor: CARD_BORDER }}
+        dir={isAr ? "rtl" : "ltr"}
+      >
+        <DialogHeader className="space-y-1 text-right sm:text-right">
+          <DialogTitle className="text-lg font-black text-[#0f2918]">
+            {isAr ? "معاينة كما يراها الطالب" : "Preview as student"}
+          </DialogTitle>
+          <DialogDescription className="text-[13px] leading-relaxed text-[#64748B]">
+            {titleHint || (isAr ? "بدون عنوان" : "Untitled")} ·{" "}
+            {isAr
+              ? "يتوقف الفيديو عند الأسئلة كما في واجهة الطالب — للمعاينة فقط."
+              : "Playback pauses at questions like the student view — preview only."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!hasMedia ? (
+          <p className="py-8 text-center text-sm font-bold text-[#64748B]">
+            {isAr ? "أضف فيديوً أولاً." : "Add a video first."}
+          </p>
+        ) : (
+          <>
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+              {isYt && youtubeId ? (
+                <div id="yt-player-teacher-preview" className="h-full w-full" />
+              ) : (
+                <video ref={prevHtmlRef} src={videoUrl} controls className="h-full w-full object-contain" />
+              )}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {activeRow && (
+                <motion.div
+                  key={activeRow._ord}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="mt-4 overflow-hidden rounded-[20px] border bg-white p-5 shadow-md"
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-black text-[#94a3ab]">
+                    <span className="rounded-full bg-[#eef5f0] px-2 py-0.5 text-[#1E4D35]">
+                      {isAr ? "سؤال" : "Q"} {activeRow._ord + 1}/{sorted.length}
+                    </span>
+                    <span dir="ltr" className="font-mono tabular-nums">
+                      {formatTimestamp(activeRow.timestampSeconds)}
+                    </span>
+                  </div>
+                  <p className="mb-4 text-right text-base font-black leading-relaxed text-[#0f2918]">{activeRow.text}</p>
+
+                  {activeRow.questionType === "mcq" && (
+                    <div className="mb-4 grid gap-2">
+                      {(["A", "B", "C", "D"] as const).map((opt) => {
+                        const lab = activeRow[`option${opt}` as keyof VideoQuestion] as string;
+                        if (!lab?.trim()) return null;
+                        return (
+                          <div
+                            key={opt}
+                            className="flex min-h-[44px] items-center gap-2 rounded-xl border border-[#eef2ef] bg-[#fafdfb] px-3 py-2 text-right text-sm font-bold text-[#374151]"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-black text-[#1E4D35] ring-1 ring-[#e8ece9]">
+                              {opt}
+                            </span>
+                            <span className="flex-1">{lab}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {activeRow.questionType === "true_false" && (
+                    <div className="mb-4 grid grid-cols-2 gap-2">
+                      <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#eef2ef] bg-[#fafdfb] text-sm font-black text-[#64748B]">
+                        {isAr ? "صح" : "True"}
+                      </div>
+                      <div className="flex min-h-[44px] items-center justify-center rounded-xl border border-[#eef2ef] bg-[#fafdfb] text-sm font-black text-[#64748B]">
+                        {isAr ? "خطأ" : "False"}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeRow.questionType === "fill_blank" && (
+                    <div className="mb-4 min-h-[44px] rounded-xl border border-dashed border-[#dce8e0] bg-[#fcfdfc] px-3 py-3 text-right text-sm text-[#94a3ab]">
+                      {isAr ? "حقل إجابة قصيرة…" : "Short answer field…"}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={continuePreview}
+                    className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl font-black text-white shadow-md"
+                    style={{ background: BRAND }}
+                  >
+                    <Play className="h-4 w-4" fill="currentColor" />
+                    {isAr ? "متابعة الفيديو" : "Continue video"}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!activeRow && sorted.length === 0 && (
+              <p className="mt-3 text-center text-xs font-bold text-[#94a3ab]">
+                {isAr ? "لا أسئلة لعرضها في المعاينة." : "No questions to preview."}
+              </p>
+            )}
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CreateVideoLesson() {
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
@@ -221,8 +518,9 @@ export default function CreateVideoLesson() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [dragUpload, setDragUpload] = useState(false);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
+  const [extraSettingsOpen, setExtraSettingsOpen] = useState(false);
 
-  const videoSettingsRef = useRef<HTMLDivElement>(null);
+  const sourceCardRef = useRef<HTMLDivElement>(null);
 
   const youtubeId = videoSource === "youtube" ? extractYouTubeId(videoUrl) : null;
   const playerRef = useRef<YTPlayer | null>(null);
@@ -254,8 +552,7 @@ export default function CreateVideoLesson() {
           ) as VideoSource;
           setVideoSource(vType);
           setTargetClass(data.targetClass || "");
-          const priv = data.accessMode === "private";
-          setAccessUi(priv ? (data.accessCode ? "code" : "closed") : "public");
+          setAccessUi(data.accessMode === "private" ? "code" : "public");
           setAccessCode(data.accessCode || generateAccessCode());
           setIsShared(data.isShared || false);
           setSkipSegments(Array.isArray(data.skipSegments) ? data.skipSegments : []);
@@ -638,8 +935,8 @@ export default function CreateVideoLesson() {
     return "إجابة قصيرة";
   };
 
-  const scrollToVideoSettings = () => {
-    videoSettingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToVideoSource = () => {
+    sourceCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
   const handlePublishClick = () => void handlePublish();
@@ -654,22 +951,20 @@ export default function CreateVideoLesson() {
     );
   }
 
-  const fieldDirProps = isAr ? ({ dir: "rtl" as const, className: FIELD_RTL }) : {};
-
   return (
     <Layout>
       <div
-        className="min-h-[100dvh] overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))]"
+        className="min-h-[100dvh] overflow-x-hidden pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
         style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="mx-auto max-w-[1320px] px-4 py-6 sm:py-8">
+        <div className="mx-auto max-w-[1320px] px-4 py-4 sm:py-6">
           {/* العودة */}
           <button
             type="button"
             onClick={() => setLocation(editId ? `/teacher/video-lesson/${editId}` : "/teacher")}
             className={cn(
-              "mb-6 flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] transition-colors hover:text-[#0f2918]",
+              "mb-4 flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] transition-colors hover:text-[#0f2918]",
               TRANSITION,
             )}
           >
@@ -677,188 +972,83 @@ export default function CreateVideoLesson() {
             {editId ? (isAr ? "العودة للدرس" : "Back to lesson") : isAr ? "العودة للوحة التحكم" : "Back to dashboard"}
           </button>
 
-          {/* الهيدر */}
-          <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-4">
+          <h1 className="mb-4 text-right text-xl font-black leading-tight text-[#0f2918] sm:text-2xl">
+            {editId
+              ? isAr
+                ? "تعديل درس فيديو تفاعلي"
+                : "Edit interactive video"
+              : isAr
+                ? "درس فيديو تفاعلي"
+                : "Interactive video lesson"}
+          </h1>
+
+          <Collapsible open={extraSettingsOpen} onOpenChange={setExtraSettingsOpen} className="mb-4">
+            <div className="flex justify-end">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex min-h-[44px] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-black text-[#374151] shadow-sm hover:bg-[#fafdfb]",
+                    TRANSITION,
+                  )}
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <Settings2 className="h-4 w-4 shrink-0 text-[#1E4D35]" />
+                  {isAr ? "إعدادات إضافية" : "More settings"}
+                  <ChevronDown
+                    className={cn("h-4 w-4 shrink-0 text-[#94a3ab] transition-transform", extraSettingsOpen && "rotate-180")}
+                  />
+                </button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent className="mt-3">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border bg-white shadow-sm"
+                className={cn("space-y-4 rounded-2xl border bg-white p-4 sm:p-5", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
-                <Video className="h-7 w-7 text-[#1E4D35]" strokeWidth={2} />
-              </div>
-              <div className="space-y-1 text-right">
-                <h1 className="text-2xl font-black leading-tight text-[#0f2918] sm:text-3xl">
-                  {editId
-                    ? isAr
-                      ? "تعديل درس فيديو تفاعلي"
-                      : "Edit interactive video"
-                    : isAr
-                      ? "درس فيديو تفاعلي"
-                      : "Interactive video lesson"}
-                </h1>
-                <p className="max-w-xl text-sm leading-relaxed text-[#64748B]">
-                  {isAr
-                    ? "أضف أسئلة على الفيديو ليتوقف تلقائياً عندها."
-                    : "Add questions on the video timeline — playback pauses at each cue."}
-                </p>
-              </div>
-            </div>
-          </header>
-
-          {/* معلومات الدرس — Card واحدة */}
-          <section
-            className={cn("mb-6 rounded-[24px] border bg-white p-5 sm:p-7", TRANSITION)}
-            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-          >
-            <h2 className="mb-5 text-right text-base font-black text-[#0f2918]">
-              {isAr ? "معلومات الدرس" : "Lesson details"}
-            </h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
-              <div className="lg:col-span-12">
-                <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">
-                  {isAr ? "عنوان الدرس" : "Lesson title"} *
-                </Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={isAr ? "مثال: الدوال الخطية — مقدمة" : "e.g. Linear functions — intro"}
-                  className={cn(
-                    "min-h-[52px] rounded-2xl border-2 py-3 text-base font-bold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
-                    isAr && FIELD_RTL,
-                  )}
-                  dir={isAr ? "rtl" : undefined}
-                />
-              </div>
-              <div className="lg:col-span-6">
-                <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">
-                  {isAr ? "المادة" : "Subject"}
-                </Label>
-                <Input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder={isAr ? "رياضيات، علوم، لغة عربية…" : "Math, Science…"}
-                  className={cn(
-                    "min-h-[48px] rounded-2xl border-2 focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
-                    isAr && FIELD_RTL,
-                  )}
-                  dir={isAr ? "rtl" : undefined}
-                />
-              </div>
-              <div className="lg:col-span-6">
-                <Label className="mb-1.5 flex items-center gap-2 text-xs font-bold text-[#64748B]">
-                  <GraduationCap className="h-4 w-4 text-[#1E4D35]" />
-                  {isAr ? "الفصل المستهدف" : "Target class"}
-                </Label>
-                {gradeLevels.length > 0 ? (
-                  <select
-                    value={targetClass}
-                    onChange={(e) => setTargetClass(e.target.value)}
+                <div>
+                  <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">{isAr ? "الوصف" : "Description"}</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder={isAr ? "وصف مختصر للدرس (اختياري)" : "Short description (optional)"}
+                    rows={3}
                     className={cn(
-                      "min-h-[48px] w-full rounded-2xl border-2 border-border bg-background px-4 text-sm font-bold focus:border-[#1E4D35]/35 focus:outline-none focus:ring-4 focus:ring-[#1E4D35]/10",
-                      isAr && FIELD_RTL,
-                    )}
-                    dir={isAr ? "rtl" : undefined}
-                  >
-                    <option value="">{isAr ? "— جميع الفصول —" : "— All classes —"}</option>
-                    {gradeLevels.map((g) => (
-                      <option key={g.gradeLevel} value={g.gradeLevel}>
-                        {g.gradeLevel} ({g.count} {isAr ? "طالب" : "students"})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <Input
-                    value={targetClass}
-                    onChange={(e) => setTargetClass(e.target.value)}
-                    placeholder={isAr ? "مثال: 3/أ" : "e.g. 3/A"}
-                    className={cn(
-                      "min-h-[48px] rounded-2xl border-2 focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
+                      "resize-y rounded-xl border-2 bg-background px-3 py-2.5 text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
                       isAr && FIELD_RTL,
                     )}
                     dir={isAr ? "rtl" : undefined}
                   />
-                )}
-              </div>
-              <div className="lg:col-span-12">
-                <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">
-                  {isAr ? "الوصف" : "Description"}
-                </Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={isAr ? "وصف مختصر للدرس (اختياري)" : "Short description (optional)"}
-                  rows={3}
-                  className={cn(
-                    "resize-y rounded-2xl border-2 bg-background px-4 py-3 text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
-                    isAr && FIELD_RTL,
-                  )}
-                  dir={isAr ? "rtl" : undefined}
-                />
-              </div>
-            </div>
-          </section>
-
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-            {/* العمود الرئيسي ~65% */}
-            <div className="min-w-0 flex-1 space-y-6 lg:max-w-[calc(65%-12px)] lg:flex-[1.86]">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-right text-lg font-black text-[#0f2918]">
-                  {isAr ? "المشغّل والأسئلة" : "Player & questions"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={openAddQuestionModal}
-                  className={cn(
-                    "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-[#1E4D35] px-5 text-sm font-black text-white shadow-md shadow-[#1E4D35]/25 hover:opacity-[0.96] active:scale-[0.99]",
-                    TRANSITION,
-                  )}
-                >
-                  <Plus className="h-4 w-4" />
-                  {isAr ? "➕ إضافة سؤال" : "➕ Add question"}
-                </button>
-              </div>
-
-              {/* بطل الفيديو */}
-              <section
-                className={cn("overflow-hidden rounded-[24px] border bg-white", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <div className="relative aspect-video w-full bg-black">
-                  {videoSource === "youtube" && youtubeId ? (
-                    <div id="yt-player-create" className="absolute inset-0 h-full w-full" />
-                  ) : (videoSource === "upload" || videoSource === "external") && videoUrl.trim() ? (
-                    <video ref={html5VideoRef} src={videoUrl} controls className="h-full w-full object-contain" />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0f2918] to-[#1a2e24] px-6 text-center">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
-                        <Play className="h-10 w-10 text-white opacity-90" fill="currentColor" />
-                      </div>
-                      <p className="max-w-sm text-sm font-bold leading-relaxed text-white/85">
-                        {isAr ? "أضف رابط فيديو أو ارفع ملفاً للبدء" : "Add a video link or upload a file to start"}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={scrollToVideoSettings}
-                        className="min-h-[44px] rounded-2xl bg-white px-6 text-sm font-black text-[#0f2918] shadow-lg hover:bg-[#eef5f0]"
-                      >
-                        {isAr ? "إضافة فيديو" : "Add video"}
-                      </button>
-                    </div>
-                  )}
                 </div>
 
-                {hasVideoPreview && isPlayerReady && (
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef2ef] bg-[#fafdfb] px-4 py-3"
-                    style={{ borderColor: CARD_BORDER }}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-black tabular-nums text-[#64748B]" dir="ltr">
-                      <Clock className="h-4 w-4 shrink-0 text-[#1E4D35]" />
-                      <span>{formatTimestamp(currentTime)}</span>
-                      <span className="text-[#94a3ab]">/</span>
-                      <span>{formatTimestamp(videoDuration || currentTime)}</span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col gap-3 rounded-xl border border-[#eef2ef] bg-[#fafdfb] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-0.5 text-right">
+                    <p className="text-sm font-black text-[#0f2918]">{isAr ? "المشاركة مع المعلمين" : "Teacher sharing"}</p>
+                    <p className="text-[11px] leading-relaxed text-[#64748B]">
+                      {isAr
+                        ? "السماح للمعلمين الآخرين بمشاهدة هذا الدرس واستخدامه في حصصهم."
+                        : "Let other teachers discover and reuse this lesson."}
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 px-3 py-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2 text-right">
+                    <SkipForward className="h-4 w-4 text-amber-600" />
+                    <span className="text-xs font-black text-amber-950">
+                      {isAr ? "مقاطع التخطي أثناء التشغيل" : "Skip segments during playback"}
+                    </span>
+                  </div>
+                  <p className="mb-3 text-[11px] leading-relaxed text-amber-900/80">
+                    {isAr
+                      ? "عرّف مقاطعاً يتخطّاها المشغّل تلقائياً أثناء الإنشاء أو المعاينة."
+                      : "Define ranges the player skips automatically while authoring or previewing."}
+                  </p>
+                  {hasVideoPreview && isPlayerReady && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
                       {pendingSegmentStart === null ? (
                         <button
                           type="button"
@@ -866,13 +1056,13 @@ export default function CreateVideoLesson() {
                             setPendingSegmentStart(currentTime);
                             setSegmentEndInput("");
                           }}
-                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-3 text-xs font-black text-amber-900 hover:bg-amber-100"
+                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-amber-300/60 bg-white px-3 text-[11px] font-black text-amber-900 hover:bg-amber-50"
                         >
                           <SkipForward className="h-3.5 w-3.5" />
-                          {isAr ? "قطع مقطع" : "Skip segment"}
+                          {isAr ? "بدء مقطع تخطٍ" : "Start skip range"}
                         </button>
                       ) : (
-                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/50 bg-amber-50/90 px-2 py-1.5">
+                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300/50 bg-white px-2 py-1.5">
                           <span className="text-[11px] font-bold text-amber-950">
                             {isAr ? "من" : "From"}{" "}
                             <span dir="ltr" className="tabular-nums">
@@ -917,7 +1107,7 @@ export default function CreateVideoLesson() {
                               setPendingSegmentStart(null);
                               setSegmentEndInput("");
                             }}
-                            className="inline-flex min-h-[36px] items-center gap-1 rounded-lg bg-amber-600 px-2.5 text-[11px] font-black text-white hover:bg-amber-700"
+                            className="inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-amber-600 px-2.5 text-[11px] font-black text-white hover:bg-amber-700"
                           >
                             <Plus className="h-3 w-3" />
                             {isAr ? "إضافة" : "Add"}
@@ -928,12 +1118,152 @@ export default function CreateVideoLesson() {
                               setPendingSegmentStart(null);
                               setSegmentEndInput("");
                             }}
-                            className="p-2 text-amber-800/70 hover:text-amber-950"
+                            className="flex min-h-[44px] min-w-[44px] items-center justify-center text-amber-800/70 hover:text-amber-950"
                           >
                             <X className="h-4 w-4" />
                           </button>
                         </div>
                       )}
+                    </div>
+                  )}
+                  {skipSegments.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {skipSegments.map((seg, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 rounded-lg border border-amber-300/50 bg-white px-2.5 py-1.5 text-[11px] font-bold text-amber-950"
+                        >
+                          <span dir="ltr" className="font-mono tabular-nums">
+                            {formatTimestamp(seg.start)} → {formatTimestamp(seg.end)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSkipSegments((prev) => prev.filter((_, j) => j !== i))}
+                            className="rounded p-1 text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] font-semibold text-amber-800/70">
+                      {isAr ? "لا توجد مقاطع تخطٍ بعد." : "No skip segments yet."}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* عنوان + مادة + فصل — سطر واحد على الشاشات الواسعة */}
+          <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
+            <div className="min-w-0">
+              <Label className="mb-1 block text-[11px] font-bold text-[#64748B]">
+                {isAr ? "عنوان الدرس" : "Lesson title"} *
+              </Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={isAr ? "مثال: الدوال الخطية — مقدمة" : "e.g. Linear functions — intro"}
+                className={cn(
+                  "min-h-[48px] rounded-xl border-2 py-2.5 text-sm font-bold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
+                  isAr && FIELD_RTL,
+                )}
+                dir={isAr ? "rtl" : undefined}
+              />
+            </div>
+            <div className="min-w-0">
+              <Label className="mb-1 block text-[11px] font-bold text-[#64748B]">{isAr ? "المادة" : "Subject"}</Label>
+              <Input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder={isAr ? "رياضيات، علوم…" : "Math, Science…"}
+                className={cn(
+                  "min-h-[48px] rounded-xl border-2 focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
+                  isAr && FIELD_RTL,
+                )}
+                dir={isAr ? "rtl" : undefined}
+              />
+            </div>
+            <div className="min-w-0">
+              <Label className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-[#64748B]">
+                <GraduationCap className="h-3.5 w-3.5 text-[#1E4D35]" />
+                {isAr ? "الصف / الفصل" : "Target class"}
+              </Label>
+              {gradeLevels.length > 0 ? (
+                <select
+                  value={targetClass}
+                  onChange={(e) => setTargetClass(e.target.value)}
+                  className={cn(
+                    "min-h-[48px] w-full rounded-xl border-2 border-border bg-background px-3 text-sm font-bold focus:border-[#1E4D35]/35 focus:outline-none focus:ring-4 focus:ring-[#1E4D35]/10",
+                    isAr && FIELD_RTL,
+                  )}
+                  dir={isAr ? "rtl" : undefined}
+                >
+                  <option value="">{isAr ? "— جميع الفصول —" : "— All classes —"}</option>
+                  {gradeLevels.map((g) => (
+                    <option key={g.gradeLevel} value={g.gradeLevel}>
+                      {g.gradeLevel} ({g.count} {isAr ? "طالب" : "students"})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={targetClass}
+                  onChange={(e) => setTargetClass(e.target.value)}
+                  placeholder={isAr ? "مثال: 3/أ" : "e.g. 3/A"}
+                  className={cn(
+                    "min-h-[48px] rounded-xl border-2 focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/12",
+                    isAr && FIELD_RTL,
+                  )}
+                  dir={isAr ? "rtl" : undefined}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1 space-y-5">
+              {/* بطل الفيديو */}
+              <section
+                className={cn("overflow-hidden rounded-[24px] border bg-white", TRANSITION)}
+                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+              >
+                <div className="relative aspect-video w-full bg-black">
+                  {videoSource === "youtube" && youtubeId ? (
+                    <div id="yt-player-create" className="absolute inset-0 h-full w-full" />
+                  ) : (videoSource === "upload" || videoSource === "external") && videoUrl.trim() ? (
+                    <video ref={html5VideoRef} src={videoUrl} controls className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-4 bg-gradient-to-b from-[#0f2918] to-[#1a2e24] px-6 text-center">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                        <Play className="h-10 w-10 text-white opacity-90" fill="currentColor" />
+                      </div>
+                      <p className="max-w-sm text-sm font-bold leading-relaxed text-white/85">
+                        {isAr ? "أضف رابط فيديو أو ارفع ملفاً للبدء" : "Add a video link or upload a file to start"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={scrollToVideoSource}
+                        className="min-h-[44px] rounded-2xl bg-white px-6 text-sm font-black text-[#0f2918] shadow-lg hover:bg-[#eef5f0]"
+                      >
+                        {isAr ? "إضافة فيديو" : "Add video"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {hasVideoPreview && isPlayerReady && (
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eef2ef] bg-[#fafdfb] px-3 py-2"
+                    style={{ borderColor: CARD_BORDER }}
+                  >
+                    <div className="flex items-center gap-2 text-xs font-black tabular-nums text-[#64748B]" dir="ltr">
+                      <Clock className="h-3.5 w-3.5 shrink-0 text-[#1E4D35]" />
+                      <span>{formatTimestamp(currentTime)}</span>
+                      <span className="text-[#94a3ab]">/</span>
+                      <span>{formatTimestamp(videoDuration || currentTime)}</span>
                     </div>
                   </div>
                 )}
@@ -941,14 +1271,14 @@ export default function CreateVideoLesson() {
 
               {/* تايم لاين */}
               <section
-                className={cn("rounded-[24px] border bg-white p-4 sm:p-5", TRANSITION)}
+                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
                 <h3 className="mb-3 text-right text-sm font-black text-[#0f2918]">
                   {isAr ? "خط الأسئلة" : "Question timeline"}
                 </h3>
-                <div dir="ltr" className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
-                  <div className="relative mx-auto min-h-[52px] min-w-[280px] px-1">
+                <div dir="ltr" className="max-w-full overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                  <div className="relative mx-auto min-h-[52px] min-w-[min(100%,280px)] px-1">
                     <div className="relative mt-6 h-2 overflow-hidden rounded-full bg-[#e8ece9]">
                       {skipSegments.map((seg, i) => (
                         <div
@@ -975,22 +1305,36 @@ export default function CreateVideoLesson() {
                           <button
                             key={`${realIdx}-${order}`}
                             type="button"
+                            title={`${q.text?.slice(0, 120) || (isAr ? "سؤال" : "Question")} · ${formatTimestamp(q.timestampSeconds)}`}
                             style={{ left: `${pct}%`, transform: "translateX(-50%)" }}
-                            className="absolute top-1 flex flex-col items-center"
+                            className="absolute top-1 flex flex-col items-center outline-none"
                             onMouseEnter={() => setTimelineHover(realIdx)}
                             onMouseLeave={() => setTimelineHover(null)}
-                            onClick={() => {
-                              seekTo(q.timestampSeconds);
-                              openEditQuestionModal(realIdx);
-                            }}
+                            onClick={() => seekTo(q.timestampSeconds)}
                           >
                             <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#1E4D35] bg-[#eef5f0] text-[11px] font-black text-[#1E4D35] shadow-sm hover:bg-[#1E4D35] hover:text-white">
                               {order + 1}
                             </span>
                             {timelineHover === realIdx && (
-                              <span className="absolute top-10 z-10 whitespace-nowrap rounded-lg border bg-white px-2 py-1 text-[10px] font-bold text-[#0f2918] shadow-md" style={{ borderColor: CARD_BORDER }}>
-                                {isAr ? `سؤال ${order + 1}` : `Q ${order + 1}`} —{" "}
-                                <span dir="ltr">{formatTimestamp(q.timestampSeconds)}</span>
+                              <span
+                                className="absolute top-10 z-10 max-w-[min(240px,calc(100vw-3rem))] rounded-lg border bg-white px-2 py-1.5 text-start text-[10px] font-bold leading-snug text-[#0f2918] shadow-md"
+                                style={{ borderColor: CARD_BORDER }}
+                              >
+                                <span className="block text-[#94a3ab]">
+                                  #{order + 1} · <span dir="ltr">{formatTimestamp(q.timestampSeconds)}</span>
+                                </span>
+                                <span className="mt-0.5 block text-[#0f2918]">
+                                  {q.text?.trim()
+                                    ? q.text.length > 90
+                                      ? `${q.text.slice(0, 90)}…`
+                                      : q.text
+                                    : isAr
+                                      ? "(بلا نص)"
+                                      : "(No text)"}
+                                </span>
+                                <span className="mt-0.5 block text-[10px] font-semibold text-[#64748B]">
+                                  {questionTypeLabel(q.questionType)}
+                                </span>
                               </span>
                             )}
                           </button>
@@ -1008,46 +1352,25 @@ export default function CreateVideoLesson() {
                 )}
               </section>
 
-              {/* مقاطع التخطي */}
-              {skipSegments.length > 0 && (
-                <section
-                  className={cn("rounded-[24px] border border-amber-200/60 bg-amber-50/40 p-4", TRANSITION)}
-                  style={{ boxShadow: CARD_SHADOW }}
-                >
-                  <div className="mb-2 flex items-center gap-2 text-right">
-                    <SkipForward className="h-4 w-4 text-amber-600" />
-                    <h3 className="text-sm font-black text-amber-950">
-                      {isAr ? "مقاطع التخطي" : "Skip segments"} ({skipSegments.length})
-                    </h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {skipSegments.map((seg, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 rounded-xl border border-amber-300/50 bg-white px-3 py-2 text-xs font-bold text-amber-950"
-                      >
-                        <span dir="ltr" className="font-mono tabular-nums">
-                          {formatTimestamp(seg.start)} → {formatTimestamp(seg.end)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSkipSegments((prev) => prev.filter((_, j) => j !== i))}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
               {/* قائمة الأسئلة */}
               <section className="space-y-3">
-                <h3 className="text-right text-sm font-black text-[#64748B]">
-                  {isAr ? `الأسئلة (${questions.length})` : `Questions (${questions.length})`}
-                </h3>
-                <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-right text-sm font-black text-[#0f2918]">
+                    {isAr ? `الأسئلة التفاعلية (${questions.length})` : `Interactive questions (${questions.length})`}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={openAddQuestionModal}
+                    className={cn(
+                      "inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-[#dce8e0] bg-white px-3 py-2 text-xs font-black text-[#1E4D35] shadow-sm hover:bg-[#f3f7f4]",
+                      TRANSITION,
+                    )}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {isAr ? "+ إضافة سؤال" : "+ Add question"}
+                  </button>
+                </div>
+                <div className="space-y-2">
                   {sortedQuestionIndices.map((realIdx, order) => {
                     const q = questions[realIdx];
                     return (
@@ -1058,38 +1381,38 @@ export default function CreateVideoLesson() {
                       >
                         <Card
                           className={cn(
-                            "border border-[#eef2ef] p-4 shadow-sm transition-colors hover:border-[#1E4D35]/20",
+                            "border border-[#eef2ef] p-3 shadow-sm transition-colors hover:border-[#1E4D35]/20",
                             TRANSITION,
                           )}
-                          style={{ borderRadius: "20px", boxShadow: CARD_SHADOW }}
+                          style={{ borderRadius: "14px", boxShadow: "0 1px 2px rgba(15, 40, 28, 0.04)" }}
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1 space-y-2 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-2">
-                                <span className="flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-[#eef5f0] px-2 text-xs font-black text-[#1E4D35]">
+                            <div className="min-w-0 flex-1 space-y-1.5 text-right">
+                              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-[#eef5f0] px-1.5 text-[11px] font-black text-[#1E4D35]">
                                   {order + 1}
                                 </span>
                                 <button
                                   type="button"
                                   dir="ltr"
                                   onClick={() => seekTo(q.timestampSeconds)}
-                                  className="inline-flex items-center gap-1 rounded-full bg-[#f3f7f4] px-2.5 py-1 text-[11px] font-black tabular-nums text-[#374151]"
+                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[#f3f7f4] px-2 py-1 text-[11px] font-black tabular-nums text-[#374151] sm:min-h-0"
                                 >
                                   <Clock className="h-3 w-3 text-[#94a3ab]" />
                                   {formatTimestamp(q.timestampSeconds)}
                                 </button>
-                                <span className="rounded-full bg-[#f8faf8] px-2.5 py-1 text-[11px] font-bold text-[#64748B]">
+                                <span className="rounded-full bg-[#f8faf8] px-2 py-0.5 text-[10px] font-bold text-[#64748B]">
                                   {questionTypeLabel(q.questionType)}
                                 </span>
                               </div>
-                              <p className="text-sm font-bold leading-relaxed text-[#0f2918]">
+                              <p className="text-[13px] font-bold leading-snug text-[#0f2918]">
                                 {q.text || (
                                   <span className="italic text-[#94a3ab]">
                                     {isAr ? "لا يوجد نص بعد" : "No text yet"}
                                   </span>
                                 )}
                               </p>
-                              <p className="text-[11px] font-bold text-[#94a3ab]">
+                              <p className="text-[10px] font-bold text-[#94a3ab]">
                                 {q.points} {isAr ? "درجة" : "pts"}
                               </p>
                             </div>
@@ -1139,24 +1462,23 @@ export default function CreateVideoLesson() {
               </section>
             </div>
 
-            {/* الشريط الجانبي ~35% */}
-            <aside
-              ref={videoSettingsRef}
-              className="w-full shrink-0 space-y-5 lg:max-w-[calc(35%-12px)] lg:flex-[1]"
-            >
+            {/* مصدر الفيديو + الوصول — عمود جانبي ضيق */}
+            <aside ref={sourceCardRef} className="w-full shrink-0 scroll-mt-24 space-y-4 lg:w-[min(100%,288px)] lg:pt-0">
               <section
-                className={cn("rounded-[24px] border bg-white p-5 sm:p-6", TRANSITION)}
+                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
-                <h2 className="mb-4 text-right text-base font-black text-[#0f2918]">
+                <h2 className="mb-2 text-right text-xs font-black text-[#0f2918]">
                   {isAr ? "مصدر الفيديو" : "Video source"} *
                 </h2>
                 {editId && (
-                  <p className="mb-3 text-[11px] leading-relaxed text-[#94a3ab]">
-                    {isAr ? "لا يمكن تغيير نوع المصدر بعد إنشاء الدرس." : "Video source type cannot be changed after creation."}
+                  <p className="mb-2 text-[10px] leading-relaxed text-[#94a3ab]">
+                    {isAr ? "لا يمكن تغيير نوع المصدر بعد الإنشاء." : "Source type is fixed after creation."}
                   </p>
                 )}
-                <div className="mb-4 grid grid-cols-3 gap-1.5 rounded-2xl bg-[#f3f7f4] p-1">
+                <div
+                  className={cn("mb-3 grid gap-0.5 rounded-xl bg-[#f3f7f4] p-0.5", isAdmin ? "grid-cols-3" : "grid-cols-2")}
+                >
                   {(
                     [
                       { key: "youtube" as VideoSource, short: isAr ? "يوتيوب" : "YT", full: isAr ? "يوتيوب" : "YouTube", Icon: Play },
@@ -1192,7 +1514,7 @@ export default function CreateVideoLesson() {
                         }
                       }}
                       className={cn(
-                        "flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-[11px] font-black transition-colors sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs",
+                        "flex min-h-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 text-[10px] font-black transition-colors sm:flex-row sm:gap-1 sm:px-1.5 sm:text-[11px]",
                         videoSource === key
                           ? "bg-white text-[#1E4D35] shadow-sm"
                           : "text-[#64748B] hover:text-[#0f2918]",
@@ -1207,23 +1529,26 @@ export default function CreateVideoLesson() {
                 </div>
 
                 {videoSource === "youtube" && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Input
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
                       placeholder="https://www.youtube.com/watch?v=..."
                       dir="ltr"
-                      className="rounded-2xl border-2 font-mono text-sm focus:border-[#1E4D35]/35"
+                      className="min-h-[44px] rounded-xl border-2 font-mono text-xs focus:border-[#1E4D35]/35"
                     />
                     {videoUrl && !youtubeId && (
-                      <p className="text-xs font-bold text-destructive">{isAr ? "رابط يوتيوب غير صالح" : "Invalid URL"}</p>
+                      <p className="text-[11px] font-bold text-destructive">{isAr ? "رابط يوتيوب غير صالح" : "Invalid URL"}</p>
                     )}
                     {youtubeId && (
-                      <div className="overflow-hidden rounded-2xl border bg-black shadow-inner" style={{ borderColor: CARD_BORDER }}>
+                      <div
+                        className="overflow-hidden rounded-lg border bg-black shadow-inner"
+                        style={{ borderColor: CARD_BORDER }}
+                      >
                         <img
                           src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`}
                           alt=""
-                          className="aspect-video w-full object-cover opacity-90"
+                          className="max-h-24 w-full object-cover opacity-90"
                         />
                       </div>
                     )}
@@ -1264,7 +1589,7 @@ export default function CreateVideoLesson() {
                       }}
                       onClick={() => !uploading && fileInputRef.current?.click()}
                       className={cn(
-                        "cursor-pointer rounded-[20px] border-2 border-dashed px-4 py-10 text-center transition-colors",
+                        "cursor-pointer rounded-xl border-2 border-dashed px-3 py-6 text-center transition-colors",
                         dragUpload ? "border-[#1E4D35] bg-[#eef5f0]" : "border-[#dce8e0] bg-[#fafdfb] hover:border-[#1E4D35]/35",
                       )}
                     >
@@ -1283,9 +1608,9 @@ export default function CreateVideoLesson() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Upload className="mx-auto h-8 w-8 text-[#1E4D35]/70" />
-                          <p className="text-sm font-black text-[#0f2918]">
-                            {isAr ? "اسحب الفيديو هنا أو اختر ملفاً" : "Drag video here or choose a file"}
+                          <Upload className="mx-auto h-6 w-6 text-[#1E4D35]/70" />
+                          <p className="text-xs font-black text-[#0f2918]">
+                            {isAr ? "اسحب الفيديو أو اختر ملفاً" : "Drag or choose a video"}
                           </p>
                           <p className="text-[11px] font-semibold text-[#94a3ab]">MP4, WebM, MOV · max 500MB</p>
                         </div>
@@ -1319,7 +1644,7 @@ export default function CreateVideoLesson() {
                       onChange={(e) => setVideoUrl(e.target.value)}
                       placeholder="https://example.com/video.mp4"
                       dir="ltr"
-                      className="rounded-2xl border-2 font-mono text-sm focus:border-[#1E4D35]/35"
+                      className="min-h-[44px] rounded-xl border-2 font-mono text-xs focus:border-[#1E4D35]/35"
                     />
                     <p className="mt-2 text-[11px] leading-relaxed text-[#94a3ab]">
                       {isAr ? "رابط مباشر لملف فيديو (MP4 أو WebM)." : "Direct link to a video file (MP4 or WebM)."}
@@ -1329,73 +1654,56 @@ export default function CreateVideoLesson() {
               </section>
 
               <section
-                className={cn("rounded-[24px] border bg-white p-5 sm:p-6", TRANSITION)}
+                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
               >
-                <h2 className="mb-4 text-right text-base font-black text-[#0f2918]">
-                  {isAr ? "وضع الوصول" : "Access"}
-                </h2>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {(
-                    [
-                      { id: "public" as AccessUi, label: isAr ? "عام" : "Public", Icon: Globe, hint: isAr ? "متاح حسب سياسة المنصة" : "Platform policy" },
-                      { id: "code" as AccessUi, label: isAr ? "خاص بكود" : "Code", Icon: KeyRound, hint: isAr ? "يبحث الطالب بالرمز" : "Students use code" },
-                      { id: "closed" as AccessUi, label: isAr ? "خاص" : "Private", Icon: Lock, hint: isAr ? "بدون مشاركة الكود" : "No shared code" },
-                    ] as const
-                  ).map(({ id, label, Icon, hint }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => {
-                        setAccessUi(id);
-                        if (id === "code" && !accessCode.trim()) setAccessCode(generateAccessCode());
-                      }}
-                      className={cn(
-                        "flex min-h-[44px] flex-col items-stretch rounded-2xl border px-3 py-2.5 text-right transition-colors",
-                        accessUi === id
-                          ? "border-[#1E4D35] bg-[#eef5f0] shadow-sm"
-                          : "border-transparent bg-[#f9faf9] hover:border-[#1E4D35]/15",
-                      )}
-                      style={{ borderColor: accessUi === id ? BRAND : CARD_BORDER }}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-[#1E4D35]" />
-                        <span className="text-xs font-black text-[#0f2918]">{label}</span>
-                      </span>
-                      <span className="mt-1 text-[10px] font-semibold leading-snug text-[#64748B]">{hint}</span>
-                    </button>
-                  ))}
+                <h2 className="mb-2 text-right text-xs font-black text-[#0f2918]">{isAr ? "وضع الوصول" : "Access"}</h2>
+                <div
+                  className="flex rounded-xl border border-[#e5e7eb] bg-[#f3f7f4] p-0.5"
+                  role="tablist"
+                  aria-label={isAr ? "وضع الوصول" : "Access mode"}
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={accessUi === "public"}
+                    onClick={() => setAccessUi("public")}
+                    className={cn(
+                      "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 text-[11px] font-black transition-colors",
+                      accessUi === "public" ? "bg-white text-[#1E4D35] shadow-sm" : "text-[#64748B] hover:text-[#0f2918]",
+                    )}
+                  >
+                    <Globe className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                    {isAr ? "عام" : "Public"}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={accessUi === "code"}
+                    onClick={() => {
+                      setAccessUi("code");
+                      if (!accessCode.trim()) setAccessCode(generateAccessCode());
+                    }}
+                    className={cn(
+                      "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[10px] px-2 text-[11px] font-black transition-colors",
+                      accessUi === "code" ? "bg-white text-[#1E4D35] shadow-sm" : "text-[#64748B] hover:text-[#0f2918]",
+                    )}
+                  >
+                    <KeyRound className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                    {isAr ? "خاص بكود" : "Code"}
+                  </button>
                 </div>
                 {accessUi === "code" && (
-                  <div className="mt-4">
-                    <Label className="mb-1 text-xs font-bold text-[#64748B]">{isAr ? "رمز الوصول" : "Access code"}</Label>
+                  <div className="mt-3">
+                    <Label className="mb-1 text-[10px] font-bold text-[#64748B]">{isAr ? "رمز الوصول" : "Access code"}</Label>
                     <Input
                       value={accessCode}
                       onChange={(e) => setAccessCode(e.target.value)}
                       dir="ltr"
-                      className="mt-1 rounded-2xl border-2 text-center font-mono tracking-[0.2em]"
+                      className="mt-1 min-h-[44px] rounded-xl border-2 text-center font-mono text-sm tracking-[0.15em]"
                     />
                   </div>
                 )}
-              </section>
-
-              <section
-                className={cn("rounded-[24px] border bg-white p-5 sm:p-6", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1 text-right">
-                    <h2 className="text-base font-black text-[#0f2918]">{isAr ? "المشاركة مع المعلمين" : "Teacher sharing"}</h2>
-                    <p className="text-[12px] leading-relaxed text-[#64748B]">
-                      {isAr
-                        ? "السماح للمعلمين الآخرين بمشاهدة هذا الدرس واستخدامه في حصصهم."
-                        : "Let other teachers discover and reuse this lesson."}
-                    </p>
-                  </div>
-                  <div className="flex justify-end sm:shrink-0">
-                    <Switch checked={isShared} onCheckedChange={setIsShared} className="data-[state=checked]:bg-[#1E4D35]" />
-                  </div>
-                </div>
               </section>
             </aside>
           </div>
@@ -1404,35 +1712,35 @@ export default function CreateVideoLesson() {
         {/* Bottom Action Bar */}
         <footer
           className={cn(
-            "fixed bottom-0 inset-x-0 z-40 border-t border-[#eef2ef] bg-[#fcfdfc]/92 backdrop-blur-xl",
+            "fixed bottom-0 inset-x-0 z-40 border-t border-[#eef2ef] bg-[#fcfdfc]/95 backdrop-blur-md",
             TRANSITION,
           )}
           style={{ borderColor: CARD_BORDER }}
           dir={isAr ? "rtl" : "ltr"}
         >
-          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-2 px-4 py-3">
+          <div className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-center gap-1.5 px-3 py-2 sm:justify-between">
             <button
               type="button"
               onClick={() => setLocation(editId ? `/teacher/video-lesson/${editId}` : "/teacher")}
-              className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-[#e5e7eb] bg-white px-4 text-sm font-black text-[#374151] hover:bg-[#f9faf9] sm:flex-none"
+              className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#e5e7eb] bg-white px-3 text-xs font-black text-[#374151] hover:bg-[#f9faf9] sm:flex-none sm:text-[13px]"
             >
-              <BackArrowIcon className="h-4 w-4" />
+              <BackArrowIcon className="h-3.5 w-3.5" />
               {isAr ? "رجوع" : "Back"}
             </button>
             <button
               type="button"
               onClick={saveDraftLocal}
-              className="flex min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-dashed border-[#dce8e0] px-4 text-sm font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:flex-none"
+              className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl border border-dashed border-[#dce8e0] px-3 text-xs font-bold text-[#64748B] hover:border-[#1E4D35]/25 hover:text-[#1E4D35] sm:flex-none sm:text-[13px]"
             >
               {isAr ? "حفظ كمسودة" : "Save draft"}
             </button>
             <button
               type="button"
               onClick={() => setPreviewOpen(true)}
-              disabled={!hasVideoPreview}
-              className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border border-[#e5e7eb] bg-white px-4 text-sm font-black text-[#1E4D35] hover:bg-[#f3f7f4] disabled:opacity-40 sm:flex-none"
+              disabled={!isVideoValid() || questions.length === 0}
+              className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#e5e7eb] bg-white px-3 text-xs font-black text-[#1E4D35] hover:bg-[#f3f7f4] disabled:pointer-events-none disabled:opacity-40 sm:flex-none sm:text-[13px]"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-3.5 w-3.5" />
               {isAr ? "معاينة الدرس" : "Preview"}
             </button>
             <button
@@ -1440,22 +1748,22 @@ export default function CreateVideoLesson() {
               onClick={handlePublishClick}
               disabled={saving || !title.trim() || !isVideoValid() || questions.length === 0}
               className={cn(
-                "flex min-h-[44px] flex-[1_1_160px] items-center justify-center gap-2 rounded-2xl px-6 text-sm font-black text-white shadow-lg disabled:opacity-45 sm:min-w-[180px] sm:flex-none",
+                "flex min-h-[44px] flex-[1_1_140px] items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black text-white shadow-md disabled:pointer-events-none disabled:opacity-45 sm:min-w-[158px] sm:flex-none sm:text-[13px]",
                 TRANSITION,
               )}
               style={{
                 background: `linear-gradient(90deg, ${BRAND} 0%, #225739 100%)`,
-                boxShadow: "0 10px 28px rgba(30, 77, 53, 0.28)",
+                boxShadow: "0 6px 18px rgba(30, 77, 53, 0.22)",
               }}
             >
               {saving ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   {isAr ? "جاري النشر…" : "Publishing…"}
                 </>
               ) : (
                 <>
-                  <Save className="h-5 w-5" />
+                  <Save className="h-4 w-4" />
                   {editId ? (isAr ? "حفظ التعديلات" : "Save changes") : isAr ? "نشر الدرس" : "Publish"}
                 </>
               )}
@@ -1497,13 +1805,21 @@ export default function CreateVideoLesson() {
                     className="h-10 w-[5.5rem] rounded-xl border-2 text-center font-mono text-sm"
                   />
                   {isPlayerReady && (
-                    <button
-                      type="button"
-                      onClick={() => setDraftQ({ ...draftQ, timestampSeconds: getVideoTimestamp() })}
-                      className="text-xs font-black text-[#1E4D35] underline-offset-2 hover:underline"
-                    >
-                      {isAr ? "استخدم موضع التشغيل" : "Use playhead"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setDraftQ({ ...draftQ, timestampSeconds: getVideoTimestamp() })}
+                        className="text-xs font-black text-[#1E4D35] underline-offset-2 hover:underline"
+                      >
+                        {isAr ? "استخدم موضع التشغيل" : "Use playhead"}
+                      </button>
+                      <span className="w-full text-[11px] font-bold text-[#94a3ab] sm:w-auto">
+                        {isAr ? "التشغيل الآن:" : "Now at:"}{" "}
+                        <span dir="ltr" className="font-mono tabular-nums text-[#1E4D35]">
+                          {formatTimestamp(getVideoTimestamp())}
+                        </span>
+                      </span>
+                    </>
                   )}
                 </div>
                 <div>
@@ -1645,35 +1961,17 @@ export default function CreateVideoLesson() {
           </DialogContent>
         </Dialog>
 
-        {/* معاينة */}
-        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent
-            className={cn("max-h-[90vh] overflow-y-auto rounded-[24px] border sm:max-w-3xl", isAr && "[&>button]:start-4 [&>button]:end-auto")}
-            style={{ borderColor: CARD_BORDER }}
-            dir={isAr ? "rtl" : "ltr"}
-          >
-            <DialogHeader className="text-right sm:text-right">
-              <DialogTitle className="font-black">{isAr ? "معاينة الدرس" : "Lesson preview"}</DialogTitle>
-              <DialogDescription>{title || (isAr ? "بدون عنوان" : "Untitled")}</DialogDescription>
-            </DialogHeader>
-            <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
-              {youtubeId ? (
-                <iframe
-                  title="preview"
-                  className="h-full w-full"
-                  src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : videoUrl.trim() ? (
-                <video src={videoUrl} controls className="h-full w-full object-contain" />
-              ) : null}
-            </div>
-            <p className="text-sm font-bold text-[#64748B]">
-              {questions.length} {isAr ? "سؤالاً على الخط الزمني" : "questions on the timeline"}
-            </p>
-          </DialogContent>
-        </Dialog>
+        <TeacherStudentPreviewDialog
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          isAr={isAr}
+          titleHint={title}
+          videoUrl={videoUrl}
+          videoSource={videoSource}
+          youtubeId={youtubeId}
+          questions={questions}
+          skipSegments={skipSegments}
+        />
       </div>
     </Layout>
   );
