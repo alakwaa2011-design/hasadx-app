@@ -86,6 +86,13 @@ const SubmitVideoLessonBody = z.object({
   ),
 });
 
+/** تحقق فوري أثناء التشغيل — نفس منطق المقارنة في submit */
+const CheckVideoAnswerBody = z.object({
+  questionId: z.number(),
+  selectedAnswer: z.string(),
+  accessCode: z.string().optional(),
+});
+
 router.get("/video-lessons", async (req, res) => {
   try {
     const teacherId = req.session.teacherId;
@@ -508,6 +515,59 @@ router.delete("/video-lessons/:id", async (req, res) => {
     ).catch(() => {});
     res.json({ success: true });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "خطأ في الخادم";
+    res.status(500).json({ message });
+  }
+});
+
+router.post("/video-lessons/:id/check-answer", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "معرف غير صالح" });
+
+    const [lesson] = await db
+      .select()
+      .from(videoLessonsTable)
+      .where(eq(videoLessonsTable.id, id))
+      .limit(1);
+
+    if (!lesson) return res.status(404).json({ message: "درس غير موجود" });
+
+    const body = CheckVideoAnswerBody.parse(req.body);
+
+    if (lesson.accessMode === "private") {
+      const submittedCode = (body.accessCode || "").trim().toUpperCase();
+      const storedCode = (lesson.accessCode || "").trim().toUpperCase();
+      if (!submittedCode || submittedCode !== storedCode) {
+        return res.status(403).json({ message: "كود الدخول غير صحيح" });
+      }
+    }
+
+    const [question] = await db
+      .select()
+      .from(videoQuestionsTable)
+      .where(and(eq(videoQuestionsTable.videoLessonId, id), eq(videoQuestionsTable.id, body.questionId)))
+      .limit(1);
+
+    if (!question) return res.status(404).json({ message: "سؤال غير موجود" });
+
+    let isCorrect = false;
+    if (question.correctAnswer) {
+      const studentAns = body.selectedAnswer.trim().toLowerCase();
+      const correctAns = question.correctAnswer.trim().toLowerCase();
+      isCorrect = studentAns === correctAns;
+    }
+
+    res.json({
+      isCorrect,
+      points: question.points,
+      earnedPoints: isCorrect ? question.points : 0,
+      correctAnswer: isCorrect ? null : question.correctAnswer,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+    }
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
   }
