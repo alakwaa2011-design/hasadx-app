@@ -206,6 +206,7 @@ function TeacherStudentPreviewDialog({
   );
 
   const prevYtRef = useRef<YTPlayer | null>(null);
+  const prevYtMountRef = useRef<HTMLDivElement>(null);
   const prevHtmlRef = useRef<HTMLVideoElement>(null);
   const [prevReady, setPrevReady] = useState(false);
   const [activeRow, setActiveRow] = useState<PreviewRow | null>(null);
@@ -243,8 +244,13 @@ function TeacherStudentPreviewDialog({
     setPrevReady(false);
   }, [open]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !isYt || !youtubeId) return;
+
+    let cancelled = false;
+    let rafKick1 = 0;
+    let rafKick2 = 0;
+    let rafRetry = 0;
 
     const existing = document.getElementById("yt-iframe-api");
     if (!existing) {
@@ -254,27 +260,53 @@ function TeacherStudentPreviewDialog({
       document.head.appendChild(tag);
     }
 
-    const init = () => {
-      if (prevYtRef.current) {
-        try {
-          prevYtRef.current.destroy();
-        } catch {
-          /* ignore */
-        }
+    const initIntoMount = () => {
+      if (cancelled) return;
+      const el = prevYtMountRef.current;
+      if (!el) {
+        rafRetry = requestAnimationFrame(initIntoMount);
+        return;
       }
-      prevYtRef.current = new ytWindow.YT!.Player("yt-player-teacher-preview", {
+      try {
+        prevYtRef.current?.destroy?.();
+      } catch {
+        /* ignore */
+      }
+      prevYtRef.current = null;
+      setPrevReady(false);
+      el.innerHTML = "";
+
+      prevYtRef.current = new ytWindow.YT!.Player(el, {
         videoId: youtubeId,
         playerVars: { controls: 1, modestbranding: 1, rel: 0 },
         events: {
-          onReady: () => setPrevReady(true),
+          onReady: () => {
+            if (!cancelled) setPrevReady(true);
+          },
         },
       });
     };
 
-    if (ytWindow.YT?.Player) init();
-    else ytWindow.onYouTubeIframeAPIReady = init;
+    const kickoff = () => {
+      if (cancelled) return;
+      if (ytWindow.YT?.Player) {
+        initIntoMount();
+      } else {
+        ytWindow.onYouTubeIframeAPIReady = () => {
+          if (!cancelled) initIntoMount();
+        };
+      }
+    };
+
+    rafKick1 = requestAnimationFrame(() => {
+      rafKick2 = requestAnimationFrame(kickoff);
+    });
 
     return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafKick1);
+      cancelAnimationFrame(rafKick2);
+      cancelAnimationFrame(rafRetry);
       if (prevYtRef.current) {
         try {
           prevYtRef.current.destroy();
@@ -283,6 +315,10 @@ function TeacherStudentPreviewDialog({
         }
         prevYtRef.current = null;
       }
+      if (prevYtMountRef.current) {
+        prevYtMountRef.current.innerHTML = "";
+      }
+      setPrevReady(false);
     };
   }, [open, isYt, youtubeId]);
 
@@ -384,7 +420,9 @@ function TeacherStudentPreviewDialog({
           <>
             <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black">
               {isYt && youtubeId ? (
-                <div id="yt-player-teacher-preview" className="h-full w-full" />
+                <div className="absolute inset-0 z-0 h-full w-full">
+                  <div ref={prevYtMountRef} className="h-full w-full min-h-0" />
+                </div>
               ) : (
                 <video ref={prevHtmlRef} src={videoUrl} controls className="h-full w-full object-contain" />
               )}
