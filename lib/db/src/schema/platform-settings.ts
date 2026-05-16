@@ -70,4 +70,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   /* Arena Challenge — which question-import sources organisers can use
      when creating a custom category. Admin-controllable toggles. */
   arenaImportSources: jsonb("arena_import_sources").$type<ArenaImportSources>().notNull().default(DEFAULT_ARENA_IMPORT_SOURCES),
+  /* Gamification (XP / badges / quests / navbar pill). Admin can disable
+     platform-wide so teachers no longer earn or see reward UX. */
+  teacherXpRewardsEnabled: boolean("teacher_xp_rewards_enabled").notNull().default(true),
 });

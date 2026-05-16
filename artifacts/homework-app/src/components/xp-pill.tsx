@@ -38,14 +38,15 @@ function xpProgress(stats: XpStats): number {
 export function XpPill() {
   const [, setLocation] = useLocation();
 
-  const { data } = useQuery<XpStats>({
+  const { data } = useQuery<XpStats | null, Error>({
     queryKey: ["xp-pill"],
-    queryFn: async () => {
+    queryFn: async (): Promise<XpStats | null> => {
       const res = await fetch(`${API_BASE}/api/me/achievements`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("xp");
       const json = await res.json();
+      if (json.xpRewardsEnabled === false) return null;
       return json.stats as XpStats;
     },
     staleTime: 60_000,

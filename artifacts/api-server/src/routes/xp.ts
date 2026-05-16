@@ -21,8 +21,10 @@ import {
 import { and, desc, eq, sql, inArray, isNull, gte } from "drizzle-orm";
 import { z } from "zod";
 import { applyAdminAdjustment } from "../lib/xp/engine";
-import { LEVELS, levelForXp, nextLevelTarget } from "../lib/xp/levels";
+import { LEVELS, levelForXp } from "../lib/xp/levels";
 import { evaluateRule } from "../lib/xp/rules-engine";
+import { buildAchievementStatsPayload } from "../lib/xp/teacher-xp-display";
+import { isTeacherXpRewardsEnabled } from "../lib/xp/teacher-xp-rewards-flag";
 
 const router: IRouter = Router();
 
@@ -93,13 +95,19 @@ router.get("/me/achievements", async (req, res) => {
   try {
     const teacherId = await requireTeacher(req, res);
     if (!teacherId) return;
+
+    const xpRewardsEnabled = await isTeacherXpRewardsEnabled();
+    if (!xpRewardsEnabled) {
+      res.json({ xpRewardsEnabled: false });
+      return;
+    }
+
     const [stats] = await db
       .select()
       .from(teacherStatsTable)
       .where(eq(teacherStatsTable.teacherId, teacherId))
       .limit(1);
     const totalXp = stats?.totalXp ?? 0;
-    const lvl = nextLevelTarget(totalXp);
 
     const [allBadges, earned, grants, allRewards] = await Promise.all([
       db.select().from(badgesTable).where(eq(badgesTable.isActive, true)),
@@ -121,10 +129,11 @@ router.get("/me/achievements", async (req, res) => {
     ]);
 
     const earnedMap = new Map(earned.map((e) => [e.badgeId, e.awardedAt]));
+    const derivedLevel = levelForXp(totalXp).level;
     const lookup: Record<string, number> = {
       totalXp,
       seasonXp: stats?.seasonXp ?? 0,
-      level: stats?.level ?? 1,
+      level: derivedLevel,
       currentStreakDays: stats?.currentStreakDays ?? 0,
       longestStreakDays: stats?.longestStreakDays ?? 0,
       badgeCount: stats?.badgeCount ?? 0,
@@ -133,20 +142,19 @@ router.get("/me/achievements", async (req, res) => {
 
     const grantedMap = new Map(grants.map((g) => [g.rewardId, g]));
 
+    const statsPayload = buildAchievementStatsPayload({
+      totalXp,
+      seasonXp: stats?.seasonXp ?? 0,
+      currentStreakDays: stats?.currentStreakDays ?? 0,
+      longestStreakDays: stats?.longestStreakDays ?? 0,
+      badgeCount: stats?.badgeCount ?? 0,
+      questsCompleted: stats?.questsCompleted ?? 0,
+      displayLevelOverride: stats?.displayLevelOverride ?? null,
+    });
+
     res.json({
-      stats: {
-        totalXp,
-        seasonXp: stats?.seasonXp ?? 0,
-        level: stats?.level ?? 1,
-        levelNameAr: lvl.current.nameAr,
-        nextLevelMinXp: lvl.next?.minXp ?? null,
-        nextLevelNameAr: lvl.next?.nameAr ?? null,
-        xpToNext: lvl.toGo,
-        currentStreakDays: stats?.currentStreakDays ?? 0,
-        longestStreakDays: stats?.longestStreakDays ?? 0,
-        badgeCount: stats?.badgeCount ?? 0,
-        questsCompleted: stats?.questsCompleted ?? 0,
-      },
+      xpRewardsEnabled: true,
+      stats: statsPayload,
       levels: LEVELS,
       badges: allBadges
         .map((b) => ({
@@ -189,6 +197,10 @@ router.get("/me/quests", async (req, res) => {
   try {
     const teacherId = await requireTeacher(req, res);
     if (!teacherId) return;
+    if (!(await isTeacherXpRewardsEnabled())) {
+      res.json({ xpRewardsEnabled: false, quests: [] });
+      return;
+    }
     const now = new Date();
     const quests = await db
       .select()
@@ -200,7 +212,7 @@ router.get("/me/quests", async (req, res) => {
         ),
       );
     if (quests.length === 0) {
-      res.json({ quests: [] });
+      res.json({ xpRewardsEnabled: true, quests: [] });
       return;
     }
     const progress = await db
@@ -217,6 +229,7 @@ router.get("/me/quests", async (req, res) => {
       );
     const pmap = new Map(progress.map((p) => [p.questId, p]));
     res.json({
+      xpRewardsEnabled: true,
       quests: quests.map((q) => {
         const p = pmap.get(q.id);
         return {
@@ -243,6 +256,10 @@ router.get("/me/xp-history", async (req, res) => {
   try {
     const teacherId = await requireTeacher(req, res);
     if (!teacherId) return;
+    if (!(await isTeacherXpRewardsEnabled())) {
+      res.json({ xpRewardsEnabled: false, events: [] });
+      return;
+    }
     const rows = await db
       .select({
         id: xpEventsTable.id,
@@ -255,7 +272,7 @@ router.get("/me/xp-history", async (req, res) => {
       .where(eq(xpEventsTable.teacherId, teacherId))
       .orderBy(desc(xpEventsTable.createdAt))
       .limit(50);
-    res.json({ events: rows });
+    res.json({ xpRewardsEnabled: true, events: rows });
   } catch (err) {
     req.log.error(err, "GET /me/xp-history failed");
     res.status(500).json({ message: "حدث خطأ" });

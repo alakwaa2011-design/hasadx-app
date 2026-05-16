@@ -21,6 +21,17 @@ import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+/** Arabic tier titles — keep aligned with server `LEVELS` (levels.ts). */
+const TEACHER_LEVEL_AR = [
+  "معلّم مبتدئ",
+  "معلّم نشط",
+  "معلّم ملهم",
+  "خبير حصاد",
+  "سفير حصاد",
+  "أسطورة حصاد",
+  "أيقونة حصاد",
+] as const;
+
 interface TeacherData {
   id: number;
   name: string;
@@ -38,6 +49,9 @@ interface TeacherData {
   studentCount: number;
   gameCount: number;
   questionCount: number;
+  totalXp?: number;
+  xpLevel?: number;
+  displayLevelOverride?: number | null;
 }
 
 interface StudentData {
@@ -403,6 +417,8 @@ export default function AdminPage() {
   const [savingGameVisibility, setSavingGameVisibility] = useState(false);
   const [arenaImportSources, setArenaImportSources] = useState<{ manual: boolean; ai: boolean; homework: boolean; file: boolean }>({ manual: true, ai: true, homework: false, file: false });
   const [savingArenaSources, setSavingArenaSources] = useState(false);
+  const [teacherXpRewardsEnabled, setTeacherXpRewardsEnabled] = useState(true);
+  const [savingTeacherXpRewards, setSavingTeacherXpRewards] = useState(false);
 
   // Appearance
   const [appearancePrimaryColor, setAppearancePrimaryColor] = useState("#0d6b75");
@@ -737,6 +753,7 @@ export default function AdminPage() {
           setShowQuranSection(ps.showQuranSection ?? false);
           setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
           setShowMaraqui(ps.showMaraqui ?? false);
+          setTeacherXpRewardsEnabled(ps.teacherXpRewardsEnabled ?? true);
           if (ps.arenaImportSources) setArenaImportSources(ps.arenaImportSources);
           setClassroomEnabled(ps.classroomEnabled ?? false);
           const emails = Array.isArray(ps.classroomAllowedEmails) ? ps.classroomAllowedEmails : [];
@@ -946,6 +963,27 @@ export default function AdminPage() {
     }
   };
 
+  const handleTeacherDisplayLevel = async (teacherId: number, raw: string) => {
+    const displayLevelOverride = raw === "" ? null : Number(raw);
+    if (displayLevelOverride !== null && (displayLevelOverride < 1 || displayLevelOverride > 7 || !Number.isInteger(displayLevelOverride))) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/teachers/${teacherId}/display-level`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ displayLevelOverride }),
+      });
+      if (res.ok) {
+        setTeachers(prev => prev.map(t => (t.id === teacherId ? { ...t, displayLevelOverride } : t)));
+        toast.success(lang === "ar" ? "تم تحديث مستوى العرض" : "Display level updated");
+      } else {
+        toast.error(lang === "ar" ? "تعذّر التحديث" : "Update failed");
+      }
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر التحديث" : "Update failed");
+    }
+  };
+
   const handleTogglePresentationsPro = async (id: number, current: boolean | undefined) => {
     const next = !current;
     const res = await fetch(`${API_BASE}/api/admin/teachers/${id}/presentations-pro`, {
@@ -1019,6 +1057,7 @@ export default function AdminPage() {
       if (ps.guestLimit !== undefined) { setGuestLimit(ps.guestLimit); setGuestLimitInput(ps.guestLimit); }
       setProAiForAll(ps.proAiForAll ?? false);
       setPresentationsProForAll(ps.presentationsProForAll ?? false);
+      setTeacherXpRewardsEnabled(ps.teacherXpRewardsEnabled ?? true);
       if (ps.presentationLimits) {
         setPresentationLimits(ps.presentationLimits);
         setPresentationLimitsInput(ps.presentationLimits);
@@ -2040,6 +2079,35 @@ export default function AdminPage() {
                                   </Button>
                                 )}
                                 {!teacher.isAdmin && (
+                                  <div className="flex flex-col gap-1 w-full sm:min-w-[220px]">
+                                    <label className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                                      <Trophy className="w-3 h-3" />
+                                      {lang === "ar" ? "مستوى العرض في الإنجازات" : "Achievements display tier"}
+                                    </label>
+                                    <select
+                                      className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background font-semibold"
+                                      value={teacher.displayLevelOverride ?? ""}
+                                      onChange={(e) => void handleTeacherDisplayLevel(teacher.id, e.target.value)}
+                                      dir={lang === "ar" ? "rtl" : "ltr"}
+                                    >
+                                      <option value="">{lang === "ar" ? "تلقائي (حسب نقاط XP)" : "Automatic (from XP)"}</option>
+                                      {TEACHER_LEVEL_AR.map((nameAr, i) => (
+                                        <option key={i + 1} value={i + 1}>
+                                          {i + 1} — {nameAr}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {teacher.totalXp != null && (
+                                      <p className="text-[10px] text-muted-foreground">
+                                        XP: {(teacher.totalXp ?? 0).toLocaleString(lang === "ar" ? "ar-SA" : "en-US")}
+                                        {teacher.xpLevel != null
+                                          ? ` · ${lang === "ar" ? "المستوى من النقاط" : "XP tier"}: ${teacher.xpLevel}`
+                                          : ""}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                {!teacher.isAdmin && (
                                   <Button
                                     variant={teacher.presentationsProEnabled ? "outline" : "default"}
                                     onClick={() => handleTogglePresentationsPro(teacher.id, teacher.presentationsProEnabled)}
@@ -2449,6 +2517,61 @@ export default function AdminPage() {
                   </button>
                 ))}
               </div>
+            </Card>
+
+            {/* Teacher XP — platform-wide */}
+            <Card className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <Trophy className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-extrabold text-foreground">
+                    {lang === "ar" ? "نقاط الخبرة والإنجازات للمعلمين" : "Teacher XP & achievements"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "عطّل الخدمة لإخفاء شارة النقاط وصفحة الإنجازات وإيقاف منح نقاط XP. يمكن لكل معلم ضبط مستوى العرض الظاهر من قسم «المعلمين» أدناه."
+                      : "Disable to hide the XP badge and achievements page and stop awarding XP. Set each teacher’s displayed tier under Teachers."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const next = !teacherXpRewardsEnabled;
+                  setTeacherXpRewardsEnabled(next);
+                  setSavingTeacherXpRewards(true);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/platform-settings`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ teacherXpRewardsEnabled: next }),
+                    });
+                    if (res.ok) toast.success(lang === "ar" ? "تم الحفظ" : "Saved");
+                    else setTeacherXpRewardsEnabled(!next);
+                  } catch {
+                    setTeacherXpRewardsEnabled(!next);
+                  } finally {
+                    setSavingTeacherXpRewards(false);
+                  }
+                }}
+                disabled={savingTeacherXpRewards}
+                className="w-full flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3 hover:bg-muted/30 transition-colors text-start disabled:opacity-60"
+              >
+                <div>
+                  <p className="font-bold text-sm text-foreground">
+                    {lang === "ar" ? "تفعيل نقاط الخبرة والمكافآت للمعلمين" : "Enable teacher XP rewards"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === "ar"
+                      ? "عند الإيقاف لا تُمنح نقاط جديدة وتختفي واجهة الإنجازات من لوحة المعلم."
+                      : "When off, no new XP is granted and achievement UI is hidden."}
+                  </p>
+                </div>
+                {teacherXpRewardsEnabled
+                  ? <ToggleRight className="w-8 h-8 text-primary shrink-0" />
+                  : <ToggleLeft className="w-8 h-8 text-muted-foreground shrink-0" />}
+              </button>
             </Card>
 
             {/* Google Classroom integration — admin toggle + teacher allowlist */}

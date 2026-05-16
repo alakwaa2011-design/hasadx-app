@@ -1,8 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
 import { eq, sql, desc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
+import { invalidateTeacherXpRewardsCache } from "../lib/xp/teacher-xp-rewards-flag";
 
 const adminObjectStorage = new ObjectStorageService();
 
@@ -28,6 +29,12 @@ const ArenaImportSourcesSchema = z.object({
   homework: z.boolean(),
   file: z.boolean(),
 }).strict();
+
+const DisplayLevelOverrideSchema = z
+  .object({
+    displayLevelOverride: z.union([z.null(), z.number().int().min(1).max(7)]),
+  })
+  .strict();
 
 const router: IRouter = Router();
 
@@ -89,8 +96,12 @@ router.get("/admin/teachers", async (req, res) => {
         submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions s JOIN assignments a ON s.assignment_id = a.id WHERE a.teacher_id = teachers.id)::int`,
         studentCount: sql<number>`(SELECT COUNT(*) FROM students WHERE students.teacher_id = teachers.id)::int`,
         questionCount: sql<number>`(SELECT COUNT(*) FROM question_bank WHERE question_bank.teacher_id = teachers.id)::int`,
+        totalXp: sql<number>`COALESCE(${teacherStatsTable.totalXp}, 0)::int`,
+        xpLevel: sql<number>`COALESCE(${teacherStatsTable.level}, 1)::int`,
+        displayLevelOverride: teacherStatsTable.displayLevelOverride,
       })
       .from(teachersTable)
+      .leftJoin(teacherStatsTable, eq(teachersTable.id, teacherStatsTable.teacherId))
       .orderBy(sql`${teachersTable.createdAt} DESC`);
 
     res.json(teachers);
@@ -426,6 +437,44 @@ router.patch("/admin/teachers/:id/presentations-pro", async (req, res) => {
   }
 });
 
+/** Pin achievements display tier (1–7) or clear to follow XP. */
+router.patch("/admin/teachers/:id/display-level", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const idParse = TeacherIdParamSchema.safeParse(req.params);
+    if (!idParse.success) {
+      res.status(400).json({ message: "معرّف غير صالح" });
+      return;
+    }
+    const id = idParse.data.id;
+    const bodyParse = DisplayLevelOverrideSchema.safeParse(req.body);
+    if (!bodyParse.success) {
+      res.status(400).json({ message: "بيانات غير صحيحة" });
+      return;
+    }
+    const displayLevelOverride = bodyParse.data.displayLevelOverride;
+
+    const [exists] = await db.select({ id: teachersTable.id }).from(teachersTable).where(eq(teachersTable.id, id)).limit(1);
+    if (!exists) {
+      res.status(404).json({ message: "المعلم غير موجود" });
+      return;
+    }
+
+    await db
+      .insert(teacherStatsTable)
+      .values({ teacherId: id, displayLevelOverride })
+      .onConflictDoUpdate({
+        target: teacherStatsTable.teacherId,
+        set: { displayLevelOverride, updatedAt: new Date() },
+      });
+
+    res.json({ id, displayLevelOverride });
+  } catch (err) {
+    req.log.error(err, "Failed to update teacher display level");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
 router.delete("/admin/teachers/:id", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
@@ -499,6 +548,7 @@ async function getPlatformSettings() {
     classroomEnabled: row?.classroomEnabled ?? false,
     classroomAllowedEmails: row?.classroomAllowedEmails ?? [],
     arenaImportSources: row?.arenaImportSources ?? { ...DEFAULT_ARENA_IMPORT_SOURCES },
+    teacherXpRewardsEnabled: row?.teacherXpRewardsEnabled ?? true,
   };
 }
 
@@ -521,7 +571,7 @@ router.get("/admin/platform-settings", async (req, res) => {
 router.patch("/admin/platform-settings", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;
-    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails, arenaImportSources } = req.body;
+    const { publicVisibility, guestLimit, primaryColor, accentColor, fontFamily, platformName, logoUrl, showAdventureGamesHome, showSpaceRaceGamesHome, showFlagsGame, showColorGame, showMemoryGame, showMultiplyGame, showScrambleGame, showTugGame, showCapitalsGame, proAiForAll, presentationsProForAll, presentationLimits, showQuranSection, showGeneralCertificates, showMaraqui, classroomEnabled, classroomAllowedEmails, arenaImportSources, teacherXpRewardsEnabled } = req.body;
 
     const update: Record<string, unknown> = {};
 
@@ -587,6 +637,9 @@ router.patch("/admin/platform-settings", async (req, res) => {
       }
       update.arenaImportSources = parsed.data;
     }
+    if (teacherXpRewardsEnabled !== undefined) {
+      update.teacherXpRewardsEnabled = Boolean(teacherXpRewardsEnabled);
+    }
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ message: "لا توجد حقول للتحديث" });
     }
@@ -598,6 +651,7 @@ router.patch("/admin/platform-settings", async (req, res) => {
       .onConflictDoUpdate({ target: platformSettingsTable.id, set: update });
 
     const updated = await getPlatformSettings();
+    if ("teacherXpRewardsEnabled" in update) invalidateTeacherXpRewardsCache();
     res.json(updated);
   } catch (err) {
     req.log.error(err, "Failed to update platform settings");

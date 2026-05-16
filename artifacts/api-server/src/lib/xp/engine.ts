@@ -34,6 +34,7 @@ import { logger } from "../logger";
 import { evaluateRule } from "./rules-engine";
 import { LEVELS, levelForXp } from "./levels";
 import { DEFAULT_XP_RULES } from "./defaults";
+import { isTeacherXpRewardsEnabled } from "./teacher-xp-rewards-flag";
 
 /** Asia/Riyadh = UTC+3 (no DST). YYYY-MM-DD bucket. */
 function riyadhDateString(d = new Date()): string {
@@ -389,6 +390,8 @@ export async function awardXp(
   opts?: { tx?: XpTx },
 ): Promise<AwardXpResult> {
   if (!isXpEnabled()) return { awarded: false, delta: 0, reason: "disabled" };
+  if (!(await isTeacherXpRewardsEnabled()))
+    return { awarded: false, delta: 0, reason: "disabled" };
 
   try {
     const rule = await loadEffectiveRule(input.actionKey);
@@ -510,6 +513,7 @@ export async function reverseXpIfWithinWindow(
   windowMs = 5 * 60 * 1_000,
 ): Promise<boolean> {
   if (!isXpEnabled()) return false;
+  if (!(await isTeacherXpRewardsEnabled())) return false;
   try {
     const [original] = await db
       .select({ id: xpEventsTable.id, delta: xpEventsTable.delta, createdAt: xpEventsTable.createdAt })
