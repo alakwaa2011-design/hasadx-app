@@ -272,6 +272,14 @@ async function runSchemaMigrations() {
         WHERE (arena_import_sources->>'homework')::boolean IS DISTINCT FROM TRUE
            OR (arena_import_sources->>'file')::boolean IS DISTINCT FROM TRUE
     `);
+    await db.execute(sql`
+      ALTER TABLE platform_settings
+        ADD COLUMN IF NOT EXISTS teacher_xp_rewards_enabled BOOLEAN NOT NULL DEFAULT TRUE
+    `);
+    await db.execute(sql`
+      ALTER TABLE teacher_stats
+        ADD COLUMN IF NOT EXISTS display_level_override INTEGER
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");

@@ -136,14 +136,15 @@ function SidebarXpCard({
   setLocation: (path: string) => void;
   isAr: boolean;
 }) {
-  const { data } = useQuery<SidebarXpStats>({
+  const { data } = useQuery<SidebarXpStats | null, Error>({
     queryKey: ["sidebar-xp"],
-    queryFn: async () => {
+    queryFn: async (): Promise<SidebarXpStats | null> => {
       const res = await fetch(`${API_BASE_DASH}/api/me/achievements`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("xp");
       const json = await res.json();
+      if (json.xpRewardsEnabled === false) return null;
       return json.stats as SidebarXpStats;
     },
     staleTime: 60_000,

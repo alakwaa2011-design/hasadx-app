@@ -6,7 +6,8 @@ import { Trophy, Star, Flame, Target, Lock, CheckCircle2, Sparkles } from "lucid
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 interface AchievementsData {
-  stats: {
+  xpRewardsEnabled?: boolean;
+  stats?: {
     totalXp: number;
     seasonXp: number;
     level: number;
@@ -14,6 +15,9 @@ interface AchievementsData {
     nextLevelMinXp: number | null;
     nextLevelNameAr: string | null;
     xpToNext: number;
+    displayLevelOverride?: number | null;
+    derivedLevel?: number;
+    levelPinnedByAdmin?: boolean;
     currentStreakDays: number;
     longestStreakDays: number;
     badgeCount: number;
@@ -81,10 +85,10 @@ export default function TeacherAchievements() {
         ]);
         if (!aRes.ok) throw new Error("achievements");
         const a = (await aRes.json()) as AchievementsData;
-        const q = qRes.ok ? ((await qRes.json()) as { quests: Quest[] }) : { quests: [] };
+        const q = qRes.ok ? ((await qRes.json()) as { quests: Quest[]; xpRewardsEnabled?: boolean }) : { quests: [] };
         if (!cancelled) {
           setData(a);
-          setQuests(q.quests);
+          setQuests(a.xpRewardsEnabled === false ? [] : (q.quests ?? []));
         }
       } catch (e) {
         if (!cancelled) setError("تعذّر تحميل البيانات");
@@ -112,7 +116,31 @@ export default function TeacherAchievements() {
     );
   }
 
+  if (data.xpRewardsEnabled === false) {
+    return (
+      <Layout>
+        <div className="max-w-lg mx-auto p-8 text-center space-y-3">
+          <p className="text-lg font-bold text-foreground">
+            تم تعطيل نظام نقاط الخبرة والإنجازات من قبل الإدارة.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            إذا كان عندك استفسار، تواصل مع فريق الدعم.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!data.stats) {
+    return (
+      <Layout>
+        <div className="p-8 text-center text-muted-foreground">لا توجد بيانات</div>
+      </Layout>
+    );
+  }
+
   const s = data.stats;
+  const levels = data.levels ?? [];
   const progressPct =
     s.nextLevelMinXp != null
       ? Math.min(
@@ -120,10 +148,10 @@ export default function TeacherAchievements() {
           Math.max(
             0,
             Math.round(
-              ((s.totalXp - (data.levels.find((l) => l.level === s.level)?.minXp ?? 0)) /
+              ((s.totalXp - (levels.find((l) => l.level === s.level)?.minXp ?? 0)) /
                 Math.max(
                   1,
-                  s.nextLevelMinXp - (data.levels.find((l) => l.level === s.level)?.minXp ?? 0),
+                  s.nextLevelMinXp - (levels.find((l) => l.level === s.level)?.minXp ?? 0),
                 )) *
                 100,
             ),
@@ -142,6 +170,11 @@ export default function TeacherAchievements() {
                 <Sparkles size={16} /> المستوى {s.level}
               </div>
               <h2 className="text-3xl font-bold mt-1">{s.levelNameAr}</h2>
+              {s.levelPinnedByAdmin && (
+                <p className="text-xs text-amber-800 bg-amber-100 rounded-lg px-2 py-1 mt-2 inline-block">
+                  المستوى المعروض محدّد يدوياً من لوحة الإدارة (لا يزال تقدّمك بالنقاط يُحسب للشارات).
+                </p>
+              )}
               <p className="text-gray-700 mt-1">إجمالي الخبرة: {s.totalXp.toLocaleString("ar")}</p>
               {s.nextLevelNameAr && (
                 <p className="text-sm text-gray-600 mt-2">
@@ -209,10 +242,10 @@ export default function TeacherAchievements() {
         {/* Badges */}
         <Card className="p-5">
           <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <Trophy size={18} /> الشارات ({data.badges.filter((b) => b.earned).length}/{data.badges.length})
+            <Trophy size={18} /> الشارات ({(data.badges ?? []).filter((b) => b.earned).length}/{(data.badges ?? []).length})
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {data.badges.map((b) => (
+            {(data.badges ?? []).map((b) => (
               <div
                 key={b.id}
                 className={`border-2 rounded-xl p-3 text-center transition ${
@@ -233,11 +266,11 @@ export default function TeacherAchievements() {
         </Card>
 
         {/* Threshold rewards */}
-        {data.rewards.length > 0 && (
+        {(data.rewards ?? []).length > 0 && (
           <Card className="p-5">
             <h3 className="text-lg font-bold mb-3">الجوائز والمكافآت</h3>
             <div className="space-y-3">
-              {data.rewards.map((r) => {
+              {(data.rewards ?? []).map((r) => {
                 const pct = Math.min(100, Math.round((r.progress / r.threshold) * 100));
                 return (
                   <div key={r.id} className="border rounded-lg p-3">

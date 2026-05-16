@@ -61,6 +61,8 @@ export const teacherStatsTable = pgTable("teacher_stats", {
   lastActiveDate: date("last_active_date"),
   badgeCount: integer("badge_count").notNull().default(0),
   questsCompleted: integer("quests_completed").notNull().default(0),
+  /** When set (1–7), achievements UI shows this tier instead of XP-derived level. */
+  displayLevelOverride: integer("display_level_override"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -407,6 +409,8 @@ CREATE TABLE IF NOT EXISTS teacher_stats (
   quests_completed      INTEGER NOT NULL DEFAULT 0,
   updated_at            TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE teacher_stats ADD COLUMN IF NOT EXISTS display_level_override INTEGER;
 
 CREATE TABLE IF NOT EXISTS badges (
   id                  SERIAL PRIMARY KEY,
