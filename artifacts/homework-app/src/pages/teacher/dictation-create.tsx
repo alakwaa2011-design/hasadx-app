@@ -1088,7 +1088,8 @@ export default function DictationCreate() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {/* صف ١: الصوت + سرعة الإنشاء │ صف ٢: المدة + معاينة (مدمجة) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
                 <div className="space-y-1.5 text-right">
                   <label className="text-xs font-bold text-[#64748B]">الصوت</label>
                   <div className="relative">
@@ -1121,6 +1122,7 @@ export default function DictationCreate() {
                     <Gauge className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3ab]" />
                   </div>
                 </div>
+
                 <div className="space-y-1.5 text-right">
                   <label className="text-xs font-bold text-[#64748B]">مدة القراءة التقريبية</label>
                   <div
@@ -1135,83 +1137,60 @@ export default function DictationCreate() {
                     <span className="text-[11px] font-semibold text-[#94a3ab]">وفق طول النص</span>
                   </div>
                 </div>
-              </div>
 
-              <div
-                className={cn("rounded-[24px] border bg-[#fafdfb] p-4 sm:p-4", TRANSITION)}
-                style={{ borderColor: CARD_BORDER }}
-              >
-                <p className="mb-3 text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
+                <div
+                  className={cn(
+                    "flex min-h-0 min-w-0 flex-col gap-2 rounded-[20px] border bg-[#fafdfb] p-3 sm:p-3.5",
+                    TRANSITION,
+                  )}
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <p className="text-right text-xs font-bold text-[#64748B]">معاينة الصوت</p>
 
-                {/* صف مدمج — عمودي على الهاتف */}
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
-                  <div className="flex shrink-0 items-center gap-2">
+                  {/* صف تحكم يلتف تلقائياً إذا ضاقت الخلية */}
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
                     <button
                       type="button"
                       disabled={!audioText.trim()}
                       onClick={() => previewTts("main-audio", audioText, audioSpeed, audioVoice)}
                       className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-md",
+                        "flex shrink-0 items-center justify-center rounded-full text-white shadow-md",
                         TRANSITION,
-                        "min-h-[44px] min-w-[44px] hover:opacity-95 active:scale-[0.98]",
+                        "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9 hover:opacity-95 active:scale-[0.98]",
                         isAudioPlaying ? "bg-red-500" : "bg-[#1E4D35]",
                       )}
                       aria-label={isAudioPlaying ? "إيقاف" : "تشغيل"}
                     >
-                      {isAudioPlaying ? <Square className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                      {isAudioPlaying ? <Square className="h-4 w-4 md:h-3.5 md:w-3.5" /> : <Volume2 className="h-4 w-4 md:h-3.5 md:w-3.5" />}
                     </button>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => seek(-10)}
-                        disabled={!isAudioPlaying}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border bg-white text-[#1E4D35] disabled:opacity-30"
-                        style={{ borderColor: COLOR_CARD_BORDER }}
-                        title="رجوع ١٠ ثوانٍ"
-                      >
-                        <SkipBack className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => seek(10)}
-                        disabled={!isAudioPlaying}
-                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border bg-white text-[#1E4D35] disabled:opacity-30"
-                        style={{ borderColor: COLOR_CARD_BORDER }}
-                        title="تقدم ١٠ ثوانٍ"
-                      >
-                        <SkipForward className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                    <button
+                      type="button"
+                      onClick={() => seek(-10)}
+                      disabled={!isAudioPlaying}
+                      className={cn(
+                        "flex shrink-0 items-center justify-center rounded-lg border bg-white text-[#1E4D35] disabled:opacity-30",
+                        "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9",
+                      )}
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                      title="رجوع ١٠ ثوانٍ"
+                    >
+                      <SkipBack className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => seek(10)}
+                      disabled={!isAudioPlaying}
+                      className={cn(
+                        "flex shrink-0 items-center justify-center rounded-lg border bg-white text-[#1E4D35] disabled:opacity-30",
+                        "h-10 w-10 max-md:min-h-[44px] max-md:min-w-[44px] md:h-9 md:w-9",
+                      )}
+                      style={{ borderColor: COLOR_CARD_BORDER }}
+                      title="تقدم ١٠ ثوانٍ"
+                    >
+                      <SkipForward className="h-3.5 w-3.5" />
+                    </button>
 
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 lg:max-w-[280px]">
-                    <div className="flex h-9 items-end justify-center gap-px sm:justify-start">
-                      {waveformBars.map((h, wi) => (
-                        <div
-                          key={wi}
-                          className="w-1 rounded-full bg-[#dce8e0] sm:w-1.5"
-                          style={{
-                            height: `${h}px`,
-                            opacity: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? 1 : 0.35,
-                            backgroundColor: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? BRAND : undefined,
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <div className="relative h-1 overflow-hidden rounded-full bg-[#e8ece9]">
-                      <div
-                        className={cn("h-full rounded-full bg-[#1E4D35]", TRANSITION)}
-                        style={{ width: `${isAudioPlaying ? progress : 0}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold tabular-nums text-[#64748B]">
-                      <span>{formatAudioTime(currentSec)}</span>
-                      <span className="text-[#94a3ab]">{formatAudioTime(durationSec)}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
-                    <div className="relative min-w-[100px] flex-1 sm:flex-none">
+                    <div className="relative min-w-[5.5rem] shrink-0">
                       <select
                         value={String(previewSpeed)}
                         onChange={(e) => {
@@ -1220,9 +1199,9 @@ export default function DictationCreate() {
                           setSpeed(sp);
                         }}
                         className={cn(
-                          "h-10 w-full rounded-xl border bg-white px-3 py-1 text-xs font-black text-[#374151] sm:w-[100px]",
+                          "h-9 w-full rounded-lg border bg-white px-2 py-1 text-[11px] font-black text-[#374151]",
                           FIELD_RTL_CLASS,
-                          "appearance-none pe-8 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
+                          "appearance-none pe-7 focus:outline-none focus:ring-2 focus:ring-[#1E4D35]/15",
                           TRANSITION,
                         )}
                         style={{ borderColor: COLOR_CARD_BORDER }}
@@ -1232,10 +1211,11 @@ export default function DictationCreate() {
                           <option key={sp} value={sp}>×{sp}</option>
                         ))}
                       </select>
-                      <ChevronDown className="pointer-events-none absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#94a3ab]" />
+                      <ChevronDown className="pointer-events-none absolute end-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[#94a3ab]" />
                     </div>
-                    <div className="flex min-w-[120px] flex-1 items-center gap-2 sm:max-w-[140px]">
-                      <Volume2 className="h-4 w-4 shrink-0 text-[#94a3ab]" aria-hidden />
+
+                    <div className="flex min-h-[36px] min-w-[min(100%,8rem)] flex-1 basis-[7rem] items-center gap-1.5 md:max-w-[10rem]">
+                      <Volume2 className="h-3.5 w-3.5 shrink-0 text-[#94a3ab]" aria-hidden />
                       <input
                         type="range"
                         min={0}
@@ -1243,9 +1223,35 @@ export default function DictationCreate() {
                         step={0.05}
                         value={volume}
                         onChange={(e) => setVolume(Number(e.target.value))}
-                        className="h-1.5 min-w-0 flex-1 cursor-pointer accent-[#1E4D35]"
+                        className="h-1 min-w-0 flex-1 cursor-pointer accent-[#1E4D35]"
                         aria-label="مستوى الصوت"
                       />
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex h-6 items-end justify-end gap-px overflow-hidden">
+                      {waveformBars.map((h, wi) => (
+                        <div
+                          key={wi}
+                          className="w-0.5 shrink-0 rounded-full bg-[#dce8e0] sm:w-px"
+                          style={{
+                            height: `${Math.round(h * 0.65)}px`,
+                            opacity: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? 1 : 0.35,
+                            backgroundColor: isAudioPlaying && progress > (wi / waveformBars.length) * 100 ? BRAND : undefined,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="relative h-0.5 overflow-hidden rounded-full bg-[#e8ece9]">
+                      <div
+                        className={cn("h-full rounded-full bg-[#1E4D35]", TRANSITION)}
+                        style={{ width: `${isAudioPlaying ? progress : 0}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[9px] font-bold tabular-nums text-[#64748B]">
+                      <span>{formatAudioTime(currentSec)}</span>
+                      <span className="text-[#94a3ab]">{formatAudioTime(durationSec)}</span>
                     </div>
                   </div>
                 </div>
