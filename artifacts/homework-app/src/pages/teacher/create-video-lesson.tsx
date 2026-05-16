@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   Plus,
@@ -35,16 +35,15 @@ import {
   Play,
   Clock,
   Loader2,
-  ChevronDown,
   Upload,
   Link2,
   Pencil,
   SkipForward,
   Eye,
   MoreHorizontal,
-  Settings2,
   Users,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -520,7 +519,7 @@ export default function CreateVideoLesson() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [dragUpload, setDragUpload] = useState(false);
   const [timelineHover, setTimelineHover] = useState<number | null>(null);
-  const [extraSettingsOpen, setExtraSettingsOpen] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
   const sourceCardRef = useRef<HTMLDivElement>(null);
 
@@ -960,7 +959,7 @@ export default function CreateVideoLesson() {
         style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
         dir={isAr ? "rtl" : "ltr"}
       >
-        <div className="mx-auto max-w-[1320px] px-4 py-4 sm:py-6">
+        <div className="mx-auto max-w-[1060px] px-4 py-4 sm:py-6">
           {/* العودة */}
           <button
             type="button"
@@ -984,125 +983,8 @@ export default function CreateVideoLesson() {
                 : "Interactive video lesson"}
           </h1>
 
-          {/* دعوة واضحة لقلب الدرس — أسئلة تفاعلية */}
-          <div
-            className={cn(
-              "relative mb-5 overflow-hidden rounded-2xl border-2 bg-white p-4 shadow-md sm:p-5",
-              TRANSITION,
-            )}
-            style={{
-              borderColor: "rgba(30, 77, 53, 0.22)",
-              boxShadow: "0 4px 24px rgba(30, 77, 53, 0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
-            }}
-          >
-            <div
-              className="pointer-events-none absolute -start-16 top-0 h-40 w-40 rounded-full opacity-[0.12]"
-              style={{ background: `radial-gradient(circle at center, ${BRAND}, transparent 70%)` }}
-            />
-            <div
-              className="pointer-events-none absolute -end-10 -bottom-10 h-32 w-32 rounded-full opacity-[0.08]"
-              style={{ background: `radial-gradient(circle at center, ${BRAND}, transparent 70%)` }}
-            />
-            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0 flex-1 space-y-2 text-right">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black tracking-wide text-white shadow-sm",
-                      !isAr && "uppercase",
-                    )}
-                    style={{ background: `linear-gradient(90deg, ${BRAND}, #2a6b47)` }}
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    {isAr ? "الخطوة الأساسية" : "Core step"}
-                  </span>
-                  <span className="rounded-full bg-[#eef5f0] px-2 py-0.5 text-[11px] font-bold text-[#1E4D35]">
-                    {questions.length}{" "}
-                    {isAr
-                      ? questions.length === 1
-                        ? "سؤال"
-                        : "أسئلة"
-                      : questions.length === 1
-                        ? "question"
-                        : "questions"}
-                  </span>
-                </div>
-                <p className="text-base font-black leading-snug text-[#0f2918] sm:text-lg">
-                  {isAr
-                    ? "أوقف الفيديو عند اللحظة المناسبة وأضِف سؤالاً — هذا ما يجعل الدرس تفاعلياً للطالب."
-                    : "Pause the video at the right moment and add a question — that's what makes it interactive."}
-                </p>
-                <p className="text-[13px] leading-relaxed text-[#64748B]">
-                  {isAr
-                    ? "شغّل الفيديو من الأسفل، ثم اضغط الزر هنا عندما يصل الطالب لنقطة الفهم التي تريد تقييمها."
-                    : "Play the video below, then tap here when students reach the moment you want to check understanding."}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
-                <button
-                  type="button"
-                  onClick={openAddQuestionModal}
-                  className={cn(
-                    "flex min-h-[48px] min-w-[min(100%,220px)] items-center justify-center gap-2 rounded-xl px-6 text-sm font-black text-white shadow-lg hover:brightness-[1.03] active:scale-[0.99]",
-                    TRANSITION,
-                  )}
-                  style={{
-                    background: `linear-gradient(135deg, ${BRAND} 0%, #174030 100%)`,
-                    boxShadow: "0 8px 28px rgba(30, 77, 53, 0.35)",
-                  }}
-                >
-                  <Plus className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-                  {isAr ? "إضافة سؤال تفاعلي" : "Add interactive question"}
-                </button>
-                <p className="text-center text-[10px] font-semibold text-[#94a3ab] sm:text-end">
-                  {isAr ? "يمكنك تعديل التوقيت لاحقاً من قائمة الأسئلة." : "You can adjust timing later from the list."}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Collapsible open={extraSettingsOpen} onOpenChange={setExtraSettingsOpen} className="mb-4">
-            <div className="flex justify-end">
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className={cn(
-                    "inline-flex min-h-[44px] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-black text-[#374151] shadow-sm hover:bg-[#fafdfb]",
-                    TRANSITION,
-                  )}
-                  style={{ borderColor: CARD_BORDER }}
-                >
-                  <Settings2 className="h-4 w-4 shrink-0 text-[#1E4D35]" />
-                  {isAr ? "إعدادات إضافية" : "More settings"}
-                  <ChevronDown
-                    className={cn("h-4 w-4 shrink-0 text-[#94a3ab] transition-transform", extraSettingsOpen && "rotate-180")}
-                  />
-                </button>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent className="mt-3">
-              <div
-                className={cn("rounded-2xl border bg-white p-4 sm:p-5", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <Label className="mb-1.5 block text-xs font-bold text-[#64748B]">{isAr ? "الوصف" : "Description"}</Label>
-                <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={isAr ? "وصف مختصر للدرس (اختياري)" : "Short description (optional)"}
-                  rows={3}
-                  className={cn(
-                    "resize-y rounded-xl border-2 bg-background px-3 py-2.5 text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
-                    isAr && FIELD_RTL,
-                  )}
-                  dir={isAr ? "rtl" : undefined}
-                />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          {/* عنوان + مادة + فصل — سطر واحد على الشاشات الواسعة */}
-          <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
+          {/* عنوان + مادة + فصل — أولاً */}
+          <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
             <div className="min-w-0">
               <Label className="mb-1 block text-[11px] font-bold text-[#64748B]">
                 {isAr ? "عنوان الدرس" : "Lesson title"} *
@@ -1168,8 +1050,145 @@ export default function CreateVideoLesson() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-            <div className="min-w-0 flex-1 space-y-5">
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+            <Popover open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex min-h-[44px] items-center gap-2 rounded-xl border bg-white px-3 py-2 text-xs font-black text-[#374151] shadow-sm hover:bg-[#fafdfb]",
+                    TRANSITION,
+                  )}
+                  style={{ borderColor: CARD_BORDER }}
+                >
+                  <FileText className="h-4 w-4 shrink-0 text-[#1E4D35]" />
+                  {isAr ? "الوصف" : "Description"}
+                  {description.trim() ? (
+                    <span className="rounded-full bg-[#eef5f0] px-1.5 py-0.5 text-[10px] font-bold text-[#1E4D35]">
+                      {isAr ? "محفوظ" : "Saved"}
+                    </span>
+                  ) : null}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="rounded-2xl border p-4 shadow-xl sm:w-[400px] sm:max-w-[min(400px,calc(100vw-2rem))]"
+                style={{ borderColor: CARD_BORDER }}
+                align={isAr ? "start" : "end"}
+                sideOffset={8}
+                dir={isAr ? "rtl" : "ltr"}
+              >
+                <p className="mb-2 text-sm font-black text-[#0f2918]">{isAr ? "وصف الدرس" : "Lesson description"}</p>
+                <p className="mb-3 text-[11px] leading-relaxed text-[#64748B]">
+                  {isAr ? "اختياري — يظهر للطالب حسب سياسة العرض في المنصة." : "Optional — visibility follows platform rules."}
+                </p>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder={isAr ? "اكتب وصفاً مختصراً للدرس…" : "Write a short lesson description…"}
+                  rows={5}
+                  className={cn(
+                    "mb-3 rounded-xl border-2 bg-background text-sm font-semibold focus-visible:border-[#1E4D35]/35 focus-visible:ring-[#1E4D35]/12",
+                    isAr && FIELD_RTL,
+                  )}
+                  dir={isAr ? "rtl" : undefined}
+                />
+                <Button
+                  type="button"
+                  className="h-11 w-full rounded-xl font-black text-white hover:opacity-[0.96]"
+                  style={{ background: BRAND }}
+                  onClick={() => setDescriptionOpen(false)}
+                >
+                  {isAr ? "تم" : "Done"}
+                </Button>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* تذكير بعد الحقول — زر الأسئلة بجانب الفيديو */}
+          <div
+            className={cn("relative mb-5 overflow-hidden rounded-2xl border bg-white p-4 shadow-sm sm:p-4", TRANSITION)}
+            style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+          >
+            <div
+              className="pointer-events-none absolute -start-10 top-0 h-24 w-24 rounded-full opacity-[0.1]"
+              style={{ background: `radial-gradient(circle at center, ${BRAND}, transparent 70%)` }}
+            />
+            <div className="relative flex flex-wrap items-start justify-end gap-3 text-right">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black text-white shadow-sm",
+                    !isAr && "uppercase tracking-wide",
+                  )}
+                  style={{ background: `linear-gradient(90deg, ${BRAND}, #2a6b47)` }}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {isAr ? "تلميح" : "Tip"}
+                </span>
+                <span className="rounded-full bg-[#eef5f0] px-2 py-0.5 text-[11px] font-bold text-[#1E4D35]">
+                  {questions.length}{" "}
+                  {isAr
+                    ? questions.length === 1
+                      ? "سؤال"
+                      : "أسئلة"
+                    : questions.length === 1
+                      ? "question"
+                      : "questions"}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1 space-y-1 sm:text-right">
+                <p className="text-sm font-black leading-snug text-[#0f2918]">
+                  {isAr
+                    ? "أوقف الفيديو عند اللحظة المناسبة واضغط «إضافة سؤال» بجانب عنوان الفيديو (على اليسار)."
+                    : "Pause where it matters and tap “Add question” next to the video title (on the left)."}
+                </p>
+                <p className="text-[12px] leading-relaxed text-[#64748B]">
+                  {isAr
+                    ? "معاينة الدرس: من الشريط السفلي أو من زر «معاينة» بجانب «إضافة سؤال» — تعرض التوقف عند كل سؤال كما للطالب."
+                    : "Preview from the bottom bar or the “Preview” button next to “Add question” — pauses match the student view."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8" dir="ltr">
+            {/* عمود الفيديو — يسار الشاشة، عرض محدود */}
+            <div className="w-full space-y-5 lg:w-[min(100%,472px)] lg:max-w-[100%] lg:shrink-0" dir="rtl">
+              {/* رأس المشغّل: زر إضافة السؤال على اليسار (اتجاه LTR للصف فقط) */}
+              <div dir="ltr" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border bg-white px-3 py-2.5 shadow-sm" style={{ borderColor: CARD_BORDER }}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={openAddQuestionModal}
+                    className={cn(
+                      "flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-black text-white shadow-md hover:brightness-[1.05] active:scale-[0.99]",
+                      TRANSITION,
+                    )}
+                    style={{
+                      background: `linear-gradient(135deg, ${BRAND} 0%, #174030 100%)`,
+                      boxShadow: "0 6px 20px rgba(30, 77, 53, 0.28)",
+                    }}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+                    {isAr ? "إضافة سؤال" : "Add question"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOpen(true)}
+                    disabled={!isVideoValid() || questions.length === 0}
+                    title={isAr ? "معاينة كما يراها الطالب" : "Preview as student"}
+                    className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#dce8e0] bg-[#fafdfb] px-3 text-[11px] font-black text-[#1E4D35] hover:bg-[#f3f7f4] disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <Eye className="h-4 w-4 shrink-0" />
+                    {isAr ? "معاينة" : "Preview"}
+                  </button>
+                </div>
+                <div dir="rtl" className="min-w-0 text-right">
+                  <p className="text-[13px] font-black text-[#0f2918]">{isAr ? "فيديو الدرس" : "Lesson video"}</p>
+                  <p className="text-[11px] text-[#64748B]">{isAr ? "شغّل ثم أضِف أسئلتك من هنا" : "Play, then add cues here"}</p>
+                </div>
+              </div>
+
               {/* بطل الفيديو */}
               <section
                 className={cn("overflow-hidden rounded-[24px] border bg-white", TRANSITION)}
@@ -1327,198 +1346,12 @@ export default function CreateVideoLesson() {
                   </div>
                 )}
               </section>
-
-              {/* تايم لاين */}
-              <section
-                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
-                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
-              >
-                <h3 className="mb-3 text-right text-sm font-black text-[#0f2918]">
-                  {isAr ? "خط الأسئلة" : "Question timeline"}
-                </h3>
-                <div dir="ltr" className="max-w-full overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
-                  <div className="relative mx-auto min-h-[52px] min-w-[min(100%,280px)] px-1">
-                    <div className="relative mt-6 h-2 overflow-hidden rounded-full bg-[#e8ece9]">
-                      {skipSegments.map((seg, i) => (
-                        <div
-                          key={i}
-                          className="absolute top-0 h-full rounded-full bg-amber-400/55"
-                          style={{
-                            left: `${(seg.start / timelineDuration) * 100}%`,
-                            width: `${((seg.end - seg.start) / timelineDuration) * 100}%`,
-                          }}
-                        />
-                      ))}
-                      <div
-                        className="absolute top-0 h-full rounded-full bg-[#1E4D35]/25 transition-[width]"
-                        style={{
-                          width: `${Math.min(100, ((videoDuration ? currentTime : 0) / timelineDuration) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="relative mt-0 h-10">
-                      {sortedQuestionIndices.map((realIdx, order) => {
-                        const q = questions[realIdx];
-                        const pct = (q.timestampSeconds / timelineDuration) * 100;
-                        return (
-                          <button
-                            key={`${realIdx}-${order}`}
-                            type="button"
-                            title={`${q.text?.slice(0, 120) || (isAr ? "سؤال" : "Question")} · ${formatTimestamp(q.timestampSeconds)}`}
-                            style={{ left: `${pct}%`, transform: "translateX(-50%)" }}
-                            className="absolute top-1 flex flex-col items-center outline-none"
-                            onMouseEnter={() => setTimelineHover(realIdx)}
-                            onMouseLeave={() => setTimelineHover(null)}
-                            onClick={() => seekTo(q.timestampSeconds)}
-                          >
-                            <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#1E4D35] bg-[#eef5f0] text-[11px] font-black text-[#1E4D35] shadow-sm hover:bg-[#1E4D35] hover:text-white">
-                              {order + 1}
-                            </span>
-                            {timelineHover === realIdx && (
-                              <span
-                                className="absolute top-10 z-10 max-w-[min(240px,calc(100vw-3rem))] rounded-lg border bg-white px-2 py-1.5 text-start text-[10px] font-bold leading-snug text-[#0f2918] shadow-md"
-                                style={{ borderColor: CARD_BORDER }}
-                              >
-                                <span className="block text-[#94a3ab]">
-                                  #{order + 1} · <span dir="ltr">{formatTimestamp(q.timestampSeconds)}</span>
-                                </span>
-                                <span className="mt-0.5 block text-[#0f2918]">
-                                  {q.text?.trim()
-                                    ? q.text.length > 90
-                                      ? `${q.text.slice(0, 90)}…`
-                                      : q.text
-                                    : isAr
-                                      ? "(بلا نص)"
-                                      : "(No text)"}
-                                </span>
-                                <span className="mt-0.5 block text-[10px] font-semibold text-[#64748B]">
-                                  {questionTypeLabel(q.questionType)}
-                                </span>
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                {questions.length === 0 && (
-                  <p className="mt-3 text-center text-[13px] font-semibold leading-relaxed text-[#64748B]">
-                    {isAr
-                      ? "لم تتم إضافة أسئلة بعد. شغّل الفيديو وأضف سؤالاً عند التوقيت المطلوب."
-                      : "No questions yet. Play the video and add a question at the right moment."}
-                  </p>
-                )}
-              </section>
-
-              {/* قائمة الأسئلة */}
-              <section className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eef2ef] pb-3">
-                  <h3 className="text-right text-sm font-black text-[#0f2918]">
-                    {isAr ? `الأسئلة التفاعلية (${questions.length})` : `Interactive questions (${questions.length})`}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={openAddQuestionModal}
-                    className="text-[11px] font-black text-[#1E4D35] underline-offset-4 hover:underline"
-                  >
-                    {isAr ? "+ إضافة سريعة" : "+ Quick add"}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {sortedQuestionIndices.map((realIdx, order) => {
-                    const q = questions[realIdx];
-                    return (
-                      <motion.div
-                        key={`card-${realIdx}`}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        <Card
-                          className={cn(
-                            "border border-[#eef2ef] p-3 shadow-sm transition-colors hover:border-[#1E4D35]/20",
-                            TRANSITION,
-                          )}
-                          style={{ borderRadius: "14px", boxShadow: "0 1px 2px rgba(15, 40, 28, 0.04)" }}
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1 space-y-1.5 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                                <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-[#eef5f0] px-1.5 text-[11px] font-black text-[#1E4D35]">
-                                  {order + 1}
-                                </span>
-                                <button
-                                  type="button"
-                                  dir="ltr"
-                                  onClick={() => seekTo(q.timestampSeconds)}
-                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[#f3f7f4] px-2 py-1 text-[11px] font-black tabular-nums text-[#374151] sm:min-h-0"
-                                >
-                                  <Clock className="h-3 w-3 text-[#94a3ab]" />
-                                  {formatTimestamp(q.timestampSeconds)}
-                                </button>
-                                <span className="rounded-full bg-[#f8faf8] px-2 py-0.5 text-[10px] font-bold text-[#64748B]">
-                                  {questionTypeLabel(q.questionType)}
-                                </span>
-                              </div>
-                              <p className="text-[13px] font-bold leading-snug text-[#0f2918]">
-                                {q.text || (
-                                  <span className="italic text-[#94a3ab]">
-                                    {isAr ? "لا يوجد نص بعد" : "No text yet"}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-[10px] font-bold text-[#94a3ab]">
-                                {q.points} {isAr ? "درجة" : "pts"}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => openEditQuestionModal(realIdx)}
-                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#1E4D35] hover:bg-[#f3f7f4]"
-                                title={isAr ? "تعديل" : "Edit"}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removeQuestion(realIdx)}
-                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-red-100 bg-white text-red-600 hover:bg-red-50"
-                                title={isAr ? "حذف" : "Delete"}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button
-                                    type="button"
-                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#64748B] hover:bg-[#f9faf9]"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl border shadow-lg" dir={isAr ? "rtl" : "ltr"}>
-                                  <DropdownMenuItem
-                                    className="font-bold"
-                                    onClick={() => seekTo(q.timestampSeconds)}
-                                  >
-                                    <Play className="h-4 w-4 opacity-60" />
-                                    {isAr ? "انتقل لهذا التوقيت" : "Jump to time"}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </section>
             </div>
 
+            <div className="min-w-0 flex-1 space-y-5" dir="rtl">
+
             {/* مصدر الفيديو + الوصول — عمود جانبي ضيق */}
-            <aside ref={sourceCardRef} className="w-full shrink-0 scroll-mt-24 space-y-4 lg:w-[min(100%,288px)] lg:pt-0">
+            <div ref={sourceCardRef} className="scroll-mt-24 space-y-4">
               <section
                 className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
                 style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
@@ -1793,7 +1626,196 @@ export default function CreateVideoLesson() {
                   </div>
                 )}
               </section>
-            </aside>
+            </div>
+              {/* تايم لاين */}
+              <section
+                className={cn("rounded-2xl border bg-white p-3 sm:p-4", TRANSITION)}
+                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+              >
+                <h3 className="mb-3 text-right text-sm font-black text-[#0f2918]">
+                  {isAr ? "خط الأسئلة" : "Question timeline"}
+                </h3>
+                <div dir="ltr" className="max-w-full overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                  <div className="relative mx-auto min-h-[52px] min-w-[min(100%,280px)] px-1">
+                    <div className="relative mt-6 h-2 overflow-hidden rounded-full bg-[#e8ece9]">
+                      {skipSegments.map((seg, i) => (
+                        <div
+                          key={i}
+                          className="absolute top-0 h-full rounded-full bg-amber-400/55"
+                          style={{
+                            left: `${(seg.start / timelineDuration) * 100}%`,
+                            width: `${((seg.end - seg.start) / timelineDuration) * 100}%`,
+                          }}
+                        />
+                      ))}
+                      <div
+                        className="absolute top-0 h-full rounded-full bg-[#1E4D35]/25 transition-[width]"
+                        style={{
+                          width: `${Math.min(100, ((videoDuration ? currentTime : 0) / timelineDuration) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="relative mt-0 h-10">
+                      {sortedQuestionIndices.map((realIdx, order) => {
+                        const q = questions[realIdx];
+                        const pct = (q.timestampSeconds / timelineDuration) * 100;
+                        return (
+                          <button
+                            key={`${realIdx}-${order}`}
+                            type="button"
+                            title={`${q.text?.slice(0, 120) || (isAr ? "سؤال" : "Question")} · ${formatTimestamp(q.timestampSeconds)}`}
+                            style={{ left: `${pct}%`, transform: "translateX(-50%)" }}
+                            className="absolute top-1 flex flex-col items-center outline-none"
+                            onMouseEnter={() => setTimelineHover(realIdx)}
+                            onMouseLeave={() => setTimelineHover(null)}
+                            onClick={() => seekTo(q.timestampSeconds)}
+                          >
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#1E4D35] bg-[#eef5f0] text-[11px] font-black text-[#1E4D35] shadow-sm hover:bg-[#1E4D35] hover:text-white">
+                              {order + 1}
+                            </span>
+                            {timelineHover === realIdx && (
+                              <span
+                                className="absolute top-10 z-10 max-w-[min(240px,calc(100vw-3rem))] rounded-lg border bg-white px-2 py-1.5 text-start text-[10px] font-bold leading-snug text-[#0f2918] shadow-md"
+                                style={{ borderColor: CARD_BORDER }}
+                              >
+                                <span className="block text-[#94a3ab]">
+                                  #{order + 1} · <span dir="ltr">{formatTimestamp(q.timestampSeconds)}</span>
+                                </span>
+                                <span className="mt-0.5 block text-[#0f2918]">
+                                  {q.text?.trim()
+                                    ? q.text.length > 90
+                                      ? `${q.text.slice(0, 90)}…`
+                                      : q.text
+                                    : isAr
+                                      ? "(بلا نص)"
+                                      : "(No text)"}
+                                </span>
+                                <span className="mt-0.5 block text-[10px] font-semibold text-[#64748B]">
+                                  {questionTypeLabel(q.questionType)}
+                                </span>
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                {questions.length === 0 && (
+                  <p className="mt-3 text-center text-[13px] font-semibold leading-relaxed text-[#64748B]">
+                    {isAr
+                      ? "لم تتم إضافة أسئلة بعد. شغّل الفيديو وأضف سؤالاً عند التوقيت المطلوب."
+                      : "No questions yet. Play the video and add a question at the right moment."}
+                  </p>
+                )}
+              </section>
+
+              {/* قائمة الأسئلة */}
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eef2ef] pb-3">
+                  <h3 className="text-right text-sm font-black text-[#0f2918]">
+                    {isAr ? `الأسئلة التفاعلية (${questions.length})` : `Interactive questions (${questions.length})`}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={openAddQuestionModal}
+                    className="text-[11px] font-black text-[#1E4D35] underline-offset-4 hover:underline"
+                  >
+                    {isAr ? "+ إضافة سريعة" : "+ Quick add"}
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {sortedQuestionIndices.map((realIdx, order) => {
+                    const q = questions[realIdx];
+                    return (
+                      <motion.div
+                        key={`card-${realIdx}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <Card
+                          className={cn(
+                            "border border-[#eef2ef] p-3 shadow-sm transition-colors hover:border-[#1E4D35]/20",
+                            TRANSITION,
+                          )}
+                          style={{ borderRadius: "14px", boxShadow: "0 1px 2px rgba(15, 40, 28, 0.04)" }}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1 space-y-1.5 text-right">
+                              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-[#eef5f0] px-1.5 text-[11px] font-black text-[#1E4D35]">
+                                  {order + 1}
+                                </span>
+                                <button
+                                  type="button"
+                                  dir="ltr"
+                                  onClick={() => seekTo(q.timestampSeconds)}
+                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-[#f3f7f4] px-2 py-1 text-[11px] font-black tabular-nums text-[#374151] sm:min-h-0"
+                                >
+                                  <Clock className="h-3 w-3 text-[#94a3ab]" />
+                                  {formatTimestamp(q.timestampSeconds)}
+                                </button>
+                                <span className="rounded-full bg-[#f8faf8] px-2 py-0.5 text-[10px] font-bold text-[#64748B]">
+                                  {questionTypeLabel(q.questionType)}
+                                </span>
+                              </div>
+                              <p className="text-[13px] font-bold leading-snug text-[#0f2918]">
+                                {q.text || (
+                                  <span className="italic text-[#94a3ab]">
+                                    {isAr ? "لا يوجد نص بعد" : "No text yet"}
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-[10px] font-bold text-[#94a3ab]">
+                                {q.points} {isAr ? "درجة" : "pts"}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openEditQuestionModal(realIdx)}
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#1E4D35] hover:bg-[#f3f7f4]"
+                                title={isAr ? "تعديل" : "Edit"}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeQuestion(realIdx)}
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-red-100 bg-white text-red-600 hover:bg-red-50"
+                                title={isAr ? "حذف" : "Delete"}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-[#e5e7eb] bg-white text-[#64748B] hover:bg-[#f9faf9]"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl border shadow-lg" dir={isAr ? "rtl" : "ltr"}>
+                                  <DropdownMenuItem
+                                    className="font-bold"
+                                    onClick={() => seekTo(q.timestampSeconds)}
+                                  >
+                                    <Play className="h-4 w-4 opacity-60" />
+                                    {isAr ? "انتقل لهذا التوقيت" : "Jump to time"}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </section>
+
+            </div>
           </div>
         </div>
 
@@ -1806,7 +1828,7 @@ export default function CreateVideoLesson() {
           style={{ borderColor: CARD_BORDER }}
           dir={isAr ? "rtl" : "ltr"}
         >
-          <div className="mx-auto flex w-full max-w-[1320px] flex-wrap items-center justify-center gap-1.5 px-3 py-2 sm:justify-between">
+          <div className="mx-auto flex w-full max-w-[1060px] flex-wrap items-center justify-center gap-1.5 px-3 py-2 sm:justify-between">
             <button
               type="button"
               onClick={() => setLocation(editId ? `/teacher/video-lesson/${editId}` : "/teacher")}
