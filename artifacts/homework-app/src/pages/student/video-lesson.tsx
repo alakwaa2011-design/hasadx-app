@@ -436,14 +436,24 @@ export default function StudentVideoLesson() {
       });
       const data = (await res.json().catch(() => null)) as {
         message?: string;
+        code?: string;
         isCorrect?: boolean;
         earnedPoints?: number;
         correctAnswer?: string | null;
       } | null;
       if (!res.ok) {
+        const classroomLeak =
+          data?.code === "classroom_disabled" ||
+          data?.code === "classroom_not_allowed" ||
+          (typeof data?.message === "string" &&
+            (data.message.includes("Google Classroom") || data.message.includes("كلاس روم")));
         toast.error(
-          data?.message ||
-            (isAr ? "تعذّر التحقق من الإجابة. حاول مجدداً." : "Could not verify answer. Try again."),
+          classroomLeak
+            ? isAr
+              ? "تعذّر التحقق من الإجابة. حاول مجدداً."
+              : "Could not verify answer. Try again."
+            : data?.message ||
+                (isAr ? "تعذّر التحقق من الإجابة. حاول مجدداً." : "Could not verify answer. Try again."),
         );
         return;
       }
