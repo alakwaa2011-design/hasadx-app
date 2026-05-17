@@ -359,6 +359,30 @@ async function insertVideoLessonReturningId(
     console.log("[video-lessons] INSERT video_lessons payload", payloadLog);
   }
 
+  // استخدم sql.param لكل قيمة مع ?? null — القالب sql`...${x}...` يحذف الموضع بالكامل إذا كان x === undefined، فيُزاح ترتيب الـ $n وتختلط الأعمدة.
+  const valueParams = sql.join(
+    [
+      sql.param(row.title),
+      sql.param(row.subject ?? null),
+      sql.param(row.description ?? null),
+      sql.param(row.videoUrl),
+      sql.param(row.videoType),
+      sql.param(row.targetClass ?? null),
+      sql.param(row.teacherClassId ?? null),
+      sql.param(row.accessMode),
+      sql.param(row.accessCode ?? null),
+      sql.param(row.teacherId),
+      sql.param(row.isPublished),
+      sql.param(row.isShared),
+      sql.param(false),
+      sql.param(null),
+      sql.param(null),
+      sql.param(null),
+      sql.param(row.skipSegments ?? null),
+    ],
+    sql`, `,
+  );
+
   const inserted = await executor.execute(sql`
     INSERT INTO video_lessons (
       title,
@@ -378,25 +402,7 @@ async function insertVideoLessonReturningId(
       hidden_by_id,
       hide_reason,
       skip_segments
-    ) VALUES (
-      ${row.title},
-      ${row.subject},
-      ${row.description},
-      ${row.videoUrl},
-      ${row.videoType},
-      ${row.targetClass},
-      ${row.teacherClassId},
-      ${row.accessMode},
-      ${row.accessCode},
-      ${row.teacherId},
-      ${row.isPublished},
-      ${row.isShared},
-      ${false},
-      ${null},
-      ${null},
-      ${null},
-      ${row.skipSegments}
-    )
+    ) VALUES (${valueParams})
     RETURNING id
   `);
   const newIdRaw = (inserted.rows[0] as { id: number } | undefined)?.id;
@@ -740,7 +746,7 @@ router.post("/video-lessons", async (req, res) => {
     void runAfterCommit().catch(() => {});
 
     // Present on successful create so DevTools can confirm this API build uses raw INSERT (not Drizzle insert().returning()).
-    res.setHeader("X-Hasad-Video-Lesson-Create", "raw-sql-v1");
+    res.setHeader("X-Hasad-Video-Lesson-Create", "raw-sql-v2-sql-param");
     res.status(201).json(lesson);
   } catch (error) {
     if (error instanceof z.ZodError) {
