@@ -885,34 +885,30 @@ export default function CreateVideoLesson() {
 
     setSaving(true);
     try {
-      const body = {
-        title,
-        subject: subject || undefined,
-        description: description || undefined,
-        videoUrl,
-        videoType: videoSource === "external" && extractYouTubeId(videoUrl) ? "youtube" : videoSource,
-        ...(editId
-          ? {
-              teacherClassId: teacherClassId === "" ? null : teacherClassId,
-              targetClass: targetClass || null,
-            }
-          : {
-              ...(teacherClassId !== "" ? { teacherClassId } : {}),
-              ...(targetClass ? { targetClass } : {}),
-            }),
+      const videoType: "youtube" | "upload" | "external" =
+        videoSource === "external" && extractYouTubeId(videoUrl) ? "youtube" : videoSource;
+
+      const body: Record<string, unknown> = {
+        title: title.trim(),
+        subject: subject.trim() ? subject.trim() : null,
+        description: description.trim() ? description.trim() : null,
+        videoUrl: videoUrl.trim(),
+        videoType,
+        targetClass: targetClass.trim() ? targetClass.trim() : null,
+        teacherClassId: teacherClassId === "" ? null : teacherClassId,
         accessMode: accessModeForApi,
-        accessCode: accessUi === "code" ? accessCode : undefined,
+        accessCode: accessUi === "code" ? (accessCode.trim() || null) : null,
         isShared,
-        skipSegments: skipSegments.length > 0 ? skipSegments : [],
+        skipSegments,
         questions: questions.map((q) => ({
           timestampSeconds: q.timestampSeconds,
           questionType: q.questionType,
           text: q.text,
-          optionA: q.optionA || null,
-          optionB: q.optionB || null,
-          optionC: q.optionC || null,
-          optionD: q.optionD || null,
-          correctAnswer: q.correctAnswer || null,
+          optionA: q.optionA?.trim() ? q.optionA.trim() : null,
+          optionB: q.optionB?.trim() ? q.optionB.trim() : null,
+          optionC: q.optionC?.trim() ? q.optionC.trim() : null,
+          optionD: q.optionD?.trim() ? q.optionD.trim() : null,
+          correctAnswer: q.correctAnswer?.trim() ? q.correctAnswer.trim() : null,
           points: q.points,
         })),
       };
