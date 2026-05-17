@@ -449,13 +449,16 @@ export default function PresentationControl() {
           </div>
         )}
 
-        {/* Slide stage. When an inline quiz is running, we overlay the
-            live question panel ON TOP of the slide (absolutely
-            positioned, filling the stage) so the teacher sees the full
-            question + options inside the slide frame instead of below
-            it. The underlying slide stays mounted so transitions back
-            after the quiz are instant. */}
-        <div className="relative rounded-xl bg-black overflow-hidden border border-white/10 aspect-video">
+        {/* Slide stage. When an inline quiz is running, we expand the
+            stage from a cramped 16:9 thumbnail into a roomy panel
+            (~70vh) so the question + answers breathe across the whole
+            screen. The underlying slide stays mounted so the teacher
+            can flip back to it instantly after the activity ends. */}
+        <div
+          className={`relative rounded-xl bg-black overflow-hidden border border-white/10 ${
+            inlineActivity && !ended ? "min-h-[68vh]" : "aspect-video"
+          }`}
+        >
           {slide && info.deck && (
             <SlideStage lang={info.deck.language} slide={slide} theme={info.deck.theme} pattern={info.deck.pattern} />
           )}
@@ -475,32 +478,36 @@ export default function PresentationControl() {
             const isLast = inlineActivity.currentQuestionIndex >= inlineActivity.totalQuestions - 1;
             return (
               <div
-                className="absolute inset-0 flex flex-col p-4 sm:p-6 gap-3 sm:gap-4 overflow-y-auto"
+                className="absolute inset-0 flex flex-col p-6 sm:p-10 gap-5 sm:gap-7 overflow-y-auto"
                 style={{
                   background:
-                    "linear-gradient(135deg, rgba(15,23,42,0.96) 0%, rgba(34,87,57,0.92) 60%, rgba(120,53,15,0.92) 100%)",
+                    "linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(34,87,57,0.94) 60%, rgba(120,53,15,0.94) 100%)",
                   backdropFilter: "blur(6px)",
                 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span
-                      className="inline-flex items-center justify-center w-7 h-7 rounded-full"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full"
                       style={{ background: "#D9A521", color: "#1c1003" }}
                     >
-                      <Play className="w-3.5 h-3.5" />
+                      <Play className="w-4 h-4" />
                     </span>
-                    <span className="text-[11px] sm:text-xs uppercase tracking-wider text-amber-300 font-black">
+                    <span className="text-xs sm:text-sm uppercase tracking-wider text-amber-300 font-black">
                       نشاط مباشر
                     </span>
                   </div>
-                  <div className="text-xs sm:text-sm text-white/85 tabular-nums font-bold">
+                  <div className="text-sm sm:text-base text-white/85 tabular-nums font-bold">
                     سؤال {inlineActivity.currentQuestionIndex + 1} / {inlineActivity.totalQuestions}
                   </div>
                 </div>
 
-                <div className="text-base sm:text-xl font-black text-white leading-snug break-words">
-                  {q.prompt}
+                {/* Prompt card — centered, generous, easy to read from
+                    the back of a classroom. */}
+                <div className="rounded-2xl bg-black/35 border border-white/15 px-6 py-5 sm:px-8 sm:py-6">
+                  <div className="text-xl sm:text-3xl font-black text-white leading-snug break-words text-center">
+                    {q.prompt}
+                  </div>
                 </div>
 
                 {/* Wameedh-palette answer tiles. We use the same four
@@ -513,12 +520,12 @@ export default function PresentationControl() {
                     reveal — pre-reveal every tile uses the same neutral
                     base. Only after `revealed=true` do we highlight the
                     correct tile in green so the teacher can confirm. */}
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 flex-1 content-center">
                   {(() => {
                     /* Wameedh tile palette — matches the live student
                        view: A=red, B=blue, C=gold, D=purple. */
                     const wameedhTiles = [
-                      "linear-gradient(135deg,#b03030 0%,#7e1d1d 100%)",
+                      "linear-gradient(135deg,#c0392b 0%,#7e1d1d 100%)",
                       "linear-gradient(135deg,#2563b8 0%,#173f7a 100%)",
                       "linear-gradient(135deg,#d9a521 0%,#a87a10 100%)",
                       "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)",
@@ -531,12 +538,12 @@ export default function PresentationControl() {
                       return (
                         <div
                           key={i}
-                          className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 border transition-all ${
+                          className={`rounded-2xl px-5 py-5 sm:px-6 sm:py-6 flex items-center gap-4 border-2 transition-all min-h-[88px] ${
                             highlight
-                              ? "border-emerald-300 shadow-lg scale-[1.01]"
+                              ? "border-emerald-300 shadow-2xl scale-[1.02]"
                               : dim
                                 ? "border-white/10 opacity-50"
-                                : "border-white/20"
+                                : "border-white/15 shadow-lg"
                           }`}
                           style={{
                             background: highlight
@@ -546,39 +553,39 @@ export default function PresentationControl() {
                           }}
                         >
                           <span
-                            className="inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-[11px] shrink-0"
+                            className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full font-black text-base sm:text-lg shrink-0"
                             style={{
-                              background: "rgba(0,0,0,0.35)",
+                              background: "rgba(0,0,0,0.4)",
                               color: "#fff",
                             }}
                           >
                             {String.fromCharCode(65 + i)}
                           </span>
-                          <span className="flex-1 font-bold break-words text-sm">{opt}</span>
-                          {highlight && <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />}
+                          <span className="flex-1 font-bold break-words text-base sm:text-xl leading-snug">{opt}</span>
+                          {highlight && <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-100 shrink-0" />}
                         </div>
                       );
                     });
                   })()}
                 </div>
 
-                <div className="flex items-center justify-between text-xs sm:text-sm text-white/85 font-bold">
+                <div className="flex items-center justify-between text-sm sm:text-base text-white/85 font-bold">
                   <span>أجاب: {inlineActivity.answeredCount} طالب</span>
                   <span>{revealed ? "تم كشف الإجابة" : "بانتظار الإجابات…"}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {!revealed ? (
-                    <Button size="sm" onClick={revealQuestion} className="flex-1 font-black" style={{ background: "#225739", color: "white" }}>
-                      <Eye className="w-4 h-4 me-1.5" /> كشف الإجابة
+                    <Button onClick={revealQuestion} className="flex-1 font-black h-12 text-base" style={{ background: "#225739", color: "white" }}>
+                      <Eye className="w-5 h-5 me-2" /> كشف الإجابة
                     </Button>
                   ) : (
-                    <Button size="sm" onClick={nextQuestion} className="flex-1 font-black" style={{ background: "#D9A521", color: "#1c1003" }}>
-                      {isLast ? "إنهاء النشاط" : "السؤال التالي"} <ChevronLeft className="w-4 h-4 me-1.5" />
+                    <Button onClick={nextQuestion} className="flex-1 font-black h-12 text-base" style={{ background: "#D9A521", color: "#1c1003" }}>
+                      {isLast ? "إنهاء النشاط" : "السؤال التالي"} <ChevronLeft className="w-5 h-5 me-2" />
                     </Button>
                   )}
-                  <Button size="sm" variant="destructive" onClick={closeActivity} title="إغلاق النشاط">
-                    <Square className="w-4 h-4" />
+                  <Button variant="destructive" onClick={closeActivity} title="إغلاق النشاط" className="h-12 px-4">
+                    <Square className="w-5 h-5" />
                   </Button>
                 </div>
               </div>

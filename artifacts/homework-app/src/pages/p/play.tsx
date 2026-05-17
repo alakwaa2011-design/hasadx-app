@@ -518,30 +518,51 @@ export default function PresentationPlay() {
                 </h2>
               </div>
 
+              {/* Wameedh-style colored tiles (A=red, B=blue, C=gold,
+                  D=purple). After reveal we override with success/error
+                  colors; before reveal a chosen tile gets a thicker
+                  white ring so the student knows it's locked in. */}
               <div className="grid grid-cols-1 gap-3">
-                {inlineOpts.map((opt, i) => {
-                  const isChosen = chosen === i;
-                  const revealed = inlineActivity!.phase === "revealed";
-                  const correctIdx = inlineActivity!.correctIndex;
-                  const isCorrect = revealed && correctIdx === i;
-                  const isWrong = revealed && isChosen && typeof correctIdx === "number" && correctIdx !== i;
-                  const bg = isCorrect ? "#16a34a" : isWrong ? "#dc2626" : isChosen ? "#D9A521" : "rgba(255,255,255,0.95)";
-                  const fg = isCorrect || isWrong || isChosen ? "white" : "#0f172a";
-                  return (
-                    <button
-                      key={i}
-                      disabled={submitted || chosen != null || revealed}
-                      onClick={() => answer(i)}
-                      className="rounded-2xl px-4 py-4 text-start text-lg font-bold shadow-md transition-all disabled:cursor-not-allowed"
-                      style={{ background: bg, color: fg }}
-                    >
-                      <span className="inline-block w-7 h-7 rounded-full me-2 text-center leading-7 text-sm" style={{ background: "rgba(0,0,0,0.15)" }}>
-                        {optionLetter(i)}
-                      </span>
-                      {opt}
-                    </button>
-                  );
-                })}
+                {(() => {
+                  const wameedhTiles = [
+                    "linear-gradient(135deg,#c0392b 0%,#7e1d1d 100%)",
+                    "linear-gradient(135deg,#2563b8 0%,#173f7a 100%)",
+                    "linear-gradient(135deg,#d9a521 0%,#a87a10 100%)",
+                    "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)",
+                  ];
+                  return inlineOpts.map((opt, i) => {
+                    const isChosen = chosen === i;
+                    const revealed = inlineActivity!.phase === "revealed";
+                    const correctIdx = inlineActivity!.correctIndex;
+                    const isCorrect = revealed && correctIdx === i;
+                    const isWrong = revealed && isChosen && typeof correctIdx === "number" && correctIdx !== i;
+                    const dim = revealed && !isCorrect && !isWrong;
+                    const bg = isCorrect
+                      ? "linear-gradient(135deg,#16a34a 0%,#15803d 100%)"
+                      : isWrong
+                        ? "linear-gradient(135deg,#dc2626 0%,#991b1b 100%)"
+                        : wameedhTiles[i % wameedhTiles.length];
+                    return (
+                      <button
+                        key={i}
+                        disabled={submitted || chosen != null || revealed}
+                        onClick={() => answer(i)}
+                        className={`rounded-2xl px-5 py-4 text-start text-lg font-bold shadow-lg transition-all disabled:cursor-not-allowed flex items-center gap-3 ${
+                          isChosen && !revealed ? "ring-4 ring-white/80 scale-[1.01]" : ""
+                        } ${dim ? "opacity-50" : ""}`}
+                        style={{ background: bg, color: "#fff" }}
+                      >
+                        <span
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-base font-black shrink-0"
+                          style={{ background: "rgba(0,0,0,0.35)", color: "#fff" }}
+                        >
+                          {optionLetter(i)}
+                        </span>
+                        <span className="flex-1 break-words">{opt}</span>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
 
               {submitted && inlineActivity!.phase === "asking" && (
