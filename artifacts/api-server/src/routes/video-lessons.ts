@@ -91,7 +91,7 @@ const SubmitVideoLessonBody = z.object({
 
 /** تحقق فوري أثناء التشغيل — نفس منطق المقارنة في submit */
 const CheckVideoAnswerBody = z.object({
-  questionId: z.number(),
+  questionId: z.coerce.number(),
   selectedAnswer: z.string(),
   accessCode: z.string().optional(),
 });
@@ -603,7 +603,8 @@ router.post("/video-lessons/:id/check-answer", async (req, res) => {
 
     const body = CheckVideoAnswerBody.parse(req.body);
 
-    if (lesson.accessMode === "private") {
+    const isLessonOwner = req.session.teacherId === lesson.teacherId;
+    if (lesson.accessMode === "private" && !isLessonOwner) {
       const submittedCode = (body.accessCode || "").trim().toUpperCase();
       const storedCode = (lesson.accessCode || "").trim().toUpperCase();
       if (!submittedCode || submittedCode !== storedCode) {
@@ -656,7 +657,8 @@ router.post("/video-lessons/:id/submit", async (req, res) => {
 
     const body = SubmitVideoLessonBody.parse(req.body);
 
-    if (lesson.accessMode === "private") {
+    const isLessonOwner = req.session.teacherId === lesson.teacherId;
+    if (lesson.accessMode === "private" && !isLessonOwner) {
       const submittedCode = (body.accessCode || "").trim().toUpperCase();
       const storedCode = (lesson.accessCode || "").trim().toUpperCase();
       if (!submittedCode || submittedCode !== storedCode) {
