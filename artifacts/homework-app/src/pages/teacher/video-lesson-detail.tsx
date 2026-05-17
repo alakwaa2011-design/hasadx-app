@@ -15,7 +15,7 @@ interface VideoLessonFull {
   title: string;
   subject: string | null;
   description: string | null;
-  videoUrl: string;
+  videoUrl?: string | null;
   videoType: string;
   targetClass: string | null;
   teacherClassId?: number | null;
@@ -73,13 +73,16 @@ function formatTimestamp(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function extractYouTubeId(url: string): string | null {
+function extractYouTubeId(url: string | null | undefined): string | null {
+  if (url == null || typeof url !== "string") return null;
+  const u = url.trim();
+  if (!u) return null;
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
     /youtube\.com\/shorts\/([^&\s?]+)/,
   ];
   for (const p of patterns) {
-    const m = url.match(p);
+    const m = u.match(p);
     if (m) return m[1];
   }
   return null;
