@@ -122,6 +122,23 @@ export declare const videoLessonsTable: import("drizzle-orm/pg-core").PgTableWit
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        teacherClassId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_class_id";
+            tableName: "video_lessons";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         accessMode: import("drizzle-orm/pg-core").PgColumn<{
             name: "access_mode";
             tableName: "video_lessons";
@@ -316,18 +333,19 @@ export declare const insertVideoLessonSchema: z.ZodObject<{
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    accessMode: z.ZodOptional<z.ZodString>;
-    accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    videoUrl: z.ZodString;
+    videoType: z.ZodOptional<z.ZodString>;
     targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     teacherId: z.ZodInt;
+    teacherClassId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    accessMode: z.ZodOptional<z.ZodString>;
+    accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    isPublished: z.ZodOptional<z.ZodBoolean>;
     isShared: z.ZodOptional<z.ZodBoolean>;
     hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
     hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    videoUrl: z.ZodString;
-    videoType: z.ZodOptional<z.ZodString>;
-    isPublished: z.ZodOptional<z.ZodBoolean>;
     skipSegments: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};

@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
 import {
   db,
-  pool,
   videoLessonsTable,
   videoQuestionsTable,
   videoSubmissionsTable,
@@ -10,7 +9,6 @@ import {
   studentsTable,
   teacherClassesTable,
 } from "@workspace/db";
-import type pg from "pg";
 import { eq, sql, and, desc, or } from "drizzle-orm";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
@@ -261,39 +259,27 @@ async function resolveLessonClassName(
   return lesson.targetClass ?? null;
 }
 
-type PgQueryable = Pick<pg.Pool, "query">;
+type VideoLessonDbExecutor = Pick<typeof db, "insert">;
 
-const VIDEO_LESSON_INSERT_SQL = `
-  INSERT INTO video_lessons (
-    title,
-    subject,
-    description,
-    video_url,
-    video_type,
-    target_class,
-    teacher_class_id,
-    access_mode,
-    access_code,
-    teacher_id,
-    is_published,
-    is_shared,
-    hidden_by_admin,
-    hidden_at,
-    hidden_by_id,
-    hide_reason,
-    skip_segments
-  ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
-  )
-  RETURNING id
-`;
-
-function resolvePgQueryable(executor: PgQueryable | { execute: typeof db.execute }): PgQueryable {
-  const internal = executor as { session?: { client?: PgQueryable } };
-  if (internal.session?.client) return internal.session.client;
-  if ("query" in executor && typeof executor.query === "function") return executor as PgQueryable;
-  return pool;
-}
+type VideoLessonInsertPayload = {
+  title: string;
+  subject: string | null;
+  description: string | null;
+  videoUrl: string;
+  videoType: "youtube" | "upload" | "external";
+  targetClass: string | null;
+  teacherClassId: number | null;
+  accessMode: "public" | "private";
+  accessCode: string | null;
+  teacherId: number;
+  isPublished: boolean;
+  isShared: boolean;
+  hiddenByAdmin: boolean;
+  hiddenAt: null;
+  hiddenById: null;
+  hideReason: null;
+  skipSegments: string | null;
+};
 
 function trimOrNull(val: unknown): string | null {
   if (val === undefined || val === null) return null;
@@ -302,14 +288,14 @@ function trimOrNull(val: unknown): string | null {
 }
 
 /**
- * يبني مصفوفة القيم بنفس ترتيب أعمدة INSERT — بدون Object.values ولا ترتيب ضمني من الكائن.
+ * يبني كائن إدراج بحقول مسماة (Drizzle) — بدون Object.values ولا ترتيب ضمني.
  */
-function buildCreateVideoLessonValues(
+function buildCreateVideoLessonInsertPayload(
   body: Record<string, unknown>,
   teacherId: number,
   targetClassResolved: string | null,
   teacherClassIdResolved: number | null,
-): unknown[] {
+): VideoLessonInsertPayload {
   const {
     title: titleRaw,
     subject,
@@ -372,51 +358,54 @@ function buildCreateVideoLessonValues(
     dbAccessMode === "private" ? trimOrNull(accessCodeRaw) : null;
 
   const skipRaw = skipSegments ?? skip_segments ?? [];
-  const skipJson = JSON.stringify(Array.isArray(skipRaw) ? skipRaw : []);
+  const skipJson =
+    Array.isArray(skipRaw) && skipRaw.length > 0 ? JSON.stringify(skipRaw) : null;
 
-  const values: unknown[] = [
+  const videoTypeNorm = finalVideoType as VideoLessonInsertPayload["videoType"];
+
+  return {
     title,
-    subjectVal,
-    descriptionVal,
-    finalVideoUrl,
-    finalVideoType,
-    resolvedTargetClass,
-    resolvedTeacherClassId,
-    dbAccessMode,
-    accessCodeVal,
+    subject: subjectVal,
+    description: descriptionVal,
+    videoUrl: finalVideoUrl,
+    videoType: videoTypeNorm,
+    targetClass: resolvedTargetClass,
+    teacherClassId: resolvedTeacherClassId,
+    accessMode: dbAccessMode,
+    accessCode: accessCodeVal,
     teacherId,
-    Boolean(isPublished ?? is_published ?? false),
-    Boolean(isShared ?? is_shared ?? false),
-    false,
-    null,
-    null,
-    null,
-    skipJson,
-  ];
-
-  return values;
+    isPublished: Boolean(isPublished ?? is_published ?? true),
+    isShared: Boolean(isShared ?? is_shared ?? false),
+    hiddenByAdmin: false,
+    hiddenAt: null,
+    hiddenById: null,
+    hideReason: null,
+    skipSegments: skipJson,
+  };
 }
 
-/** إدراج عبر pg فقط — ترتيب $1..$17 ثابت ومطابق للأعمدة. */
+/** إدراج عبر Drizzle بحقول مسماة — يطابق أعمدة schema دون انزياح params. */
 async function insertVideoLessonReturningId(
-  executor: PgQueryable | { execute: typeof db.execute },
-  values: unknown[],
+  executor: VideoLessonDbExecutor,
+  payload: VideoLessonInsertPayload,
   sessionTeacherId: number,
 ): Promise<number> {
-  if (typeof values[9] !== "number" || !Number.isFinite(values[9]) || values[9] <= 0) {
+  if (typeof payload.teacherId !== "number" || !Number.isFinite(payload.teacherId) || payload.teacherId <= 0) {
     throw new Error("teacher_id must be a positive number");
   }
-  if (values[9] !== sessionTeacherId) {
+  if (payload.teacherId !== sessionTeacherId) {
     throw new Error("teacher_id mismatch");
   }
 
-  console.log("CREATE VIDEO LESSON VALUES", values);
+  console.log("CREATE VIDEO LESSON VALUES", payload);
 
-  const client = resolvePgQueryable(executor);
-  const result = await client.query(VIDEO_LESSON_INSERT_SQL, values);
-  const newIdRaw = result.rows[0]?.id;
-  const newId = typeof newIdRaw === "number" ? newIdRaw : Number(newIdRaw);
-  if (!Number.isFinite(newId)) {
+  const [row] = await executor
+    .insert(videoLessonsTable)
+    .values(payload)
+    .returning({ id: videoLessonsTable.id });
+
+  const newId = row?.id;
+  if (newId === undefined || !Number.isFinite(newId)) {
     throw new Error("فشل إنشاء الدرس");
   }
   return newId;
@@ -558,27 +547,27 @@ router.post("/video-lessons/:id/import", async (req, res) => {
       source.videoType === "youtube" || source.videoType === "upload" || source.videoType === "external"
         ? source.videoType
         : "youtube";
-    const importValues: unknown[] = [
-      source.title,
-      source.subject ?? null,
-      source.description ?? null,
-      source.videoUrl,
-      importVideoType,
-      null,
-      null,
-      "public",
-      null,
+    const importPayload: VideoLessonInsertPayload = {
+      title: source.title,
+      subject: source.subject ?? null,
+      description: source.description ?? null,
+      videoUrl: source.videoUrl,
+      videoType: importVideoType,
+      targetClass: null,
+      teacherClassId: null,
+      accessMode: "public",
+      accessCode: null,
       teacherId,
-      true,
-      false,
-      false,
-      null,
-      null,
-      null,
-      source.skipSegments ?? JSON.stringify([]),
-    ];
+      isPublished: true,
+      isShared: false,
+      hiddenByAdmin: false,
+      hiddenAt: null,
+      hiddenById: null,
+      hideReason: null,
+      skipSegments: source.skipSegments ?? null,
+    };
 
-    const newId = await insertVideoLessonReturningId(db, importValues, teacherId);
+    const newId = await insertVideoLessonReturningId(db, importPayload, teacherId);
     const [newLesson] = await db
       .select()
       .from(videoLessonsTable)
@@ -717,15 +706,15 @@ router.post("/video-lessons", async (req, res) => {
       targetClassVal = tc.name;
     }
 
-    const insertValues = buildCreateVideoLessonValues(
+    const insertPayload = buildCreateVideoLessonInsertPayload(
       req.body as Record<string, unknown>,
       teacherId,
       targetClassVal,
       teacherClassIdVal,
     );
 
-    if (insertValues[7] === "private") {
-      const code = insertValues[8];
+    if (insertPayload.accessMode === "private") {
+      const code = insertPayload.accessCode;
       if (typeof code !== "string" || !code.trim()) {
         return res.status(400).json({ message: "يرجى إدخال كود الوصول عند اختيار وضع خاص" });
       }
@@ -733,7 +722,7 @@ router.post("/video-lessons", async (req, res) => {
 
     // Wrap insert + XP in a single transaction: if either fails, both roll back.
     const { lesson, runAfterCommit } = await db.transaction(async (tx) => {
-      const newId = await insertVideoLessonReturningId(tx, insertValues, teacherId);
+      const newId = await insertVideoLessonReturningId(tx, insertPayload, teacherId);
 
       const [l] = await tx
         .select()
@@ -772,7 +761,7 @@ router.post("/video-lessons", async (req, res) => {
     void runAfterCommit().catch(() => {});
 
     // Present on successful create so DevTools can confirm this API build uses raw INSERT (not Drizzle insert().returning()).
-    res.setHeader("X-Hasad-Video-Lesson-Create", "raw-sql-v3-pg-params");
+    res.setHeader("X-Hasad-Video-Lesson-Create", "drizzle-named-insert-v1");
     res.status(201).json(lesson);
   } catch (error) {
     if (error instanceof z.ZodError) {
