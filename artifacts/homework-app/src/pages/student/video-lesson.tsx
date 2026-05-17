@@ -429,28 +429,39 @@ export default function StudentVideoLesson() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          questionId: activeQuestion.id,
+          questionId: Number(activeQuestion.id),
           selectedAnswer: selectedAnswer.trim(),
-          accessCode: accessCode || undefined,
+          accessCode: accessCode.trim() || undefined,
         }),
       });
+      const data = (await res.json().catch(() => null)) as {
+        message?: string;
+        isCorrect?: boolean;
+        earnedPoints?: number;
+        correctAnswer?: string | null;
+      } | null;
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message || "check failed");
+        toast.error(
+          data?.message ||
+            (isAr ? "تعذّر التحقق من الإجابة. حاول مجدداً." : "Could not verify answer. Try again."),
+        );
+        return;
       }
-      const data = (await res.json()) as {
-        isCorrect: boolean;
-        earnedPoints: number;
-        correctAnswer: string | null;
-      };
+      if (typeof data?.isCorrect !== "boolean") {
+        toast.error(isAr ? "استجابة غير متوقعة من الخادم." : "Unexpected server response.");
+        return;
+      }
+      const earnedPts = typeof data.earnedPoints === "number" ? data.earnedPoints : 0;
       setAnswerFeedback({
         isCorrect: data.isCorrect,
-        earnedPoints: data.earnedPoints ?? 0,
+        earnedPoints: earnedPts,
         correctAnswer: data.correctAnswer ?? null,
       });
-      if (data.isCorrect) setSessionEarned((s) => s + (data.earnedPoints ?? 0));
+      if (data.isCorrect) setSessionEarned((s) => s + earnedPts);
     } catch {
-      toast.error(isAr ? "تعذّر التحقق من الإجابة. حاول مجدداً." : "Could not verify answer. Try again.");
+      toast.error(
+        isAr ? "تعذّر الاتصال بالخادم. تحقق من الشبكة." : "Could not reach the server. Check your connection.",
+      );
     } finally {
       setVerifying(false);
     }
@@ -1055,9 +1066,13 @@ export default function StudentVideoLesson() {
               {isYoutube ? (
                 <div className="absolute inset-0 z-0 h-full w-full">
                   <div ref={ytPlayerMountRef} className="h-full w-full min-h-0" />
-                  {/* يمنع فتح youtube.com عند النقر على شعار/رابط يوتيوب في شريط التحكم */}
+                  {/* يمنع فتح youtube.com عند النقر على شعار/رابط يوتيوب (غالباً أسفل يمين أو بعد زر التشغيل يساراً) */}
                   <div
                     className="pointer-events-auto absolute bottom-0 right-0 z-[12] h-[52px] w-[130px] max-[380px]:w-[100px] sm:h-[56px] sm:w-[150px]"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-auto absolute bottom-0 left-12 z-[12] h-[52px] w-[min(42%,140px)] sm:left-14 sm:h-[56px]"
                     aria-hidden
                   />
                 </div>
@@ -1107,27 +1122,30 @@ export default function StudentVideoLesson() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.98 }}
                       transition={{ duration: 0.22 }}
-                      className="absolute inset-0 z-30 flex items-center justify-center p-3 sm:p-4"
+                      className="absolute inset-0 z-30 flex items-center justify-center px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-4"
                     >
                       <div
-                        className="max-h-[78%] w-full max-w-md overflow-y-auto rounded-2xl border bg-white/97 p-4 shadow-2xl ring-1 ring-black/10"
+                        className="flex max-h-[min(85dvh,620px)] w-full max-w-md flex-col overflow-hidden rounded-2xl border bg-white/97 shadow-2xl ring-1 ring-black/10"
                         style={{ borderColor: CARD_BORDER }}
                       >
-                        <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[#f1f4f2] pb-2">
-                          <span className="rounded-full bg-[#eef5f0] px-2.5 py-0.5 text-[10px] font-black text-[#1E4D35]">
-                            {isAr ? "سؤال" : "Q"} {activeQuestionOrder}/{lesson.questions.length}
-                          </span>
-                          <span dir="ltr" className="rounded-full bg-[#f9faf9] px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-[#64748B]">
-                            {formatTimestamp(activeQuestion.timestampSeconds)}
-                          </span>
-                          <span className="rounded-full bg-[#fcfdfc] px-2 py-0.5 text-[10px] font-bold text-[#94a3ab]">
-                            {activeQuestion.points} {isAr ? "نقطة" : "pts"}
-                          </span>
+                        <div className="shrink-0 border-b border-[#f1f4f2] px-4 pb-3 pt-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#eef5f0] px-2.5 py-0.5 text-[10px] font-black text-[#1E4D35]">
+                              {isAr ? "سؤال" : "Q"} {activeQuestionOrder}/{lesson.questions.length}
+                            </span>
+                            <span dir="ltr" className="rounded-full bg-[#f9faf9] px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-[#64748B]">
+                              {formatTimestamp(activeQuestion.timestampSeconds)}
+                            </span>
+                            <span className="rounded-full bg-[#fcfdfc] px-2 py-0.5 text-[10px] font-bold text-[#94a3ab]">
+                              {activeQuestion.points} {isAr ? "نقطة" : "pts"}
+                            </span>
+                          </div>
+                          <p className="mt-3 text-start text-base font-black leading-relaxed text-[#0f2918]">{activeQuestion.text}</p>
                         </div>
-                        <p className="mb-4 text-right text-base font-black leading-relaxed text-[#0f2918]">{activeQuestion.text}</p>
 
-                        {activeQuestion.questionType === "mcq" && (
-                          <div className="mb-4 grid grid-cols-1 gap-2">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
+                          {activeQuestion.questionType === "mcq" && (
+                            <div className="grid grid-cols-1 gap-2">
                             {(["A", "B", "C", "D"] as const).map((opt) => {
                               const optText = activeQuestion[`option${opt}` as keyof VideoQuestionData] as string | null;
                               if (!optText) return null;
@@ -1173,7 +1191,7 @@ export default function StudentVideoLesson() {
                         )}
 
                         {activeQuestion.questionType === "true_false" && (
-                          <div className="mb-4 grid grid-cols-2 gap-2">
+                          <div className="mt-2 grid grid-cols-2 gap-2">
                             {(["true", "false"] as const).map((value) => {
                               const fb = answerFeedback;
                               const cor = fb?.correctAnswer?.trim().toLowerCase();
@@ -1218,7 +1236,7 @@ export default function StudentVideoLesson() {
                         )}
 
                         {activeQuestion.questionType === "fill_blank" && (
-                          <div className="mb-4 space-y-2">
+                          <div className="mt-2 space-y-2">
                             <div className="flex items-center gap-2">
                               <Input
                                 value={selectedAnswer}
@@ -1258,25 +1276,27 @@ export default function StudentVideoLesson() {
                         )}
 
                         {answerFeedback && !answerFeedback.isCorrect && answerFeedback.correctAnswer && activeQuestion.questionType === "mcq" && (
-                          <p className="mb-3 text-[11px] leading-relaxed text-[#64748B]">
+                          <p className="mt-3 text-[11px] leading-relaxed text-[#64748B]">
                             <span className="font-black text-[#0f2918]">{isAr ? "الإجابة الصحيحة: " : "Correct: "}</span>
                             {formatCorrectReveal(activeQuestion, answerFeedback.correctAnswer)}
                           </p>
                         )}
+                        </div>
 
+                        <div className="shrink-0 border-t border-[#f1f4f2] bg-[#fcfdfc] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
                         {!answerFeedback ? (
                           <button
                             type="button"
                             onClick={() => void verifyAnswer()}
                             disabled={!selectedAnswer.trim() || verifying}
                             className={cn(
-                              "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md disabled:opacity-45",
+                              "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md disabled:opacity-45",
                               TRANSITION,
                             )}
                             style={{ background: BRAND }}
                           >
                             {verifying ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-                            {isAr ? "تحقق من الإجابة" : "Check answer"}
+                            {isAr ? "إرسال الإجابة" : "Submit answer"}
                           </button>
                         ) : (
                           <div className="space-y-3">
@@ -1289,7 +1309,7 @@ export default function StudentVideoLesson() {
                               type="button"
                               onClick={continueAfterFeedback}
                               className={cn(
-                                "flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md",
+                                "flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl font-black text-white shadow-md",
                                 TRANSITION,
                               )}
                               style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #2a6144 100%)` }}
@@ -1299,6 +1319,7 @@ export default function StudentVideoLesson() {
                             </button>
                           </div>
                         )}
+                        </div>
                       </div>
                     </motion.div>
                   </>
