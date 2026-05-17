@@ -882,6 +882,10 @@ export default function CreateVideoLesson() {
         return;
       }
     }
+    if (accessUi === "code" && !accessCode.trim()) {
+      toast.error(isAr ? "يرجى إدخال كود الوصول للدرس الخاص" : "Please enter an access code for private lessons");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -925,7 +929,9 @@ export default function CreateVideoLesson() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as { message?: string }).message || "Error");
+        const o = err as { message?: string; errors?: Array<{ message?: string }> };
+        const detail = o.errors?.map((e) => e.message).filter(Boolean).join(" · ");
+        throw new Error([o.message, detail].filter(Boolean).join(": ") || "Error");
       }
 
       const data = await res.json();
