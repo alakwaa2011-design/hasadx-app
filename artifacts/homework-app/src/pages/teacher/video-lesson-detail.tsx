@@ -25,7 +25,7 @@ interface VideoLessonFull {
   isShared: boolean;
   createdAt: string;
   totalPoints: number;
-  questions: {
+  questions?: {
     id: number;
     timestampSeconds: number;
     questionType: string;
@@ -118,12 +118,26 @@ export default function VideoLessonDetail() {
   useEffect(() => {
     if (!id) return;
     fetch(`${API_BASE}/api/video-lessons/${id}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        setLesson(data);
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok || !data || typeof data !== "object") {
+          setLesson(null);
+          setLoading(false);
+          return;
+        }
+        const raw = data as Record<string, unknown>;
+        const qs = raw.questions;
+        const normalized: VideoLessonFull = {
+          ...(raw as unknown as VideoLessonFull),
+          questions: Array.isArray(qs) ? (qs as VideoLessonFull["questions"]) : [],
+        };
+        setLesson(normalized);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setLesson(null);
+        setLoading(false);
+      });
 
     fetch(`${API_BASE}/api/video-lessons/${id}/submissions`, { credentials: "include" })
       .then((r) => r.ok ? r.json() : [])
@@ -410,7 +424,7 @@ export default function VideoLessonDetail() {
               <div className="p-2 bg-red-500/20 rounded-xl text-red-500"><Play className="w-5 h-5" /></div>
               <div>
                 <p className="text-xs font-bold text-muted-foreground">{isAr ? "الأسئلة" : "Questions"}</p>
-                <p className="text-xl font-black">{lesson.questions.length}</p>
+                <p className="text-xl font-black">{(lesson.questions ?? []).length}</p>
               </div>
             </div>
           </Card>
@@ -492,9 +506,9 @@ export default function VideoLessonDetail() {
             <div className="space-y-3">
               <h2 className="text-lg font-black flex items-center gap-2">
                 <Play className="w-5 h-5 text-red-500" />
-                {isAr ? "الأسئلة التفاعلية" : "Interactive Questions"} ({lesson.questions.length})
+                {isAr ? "الأسئلة التفاعلية" : "Interactive Questions"} ({(lesson.questions ?? []).length})
               </h2>
-              {lesson.questions.map((q, idx) => (
+              {(lesson.questions ?? []).map((q, idx) => (
                 <Card key={q.id} className={`p-4 ${isAr ? "border-r-4 border-r-red-500/50" : "border-l-4 border-l-red-500/50"}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
