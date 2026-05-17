@@ -1180,11 +1180,13 @@ export default function StudentVideoLesson() {
                               const optText = activeQuestion[`option${opt}` as keyof VideoQuestionData] as string | null;
                               if (!optText) return null;
                               const fb = answerFeedback;
-                              const cor = normalizeMcqLetter(fb?.correctAnswer);
+                              const cor =
+                                normalizeMcqLetter(fb?.correctAnswer) ??
+                                (fb?.isCorrect ? normalizeMcqLetter(selectedAnswer) : null);
                               const sel = normalizeMcqLetter(selectedAnswer);
                               const show = !!fb;
                               const correctOpt = show && cor === opt;
-                              const wrongSel = show && sel === opt && cor !== opt;
+                              const wrongSel = show && sel === opt && !fb.isCorrect;
                               return (
                                 <button
                                   key={opt}
@@ -1224,11 +1226,14 @@ export default function StudentVideoLesson() {
                           <div className="mt-2 grid grid-cols-2 gap-2">
                             {(["true", "false"] as const).map((value) => {
                               const fb = answerFeedback;
-                              const cor = fb?.correctAnswer?.trim().toLowerCase();
+                              const corRaw =
+                                fb?.correctAnswer?.trim().toLowerCase() ??
+                                (fb?.isCorrect ? selectedAnswer.trim().toLowerCase() : "");
+                              const cor = corRaw === "true" || corRaw === "false" ? corRaw : "";
                               const sel = selectedAnswer.trim().toLowerCase();
                               const show = !!fb;
                               const isCor = show && cor === value;
-                              const isWrong = show && sel === value && cor !== value;
+                              const isWrong = show && sel === value && !fb.isCorrect;
                               const labelAr = value === "true" ? "صح" : "خطأ";
                               const labelEn = value === "true" ? "True" : "False";
                               return (
@@ -1264,6 +1269,24 @@ export default function StudentVideoLesson() {
                             })}
                           </div>
                         )}
+
+                        {activeQuestion.questionType === "true_false" &&
+                          answerFeedback &&
+                          !answerFeedback.isCorrect &&
+                          answerFeedback.correctAnswer && (
+                            <p className="mt-3 text-[11px] leading-relaxed text-[#64748B]">
+                              <span className="font-black text-[#0f2918]">
+                                {isAr ? "الإجابة الصحيحة: " : "Correct answer: "}
+                              </span>
+                              {answerFeedback.correctAnswer.trim().toLowerCase() === "true"
+                                ? isAr
+                                  ? "صح"
+                                  : "True"
+                                : isAr
+                                  ? "خطأ"
+                                  : "False"}
+                            </p>
+                          )}
 
                         {activeQuestion.questionType === "fill_blank" && (
                           <div className="mt-2 space-y-2">
@@ -1330,6 +1353,20 @@ export default function StudentVideoLesson() {
                           </button>
                         ) : (
                           <div className="space-y-3">
+                            <p
+                              className={cn(
+                                "text-center text-base font-black",
+                                answerFeedback.isCorrect ? "text-emerald-700" : "text-rose-700",
+                              )}
+                            >
+                              {answerFeedback.isCorrect
+                                ? isAr
+                                  ? "صحيحة"
+                                  : "Correct"
+                                : isAr
+                                  ? "خطأ"
+                                  : "Incorrect"}
+                            </p>
                             {answerFeedback.isCorrect && answerFeedback.earnedPoints > 0 && (
                               <p className="text-center text-sm font-black text-emerald-800">
                                 +{answerFeedback.earnedPoints} {isAr ? "نقطة" : "pts"}
