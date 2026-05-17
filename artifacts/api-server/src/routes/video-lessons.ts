@@ -400,27 +400,60 @@ router.post("/video-lessons", async (req, res) => {
       }
       targetClassVal = tc.name;
     }
+    const accessCodeInsert =
+      typeof body.accessCode === "string" && body.accessCode.trim() !== ""
+        ? body.accessCode.trim()
+        : null;
+    const skipSegmentsInsert =
+      body.skipSegments && body.skipSegments.length > 0
+        ? JSON.stringify(body.skipSegments)
+        : null;
+
     // Wrap insert + XP in a single transaction: if either fails, both roll back.
     const { lesson, runAfterCommit } = await db.transaction(async (tx) => {
+      // Parameterized SQL avoids Drizzle insert builder sometimes emitting more placeholders than bound params.
+      const inserted = await tx.execute(sql`
+        INSERT INTO video_lessons (
+          title,
+          subject,
+          description,
+          video_url,
+          video_type,
+          target_class,
+          teacher_class_id,
+          access_mode,
+          access_code,
+          teacher_id,
+          is_shared,
+          skip_segments
+        ) VALUES (
+          ${body.title},
+          ${body.subject ?? null},
+          ${body.description ?? null},
+          ${body.videoUrl},
+          ${body.videoType},
+          ${targetClassVal},
+          ${teacherClassIdVal},
+          ${body.accessMode},
+          ${accessCodeInsert},
+          ${teacherId},
+          ${body.isShared === false ? false : true},
+          ${skipSegmentsInsert}
+        )
+        RETURNING id
+      `);
+      const newIdRaw = (inserted.rows[0] as { id: number } | undefined)?.id;
+      const newId = typeof newIdRaw === "number" ? newIdRaw : Number(newIdRaw);
+      if (!Number.isFinite(newId)) {
+        throw new Error("فشل إنشاء الدرس");
+      }
+
       const [l] = await tx
-        .insert(videoLessonsTable)
-        .values({
-          title: body.title,
-          subject: body.subject || null,
-          description: body.description || null,
-          videoUrl: body.videoUrl,
-          videoType: body.videoType,
-          targetClass: targetClassVal,
-          teacherClassId: teacherClassIdVal,
-          accessMode: body.accessMode,
-          accessCode: body.accessCode || null,
-          teacherId,
-          isShared: body.isShared === false ? false : true,
-          skipSegments: body.skipSegments && body.skipSegments.length > 0
-            ? JSON.stringify(body.skipSegments)
-            : null,
-        })
-        .returning();
+        .select()
+        .from(videoLessonsTable)
+        .where(eq(videoLessonsTable.id, newId))
+        .limit(1);
+      if (!l) throw new Error("فشل إنشاء الدرس");
 
       if (body.questions && body.questions.length > 0) {
         await tx.insert(videoQuestionsTable).values(
