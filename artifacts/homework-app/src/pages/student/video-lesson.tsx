@@ -168,6 +168,7 @@ export default function StudentVideoLesson() {
 
   const studentNameInputRef = useRef<HTMLInputElement>(null);
   const studentSelectRef = useRef<HTMLSelectElement>(null);
+  const studentIdentityCardRef = useRef<HTMLDivElement>(null);
 
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [activeQuestion, setActiveQuestion] = useState<VideoQuestionData | null>(null);
@@ -495,17 +496,23 @@ export default function StudentVideoLesson() {
 
   const handleSubmit = useCallback(async () => {
     if (!lesson) return;
+    const scrollToIdentity = () => {
+      studentIdentityCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+
     if (classStudents.length > 0) {
       if (!studentId || !studentName.trim()) {
         toast.error(
           isAr ? "يرجى اختيار اسمك من القائمة لتسجيل الدرجة." : "Please select your name from the list to record your score.",
         );
-        studentSelectRef.current?.focus();
+        scrollToIdentity();
+        window.setTimeout(() => studentSelectRef.current?.focus(), 400);
         return;
       }
     } else if (!studentName.trim()) {
       toast.error(isAr ? "يرجى إدخال اسمك لتسجيل الدرجة." : "Please enter your name to record your score.");
-      studentNameInputRef.current?.focus();
+      scrollToIdentity();
+      window.setTimeout(() => studentNameInputRef.current?.focus(), 400);
       return;
     }
     setSubmitting(true);
@@ -800,116 +807,6 @@ export default function StudentVideoLesson() {
               transition={{ duration: 0.35 }}
             />
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="mb-5"
-          >
-            <Card
-              className="border border-[#e8ece9] bg-white p-5 shadow-lg sm:p-6"
-              style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}
-            >
-              <div
-                className="mb-5 flex gap-2.5 rounded-xl border border-[#dfe8e3] bg-[#f8faf9] px-3.5 py-2.5 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
-                role="note"
-              >
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1E4D35]/40" aria-hidden />
-                <p className="text-[12.5px] font-medium leading-relaxed text-[#5a6b62]">
-                  {isAr ? (
-                    <>
-                      يمكنك <span className="font-semibold text-[#2d4238]">مشاهدة الفيديو</span> والإجابة على الأسئلة قبل إدخال اسمك. عند الضغط على{" "}
-                      <span className="font-semibold text-[#2d4238]">«إنهاء وتسليم»</span>، يرجى{" "}
-                      <span className="font-semibold text-[#2d4238]">إدخال اسمك أو اختياره من القائمة</span> لتسجيل درجتك. حقل الفصل{" "}
-                      <span className="font-semibold text-[#2d4238]">اختياري</span>.
-                    </>
-                  ) : (
-                    <>
-                      You can <span className="font-semibold text-[#2d4238]">watch the video</span> and answer questions before entering your name. When you tap{" "}
-                      <span className="font-semibold text-[#2d4238]">«Finish & submit»</span>, please{" "}
-                      <span className="font-semibold text-[#2d4238]">enter or select your name</span> to record your score.{" "}
-                      <span className="font-semibold text-[#2d4238]">Class is optional.</span>
-                    </>
-                  )}
-                </p>
-              </div>
-              <div className="space-y-5">
-                {classStudents.length > 0 ? (
-                  <div className="space-y-2 text-right">
-                    <Label className="text-sm font-black text-[#0f2918]">
-                      <Users className="mb-0.5 inline h-4 w-4 text-[#1E4D35]" />{" "}
-                      {isAr ? "اختر اسمك من القائمة (عند التسليم)" : "Pick your name (for submission)"}
-                    </Label>
-                    <select
-                      ref={studentSelectRef}
-                      value={studentId ?? ""}
-                      onChange={(e) => {
-                        const sid = parseInt(e.target.value);
-                        const found = classStudents.find((s) => s.id === sid);
-                        if (found) {
-                          setStudentId(found.id);
-                          setStudentName(found.name);
-                          setStudentClass(lesson.targetClass?.trim() || "");
-                        } else {
-                          setStudentId(null);
-                          setStudentName("");
-                        }
-                      }}
-                      className={cn(
-                        "min-h-[52px] w-full rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] px-4 text-base font-bold text-[#0f2918] focus:border-[#1E4D35]/35 focus:outline-none focus:ring-4 focus:ring-[#1E4D35]/10",
-                        FIELD_RTL,
-                      )}
-                    >
-                      <option value="">{isAr ? "— اختر اسمك —" : "— Select —"}</option>
-                      {classStudents.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div className="space-y-2 text-right">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "اسم الطالب (عند التسليم)" : "Your name (for submission)"}</Label>
-                      <Input
-                        ref={studentNameInputRef}
-                        value={studentName}
-                        onChange={(e) => setStudentName(e.target.value)}
-                        placeholder={isAr ? "اكتب اسمك الكامل" : "Full name"}
-                        dir="rtl"
-                        className={cn(
-                          "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
-                          FIELD_RTL,
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-2 text-right">
-                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
-                      <Input
-                        value={studentClass}
-                        onChange={(e) => setStudentClass(e.target.value)}
-                        placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
-                        dir="rtl"
-                        className={cn(
-                          "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
-                          FIELD_RTL,
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {accessError && (
-                  <div className="flex items-center gap-2 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-3 text-sm font-bold text-rose-900/90">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    {accessError}
-                  </div>
-                )}
-              </div>
-            </Card>
-          </motion.div>
 
           <AnimatePresence>
             {showExitConfirm && (
@@ -1311,6 +1208,119 @@ export default function StudentVideoLesson() {
               </div>
             </div>
           </section>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-6"
+          >
+            <div ref={studentIdentityCardRef} id="student-identity-card">
+            <Card
+              className="border border-[#e8ece9] bg-white p-5 shadow-lg sm:p-6"
+              style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}
+            >
+              <div
+                className="mb-5 flex gap-2.5 rounded-xl border border-[#dfe8e3] bg-[#f8faf9] px-3.5 py-2.5 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                role="note"
+              >
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1E4D35]/40" aria-hidden />
+                <p className="text-[12.5px] font-medium leading-relaxed text-[#5a6b62]">
+                  {isAr ? (
+                    <>
+                      يمكنك <span className="font-semibold text-[#2d4238]">مشاهدة الفيديو</span> والإجابة على الأسئلة أعلاه دون إدخال الاسم. لتسجيل الدرجة عند الضغط على{" "}
+                      <span className="font-semibold text-[#2d4238]">«إنهاء وتسليم»</span>، يرجى{" "}
+                      <span className="font-semibold text-[#2d4238]">إدخال اسمك أو اختياره من القائمة</span> أدناه. حقل الفصل{" "}
+                      <span className="font-semibold text-[#2d4238]">اختياري</span>.
+                    </>
+                  ) : (
+                    <>
+                      You can <span className="font-semibold text-[#2d4238]">watch the video</span> and answer questions above without entering your name. To record your score when you tap{" "}
+                      <span className="font-semibold text-[#2d4238]">«Finish & submit»</span>, please{" "}
+                      <span className="font-semibold text-[#2d4238]">enter or select your name</span> below.{" "}
+                      <span className="font-semibold text-[#2d4238]">Class is optional.</span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="space-y-5">
+                {classStudents.length > 0 ? (
+                  <div className="space-y-2 text-right">
+                    <Label className="text-sm font-black text-[#0f2918]">
+                      <Users className="mb-0.5 inline h-4 w-4 text-[#1E4D35]" />{" "}
+                      {isAr ? "اختر اسمك من القائمة (عند التسليم)" : "Pick your name (for submission)"}
+                    </Label>
+                    <select
+                      ref={studentSelectRef}
+                      value={studentId ?? ""}
+                      onChange={(e) => {
+                        const sid = parseInt(e.target.value);
+                        const found = classStudents.find((s) => s.id === sid);
+                        if (found) {
+                          setStudentId(found.id);
+                          setStudentName(found.name);
+                          setStudentClass(lesson.targetClass?.trim() || "");
+                        } else {
+                          setStudentId(null);
+                          setStudentName("");
+                        }
+                      }}
+                      className={cn(
+                        "min-h-[52px] w-full rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] px-4 text-base font-bold text-[#0f2918] focus:border-[#1E4D35]/35 focus:outline-none focus:ring-4 focus:ring-[#1E4D35]/10",
+                        FIELD_RTL,
+                      )}
+                    >
+                      <option value="">{isAr ? "— اختر اسمك —" : "— Select —"}</option>
+                      {classStudents.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div className="space-y-2 text-right">
+                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "اسم الطالب (عند التسليم)" : "Your name (for submission)"}</Label>
+                      <Input
+                        ref={studentNameInputRef}
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder={isAr ? "اكتب اسمك الكامل" : "Full name"}
+                        dir="rtl"
+                        className={cn(
+                          "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
+                          FIELD_RTL,
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
+                      <Input
+                        value={studentClass}
+                        onChange={(e) => setStudentClass(e.target.value)}
+                        placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
+                        dir="rtl"
+                        className={cn(
+                          "min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
+                          FIELD_RTL,
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {accessError && (
+                  <div className="flex items-center gap-2 rounded-2xl border border-rose-200/80 bg-rose-50/80 px-4 py-3 text-sm font-bold text-rose-900/90">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    {accessError}
+                  </div>
+                )}
+              </div>
+            </Card>
+            </div>
+          </motion.div>
+
           <div className="mt-6 flex justify-end">
             {allAnswered && !result && (
               <Button
