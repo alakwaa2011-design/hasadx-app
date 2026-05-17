@@ -962,7 +962,8 @@ router.post("/video-lessons/:id/check-answer", async (req, res) => {
       isCorrect,
       points: question.points,
       earnedPoints: isCorrect ? question.points : 0,
-      correctAnswer: isCorrect ? null : question.correctAnswer,
+      /** دائماً نُرجع الإجابة المرجعية حتى تلوّن الواجهة الخيار الصحيح (أخضر) عند الإجابة الصحيحة — كان إرجاع null يجعل المختار يُعرض كخطأ. */
+      correctAnswer: question.correctAnswer,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
