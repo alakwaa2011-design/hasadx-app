@@ -280,6 +280,15 @@ async function runSchemaMigrations() {
       ALTER TABLE teacher_stats
         ADD COLUMN IF NOT EXISTS display_level_override INTEGER
     `);
+    await db.execute(sql`
+      ALTER TABLE video_lessons
+        ADD COLUMN IF NOT EXISTS hidden_by_admin BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS hidden_by_id INTEGER REFERENCES teachers(id),
+        ADD COLUMN IF NOT EXISTS hide_reason TEXT,
+        ADD COLUMN IF NOT EXISTS teacher_class_id INTEGER REFERENCES teacher_classes(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS skip_segments TEXT
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");
