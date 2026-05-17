@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable } from "@workspace/db";
+import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable } from "@workspace/db";
 import { eq, sql, and, ne, notInArray, inArray, isNull, or } from "drizzle-orm";
-import { submissionsTable } from "@workspace/db";
 import {
   CreateAssignmentBody,
   GetAssignmentParams,
@@ -892,7 +891,99 @@ router.get("/class-grades/:gradeLevel", async (req, res) => {
       }
     }
 
-    res.json({ students, assignments, submissions });
+    const teacherClassesForTeacher = await db
+      .select({ id: teacherClassesTable.id, name: teacherClassesTable.name })
+      .from(teacherClassesTable)
+      .where(eq(teacherClassesTable.teacherId, teacherId));
+
+    const tcIdToName = new Map(teacherClassesForTeacher.map((r) => [r.id, r.name]));
+
+    const allVideoLessons = await db
+      .select({
+        id: videoLessonsTable.id,
+        title: videoLessonsTable.title,
+        subject: videoLessonsTable.subject,
+        teacherClassId: videoLessonsTable.teacherClassId,
+        targetClass: videoLessonsTable.targetClass,
+      })
+      .from(videoLessonsTable)
+      .where(eq(videoLessonsTable.teacherId, teacherId));
+
+    const videoLessons: { id: number; title: string; subject: string | null; totalPoints: number }[] = [];
+    const matchingVideoIds: number[] = [];
+
+    for (const vl of allVideoLessons) {
+      const resolved =
+        vl.teacherClassId != null ? tcIdToName.get(vl.teacherClassId) ?? vl.targetClass : vl.targetClass;
+      if (resolved !== gradeLevel) continue;
+      matchingVideoIds.push(vl.id);
+      videoLessons.push({
+        id: vl.id,
+        title: vl.title,
+        subject: vl.subject,
+        totalPoints: 0,
+      });
+    }
+
+    let videoSubmissions: {
+      id: number;
+      videoLessonId: number;
+      studentName: string;
+      studentId: number | null;
+      earnedPoints: number;
+      totalPoints: number;
+      teacherAdjustedPoints: null;
+      score: number;
+      correctAnswers: number;
+      totalQuestions: number;
+    }[] = [];
+
+    if (matchingVideoIds.length > 0) {
+      const totals = await db
+        .select({
+          videoLessonId: videoQuestionsTable.videoLessonId,
+          totalPoints: sql<number>`coalesce(sum(${videoQuestionsTable.points}), 0)::real`,
+        })
+        .from(videoQuestionsTable)
+        .where(inArray(videoQuestionsTable.videoLessonId, matchingVideoIds))
+        .groupBy(videoQuestionsTable.videoLessonId);
+
+      const totalByLesson = new Map(totals.map((t) => [t.videoLessonId, round2(Number(t.totalPoints))]));
+
+      for (const v of videoLessons) {
+        v.totalPoints = totalByLesson.get(v.id) ?? 0;
+      }
+
+      const vsRows = await db
+        .select({
+          id: videoSubmissionsTable.id,
+          videoLessonId: videoSubmissionsTable.videoLessonId,
+          studentName: videoSubmissionsTable.studentName,
+          studentId: videoSubmissionsTable.studentId,
+          earnedPoints: videoSubmissionsTable.earnedPoints,
+          totalPoints: videoSubmissionsTable.totalPoints,
+          score: videoSubmissionsTable.score,
+          correctAnswers: videoSubmissionsTable.correctAnswers,
+          totalQuestions: videoSubmissionsTable.totalQuestions,
+        })
+        .from(videoSubmissionsTable)
+        .where(inArray(videoSubmissionsTable.videoLessonId, matchingVideoIds));
+
+      videoSubmissions = vsRows.map((s) => ({
+        id: s.id,
+        videoLessonId: s.videoLessonId,
+        studentName: s.studentName,
+        studentId: s.studentId,
+        earnedPoints: round2(s.earnedPoints),
+        totalPoints: round2(s.totalPoints),
+        teacherAdjustedPoints: null,
+        score: Math.round(Number(s.score)),
+        correctAnswers: s.correctAnswers,
+        totalQuestions: s.totalQuestions,
+      }));
+    }
+
+    res.json({ students, assignments, submissions, videoLessons, videoSubmissions });
   } catch (err) {
     req.log.error({ err }, "Class grades error");
     res.status(500).json({ message: "خطأ في جلب الدرجات" });

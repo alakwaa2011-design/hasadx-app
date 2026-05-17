@@ -7,7 +7,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   GraduationCap, ArrowRight, ArrowLeft, Users, BookOpen,
   ClipboardCopy, Check, Plus, X, Loader2, PaintBucket, Columns3,
-  Pencil, RotateCcw, Eraser,
+  Pencil, RotateCcw, Eraser, Film,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
@@ -33,6 +33,24 @@ type Submission = {
   correctAnswers: number;
   totalQuestions: number;
 };
+type VideoLessonGradeCol = {
+  id: number;
+  title: string;
+  subject: string | null;
+  totalPoints: number;
+};
+type VideoGradeSubmission = {
+  id: number;
+  videoLessonId: number;
+  studentName: string;
+  studentId: number | null;
+  earnedPoints: number;
+  totalPoints: number;
+  teacherAdjustedPoints: number | null;
+  score: number;
+  correctAnswers: number;
+  totalQuestions: number;
+};
 /** Some gradebook rows are synthesized client-side (e.g. games) and may lack a persisted submission id. */
 type SubmissionRow = Submission & { id?: number };
 type CustomColumn = { id: number; name: string; appliedTo: string };
@@ -48,6 +66,8 @@ export default function ClassGrades() {
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [videoLessons, setVideoLessons] = useState<VideoLessonGradeCol[]>([]);
+  const [videoSubmissions, setVideoSubmissions] = useState<VideoGradeSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -100,6 +120,8 @@ export default function ClassGrades() {
         setStudents(data.students || []);
         setAssignments(data.assignments || []);
         setSubmissions(data.submissions || []);
+        setVideoLessons(data.videoLessons || []);
+        setVideoSubmissions(data.videoSubmissions || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -138,6 +160,16 @@ export default function ClassGrades() {
     ) as SubmissionRow | undefined;
   };
 
+  const getVideoSubmission = (studentId: number, studentName: string, videoLessonId: number): VideoGradeSubmission | undefined => {
+    const byId = videoSubmissions.find(s => s.videoLessonId === videoLessonId && s.studentId === studentId);
+    if (byId) return byId;
+    const nameNorm = studentName.trim().toLowerCase();
+    return videoSubmissions.find(s =>
+      s.videoLessonId === videoLessonId && !s.studentId &&
+      s.studentName.trim().toLowerCase() === nameNorm
+    );
+  };
+
   const refetchClassGrades = useCallback(async () => {
     const r = await fetch(`${API_BASE}/api/class-grades/${encodeURIComponent(gradeLevel)}`, { credentials: "include" });
     if (!r.ok) return;
@@ -145,10 +177,14 @@ export default function ClassGrades() {
     setStudents(data.students || []);
     setAssignments(data.assignments || []);
     setSubmissions(data.submissions || []);
+    setVideoLessons(data.videoLessons || []);
+    setVideoSubmissions(data.videoSubmissions || []);
   }, [gradeLevel]);
 
   const getStudentAverage = (student: Student) => {
-    const subs = assignments.map(a => getSubmission(student.id, student.name, a.id)).filter(Boolean) as Submission[];
+    const assignSubs = assignments.map(a => getSubmission(student.id, student.name, a.id)).filter(Boolean) as Submission[];
+    const vidSubs = videoLessons.map(v => getVideoSubmission(student.id, student.name, v.id)).filter(Boolean) as VideoGradeSubmission[];
+    const subs = [...assignSubs, ...vidSubs];
     if (!subs.length) return 0;
     const earned = subs.reduce((s, x) => s + (x.teacherAdjustedPoints ?? x.earnedPoints), 0);
     const max = subs.reduce((s, x) => s + x.totalPoints, 0);
@@ -166,7 +202,7 @@ export default function ClassGrades() {
 
   const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name, "ar"));
 
-  const totalGradeCols = assignments.length + customCols.length;
+  const totalGradeCols = assignments.length + videoLessons.length + customCols.length;
 
   const isGradeCellNavigable = (rowIdx: number, colIdx: number) => {
     if (rowIdx < 0 || rowIdx >= sortedStudents.length || colIdx < 0 || colIdx >= totalGradeCols) return false;
@@ -174,6 +210,11 @@ export default function ClassGrades() {
       const a = assignments[colIdx];
       const st = sortedStudents[rowIdx];
       return !!getSubmission(st.id, st.name, a.id);
+    }
+    if (colIdx < assignments.length + videoLessons.length) {
+      const v = videoLessons[colIdx - assignments.length];
+      const st = sortedStudents[rowIdx];
+      return !!getVideoSubmission(st.id, st.name, v.id);
     }
     return true;
   };
@@ -264,6 +305,7 @@ export default function ClassGrades() {
       "#",
       lang === "ar" ? "الطالب" : "Student",
       ...assignments.map(a => a.title),
+      ...videoLessons.map(v => `${v.title}${lang === "ar" ? " (فيديو)" : " (video)"}`),
       ...customCols.map(c => c.name),
       lang === "ar" ? "المعدل %" : "Avg %",
     ].join("\t");
@@ -274,8 +316,12 @@ export default function ClassGrades() {
         // Output plain numbers so Excel never misreads fractions as dates
         return sub ? String(sub.teacherAdjustedPoints ?? sub.earnedPoints) : "-";
       });
+      const vidGrades = videoLessons.map(v => {
+        const sub = getVideoSubmission(student.id, student.name, v.id);
+        return sub ? String(sub.teacherAdjustedPoints ?? sub.earnedPoints) : "-";
+      });
       const customGrades = customCols.map(c => grades[gradeKey(student.id, c.id)] ?? "");
-      return [idx + 1, student.name, ...assignGrades, ...customGrades, `${getStudentAverage(student)}%`].join("\t");
+      return [idx + 1, student.name, ...assignGrades, ...vidGrades, ...customGrades, `${getStudentAverage(student)}%`].join("\t");
     });
 
     navigator.clipboard.writeText([header, ...rows].join("\n")).then(() => {
@@ -305,6 +351,19 @@ export default function ClassGrades() {
     navigator.clipboard.writeText(lines.join("\n")).then(() => {
       setCopiedColKey(key);
       toast.success(lang === "ar" ? `تم نسخ عمود «${title}»` : `Copied "${title}" column`);
+      setTimeout(() => setCopiedColKey(null), 2000);
+    });
+  };
+
+  const handleCopyVideoColumn = (videoLessonId: number, title: string) => {
+    const lines = sortedStudents.map(s => {
+      const sub = getVideoSubmission(s.id, s.name, videoLessonId);
+      return sub ? String(sub.teacherAdjustedPoints ?? sub.earnedPoints) : "";
+    });
+    const key = `v-${videoLessonId}`;
+    navigator.clipboard.writeText(lines.join("\n")).then(() => {
+      setCopiedColKey(key);
+      toast.success(lang === "ar" ? `تم نسخ عمود «${title}» (فيديو)` : `Copied video column "${title}"`);
       setTimeout(() => setCopiedColKey(null), 2000);
     });
   };
@@ -650,6 +709,11 @@ export default function ClassGrades() {
               <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full font-semibold">
                 <BookOpen className="w-3.5 h-3.5" /> {assignments.length} {lang === "ar" ? "واجب" : "assignments"}
               </span>
+              {videoLessons.length > 0 && (
+                <span className="inline-flex items-center gap-1 bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full font-semibold">
+                  <Film className="w-3.5 h-3.5" /> {videoLessons.length} {lang === "ar" ? "درس فيديو" : "video lessons"}
+                </span>
+              )}
             </div>
           </div>
         </motion.div>
@@ -754,6 +818,29 @@ export default function ClassGrades() {
                         </th>
                       );
                     })}
+                    {/* Video lesson columns */}
+                    {videoLessons.map(v => (
+                      <th key={`vl-${v.id}`} className="px-2 py-2 text-center font-semibold text-foreground whitespace-nowrap border-r border-emerald-200/80 bg-emerald-50/90 dark:bg-emerald-950/40 min-w-[110px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <Link href={`/teacher/video-lesson/${v.id}`} className="hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
+                            <span className="block text-xs font-bold leading-tight max-w-[100px] truncate mx-auto" title={v.title}>{v.title}</span>
+                            <span className="block text-[10px] text-emerald-700/90 dark:text-emerald-400 font-semibold">{lang === "ar" ? "فيديو تفاعلي" : "Video lesson"}</span>
+                            {v.subject && <span className="block text-[10px] text-muted-foreground font-normal">{v.subject}</span>}
+                          </Link>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200">
+                            {lang === "ar" ? "من" : "/"} {v.totalPoints}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyVideoColumn(v.id, v.title)}
+                            className="p-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 transition-colors"
+                            title={lang === "ar" ? "نسخ العمود" : "Copy column"}
+                          >
+                            {copiedColKey === `v-${v.id}` ? <Check size={12} className="text-green-500" /> : <ClipboardCopy size={12} />}
+                          </button>
+                        </div>
+                      </th>
+                    ))}
                     {/* Custom columns */}
                     {customCols.map(col => (
                       <th key={col.id} className="px-2 py-2 text-center font-semibold text-violet-700 dark:text-violet-300 whitespace-nowrap border-r border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 min-w-[110px]">
@@ -927,15 +1014,44 @@ export default function ClassGrades() {
                             </td>
                           );
                         })}
+                        {videoLessons.map((v, vi) => {
+                          const sub = getVideoSubmission(student.id, student.name, v.id);
+                          const navCol = assignments.length + vi;
+                          if (!sub) {
+                            return (
+                              <td key={`vl-${v.id}`} className="px-3 py-2.5 text-center border-r border-emerald-100/80 bg-emerald-50/20 dark:bg-emerald-950/10">
+                                <span className="text-xs text-muted-foreground/50">—</span>
+                              </td>
+                            );
+                          }
+                          const earned = sub.teacherAdjustedPoints ?? sub.earnedPoints;
+                          const pct = sub.totalPoints > 0 ? Math.round((earned / sub.totalPoints) * 100) : 0;
+                          return (
+                            <td key={`vl-${v.id}`} className="px-2 py-2 text-center border-r border-emerald-100/80 bg-emerald-50/25 dark:bg-emerald-950/15">
+                              <div
+                                tabIndex={0}
+                                role="text"
+                                data-grade-nav={`${idx}-${navCol}`}
+                                onKeyDown={e => handleGradeGridKeyDown(e, idx, navCol)}
+                                className={`mx-auto inline-flex flex-col items-center gap-0.5 font-bold text-xs ${getScoreColor(pct)} outline-none focus:ring-1 focus:ring-emerald-400/50 rounded px-1 py-0.5`}
+                              >
+                                <span>{earned}/{sub.totalPoints}</span>
+                                <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+                                  {sub.correctAnswers}/{sub.totalQuestions} {lang === "ar" ? "صحيح" : "ok"}
+                                </span>
+                              </div>
+                            </td>
+                          );
+                        })}
                         {/* Custom grade cells */}
                         {customCols.map((col, cc) => (
                           <td key={col.id} className="px-1 py-1 text-center border-r border-violet-100 dark:border-violet-900/20 bg-violet-50/30 dark:bg-violet-950/10">
                             <input
                               type="text"
-                              data-grade-nav={`${idx}-${assignments.length + cc}`}
+                              data-grade-nav={`${idx}-${assignments.length + videoLessons.length + cc}`}
                               value={grades[gradeKey(student.id, col.id)] ?? ""}
                               onChange={e => handleCellChange(student.id, col.id, e.target.value)}
-                              onKeyDown={e => handleGradeGridKeyDown(e, idx, assignments.length + cc)}
+                              onKeyDown={e => handleGradeGridKeyDown(e, idx, assignments.length + videoLessons.length + cc)}
                               className="w-full text-center px-2 py-1.5 rounded-lg bg-transparent border border-transparent hover:border-violet-300 focus:border-violet-500 focus:bg-card outline-none text-xs transition-all font-medium placeholder:text-muted-foreground/40"
                               placeholder="—"
                             />

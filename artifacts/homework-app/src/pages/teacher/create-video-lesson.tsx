@@ -58,7 +58,7 @@ interface YTPlayer {
 
 interface YTWindow extends Window {
   YT?: {
-    Player: new (elementId: string, config: Record<string, unknown>) => YTPlayer;
+    Player: new (elementId: string | HTMLElement, config: Record<string, unknown>) => YTPlayer;
   };
   onYouTubeIframeAPIReady?: () => void;
 }
@@ -120,11 +120,18 @@ interface APILesson {
   videoUrl: string;
   videoType: string;
   targetClass: string | null;
+  teacherClassId: number | null;
   accessMode: string;
   accessCode: string | null;
   isShared: boolean;
   skipSegments: SkipSegment[] | null;
   questions: APILessonQuestion[];
+}
+
+interface TeacherClassOption {
+  id: number;
+  name: string;
+  groupName: string | null;
 }
 
 function generateAccessCode(): string {
@@ -547,10 +554,11 @@ export default function CreateVideoLesson() {
   const [videoUrl, setVideoUrl] = useState("");
   const [videoSource, setVideoSource] = useState<VideoSource>("youtube");
   const [targetClass, setTargetClass] = useState("");
+  const [teacherClassId, setTeacherClassId] = useState<number | "">("");
   const [accessUi, setAccessUi] = useState<AccessUi>("public");
   const [accessCode, setAccessCode] = useState(generateAccessCode());
   const [isShared, setIsShared] = useState(false);
-  const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClassOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -606,6 +614,7 @@ export default function CreateVideoLesson() {
           ) as VideoSource;
           setVideoSource(vType);
           setTargetClass(data.targetClass || "");
+          setTeacherClassId(data.teacherClassId ?? "");
           setAccessUi(data.accessMode === "private" ? "code" : "public");
           setAccessCode(data.accessCode || generateAccessCode());
           setIsShared(data.isShared || false);
@@ -633,9 +642,9 @@ export default function CreateVideoLesson() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/students/grade-levels`, { credentials: "include" })
+    fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
-      .then(setGradeLevels)
+      .then((rows: TeacherClassOption[]) => setTeacherClasses(Array.isArray(rows) ? rows : []))
       .catch(() => {});
   }, []);
 
@@ -882,7 +891,15 @@ export default function CreateVideoLesson() {
         description: description || undefined,
         videoUrl,
         videoType: videoSource === "external" && extractYouTubeId(videoUrl) ? "youtube" : videoSource,
-        targetClass: targetClass || undefined,
+        ...(editId
+          ? {
+              teacherClassId: teacherClassId === "" ? null : teacherClassId,
+              targetClass: targetClass || null,
+            }
+          : {
+              ...(teacherClassId !== "" ? { teacherClassId } : {}),
+              ...(targetClass ? { targetClass } : {}),
+            }),
         accessMode: accessModeForApi,
         accessCode: accessUi === "code" ? accessCode : undefined,
         isShared,
@@ -946,6 +963,7 @@ export default function CreateVideoLesson() {
           videoUrl,
           videoSource,
           targetClass,
+          teacherClassId: teacherClassId === "" ? undefined : teacherClassId,
           accessUi,
           accessCode,
           isShared,
@@ -1365,7 +1383,7 @@ export default function CreateVideoLesson() {
                                     <MoreHorizontal className="h-4 w-4" />
                                   </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl border shadow-lg" dir={isAr ? "rtl" : "ltr"}>
+                                <DropdownMenuContent align="end" className={cn("rounded-xl border shadow-lg", isAr ? "[direction:rtl]" : "[direction:ltr]")}>
                                   <DropdownMenuItem
                                     className="font-bold"
                                     onClick={() => seekTo(q.timestampSeconds)}
@@ -1443,28 +1461,42 @@ export default function CreateVideoLesson() {
                             <GraduationCap className="h-3 w-3 text-[#1E4D35]" />
                             {isAr ? "الصف / الفصل" : "Target class"}
                           </Label>
-                          {gradeLevels.length > 0 ? (
+                          {teacherClasses.length > 0 ? (
                             <select
-                              value={targetClass}
-                              onChange={(e) => setTargetClass(e.target.value)}
+                              value={teacherClassId === "" ? "" : String(teacherClassId)}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (!v) {
+                                  setTeacherClassId("");
+                                  setTargetClass("");
+                                  return;
+                                }
+                                const tid = parseInt(v, 10);
+                                const tc = teacherClasses.find((x) => x.id === tid);
+                                setTeacherClassId(tid);
+                                setTargetClass(tc?.name || "");
+                              }}
                               className={cn(
                                 "min-h-[40px] w-full rounded-xl border-2 border-border bg-background px-3 text-sm font-bold focus:border-[#1E4D35]/35 focus:outline-none",
                                 isAr && FIELD_RTL,
                               )}
                               dir={isAr ? "rtl" : undefined}
                             >
-                              <option value="">{isAr ? "— جميع الفصول —" : "— All classes —"}</option>
-                              {gradeLevels.map((g) => (
-                                <option key={g.gradeLevel} value={g.gradeLevel}>
-                                  {g.gradeLevel} ({g.count} {isAr ? "طالب" : "students"})
+                              <option value="">{isAr ? "— بدون صف محدد —" : "— No class —"}</option>
+                              {teacherClasses.map((tc) => (
+                                <option key={tc.id} value={String(tc.id)}>
+                                  {tc.groupName ? `${tc.groupName} · ${tc.name}` : tc.name}
                                 </option>
                               ))}
                             </select>
                           ) : (
                             <Input
                               value={targetClass}
-                              onChange={(e) => setTargetClass(e.target.value)}
-                              placeholder={isAr ? "مثال: 3/أ" : "e.g. 3/A"}
+                              onChange={(e) => {
+                                setTargetClass(e.target.value);
+                                setTeacherClassId("");
+                              }}
+                              placeholder={isAr ? "أضف صفوفك من صفحة الطلاب، أو اكتب اسم الفصل يدوياً" : "Add classes under Students, or type a class name"}
                               className={cn(
                                 "min-h-[40px] rounded-xl border-2 text-sm focus:border-[#1E4D35]/35",
                                 isAr && FIELD_RTL,

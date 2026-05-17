@@ -2,6 +2,7 @@ import { pgTable, serial, text, timestamp, integer, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { teachersTable } from "./teachers";
+import { teacherClassesTable } from "./teacher-classes";
 
 export const videoLessonsTable = pgTable("video_lessons", {
   id: serial("id").primaryKey(),
@@ -10,7 +11,9 @@ export const videoLessonsTable = pgTable("video_lessons", {
   description: text("description"),
   videoUrl: text("video_url").notNull(),
   videoType: text("video_type").notNull().default("youtube"),
+  /** Canonical class label for gradebook / roster (usually equals teacher_classes.name when teacherClassId is set). */
   targetClass: text("target_class"),
+  teacherClassId: integer("teacher_class_id").references(() => teacherClassesTable.id, { onDelete: "set null" }),
   accessMode: text("access_mode").notNull().default("public"),
   accessCode: text("access_code"),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),

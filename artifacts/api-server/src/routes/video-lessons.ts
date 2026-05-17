@@ -7,8 +7,9 @@ import {
   videoAnswersTable,
   teachersTable,
   studentsTable,
+  teacherClassesTable,
 } from "@workspace/db";
-import { eq, sql, and, desc } from "drizzle-orm";
+import { eq, sql, and, desc, or } from "drizzle-orm";
 import { z } from "zod";
 import { awardXpInTxAndNotifyAfterCommit } from "../lib/xp/socket";
 import { reverseXpIfWithinWindow } from "../lib/xp/engine";
@@ -26,6 +27,7 @@ const CreateVideoLessonBody = z.object({
   description: z.string().optional(),
   videoUrl: z.string().min(1),
   videoType: z.enum(["youtube", "upload", "external"]).default("youtube"),
+  teacherClassId: z.number().int().positive().optional().nullable(),
   targetClass: z.string().nullish(),
   accessMode: z.enum(["public", "private"]).default("public"),
   accessCode: z.string().nullish(),
@@ -52,6 +54,7 @@ const UpdateVideoLessonBody = z.object({
   description: z.string().optional(),
   videoUrl: z.string().min(1).optional(),
   videoType: z.enum(["youtube", "upload", "external"]).optional(),
+  teacherClassId: z.number().int().positive().nullable().optional(),
   targetClass: z.string().nullish(),
   accessMode: z.enum(["public", "private"]).optional(),
   accessCode: z.string().nullish(),
@@ -93,6 +96,25 @@ const CheckVideoAnswerBody = z.object({
   accessCode: z.string().optional(),
 });
 
+async function resolveLessonClassName(
+  lesson: typeof videoLessonsTable.$inferSelect,
+): Promise<string | null> {
+  if (lesson.teacherClassId != null) {
+    const [tc] = await db
+      .select({ name: teacherClassesTable.name })
+      .from(teacherClassesTable)
+      .where(
+        and(
+          eq(teacherClassesTable.id, lesson.teacherClassId),
+          eq(teacherClassesTable.teacherId, lesson.teacherId),
+        ),
+      )
+      .limit(1);
+    if (tc?.name) return tc.name;
+  }
+  return lesson.targetClass ?? null;
+}
+
 router.get("/video-lessons", async (req, res) => {
   try {
     const teacherId = req.session.teacherId;
@@ -109,6 +131,7 @@ router.get("/video-lessons", async (req, res) => {
         videoUrl: videoLessonsTable.videoUrl,
         videoType: videoLessonsTable.videoType,
         targetClass: videoLessonsTable.targetClass,
+        teacherClassId: videoLessonsTable.teacherClassId,
         accessMode: videoLessonsTable.accessMode,
         teacherId: videoLessonsTable.teacherId,
         isPublished: videoLessonsTable.isPublished,
@@ -147,6 +170,7 @@ router.get("/video-lessons/shared/all", async (req, res) => {
         description: videoLessonsTable.description,
         videoType: videoLessonsTable.videoType,
         targetClass: videoLessonsTable.targetClass,
+        teacherClassId: videoLessonsTable.teacherClassId,
         teacherId: videoLessonsTable.teacherId,
         teacherName: teachersTable.name,
         isAdminContent: teachersTable.isAdmin,
@@ -180,6 +204,7 @@ router.get("/video-lessons/shared", async (req, res) => {
         description: videoLessonsTable.description,
         videoType: videoLessonsTable.videoType,
         targetClass: videoLessonsTable.targetClass,
+        teacherClassId: videoLessonsTable.teacherClassId,
         teacherId: videoLessonsTable.teacherId,
         teacherName: teachersTable.name,
         isShared: videoLessonsTable.isShared,
@@ -232,6 +257,7 @@ router.post("/video-lessons/:id/import", async (req, res) => {
         videoUrl: source.videoUrl,
         videoType: source.videoType,
         targetClass: null,
+        teacherClassId: null,
         accessMode: "public",
         accessCode: null,
         isShared: false,
@@ -280,6 +306,8 @@ router.get("/video-lessons/:id", async (req, res) => {
       .limit(1);
 
     if (!lesson) return res.status(404).json({ message: "درس غير موجود" });
+
+    const resolvedTargetClass = await resolveLessonClassName(lesson);
 
     if (lesson.accessMode === "private") {
       const isTeacher = req.session.teacherId === lesson.teacherId;
@@ -331,6 +359,7 @@ router.get("/video-lessons/:id", async (req, res) => {
 
     res.json({
       ...lesson,
+      targetClass: resolvedTargetClass ?? lesson.targetClass,
       skipSegments: parsedSkipSegments,
       questions: questionsForClient,
       totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
@@ -350,6 +379,19 @@ router.post("/video-lessons", async (req, res) => {
     const body = CreateVideoLessonBody.parse(req.body);
 
     const teacherId = req.session.teacherId;
+    let teacherClassIdVal: number | null = body.teacherClassId ?? null;
+    let targetClassVal: string | null = body.targetClass?.trim() || null;
+    if (teacherClassIdVal != null) {
+      const [tc] = await db
+        .select({ id: teacherClassesTable.id, name: teacherClassesTable.name })
+        .from(teacherClassesTable)
+        .where(and(eq(teacherClassesTable.id, teacherClassIdVal), eq(teacherClassesTable.teacherId, teacherId)))
+        .limit(1);
+      if (!tc) {
+        return res.status(400).json({ message: "صف غير صالح أو غير تابع لحسابك" });
+      }
+      targetClassVal = tc.name;
+    }
     // Wrap insert + XP in a single transaction: if either fails, both roll back.
     const { lesson, runAfterCommit } = await db.transaction(async (tx) => {
       const [l] = await tx
@@ -360,7 +402,8 @@ router.post("/video-lessons", async (req, res) => {
           description: body.description || null,
           videoUrl: body.videoUrl,
           videoType: body.videoType,
-          targetClass: body.targetClass || null,
+          targetClass: targetClassVal,
+          teacherClassId: teacherClassIdVal,
           accessMode: body.accessMode,
           accessCode: body.accessCode || null,
           teacherId,
@@ -436,7 +479,32 @@ router.put("/video-lessons/:id", async (req, res) => {
     if (body.description !== undefined) updateData.description = body.description || null;
     if (body.videoUrl !== undefined) updateData.videoUrl = body.videoUrl;
     if (body.videoType !== undefined) updateData.videoType = body.videoType;
-    if (body.targetClass !== undefined) updateData.targetClass = body.targetClass || null;
+
+    if (body.teacherClassId !== undefined) {
+      if (body.teacherClassId === null) {
+        updateData.teacherClassId = null;
+        if (body.targetClass !== undefined) {
+          updateData.targetClass = body.targetClass || null;
+        }
+      } else {
+        const [tc] = await db
+          .select({ id: teacherClassesTable.id, name: teacherClassesTable.name })
+          .from(teacherClassesTable)
+          .where(and(
+            eq(teacherClassesTable.id, body.teacherClassId),
+            eq(teacherClassesTable.teacherId, req.session.teacherId),
+          ))
+          .limit(1);
+        if (!tc) {
+          return res.status(400).json({ message: "صف غير صالح أو غير تابع لحسابك" });
+        }
+        updateData.teacherClassId = tc.id;
+        updateData.targetClass = tc.name;
+      }
+    } else if (body.targetClass !== undefined) {
+      updateData.targetClass = body.targetClass || null;
+    }
+
     if (body.accessMode !== undefined) updateData.accessMode = body.accessMode;
     if (body.accessCode !== undefined) updateData.accessCode = body.accessCode || null;
     if (body.isShared !== undefined) updateData.isShared = body.isShared;
@@ -596,6 +664,32 @@ router.post("/video-lessons/:id/submit", async (req, res) => {
       }
     }
 
+    const className = await resolveLessonClassName(lesson);
+    let studentNameFinal = body.studentName.trim();
+    let studentClassFinal = (body.studentClass || "").trim();
+    let studentIdFinal: number | null = body.studentId ?? null;
+
+    if (className) {
+      if (!body.studentId) {
+        return res.status(400).json({ message: "اختر اسمك من قائمة الفصل" });
+      }
+      const [st] = await db
+        .select()
+        .from(studentsTable)
+        .where(and(
+          eq(studentsTable.id, body.studentId),
+          eq(studentsTable.teacherId, lesson.teacherId),
+          or(eq(studentsTable.gradeLevel, className), eq(studentsTable.studentClass, className)),
+        ))
+        .limit(1);
+      if (!st) {
+        return res.status(403).json({ message: "هذا الطالب غير مسجل في الفصل المحدد للدرس" });
+      }
+      studentNameFinal = st.name;
+      studentClassFinal = className;
+      studentIdFinal = st.id;
+    }
+
     const questions = await db
       .select()
       .from(videoQuestionsTable)
@@ -642,9 +736,9 @@ router.post("/video-lessons/:id/submit", async (req, res) => {
       .insert(videoSubmissionsTable)
       .values({
         videoLessonId: id,
-        studentName: body.studentName,
-        studentClass: body.studentClass || "",
-        studentId: body.studentId || null,
+        studentName: studentNameFinal,
+        studentClass: studentClassFinal,
+        studentId: studentIdFinal,
         score,
         earnedPoints,
         totalPoints,
@@ -666,8 +760,8 @@ router.post("/video-lessons/:id/submit", async (req, res) => {
 
     res.json({
       submissionId: submission.id,
-      studentName: body.studentName,
-      studentClass: body.studentClass,
+      studentName: studentNameFinal,
+      studentClass: studentClassFinal,
       score: Math.round(score),
       earnedPoints,
       totalPoints,
@@ -809,7 +903,10 @@ router.get("/video-lessons/:id/class-students", async (req, res) => {
       .where(eq(videoLessonsTable.id, id))
       .limit(1);
 
-    if (!lesson || !lesson.targetClass) return res.json([]);
+    if (!lesson) return res.status(404).json({ message: "درس غير موجود" });
+
+    const className = await resolveLessonClassName(lesson);
+    if (!className) return res.json([]);
 
     const isTeacher = req.session.teacherId === lesson.teacherId;
     if (!isTeacher) {
@@ -823,18 +920,14 @@ router.get("/video-lessons/:id/class-students", async (req, res) => {
     }
 
     const students = await db
-      .select({ id: studentsTable.id, name: studentsTable.name, gradeLevel: studentsTable.gradeLevel })
+      .select({ id: studentsTable.id, name: studentsTable.name })
       .from(studentsTable)
       .where(and(
-        eq(studentsTable.gradeLevel, lesson.targetClass),
-        eq(studentsTable.teacherId, lesson.teacherId)
+        eq(studentsTable.teacherId, lesson.teacherId),
+        or(eq(studentsTable.gradeLevel, className), eq(studentsTable.studentClass, className)),
       ));
 
-    if (isTeacher) {
-      return res.json(students);
-    } else {
-      return res.json(students.map((s) => ({ id: s.id, name: s.name })));
-    }
+    res.json(students);
   } catch (error) {
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
