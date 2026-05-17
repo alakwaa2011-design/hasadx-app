@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
-import { ArrowRight, ArrowLeft, Trash2, Users, Play, CheckCircle2, XCircle, Copy, Video, Clock, Star, GraduationCap, BarChart3, TrendingUp, Award, User, ExternalLink, Share2, Loader2, Radio, Pencil } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, Play, CheckCircle2, XCircle, Copy, Video, GraduationCap, TrendingUp, Award, User, Share2, Loader2, Radio, Pencil, ChevronDown, ChevronUp, Download, QrCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { QRCodeSVG } from "qrcode.react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -18,6 +18,7 @@ interface VideoLessonFull {
   videoUrl: string;
   videoType: string;
   targetClass: string | null;
+  teacherClassId?: number | null;
   accessMode: string;
   accessCode: string | null;
   teacherId: number;
@@ -50,6 +51,22 @@ interface Submission {
   submittedAt: string;
 }
 
+interface SubmissionAnswerRow {
+  id: number;
+  videoQuestionId: number;
+  selectedAnswer: string;
+  isCorrect: boolean;
+  questionText: string;
+  questionType: string;
+  correctAnswer: string | null;
+  points: number;
+  timestampSeconds: number;
+}
+
+interface SubmissionWithAnswers extends Submission {
+  answers?: SubmissionAnswerRow[];
+}
+
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -68,6 +85,11 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
+function csvEscape(cell: string): string {
+  const t = String(cell ?? "").replace(/"/g, '""');
+  return `"${t}"`;
+}
+
 export default function VideoLessonDetail() {
   const [, params] = useRoute("/teacher/video-lesson/:id");
   const id = parseInt(params?.id || "0");
@@ -84,6 +106,10 @@ export default function VideoLessonDetail() {
   const [deleting, setDeleting] = useState(false);
   const [sharingLoading, setSharingLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "submissions">("overview");
+  const [expandedSubId, setExpandedSubId] = useState<number | null>(null);
+  const [submissionDetails, setSubmissionDetails] = useState<Record<number, SubmissionWithAnswers>>({});
+  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
+  const [csvDownloading, setCsvDownloading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -141,11 +167,133 @@ export default function VideoLessonDetail() {
     }
   };
 
-  const copyLink = () => {
-    const base = window.location.origin;
+  const shareUrl = useMemo(() => {
+    const base = typeof window !== "undefined" ? window.location.origin : "";
     const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-    navigator.clipboard.writeText(`${base}${basePath}/video/${id}`);
+    let path = `${base}${basePath}/video/${id}`;
+    if (lesson?.accessMode === "private" && lesson.accessCode?.trim()) {
+      path += `?code=${encodeURIComponent(lesson.accessCode.trim())}`;
+    }
+    return path;
+  }, [id, lesson?.accessMode, lesson?.accessCode]);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
     toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
+  };
+
+  const toggleSubmissionExpand = async (subId: number) => {
+    if (expandedSubId === subId) {
+      setExpandedSubId(null);
+      return;
+    }
+    setExpandedSubId(subId);
+    if (!submissionDetails[subId]) {
+      setDetailLoadingId(subId);
+      try {
+        const r = await fetch(`${API_BASE}/api/video-lessons/${id}/submissions/${subId}`, { credentials: "include" });
+        if (r.ok) {
+          const data = (await r.json()) as SubmissionWithAnswers;
+          setSubmissionDetails((prev) => ({ ...prev, [subId]: data }));
+        }
+      } finally {
+        setDetailLoadingId(null);
+      }
+    }
+  };
+
+  const downloadSubmissionsCsv = async () => {
+    if (!lesson || submissions.length === 0) return;
+    setCsvDownloading(true);
+    try {
+      const details = await Promise.all(
+        submissions.map(async (s) => {
+          const cached = submissionDetails[s.id];
+          if (cached?.answers && cached.answers.length > 0) return cached;
+          const r = await fetch(`${API_BASE}/api/video-lessons/${id}/submissions/${s.id}`, { credentials: "include" });
+          if (!r.ok) return { ...s, answers: [] as SubmissionAnswerRow[] };
+          return r.json() as Promise<SubmissionWithAnswers>;
+        }),
+      );
+      const headers = [
+        "studentName",
+        "studentClass",
+        "scorePct",
+        "earned",
+        "total",
+        "correct",
+        "totalQuestions",
+        "submittedAt",
+        "questionOrder",
+        "questionTime",
+        "questionText",
+        "selectedAnswer",
+        "correctAnswer",
+        "isCorrect",
+        "points",
+      ];
+      const lines = [headers.join(",")];
+      for (const row of details) {
+        const ansList = row.answers && row.answers.length > 0 ? row.answers : [];
+        if (ansList.length === 0) {
+          lines.push(
+            [
+              csvEscape(row.studentName),
+              csvEscape(row.studentClass),
+              String(Math.round(row.score)),
+              String(row.earnedPoints),
+              String(row.totalPoints),
+              String(row.correctAnswers),
+              String(row.totalQuestions),
+              csvEscape(row.submittedAt),
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+            ].join(","),
+          );
+          continue;
+        }
+        for (let i = 0; i < ansList.length; i++) {
+          const a = ansList[i];
+          lines.push(
+            [
+              csvEscape(row.studentName),
+              csvEscape(row.studentClass),
+              String(Math.round(row.score)),
+              String(row.earnedPoints),
+              String(row.totalPoints),
+              String(row.correctAnswers),
+              String(row.totalQuestions),
+              csvEscape(row.submittedAt),
+              String(i + 1),
+              formatTimestamp(a.timestampSeconds),
+              csvEscape(a.questionText),
+              csvEscape(a.selectedAnswer),
+              csvEscape(a.correctAnswer || ""),
+              a.isCorrect ? "1" : "0",
+              String(a.points),
+            ].join(","),
+          );
+        }
+      }
+      const bom = "\uFEFF";
+      const blob = new Blob([bom + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `video-lesson-${id}-report.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(isAr ? "تم تنزيل التقرير" : "Report downloaded");
+    } catch {
+      toast.error(isAr ? "فشل التنزيل" : "Download failed");
+    } finally {
+      setCsvDownloading(false);
+    }
   };
 
   if (loading) {
@@ -299,26 +447,46 @@ export default function VideoLessonDetail() {
 
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {lesson.videoUrl && (
-              <Card className="overflow-hidden">
-                <div className="aspect-video">
-                  {lesson.videoType === "youtube" && youtubeId ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${youtubeId}`}
-                      className="w-full h-full"
-                      allowFullScreen
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    />
-                  ) : (
-                    <video
-                      src={lesson.videoUrl}
-                      controls
-                      className="w-full h-full"
-                    />
-                  )}
+            <div className="space-y-6">
+              {lesson.videoUrl && (
+                <Card className="overflow-hidden">
+                  <div className="aspect-video">
+                    {lesson.videoType === "youtube" && youtubeId ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${youtubeId}`}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      />
+                    ) : (
+                      <video
+                        src={lesson.videoUrl}
+                        controls
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
+                </Card>
+              )}
+              <Card className="p-6 flex flex-col items-center gap-4 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="flex items-center gap-2 text-base font-black text-foreground">
+                  <QrCode className="w-5 h-5 text-primary" />
+                  {isAr ? "رمز الدخول للطلاب (QR)" : "Student QR code"}
                 </div>
+                <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
+                  {isAr
+                    ? "يصوّر الطالب الرمز بهاتفه أو من داخل صفحة الدرس ليفتح الرابط مباشرة. يشمل رمز الدخول إن وُجد."
+                    : "Students scan with a phone camera or from the lesson page to open the link. Includes access code when applicable."}
+                </p>
+                <div className="rounded-2xl bg-white p-4 shadow-inner border border-border">
+                  <QRCodeSVG value={shareUrl} size={168} level="M" includeMargin />
+                </div>
+                <Button type="button" variant="outline" className="gap-2 font-bold text-sm min-h-9" onClick={copyLink}>
+                  <Copy className="w-4 h-4" />
+                  {isAr ? "نسخ الرابط الكامل" : "Copy full URL"}
+                </Button>
               </Card>
-            )}
+            </div>
 
             <div className="space-y-3">
               <h2 className="text-lg font-black flex items-center gap-2">
@@ -363,38 +531,120 @@ export default function VideoLessonDetail() {
                 <p className="text-muted-foreground font-bold">{isAr ? "لا توجد تسليمات بعد" : "No submissions yet"}</p>
               </Card>
             ) : (
-              submissions.map((sub) => (
-                <Card key={sub.id} className="p-4 hover:border-primary/30 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+              <>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 font-bold"
+                    disabled={csvDownloading}
+                    onClick={() => void downloadSubmissionsCsv()}
+                  >
+                    {csvDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {isAr ? "تحميل تقرير CSV" : "Download CSV report"}
+                  </Button>
+                </div>
+                {submissions.map((sub) => {
+                  const expanded = expandedSubId === sub.id;
+                  const detail = submissionDetails[sub.id];
+                  const loadingDetail = detailLoadingId === sub.id;
+                  return (
+                    <Card key={sub.id} className="overflow-hidden hover:border-primary/30 transition-all">
+                      <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <User className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground truncate">{sub.studentName}</p>
+                            <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                              {sub.studentClass && (
+                                <span className="flex items-center gap-1">
+                                  <GraduationCap className="w-3 h-3" />
+                                  {sub.studentClass}
+                                </span>
+                              )}
+                              <span>{new Date(sub.submittedAt).toLocaleString(locale)}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                          <div className="text-center">
+                            <p className={`text-xl font-black ${sub.score >= 80 ? "text-green-500" : sub.score >= 50 ? "text-yellow-500" : "text-destructive"}`}>
+                              {Math.round(sub.score)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground font-bold">
+                              {sub.earnedPoints}/{sub.totalPoints}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-black text-foreground">{sub.correctAnswers}/{sub.totalQuestions}</p>
+                            <p className="text-xs text-muted-foreground">{isAr ? "صحيح / الكل" : "correct / total"}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="gap-1 font-bold h-9 px-2"
+                            onClick={() => void toggleSubmissionExpand(sub.id)}
+                          >
+                            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {isAr ? "التفاصيل" : "Details"}
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-foreground">{sub.studentName}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-2">
-                          {sub.studentClass && <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" />{sub.studentClass}</span>}
-                          <span>{new Date(sub.submittedAt).toLocaleString(locale)}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <p className={`text-xl font-black ${sub.score >= 80 ? "text-green-500" : sub.score >= 50 ? "text-yellow-500" : "text-destructive"}`}>
-                          {Math.round(sub.score)}%
-                        </p>
-                        <p className="text-xs text-muted-foreground font-bold">
-                          {sub.earnedPoints}/{sub.totalPoints}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-black text-foreground">{sub.correctAnswers}/{sub.totalQuestions}</p>
-                        <p className="text-xs text-muted-foreground">{isAr ? "صحيح" : "correct"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))
+                      <AnimatePresence initial={false}>
+                        {expanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="border-t border-border bg-muted/30"
+                          >
+                            <div className="p-4 space-y-3">
+                              {loadingDetail ? (
+                                <div className="flex justify-center py-6">
+                                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                </div>
+                              ) : (
+                                (detail?.answers ?? []).map((a, i) => (
+                                  <div
+                                    key={a.id}
+                                    className={`rounded-xl border p-3 text-sm ${a.isCorrect ? "border-green-200 bg-green-50/60 dark:border-green-900/40 dark:bg-green-950/20" : "border-red-200 bg-red-50/50 dark:border-red-900/40 dark:bg-red-950/20"}`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="flex items-center gap-2 font-black text-foreground">
+                                        <span className="tabular-nums text-muted-foreground">{i + 1}.</span>
+                                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded" dir="ltr">{formatTimestamp(a.timestampSeconds)}</span>
+                                        {a.isCorrect ? (
+                                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                                        ) : (
+                                          <XCircle className="w-4 h-4 text-red-500 shrink-0" />
+                                        )}
+                                      </div>
+                                      <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">{a.points} {isAr ? "نقطة" : "pts"}</span>
+                                    </div>
+                                    <p className="font-bold text-foreground mb-2">{a.questionText}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-bold">{isAr ? "إجابة الطالب:" : "Student:"}</span>{" "}
+                                      <span className="font-semibold text-foreground">{a.selectedAnswer}</span>
+                                    </p>
+                                    {!a.isCorrect && a.correctAnswer != null && (
+                                      <p className="text-xs text-green-700 dark:text-green-400 font-bold mt-1">
+                                        {isAr ? "الصحيح:" : "Correct:"} {a.correctAnswer}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Card>
+                  );
+                })}
+              </>
             )}
           </div>
         )}
