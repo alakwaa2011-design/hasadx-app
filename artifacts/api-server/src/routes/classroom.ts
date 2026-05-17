@@ -6,12 +6,9 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 /* ── Feature-flag guard ─────────────────────────────────────────────────────
-   Classroom integration is admin-controlled. The admin can:
-     1) Toggle the entire integration on/off (classroomEnabled).
-     2) Optionally restrict it to a teacher-email allowlist
-        (classroomAllowedEmails). Empty list = open to all teachers.
-   This middleware runs before every /classroom/* and OAuth callback route
-   so a disabled feature returns 403 instead of leaking endpoints. */
+   Classroom integration is admin-controlled. Apply this ONLY to Classroom
+   OAuth and /classroom/* APIs — never run it for unrelated routes that might
+   reach this router later in the Express stack (would wrongly 403 e.g. video-lesson checks). */
 async function classroomGuard(req: Request, res: Response, next: NextFunction) {
   try {
     const [row] = await db
@@ -58,7 +55,20 @@ async function classroomGuard(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-router.use(classroomGuard);
+function classroomGuardScoped(req: Request, res: Response, next: NextFunction) {
+  const p = req.path || "";
+  const isClassroomPath =
+    p === "/classroom" ||
+    p.startsWith("/classroom/") ||
+    p.startsWith("/auth/google/classroom");
+  if (!isClassroomPath) {
+    next();
+    return;
+  }
+  void classroomGuard(req, res, next);
+}
+
+router.use(classroomGuardScoped);
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
