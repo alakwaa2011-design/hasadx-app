@@ -16,10 +16,99 @@ import { reverseXpIfWithinWindow } from "../lib/xp/engine";
 
 const router: IRouter = Router();
 
-const SkipSegmentSchema = z.object({
+function formatZodError(error: z.ZodError): string {
+  const first = error.errors[0];
+  if (first?.message) return first.message;
+  return "بيانات غير صالحة";
+}
+
+/** يُرجع عدداً صالحاً أو undefined — يدعم سلاسل JSON من الواجهة/المسودة. */
+function coerceFiniteNumber(val: unknown): number | undefined {
+  if (typeof val === "number" && Number.isFinite(val)) return val;
+  if (typeof val === "string" && val.trim() !== "") {
+    const n = Number(val.trim());
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+function coerceFiniteNumberWithDefault(val: unknown, def: number): number {
+  const n = coerceFiniteNumber(val);
+  return n === undefined ? def : n;
+}
+
+function preprocessSkipSegments(val: unknown): unknown {
+  if (val === undefined || val === null) return [];
+  let raw: unknown[] = [];
+  if (typeof val === "string") {
+    try {
+      const p = JSON.parse(val);
+      raw = Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
+  } else if (Array.isArray(val)) {
+    raw = val;
+  } else {
+    return [];
+  }
+  const out: { start: number; end: number }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as Record<string, unknown>;
+    const start = coerceFiniteNumber(o.start);
+    const end = coerceFiniteNumber(o.end);
+    if (start === undefined || end === undefined || end <= start) continue;
+    out.push({ start, end });
+  }
+  return out;
+}
+
+function preprocessSkipSegmentsPatch(val: unknown): unknown {
+  if (val === undefined) return undefined;
+  return preprocessSkipSegments(val);
+}
+
+function preprocessQuestionNullableString(val: unknown): unknown {
+  if (val === undefined || val === null) return null;
+  if (typeof val !== "string") {
+    const s = String(val).trim();
+    return s === "" ? null : s;
+  }
+  const t = val.trim();
+  return t === "" ? null : t;
+}
+
+const SkipSegmentRowSchema = z.object({
   start: z.number().min(0),
   end: z.number().min(0),
-}).refine((s) => s.end > s.start, { message: "end must be greater than start" });
+});
+
+/** سؤال درس فيديو — قيم مرنة من الواجهة (نصوص أرقام، مسودة، إلخ). */
+const VideoLessonQuestionInputSchema = z.object({
+  id: z.preprocess((v) => {
+    if (v === undefined || v === null || v === "") return undefined;
+    const n = coerceFiniteNumber(v);
+    if (n === undefined || !Number.isInteger(n) || n <= 0) return v;
+    return n;
+  }, z.number().int().positive().optional()),
+  timestampSeconds: z.preprocess((v) => coerceFiniteNumberWithDefault(v, 0), z.number().min(0)),
+  questionType: z.preprocess((v) => {
+    if (v === undefined || v === null || v === "") return "mcq";
+    const s = String(v).trim().toLowerCase();
+    if (s === "mcq" || s === "true_false" || s === "fill_blank") return s;
+    return v;
+  }, z.enum(["mcq", "true_false", "fill_blank"])),
+  text: z.preprocess((v) => (typeof v === "string" ? v.trim() : String(v ?? "").trim()), z.string().min(1)),
+  optionA: z.preprocess(preprocessQuestionNullableString, z.union([z.string(), z.null()])),
+  optionB: z.preprocess(preprocessQuestionNullableString, z.union([z.string(), z.null()])),
+  optionC: z.preprocess(preprocessQuestionNullableString, z.union([z.string(), z.null()])),
+  optionD: z.preprocess(preprocessQuestionNullableString, z.union([z.string(), z.null()])),
+  correctAnswer: z.preprocess(preprocessQuestionNullableString, z.union([z.string(), z.null()])),
+  points: z.preprocess((v) => coerceFiniteNumberWithDefault(v, 1), z.number().min(0)),
+});
+
+const VideoLessonQuestionCreateSchema = VideoLessonQuestionInputSchema.omit({ id: true });
 
 /** DB يخزّن private وليس private_code — نقبل alias من الواجهة ونطبّعه. */
 function preprocessVideoLessonAccessMode(val: unknown): unknown {
@@ -66,11 +155,6 @@ function preprocessVideoType(val: unknown): unknown {
   return val;
 }
 
-function preprocessSkipSegments(val: unknown): unknown {
-  if (val === undefined || val === null) return [];
-  return val;
-}
-
 function preprocessIsShared(val: unknown): unknown {
   if (val === undefined || val === null) return true;
   if (typeof val === "boolean") return val;
@@ -91,20 +175,8 @@ const CreateVideoLessonBody = z
     accessMode: z.preprocess(preprocessVideoLessonAccessMode, z.enum(["public", "private"])),
     accessCode: z.preprocess(preprocessOptionalEmptyTextToNull, z.union([z.string(), z.null()])),
     isShared: z.preprocess(preprocessIsShared, z.boolean()),
-    skipSegments: z.preprocess(preprocessSkipSegments, z.array(SkipSegmentSchema)),
-    questions: z.array(
-      z.object({
-        timestampSeconds: z.number().min(0),
-        questionType: z.enum(["mcq", "true_false", "fill_blank"]).default("mcq"),
-        text: z.string().min(1),
-        optionA: z.string().nullish(),
-        optionB: z.string().nullish(),
-        optionC: z.string().nullish(),
-        optionD: z.string().nullish(),
-        correctAnswer: z.string().nullish(),
-        points: z.number().min(0).default(1),
-      })
-    ).min(1),
+    skipSegments: z.preprocess(preprocessSkipSegments, z.array(SkipSegmentRowSchema)),
+    questions: z.array(VideoLessonQuestionCreateSchema).min(1),
   })
   .superRefine((data, ctx) => {
     if (data.accessMode === "private") {
@@ -136,21 +208,8 @@ const UpdateVideoLessonBody = z.object({
   ),
   accessCode: z.preprocess(preprocessOptionalEmptyTextPatch, z.union([z.string(), z.null()])).optional(),
   isShared: z.preprocess((v) => (v === undefined ? undefined : preprocessIsShared(v)), z.boolean()).optional(),
-  skipSegments: z.array(SkipSegmentSchema).optional(),
-  questions: z.array(
-    z.object({
-      id: z.number().optional(),
-      timestampSeconds: z.number().min(0),
-      questionType: z.enum(["mcq", "true_false", "fill_blank"]).default("mcq"),
-      text: z.string().min(1),
-      optionA: z.string().nullish(),
-      optionB: z.string().nullish(),
-      optionC: z.string().nullish(),
-      optionD: z.string().nullish(),
-      correctAnswer: z.string().nullish(),
-      points: z.number().min(0).default(1),
-    })
-  ).min(1).optional(),
+  skipSegments: z.preprocess(preprocessSkipSegmentsPatch, z.array(SkipSegmentRowSchema)).optional(),
+  questions: z.array(VideoLessonQuestionInputSchema).min(1).optional(),
 });
 
 const SubmitVideoLessonBody = z.object({
@@ -685,7 +744,7 @@ router.post("/video-lessons", async (req, res) => {
     res.status(201).json(lesson);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+      return res.status(400).json({ message: formatZodError(error), errors: error.errors });
     }
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
@@ -788,7 +847,7 @@ router.put("/video-lessons/:id", async (req, res) => {
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+      return res.status(400).json({ message: formatZodError(error), errors: error.errors });
     }
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
@@ -874,7 +933,7 @@ router.post("/video-lessons/:id/check-answer", async (req, res) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+      return res.status(400).json({ message: formatZodError(error), errors: error.errors });
     }
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
@@ -1012,7 +1071,7 @@ router.post("/video-lessons/:id/submit", async (req, res) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "بيانات غير صالحة", errors: error.errors });
+      return res.status(400).json({ message: formatZodError(error), errors: error.errors });
     }
     const message = error instanceof Error ? error.message : "خطأ في الخادم";
     res.status(500).json({ message });
