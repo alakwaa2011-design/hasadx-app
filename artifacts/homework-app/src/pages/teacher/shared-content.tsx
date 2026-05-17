@@ -657,8 +657,7 @@ export default function SharedContentPage({
             <Link href="/teacher/new">
               <Button
                 variant="outline"
-                size="sm"
-                className="gap-1.5 font-semibold border-primary/25 bg-background/85 hover:bg-background shadow-none shrink-0"
+                className="min-h-8 px-3 py-2 text-xs gap-1.5 font-semibold border-primary/25 bg-background/85 hover:bg-background shadow-none shrink-0 rounded-xl"
               >
                 <Plus className="w-3.5 h-3.5" />
                 {lang === "ar" ? "شارك نشاطاً" : "Share activity"}

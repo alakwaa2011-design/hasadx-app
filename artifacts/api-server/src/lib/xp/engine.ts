@@ -674,7 +674,7 @@ async function evaluateAndAwardBadges(teacherId: number): Promise<string[]> {
     .from(seasonsTable)
     .where(
       and(
-        sql`${seasonsTable.startedAt} <= NOW()`,
+        sql`${seasonsTable.startsAt} <= NOW()`,
         sql`${seasonsTable.endsAt} > NOW()`,
       ),
     )
@@ -902,7 +902,7 @@ async function progressQuestsForAction(
           .set({ questsCompleted: sql`${teacherStatsTable.questsCompleted} + 1` })
           .where(eq(teacherStatsTable.teacherId, teacherId));
         // In-app notification + email (fire-and-forget — quest XP already committed)
-        void notifyQuestComplete(teacherId, q.id, q.nameAr, q.rewardXp).catch((err) =>
+        void notifyQuestComplete(teacherId, q.id, q.titleAr, q.rewardXp).catch((err) =>
           logger.error({ err, teacherId, questId: q.id }, "notifyQuestComplete failed"),
         );
       }

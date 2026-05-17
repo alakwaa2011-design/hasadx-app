@@ -1367,7 +1367,7 @@ export default function DictationCreate() {
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-52 rounded-2xl border p-1 shadow-lg" align="end" dir="rtl">
+                  <DropdownMenuContent className="w-52 rounded-2xl border p-1 shadow-lg text-right [direction:rtl]" align="end">
                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold" onClick={() => addQuestion("open")}>
                       إجابة مفتوحة
                     </DropdownMenuItem>
@@ -1417,7 +1417,7 @@ export default function DictationCreate() {
                                 <MoreVertical className="h-5 w-5" />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-48 rounded-2xl border p-1 shadow-lg" align="end" dir="rtl">
+                            <DropdownMenuContent className="w-48 rounded-2xl border p-1 shadow-lg text-right [direction:rtl]" align="end">
                               <DropdownMenuItem className="rounded-xl font-bold" onClick={() => applyQuestionType(q, "open")}>
                                 تحويل إلى مفتوحة
                               </DropdownMenuItem>
