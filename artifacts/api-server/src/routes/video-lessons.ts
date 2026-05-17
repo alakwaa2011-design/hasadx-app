@@ -524,6 +524,8 @@ router.post("/video-lessons", async (req, res) => {
     // Run badge/quest/threshold checks AFTER the tx commits (never inside).
     void runAfterCommit().catch(() => {});
 
+    // Present on successful create so DevTools can confirm this API build uses raw INSERT (not Drizzle insert().returning()).
+    res.setHeader("X-Hasad-Video-Lesson-Create", "raw-sql-v1");
     res.status(201).json(lesson);
   } catch (error) {
     if (error instanceof z.ZodError) {
