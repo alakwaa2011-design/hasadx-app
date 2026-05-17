@@ -26,6 +26,12 @@ import { evaluateRule } from "../lib/xp/rules-engine";
 import { buildAchievementStatsPayload } from "../lib/xp/teacher-xp-display";
 import { isTeacherXpRewardsEnabled } from "../lib/xp/teacher-xp-rewards-flag";
 
+function leaderboardAvatarInitials(displayName: string): string {
+  const t = displayName.trim();
+  if (!t) return "?";
+  return t.length <= 2 ? t : t.slice(0, 2);
+}
+
 const router: IRouter = Router();
 
 /* ──────────────────────────────────────────────────────────────────────── */
@@ -383,7 +389,22 @@ router.get("/leaderboard", async (req, res) => {
       )
       .orderBy(desc(xpCol))
       .limit(100);
-    const withRank = rows.map((r, i) => ({ ...r, rank: i + 1 }));
+    const withRank: LeaderboardRow[] = rows.map((r, i) => {
+      const displayName = (r.name ?? "").trim() || "?";
+      const levelTitle = LEVELS.find((l) => l.level === r.level)?.nameAr ?? "";
+      return {
+        rank: i + 1,
+        teacherId: r.teacherId,
+        displayName,
+        avatarInitials: leaderboardAvatarInitials(displayName),
+        city: null,
+        school: r.displaySchool ?? null,
+        level: r.level,
+        levelTitle,
+        seasonXp: r.xp,
+        badgeCount: r.badgeCount,
+      };
+    });
     leaderboardCache = {
       rows: withRank,
       expiresAt: now + LEADERBOARD_TTL_MS,

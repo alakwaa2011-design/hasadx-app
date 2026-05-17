@@ -628,10 +628,14 @@ router.patch("/admin/platform-settings", async (req, res) => {
     const update: Record<string, unknown> = {};
 
     if (publicVisibility !== undefined) {
-      if (!["all", "none", "selective"].includes(publicVisibility)) {
+      const pv =
+        typeof publicVisibility === "string"
+          ? publicVisibility.trim().toLowerCase()
+          : "";
+      if (!["all", "none", "selective"].includes(pv)) {
         return res.status(400).json({ message: "publicVisibility غير صالح" });
       }
-      update.publicVisibility = publicVisibility;
+      update.publicVisibility = pv;
     }
 
     if (guestLimit !== undefined) {

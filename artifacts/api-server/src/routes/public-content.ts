@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable } from "@workspace/db";
-import { eq, and, sql, desc, or, ne } from "drizzle-orm";
+import { eq, and, sql, desc, ne, inArray } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -46,12 +46,7 @@ router.get("/public/assignments", async (req, res) => {
       clauses.push(eq(assignmentsTable.isShared, true));
     }
     if (kindFilter) {
-      clauses.push(
-        or(
-          eq(assignmentsTable.contentKind, kindFilter),
-          eq(assignmentsTable.contentKind, "both"),
-        ),
-      );
+      clauses.push(inArray(assignmentsTable.contentKind, [kindFilter, "both"]));
     }
 
     const rows = await db
