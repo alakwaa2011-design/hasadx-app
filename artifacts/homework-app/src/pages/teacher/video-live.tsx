@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
@@ -16,7 +16,11 @@ import {
   SkipForward,
   StopCircle,
   Clock,
+  X,
+  QrCode,
+  KeyRound,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -35,7 +39,7 @@ interface YTPlayer {
 interface YTWindow extends Window {
   YT?: {
     Player: new (
-      elementId: string,
+      elementId: string | HTMLElement,
       config: Record<string, unknown>,
     ) => YTPlayer;
     PlayerState: { PLAYING: number; PAUSED: number };
@@ -100,6 +104,7 @@ export default function VideoLive() {
   const BackArrowIcon = isAr ? ArrowRight : ArrowLeft;
 
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [shareLiveModalOpen, setShareLiveModalOpen] = useState(false);
   const [lessonTitle, setLessonTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoType, setVideoType] = useState("youtube");
@@ -512,11 +517,24 @@ export default function VideoLive() {
     endSessionRef.current = handleEndSession;
   }, [handleEndSession]);
 
-  const copyRoomCode = () => {
-    if (!roomCode) return;
-    const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/watch/${roomCode}`;
-    navigator.clipboard.writeText(joinUrl).then(() => {
-      toast.success(isAr ? "تم نسخ رابط الانضمام" : "Join link copied");
+  const liveJoinUrl = useMemo(() => {
+    if (!roomCode) return "";
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${window.location.origin}${base}/watch/${roomCode}`;
+  }, [roomCode]);
+
+  const copyLiveJoinLinkAndOpenShare = () => {
+    if (!liveJoinUrl) return;
+    navigator.clipboard.writeText(liveJoinUrl).then(() => {
+      toast.success(isAr ? "تم نسخ الرابط — يمكنك مشاركة QR مع الطلاب" : "Link copied — share the QR with students");
+      setShareLiveModalOpen(true);
+    });
+  };
+
+  const copyLiveJoinLinkOnly = () => {
+    if (!liveJoinUrl) return;
+    navigator.clipboard.writeText(liveJoinUrl).then(() => {
+      toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
     });
   };
 
@@ -752,7 +770,8 @@ export default function VideoLive() {
                   <span className="font-bold">{students.length}</span>
                 </div>
                 <button
-                  onClick={copyRoomCode}
+                  type="button"
+                  onClick={copyLiveJoinLinkAndOpenShare}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-bold text-sm"
                 >
                   <Copy className="w-4 h-4" />
@@ -1083,14 +1102,97 @@ export default function VideoLive() {
                 <p className="text-sm text-muted-foreground mb-2">
                   {isAr ? "رابط انضمام الطلاب" : "Student join link"}
                 </p>
-                <p className="text-xs font-mono bg-muted p-2 rounded break-all">
-                  {`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/watch/${roomCode}`}
-                </p>
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">{liveJoinUrl}</p>
               </Card>
             )}
           </div>
         </div>
       </div>
+
+      {shareLiveModalOpen && roomCode && liveJoinUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShareLiveModalOpen(false)}
+          dir={isAr ? "rtl" : "ltr"}
+        >
+          <div
+            className="bg-card rounded-2xl shadow-2xl border border-border max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 p-5 border-b border-border bg-gradient-to-br from-primary/10 via-transparent to-emerald-500/5">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-primary mb-1.5">
+                  <QrCode className="w-5 h-5 shrink-0" />
+                  <span className="text-[11px] font-black uppercase tracking-wide opacity-85">
+                    {isAr ? "مشاركة البث مع الطلاب" : "Share live session"}
+                  </span>
+                </div>
+                <h2 className="text-lg font-black text-foreground leading-snug">{lessonTitle}</h2>
+                <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-red-500 shrink-0 animate-pulse" />
+                  {isAr ? "بث مباشر تفاعلي" : "Live interactive"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareLiveModalOpen(false)}
+                className="shrink-0 rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                aria-label={isAr ? "إغلاق" : "Close"}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-5">
+              <div className="rounded-xl border border-border bg-muted/25 p-4">
+                <div className="flex items-center gap-2 text-foreground font-black text-sm mb-3">
+                  <KeyRound className="w-4 h-4" />
+                  {isAr ? "رمز الغرفة" : "Room code"}
+                </div>
+                <span className="font-mono text-xl sm:text-2xl font-black tracking-[0.25em] text-red-600 dark:text-red-400">
+                  {roomCode}
+                </span>
+                <p className="text-[11px] text-muted-foreground font-semibold mt-3 leading-relaxed">
+                  {isAr
+                    ? "يمكن للطالب إدخال هذا الرمز يدوياً في صفحة الانضمام، أو فتح الرابط أدناه / مسح QR."
+                    : "Students can enter this code on the join page, or open the link below / scan the QR code."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-muted-foreground mb-2">
+                  {isAr ? "رابط انضمام الطلاب" : "Student join URL"}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    readOnly
+                    value={liveJoinUrl}
+                    className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs sm:text-sm font-mono text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                    dir="ltr"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyLiveJoinLinkOnly}>
+                    <Copy className="w-4 h-4" />
+                    {isAr ? "نسخ الرابط" : "Copy URL"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-muted/20 py-5 px-4">
+                <p className="text-xs font-bold text-muted-foreground text-center">
+                  {isAr ? "رمز QR — تصويره بالهاتف للدخول السريع" : "QR code — scan with a phone camera"}
+                </p>
+                <div className="rounded-2xl bg-white p-4 border shadow-inner dark:bg-white">
+                  <QRCodeSVG value={liveJoinUrl} size={200} level="M" includeMargin />
+                </div>
+              </div>
+
+              <Button type="button" className="w-full gap-2 font-black min-h-11" onClick={() => setShareLiveModalOpen(false)}>
+                {isAr ? "تم" : "Done"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

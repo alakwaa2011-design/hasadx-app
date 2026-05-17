@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
 import {
@@ -12,11 +12,26 @@ import {
   LogIn,
   Wifi,
   WifiOff,
+  ArrowLeft,
+  ArrowRight,
+  Info,
+  Film,
+  Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
+import { cn } from "@/lib/utils";
+
+const BRAND = "#1E4D35";
+const PAGE_BG = "linear-gradient(165deg, #f6faf7 0%, #eef4ef 45%, #f3f7f4 100%)";
+const CARD_BORDER = "rgba(30, 77, 53, 0.1)";
+const CARD_SHADOW = "0 2px 16px rgba(15, 40, 28, 0.06)";
+const TRANSITION = "transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)]";
+const FIELD_RTL =
+  "text-right [direction:rtl] placeholder:text-right placeholder:text-muted-foreground";
 
 interface YTPlayer {
   destroy: () => void;
@@ -29,7 +44,7 @@ interface YTPlayer {
 interface YTWindow extends Window {
   YT?: {
     Player: new (
-      elementId: string,
+      elementId: string | HTMLElement,
       config: Record<string, unknown>,
     ) => YTPlayer;
   };
@@ -97,6 +112,7 @@ export default function StudentVideoLive() {
   const [, setLocation] = useLocation();
   const { lang } = useI18n();
   const isAr = lang === "ar";
+  const BackIcon = isAr ? ArrowLeft : ArrowRight;
 
   const [phase, setPhase] = useState<"join" | "reconnecting" | "watching" | "ended">("join");
   const [roomCode, setRoomCode] = useState(roomCodeFromUrl);
@@ -127,6 +143,8 @@ export default function StudentVideoLive() {
   // Tracks whether the teacher has authorized the student's video to play.
   // Used by the YouTube onStateChange guard to prevent unsolicited playback.
   const teacherPlayingRef = useRef(false);
+  /** Mirrors teacher play state for overlay copy (refs alone don't re-render). */
+  const [teacherPlayingUi, setTeacherPlayingUi] = useState(false);
   // Last received teacher time — used so the player can sync to the right
   // position once it becomes ready, even if sync events arrived while the
   // YouTube iframe was still loading.
@@ -136,6 +154,10 @@ export default function StudentVideoLive() {
 
   const youtubeId = videoType === "youtube" ? extractYouTubeId(videoUrl) : null;
   const socketRef = useRef(getSocket());
+
+  useEffect(() => {
+    if (phase === "join") setTeacherPlayingUi(false);
+  }, [phase]);
 
   // ── Auto-join on mount if a stored session exists for this room code ─────
   useEffect(() => {
@@ -188,9 +210,9 @@ export default function StudentVideoLive() {
           if (typeof res.currentTime === "number") {
             lastTeacherTimeRef.current = res.currentTime;
           }
-          if (res.videoState === "playing") {
-            teacherPlayingRef.current = true;
-          }
+          const playing = res.videoState === "playing" && !res.activeQuestion;
+          teacherPlayingRef.current = playing;
+          setTeacherPlayingUi(playing);
           setPhase("watching");
         }
       },
@@ -246,9 +268,9 @@ export default function StudentVideoLive() {
           if (typeof res.currentTime === "number") {
             lastTeacherTimeRef.current = res.currentTime;
           }
-          if (res.videoState === "playing") {
-            teacherPlayingRef.current = true;
-          }
+          const playing = res.videoState === "playing" && !res.activeQuestion;
+          teacherPlayingRef.current = playing;
+          setTeacherPlayingUi(playing);
           setPhase("watching");
         }
       },
@@ -298,9 +320,11 @@ export default function StudentVideoLive() {
     socket.on(
       "video:sync-state",
       (data: { state: "playing" | "paused"; currentTime: number }) => {
-        teacherPlayingRef.current = data.state === "playing";
         lastTeacherTimeRef.current = data.currentTime;
         if (activeQuestionRef.current) return;
+
+        teacherPlayingRef.current = data.state === "playing";
+        setTeacherPlayingUi(data.state === "playing");
 
         if (data.state === "playing") {
           if (!videoActivatedRef.current) {
@@ -350,6 +374,7 @@ export default function StudentVideoLive() {
 
     socket.on("video:question", (data: ActiveQuestion) => {
       teacherPlayingRef.current = false;
+      setTeacherPlayingUi(false);
       setAutoplayBlocked(false);
       if (videoActivatedRef.current) {
         if (videoType === "youtube" && playerRef.current) {
@@ -366,6 +391,7 @@ export default function StudentVideoLive() {
 
     socket.on("video:resume", (data: { currentTime: number }) => {
       teacherPlayingRef.current = true;
+      setTeacherPlayingUi(true);
       activeQuestionRef.current = null;
       setActiveQuestion(null);
       setSelectedAnswer(null);
@@ -602,14 +628,20 @@ export default function StudentVideoLive() {
   if (phase === "reconnecting") {
     return (
       <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div
+          className="flex min-h-[100dvh] items-center justify-center px-4"
+          style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+          dir={isAr ? "rtl" : "ltr"}
+        >
           <div className="text-center space-y-4">
-            <Wifi className="w-12 h-12 text-red-500 mx-auto animate-pulse" />
-            <p className="text-lg font-black">
-              {isAr ? "جارٍ إعادة الاتصال..." : "Reconnecting..."}
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-[#eef2ef]">
+              <Wifi className="h-8 w-8 text-[#1E4D35] animate-pulse" />
+            </div>
+            <p className="text-lg font-black text-[#0f2918]">
+              {isAr ? "جارٍ إعادة الاتصال بالجلسة..." : "Reconnecting to session..."}
             </p>
-            <p className="text-sm text-muted-foreground">
-              {isAr ? "يرجى الانتظار" : "Please wait"}
+            <p className="text-sm font-semibold text-[#64748B]">
+              {isAr ? "يرجى الانتظار لحظات" : "Please wait a moment"}
             </p>
           </div>
         </div>
@@ -620,76 +652,173 @@ export default function StudentVideoLive() {
   if (phase === "join") {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-12 max-w-md">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="text-center mb-8">
-              <div className="p-4 bg-red-500/10 rounded-full w-20 h-20 mx-auto flex items-center justify-center mb-4">
-                <Radio className="w-10 h-10 text-red-500" />
-              </div>
-              <h1 className="text-2xl font-black">
-                {isAr ? "انضم للبث المباشر" : "Join Live Broadcast"}
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                {isAr
-                  ? "أدخل كود الغرفة واسمك للانضمام"
-                  : "Enter room code and your name to join"}
-              </p>
-            </div>
+        <div
+          className="min-h-[100dvh] overflow-x-hidden pb-12"
+          style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+          dir={isAr ? "rtl" : "ltr"}
+        >
+          <div className="mx-auto max-w-3xl px-4 pt-8">
+            <Link
+              href="/"
+              className="mb-6 inline-flex min-h-[44px] items-center gap-2 text-sm font-bold text-[#64748B] transition-colors hover:text-[#1E4D35]"
+            >
+              <BackIcon className="h-4 w-4 opacity-70" />
+              {isAr ? "العودة" : "Back"}
+            </Link>
 
-            <Card className="p-6 space-y-4">
-              <div>
-                <Label className="text-sm font-bold">
-                  {isAr ? "كود الغرفة" : "Room Code"} *
-                </Label>
-                <Input
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="ABC123"
-                  dir="ltr"
-                  className="text-center text-2xl font-black tracking-[0.3em] mt-1"
-                  maxLength={8}
-                />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="overflow-hidden rounded-[28px] border bg-white shadow-lg"
+              style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+            >
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#0f2918]">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#1E4D35] via-[#2d6b47] to-[#0f2918]" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-md ring-2 ring-white/25">
+                    <Radio className="h-10 w-10 text-white animate-pulse" />
+                  </div>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black text-white backdrop-blur-sm ring-1 ring-white/20">
+                    {isAr ? "● بث مباشر" : "● LIVE"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <Label className="text-sm font-bold">
-                  {isAr ? "اسمك" : "Your Name"} *
-                </Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={isAr ? "محمد أحمد" : "John Doe"}
-                  className="mt-1"
-                />
+              <div className="space-y-3 p-6 sm:p-8">
+                <h1 className="text-start text-2xl font-black leading-tight text-[#0f2918] sm:text-3xl">
+                  {isAr ? "الانضمام للبث التفاعلي" : "Join interactive live lesson"}
+                </h1>
+                <p className="text-start text-sm leading-relaxed text-[#64748B]">
+                  {isAr
+                    ? "أدخل كود الغرفة الذي يعطيك إياه المعلّم، ثم اسمك للدخول إلى نفس الجلسة."
+                    : "Enter the room code from your teacher, then your name to enter the same session."}
+                </p>
+                <div className="flex flex-wrap justify-start gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef5f0] px-3 py-1.5 text-[11px] font-black text-[#1E4D35]">
+                    <Film className="h-3.5 w-3.5" />
+                    {isAr ? "فيديو تفاعلي — بث مباشر" : "Interactive live"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f3f7f4] px-3 py-1.5 text-[11px] font-black text-[#374151]">
+                    <Users className="h-3.5 w-3.5 text-[#64748B]" />
+                    {isAr ? "منصّة حصاد" : "Hasad platform"}
+                  </span>
+                </div>
               </div>
-              <div>
-                <Label className="text-sm font-bold">
-                  {isAr ? "الفصل" : "Class"}
-                </Label>
-                <Input
-                  value={studentClass}
-                  onChange={(e) => setStudentClass(e.target.value)}
-                  placeholder={isAr ? "مثال: 3/أ" : "e.g., 3/A"}
-                  className="mt-1"
-                />
-              </div>
+            </motion.div>
 
-              <button
-                onClick={handleJoin}
-                disabled={joining || !roomCode.trim() || !name.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {joining ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <LogIn className="w-5 h-5" />
-                )}
-                {isAr ? "انضمام" : "Join"}
-              </button>
-            </Card>
-          </motion.div>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-6">
+              <Card className="border border-[#e8ece9] bg-white p-6 sm:p-8 shadow-lg" style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}>
+                <div
+                  className="mb-5 flex gap-2.5 rounded-xl border border-[#dfe8e3] bg-[#f8faf9] px-3.5 py-2.5 text-start shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                  role="note"
+                >
+                  <Info className="h-4 w-4 shrink-0 text-[#1E4D35]/40 mt-0.5" aria-hidden />
+                  <p className="text-[12.5px] leading-relaxed text-[#5a6b62] font-medium">
+                    {isAr ? (
+                      <>
+                        <span className="font-semibold text-[#2d4238]">اسمك مطلوب</span> للانضمام وتسجيل إجاباتك. حقل الفصل{" "}
+                        <span className="font-semibold text-[#2d4238]">اختياري</span>. بعد الدخول،{" "}
+                        <span className="font-semibold text-[#2d4238]">الفيديو يعمل مع بثّ المعلّم</span>: انتظر حتى يضغط تشغيل من جهازه،
+                        وسيتزامن العرض عندك تلقائياً (قد تحتاج للنقر مرة إذا منع المتصفح التشغيل التلقائي).
+                      </>
+                    ) : (
+                      <>
+                        Your <span className="font-semibold text-[#2d4238]">name is required</span> to join and save answers.{" "}
+                        <span className="font-semibold text-[#2d4238]">Class is optional.</span> After joining,{" "}
+                        <span className="font-semibold text-[#2d4238]">playback follows your teacher</span>: wait until they press play on their side;
+                        your player syncs automatically (you may need one tap if the browser blocks autoplay).
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  <div className="space-y-2 text-start">
+                    <Label className="text-sm font-black text-[#0f2918]">{isAr ? "كود الغرفة" : "Room code"} *</Label>
+                    <Input
+                      value={roomCode}
+                      onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                      placeholder="ABC123"
+                      dir="ltr"
+                      maxLength={8}
+                      className="mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-center text-2xl font-black tracking-[0.3em] focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div className="space-y-2 text-start">
+                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "اسمك" : "Your name"} *</Label>
+                      <Input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={isAr ? "اكتب اسمك الكامل" : "Full name"}
+                        dir={isAr ? "rtl" : "ltr"}
+                        className={cn(
+                          "mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
+                          isAr ? FIELD_RTL : "",
+                        )}
+                      />
+                    </div>
+                    <div className="space-y-2 text-start">
+                      <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
+                      <Input
+                        value={studentClass}
+                        onChange={(e) => setStudentClass(e.target.value)}
+                        placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
+                        dir={isAr ? "rtl" : "ltr"}
+                        className={cn(
+                          "mt-1 min-h-[52px] rounded-2xl border-2 border-[#e8ece9] bg-[#fcfdfc] text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10",
+                          isAr ? FIELD_RTL : "",
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleJoin}
+                  disabled={joining || !roomCode.trim() || !name.trim()}
+                  className={cn(
+                    "mt-8 flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-white shadow-lg shadow-[#1E4D35]/22 transition-all hover:-translate-y-0.5 hover:opacity-[0.97] hover:shadow-xl active:translate-y-0 disabled:pointer-events-none disabled:opacity-45",
+                    TRANSITION,
+                  )}
+                  style={{ background: `linear-gradient(135deg, ${BRAND} 0%, #2a6144 100%)` }}
+                >
+                  {joining ? (
+                    <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <LogIn className="h-6 w-6 shrink-0" />
+                  )}
+                  {isAr ? "انضمام إلى الجلسة" : "Join session"}
+                </button>
+
+                <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {[
+                    {
+                      icon: <Radio className="h-5 w-5 text-[#1E4D35]" />,
+                      t: isAr ? "البث متزامن مع شاشة المعلّم" : "Synced with your teacher",
+                    },
+                    {
+                      icon: <BadgeCheck className="h-5 w-5 text-[#1E4D35]" />,
+                      t: isAr ? "تتوقف الأسئلة عن الفيديو أثناء الإجابة" : "Questions pause the video",
+                    },
+                    {
+                      icon: <Sparkles className="h-5 w-5 text-[#1E4D35]" />,
+                      t: isAr ? "اكسب نقاطاً على الإجابات الصحيحة" : "Earn points for correct answers",
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex gap-3 rounded-2xl border border-[#eef2ef] bg-[#fafdfb] p-4 text-start shadow-sm"
+                      style={{ borderRadius: "18px" }}
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">{item.icon}</div>
+                      <p className="text-[13px] font-bold leading-relaxed text-[#374151]">{item.t}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </motion.div>
+          </div>
         </div>
       </Layout>
     );
@@ -698,24 +827,29 @@ export default function StudentVideoLive() {
   if (phase === "ended") {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-12 max-w-md text-center">
+        <div
+          className="flex min-h-[100dvh] items-center justify-center px-4 py-12"
+          style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+          dir={isAr ? "rtl" : "ltr"}
+        >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="space-y-6"
+            className="max-w-md space-y-6 text-center"
           >
-            <div className="p-4 bg-green-500/10 rounded-full w-20 h-20 mx-auto flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10 text-green-500" />
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#eef5f0] ring-2 ring-[#1E4D35]/15">
+              <CheckCircle2 className="h-10 w-10 text-[#1E4D35]" />
             </div>
-            <h1 className="text-2xl font-black">
+            <h1 className="text-2xl font-black text-[#0f2918]">
               {isAr ? "انتهت الجلسة!" : "Session ended!"}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm font-semibold text-[#64748B]">
               {isAr ? "شكراً لمشاركتك 🎉" : "Thanks for participating! 🎉"}
             </p>
             <button
+              type="button"
               onClick={() => setLocation("/")}
-              className="py-3 px-8 bg-primary text-primary-foreground rounded-xl font-bold"
+              className="rounded-2xl bg-[#1E4D35] px-8 py-3 text-base font-black text-white shadow-lg shadow-[#1E4D35]/25 hover:opacity-95"
             >
               {isAr ? "الصفحة الرئيسية" : "Home"}
             </button>
@@ -725,73 +859,103 @@ export default function StudentVideoLive() {
     );
   }
 
+  const overlayTeacherStarted = autoplayBlocked || teacherPlayingUi;
+
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-4 max-w-4xl">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center gap-2 text-red-500">
-            <Radio className="w-5 h-5 animate-pulse" />
-            <span className="font-bold text-sm">{isAr ? "بث مباشر" : "LIVE"}</span>
-          </div>
-          <h1 className="text-lg font-black truncate flex-1">{lessonTitle}</h1>
-          {teacherDisconnected && (
-            <div className="flex items-center gap-1 text-amber-500">
-              <WifiOff className="w-4 h-4" />
-              <span className="text-xs font-bold">
-                {isAr ? "المعلم غير متصل" : "Teacher disconnected"}
+      <div
+        className="min-h-[100dvh] overflow-x-hidden pb-8"
+        style={{ background: PAGE_BG, fontFamily: "'Cairo', system-ui, sans-serif" }}
+        dir={isAr ? "rtl" : "ltr"}
+      >
+        <div className="mx-auto max-w-4xl px-4 py-6">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl border border-[#e8ece9] bg-white px-4 text-sm font-black text-[#64748B] shadow-sm transition-colors hover:bg-[#f9faf9]"
+            >
+              <BackIcon className="h-4 w-4" />
+              {isAr ? "خروج" : "Exit"}
+            </button>
+            <h1 className="min-w-0 flex-1 truncate text-start text-lg font-black text-[#0f2918] sm:text-xl">{lessonTitle}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-[#b91c1c] shadow-sm ring-1 ring-red-100">
+                <Radio className="h-3.5 w-3.5 animate-pulse" />
+                {isAr ? "بث مباشر" : "LIVE"}
               </span>
+              {teacherDisconnected && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200/80">
+                  <WifiOff className="h-3.5 w-3.5" />
+                  {isAr ? "المعلم غير متصل" : "Teacher offline"}
+                </span>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="relative">
-          <Card className="overflow-hidden">
-            <div className="relative">
-              {videoType === "youtube" && youtubeId ? (
-                <div className="aspect-video bg-black">
-                  <div id="yt-player-student" className="w-full h-full" />
-                </div>
-              ) : videoUrl ? (
-                <video
-                  ref={html5VideoRef}
-                  src={videoUrl}
-                  playsInline
-                  muted
-                  className="w-full aspect-video bg-black"
-                />
-              ) : (
-                <div className="aspect-video bg-black flex items-center justify-center">
-                  <Video className="w-16 h-16 text-white/30" />
-                </div>
-              )}
-              {(!videoActivated || autoplayBlocked) ? (
-                <button
-                  onClick={handleActivateVideo}
-                  className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 cursor-pointer transition-colors hover:bg-black/50"
-                >
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-3 backdrop-blur-sm ${
-                    autoplayBlocked || teacherPlayingRef.current
-                      ? "bg-red-500/40 animate-pulse"
-                      : "bg-white/20"
-                  }`}>
-                    <Play className="w-10 h-10 text-white fill-white" />
+          <div className="relative">
+            <section
+              className="overflow-hidden rounded-[24px] border bg-white shadow-lg"
+              style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+            >
+              <div className="relative">
+                {videoType === "youtube" && youtubeId ? (
+                  <div className="aspect-video bg-black">
+                    <div id="yt-player-student" className="h-full w-full" />
                   </div>
-                  <span className="text-white font-bold text-lg">
-                    {autoplayBlocked || teacherPlayingRef.current
-                      ? isAr ? "المعلم بدأ الفيديو ← اضغط هنا" : "Teacher started → Tap to watch"
-                      : isAr ? "انقر لبدء المشاهدة" : "Tap to start watching"}
-                  </span>
-                  {(autoplayBlocked || teacherPlayingRef.current) && (
-                    <span className="text-red-300 text-sm font-bold mt-1 animate-pulse">
-                      {isAr ? "● بث مباشر" : "● LIVE"}
+                ) : videoUrl ? (
+                  <video
+                    ref={html5VideoRef}
+                    src={videoUrl}
+                    playsInline
+                    muted
+                    className="aspect-video w-full bg-black"
+                  />
+                ) : (
+                  <div className="flex aspect-video items-center justify-center bg-black">
+                    <Video className="h-16 w-16 text-white/30" />
+                  </div>
+                )}
+                {(!videoActivated || autoplayBlocked) ? (
+                  <button
+                    type="button"
+                    onClick={handleActivateVideo}
+                    className="absolute inset-0 z-10 flex cursor-pointer flex-col items-center justify-center bg-black/65 transition-colors hover:bg-black/55"
+                  >
+                    <div
+                      className={`mb-3 flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-sm ${
+                        overlayTeacherStarted ? "bg-red-500/45 animate-pulse" : "bg-[#1E4D35]/50 ring-2 ring-white/30"
+                      }`}
+                    >
+                      <Play className="h-10 w-10 fill-white text-white" />
+                    </div>
+                    <span className="max-w-[min(90%,22rem)] px-4 text-center text-lg font-black text-white leading-snug">
+                      {overlayTeacherStarted
+                        ? isAr
+                          ? "المعلّم يشغّل الفيديو الآن — اضغط للمتابعة"
+                          : "Your teacher is playing — tap to watch"
+                        : isAr
+                          ? "انتظر بدء المعلّم"
+                          : "Waiting for your teacher"}
                     </span>
-                  )}
-                </button>
-              ) : (
-                <div className="absolute inset-0 z-10 pointer-events-auto" />
-              )}
-            </div>
-          </Card>
+                    {!overlayTeacherStarted && (
+                      <span className="mt-2 max-w-[min(92%,24rem)] px-4 text-center text-sm font-semibold leading-relaxed text-white/90">
+                        {isAr
+                          ? "الفيديو يعمل مع بثّ المعلّم فقط. سيتحرك تلقائياً عندما يضغط تشغيل؛ يمكنك أيضاً النقر لتجهيز الشاشة إذا احتجت."
+                          : "Playback follows your teacher. It moves automatically when they press play — or tap once to prepare the player."}
+                      </span>
+                    )}
+                    {overlayTeacherStarted && (
+                      <span className="mt-2 text-sm font-bold text-red-200 animate-pulse">
+                        {isAr ? "● متزامن مع البث" : "● Live sync"}
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  <div className="pointer-events-auto absolute inset-0 z-10" />
+                )}
+              </div>
+            </section>
 
           <AnimatePresence>
             {activeQuestion && (
@@ -938,6 +1102,7 @@ export default function StudentVideoLive() {
             )}
           </AnimatePresence>
         </div>
+      </div>
       </div>
     </Layout>
   );
