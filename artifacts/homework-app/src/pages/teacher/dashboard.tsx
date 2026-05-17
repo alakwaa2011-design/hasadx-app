@@ -1182,8 +1182,8 @@ export default function TeacherDashboard() {
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
                       {lang === "ar"
-                        ? "أسئلة الواجب ستُستخدم في اللعبة التي تختارها. وميض هي اللعبة الافتراضية (أسلوب كاهوت)."
-                        : "This assignment's questions power the mode you pick. Wameeth is the default (Kahoot-style)."}
+                        ? "أسئلة الواجب ستُستخدم في اللعبة التي تختارها. وميض هي اللعبة الافتراضية."
+                        : "This assignment's questions power the mode you pick. Wameedh is the default."}
                     </p>
                   </div>
                   <button
@@ -1206,9 +1206,9 @@ export default function TeacherDashboard() {
                       titleAr: "وميض",
                       titleEn: "Wameeth",
                       descAr:
-                        "مسابقة حية على الشاشة الكبيرة — طلابك يجيبون من هواتفهم (مثل كاهوت).",
+                        "مسابقة حية على الشاشة الكبيرة — طلابك يجيبون من هواتفهم بأسلوب وميض.",
                       descEn:
-                        "Live quiz on the big screen — students answer from phones (Kahoot-style).",
+                        "Live quiz on the big screen — students answer from phones, Wameedh-style.",
                       gradient: "from-fuchsia-500 to-purple-600",
                       defaultBadge: true,
                     },
@@ -1821,13 +1821,13 @@ function CompetitiveTab({
       desc:
         t.competitiveGames?.knowledgeRaceDesc ||
         (lang === "ar"
-          ? "مسابقة حية على الشاشة — الطلاب يجيبون من هواتفهم (مثل كاهوت أو وورد وال). اربطها بواجبك."
-          : "Live quiz on screen — students answer on phones (Kahoot-style). Link an assignment."),
+          ? "مسابقة حية على الشاشة — الطلاب يجيبون من هواتفهم بأسلوب وميض. اربطها بواجبك."
+          : "Live quiz on screen — students answer on phones, Wameedh-style. Link an assignment."),
       color: "from-fuchsia-500 to-purple-600",
       type: "knowledge_race",
       available: true,
       pill:
-        lang === "ar" ? "موصى به — مثل كاهوت" : "Recommended — Kahoot-style",
+        lang === "ar" ? "موصى به — وميض" : "Recommended — Wameedh",
     },
     {
       icon: "🪢",

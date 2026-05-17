@@ -191,7 +191,7 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
    rest are listed compactly so the teacher can see what's coming.
    The correct answer is highlighted on the slide itself — this is
    the teacher's projector view, not the student device. */
-function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
   if (el.kind !== "hasad-game") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
