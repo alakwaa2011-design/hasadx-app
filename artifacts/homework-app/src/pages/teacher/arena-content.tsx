@@ -72,11 +72,18 @@ function ArenaImagePicker({ open, onClose, onPick, initialQuery }: ImagePickerPr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ q, count: 16 }),
       });
-      if (!r.ok) { toast.error("فشل البحث"); setResults([]); return; }
+      if (!r.ok) {
+        const errBody = await r.text().catch(() => "");
+        console.error("[arena image-search] HTTP error", r.status, errBody.slice(0, 500));
+        toast.error("تعذّر الوصول إلى خدمة البحث عن الصور حالياً. تحقق من الاتصال أو حاول لاحقاً.");
+        setResults([]);
+        return;
+      }
       const data = await r.json();
       setResults(Array.isArray(data?.results) ? data.results : []);
-    } catch {
-      toast.error("فشل البحث");
+    } catch (e) {
+      console.error("[arena image-search] network error", e);
+      toast.error("تعذّر الاتصال بالخادم أثناء البحث عن الصور. تحقق من الشبكة.");
     } finally {
       setSearching(false);
     }

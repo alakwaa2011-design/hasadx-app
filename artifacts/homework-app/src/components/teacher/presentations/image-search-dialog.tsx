@@ -62,14 +62,46 @@ export function ImageSearchDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ q: term, count: 12 }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { results: imgs } = await res.json() as { results: ImageResult[] };
-      setResults(imgs ?? []);
-      if (!imgs?.length) {
-        toast.info(isAr ? "لم تُوجد نتائج، جرّب كلمات أخرى" : "No results found, try different keywords");
+
+      let payload: { results?: ImageResult[]; message?: string; code?: string } = {};
+      try {
+        payload = (await res.json()) as typeof payload;
+      } catch {
+        payload = {};
       }
-    } catch {
-      toast.error(isAr ? "تعذّر البحث عن الصور" : "Image search failed");
+
+      if (!res.ok) {
+        console.error("[presentation-image-search] HTTP error", res.status, payload);
+        if (res.status === 401 || res.status === 403) {
+          toast.error(
+            isAr
+              ? "لا يمكن تنفيذ البحث: انتهت الجلسة أو لا تملك صلاحية المعلم. سجّل الدخول مجدداً."
+              : "Cannot search: session expired or you lack teacher access.",
+          );
+        } else {
+          toast.error(
+            isAr
+              ? "تعذّر الوصول إلى خدمة البحث عن الصور حالياً. تحقق من الاتصال بالإنترنت أو حاول بعد قليل."
+              : "Image search is unavailable right now. Check your connection or try again shortly.",
+          );
+        }
+        return;
+      }
+
+      const imgs = Array.isArray(payload.results) ? payload.results : [];
+      setResults(imgs);
+      if (!imgs.length) {
+        toast.info(
+          isAr ? "لم تُوجد صور لهذا البحث. جرّب كلمات أخرى أو استخدم مصطلحات بالإنجليزية." : "No images found — try other keywords or English terms.",
+        );
+      }
+    } catch (e) {
+      console.error("[presentation-image-search] network or parse error", e);
+      toast.error(
+        isAr
+          ? "تعذّر الاتصال بالخادم أثناء البحث عن الصور. تحقق من الشبكة وحاول مرة أخرى."
+          : "Could not reach the server while searching for images. Check your network and try again.",
+      );
     } finally {
       setLoading(false);
     }

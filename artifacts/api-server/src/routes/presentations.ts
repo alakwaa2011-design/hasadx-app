@@ -21,7 +21,7 @@ import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentat
 import { extractFileContent } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
-import { findWebImagesBatch } from "../lib/web-image-search";
+import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
 
 const router: IRouter = Router();
 
@@ -1478,55 +1478,34 @@ const imageSearchBody = z.object({
 router.post("/presentations/image-search", requireTeacher, async (req, res) => {
   try {
     const { q, count } = imageSearchBody.parse(req.body);
-    const braveKey = process.env.BRAVE_SEARCH_API_KEY;
+    const { results, diagnostics } = await searchPresentationWebImages(q, count);
 
-    if (braveKey) {
-      /* Brave Search Images API */
-      const url = `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(q)}&count=${count}&safesearch=strict`;
-      const r = await fetch(url, {
-        headers: {
-          "Accept": "application/json",
-          "Accept-Encoding": "gzip",
-          "X-Subscription-Token": braveKey,
+    if (diagnostics.primary === "wikimedia" && diagnostics.braveError) {
+      req.log.info(
+        { braveError: diagnostics.braveError.slice(0, 500) },
+        "Presentation image search: Brave failed, using Wikimedia fallback",
+      );
+    }
+    if (diagnostics.primary === "none") {
+      req.log.warn(
+        {
+          querySample: q.slice(0, 80),
+          braveError: diagnostics.braveError?.slice(0, 500),
+          wikimediaError: diagnostics.wikimediaError?.slice(0, 500),
         },
-      });
-      if (!r.ok) throw new Error(`Brave API ${r.status}`);
-      const data = await r.json() as { results?: Array<{ title?: string; url?: string; thumbnail?: { src?: string }; source?: string }> };
-      const results = (data.results ?? []).slice(0, count).map((item) => ({
-        url: item.url ?? "",
-        thumbUrl: item.thumbnail?.src ?? item.url ?? "",
-        title: item.title ?? "",
-        source: item.source ?? "",
-      })).filter((r) => r.url);
-      res.json({ results });
-      return;
+        "Presentation image search: no hits from Brave or Wikimedia",
+      );
     }
 
-    /* Wikimedia Commons fallback — completely free, no key required,
-       excellent for educational content. */
-    const wikiUrl =
-      `https://commons.wikimedia.org/w/api.php?action=query` +
-      `&generator=search&gsrnamespace=6&gsrsearch=File:${encodeURIComponent(q)}` +
-      `&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=600` +
-      `&gsrlimit=${count}&format=json&origin=*`;
-    const r = await fetch(wikiUrl);
-    if (!r.ok) throw new Error(`Wikimedia API ${r.status}`);
-    const data = await r.json() as { query?: { pages?: Record<string, { title?: string; imageinfo?: Array<{ url?: string; thumburl?: string }> }> } };
-    const pages = Object.values(data.query?.pages ?? {});
-    const results = pages.flatMap((p) => {
-      const info = p.imageinfo?.[0];
-      if (!info?.url) return [];
-      return [{
-        url: info.url,
-        thumbUrl: info.thumburl ?? info.url,
-        title: (p.title ?? "").replace(/^File:/, "").replace(/\.[^.]+$/, ""),
-        source: "Wikimedia Commons",
-      }];
-    }).slice(0, count);
     res.json({ results });
   } catch (err) {
-    req.log.error({ err }, "Image search failed");
-    res.status(500).json({ message: "Image search failed" });
+    if (err instanceof z.ZodError) {
+      const first = err.errors[0]?.message ?? "Invalid request";
+      res.status(400).json({ message: first, code: "BAD_REQUEST" });
+      return;
+    }
+    req.log.error({ err }, "Presentation image search unexpected error");
+    res.status(500).json({ message: "Image search failed", code: "IMAGE_SEARCH_FAILED" });
   }
 });
 
