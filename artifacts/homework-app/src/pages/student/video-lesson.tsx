@@ -19,13 +19,11 @@ import {
   BadgeCheck,
   Sparkles,
   Clock,
-  QrCode,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import jsQR from "jsqr";
 
 interface YTPlayer {
   destroy: () => void;
@@ -160,7 +158,6 @@ export default function StudentVideoLesson() {
   const [studentClass, setStudentClass] = useState("");
   const [studentId, setStudentId] = useState<number | null>(null);
   const [classStudents, setClassStudents] = useState<{ id: number; name: string }[]>([]);
-  const [scanPaste, setScanPaste] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [accessError, setAccessError] = useState("");
   const [started, setStarted] = useState(false);
@@ -519,53 +516,6 @@ export default function StudentVideoLesson() {
     return Math.max(2, Math.ceil((Math.max(tail + 90, durationSec)) / 60));
   }, [lesson?.questions, durationSec]);
 
-  const applyDecodedLink = useCallback(
-    (raw: string) => {
-      const t = raw.trim();
-      if (!t) return false;
-      try {
-        const u = new URL(t);
-        const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-        const m = u.pathname.match(/\/video\/(\d+)/);
-        const code = u.searchParams.get("code");
-        if (m) {
-          const nid = parseInt(m[1], 10);
-          if (nid === id) {
-            if (code) setAccessCode(code.trim());
-            toast.success(isAr ? "تم تطبيق الرابط" : "Link applied");
-            return true;
-          }
-          const qs = u.search || "";
-          setLocation(`${basePath}/video/${nid}${qs}`);
-          return true;
-        }
-      } catch {
-        /* ignore */
-      }
-      return false;
-    },
-    [id, isAr, setLocation],
-  );
-
-  const onQrImageChosen = async (file: File | null) => {
-    if (!file) return;
-    try {
-      const bmp = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = bmp.width;
-      canvas.height = bmp.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(bmp, 0, 0);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "attemptBoth" });
-      if (code?.data && applyDecodedLink(code.data)) return;
-      toast.error(isAr ? "تعذّر قراءة رابط الدرس من الصورة" : "Could not read a lesson link from the image");
-    } catch {
-      toast.error(isAr ? "تعذّر قراءة الصورة" : "Could not read image");
-    }
-  };
-
   const seekTo = (seconds: number) => {
     if (isYoutube) {
       try {
@@ -849,53 +799,6 @@ export default function StudentVideoLesson() {
             {/* Form */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-6">
               <Card className="border border-[#e8ece9] bg-white p-6 sm:p-8 shadow-lg" style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}>
-                <div className="mb-6 rounded-2xl border border-dashed border-[#1E4D35]/25 bg-[#f6faf7] p-4 space-y-3">
-                  <p className="text-sm font-black text-[#0f2918] flex items-center gap-2 justify-end">
-                    <QrCode className="h-4 w-4 text-[#1E4D35]" />
-                    {isAr ? "دخول بالرمز الشريطي / QR" : "Barcode / QR entry"}
-                  </p>
-                  <p className="text-xs font-semibold text-[#64748B] text-right leading-relaxed">
-                    {isAr
-                      ? "صوّر رمز المعلّم أو الصق رابط الدرس. إذا كان الدرس خاصاً، سيُعبَّأ رمز الدخول تلقائياً عند توفره في الرابط."
-                      : "Scan the teacher’s code or paste the lesson URL. Private lessons pick up the access code from the link when present."}
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    id="video-lesson-qr-input"
-                    onChange={(e) => void onQrImageChosen(e.target.files?.[0] ?? null)}
-                  />
-                  <div className="flex flex-wrap gap-2 justify-end">
-                    <label
-                      htmlFor="video-lesson-qr-input"
-                      className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-[#1E4D35]/25 bg-white px-4 py-2 text-xs font-black text-[#1E4D35] shadow-sm hover:bg-[#eef5f0] transition-colors min-h-[44px]"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      {isAr ? "اختيار صورة الرمز" : "Pick QR image"}
-                    </label>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      value={scanPaste}
-                      onChange={(e) => setScanPaste(e.target.value)}
-                      placeholder={isAr ? "الصق رابط الدرس هنا…" : "Paste lesson URL…"}
-                      dir="ltr"
-                      className="min-h-[44px] rounded-xl border-2 text-sm font-semibold flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="min-h-[44px] rounded-xl border-2 font-black shrink-0"
-                      onClick={() => {
-                        if (applyDecodedLink(scanPaste)) setScanPaste("");
-                      }}
-                    >
-                      {isAr ? "تطبيق" : "Apply"}
-                    </Button>
-                  </div>
-                </div>
                 <div className="mb-8 space-y-5">
                   {classStudents.length > 0 ? (
                     <div className="space-y-2 text-right">
