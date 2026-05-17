@@ -19,6 +19,7 @@ import {
   BadgeCheck,
   Sparkles,
   Clock,
+  Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -275,7 +276,13 @@ export default function StudentVideoLesson() {
 
       playerRef.current = new ytWindow.YT!.Player(el, {
         videoId: youtubeId,
-        playerVars: { controls: 1, modestbranding: 1, rel: 0 },
+        playerVars: {
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          iv_load_policy: 3,
+        },
         events: {
           onReady: () => setPlayerReady(true),
           onStateChange: (event: { data: number }) => {
@@ -799,6 +806,27 @@ export default function StudentVideoLesson() {
             {/* Form */}
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-6">
               <Card className="border border-[#e8ece9] bg-white p-6 sm:p-8 shadow-lg" style={{ borderRadius: "24px", boxShadow: CARD_SHADOW }}>
+                <div
+                  className="mb-5 flex gap-2.5 rounded-xl border border-[#dfe8e3] bg-[#f8faf9] px-3.5 py-2.5 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                  role="note"
+                >
+                  <Info className="h-4 w-4 shrink-0 text-[#1E4D35]/40 mt-0.5" aria-hidden />
+                  <p className="text-[12.5px] leading-relaxed text-[#5a6b62] font-medium">
+                    {isAr ? (
+                      <>
+                        اكتب <span className="font-semibold text-[#2d4238]">اسمك</span> أو اختره من القائمة لتتمكن من{" "}
+                        <span className="font-semibold text-[#2d4238]">مشاهدة الفيديو</span> وتسجيل إجاباتك. حقل الفصل{" "}
+                        <span className="font-semibold text-[#2d4238]">اختياري</span>.
+                      </>
+                    ) : (
+                      <>
+                        Enter your <span className="font-semibold text-[#2d4238]">name</span> (or pick it from the list) to{" "}
+                        <span className="font-semibold text-[#2d4238]">watch the video</span> and save your answers.{" "}
+                        <span className="font-semibold text-[#2d4238]">Class is optional.</span>
+                      </>
+                    )}
+                  </p>
+                </div>
                 <div className="mb-8 space-y-5">
                   {classStudents.length > 0 ? (
                     <div className="space-y-2 text-right">
@@ -846,11 +874,11 @@ export default function StudentVideoLesson() {
                         />
                       </div>
                       <div className="space-y-2 text-right">
-                        <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل" : "Class"}</Label>
+                        <Label className="text-sm font-black text-[#0f2918]">{isAr ? "الفصل (اختياري)" : "Class (optional)"}</Label>
                         <Input
                           value={studentClass}
                           onChange={(e) => setStudentClass(e.target.value)}
-                          placeholder={isAr ? "مثال: 3/أ" : "e.g. 3/A"}
+                          placeholder={isAr ? "يمكنك تركه فارغاً" : "Can be left blank"}
                           dir="rtl"
                           className={cn("min-h-[52px] rounded-2xl border-2 text-base font-semibold focus:border-[#1E4D35]/35 focus:ring-[#1E4D35]/10", FIELD_RTL)}
                         />
@@ -870,16 +898,12 @@ export default function StudentVideoLesson() {
                   type="button"
                   onClick={() => {
                     if (!studentName.trim()) {
-                      toast.error(isAr ? "يرجى إدخال اسمك" : "Please enter your name");
-                      return;
-                    }
-                    if (!studentClass.trim()) {
-                      toast.error(isAr ? "يرجى إدخال الفصل" : "Please enter your class");
+                      toast.error(isAr ? "يرجى إدخال اسمك أو اختياره من القائمة لمشاهدة الفيديو" : "Please enter or select your name to watch the video");
                       return;
                     }
                     setStarted(true);
                   }}
-                  disabled={!studentName.trim() || !studentClass.trim()}
+                  disabled={!studentName.trim()}
                   className={cn(
                     "flex min-h-[52px] w-full items-center justify-center gap-3 rounded-2xl text-base font-black text-white shadow-lg shadow-[#1E4D35]/22 transition-all hover:-translate-y-0.5 hover:opacity-[0.97] hover:shadow-xl active:translate-y-0 disabled:pointer-events-none disabled:opacity-45",
                     TRANSITION,
@@ -1031,6 +1055,11 @@ export default function StudentVideoLesson() {
               {isYoutube ? (
                 <div className="absolute inset-0 z-0 h-full w-full">
                   <div ref={ytPlayerMountRef} className="h-full w-full min-h-0" />
+                  {/* يمنع فتح youtube.com عند النقر على شعار/رابط يوتيوب في شريط التحكم */}
+                  <div
+                    className="pointer-events-auto absolute bottom-0 right-0 z-[12] h-[52px] w-[130px] max-[380px]:w-[100px] sm:h-[56px] sm:w-[150px]"
+                    aria-hidden
+                  />
                 </div>
               ) : (
                 <video ref={html5VideoRef} src={lesson.videoUrl} controls className="h-full w-full object-contain" />
