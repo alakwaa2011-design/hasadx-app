@@ -522,7 +522,7 @@ export default function PresentationPlay() {
                   D=purple). After reveal we override with success/error
                   colors; before reveal a chosen tile gets a thicker
                   white ring so the student knows it's locked in. */}
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {(() => {
                   const wameedhTiles = [
                     "linear-gradient(135deg,#c0392b 0%,#7e1d1d 100%)",
