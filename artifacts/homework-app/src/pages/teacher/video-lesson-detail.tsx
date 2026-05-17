@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
-import { ArrowRight, ArrowLeft, Trash2, Users, Play, CheckCircle2, XCircle, Copy, Video, GraduationCap, TrendingUp, Award, User, Share2, Loader2, Radio, Pencil, ChevronDown, ChevronUp, Download, QrCode } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, Play, CheckCircle2, XCircle, Copy, Video, GraduationCap, TrendingUp, Award, User, Share2, Loader2, Radio, Pencil, ChevronDown, ChevronUp, Download, QrCode, X, KeyRound } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -110,6 +110,7 @@ export default function VideoLessonDetail() {
   const [submissionDetails, setSubmissionDetails] = useState<Record<number, SubmissionWithAnswers>>({});
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [csvDownloading, setCsvDownloading] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -177,9 +178,24 @@ export default function VideoLessonDetail() {
     return path;
   }, [id, lesson?.accessMode, lesson?.accessCode]);
 
-  const copyLink = () => {
+  const copyStudentLinkOnly = () => {
     navigator.clipboard.writeText(shareUrl);
     toast.success(isAr ? "تم نسخ الرابط" : "Link copied");
+  };
+
+  const copyStudentLinkAndOpenShareCard = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setShareModalOpen(true);
+    toast.success(
+      isAr ? "تم نسخ الرابط — يمكنك مشاركة البطاقة مع الطلاب" : "Link copied — share the card with students",
+    );
+  };
+
+  const copyAccessCodeOnly = () => {
+    const code = lesson?.accessCode?.trim();
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    toast.success(isAr ? "تم نسخ رمز الدخول" : "Access code copied");
   };
 
   const toggleSubmissionExpand = async (subId: number) => {
@@ -372,11 +388,11 @@ export default function VideoLessonDetail() {
               className={`gap-2 py-1.5 px-3 h-auto ${lesson.isShared ? "text-teal-600 border-teal-300 bg-teal-50 dark:bg-teal-900/20 dark:border-teal-700" : ""}`}
             >
               {sharingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-              {lesson.isShared ? (isAr ? "مشارك ✓" : "Shared ✓") : (isAr ? "مشاركة" : "Share")}
+              {lesson.isShared ? (isAr ? "مشاركة المعلمين ✓" : "Teachers’ share ✓") : (isAr ? "مشاركة المعلمين" : "Teachers’ share")}
             </Button>
-            <Button onClick={copyLink} variant="outline" className="gap-2 py-1.5 px-3 h-auto">
+            <Button onClick={copyStudentLinkAndOpenShareCard} variant="outline" className="gap-2 py-1.5 px-3 h-auto">
               <Copy className="w-4 h-4" />
-              {isAr ? "نسخ الرابط" : "Copy Link"}
+              {isAr ? "نسخ الرابط" : "Copy link"}
             </Button>
             <Button onClick={handleDelete} variant="outline" disabled={deleting} className="gap-2 py-1.5 px-3 h-auto text-destructive border-destructive/30 hover:bg-destructive/10">
               <Trash2 className="w-4 h-4" />
@@ -447,7 +463,7 @@ export default function VideoLessonDetail() {
 
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
+            <div>
               {lesson.videoUrl && (
                 <Card className="overflow-hidden">
                   <div className="aspect-video">
@@ -468,24 +484,6 @@ export default function VideoLessonDetail() {
                   </div>
                 </Card>
               )}
-              <Card className="p-6 flex flex-col items-center gap-4 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                <div className="flex items-center gap-2 text-base font-black text-foreground">
-                  <QrCode className="w-5 h-5 text-primary" />
-                  {isAr ? "رمز الدخول للطلاب (QR)" : "Student QR code"}
-                </div>
-                <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
-                  {isAr
-                    ? "يصوّر الطالب الرمز بهاتفه أو من داخل صفحة الدرس ليفتح الرابط مباشرة. يشمل رمز الدخول إن وُجد."
-                    : "Students scan with a phone camera or from the lesson page to open the link. Includes access code when applicable."}
-                </p>
-                <div className="rounded-2xl bg-white p-4 shadow-inner border border-border">
-                  <QRCodeSVG value={shareUrl} size={168} level="M" includeMargin />
-                </div>
-                <Button type="button" variant="outline" className="gap-2 font-bold text-sm min-h-9" onClick={copyLink}>
-                  <Copy className="w-4 h-4" />
-                  {isAr ? "نسخ الرابط الكامل" : "Copy full URL"}
-                </Button>
-              </Card>
             </div>
 
             <div className="space-y-3">
@@ -646,6 +644,99 @@ export default function VideoLessonDetail() {
                 })}
               </>
             )}
+          </div>
+        )}
+
+        {shareModalOpen && lesson && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShareModalOpen(false)}
+            dir={isAr ? "rtl" : "ltr"}
+          >
+            <div
+              className="bg-card rounded-2xl shadow-2xl border border-border max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 p-5 border-b border-border bg-gradient-to-br from-primary/10 via-transparent to-emerald-500/5">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-primary mb-1.5">
+                    <QrCode className="w-5 h-5 shrink-0" />
+                    <span className="text-[11px] font-black uppercase tracking-wide opacity-85">
+                      {isAr ? "مشاركة مع الطلاب" : "Share with students"}
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-foreground leading-snug">{lesson.title}</h2>
+                  {lesson.targetClass && (
+                    <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-1">
+                      <GraduationCap className="w-3.5 h-3.5" />
+                      {lesson.targetClass}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShareModalOpen(false)}
+                  className="shrink-0 rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  aria-label={isAr ? "إغلاق" : "Close"}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 space-y-5">
+                {lesson.accessMode === "private" && lesson.accessCode?.trim() && (
+                  <div className="rounded-xl border border-amber-200/90 bg-amber-50/90 dark:bg-amber-950/35 dark:border-amber-800/60 p-4">
+                    <div className="flex items-center gap-2 text-amber-950 dark:text-amber-100 font-black text-sm mb-3">
+                      <KeyRound className="w-4 h-4" />
+                      {isAr ? "رمز الدخول للدرس الخاص" : "Private lesson access code"}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xl sm:text-2xl font-black tracking-[0.2em] text-foreground bg-background px-4 py-2.5 rounded-xl border shadow-sm">
+                        {lesson.accessCode.trim()}
+                      </span>
+                      <Button type="button" variant="outline" className="gap-2 font-bold" onClick={copyAccessCodeOnly}>
+                        <Copy className="w-4 h-4" />
+                        {isAr ? "نسخ الرمز" : "Copy code"}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-amber-900/80 dark:text-amber-200/90 font-semibold mt-3 leading-relaxed">
+                      {isAr
+                        ? "الرابط أدناه يتضمن الرمز تلقائياً عند المسح. يمكن للطالب أيضاً إدخال الرمز يدوياً إن لزم."
+                        : "The link below includes the code when scanned. Students can also enter the code manually if needed."}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-2">{isAr ? "رابط الدرس للطلاب" : "Student lesson URL"}</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      readOnly
+                      value={shareUrl}
+                      className="flex-1 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-xs sm:text-sm font-mono text-foreground outline-none focus:ring-2 focus:ring-primary/25"
+                      dir="ltr"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button type="button" variant="outline" className="gap-2 font-bold shrink-0" onClick={copyStudentLinkOnly}>
+                      <Copy className="w-4 h-4" />
+                      {isAr ? "نسخ الرابط" : "Copy URL"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-muted/20 py-5 px-4">
+                  <p className="text-xs font-bold text-muted-foreground text-center">
+                    {isAr ? "رمز QR — تصويره بالهاتف للدخول السريع" : "QR code — scan with a phone camera"}
+                  </p>
+                  <div className="rounded-2xl bg-white p-4 border shadow-inner dark:bg-white">
+                    <QRCodeSVG value={shareUrl} size={200} level="M" includeMargin />
+                  </div>
+                </div>
+
+                <Button type="button" className="w-full gap-2 font-black min-h-11" onClick={() => setShareModalOpen(false)}>
+                  {isAr ? "تم" : "Done"}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
