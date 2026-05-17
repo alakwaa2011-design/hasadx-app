@@ -45,7 +45,14 @@ interface YTWindow extends Window {
 
 const ytWindow = window as unknown as YTWindow;
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+/** Same-origin API root: use VITE_API_URL when set; otherwise prefix with Vite BASE_PATH so /api works under subpath deploys. */
+function apiUrl(apiPath: string): string {
+  const env = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+  const path = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
+  if (env) return `${env}${path}`;
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+  return base ? `${base}${path}` : path;
+}
 
 const BRAND = "#1E4D35";
 const PAGE_BG = "linear-gradient(165deg, #f6faf7 0%, #eef4ef 45%, #f3f7f4 100%)";
@@ -205,7 +212,7 @@ export default function StudentVideoLesson() {
     setLoading(true);
     setError("");
     const codeParam = accessCode ? `?code=${encodeURIComponent(accessCode)}` : "";
-    fetch(`${API_BASE}/api/video-lessons/${id}${codeParam}`, { credentials: "include" })
+    fetch(apiUrl(`/api/video-lessons/${id}${codeParam}`), { credentials: "include" })
       .then((r) => {
         if (!r.ok) {
           setError(
@@ -237,7 +244,7 @@ export default function StudentVideoLesson() {
   useEffect(() => {
     if (!lesson?.targetClass) return;
     const codeParam = accessCode ? `?code=${encodeURIComponent(accessCode)}` : "";
-    fetch(`${API_BASE}/api/video-lessons/${id}/class-students${codeParam}`)
+    fetch(apiUrl(`/api/video-lessons/${id}/class-students${codeParam}`))
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -422,14 +429,20 @@ export default function StudentVideoLesson() {
 
   const verifyAnswer = async () => {
     if (!activeQuestion || !selectedAnswer.trim()) return;
+    const rawQid = activeQuestion.id;
+    const questionId = typeof rawQid === "number" ? rawQid : parseInt(String(rawQid), 10);
+    if (!Number.isFinite(questionId) || questionId < 1) {
+      toast.error(isAr ? "بيانات السؤال غير صالحة. أعد تحميل الصفحة." : "Invalid question data. Reload the page.");
+      return;
+    }
     setVerifying(true);
     try {
-      const res = await fetch(`${API_BASE}/api/video-lessons/${id}/check-answer`, {
+      const res = await fetch(apiUrl(`/api/video-lessons/${id}/check-answer`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          questionId: Number(activeQuestion.id),
+          questionId,
           selectedAnswer: selectedAnswer.trim(),
           accessCode: accessCode.trim() || undefined,
         }),
@@ -447,13 +460,20 @@ export default function StudentVideoLesson() {
           data?.code === "classroom_not_allowed" ||
           (typeof data?.message === "string" &&
             (data.message.includes("Google Classroom") || data.message.includes("كلاس روم")));
+        const fallback =
+          isAr
+            ? data?.message?.trim()
+              ? data.message
+              : `تعذّر التحقق من الإجابة (رمز ${res.status}). حاول مجدداً.`
+            : data?.message?.trim()
+              ? data.message
+              : `Could not verify answer (HTTP ${res.status}). Try again.`;
         toast.error(
           classroomLeak
             ? isAr
               ? "تعذّر التحقق من الإجابة. حاول مجدداً."
               : "Could not verify answer. Try again."
-            : data?.message ||
-                (isAr ? "تعذّر التحقق من الإجابة. حاول مجدداً." : "Could not verify answer. Try again."),
+            : fallback,
         );
         return;
       }
@@ -492,7 +512,7 @@ export default function StudentVideoLesson() {
     if (!lesson) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/api/video-lessons/${id}/submit`, {
+      const res = await fetch(apiUrl(`/api/video-lessons/${id}/submit`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

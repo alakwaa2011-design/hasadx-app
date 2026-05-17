@@ -91,8 +91,16 @@ const SubmitVideoLessonBody = z.object({
 
 /** تحقق فوري أثناء التشغيل — نفس منطق المقارنة في submit */
 const CheckVideoAnswerBody = z.object({
-  questionId: z.coerce.number(),
-  selectedAnswer: z.string(),
+  questionId: z.preprocess(
+    (val) => {
+      if (val === null || val === undefined) return NaN;
+      if (typeof val === "number") return val;
+      if (typeof val === "string") return parseInt(val.trim(), 10);
+      return NaN;
+    },
+    z.number().int().positive(),
+  ),
+  selectedAnswer: z.string().min(1),
   accessCode: z.string().optional(),
 });
 
