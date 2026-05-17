@@ -1057,7 +1057,7 @@ export default function CreateAssignment() {
                         >
                           <span className="text-xl">📘</span>
                           <div className="min-w-0">
-                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "واجب مدرسي" : "Homework"}</div>
+                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "واجب أو اختبار" : "Homework"}</div>
                             <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة الأنشطة" : "Lands in Activities Library"}</div>
                           </div>
                         </button>
@@ -1068,7 +1068,7 @@ export default function CreateAssignment() {
                         >
                           <span className="text-xl">🏆</span>
                           <div className="min-w-0">
-                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "سؤال لمسابقة" : "Competition question"}</div>
+                            <div className="text-sm font-bold leading-tight">{lang === "ar" ? "أسئة  لمسابقة" : "Competition question"}</div>
                             <div className="text-[11px] text-muted-foreground">{lang === "ar" ? "يظهر في مكتبة المسابقات" : "Lands in Competitions Library"}</div>
                           </div>
                         </button>
