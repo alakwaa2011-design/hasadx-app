@@ -1204,7 +1204,7 @@ export default function TeacherDashboard() {
                       key: "knowledge_race" as const,
                       emoji: "⚡",
                       titleAr: "وميض",
-                      titleEn: "Wameeth",
+                      titleEn: "Wameedh",
                       descAr:
                         "مسابقة حية على الشاشة الكبيرة — طلابك يجيبون من هواتفهم بأسلوب وميض.",
                       descEn:
