@@ -96,6 +96,42 @@ const ALLOWED_SHAPE = new Set<SanitizedVisualDirection["shape"]>([
   "rect", "circle", "line", "arrow", "divider",
 ]);
 
+/* Deterministic Fisher–Yates shuffle of an MCQ's options. The seed is
+   derived from the prompt text so the same question always renders
+   the same shuffle (no flicker between teacher control + student
+   screens). Returns the new options array plus the relocated index
+   of the correct answer. */
+function shuffleOptionsDeterministic(
+  options: string[],
+  correctIndex: number,
+  seedText: string,
+): { options: string[]; correctIndex: number } {
+  if (options.length <= 1) return { options, correctIndex };
+  let seed = 0;
+  for (let i = 0; i < seedText.length; i++) {
+    seed = ((seed << 5) - seed + seedText.charCodeAt(i)) | 0;
+  }
+  /* mulberry32 PRNG — small, fast, deterministic. */
+  let state = (seed >>> 0) || 1;
+  const rand = () => {
+    state |= 0; state = (state + 0x6D2B79F5) | 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const pairs = options.map((o, i) => ({ o, isCorrect: i === correctIndex }));
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  const newCorrect = pairs.findIndex((p) => p.isCorrect);
+  return {
+    options: pairs.map((p) => p.o),
+    correctIndex: newCorrect >= 0 ? newCorrect : 0,
+  };
+}
+
 function asRecord(v: unknown): RawRecord {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as RawRecord) : {};
 }
@@ -330,7 +366,14 @@ export function sanitizeOutline(
         if (optsIn.length < 2 || optsIn.length > 6) continue;
         const ci = Number(qr.correctIndex);
         if (!Number.isInteger(ci) || ci < 0 || ci >= optsIn.length) continue;
-        cleaned.push({ prompt: qPrompt, options: optsIn, correctIndex: ci });
+        /* Shuffle options so the correct answer doesn't always land in
+           slot A. Models heavily bias `correctIndex: 0` in their
+           examples; without this, every overlay tile A is correct,
+           which gives the game away and looks unprofessional. We use
+           a deterministic shuffle seeded by the question prompt so
+           re-renders are stable. */
+        const shuffled = shuffleOptionsDeterministic(optsIn, ci, qPrompt);
+        cleaned.push({ prompt: qPrompt, options: shuffled.options, correctIndex: shuffled.correctIndex });
       }
       if (cleaned.length > 0) {
         gameQuestions = cleaned;

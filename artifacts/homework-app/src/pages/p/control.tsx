@@ -499,39 +499,60 @@ export default function PresentationControl() {
                   </div>
                 </div>
 
-                <div className="text-lg sm:text-2xl font-black text-white leading-snug break-words">
+                <div className="text-base sm:text-xl font-black text-white leading-snug break-words">
                   {q.prompt}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 flex-1 min-h-0">
-                  {(q.options as string[]).map((opt, i) => {
-                    const isCorrect = i === q.correctIndex;
-                    const highlight = revealed && isCorrect;
-                    return (
-                      <div
-                        key={i}
-                        className={`rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base flex items-center gap-2 sm:gap-3 border-2 transition-all ${
-                          highlight
-                            ? "bg-emerald-600/80 border-emerald-300 text-white shadow-xl scale-[1.02]"
-                            : isCorrect
-                              ? "bg-emerald-900/50 border-emerald-600/60 text-emerald-100"
-                              : "bg-white/10 border-white/20 text-white/90"
-                        }`}
-                      >
-                        <span
-                          className="inline-flex items-center justify-center w-7 h-7 sm:w-9 sm:h-9 rounded-full font-black text-xs sm:text-sm shrink-0"
+                {/* Wameedh-palette answer tiles. We use the same four
+                    warm colors as the slide editor (amber/orange/red/
+                    gold) so the teacher's control screen matches the
+                    student-facing live view. Tiles are deliberately
+                    compact: the teacher already sees the slide above
+                    them and doesn't need oversized buttons here.
+                    NOTE: we DON'T leak the correct answer before
+                    reveal — pre-reveal every tile uses the same neutral
+                    base. Only after `revealed=true` do we highlight the
+                    correct tile in green so the teacher can confirm. */}
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {(() => {
+                    const wameedhTiles = ["#f59e0b", "#ea580c", "#b91c1c", "#d97706"];
+                    return (q.options as string[]).map((opt, i) => {
+                      const isCorrect = i === q.correctIndex;
+                      const highlight = revealed && isCorrect;
+                      const dim = revealed && !isCorrect;
+                      const tileBg = wameedhTiles[i % wameedhTiles.length];
+                      return (
+                        <div
+                          key={i}
+                          className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 border transition-all ${
+                            highlight
+                              ? "border-emerald-300 shadow-lg scale-[1.01]"
+                              : dim
+                                ? "border-white/10 opacity-50"
+                                : "border-white/20"
+                          }`}
                           style={{
-                            background: highlight ? "#fff" : "rgba(0,0,0,0.35)",
-                            color: highlight ? "#065f46" : "#fff",
+                            background: highlight
+                              ? "linear-gradient(135deg,#059669 0%,#047857 100%)"
+                              : tileBg,
+                            color: "#fff",
                           }}
                         >
-                          {String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="flex-1 font-bold break-words">{opt}</span>
-                        {isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />}
-                      </div>
-                    );
-                  })}
+                          <span
+                            className="inline-flex items-center justify-center w-6 h-6 rounded-full font-black text-[11px] shrink-0"
+                            style={{
+                              background: "rgba(0,0,0,0.35)",
+                              color: "#fff",
+                            }}
+                          >
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          <span className="flex-1 font-bold break-words text-sm">{opt}</span>
+                          {highlight && <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
 
                 <div className="flex items-center justify-between text-xs sm:text-sm text-white/85 font-bold">
@@ -541,15 +562,15 @@ export default function PresentationControl() {
 
                 <div className="flex items-center gap-2">
                   {!revealed ? (
-                    <Button onClick={revealQuestion} className="flex-1 font-black h-10 sm:h-11" style={{ background: "#225739", color: "white" }}>
+                    <Button size="sm" onClick={revealQuestion} className="flex-1 font-black" style={{ background: "#225739", color: "white" }}>
                       <Eye className="w-4 h-4 me-1.5" /> كشف الإجابة
                     </Button>
                   ) : (
-                    <Button onClick={nextQuestion} className="flex-1 font-black h-10 sm:h-11" style={{ background: "#D9A521", color: "#1c1003" }}>
+                    <Button size="sm" onClick={nextQuestion} className="flex-1 font-black" style={{ background: "#D9A521", color: "#1c1003" }}>
                       {isLast ? "إنهاء النشاط" : "السؤال التالي"} <ChevronLeft className="w-4 h-4 me-1.5" />
                     </Button>
                   )}
-                  <Button variant="destructive" onClick={closeActivity} title="إغلاق النشاط" className="h-10 sm:h-11">
+                  <Button size="sm" variant="destructive" onClick={closeActivity} title="إغلاق النشاط">
                     <Square className="w-4 h-4" />
                   </Button>
                 </div>
