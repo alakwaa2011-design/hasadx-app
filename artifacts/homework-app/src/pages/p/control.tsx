@@ -515,7 +515,14 @@ export default function PresentationControl() {
                     correct tile in green so the teacher can confirm. */}
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {(() => {
-                    const wameedhTiles = ["#f59e0b", "#ea580c", "#b91c1c", "#d97706"];
+                    /* Wameedh tile palette — matches the live student
+                       view: A=red, B=blue, C=gold, D=purple. */
+                    const wameedhTiles = [
+                      "linear-gradient(135deg,#b03030 0%,#7e1d1d 100%)",
+                      "linear-gradient(135deg,#2563b8 0%,#173f7a 100%)",
+                      "linear-gradient(135deg,#d9a521 0%,#a87a10 100%)",
+                      "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)",
+                    ];
                     return (q.options as string[]).map((opt, i) => {
                       const isCorrect = i === q.correctIndex;
                       const highlight = revealed && isCorrect;
