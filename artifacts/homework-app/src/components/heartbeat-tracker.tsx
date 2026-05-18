@@ -41,7 +41,7 @@ export function HeartbeatTracker() {
       stopHeartbeat();
       return;
     }
-    startHeartbeat(30_000);
+    startHeartbeat(120_000);
     return () => stopHeartbeat();
   }, [location]);
   return null;

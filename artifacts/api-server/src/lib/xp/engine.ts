@@ -35,6 +35,7 @@ import { evaluateRule } from "./rules-engine";
 import { LEVELS, levelForXp } from "./levels";
 import { DEFAULT_XP_RULES } from "./defaults";
 import { isTeacherXpRewardsEnabled } from "./teacher-xp-rewards-flag";
+import { notifyEmailQueued } from "./email-worker";
 
 /** Asia/Riyadh = UTC+3 (no DST). YYYY-MM-DD bucket. */
 function riyadhDateString(d = new Date()): string {
@@ -938,6 +939,7 @@ async function queueBadgeEmail(
     .onConflictDoNothing({
       target: [emailOutboxTable.kind, emailOutboxTable.refKey],
     });
+  notifyEmailQueued();
 }
 
 async function queueThresholdEmail(
@@ -964,6 +966,7 @@ async function queueThresholdEmail(
     .onConflictDoNothing({
       target: [emailOutboxTable.kind, emailOutboxTable.refKey],
     });
+  notifyEmailQueued();
 }
 
 /**
@@ -1009,6 +1012,7 @@ async function notifyLevelUp(
       .onConflictDoNothing({
         target: [emailOutboxTable.kind, emailOutboxTable.refKey],
       });
+    notifyEmailQueued();
   }
 }
 
@@ -1079,6 +1083,7 @@ async function notifyQuestComplete(
       .onConflictDoNothing({
         target: [emailOutboxTable.kind, emailOutboxTable.refKey],
       });
+    notifyEmailQueued();
   }
 }
 

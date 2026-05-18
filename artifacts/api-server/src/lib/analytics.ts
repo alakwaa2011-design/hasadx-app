@@ -171,7 +171,11 @@ export async function upsertHeartbeat(
     });
 }
 
-const ONLINE_THRESHOLD_MS = 90_000; // 90s without heartbeat → offline
+// Heartbeat cadence on the client is 120s (heartbeat-tracker.tsx) as part
+// of the Autoscale cost cleanup (task #616). We add ~60s of slack so a
+// single dropped heartbeat doesn't flicker the user offline in the admin
+// realtime dashboard.
+const ONLINE_THRESHOLD_MS = 180_000; // 180s without heartbeat → offline
 const ONLINE_CLEANUP_INTERVAL_MS = 60_000; // sweep every 60s
 
 /** Keep the online_sessions table small: drop rows we haven't seen in

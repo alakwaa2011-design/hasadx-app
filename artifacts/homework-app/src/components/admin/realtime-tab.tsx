@@ -118,8 +118,36 @@ export function RealtimeTab({ lang }: { lang: Lang }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (paused) return;
-    const id = window.setInterval(load, 10_000);
-    return () => window.clearInterval(id);
+    // Pause polling when the tab is hidden — the admin can't see updates
+    // anyway, and re-fetch immediately when the tab becomes visible again.
+    // Combined with the 30s interval (up from 10s) this cuts realtime-tab
+    // request volume by ~3-6x when the admin tab is left open in the
+    // background.
+    let id: number | null = null;
+    const start = () => {
+      if (id !== null) return;
+      id = window.setInterval(load, 30_000);
+    };
+    const stop = () => {
+      if (id !== null) {
+        window.clearInterval(id);
+        id = null;
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        stop();
+      } else {
+        load();
+        start();
+      }
+    };
+    if (document.visibilityState !== "hidden") start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      stop();
+    };
   }, [load, paused]);
 
   return (

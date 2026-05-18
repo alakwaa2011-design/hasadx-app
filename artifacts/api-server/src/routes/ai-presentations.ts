@@ -388,7 +388,14 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     let tokensOut = 0;
     let usedCache = false;
 
-    if (cached && (Date.now() - cached.lastUsedAt.getTime()) < 60 * 60 * 1000) {
+    // Cache TTL bumped from 1h → 24h as part of the Autoscale cost
+    // cleanup (task #616). Outline regeneration is the single most
+    // expensive AI call we make; a longer TTL means repeated "regenerate"
+    // clicks for the same brief return instantly from cache for a full
+    // day instead of triggering a fresh provider call. The cache row is
+    // keyed on a stable hash of the brief + model + prompt version, so
+    // bumping PROMPT_VERSION invalidates everything if needed.
+    if (cached && (Date.now() - cached.lastUsedAt.getTime()) < 24 * 60 * 60 * 1000) {
       try {
         outlineRaw = JSON.parse(cached.answer);
         usedCache = true;
