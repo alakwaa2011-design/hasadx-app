@@ -1,14 +1,14 @@
 /**
- * وميض — غرفة الانتظار (واجهة فقط)
- * المنطق والـ handlers تُمرَّر من teacher.tsx دون تغيير.
+ * وميض — غرفة الانتظار (واجهة فقط، مطابقة للمرجع البصري)
  */
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { ClassSelector } from "@/components/teacher/class-selector";
 import { GameQRCode } from "@/components/game-qr-code";
 import { AvatarDisplay } from "@/components/avatar-display";
 import {
-  PlayCircle,
+  Play,
   Home,
   Languages,
   Users,
@@ -25,20 +25,32 @@ import {
   CheckCircle,
   Link2,
   ArrowRightLeft,
-  Zap,
-  Settings2,
   Smartphone,
+  Power,
+  LockKeyhole,
+  Terminal,
+  Target,
+  Bot,
+  Info,
+  AlertTriangle,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const C = {
+/* ── Palette (reference) ── */
+const P = {
+  bg: "#031b11",
   primary: "#0a4d26",
+  card: "#082b18",
+  cardDeep: "#02140c",
   gold: "#d4a63a",
-  bg: "#061b12",
-  card: "#0d2818",
-  border: "#1a3a25",
+  goldLight: "#f4c95d",
   text: "#ffffff",
-  muted: "#8aab8a",
+  muted: "#9fb89f",
+  border: "rgba(212,166,58,0.28)",
+  neon: "#3dff8a",
+  neonDim: "rgba(61,255,138,0.35)",
 } as const;
 
 const MAX_LOBBY_PLAYERS = 20;
@@ -108,7 +120,7 @@ export interface WameethWaitingRoomUIProps {
   onRemoveSentMessage: (id: number) => void;
 }
 
-function PremiumToggle({
+function GoldToggle({
   on,
   onClick,
   disabled,
@@ -125,21 +137,36 @@ function PremiumToggle({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200",
+        "relative h-8 w-[52px] shrink-0 rounded-full transition-all duration-300",
         disabled && "cursor-not-allowed opacity-40",
-        on ? "bg-[#d4a63a]" : "bg-[#1a3a25]",
+        on ? "bg-gradient-to-b from-[#f4c95d] to-[#d4a63a] shadow-[0_0_16px_rgba(212,166,58,0.45)]" : "bg-[#02140c] border border-[rgba(212,166,58,0.2)]",
       )}
       aria-pressed={on}
     >
       <span
-        className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-200"
+        className="absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300"
         style={
           dir === "rtl"
-            ? { right: 2, transform: on ? "translateX(-20px)" : "translateX(0)" }
-            : { left: 2, transform: on ? "translateX(20px)" : "translateX(0)" }
+            ? { right: 4, transform: on ? "translateX(-22px)" : "translateX(0)" }
+            : { left: 4, transform: on ? "translateX(22px)" : "translateX(0)" }
         }
       />
     </button>
+  );
+}
+
+function IconCircle({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "flex h-14 w-14 items-center justify-center rounded-full border",
+        "border-[rgba(212,166,58,0.22)] bg-gradient-to-b from-[#0a4d26] to-[#02140c]",
+        "shadow-[inset_0_1px_0_rgba(244,201,93,0.12),0_4px_20px_rgba(0,0,0,0.25)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -149,58 +176,117 @@ function SettingCard({
   desc,
   children,
   delay = 0,
+  className,
 }: {
   icon: React.ReactNode;
   title: string;
   desc?: string;
   children: React.ReactNode;
   delay?: number;
+  className?: string;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35 }}
-      whileHover={{ y: -3, transition: { duration: 0.2 } }}
+      transition={{ delay, duration: 0.4 }}
+      whileHover={{
+        y: -4,
+        boxShadow: "0 12px 40px rgba(0,0,0,0.35), 0 0 24px rgba(212,166,58,0.08)",
+      }}
       className={cn(
-        "flex min-h-[148px] flex-col rounded-2xl border p-4 backdrop-blur-md",
-        "border-[#1a3a25] bg-[#0d2818]/85 transition-colors hover:border-[#d4a63a]/30",
+        "flex min-h-[200px] flex-col rounded-[22px] border p-5 backdrop-blur-sm",
+        "border-[rgba(212,166,58,0.22)] bg-gradient-to-b from-[#082b18] to-[#02140c]",
+        "transition-[border-color,box-shadow] duration-300 hover:border-[rgba(212,166,58,0.38)]",
+        className,
       )}
     >
-      <motion.div
-        className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl text-[#d4a63a]"
-        style={{ background: `${C.primary}99` }}
-      >
-        {icon}
-      </motion.div>
-      <h3 className="text-sm font-black text-white">{title}</h3>
-      {desc ? <p className="mt-1 text-[11px] leading-relaxed text-[#8aab8a]">{desc}</p> : null}
-      <div className="mt-auto flex items-center justify-end pt-3">{children}</div>
+      <IconCircle>{icon}</IconCircle>
+      <h3 className="mt-4 text-[15px] font-black text-white">{title}</h3>
+      {desc ? <p className="mt-1.5 text-xs leading-relaxed text-[#9fb89f]">{desc}</p> : null}
+      <div className="mt-auto flex items-center justify-end pt-4">{children}</div>
     </motion.div>
   );
 }
 
-function GoldParticles() {
-  const spots = [
-    { top: "12%", left: "8%", delay: 0 },
-    { top: "68%", left: "15%", delay: 0.4 },
-    { top: "22%", right: "12%", delay: 0.8 },
-    { top: "78%", right: "18%", delay: 1.2 },
-    { top: "45%", left: "42%", delay: 0.6 },
-    { top: "35%", right: "38%", delay: 1 },
+function GoldDust() {
+  const pts = [
+    { t: "8%", l: "5%", d: 0, s: 2 },
+    { t: "72%", l: "12%", d: 0.5, s: 1.5 },
+    { t: "18%", r: "8%", d: 1, s: 2.5 },
+    { t: "85%", r: "14%", d: 1.4, s: 1 },
+    { t: "42%", l: "48%", d: 0.7, s: 1.5 },
+    { t: "55%", r: "42%", d: 1.8, s: 2 },
+    { t: "30%", l: "78%", d: 0.3, s: 1 },
+    { t: "90%", l: "65%", d: 1.1, s: 1.5 },
   ];
   return (
     <>
-      {spots.map((s, i) => (
+      {pts.map((p, i) => (
         <motion.span
           key={i}
-          className="pointer-events-none absolute h-1 w-1 rounded-full bg-[#d4a63a]"
-          style={{ top: s.top, left: s.left, right: s.right }}
-          animate={{ opacity: [0.15, 0.45, 0.15], y: [0, -6, 0] }}
-          transition={{ duration: 3.5, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
+          className="pointer-events-none absolute rounded-full bg-[#f4c95d]"
+          style={{
+            top: p.t,
+            left: p.l,
+            right: p.r,
+            width: p.s,
+            height: p.s,
+          }}
+          animate={{ opacity: [0.08, 0.35, 0.08], y: [0, -8, 0] }}
+          transition={{ duration: 4 + i * 0.3, repeat: Infinity, delay: p.d, ease: "easeInOut" }}
         />
       ))}
     </>
+  );
+}
+
+function HeroGoldLines() {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.14]" aria-hidden>
+      <defs>
+        <linearGradient id="wameeth-gold-line" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#d4a63a" stopOpacity="0" />
+          <stop offset="50%" stopColor="#f4c95d" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#d4a63a" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M-20 80 Q 200 40 400 120" fill="none" stroke="url(#wameeth-gold-line)" strokeWidth="1" />
+      <path d="M 900 20 Q 1100 80 1300 30" fill="none" stroke="url(#wameeth-gold-line)" strokeWidth="0.8" />
+      <path d="M 50 280 Q 300 240 550 300" fill="none" stroke="url(#wameeth-gold-line)" strokeWidth="0.6" />
+    </svg>
+  );
+}
+
+function SegmentedGold({
+  options,
+  value,
+  onChange,
+  isAr,
+}: {
+  options: readonly { val: boolean; ar: string; en: string }[];
+  value: boolean;
+  onChange: (v: boolean) => void;
+  isAr: boolean;
+}) {
+  return (
+    <div className="flex rounded-xl border border-[rgba(212,166,58,0.18)] bg-[#02140c]/80 p-1" role="group">
+      {options.map((opt) => (
+        <button
+          key={String(opt.val)}
+          type="button"
+          onClick={() => onChange(opt.val)}
+          className={cn(
+            "min-w-[72px] rounded-lg px-3 py-2 text-xs font-black transition-all duration-200",
+            value === opt.val
+              ? "bg-gradient-to-b from-[#f4c95d] to-[#d4a63a] text-[#031b11] shadow-[0_2px_12px_rgba(212,166,58,0.35)]"
+              : "text-[#9fb89f] hover:text-white",
+          )}
+        >
+          {isAr ? opt.ar : opt.en}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -219,7 +305,6 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     ttsEnabled,
     roomLocked,
     targetClass,
-    targetClassEditing,
     botCount,
     isAddingBots,
     copied,
@@ -241,7 +326,6 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     onToggleHackMode,
     onToggleTts,
     onToggleRoomLock,
-    onSetTargetClassEditing,
     onUpdateTargetClass,
     onSetBotCount,
     onAddBots,
@@ -256,219 +340,316 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     onRemoveSentMessage,
   } = props;
 
+  const hackPanelRef = useRef<HTMLElement>(null);
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`;
   const playerProgressPct = Math.min(100, (players.length / MAX_LOBBY_PLAYERS) * 100);
   const humanCount = players.filter((p) => !p.isBot).length;
 
-  const Segmented = ({
-    options,
-    value,
-    onChange,
-  }: {
-    options: readonly { val: boolean; ar: string; en: string }[];
-    value: boolean;
-    onChange: (v: boolean) => void;
-  }) => (
-    <motion.div
-      className="flex rounded-xl border border-[#1a3a25] bg-[#061b12]/60 p-0.5"
-      role="group"
-    >
-      {options.map((opt) => (
-        <button
-          key={String(opt.val)}
-          type="button"
-          onClick={() => onChange(opt.val)}
-          className={cn(
-            "rounded-[10px] px-3 py-1.5 text-xs font-bold transition-all",
-            value === opt.val ? "bg-[#d4a63a] text-[#061b12]" : "text-[#8aab8a] hover:text-white",
-          )}
-        >
-          {isAr ? opt.ar : opt.en}
-        </button>
-      ))}
-    </motion.div>
-  );
+  const scrollToHackPanel = () => {
+    hackPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   return (
     <Layout noHeader>
-      <div className="min-h-screen bg-[#061b12] text-white" dir={dir} style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}>
+      <motion.div
+        className="min-h-screen text-white"
+        dir={dir}
+        style={{
+          fontFamily: "'Cairo', 'Tajawal', sans-serif",
+          background: `radial-gradient(ellipse 120% 80% at 50% -20%, #0a4d26 0%, ${P.bg} 45%, ${P.cardDeep} 100%)`,
+        }}
+      >
         {/* ── Header ── */}
-        <header className="sticky top-0 z-50 border-b border-[#1a3a25] bg-[#061b12]/92 backdrop-blur-md">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:px-5">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <div className="flex items-center gap-2">
-                <img
-                  src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-                  alt={isAr ? "حصاد" : "Hasad"}
-                  className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-[#d4a63a]/20"
-                />
-                <span className="hidden text-sm font-black text-white sm:inline">{isAr ? "حصاد" : "Hasad"}</span>
-              </div>
+        <header
+          className="sticky top-0 z-50 border-b backdrop-blur-xl"
+          style={{ borderColor: P.border, background: "rgba(3,27,17,0.88)" }}
+        >
+          <div className="mx-auto flex h-[68px] max-w-[1500px] items-center justify-between gap-4 px-5 lg:px-10">
+            {/* يمين: الشعار */}
+            <div className="flex min-w-0 items-center gap-3">
+              <img
+                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                alt={isAr ? "حصاد" : "Hasad"}
+                className="h-10 w-10 shrink-0 rounded-xl object-cover ring-2 ring-[rgba(212,166,58,0.25)]"
+              />
+              <span className="hidden text-lg font-black tracking-tight text-white sm:inline">
+                {isAr ? "حصاد" : "Hasad"}
+              </span>
+            </div>
+
+            {/* وسط: العنوان */}
+            <div className="absolute start-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 text-center md:block">
+              <p className="text-lg font-black text-[#d4a63a] lg:text-xl">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
+              <p className="text-[11px] font-semibold text-[#9fb89f]">
+                {isAr ? "وميض — لعبة المعرفة السريعة" : "Wameeth — fast knowledge game"}
+              </p>
+            </div>
+
+            {/* يسار: أزرار */}
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={onHome}
-                className="flex items-center gap-1.5 rounded-xl border border-[#1a3a25] bg-[#0d2818]/80 px-2.5 py-1.5 text-xs font-bold text-[#8aab8a] transition-colors hover:border-[#d4a63a]/30 hover:text-white sm:px-3"
+                className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors hover:border-[rgba(212,166,58,0.4)]"
+                style={{ borderColor: P.border, color: P.muted, background: "rgba(8,43,24,0.6)" }}
               >
                 <Home className="h-4 w-4" />
-                <span className="hidden xs:inline sm:inline">{isAr ? "الرئيسية" : "Home"}</span>
+                <span className="hidden sm:inline">{isAr ? "الرئيسية" : "Home"}</span>
               </button>
               <button
                 type="button"
                 onClick={onToggleLang}
-                className="flex items-center gap-1 rounded-xl border border-[#1a3a25] bg-[#0d2818]/80 px-2 py-1.5 text-[11px] font-bold text-[#8aab8a] hover:text-white"
+                className="flex items-center gap-1 rounded-xl border px-2.5 py-2 text-[11px] font-bold"
+                style={{ borderColor: P.border, color: P.muted, background: "rgba(8,43,24,0.6)" }}
               >
                 <Languages className="h-3.5 w-3.5" />
                 {isAr ? "EN" : "ع"}
               </button>
-            </div>
-
-            <div className="absolute start-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 text-center sm:block">
-              <p className="text-base font-black text-[#d4a63a] sm:text-lg">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
-              <p className="text-[10px] text-[#8aab8a]">{isAr ? "وميض — لعبة المعرفة المباشرة" : "Wameeth live quiz"}</p>
-            </div>
-
-            <motion.div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={onEndGame}
-                className="rounded-xl border border-[#1a3a25] bg-[#0d2818]/90 px-2.5 py-2 text-[11px] font-bold text-[#8aab8a] transition-colors hover:border-rose-500/40 hover:text-rose-300 sm:px-3.5 sm:text-xs"
+                className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors hover:border-rose-400/40 hover:text-rose-300"
+                style={{ borderColor: P.border, color: P.muted, background: "rgba(8,43,24,0.6)" }}
               >
-                {isAr ? "إنهاء اللعبة" : "End game"}
+                <Power className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{isAr ? "إنهاء اللعبة" : "End game"}</span>
               </button>
               <motion.button
                 type="button"
                 onClick={onStartGame}
                 disabled={players.length === 0}
-                whileHover={players.length > 0 ? { scale: 1.03 } : undefined}
+                whileHover={players.length > 0 ? { scale: 1.04 } : undefined}
                 whileTap={players.length > 0 ? { scale: 0.97 } : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black shadow-lg transition-all sm:px-5 sm:py-2.5 sm:text-sm",
-                  "disabled:cursor-not-allowed disabled:opacity-40",
+                  "flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-all sm:px-6",
+                  "disabled:cursor-not-allowed disabled:opacity-45",
                 )}
                 style={{
-                  background: `linear-gradient(135deg, ${C.gold} 0%, #b8892a 100%)`,
-                  color: "#061b12",
-                  boxShadow: players.length > 0 ? "0 4px 24px rgba(212,166,58,0.35)" : undefined,
+                  background: `linear-gradient(135deg, ${P.goldLight} 0%, ${P.gold} 50%, #b8892a 100%)`,
+                  color: "#031b11",
+                  boxShadow: players.length > 0 ? "0 4px 28px rgba(212,166,58,0.42), inset 0 1px 0 rgba(255,255,255,0.25)" : undefined,
                 }}
               >
-                <PlayCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Play className="h-4 w-4 fill-current" />
                 {isAr ? "ابدأ اللعبة" : "Start game"}
               </motion.button>
-            </motion.div>
+            </div>
           </div>
-          <p className="pb-2 text-center text-sm font-black text-[#d4a63a] sm:hidden">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
+          <p className="pb-2 text-center text-sm font-black text-[#d4a63a] md:hidden">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
         </header>
 
-        <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:space-y-5 sm:px-5 sm:py-6">
+        <main className="mx-auto max-w-[1500px] space-y-5 px-5 py-6 lg:space-y-6 lg:px-10 lg:py-8">
           {/* ── Hero ── */}
           <motion.section
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl border border-[#1a3a25]"
+            className="relative overflow-hidden rounded-[28px] border"
             style={{
-              background: `linear-gradient(145deg, ${C.primary} 0%, #061b12 55%, #041009 100%)`,
-              boxShadow: "0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(212,166,58,0.08)",
+              borderColor: P.border,
+              background: `linear-gradient(155deg, ${P.primary} 0%, #062a18 42%, ${P.cardDeep} 100%)`,
+              boxShadow: "0 16px 56px rgba(0,0,0,0.45), 0 0 60px rgba(212,166,58,0.06), inset 0 1px 0 rgba(244,201,93,0.1)",
             }}
           >
+            <HeroGoldLines />
+            <GoldDust />
             <div
-              className="pointer-events-none absolute inset-0 opacity-40"
-              style={{
-                backgroundImage: `
-                  linear-gradient(118deg, transparent 42%, rgba(212,166,58,0.07) 50%, transparent 58%),
-                  linear-gradient(72deg, transparent 30%, rgba(212,166,58,0.04) 48%, transparent 65%)
-                `,
-              }}
+              className="pointer-events-none absolute -end-24 -top-24 h-64 w-64 rounded-full opacity-30"
+              style={{ background: "radial-gradient(circle, rgba(212,166,58,0.15) 0%, transparent 70%)" }}
             />
-            <GoldParticles />
+            <motion.div
+              className="pointer-events-none absolute -start-16 bottom-0 h-48 w-48 rounded-full opacity-20"
+              style={{ background: "radial-gradient(circle, rgba(10,77,38,0.8) 0%, transparent 70%)" }}
+            />
 
-            <div dir="ltr" className="relative z-10 grid grid-cols-1 gap-6 p-5 sm:p-7 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-8">
-              {/* QR — يسار */}
-              <div className="flex flex-col items-center gap-2 lg:items-start">
-                <div className="rounded-2xl bg-white p-2 shadow-lg ring-1 ring-[#d4a63a]/20">
-                  <GameQRCode url={joinUrl} pin={pin} size={108} />
+            <div
+              dir="ltr"
+              className="relative z-10 grid grid-cols-1 items-center gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(140px,auto)_1fr_minmax(160px,auto)] lg:gap-10 lg:p-10"
+            >
+              {/* QR يسار */}
+              <div className="flex flex-col items-center gap-3 lg:items-start">
+                <div
+                  className="rounded-2xl bg-white p-3 shadow-[0_8px_32px_rgba(0,0,0,0.35),0_0_24px_rgba(212,166,58,0.12)]"
+                  style={{ border: "1px solid rgba(212,166,58,0.15)" }}
+                >
+                  <GameQRCode url={joinUrl} pin={pin} size={120} />
                 </div>
-                <span className="flex items-center gap-1 text-[10px] font-bold text-[#8aab8a]">
-                  <Smartphone className="h-3 w-3 text-[#d4a63a]" />
+                <span className="flex items-center gap-1.5 text-xs font-bold text-[#9fb89f]">
+                  <Smartphone className="h-3.5 w-3.5 text-[#d4a63a]" />
                   {isAr ? "امسح للانضمام" : "Scan to join"}
                 </span>
               </div>
 
-              {/* PIN — وسط */}
-              <motion.div className="flex flex-col items-center gap-3 text-center" dir={dir}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#8aab8a]">
+              {/* كود — وسط */}
+              <div className="flex flex-col items-center gap-4 text-center" dir={dir}>
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#9fb89f]">
                   {isAr ? "كود اللعبة" : "Game code"}
                 </p>
-                <div className="flex items-center gap-2">
+                <motion.div className="flex items-center gap-3" dir="ltr">
                   <button
                     type="button"
                     onClick={onCopyPin}
-                    className="rounded-xl border border-[#d4a63a]/25 bg-[#d4a63a]/10 p-2 transition-colors hover:bg-[#d4a63a]/20"
-                    aria-label={isAr ? "نسخ الكود" : "Copy code"}
+                    className="rounded-xl border border-[rgba(212,166,58,0.35)] bg-[rgba(212,166,58,0.1)] p-2.5 transition-all hover:bg-[rgba(212,166,58,0.2)] hover:shadow-[0_0_20px_rgba(212,166,58,0.2)]"
                   >
                     {copied ? (
-                      <CheckCircle className="h-5 w-5 text-[#d4a63a]" />
+                      <CheckCircle className="h-5 w-5 text-[#f4c95d]" />
                     ) : (
                       <Copy className="h-5 w-5 text-[#d4a63a]" />
                     )}
                   </button>
                   <span
-                    className="select-all font-black tabular-nums tracking-[0.2em] text-[#d4a63a] sm:tracking-[0.28em]"
-                    style={{ fontSize: "clamp(2.25rem, 8vw, 3.75rem)", lineHeight: 1.05 }}
-                    dir="ltr"
+                    className="select-all font-black tabular-nums text-[#f4c95d]"
+                    style={{
+                      fontSize: "clamp(2.75rem, 10vw, 4.5rem)",
+                      letterSpacing: "0.22em",
+                      lineHeight: 1,
+                      textShadow: "0 0 40px rgba(244,201,93,0.35), 0 2px 0 rgba(0,0,0,0.3)",
+                    }}
                   >
                     {pin}
                   </span>
-                </div>
+                </motion.div>
                 <button
                   type="button"
                   onClick={onCopyLink}
-                  className="flex items-center gap-2 rounded-xl border border-[#1a3a25] bg-[#0d2818]/60 px-4 py-2 text-xs font-semibold text-[#8aab8a] transition-all hover:border-[#d4a63a]/30 hover:text-white"
+                  className="flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-bold transition-all hover:shadow-[0_0_20px_rgba(212,166,58,0.15)]"
+                  style={{
+                    borderColor: P.border,
+                    background: "rgba(2,20,12,0.5)",
+                    color: P.muted,
+                  }}
                 >
-                  {linkCopied ? <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> : <Link2 className="h-3.5 w-3.5" />}
+                  {linkCopied ? <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> : <Link2 className="h-3.5 w-3.5 text-[#d4a63a]" />}
                   {linkCopied ? (isAr ? "تم النسخ!" : "Copied!") : isAr ? "نسخ رابط الانضمام" : "Copy join link"}
                 </button>
-              </motion.div>
+              </div>
 
-              {/* اللاعبون — يمين */}
-              <motion.div className="flex flex-col items-center gap-3 lg:items-end" dir={dir}>
+              {/* لاعبون — يمين */}
+              <div
+                className="flex flex-col items-center gap-4 rounded-2xl border p-5 lg:items-end lg:p-6"
+                dir={dir}
+                style={{
+                  borderColor: "rgba(212,166,58,0.15)",
+                  background: "rgba(2,20,12,0.45)",
+                }}
+              >
                 <motion.div
-                  animate={{ scale: [1, 1.04, 1] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-[#d4a63a]/35 bg-[#0d2818]/80 shadow-[0_0_32px_rgba(212,166,58,0.12)]"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex h-[88px] w-[88px] items-center justify-center rounded-full border-2"
+                  style={{
+                    borderColor: "rgba(212,166,58,0.35)",
+                    background: "linear-gradient(180deg, #0a4d26 0%, #02140c 100%)",
+                    boxShadow: "0 0 40px rgba(212,166,58,0.15), inset 0 1px 0 rgba(244,201,93,0.1)",
+                  }}
                 >
-                  <Users className="h-9 w-9 text-[#d4a63a]" />
+                  <Users className="h-10 w-10 text-[#d4a63a]" strokeWidth={1.75} />
                 </motion.div>
-                <div className="text-center lg:text-end">
-                  <p className="text-2xl font-black text-white">{players.length}</p>
-                  <p className="text-xs font-bold text-[#8aab8a]">{isAr ? "لاعب متصل" : "players joined"}</p>
-                </div>
-                <span className="rounded-full border border-[#1a3a25] bg-[#061b12]/80 px-3 py-1 text-[10px] font-bold text-[#8aab8a]">
-                  {isAr ? `الحد ${MAX_LOBBY_PLAYERS} لاعب` : `Max ${MAX_LOBBY_PLAYERS} players`}
+                <motion.div className="text-center lg:text-end">
+                  <p
+                    className="font-black tabular-nums text-[#f4c95d]"
+                    style={{ fontSize: "2.5rem", lineHeight: 1, textShadow: "0 0 24px rgba(244,201,93,0.25)" }}
+                  >
+                    {players.length}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-[#9fb89f]">{isAr ? "لاعب متصل" : "player(s) joined"}</p>
+                </motion.div>
+                <span
+                  className="rounded-full border px-3 py-1 text-[10px] font-bold"
+                  style={{ borderColor: P.border, color: P.muted, background: "rgba(3,27,17,0.6)" }}
+                >
+                  {isAr ? `الحد الأقصى ${MAX_LOBBY_PLAYERS} لاعب` : `Max ${MAX_LOBBY_PLAYERS} players`}
                 </span>
-              </motion.div>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* ── شريط الصف المستهدف ── */}
+          <motion.section
+            id="target-class-bar"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="relative overflow-hidden rounded-[22px] border px-4 py-4 sm:px-6 sm:py-5"
+            style={{
+              borderColor: P.border,
+              background: `linear-gradient(90deg, ${P.card} 0%, #062818 50%, ${P.cardDeep} 100%)`,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(244,201,93,0.06)",
+              minHeight: 88,
+            }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex shrink-0 items-center gap-4">
+                <div
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2"
+                  style={{
+                    borderColor: "rgba(212,166,58,0.4)",
+                    background: "linear-gradient(145deg, #0a4d26, #02140c)",
+                    boxShadow: "0 0 28px rgba(212,166,58,0.12)",
+                  }}
+                >
+                  <GraduationCap className="h-8 w-8 text-[#f4c95d]" strokeWidth={1.5} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-black text-white">{isAr ? "الصف المستهدف" : "Target class"}</h2>
+                  <p className="mt-0.5 text-xs leading-relaxed text-[#9fb89f]">
+                    {isAr ? "اختر الصف المناسب لضبط مستوى التجربة والأسئلة" : "Pick a class to tune difficulty and questions"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-wrap items-center justify-center gap-3 lg:justify-center">
+                <div className="min-w-[200px] flex-1 max-w-md">
+                  <ClassSelector
+                    value={targetClass}
+                    onChange={onUpdateTargetClass}
+                    accent={P.gold}
+                    label=""
+                    className="[&_label]:hidden"
+                  />
+                </div>
+                <span
+                  className="shrink-0 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide"
+                  style={{ borderColor: P.border, color: P.gold, background: "rgba(212,166,58,0.08)" }}
+                >
+                  {isAr ? "اختياري" : "Optional"}
+                </span>
+              </div>
+
+              <div className="hidden shrink-0 items-start gap-2 lg:flex lg:max-w-[220px]">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a63a]/70" />
+                <p className="text-[11px] leading-relaxed text-[#9fb89f]">
+                  {isAr
+                    ? "اختيار الصف يساعد على ضبط صعوبة اللعبة واحتساب النتائج"
+                    : "Class selection helps tune difficulty and score tracking"}
+                </p>
+              </div>
             </div>
           </motion.section>
 
           {/* ── إعدادات اللعبة ── */}
           <section>
-            <div className="mb-3 flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-[#d4a63a]" />
-              <h2 className="text-sm font-black text-white sm:text-base">{isAr ? "إعدادات اللعبة" : "Game settings"}</h2>
+            <div className="mb-4 flex items-center gap-2.5">
+              <Settings className="h-5 w-5 text-[#d4a63a]" />
+              <h2 className="text-base font-black text-white lg:text-lg">{isAr ? "إعدادات اللعبة" : "Game settings"}</h2>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SettingCard
-                delay={0.02}
+                delay={0.04}
                 icon={
                   currentGameMode === "teams" ? (
-                    <UsersRound className="h-5 w-5" />
+                    <UsersRound className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
                   ) : (
-                    <User className="h-5 w-5" />
+                    <User className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
                   )
                 }
                 title={isAr ? "وضع اللعبة" : "Game mode"}
-                desc={isAr ? "فردي أو فرق" : "Solo or teams"}
+                desc={isAr ? "تنافس فردي أو جماعي بالفرق" : "Solo or team competition"}
               >
-                <span className="rounded-full border border-[#d4a63a]/30 bg-[#0a4d26] px-3 py-1.5 text-xs font-black text-[#d4a63a]">
+                <span
+                  className="rounded-full border px-4 py-2 text-xs font-black"
+                  style={{ borderColor: P.border, color: P.goldLight, background: "rgba(10,77,38,0.5)" }}
+                >
                   {currentGameMode === "teams"
                     ? isAr
                       ? t.teacherGame.teamMode || "فرق"
@@ -480,12 +661,13 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                delay={0.04}
-                icon={<SkipForward className="h-5 w-5" />}
+                delay={0.06}
+                icon={<SkipForward className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "التنقل بين الأسئلة" : "Question navigation"}
-                desc={isAr ? "تلقائي أو يدوي" : "Auto or manual"}
+                desc={isAr ? "انتقال تلقائي أو يدوي بين الأسئلة" : "Auto or manual advance"}
               >
-                <Segmented
+                <SegmentedGold
+                  isAr={isAr}
                   value={autoAdvance}
                   onChange={onSetAutoAdvance}
                   options={[
@@ -496,80 +678,144 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                delay={0.06}
-                icon={<Gift className="h-5 w-5" />}
-                title={isAr ? "الهدايا" : "Gifts"}
-                desc={isAr ? "هدية لكل ٣ إجابات صحيحة" : "Gift every 3 correct answers"}
-              >
-                <PremiumToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} />
-              </SettingCard>
-
-              <SettingCard
                 delay={0.08}
-                icon={<span className="text-lg">🔐</span>}
-                title={isAr ? "لعبة الاختراق" : "Hack game"}
-                desc={isAr ? "كلمات سر وصناديق غامضة" : "Passwords & mystery boxes"}
+                icon={<Gift className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
+                title={isAr ? "الهدايا" : "Gifts"}
+                desc={isAr ? "هدية لكل ٣ إجابات صحيحة متتالية" : "Gift every 3 correct answers"}
               >
-                <PremiumToggle on={hackMode} onClick={onToggleHackMode} dir={dir} />
+                <GoldToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} />
               </SettingCard>
 
-              <SettingCard
-                delay={0.1}
-                icon={<Mic className="h-5 w-5" />}
-                title={isAr ? "قراءة صوتية" : "Voice reading"}
-                desc={isAr ? "قراءة الأسئلة صوتياً" : "Read questions aloud"}
+              {/* لعبة الاختراق — مميزة */}
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                whileHover={{ y: -4 }}
+                className={cn(
+                  "flex min-h-[200px] flex-col rounded-[22px] border-2 p-5 backdrop-blur-sm",
+                  hackMode
+                    ? "border-[#3dff8a]/60 bg-gradient-to-b from-[#031a0f] to-[#010a06]"
+                    : "border-[rgba(61,255,138,0.25)] bg-gradient-to-b from-[#041810] to-[#02140c]",
+                )}
+                style={{
+                  boxShadow: hackMode
+                    ? "0 0 32px rgba(61,255,138,0.18), inset 0 0 24px rgba(61,255,138,0.04)"
+                    : "0 8px 28px rgba(0,0,0,0.3)",
+                }}
               >
-                <PremiumToggle on={ttsEnabled} onClick={onToggleTts} dir={dir} />
-              </SettingCard>
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-full border-2"
+                  style={{
+                    borderColor: hackMode ? "rgba(61,255,138,0.5)" : "rgba(61,255,138,0.25)",
+                    background: "rgba(0,0,0,0.35)",
+                    boxShadow: hackMode ? "0 0 20px rgba(61,255,138,0.25)" : undefined,
+                  }}
+                >
+                  {hackMode ? (
+                    <Terminal className="h-6 w-6 text-[#3dff8a]" strokeWidth={2} />
+                  ) : (
+                    <LockKeyhole className="h-6 w-6 text-[#3dff8a]/80" strokeWidth={2} />
+                  )}
+                </div>
+                <h3 className="mt-4 text-[15px] font-black text-white">{isAr ? "لعبة الاختراق" : "Hack game"}</h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-[#9fb89f]">
+                  {isAr ? "كلمات سر وصناديق غامضة وسحب نقاط" : "Passwords, mystery boxes & point heists"}
+                </p>
+                <div className="mt-auto space-y-3 pt-4">
+                  <div className="flex items-center justify-between">
+                    <GoldToggle on={hackMode} onClick={onToggleHackMode} dir={dir} />
+                  </div>
+                  <AnimatePresence>
+                    {hackMode && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-2 overflow-hidden"
+                      >
+                        <p className="flex items-start gap-1.5 text-[11px] font-bold leading-snug text-[#3dff8a]">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          {isAr ? "سيُطلب من كل لاعب إدخال كلمة سر قبل البدء" : "Each player must set a password before start"}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={scrollToHackPanel}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#3dff8a]/40 bg-[#3dff8a]/10 px-3 py-2 text-xs font-black text-[#3dff8a] transition-colors hover:bg-[#3dff8a]/20"
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                          {isAr ? "إعداد كلمة السر" : "Password setup"}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
 
               <SettingCard
                 delay={0.12}
-                icon={<GraduationCap className="h-5 w-5" />}
-                title={isAr ? "الصف المستهدف" : "Target grade"}
-                desc={isAr ? "تقييد اللعبة بصف معيّن" : "Restrict to one class"}
+                icon={<Mic className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
+                title={isAr ? "قراءة صوتية" : "Voice reading"}
+                desc={isAr ? "قراءة نص السؤال بصوت واضح" : "Read question text aloud"}
               >
-                <button
-                  type="button"
-                  onClick={() => onSetTargetClassEditing((v) => !v)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
-                    targetClass
-                      ? "border-[#d4a63a]/40 bg-[#0a4d26] text-[#d4a63a]"
-                      : "border-[#1a3a25] bg-[#061b12] text-[#8aab8a] hover:text-white",
-                  )}
-                >
-                  {targetClass || (isAr ? "أي صف" : "Any grade")}
-                </button>
+                <GoldToggle on={ttsEnabled} onClick={onToggleTts} dir={dir} />
               </SettingCard>
 
               <SettingCard
                 delay={0.14}
-                icon={roomLocked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
-                title={isAr ? "قفل الغرفة" : "Lock room"}
-                desc={isAr ? "منع انضمام طلاب جدد" : "Block new joins"}
+                icon={<Target className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
+                title={isAr ? "تحديد الصف" : "Class targeting"}
+                desc={isAr ? "اضبط الصف من الشريط أعلاه" : "Use the bar above"}
               >
-                <PremiumToggle on={roomLocked} onClick={onToggleRoomLock} dir={dir} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    document.getElementById("target-class-bar")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition-colors hover:border-[rgba(212,166,58,0.45)]"
+                  style={{ borderColor: P.border, color: P.gold, background: "rgba(10,77,38,0.4)" }}
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  {isAr ? "تحديد الصف" : "Select class"}
+                </button>
               </SettingCard>
 
               <SettingCard
                 delay={0.16}
-                icon={<span className="text-lg">🤖</span>}
-                title={isAr ? "لاعبون وهميون" : "Bot players"}
-                desc={isAr ? "للتجربة السريعة" : "For quick testing"}
+                icon={
+                  roomLocked ? (
+                    <Lock className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
+                  ) : (
+                    <Unlock className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />
+                  )
+                }
+                title={isAr ? "قفل الغرفة" : "Lock room"}
+                desc={isAr ? "منع انضمام طلاب جدد للغرفة" : "Block new players from joining"}
               >
-                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                <GoldToggle on={roomLocked} onClick={onToggleRoomLock} dir={dir} />
+              </SettingCard>
+
+              <SettingCard
+                delay={0.18}
+                icon={<Bot className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
+                title={isAr ? "لاعبون وهميون" : "Bot players"}
+                desc={isAr ? "للتجربة والاختبار السريع" : "For quick testing"}
+              >
+                <motion.div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => onSetBotCount((c) => Math.max(0, c - 1))}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[#1a3a25] text-sm font-bold text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border text-sm font-bold"
+                    style={{ borderColor: P.border, color: P.text }}
                   >
                     −
                   </button>
-                  <span className="w-5 text-center text-xs font-black text-[#d4a63a]">{botCount}</span>
+                  <span className="w-6 text-center text-sm font-black text-[#f4c95d]">{botCount}</span>
                   <button
                     type="button"
                     onClick={() => onSetBotCount((c) => Math.min(10, c + 1))}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border border-[#1a3a25] text-sm font-bold text-white"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border text-sm font-bold"
+                    style={{ borderColor: P.border, color: P.text }}
                   >
                     +
                   </button>
@@ -577,48 +823,34 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                     type="button"
                     onClick={onAddBots}
                     disabled={isAddingBots || botCount === 0}
-                    className="rounded-lg bg-[#0a4d26] px-2.5 py-1.5 text-[11px] font-black text-[#d4a63a] disabled:opacity-40"
+                    className="rounded-xl px-3 py-2 text-[11px] font-black disabled:opacity-40"
+                    style={{ background: P.primary, color: P.goldLight }}
                   >
                     {isAddingBots ? "…" : isAr ? "إضافة" : "Add"}
                   </button>
-                </div>
+                </motion.div>
               </SettingCard>
             </div>
-
-            {targetClassEditing && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-3 overflow-hidden rounded-2xl border border-[#1a3a25] bg-[#0d2818]/90 p-4"
-              >
-                <ClassSelector
-                  value={targetClass}
-                  onChange={onUpdateTargetClass}
-                  accent={C.gold}
-                  label={isAr ? "اختر الصف المستهدف" : "Choose target class"}
-                />
-                {targetClass && (
-                  <button
-                    type="button"
-                    onClick={() => onUpdateTargetClass("")}
-                    className="mt-2 text-xs font-bold text-[#8aab8a] underline"
-                  >
-                    {isAr ? "إزالة تحديد الصف" : "Clear class"}
-                  </button>
-                )}
-              </motion.div>
-            )}
           </section>
 
-          {/* Hack marathon panel */}
+          {/* لوحة ماراثون الاختراق */}
           {hackMode && (
             <motion.section
+              ref={hackPanelRef}
+              id="hack-settings-panel"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-[#1a3a25] bg-[#0d2818]/90 p-5"
+              className="rounded-[22px] border-2 border-[#3dff8a]/30 p-5 sm:p-6"
+              style={{
+                background: "linear-gradient(180deg, #031a0f 0%, #02140c 100%)",
+                boxShadow: "0 0 40px rgba(61,255,138,0.08)",
+              }}
             >
-              <p className="mb-3 text-xs font-bold text-[#d4a63a]">{isAr ? "⏱ مدة الماراثون" : "⏱ Marathon duration"}</p>
-              <motion.div className="mb-4 flex flex-wrap gap-2">
+              <p className="mb-4 flex items-center gap-2 text-sm font-black text-[#3dff8a]">
+                <Terminal className="h-4 w-4" />
+                {isAr ? "إعدادات ماراثون الاختراق" : "Hack marathon settings"}
+              </p>
+              <div className="mb-5 flex flex-wrap gap-2">
                 {[5, 7, 10, 15].map((m) => (
                   <button
                     key={m}
@@ -628,62 +860,58 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                       onSetHackCustomMin("");
                     }}
                     className={cn(
-                      "rounded-lg border px-4 py-2 text-sm font-bold transition-colors",
+                      "rounded-xl border px-4 py-2.5 text-sm font-bold transition-all",
                       !hackCustomMin && hackDurationMin === m
-                        ? "border-[#d4a63a] bg-[#d4a63a] text-[#061b12]"
-                        : "border-[#1a3a25] text-[#8aab8a] hover:border-[#d4a63a]/40",
+                        ? "border-[#3dff8a] bg-[#3dff8a] text-[#031b11]"
+                        : "border-[#3dff8a]/25 text-[#9fb89f] hover:border-[#3dff8a]/50",
                     )}
                   >
-                    {m} {isAr ? "د" : "min"}
+                    {m} {isAr ? "دقيقة" : "min"}
                   </button>
                 ))}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    value={hackCustomMin}
-                    onChange={(e) => onSetHackCustomMin(e.target.value)}
-                    placeholder={isAr ? "مخصص" : "custom"}
-                    className="w-20 rounded-lg border border-[#1a3a25] bg-[#061b12] px-3 py-2 text-sm text-white focus:border-[#d4a63a]/50 focus:outline-none"
-                  />
-                </div>
-              </motion.div>
-              <div className="border-t border-[#1a3a25] pt-4">
-                <p className="mb-2 text-xs font-bold text-[#8aab8a]">
-                  {isAr ? "إرسال رسالة للجميع" : "Broadcast to all"}
-                </p>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={hackCustomMin}
+                  onChange={(e) => onSetHackCustomMin(e.target.value)}
+                  placeholder={isAr ? "مخصص" : "Custom"}
+                  className="w-24 rounded-xl border border-[#3dff8a]/25 bg-[#02140c] px-3 py-2.5 text-sm text-white focus:border-[#3dff8a]/50 focus:outline-none"
+                />
+              </div>
+              <motion.div className="border-t border-[#3dff8a]/20 pt-4">
+                <p className="mb-2 text-xs font-bold text-[#9fb89f]">{isAr ? "بث رسالة للطلاب" : "Broadcast to students"}</p>
                 <div className="flex gap-2">
                   <input
                     value={broadcastMessage}
                     onChange={(e) => onBroadcastMessageChange(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && onSendBroadcast()}
-                    placeholder={isAr ? "تلميح أو رسالة للطلاب…" : "Hint or message…"}
-                    className="min-w-0 flex-1 rounded-xl border border-[#1a3a25] bg-[#061b12] px-3 py-2 text-sm text-white placeholder:text-[#8aab8a]/60 focus:border-[#d4a63a]/40 focus:outline-none"
+                    placeholder={isAr ? "تلميح أو رسالة…" : "Hint or message…"}
+                    className="min-w-0 flex-1 rounded-xl border border-[#3dff8a]/20 bg-[#02140c] px-3 py-2.5 text-sm text-white placeholder:text-[#9fb89f]/50 focus:border-[#3dff8a]/40 focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={onSendBroadcast}
                     disabled={!broadcastMessage.trim()}
-                    className="shrink-0 rounded-xl bg-[#d4a63a] px-4 py-2 text-sm font-black text-[#061b12] disabled:opacity-40"
+                    className="shrink-0 rounded-xl bg-[#3dff8a] px-5 py-2.5 text-sm font-black text-[#031b11] disabled:opacity-40"
                   >
                     {broadcastSent ? (isAr ? "✓ أُرسل" : "✓ Sent") : isAr ? "بث" : "Send"}
                   </button>
                 </div>
                 {sentMessages.length > 0 && (
-                  <div className="mt-3 max-h-32 space-y-1 overflow-y-auto">
-                    <div className="mb-1 flex justify-between">
-                      <span className="text-[10px] text-[#8aab8a]">{isAr ? "سجل الرسائل" : "Message log"}</span>
+                  <motion.div className="mt-3 max-h-36 space-y-1 overflow-y-auto">
+                    <motion.div className="mb-1 flex justify-between">
+                      <span className="text-[10px] text-[#9fb89f]">{isAr ? "سجل الرسائل" : "Log"}</span>
                       <button type="button" onClick={onClearSentMessages} className="text-[10px] text-rose-400">
                         {isAr ? "مسح" : "Clear"}
                       </button>
-                    </div>
+                    </motion.div>
                     {sentMessages.map((msg) => (
                       <div
                         key={msg.id}
-                        className="flex gap-2 rounded-lg border border-[#1a3a25] bg-[#061b12]/80 px-2 py-1.5 text-xs text-[#8aab8a]"
+                        className="flex gap-2 rounded-lg border border-[#3dff8a]/15 bg-[#02140c]/80 px-2 py-1.5 text-xs"
                       >
-                        <span className="shrink-0 font-mono opacity-60">
+                        <span className="shrink-0 font-mono text-[#9fb89f]/60">
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <span className="flex-1 break-all text-white/90">{msg.text}</span>
@@ -692,11 +920,11 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                         </button>
                       </div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
               {players.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-[#1a3a25] pt-4">
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-[#3dff8a]/20 pt-4">
                   {players.map((p) => (
                     <button
                       key={p.name}
@@ -704,7 +932,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                       onClick={() => onKickPlayer(p.name)}
                       className={cn(
                         "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold",
-                        p.hasPassword ? "border-[#d4a63a]/40 text-[#d4a63a]" : "border-[#1a3a25] text-[#8aab8a]",
+                        p.hasPassword ? "border-[#3dff8a]/50 text-[#3dff8a]" : "border-[#3dff8a]/20 text-[#9fb89f]",
                       )}
                     >
                       <AvatarDisplay avatar={p.avatar} size="md" fallback="🧑" />
@@ -719,146 +947,144 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           {/* ── منطقة اللاعبين ── */}
           {!hackMode && (
             <motion.section
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="relative overflow-hidden rounded-3xl border border-[#1a3a25] bg-[#0d2818]/80 p-5 sm:p-7"
+              transition={{ delay: 0.12 }}
+              className="relative overflow-hidden rounded-[28px] border p-6 sm:p-8"
+              style={{
+                borderColor: P.border,
+                background: `linear-gradient(180deg, ${P.card} 0%, ${P.cardDeep} 100%)`,
+                boxShadow: "0 12px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(244,201,93,0.05)",
+                minHeight: 280,
+              }}
             >
-              <GoldParticles />
-              <motion.div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-black text-white sm:text-lg">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
-                <span className="rounded-full border border-[#1a3a25] bg-[#061b12] px-3 py-1 text-xs font-black text-[#d4a63a]">
-                  {players.length} / {MAX_LOBBY_PLAYERS}
-                </span>
-              </motion.div>
-
-              <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-[#061b12]">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: `linear-gradient(90deg, ${C.primary}, ${C.gold})` }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.max(playerProgressPct, players.length === 0 ? 4 : 8)}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-
-              {players.length === 0 ? (
-                <div className="relative flex flex-col items-center py-8 sm:py-12">
-                  <motion.div
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                    className="relative mb-5 flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-[#d4a63a]/35 bg-[#0a4d26]/40"
+              <GoldDust />
+              <div className="relative z-10">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-black text-white lg:text-xl">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
+                  <span
+                    className="rounded-full border px-4 py-1.5 text-xs font-black"
+                    style={{ borderColor: P.border, color: P.goldLight, background: "rgba(3,27,17,0.6)" }}
                   >
-                    <Users className="h-11 w-11 text-[#d4a63a]/80" />
-                    <motion.span
-                      className="absolute inset-0 rounded-full border border-[#d4a63a]/20"
-                      animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 2.5, repeat: Infinity }}
-                    />
-                  </motion.div>
-                  <p className="text-center text-sm font-black text-white sm:text-base">
-                    {isAr ? "بانتظار انضمام اللاعبين..." : "Waiting for players to join…"}
-                  </p>
-                  <p className="mt-2 max-w-sm text-center text-xs text-[#8aab8a]">
-                    {isAr
-                      ? `شارك الكود ${pin} أو امسح رمز QR للانضمام`
-                      : `Share code ${pin} or scan the QR code to join`}
-                  </p>
-                  <div className="mt-6 flex flex-wrap justify-center gap-4 text-[10px] font-bold text-[#8aab8a]">
-                    <span className="flex items-center gap-1">
-                      <Smartphone className="h-3.5 w-3.5 text-[#d4a63a]" />
-                      {isAr ? "انضمام سهل" : "Easy join"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3.5 w-3.5 text-[#d4a63a]" />
-                      {isAr ? "تجربة تفاعلية" : "Interactive"}
-                    </span>
-                  </div>
+                    {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب جاهز" : "ready"}
+                  </span>
                 </div>
-              ) : currentGameMode === "teams" && teamNames.length > 0 ? (
-                <div className="space-y-3">
-                  {teamNames.map((teamName) => {
-                    const teamPlayers = players.filter((p) => p.teamName === teamName);
-                    const isLocked = lockedTeams.includes(teamName);
-                    return (
-                      <div key={teamName} className="rounded-2xl border border-[#1a3a25] bg-[#061b12]/50 p-3">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="rounded-full bg-[#0a4d26] px-2.5 py-0.5 text-xs font-black text-[#d4a63a]">
-                            {teamName} · {teamPlayers.length}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => onToggleTeamLock(teamName)}
-                            className="flex items-center gap-1 rounded-lg border border-[#1a3a25] px-2 py-1 text-[11px] font-bold text-[#8aab8a]"
-                          >
-                            {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                            {isLocked ? (isAr ? "مقفل" : "Locked") : isAr ? "مفتوح" : "Open"}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {teamPlayers.map((p) => (
-                            <PlayerChip
-                              key={p.name}
-                              player={p}
-                              isAr={isAr}
-                              teamNames={teamNames}
-                              onKick={() => onKickPlayer(p.name)}
-                              onMove={(tn) => onMovePlayer(p.name, tn)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-wrap justify-center gap-2.5 sm:justify-start">
-                  <AnimatePresence>
-                    {players.map((p, i) => (
-                      <motion.div
-                        key={p.name}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.03 }}
-                      >
-                        <PlayerChip player={p} isAr={isAr} onKick={() => onKickPlayer(p.name)} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              )}
 
-              {humanCount > 0 && (
-                <p className="mt-4 text-center text-[11px] font-bold text-[#8aab8a]">
-                  {isAr ? `${humanCount} لاعب جاهز` : `${humanCount} player(s) ready`}
-                </p>
-              )}
+                <div className="mb-8 h-2 overflow-hidden rounded-full bg-[#02140c]">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${P.primary}, ${P.goldLight}, ${P.gold})`,
+                      boxShadow: "0 0 12px rgba(212,166,58,0.4)",
+                    }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(playerProgressPct, players.length === 0 ? 3 : 10)}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+
+                {players.length === 0 ? (
+                  <div className="flex flex-col items-center py-6 sm:py-10">
+                    <motion.div
+                      animate={{ scale: [1, 1.06, 1] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="relative mb-6 flex h-28 w-28 items-center justify-center"
+                    >
+                      <motion.span
+                        className="absolute inset-0 rounded-full border-2 border-dashed"
+                        style={{ borderColor: "rgba(212,166,58,0.35)" }}
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+                      />
+                      <div
+                        className="flex h-24 w-24 items-center justify-center rounded-full"
+                        style={{
+                          background: "linear-gradient(180deg, #0a4d26 0%, #02140c 100%)",
+                          boxShadow: "0 0 48px rgba(212,166,58,0.12), inset 0 1px 0 rgba(244,201,93,0.1)",
+                          border: "1px solid rgba(212,166,58,0.2)",
+                        }}
+                      >
+                        <Users className="h-12 w-12 text-[#d4a63a]/90" strokeWidth={1.5} />
+                      </div>
+                    </motion.div>
+                    <p className="text-center text-base font-black text-white sm:text-lg">
+                      {isAr ? "بانتظار انضمام اللاعبين..." : "Waiting for players to join…"}
+                    </p>
+                    <p className="mt-2 max-w-md text-center text-sm text-[#9fb89f]">
+                      {isAr ? "شارك كود اللعبة أو امسح رمز QR للانضمام" : "Share the game code or scan the QR code to join"}
+                    </p>
+                  </div>
+                ) : currentGameMode === "teams" && teamNames.length > 0 ? (
+                  <div className="space-y-4">
+                    {teamNames.map((teamName) => {
+                      const teamPlayers = players.filter((p) => p.teamName === teamName);
+                      const isLocked = lockedTeams.includes(teamName);
+                      return (
+                        <div
+                          key={teamName}
+                          className="rounded-2xl border p-4"
+                          style={{ borderColor: "rgba(212,166,58,0.15)", background: "rgba(2,20,12,0.5)" }}
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <span
+                              className="rounded-full px-3 py-1 text-xs font-black"
+                              style={{ background: P.primary, color: P.goldLight }}
+                            >
+                              {teamName} · {teamPlayers.length}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onToggleTeamLock(teamName)}
+                              className="flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold"
+                              style={{ borderColor: P.border, color: P.muted }}
+                            >
+                              {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                              {isLocked ? (isAr ? "مقفل" : "Locked") : isAr ? "مفتوح" : "Open"}
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {teamPlayers.map((p) => (
+                              <PlayerChip
+                                key={p.name}
+                                player={p}
+                                isAr={isAr}
+                                teamNames={teamNames}
+                                onKick={() => onKickPlayer(p.name)}
+                                onMove={(tn) => onMovePlayer(p.name, tn)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+                    <AnimatePresence>
+                      {players.map((p, i) => (
+                        <motion.div
+                          key={p.name}
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.04 }}
+                        >
+                          <PlayerChip player={p} isAr={isAr} onKick={() => onKickPlayer(p.name)} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+
+                {humanCount > 0 && players.length > 0 && (
+                  <p className="mt-6 text-center text-xs font-bold text-[#9fb89f]">
+                    {isAr ? `${humanCount} لاعب بشري جاهز للبدء` : `${humanCount} human player(s) ready`}
+                  </p>
+                )}
+              </div>
             </motion.section>
           )}
-
-          {/* تلميح سفلي */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-2 rounded-2xl border border-[#1a3a25] bg-[#0d2818]/60 px-4 py-3"
-          >
-            <Zap className="h-4 w-4 shrink-0 text-[#d4a63a]" />
-            <p className="flex-1 text-center text-xs font-semibold text-[#8aab8a]">
-              {isAr ? (
-                <>
-                  اللعبة جاهزة! انتظر انضمام المشاركين ثم اضغط{" "}
-                  <strong className="text-[#d4a63a]">ابدأ اللعبة</strong> في الأعلى.
-                </>
-              ) : (
-                <>
-                  Game ready! When players join, press <strong className="text-[#d4a63a]">Start game</strong> above.
-                </>
-              )}
-            </p>
-          </motion.div>
         </main>
-      </div>
+      </motion.div>
     </Layout>
   );
 }
@@ -877,20 +1103,27 @@ function PlayerChip({
   onMove?: (teamName: string) => void;
 }) {
   return (
-    <div
+    <motion.div
       role="button"
       tabIndex={0}
       onClick={onKick}
       onKeyDown={(e) => e.key === "Enter" && onKick()}
-      className="group flex cursor-pointer items-center gap-2 rounded-xl border border-[#1a3a25] bg-[#061b12]/80 px-3 py-2 transition-colors hover:border-[#d4a63a]/30"
+      whileHover={{ scale: 1.02 }}
+      className="group flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-[rgba(212,166,58,0.35)]"
+      style={{
+        borderColor: "rgba(212,166,58,0.18)",
+        background: "rgba(2,20,12,0.7)",
+      }}
     >
       <AvatarDisplay avatar={p.avatar} size="lg" fallback="🧑" />
       <span className="text-sm font-bold text-white">{p.name}</span>
       {p.isBot && (
-        <span className="rounded-full bg-[#1a3a25] px-1.5 py-0.5 text-[10px] font-bold text-[#8aab8a]">🤖</span>
+        <span className="rounded-full bg-[rgba(212,166,58,0.12)] px-2 py-0.5 text-[10px] font-bold text-[#9fb89f]">🤖</span>
       )}
       {p.teamName && !onMove && (
-        <span className="rounded-full bg-[#0a4d26] px-2 py-0.5 text-[10px] font-bold text-[#d4a63a]">{p.teamName}</span>
+        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: P.primary, color: P.goldLight }}>
+          {p.teamName}
+        </span>
       )}
       {onMove && teamNames && (
         <div className="relative" onClick={(e) => e.stopPropagation()}>
@@ -900,7 +1133,8 @@ function PlayerChip({
               const target = e.target.value;
               if (target && target !== p.teamName) onMove(target);
             }}
-            className="appearance-none rounded-lg border border-[#1a3a25] bg-[#0d2818] py-1 pe-6 ps-2 text-[11px] font-bold text-white"
+            className="appearance-none rounded-lg border py-1 pe-7 ps-2 text-[11px] font-bold text-white"
+            style={{ borderColor: "rgba(212,166,58,0.2)", background: P.cardDeep }}
           >
             {teamNames.map((tn) => (
               <option key={tn} value={tn}>
@@ -908,10 +1142,10 @@ function PlayerChip({
               </option>
             ))}
           </select>
-          <ArrowRightLeft className="pointer-events-none absolute end-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[#8aab8a]" />
+          <ArrowRightLeft className="pointer-events-none absolute end-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[#9fb89f]" />
         </div>
       )}
-      <Ban className="h-3.5 w-3.5 text-rose-400 opacity-0 transition-opacity group-hover:opacity-100" />
-    </div>
+      <Ban className="h-3.5 w-3.5 text-rose-400/80 opacity-0 transition-opacity group-hover:opacity-100" />
+    </motion.div>
   );
 }
