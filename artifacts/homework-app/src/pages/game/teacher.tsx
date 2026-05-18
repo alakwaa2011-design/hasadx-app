@@ -9,8 +9,9 @@ import { ClassSelector } from "@/components/teacher/class-selector";
 import RaceTrack from "@/components/race-track";
 import { playVictoryFanfare, playClapSound, playFireworkSound, playGameStartSound, playTimeUpSound, playHackMarathonLoop, stopHackMarathonLoop, toggleHackMusicMuted, getIsHackMusicMuted, getIsMuted } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
-import { GameQRCode, InlineQR } from "@/components/game-qr-code";
+import { InlineQR } from "@/components/game-qr-code";
 import { AvatarDisplay } from "@/components/avatar-display";
+import { WameethWaitingRoomUI } from "./wameeth-waiting-room-ui";
 
 interface GiftEvent {
   id: number;
@@ -801,529 +802,60 @@ export default function TeacherGame() {
 
   if (phase === "lobby") {
     const isAr = lang === "ar";
-
-    const ToggleRow = ({
-      icon, label, desc, children, divider = true,
-    }: { icon: React.ReactNode; label: string; desc?: string; children: React.ReactNode; divider?: boolean }) => (
-      <div style={{ borderBottom: divider ? "1px solid #E2E8E3" : "none" }}
-        className="flex items-center px-4 py-3.5 gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "#F0F4F1" }}>
-          {icon}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm" style={{ color: "#1A3A28" }}>{label}</p>
-          {desc && <p className="text-[11px] mt-0.5 leading-snug" style={{ color: "#7A9A85" }}>{desc}</p>}
-        </div>
-        <div className="flex-shrink-0">{children}</div>
-      </div>
-    );
-
-    const Toggle = ({ on, onClick, disabled = false }: { on: boolean; onClick: () => void; disabled?: boolean }) => (
-      <button onClick={onClick} disabled={disabled}
-        className="relative w-12 h-6 rounded-full transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{ background: on ? "#1A3A28" : "#D1D5DB" }}>
-        <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform"
-          style={dir === "rtl"
-            ? { right: "2px", transform: on ? "translateX(-24px)" : "translateX(0)" }
-            : { left: "2px", transform: on ? "translateX(24px)" : "translateX(0)" }} />
-      </button>
-    );
-
     return (
-      <Layout noHeader>
-        <div style={{ background: "#F0F4F1", direction: dir, minHeight: "100vh" }}>
-
-          {/* ── FIXED NAVBAR ── */}
-          <nav
-            className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-3 sm:px-6 h-14"
-            style={{ background: "#1A3A28", boxShadow: "0 2px 16px rgba(26,58,40,0.35)", direction: dir }}
-          >
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => { endGame(); setLocation("/teacher"); }}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-[13px] font-bold transition-colors"
-                style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
-              >
-                <Home className="w-4 h-4" />
-                <span className="hidden sm:inline">{isAr ? "الرئيسية" : "Home"}</span>
-              </button>
-              <button
-                onClick={() => setLang(isAr ? "en" : "ar")}
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
-                style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
-              >
-                <Languages className="w-4 h-4" />
-                {isAr ? "EN" : "ع"}
-              </button>
-            </div>
-            <div className="hidden sm:flex items-center gap-1.5 text-[14px] font-bold tracking-wide"
-              style={{ color: "rgba(255,255,255,0.6)" }}>
-              <DoorOpen className="w-4 h-4" />
-              {isAr ? "غرفة الانتظار" : "Waiting Room"}
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => { endGame(); setLocation("/teacher"); }}
-                className="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold border transition-colors hover:bg-red-500/20"
-                style={{ background: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)" }}
-              >
-                {isAr ? "إلغاء" : "Cancel"}
-              </button>
-              <motion.button
-                onClick={startGame}
-                disabled={players.length === 0}
-                animate={players.length > 0 ? { scale: [1, 1.05, 1], boxShadow: ["0 4px 18px rgba(255,193,75,0.55)", "0 6px 28px rgba(255,193,75,0.85)", "0 4px 18px rgba(255,193,75,0.55)"] } : undefined}
-                transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-5 sm:px-7 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none disabled:animate-none"
-                style={{ background: "linear-gradient(135deg, #FFD86B, #E8B84B 50%, #C9960C)", color: "#0D2118", border: "2px solid #FFD86B" }}
-              >
-                <PlayCircle className="w-5 h-5" />
-                {isAr ? "ابدأ اللعبة!" : "Start!"}
-              </motion.button>
-            </div>
-          </nav>
-
-          {/* ── PAGE CONTENT ── */}
-          <div className="max-w-[660px] mx-auto px-3 sm:px-4 pt-[76px] pb-14 flex flex-col gap-3">
-
-            {/* HERO CARD */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden rounded-[18px] p-4 sm:p-5 flex items-center justify-between gap-4"
-              style={{ background: "linear-gradient(135deg, #1A3A28 0%, #0F2318 60%, #0A1A12 100%)", minHeight: 160 }}>
-              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(232,184,75,0.08), transparent 70%)", pointerEvents: "none" }} />
-              <div className="flex-1 flex flex-col gap-2 relative z-10">
-                <p className="text-[11px] font-semibold tracking-widest uppercase"
-                  style={{ color: "rgba(232,184,75,0.7)" }}>
-                  {isAr ? "كود اللعبة" : "Game Code"}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button onClick={copyPin}
-                    className="p-1.5 rounded-lg transition-opacity hover:opacity-80 flex-shrink-0"
-                    style={{ background: "rgba(232,184,75,0.15)" }}>
-                    {copied
-                      ? <CheckCircle className="w-4 h-4" style={{ color: "#E8B84B" }} />
-                      : <Copy className="w-4 h-4" style={{ color: "#E8B84B" }} />}
-                  </button>
-                  <span className="font-black select-all" dir="ltr"
-                    style={{ fontFamily: "'Almarai', sans-serif", fontSize: "clamp(28px,7vw,40px)", color: "#E8B84B", letterSpacing: "8px", lineHeight: 1.1 }}>
-                    {pin}
-                  </span>
-                </div>
-                <button onClick={copyLink}
-                  className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all w-fit hover:opacity-90 active:scale-95"
-                  style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                  {linkCopied ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> : <Link2 className="w-3.5 h-3.5" />}
-                  {linkCopied ? (isAr ? "تم النسخ!" : "Copied!") : (isAr ? "نسخ رابط الانضمام" : "Copy Join Link")}
-                </button>
-              </div>
-              <div className="flex-shrink-0 relative z-10 flex flex-col items-center gap-1">
-                <div className="rounded-xl overflow-hidden" style={{ background: "white", padding: 6 }}>
-                  <GameQRCode
-                    url={`${window.location.origin}${import.meta.env.BASE_URL}game/join/${pin}`}
-                    pin={pin}
-                    size={100}
-                  />
-                </div>
-                <span className="text-[10px] font-bold tracking-widest"
-                  style={{ color: "rgba(232,184,75,0.5)" }}>{pin}</span>
-              </div>
-            </motion.div>
-
-            {/* SETTINGS CARD */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="rounded-2xl overflow-hidden"
-              style={{ background: "white", border: "1px solid #E2E8E3" }}>
-
-              <ToggleRow
-                icon={currentGameMode === "teams"
-                  ? <UsersRound className="w-4 h-4" style={{ color: "#1A3A28" }} />
-                  : <User className="w-4 h-4" style={{ color: "#1A3A28" }} />}
-                label={isAr ? "وضع اللعب" : "Play Mode"}
-              >
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black"
-                  style={{ background: "#1A3A28", color: "white" }}>
-                  {currentGameMode === "teams"
-                    ? (isAr ? (t.teacherGame.teamMode || "فرق") : "Teams")
-                    : (isAr ? (t.teacherGame.soloMode || "فردي") : "Solo")}
-                </span>
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<SkipForward className="w-4 h-4" style={{ color: "#1A3A28" }} />}
-                label={isAr ? "التنقل بين الأسئلة" : "Question Navigation"}
-              >
-                <div className="flex items-center rounded-xl p-0.5 gap-0.5"
-                  style={{ background: "#F0F4F1", border: "1px solid #E2E8E3" }}>
-                  {([{ val: true, ar: "تلقائي", en: "Auto" }, { val: false, ar: "يدوي", en: "Manual" }] as const).map(opt => (
-                    <button key={String(opt.val)} onClick={() => setAutoAdvance(opt.val)}
-                      className="px-3 py-1.5 rounded-[10px] text-xs font-bold transition-all"
-                      style={{ background: autoAdvance === opt.val ? "#1A3A28" : "transparent", color: autoAdvance === opt.val ? "white" : "#7A9A85" }}>
-                      {isAr ? opt.ar : opt.en}
-                    </button>
-                  ))}
-                </div>
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<Gift className="w-4 h-4" style={{ color: "#E8B84B" }} />}
-                label={isAr ? "الهدايا" : "Gifts"}
-                desc={isAr ? "هدية لكل ٣ إجابات صحيحة" : "Gift every 3 correct answers"}
-              >
-                <Toggle on={giftsEnabled} onClick={toggleGifts} disabled={hackMode} />
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<span className="text-base">🔐</span>}
-                label={isAr ? "لعبة الاختراق" : "Hack Mode"}
-                desc={isAr ? "كلمات سر وصناديق غامضة" : "Passwords + mystery boxes"}
-              >
-                <Toggle on={hackMode} onClick={toggleHackMode} />
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<Mic className="w-4 h-4" style={{ color: "#1A3A28" }} />}
-                label={isAr ? "قراءة صوتية" : "Read Aloud"}
-                desc={isAr ? "قراءة الأسئلة صوتياً" : "Read questions aloud"}
-              >
-                <Toggle on={ttsEnabled} onClick={() => setTtsEnabled(v => !v)} />
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<GraduationCap className="w-4 h-4" style={{ color: "#1A3A28" }} />}
-                label={isAr ? "الصف المستهدف" : "Target Class"}
-                desc={isAr ? "حدّد صفًا لقصر اللعبة على طلابه" : "Restrict the game to one class"}
-              >
-                <button
-                  onClick={() => setTargetClassEditing((v) => !v)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:opacity-90 active:scale-95"
-                  style={{
-                    background: targetClass ? "#1A3A28" : "#F0F4F1",
-                    color: targetClass ? "white" : "#7A9A85",
-                    border: "1px solid #E2E8E3",
-                  }}
-                >
-                  {targetClass || (isAr ? "أي صف" : "Any class")}
-                </button>
-              </ToggleRow>
-              {targetClassEditing && (
-                <div className="px-4 py-3 border-t" style={{ borderColor: "#E2E8E3", background: "#FAFBFA" }}>
-                  <ClassSelector
-                    value={targetClass}
-                    onChange={updateTargetClass}
-                    accent="#1A3A28"
-                    label={isAr ? "اختر الصف المستهدف" : "Choose target class"}
-                  />
-                  {targetClass && (
-                    <button
-                      onClick={() => updateTargetClass("")}
-                      className="mt-2 text-xs font-bold underline"
-                      style={{ color: "#7A9A85" }}
-                    >
-                      {isAr ? "إزالة تحديد الصف" : "Clear class targeting"}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <ToggleRow
-                icon={roomLocked
-                  ? <Lock className="w-4 h-4" style={{ color: "#1A3A28" }} />
-                  : <Unlock className="w-4 h-4" style={{ color: "#1A3A28" }} />}
-                label={isAr ? "قفل الغرفة" : "Lock Room"}
-                desc={isAr ? "منع انضمام طلاب جدد" : "Block new students from joining"}
-              >
-                <Toggle on={roomLocked} onClick={toggleRoomLock} />
-              </ToggleRow>
-
-              <ToggleRow
-                icon={<span className="text-base">🤖</span>}
-                label={isAr ? "لاعبون وهميون" : "Bot Players"}
-                divider={false}
-              >
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setBotCount(c => Math.max(0, c - 1))}
-                    className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors"
-                    style={{ background: "#F0F4F1", color: "#1A3A28", border: "1px solid #E2E8E3" }}>−</button>
-                  <input type="range" min={0} max={10} value={botCount}
-                    onChange={e => setBotCount(Number(e.target.value))}
-                    className="w-20 h-1.5 rounded-full appearance-none"
-                    style={{ accentColor: "#1A3A28" }} />
-                  <button onClick={() => setBotCount(c => Math.min(10, c + 1))}
-                    className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors"
-                    style={{ background: "#F0F4F1", color: "#1A3A28", border: "1px solid #E2E8E3" }}>+</button>
-                  <span className="text-xs font-black w-4 text-center" style={{ color: "#1A3A28" }}>{botCount}</span>
-                  <button onClick={addBots} disabled={isAddingBots || botCount === 0}
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-black transition-colors disabled:opacity-40 flex-shrink-0"
-                    style={{ background: "#1A3A28", color: "white" }}>
-                    {isAddingBots ? "…" : (isAr ? "إضافة" : "Add")}
-                  </button>
-                </div>
-              </ToggleRow>
-            </motion.div>
-
-            {/* HACK MARATHON DURATION (hack mode only) */}
-            {hackMode && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                className="rounded-2xl border border-green-800 bg-black p-5">
-                <div className="mb-5 pb-5 border-b border-green-900">
-                  <p className="text-green-400 font-mono text-xs mb-2 font-bold">
-                    {isAr ? "⏱ مدة الماراثون" : "⏱ MARATHON_DURATION"}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[5, 7, 10, 15].map(m => (
-                      <button key={m} onClick={() => { setHackDurationMin(m); setHackCustomMin(""); }}
-                        className={`px-4 py-2 rounded-lg font-mono text-sm font-bold border transition-colors ${!hackCustomMin && hackDurationMin === m ? "bg-green-500 text-black border-green-400" : "bg-zinc-950 text-green-400 border-green-900 hover:border-green-700"}`}>
-                        {m} {isAr ? "دقائق" : "min"}
-                      </button>
-                    ))}
-                    <div className="flex items-center gap-2 ms-2">
-                      <input type="number" min={1} max={120} value={hackCustomMin}
-                        onChange={e => setHackCustomMin(e.target.value)}
-                        placeholder={isAr ? "مخصص" : "custom"}
-                        className="w-20 px-3 py-2 bg-zinc-950 border border-green-900 rounded-lg text-green-300 font-mono text-sm focus:outline-none focus:border-green-500 placeholder:text-green-900" />
-                      <span className="text-green-700 font-mono text-xs">{isAr ? "دقيقة" : "min"}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-black font-mono text-green-400 flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    {isAr ? "الوكلاء المتصلون" : "CONNECTED_AGENTS"} ({players.length})
-                  </h2>
-                  {players.length > 0 && (
-                    <span className="text-green-700 font-mono text-xs">
-                      {players.filter(p => p.hasPassword).length}/{players.filter(p => !p.isBot).length} {isAr ? "جاهز" : "READY"}
-                    </span>
-                  )}
-                </div>
-                {players.length === 0 ? (
-                  <div className="text-center py-10">
-                    <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
-                      <Users className="w-12 h-12 mx-auto mb-3 text-green-900" />
-                      <p className="font-mono text-green-800 text-sm">{isAr ? "لا يوجد وكلاء بعد..." : "NO_AGENTS_YET..."}</p>
-                    </motion.div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {players.map((p, i) => (
-                      <motion.div key={p.name} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                        className={`group relative flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors font-mono text-sm ${p.hasPassword ? "bg-green-950/60 border-green-700 text-green-300" : "bg-zinc-950 border-zinc-800 text-zinc-500"}`}
-                        onClick={() => kickPlayer(p.name)}>
-                        <AvatarDisplay avatar={p.avatar} size="lg" />
-                        <span className="font-bold">{p.name}</span>
-                        {p.isBot && <span className="text-xs text-green-700">BOT</span>}
-                        {p.hasPassword
-                          ? <span className="text-green-500 text-xs">🔓</span>
-                          : !p.isBot && <motion.span animate={{ opacity: [1, 0.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="text-xs text-zinc-600">🔒</motion.span>}
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Ban className="w-3 h-3 text-red-600" />
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-5 pt-4 border-t border-green-900">
-                  <p className="text-green-700 font-mono text-xs mb-2 tracking-widest">
-                    📡 {isAr ? "إرسال رسالة للجميع" : "BROADCAST_TRANSMISSION"}
-                  </p>
-                  <div className="flex gap-2">
-                    <input value={broadcastMessage} onChange={e => setBroadcastMessage(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && sendBroadcast()}
-                      placeholder={isAr ? "اكتب تلميحاً أو رسالة للطلاب..." : "Type a hint or message to all students..."}
-                      className="flex-1 px-3 py-2 bg-zinc-950 border border-green-900 rounded-lg text-green-300 font-mono text-sm focus:outline-none focus:border-green-500 placeholder:text-green-900 min-w-0" />
-                    <button onClick={sendBroadcast} disabled={!broadcastMessage.trim()}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-black font-mono font-black text-sm rounded-lg transition-colors shrink-0">
-                      {broadcastSent ? (isAr ? "✓ أُرسل" : "✓ SENT") : (isAr ? "بث للجميع" : "BROADCAST")}
-                    </button>
-                  </div>
-                  {sentMessages.length > 0 && (
-                    <div className="mt-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="text-green-800 font-mono text-xs tracking-widest">
-                          📜 {isAr ? "سجل الرسائل المُرسلة" : "SENT_LOG"}
-                          <span className="text-green-900 ml-1">({sentMessages.length})</span>
-                        </p>
-                        <button onClick={() => setSentMessages([])}
-                          className="text-green-900 hover:text-red-400 font-mono text-xs transition-colors px-1.5 py-0.5 rounded hover:bg-red-400/10"
-                          title={isAr ? "مسح السجل" : "Clear log"}>
-                          {isAr ? "✕ مسح" : "✕ CLEAR"}
-                        </button>
-                      </div>
-                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
-                        <AnimatePresence initial={false}>
-                          {sentMessages.map(msg => (
-                            <motion.div key={msg.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-                              className="group flex items-start gap-2 px-2.5 py-1.5 rounded-lg font-mono text-xs"
-                              style={{ background: "rgba(0,255,65,0.04)", border: "1px solid rgba(0,255,65,0.10)" }}>
-                              <span className="text-green-800 shrink-0 mt-px">
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
-                              </span>
-                              <span className="text-green-300 break-all flex-1">{msg.text}</span>
-                              <button onClick={() => setSentMessages(prev => prev.filter(m => m.id !== msg.id))}
-                                className="shrink-0 opacity-0 group-hover:opacity-100 text-green-800 hover:text-red-400 transition-all leading-none mt-px"
-                                title={isAr ? "حذف الرسالة" : "Delete message"}>×</button>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* PLAYERS CARD (normal mode) */}
-            {!hackMode && (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-                className="rounded-2xl overflow-hidden"
-                style={{ background: "white", border: "1px solid #E2E8E3" }}>
-                <div className="flex items-center justify-between px-4 py-3.5"
-                  style={{ borderBottom: "1px solid #E2E8E3" }}>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" style={{ color: "#1A3A28" }} />
-                    <span className="font-black text-sm" style={{ color: "#1A3A28" }}>
-                      {isAr ? "اللاعبون المتصلون" : "Connected Players"}
-                    </span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black"
-                    style={{ background: "#1A3A28", color: "white" }}>
-                    {players.length}
-                  </span>
-                </div>
-                {players.length === 0 ? (
-                  <div className="py-12 flex flex-col items-center gap-3">
-                    <motion.div animate={{ scale: [1, 1.08, 1] }} transition={{ repeat: Infinity, duration: 1.8 }}
-                      className="w-14 h-14 rounded-full flex items-center justify-center"
-                      style={{ background: "#F0F4F1" }}>
-                      <Users className="w-7 h-7 opacity-30" style={{ color: "#1A3A28" }} />
-                    </motion.div>
-                    <p className="font-bold text-sm" style={{ color: "#7A9A85" }}>
-                      {isAr ? "في انتظار انضمام اللاعبين..." : "Waiting for players..."}
-                    </p>
-                    <p className="text-xs" style={{ color: "#A0B8A8" }}>
-                      {isAr ? `شارك الكود ${pin} مع المشاركين للانضمام إلى اللعبة` : `Share code ${pin} to join`}
-                    </p>
-                  </div>
-                ) : currentGameMode === "teams" && teamNames.length > 0 ? (
-                  <div className="p-4 space-y-3">
-                    {teamNames.map((teamName) => {
-                      const teamPlayers = players.filter((p) => p.teamName === teamName);
-                      const isLocked = lockedTeams.includes(teamName);
-                      return (
-                        <div key={teamName}
-                          className="rounded-xl"
-                          style={{ background: "#F8FAF9", border: "1px solid #E2E8E3" }}>
-                          <div className="flex items-center justify-between px-3 py-2"
-                            style={{ borderBottom: "1px solid #E2E8E3" }}>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[11px] px-2 py-0.5 rounded-full font-black"
-                                style={{ background: "#1A3A28", color: "white" }}>
-                                {teamName}
-                              </span>
-                              <span className="text-[11px] font-bold" style={{ color: "#7A9A85" }}>
-                                {teamPlayers.length}
-                              </span>
-                            </div>
-                            <button onClick={() => toggleTeamLock(teamName)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-colors"
-                              style={{
-                                background: isLocked ? "#FEE2E2" : "#F0F4F1",
-                                color: isLocked ? "#991B1B" : "#1A3A28",
-                                border: `1px solid ${isLocked ? "#FCA5A5" : "#E2E8E3"}`,
-                              }}
-                              title={isAr ? "قفل/فتح الفريق" : "Lock/Unlock team"}>
-                              {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                              <span>
-                                {isLocked
-                                  ? (isAr ? "مقفل" : "Locked")
-                                  : (isAr ? "مفتوح" : "Open")}
-                              </span>
-                            </button>
-                          </div>
-                          {teamPlayers.length === 0 ? (
-                            <div className="px-3 py-3 text-[11px] font-bold" style={{ color: "#A0B8A8" }}>
-                              {isAr ? "لا يوجد أعضاء بعد" : "No members yet"}
-                            </div>
-                          ) : (
-                            <div className="p-2 flex flex-wrap gap-2">
-                              {teamPlayers.map((p) => (
-                                <div key={p.name}
-                                  className="group relative flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                                  style={{ background: "white", border: "1px solid #E2E8E3" }}>
-                                  <AvatarDisplay avatar={p.avatar} size="lg" />
-                                  <span className="font-bold text-sm" style={{ color: "#1A3A28" }}>{p.name}</span>
-                                  {p.isBot && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "#E2E8E3", color: "#1A3A28" }}>🤖</span>}
-                                  <div className="relative">
-                                    <select
-                                      value={p.teamName || ""}
-                                      onChange={(e) => {
-                                        const target = e.target.value;
-                                        if (target && target !== p.teamName) movePlayer(p.name, target);
-                                      }}
-                                      className="appearance-none text-[11px] font-bold pl-2 pr-6 py-1 rounded-lg cursor-pointer"
-                                      style={{ background: "#F0F4F1", color: "#1A3A28", border: "1px solid #E2E8E3" }}
-                                      title={isAr ? "نقل إلى فريق آخر" : "Move to another team"}>
-                                      {teamNames.map((tn) => (
-                                        <option key={tn} value={tn}>{tn}</option>
-                                      ))}
-                                    </select>
-                                    <ArrowRightLeft className="w-3 h-3 absolute top-1/2 -translate-y-1/2 right-1.5 pointer-events-none" style={{ color: "#1A3A28" }} />
-                                  </div>
-                                  <button onClick={() => kickPlayer(p.name)}
-                                    className="opacity-40 hover:opacity-100 transition-opacity"
-                                    title={isAr ? "إخراج" : "Kick"}>
-                                    <Ban className="w-3.5 h-3.5 text-red-500" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-4 flex flex-wrap gap-2.5">
-                    {players.map((p, i) => (
-                      <motion.div key={p.name} initial={{ opacity: 0, scale: 0, rotate: -20 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} transition={{ type: "spring", delay: i * 0.05 }}
-                        className="group relative flex items-center gap-2 px-3.5 py-2 rounded-xl cursor-pointer transition-all hover:opacity-80"
-                        style={{ background: "#F0F4F1", border: "1px solid #E2E8E3" }}
-                        onClick={() => kickPlayer(p.name)}>
-                        <AvatarDisplay avatar={p.avatar} size="xl" />
-                        <span className="font-bold text-sm" style={{ color: "#1A3A28" }}>{p.name}</span>
-                        {p.isBot && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: "#E2E8E3", color: "#1A3A28" }}>🤖</span>}
-                        {p.teamName && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "#1A3A28", color: "white" }}>{p.teamName}</span>}
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Ban className="w-3.5 h-3.5 text-red-500" />
-                        </span>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* HINT STRIP */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-              className="rounded-[14px] px-4 py-3 flex items-center justify-between gap-2"
-              style={{ background: "#1A3A28" }}>
-              <Zap className="w-4 h-4 flex-shrink-0" style={{ color: "#E8B84B" }} />
-              <p className="text-xs font-semibold text-center flex-1" style={{ color: "rgba(255,255,255,0.75)" }}>
-                {isAr
-                  ? <>{`اللعبة جاهزة! انتظر انضمام المشاركين ثم اضغط `}<strong style={{ color: "#E8B84B" }}>ابدأ اللعبة</strong>{` في الأعلى لبدء التحدي.`}</>
-                  : <>{"Game ready! Wait for players to join, then press "}<strong style={{ color: "#E8B84B" }}>{"Start!"}</strong>{" above."}</>}
-              </p>
-              <Zap className="w-4 h-4 flex-shrink-0" style={{ color: "#E8B84B" }} />
-            </motion.div>
-
-          </div>
-        </div>
-      </Layout>
+      <WameethWaitingRoomUI
+        dir={dir}
+        isAr={isAr}
+        pin={pin}
+        players={players}
+        teamNames={teamNames}
+        lockedTeams={lockedTeams}
+        currentGameMode={currentGameMode}
+        autoAdvance={autoAdvance}
+        giftsEnabled={giftsEnabled}
+        hackMode={hackMode}
+        ttsEnabled={ttsEnabled}
+        roomLocked={roomLocked}
+        targetClass={targetClass}
+        targetClassEditing={targetClassEditing}
+        botCount={botCount}
+        isAddingBots={isAddingBots}
+        copied={copied}
+        linkCopied={linkCopied}
+        hackDurationMin={hackDurationMin}
+        hackCustomMin={hackCustomMin}
+        broadcastMessage={broadcastMessage}
+        broadcastSent={broadcastSent}
+        sentMessages={sentMessages}
+        t={t}
+        onHome={() => { endGame(); setLocation("/teacher"); }}
+        onToggleLang={() => setLang(isAr ? "en" : "ar")}
+        onEndGame={() => { endGame(); setLocation("/teacher"); }}
+        onStartGame={startGame}
+        onCopyPin={copyPin}
+        onCopyLink={copyLink}
+        onSetAutoAdvance={setAutoAdvance}
+        onToggleGifts={toggleGifts}
+        onToggleHackMode={toggleHackMode}
+        onToggleTts={toggleTts}
+        onToggleRoomLock={toggleRoomLock}
+        onSetTargetClassEditing={setTargetClassEditing}
+        onUpdateTargetClass={updateTargetClass}
+        onSetBotCount={setBotCount}
+        onAddBots={addBots}
+        onSetHackDurationMin={setHackDurationMin}
+        onSetHackCustomMin={setHackCustomMin}
+        onKickPlayer={kickPlayer}
+        onToggleTeamLock={toggleTeamLock}
+        onMovePlayer={movePlayer}
+        onBroadcastMessageChange={setBroadcastMessage}
+        onSendBroadcast={sendBroadcast}
+        onClearSentMessages={() => setSentMessages([])}
+        onRemoveSentMessage={(id) => setSentMessages((prev) => prev.filter((m) => m.id !== id))}
+      />
     );
   }
+
 
   if (phase === "question") {
     const timerPercent = question ? (timeLeft / question.duration) * 100 : 0;
