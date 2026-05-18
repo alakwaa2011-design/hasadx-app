@@ -57,14 +57,14 @@ const P = {
 } as const;
 
 const PAGE_BG =
-  "radial-gradient(ellipse 85% 55% at 50% -5%, rgba(12,72,42,0.45) 0%, transparent 52%), radial-gradient(ellipse 120% 90% at 50% 50%, transparent 35%, rgba(0,0,0,0.72) 100%), linear-gradient(180deg, #010805 0%, #02120c 40%, #031811 100%)";
+  "radial-gradient(ellipse 85% 55% at 50% -5%, rgba(12,72,42,0.4) 0%, transparent 50%), radial-gradient(ellipse 130% 95% at 50% 50%, transparent 28%, rgba(0,0,0,0.82) 100%), linear-gradient(180deg, #010805 0%, #02120c 40%, #031811 100%)";
 
 const HERO_CTA_STYLE: React.CSSProperties = {
-  background: "linear-gradient(180deg, #ffe08a 0%, #f4c95d 22%, #d4a63a 55%, #b8892a 100%)",
+  background: "linear-gradient(180deg, #ffe08a 0%, #f4c95d 18%, #d4a63a 50%, #a67c28 100%)",
   color: "#1a1008",
-  border: "2px solid #4a3518",
+  border: "2px solid #2a1c0a",
   boxShadow:
-    "0 0 28px rgba(244,201,93,0.65), 0 0 56px rgba(212,166,58,0.28), 0 6px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 4px rgba(0,0,0,0.2)",
+    "0 0 20px rgba(244,201,93,0.55), 0 0 42px rgba(212,166,58,0.2), 0 10px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -3px 8px rgba(0,0,0,0.28), inset 0 0 24px rgba(255,224,138,0.22)",
 };
 
 const MAX_LOBBY_PLAYERS = 20;
@@ -209,18 +209,26 @@ function HeroStartButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      whileHover={disabled ? undefined : { scale: 1.03, filter: "brightness(1.06)" }}
+      whileHover={disabled ? undefined : { scale: 1.045, y: -1 }}
       whileTap={disabled ? undefined : { scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 420, damping: 24 }}
       className={cn(
         "relative flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-black sm:px-7 sm:py-3 sm:text-[15px]",
         "disabled:cursor-not-allowed disabled:opacity-45",
+        !disabled && "hover:shadow-[0_0_36px_rgba(244,201,93,0.55),0_12px_36px_rgba(0,0,0,0.45)]",
         className,
       )}
       style={disabled ? { ...HERO_CTA_STYLE, opacity: 0.45 } : HERO_CTA_STYLE}
     >
       <span
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{ background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%)" }}
+        className="pointer-events-none absolute inset-0 rounded-xl opacity-50"
+        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(255,255,255,0.45) 0%, transparent 65%)" }}
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute inset-0 opacity-35"
+        style={{ background: "linear-gradient(105deg, transparent 28%, rgba(255,255,255,0.5) 50%, transparent 72%)" }}
+        aria-hidden
       />
       <Play className="relative h-4 w-4 fill-current sm:h-5 sm:w-5" />
       <span className="relative">{isAr ? "ابدأ اللعبة" : "Start game"}</span>
@@ -249,7 +257,7 @@ function SettingCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
       className={cn(
-        "flex min-h-[188px] flex-col items-center rounded-[20px] border p-5 text-center backdrop-blur-sm sm:min-h-[200px]",
+        "flex min-h-[188px] flex-1 flex-col items-center rounded-[20px] border p-5 text-center backdrop-blur-sm sm:min-h-[200px]",
         "lg:min-h-[210px] lg:rounded-[22px] lg:p-6 lg:transition-transform lg:hover:-translate-y-0.5",
         "lg:hover:shadow-[0_16px_48px_rgba(0,0,0,0.45),0_0_32px_rgba(212,166,58,0.1)]",
         "overflow-visible border-[rgba(212,166,58,0.28)] bg-gradient-to-b from-[#062415] via-[#041a0e] to-[#010805]",
@@ -257,16 +265,18 @@ function SettingCard({
         className,
       )}
     >
-      <div className="flex w-full flex-col items-center">
+      <motion.div className="flex w-full flex-1 flex-col items-center justify-between">
+        <motion.div className="flex w-full flex-col items-center">
         <IconCircle>{icon}</IconCircle>
-        <h3 className="mt-4 text-sm font-black tracking-tight text-white sm:text-[15px]">{title}</h3>
+        <h3 className="mt-5 text-sm font-black tracking-tight text-white sm:text-[15px]">{title}</h3>
         {desc ? (
-          <p className="mt-2 max-w-[92%] text-[11px] leading-relaxed text-[#a8c4ad] sm:text-xs">{desc}</p>
+          <p className="mt-3 max-w-[92%] text-[11px] leading-relaxed text-[#a8c4ad] sm:text-xs">{desc}</p>
         ) : (
-          <div className="mt-2 h-4" />
+          <div className="mt-3 h-3" aria-hidden />
         )}
-      </div>
-      <div className="mt-5 flex w-full items-center justify-center pt-1">{children}</div>
+        </motion.div>
+        <motion.div className="mt-6 flex w-full items-center justify-center pb-0.5 pt-2">{children}</motion.div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -315,20 +325,123 @@ function GoldDust({ dense }: { dense?: boolean }) {
   );
 }
 
-function CinematicArcs({ id }: { id: string }) {
+function CinematicArcs({ id, strong }: { id: string; strong?: boolean }) {
+  const op = strong ? [0.48, 0.4, 0.44] : [0.38, 0.32, 0.36];
   return (
     <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
       <defs>
         <linearGradient id={`${id}-arc`} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#d4a63a" stopOpacity="0" />
-          <stop offset="45%" stopColor="#f4c95d" stopOpacity="0.65" />
+          <stop offset="45%" stopColor="#f4c95d" stopOpacity="0.75" />
           <stop offset="100%" stopColor="#d4a63a" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d="M-40 90 Q 220 20 480 110" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.9" opacity="0.35" />
-      <path d="M 40 300 Q 320 230 600 290" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.7" opacity="0.28" />
-      <path d="M 720 40 Q 980 120 1240 60" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.8" opacity="0.32" />
+      <path d="M-40 90 Q 220 20 480 110" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="1" opacity={op[0]} />
+      <path d="M 40 300 Q 320 230 600 290" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.85" opacity={op[1]} />
+      <path d="M 720 40 Q 980 120 1240 60" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.9" opacity={op[2]} />
+      {strong && (
+        <path d="M 900 280 Q 1100 200 1280 260" fill="none" stroke={`url(#${id}-arc)`} strokeWidth="0.7" opacity="0.3" />
+      )}
     </svg>
+  );
+}
+
+function GlobalAmbientMotion() {
+  const floats = [
+    { t: "12%", l: "8%", d: 0, s: 1.5 },
+    { t: "68%", l: "15%", d: 1.2, s: 1 },
+    { t: "42%", r: "10%", d: 0.6, s: 1.2 },
+    { t: "82%", r: "18%", d: 1.8, s: 0.8 },
+    { t: "28%", l: "72%", d: 0.4, s: 1 },
+    { t: "55%", l: "88%", d: 1.4, s: 1.3 },
+  ];
+  const stars = [
+    { t: "8%", l: "22%", s: 10, d: 0 },
+    { t: "22%", r: "28%", s: 8, d: 0.5 },
+    { t: "75%", l: "35%", s: 9, d: 1 },
+    { t: "88%", r: "12%", s: 7, d: 1.6 },
+    { t: "48%", l: "5%", s: 8, d: 0.8 },
+  ];
+  return (
+  <>
+      {floats.map((p, i) => (
+        <motion.span
+          key={`f-${i}`}
+          className="pointer-events-none absolute rounded-full bg-[#f4c95d]"
+          style={{
+            top: p.t,
+            left: p.l,
+            right: p.r,
+            width: p.s,
+            height: p.s,
+            filter: "blur(2px)",
+            opacity: 0.2,
+          }}
+          animate={{ y: [0, -12, 0], opacity: [0.08, 0.22, 0.08] }}
+          transition={{ duration: 6 + i, repeat: Infinity, delay: p.d, ease: "easeInOut" }}
+        />
+      ))}
+      {stars.map((s, i) => (
+        <motion.svg
+          key={`s-${i}`}
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute text-[#f4c95d]"
+          style={{
+            top: s.t,
+            left: s.l,
+            right: s.r,
+            width: s.s,
+            height: s.s,
+            opacity: 0.35,
+            filter: "drop-shadow(0 0 4px rgba(244,201,93,0.6))",
+          }}
+          animate={{ opacity: [0.15, 0.55, 0.15], scale: [0.9, 1.1, 0.9], rotate: [0, 8, 0] }}
+          transition={{ duration: 3 + i * 0.35, repeat: Infinity, delay: s.d }}
+          aria-hidden
+        >
+          <line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+          <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        </motion.svg>
+      ))}
+    </>
+  );
+}
+
+function HeroLightRays() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="absolute left-1/2 top-1/2 h-[140%] w-24 -translate-x-1/2 -translate-y-1/2 origin-center"
+          style={{
+            background: `linear-gradient(180deg, transparent, rgba(244,201,93,${0.04 + i * 0.02}) 45%, transparent)`,
+            transform: `translate(-50%, -50%) rotate(${-18 + i * 18}deg)`,
+            filter: "blur(8px)",
+          }}
+          animate={{ opacity: [0.25, 0.5, 0.25] }}
+          transition={{ duration: 5 + i, repeat: Infinity, delay: i * 0.7, ease: "easeInOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function GameCodeGlow({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("relative", className)}>
+      <motion.div
+        className="pointer-events-none absolute inset-0 -inset-x-8 -inset-y-4"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 55% at 50% 50%, rgba(244,201,93,0.22) 0%, rgba(212,166,58,0.08) 40%, transparent 72%)",
+        }}
+        animate={{ opacity: [0.65, 1, 0.65] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+      <div className="relative z-10">{children}</div>
+    </div>
   );
 }
 
@@ -406,22 +519,22 @@ function GatheredSilhouettes({
 }) {
   const figures = compact
     ? [
-        { scale: 0.42, offset: -28, z: 1 },
-        { scale: 0.48, offset: -8, z: 2 },
-        { scale: 0.5, offset: 12, z: 3 },
-        { scale: 0.44, offset: 32, z: 2 },
-        { scale: 0.4, offset: 50, z: 1 },
+        { scale: 0.5, offset: -28, z: 1 },
+        { scale: 0.56, offset: -8, z: 2 },
+        { scale: 0.58, offset: 12, z: 3 },
+        { scale: 0.52, offset: 32, z: 2 },
+        { scale: 0.48, offset: 50, z: 1 },
       ]
     : [
-        { scale: 0.72, offset: -52, z: 1 },
-        { scale: 0.85, offset: -18, z: 2 },
-        { scale: 0.92, offset: 18, z: 3 },
-        { scale: 0.88, offset: 54, z: 2 },
-        { scale: 0.78, offset: 88, z: 1 },
-        { scale: 0.7, offset: 118, z: 1 },
+        { scale: 0.82, offset: -52, z: 1 },
+        { scale: 0.96, offset: -18, z: 2 },
+        { scale: 1.04, offset: 18, z: 3 },
+        { scale: 1, offset: 54, z: 2 },
+        { scale: 0.9, offset: 88, z: 1 },
+        { scale: 0.82, offset: 118, z: 1 },
       ];
-  const h = compact ? 72 : 130;
-  const w = compact ? 140 : 240;
+  const h = compact ? 84 : 155;
+  const w = compact ? 160 : 275;
 
   return (
     <div
@@ -438,7 +551,7 @@ function GatheredSilhouettes({
             transform: "translateX(-50%)",
             height: `${160 * f.scale}px`,
             width: `${72 * f.scale}px`,
-            opacity: compact ? 0.22 : 0.18,
+            opacity: compact ? 0.3 : 0.26,
             zIndex: f.z,
             marginLeft: i > 0 ? -12 : 0,
           }}
@@ -448,21 +561,40 @@ function GatheredSilhouettes({
   );
 }
 
+function PlayersZoneCenterGlow() {
+  return (
+    <motion.div
+      className="pointer-events-none absolute left-1/2 top-[48%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full sm:h-72 sm:w-72"
+      style={{
+        background:
+          "radial-gradient(circle, rgba(244,201,93,0.14) 0%, rgba(212,166,58,0.05) 45%, transparent 70%)",
+      }}
+      animate={{ opacity: [0.5, 0.85, 0.5], scale: [1, 1.06, 1] }}
+      transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      aria-hidden
+    />
+  );
+}
+
 function PlayersZoneDecor() {
   return (
     <>
-      <CinematicArcs id="wameeth-zone" />
+      <CinematicArcs id="wameeth-zone" strong />
       <GoldDust dense />
       <SparkleStars variant="players" />
       <motion.div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        style={{ background: "radial-gradient(ellipse 70% 55% at 50% 45%, rgba(212,166,58,0.06) 0%, transparent 65%)" }}
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 85% 70% at 50% 50%, transparent 35%, rgba(0,0,0,0.45) 100%), radial-gradient(ellipse 55% 45% at 50% 48%, rgba(212,166,58,0.08) 0%, transparent 68%)",
+        }}
         aria-hidden
       />
-      <GatheredSilhouettes className="absolute bottom-4 end-2 z-[1] sm:bottom-6 sm:end-6 md:end-10" />
+      <PlayersZoneCenterGlow />
+      <GatheredSilhouettes className="absolute bottom-2 end-0 z-[2] sm:bottom-4 sm:end-4 md:end-8" />
       <GatheredSilhouettes
         compact
-        className="absolute bottom-8 end-[14%] z-[1] hidden scale-110 opacity-95 sm:flex"
+        className="absolute bottom-6 end-[12%] z-[2] hidden scale-[1.15] opacity-100 sm:flex"
       />
     </>
   );
@@ -535,25 +667,31 @@ function BrandLogoBlock({ isAr }: { isAr: boolean }) {
 function HeroAtmosphere() {
   return (
     <>
-      <CinematicArcs id="wameeth-hero" />
+      <CinematicArcs id="wameeth-hero" strong />
+      <HeroLightRays />
       <GoldDust dense />
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 55% 45% at 50% 42%, rgba(244,201,93,0.12) 0%, transparent 70%), radial-gradient(ellipse 90% 60% at 50% 100%, rgba(0,0,0,0.5) 0%, transparent 55%)",
+            "radial-gradient(ellipse 50% 42% at 50% 40%, rgba(244,201,93,0.14) 0%, transparent 65%), radial-gradient(ellipse 95% 75% at 50% 50%, transparent 28%, rgba(0,0,0,0.58) 100%), radial-gradient(ellipse 90% 60% at 50% 100%, rgba(0,0,0,0.55) 0%, transparent 55%)",
         }}
+        aria-hidden
       />
     </>
   );
 }
 
-function HackCyberTexture() {
+function HackCyberTexture({ active }: { active?: boolean }) {
   return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]" aria-hidden>
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      style={{ opacity: active ? 0.09 : 0.045 }}
+      aria-hidden
+    >
       <defs>
-        <pattern id="wameeth-cyber-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-          <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#3dff8a" strokeWidth="0.35" />
+        <pattern id="wameeth-cyber-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#3dff8a" strokeWidth="0.3" />
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill="url(#wameeth-cyber-grid)" />
@@ -581,31 +719,35 @@ function HackSettingCard({
       transition={{ delay: 0.1 }}
       className={cn(
         SETTING_CARD_DESKTOP,
-        "relative flex min-h-[188px] flex-col items-center overflow-hidden rounded-[20px] border-2 p-5 text-center sm:min-h-[200px] sm:rounded-[22px]",
+        "relative flex min-h-[188px] flex-1 flex-col items-center justify-between overflow-hidden rounded-[20px] border-2 p-5 text-center sm:min-h-[200px] sm:rounded-[22px]",
         hackMode ? "border-[#3dff8a]/75" : "border-[#3dff8a]/35",
         "bg-gradient-to-b from-[#010a06] via-[#021208] to-[#010805]",
         className,
       )}
       style={{
         boxShadow: hackMode
-          ? "0 0 48px rgba(61,255,138,0.28), inset 0 0 40px rgba(61,255,138,0.08)"
-          : "0 0 24px rgba(61,255,138,0.12), 0 8px 32px rgba(0,0,0,0.4)",
+          ? "0 0 40px rgba(61,255,138,0.22), inset 0 0 32px rgba(61,255,138,0.06)"
+          : "0 0 18px rgba(61,255,138,0.1), 0 8px 32px rgba(0,0,0,0.4)",
       }}
     >
-      <HackCyberTexture />
-      {hackMode && (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-          {[0, 1, 2, 3].map((i) => (
-            <motion.span
-              key={i}
-              className="absolute rounded-full bg-[#3dff8a]"
-              style={{ top: `${20 + i * 22}%`, left: `${15 + i * 18}%`, width: 3, height: 3, opacity: 0.35 }}
-              animate={{ opacity: [0.15, 0.5, 0.15] }}
-              transition={{ duration: 2 + i * 0.4, repeat: Infinity }}
-            />
-          ))}
-        </div>
-      )}
+      <HackCyberTexture active={hackMode} />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="absolute rounded-full bg-[#3dff8a]"
+            style={{
+              top: `${22 + i * 24}%`,
+              left: `${18 + i * 20}%`,
+              width: 2,
+              height: 2,
+              opacity: hackMode ? 0.28 : 0.12,
+            }}
+            animate={{ opacity: hackMode ? [0.12, 0.35, 0.12] : [0.06, 0.18, 0.06] }}
+            transition={{ duration: 2.5 + i * 0.5, repeat: Infinity }}
+          />
+        ))}
+      </div>
       <motion.div
         className={cn(
           "relative z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 lg:h-14 lg:w-14",
@@ -624,19 +766,19 @@ function HackSettingCard({
           <LockKeyhole className="h-6 w-6 text-[#3dff8a]/80" strokeWidth={2} />
         )}
       </motion.div>
-      <h3 className="relative z-10 mt-4 text-sm font-black text-white sm:text-[15px]">
+      <h3 className="relative z-10 mt-5 text-sm font-black text-white sm:text-[15px]">
         {isAr ? "لعبة الاختراق" : "Hack game"}
       </h3>
       {!hackMode ? (
-        <p className="relative z-10 mt-2 max-w-[90%] text-[11px] leading-relaxed text-[#7a9a82] sm:text-xs">
+        <p className="relative z-10 mt-3 max-w-[90%] text-[11px] leading-relaxed text-[#7a9a82] sm:text-xs">
           {isAr ? "كلمات سر وصناديق غامضة" : "Passwords & mystery boxes"}
         </p>
       ) : (
-        <motion.div className="relative z-10 mt-2 h-4" />
+        <div className="relative z-10 mt-3 h-3" aria-hidden />
       )}
-      <motion.div className="relative z-10 mt-5 flex w-full justify-center">
+      <div className="relative z-10 mt-6 flex w-full justify-center pb-0.5">
         <GoldToggle on={hackMode} onClick={onToggle} dir={dir} large />
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -780,9 +922,10 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 100% 80% at 50% 50%, transparent 42%, rgba(0,0,0,0.55) 100%)",
+              "radial-gradient(ellipse 100% 80% at 50% 50%, transparent 32%, rgba(0,0,0,0.68) 100%)",
           }}
         />
+        <GlobalAmbientMotion />
         {/* ── Header (mobile) ── */}
         <header
           className="sticky top-0 z-50 border-b backdrop-blur-xl lg:hidden"
@@ -900,18 +1043,20 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
             />
             <div className="relative z-10 flex flex-col items-center px-5 py-7 sm:py-8" dir={dir}>
               <p className="text-xs font-bold tracking-[0.2em] text-[#9fb89f]">{isAr ? "كود اللعبة" : "Game code"}</p>
-              <span
-                className="mt-3 select-all font-black tabular-nums text-[#f4c95d]"
-                dir="ltr"
-                style={{
-                  fontSize: "clamp(3rem, 14vw, 4.25rem)",
-                  letterSpacing: "0.2em",
-                  lineHeight: 1,
-                  textShadow: "0 0 48px rgba(244,201,93,0.4), 0 2px 0 rgba(0,0,0,0.35)",
-                }}
-              >
-                {pin}
-              </span>
+              <GameCodeGlow className="mt-3 w-full">
+                <span
+                  className="block select-all text-center font-black tabular-nums text-[#f4c95d]"
+                  dir="ltr"
+                  style={{
+                    fontSize: "clamp(3rem, 14vw, 4.25rem)",
+                    letterSpacing: "0.2em",
+                    lineHeight: 1,
+                    textShadow: "0 0 56px rgba(244,201,93,0.5), 0 0 100px rgba(212,166,58,0.2), 0 2px 0 rgba(0,0,0,0.35)",
+                  }}
+                >
+                  {pin}
+                </span>
+              </GameCodeGlow>
               <div className="relative mt-6 flex w-full max-w-[140px] flex-col items-center">
                 <SparkleStars variant="heroQr" />
                 <div
@@ -1031,30 +1176,33 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#9fb89f]">
                   {isAr ? "كود اللعبة" : "Game code"}
                 </p>
-                <motion.div className="flex items-center gap-3" dir="ltr">
-                  <button
-                    type="button"
-                    onClick={onCopyPin}
-                    className="rounded-xl border border-[rgba(212,166,58,0.35)] bg-[rgba(212,166,58,0.1)] p-2.5 transition-all hover:bg-[rgba(212,166,58,0.2)] hover:shadow-[0_0_20px_rgba(212,166,58,0.2)]"
-                  >
-                    {copied ? (
-                      <CheckCircle className="h-5 w-5 text-[#f4c95d]" />
-                    ) : (
-                      <Copy className="h-5 w-5 text-[#d4a63a]" />
-                    )}
-                  </button>
-                  <span
-                    className="select-all font-black tabular-nums text-[#f4c95d]"
-                    style={{
-                      fontSize: "clamp(2.75rem, 10vw, 4.5rem)",
-                      letterSpacing: "0.22em",
-                      lineHeight: 1,
-                      textShadow: "0 0 40px rgba(244,201,93,0.35), 0 2px 0 rgba(0,0,0,0.3)",
-                    }}
-                  >
-                    {pin}
-                  </span>
-                </motion.div>
+                <GameCodeGlow>
+                  <motion.div className="flex items-center gap-3" dir="ltr">
+                    <button
+                      type="button"
+                      onClick={onCopyPin}
+                      className="rounded-xl border border-[rgba(212,166,58,0.35)] bg-[rgba(212,166,58,0.1)] p-2.5 transition-all hover:bg-[rgba(212,166,58,0.2)] hover:shadow-[0_0_20px_rgba(212,166,58,0.2)]"
+                    >
+                      {copied ? (
+                        <CheckCircle className="h-5 w-5 text-[#f4c95d]" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-[#d4a63a]" />
+                      )}
+                    </button>
+                    <span
+                      className="select-all font-black tabular-nums text-[#f4c95d]"
+                      style={{
+                        fontSize: "clamp(2.75rem, 10vw, 4.5rem)",
+                        letterSpacing: "0.22em",
+                        lineHeight: 1,
+                        textShadow:
+                          "0 0 56px rgba(244,201,93,0.5), 0 0 100px rgba(212,166,58,0.2), 0 2px 0 rgba(0,0,0,0.3)",
+                      }}
+                    >
+                      {pin}
+                    </span>
+                  </motion.div>
+                </GameCodeGlow>
                 <button
                   type="button"
                   onClick={onCopyLink}
@@ -1121,6 +1269,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                     accent={P.gold}
                     label=""
                     portaled
+                    variant="cinematic"
                     className="[&_label]:hidden"
                   />
                 </div>
@@ -1577,11 +1726,15 @@ function PlayerChip({
       tabIndex={0}
       onClick={onKick}
       onKeyDown={(e) => e.key === "Enter" && onKick()}
-      whileHover={{ scale: 1.02 }}
-      className="group flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-colors hover:border-[rgba(212,166,58,0.35)]"
+      whileHover={{
+        scale: 1.03,
+        boxShadow: "0 0 24px rgba(212,166,58,0.2), 0 4px 20px rgba(0,0,0,0.35)",
+      }}
+      className="group flex cursor-pointer items-center gap-2.5 rounded-full border px-4 py-2.5 backdrop-blur-md transition-all duration-300 hover:border-[rgba(244,201,93,0.4)]"
       style={{
-        borderColor: "rgba(212,166,58,0.18)",
-        background: "rgba(2,20,12,0.7)",
+        borderColor: "rgba(212,166,58,0.22)",
+        background: "rgba(3,27,17,0.45)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)",
       }}
     >
       <AvatarDisplay avatar={p.avatar} size="lg" fallback="🧑" />
