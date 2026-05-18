@@ -55,7 +55,8 @@ const P = {
 
 const MAX_LOBBY_PLAYERS = 20;
 
-const SETTING_CARD_LG = "lg:w-[min(188px,13.5vw)] lg:shrink-0";
+/** ديسكتوب: صف واحد | تابلت: شبكة 3 أعمدة (صفان) | جوال: عمودان */
+const SETTING_CARD_DESKTOP = "xl:w-[min(188px,13.5vw)] xl:shrink-0";
 
 export type LobbyPlayer = {
   name: string;
@@ -776,9 +777,9 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
             transition={{ delay: 0.05 }}
             className="relative overflow-visible rounded-[20px] border px-4 py-4 sm:rounded-[22px] sm:px-6 sm:py-5"
             style={{
-              borderColor: P.border,
+              borderColor: "rgba(212,166,58,0.32)",
               background: `linear-gradient(90deg, ${P.card} 0%, #062818 50%, ${P.cardDeep} 100%)`,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(244,201,93,0.06)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3), 0 0 28px rgba(212,166,58,0.06), inset 0 1px 0 rgba(244,201,93,0.06)",
               minHeight: 88,
             }}
           >
@@ -839,10 +840,10 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               <h2 className="text-base font-black text-white lg:text-lg">{isAr ? "إعدادات اللعبة" : "Game settings"}</h2>
             </div>
 
-            <div className="-mx-1 overflow-x-auto overflow-y-visible pb-2 lg:mx-0">
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:flex lg:min-w-max lg:flex-nowrap lg:gap-4">
+            <div className="-mx-1 overflow-x-auto overflow-y-visible pb-2 xl:mx-0">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-3 xl:flex xl:min-w-max xl:flex-nowrap xl:gap-4">
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.04}
                 icon={
                   currentGameMode === "teams" ? (
@@ -869,7 +870,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.06}
                 icon={<SkipForward className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "التنقل بين الأسئلة" : "Question navigation"}
@@ -887,7 +888,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.08}
                 icon={<Gift className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "الهدايا" : "Gifts"}
@@ -902,7 +903,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
                 className={cn(
-                  SETTING_CARD_LG,
+                  SETTING_CARD_DESKTOP,
                   "flex min-h-[188px] flex-col rounded-[20px] border-2 p-4 backdrop-blur-sm sm:min-h-[200px] sm:rounded-[22px] sm:p-5",
                   "lg:hover:-translate-y-1 lg:transition-transform",
                   hackMode
@@ -945,7 +946,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </motion.div>
 
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.12}
                 icon={<Mic className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "قراءة صوتية" : "Voice reading"}
@@ -955,7 +956,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.16}
                 icon={
                   roomLocked ? (
@@ -971,7 +972,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
-                className={SETTING_CARD_LG}
+                className={SETTING_CARD_DESKTOP}
                 delay={0.18}
                 icon={<Bot className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "لاعبون وهميون" : "Bot players"}
@@ -1136,32 +1137,23 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               }}
             >
               <PlayersZoneDecor />
-              <div className="relative z-10">
+              <div className="relative z-10 flex min-h-[280px] flex-col">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-black text-white sm:text-xl">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
-                  {players.length > 0 ? (
-                    <span
-                      className="rounded-full border px-4 py-1.5 text-xs font-black"
-                      style={{ borderColor: P.border, color: P.goldLight, background: "rgba(3,27,17,0.75)" }}
-                    >
-                      {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب جاهز" : "ready"}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className="mb-7 h-3 overflow-hidden rounded-full border border-[rgba(212,166,58,0.12)] bg-[#010a06] sm:mb-8">
-                  <motion.div
-                    className="h-full rounded-full"
+                  <span
+                    className="rounded-xl border px-4 py-2 text-xs font-black sm:text-sm"
                     style={{
-                      background: `linear-gradient(90deg, #0a4d26, ${P.goldLight}, ${P.gold})`,
-                      boxShadow: "0 0 16px rgba(212,166,58,0.45)",
+                      borderColor: P.border,
+                      color: P.goldLight,
+                      background: "rgba(3,27,17,0.8)",
+                      boxShadow: "0 0 20px rgba(212,166,58,0.08)",
                     }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.max(playerProgressPct, players.length === 0 ? 3 : 10)}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                  />
+                  >
+                    {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب حاضر" : "players present"}
+                  </span>
                 </div>
 
+                <div className="flex flex-1 flex-col justify-center">
                 {players.length === 0 ? (
                   <div className="flex flex-col items-center py-4 sm:py-10">
                     <motion.div
@@ -1259,6 +1251,20 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                     {isAr ? `${humanCount} لاعب بشري جاهز للبدء` : `${humanCount} human player(s) ready`}
                   </p>
                 )}
+                </div>
+
+                <div className="mt-6 h-3 overflow-hidden rounded-full border border-[rgba(212,166,58,0.15)] bg-[#010a06] sm:mt-8 sm:h-3.5">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{
+                      background: `linear-gradient(90deg, #0a4d26, ${P.goldLight}, ${P.gold})`,
+                      boxShadow: "0 0 16px rgba(212,166,58,0.45)",
+                    }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.max(playerProgressPct, players.length === 0 ? 3 : 10)}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
               </div>
             </motion.section>
           )}
