@@ -179,7 +179,7 @@ const ONLINE_THRESHOLD_MS = 180_000; // 180s without heartbeat → offline
 const ONLINE_CLEANUP_INTERVAL_MS = 60_000; // sweep every 60s
 
 /** Keep the online_sessions table small: drop rows we haven't seen in
- *  >10 minutes (way past the 90s offline cutoff used for "online now"). */
+ *  >10 minutes (way past the 180s offline cutoff used for "online now"). */
 export function startOnlineSessionsCleanupJob(): void {
   const run = async () => {
     try {

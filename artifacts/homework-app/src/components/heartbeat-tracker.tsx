@@ -21,6 +21,13 @@ const SKIP_PREFIXES = [
   "/share",
   "/embed",
   "/present/",
+  // Live presentation player + join routes (task #616 acceptance: these
+  // are presence-sensitive, so we keep heartbeat off entirely the way
+  // /play and /student-play already do — student presence is tracked by
+  // the live-session socket, not by the HTTP heartbeat).
+  "/p/play",
+  "/p/join",
+  "/p/show",
 ];
 
 function shouldTrack(pathname: string): boolean {
