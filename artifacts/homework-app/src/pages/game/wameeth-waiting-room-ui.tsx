@@ -600,6 +600,28 @@ function PlayersZoneDecor() {
   );
 }
 
+function HeroPlayersSideDecor() {
+  return (
+    <div className="pointer-events-none absolute -right-2 top-1/2 z-0 h-[148px] w-[88px] -translate-y-1/2 sm:-right-4" aria-hidden>
+      <svg className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 88 148">
+        <defs>
+          <linearGradient id="wameeth-hero-players-arc" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#d4a63a" stopOpacity="0" />
+            <stop offset="50%" stopColor="#f4c95d" stopOpacity="0.7" />
+            <stop offset="100%" stopColor="#d4a63a" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M 8 24 Q 52 8 78 48" fill="none" stroke="url(#wameeth-hero-players-arc)" strokeWidth="1" opacity="0.55" />
+        <path d="M 12 92 Q 48 72 82 118" fill="none" stroke="url(#wameeth-hero-players-arc)" strokeWidth="0.85" opacity="0.4" />
+        <circle cx="72" cy="36" r="1.5" fill="#f4c95d" opacity="0.65" />
+        <circle cx="80" cy="78" r="1.2" fill="#f4c95d" opacity="0.5" />
+        <circle cx="64" cy="112" r="1.4" fill="#d4a63a" opacity="0.55" />
+      </svg>
+      <GatheredSilhouettes compact className="absolute bottom-0 right-0 scale-[0.72] opacity-[0.38]" />
+    </div>
+  );
+}
+
 function ConnectedPlayersBadge({
   count,
   isAr,
@@ -608,41 +630,46 @@ function ConnectedPlayersBadge({
   isAr: boolean;
 }) {
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="relative flex min-w-[120px] flex-col items-center px-3 py-2 text-center">
+      <HeroPlayersSideDecor />
       <SparkleStars variant="heroPlayers" />
-      <div className="relative flex w-[168px] flex-col items-center">
-        <GatheredSilhouettes compact className="relative z-20 -mb-3" />
-        <motion.div
-          animate={{ scale: [1, 1.03, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="relative z-10 flex w-full flex-col items-center justify-center rounded-full border-2 px-4 pb-5 pt-8 text-center"
-          style={{
-            borderColor: "rgba(244,201,93,0.45)",
-            background: "radial-gradient(circle at 50% 35%, rgba(10,77,38,0.9) 0%, #021408 70%)",
-            boxShadow:
-              "0 0 48px rgba(244,201,93,0.35), 0 0 88px rgba(212,166,58,0.2), inset 0 1px 0 rgba(255,224,138,0.15)",
-            minHeight: 132,
-          }}
-        >
-          <motion.div
-            className="pointer-events-none absolute inset-2 rounded-full"
-            style={{
-              background: "radial-gradient(circle, rgba(244,201,93,0.12) 0%, transparent 70%)",
-            }}
-            aria-hidden
+
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="relative flex h-[72px] w-full items-end justify-center">
+          <GatheredSilhouettes
+            compact
+            className="absolute bottom-0 left-1/2 z-0 -translate-x-1/2 scale-[0.62] opacity-[0.42]"
           />
-          <p
-            className="relative font-black tabular-nums text-[#f4c95d]"
+          <motion.div
+            animate={{
+              boxShadow: [
+                "0 0 20px rgba(212,166,58,0.15)",
+                "0 0 28px rgba(244,201,93,0.28)",
+                "0 0 20px rgba(212,166,58,0.15)",
+              ],
+            }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+            className="relative z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full border-2"
             style={{
-              fontSize: "2.25rem",
-              lineHeight: 1,
-              textShadow: "0 0 28px rgba(244,201,93,0.5)",
+              borderColor: "rgba(212,166,58,0.5)",
+              background: "radial-gradient(145deg, rgba(10,77,38,0.92) 0%, #021408 85%)",
             }}
           >
-            {count}
-          </p>
-          <p className="relative mt-1.5 text-sm font-bold text-[#a8c4ad]">{isAr ? "لاعب متصل" : "player(s) joined"}</p>
-        </motion.div>
+            <Users className="h-[26px] w-[26px] text-[#f4c95d]" strokeWidth={1.75} />
+          </motion.div>
+        </div>
+
+        <p
+          className="mt-3 font-black tabular-nums text-white"
+          style={{
+            fontSize: "clamp(2.25rem, 4vw, 2.75rem)",
+            lineHeight: 1,
+            textShadow: "0 2px 12px rgba(0,0,0,0.35)",
+          }}
+        >
+          {count}
+        </p>
+        <p className="mt-1.5 text-sm font-bold text-white/95">{isAr ? "لاعب متصل" : "Connected"}</p>
       </div>
     </div>
   );
@@ -1177,18 +1204,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                   {isAr ? "كود اللعبة" : "Game code"}
                 </p>
                 <GameCodeGlow>
-                  <motion.div className="flex items-center gap-3" dir="ltr">
-                    <button
-                      type="button"
-                      onClick={onCopyPin}
-                      className="rounded-xl border border-[rgba(212,166,58,0.35)] bg-[rgba(212,166,58,0.1)] p-2.5 transition-all hover:bg-[rgba(212,166,58,0.2)] hover:shadow-[0_0_20px_rgba(212,166,58,0.2)]"
-                    >
-                      {copied ? (
-                        <CheckCircle className="h-5 w-5 text-[#f4c95d]" />
-                      ) : (
-                        <Copy className="h-5 w-5 text-[#d4a63a]" />
-                      )}
-                    </button>
+                  <motion.div className="flex items-center justify-center gap-3" dir="ltr">
                     <span
                       className="select-all font-black tabular-nums text-[#f4c95d]"
                       style={{
@@ -1201,6 +1217,18 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                     >
                       {pin}
                     </span>
+                    <button
+                      type="button"
+                      onClick={onCopyPin}
+                      className="shrink-0 rounded-full border border-[rgba(212,166,58,0.4)] bg-[rgba(212,166,58,0.08)] p-2.5 transition-all hover:bg-[rgba(212,166,58,0.18)] hover:shadow-[0_0_20px_rgba(212,166,58,0.22)]"
+                      aria-label={isAr ? "نسخ كود اللعبة" : "Copy game code"}
+                    >
+                      {copied ? (
+                        <CheckCircle className="h-5 w-5 text-[#f4c95d]" />
+                      ) : (
+                        <Copy className="h-5 w-5 text-[#d4a63a]" />
+                      )}
+                    </button>
                   </motion.div>
                 </GameCodeGlow>
                 <button
@@ -1219,7 +1247,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </div>
 
               {/* لاعبون — يمين */}
-              <div className="flex flex-col items-center justify-center lg:items-end" dir={dir}>
+              <div className="relative flex flex-col items-center justify-center border-l border-[rgba(212,166,58,0.2)] pl-6 lg:pl-8">
                 <ConnectedPlayersBadge count={players.length} isAr={isAr} />
               </div>
             </div>

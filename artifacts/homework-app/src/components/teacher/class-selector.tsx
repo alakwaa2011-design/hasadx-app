@@ -203,8 +203,8 @@ export function ClassSelector({
           type="button"
           onClick={() => pick("")}
           className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
-            cinematic ? "px-4 py-3 text-white/90 hover:bg-[rgba(212,166,58,0.1)]" : "px-3 py-2 text-white/85 hover:bg-white/5"
-          } ${cinematic && value === "" ? "bg-[rgba(212,166,58,0.12)]" : ""}`}
+            cinematic ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/10" : "px-3 py-2 text-white/85 hover:bg-white/5"
+          } ${cinematic && value === "" ? "bg-[#d4a63a]/12" : ""}`}
         >
           {value === "" && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
           <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
@@ -223,7 +223,7 @@ export function ClassSelector({
             <div key={group}>
               <p
                 className={`uppercase tracking-wider text-white/40 ${
-                  cinematic ? "px-4 pt-3 pb-1.5 text-[10px] text-[#9fb89f]/70" : "px-3 pt-2 pb-1 text-[10px]"
+                  cinematic ? "px-4 pt-3 pb-1.5 text-[10px] text-[#9fb89f] opacity-70" : "px-3 pt-2 pb-1 text-[10px]"
                 }`}
               >
                 {group}
@@ -235,9 +235,9 @@ export function ClassSelector({
                   onClick={() => pick(c.name)}
                   className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
                     cinematic
-                      ? "px-4 py-3 text-white/92 hover:bg-[rgba(212,166,58,0.1)]"
+                      ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/10"
                       : "px-3 py-2 text-white/90 hover:bg-white/5"
-                  } ${cinematic && value === c.name ? "bg-[rgba(212,166,58,0.12)]" : ""}`}
+                  } ${cinematic && value === c.name ? "bg-[#d4a63a]/12" : ""}`}
                 >
                   {value === c.name && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
                   <span className={value === c.name ? "font-extrabold" : ""}>{c.name}</span>
