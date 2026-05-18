@@ -39,6 +39,8 @@ export interface ClassSelectorProps {
   remember?: boolean;
   /** Render dropdown in a portal so it is not clipped by overflow containers. */
   portaled?: boolean;
+  /** Dark gold cinematic styling for game lobby screens. */
+  variant?: "default" | "cinematic";
 }
 
 /**
@@ -53,7 +55,9 @@ export function ClassSelector({
   label,
   remember = true,
   portaled = false,
+  variant = "default",
 }: ClassSelectorProps) {
+  const cinematic = variant === "cinematic";
   const { lang } = useI18n();
   const ar = lang === "ar";
   const dir = ar ? "rtl" : "ltr";
@@ -177,8 +181,11 @@ export function ClassSelector({
       ref={dropdownRef}
       className={`rounded-xl shadow-2xl overflow-hidden ${fontClass} ${portaled ? "" : "absolute z-[200] left-0 right-0 mt-1.5"}`}
       style={{
-        background: "#0c0820",
-        border: `1px solid ${accent}55`,
+        background: cinematic ? "#010a06" : "#0c0820",
+        border: cinematic ? `1px solid ${accent}44` : `1px solid ${accent}55`,
+        boxShadow: cinematic
+          ? "0 16px 48px rgba(0,0,0,0.55), 0 0 24px rgba(212,166,58,0.08)"
+          : undefined,
         maxHeight: 280,
         ...(portaled && portalRect
           ? {
@@ -195,7 +202,9 @@ export function ClassSelector({
         <button
           type="button"
           onClick={() => pick("")}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/85 hover:bg-white/5 text-start"
+          className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
+            cinematic ? "px-4 py-3 text-white/90 hover:bg-[rgba(212,166,58,0.1)]" : "px-3 py-2 text-white/85 hover:bg-white/5"
+          } ${cinematic && value === "" ? "bg-[rgba(212,166,58,0.12)]" : ""}`}
         >
           {value === "" && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
           <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
@@ -212,13 +221,23 @@ export function ClassSelector({
         ) : (
           grouped.map(([group, items]) => (
             <div key={group}>
-              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-white/40">{group}</p>
+              <p
+                className={`uppercase tracking-wider text-white/40 ${
+                  cinematic ? "px-4 pt-3 pb-1.5 text-[10px] text-[#9fb89f]/70" : "px-3 pt-2 pb-1 text-[10px]"
+                }`}
+              >
+                {group}
+              </p>
               {items.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => pick(c.name)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:bg-white/5 text-start"
+                  className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
+                    cinematic
+                      ? "px-4 py-3 text-white/92 hover:bg-[rgba(212,166,58,0.1)]"
+                      : "px-3 py-2 text-white/90 hover:bg-white/5"
+                  } ${cinematic && value === c.name ? "bg-[rgba(212,166,58,0.12)]" : ""}`}
                 >
                   {value === c.name && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
                   <span className={value === c.name ? "font-extrabold" : ""}>{c.name}</span>
@@ -229,7 +248,10 @@ export function ClassSelector({
         )}
       </div>
 
-      <div className="border-t p-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+      <div
+        className={`border-t ${cinematic ? "p-2.5" : "p-2"}`}
+        style={{ borderColor: cinematic ? "rgba(212,166,58,0.15)" : "rgba(255,255,255,0.08)" }}
+      >
         {adding ? (
           <div className="flex items-center gap-1.5">
             <input
@@ -298,11 +320,21 @@ export function ClassSelector({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className={`w-full flex items-center justify-between gap-2 rounded-xl py-2.5 px-3 text-sm font-bold text-white transition-all ${fontClass}`}
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: `1.5px solid ${value ? accent : "rgba(255,255,255,0.15)"}`,
-          }}
+          className={`w-full flex items-center justify-between gap-2 rounded-xl text-sm font-bold text-white transition-all ${fontClass} ${
+            cinematic ? "py-3 px-4" : "py-2.5 px-3"
+          }`}
+          style={
+            cinematic
+              ? {
+                  background: "rgba(2,20,12,0.75)",
+                  border: `1.5px solid ${value ? accent : "rgba(212,166,58,0.22)"}`,
+                  boxShadow: open ? "0 0 20px rgba(212,166,58,0.12)" : undefined,
+                }
+              : {
+                  background: "rgba(255,255,255,0.06)",
+                  border: `1.5px solid ${value ? accent : "rgba(255,255,255,0.15)"}`,
+                }
+          }
         >
           <span className="truncate">{display}</span>
           <ChevronDown
