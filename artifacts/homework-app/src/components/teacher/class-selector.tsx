@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { GraduationCap, ChevronDown, Plus, Loader2, Check, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
@@ -36,21 +37,12 @@ export interface ClassSelectorProps {
   label?: string;
   /** Whether to also persist the selection in localStorage. Default true. */
   remember?: boolean;
+  /** Render dropdown in a portal so it is not clipped by overflow containers. */
+  portaled?: boolean;
 }
 
 /**
  * Reusable class selector for teacher game-setup screens.
- *
- * USAGE (any future shareable game must include this):
- * ```tsx
- * import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
- * const [targetClass, setTargetClass] = useState(() => getRememberedTargetClass());
- * <ClassSelector value={targetClass} onChange={setTargetClass} />
- * ```
- *
- * The component is self-contained: it fetches `/api/teacher/classes`, lets the
- * teacher pick an existing class or create a new one inline, and (when `remember`
- * is true) persists the last selection so it carries across game-setup pages.
  */
 export function ClassSelector({
   value,
@@ -60,6 +52,7 @@ export function ClassSelector({
   className = "",
   label,
   remember = true,
+  portaled = false,
 }: ClassSelectorProps) {
   const { lang } = useI18n();
   const ar = lang === "ar";
@@ -72,8 +65,29 @@ export function ClassSelector({
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [portalRect, setPortalRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  // Fetch list once on mount.
+  useLayoutEffect(() => {
+    if (!open || !portaled || !wrapRef.current) {
+      setPortalRect(null);
+      return;
+    }
+    const update = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPortalRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, portaled]);
+
   useEffect(() => {
     let cancelled = false;
     fetch(`${API_BASE}/api/teacher/classes`, { credentials: "include" })
@@ -90,14 +104,14 @@ export function ClassSelector({
     };
   }, []);
 
-  // Close dropdown on outside-click.
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setAdding(false);
-      }
+      const target = e.target as Node;
+      if (wrapRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setOpen(false);
+      setAdding(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -130,9 +144,7 @@ export function ClassSelector({
       });
       if (res.ok) {
         setClasses((prev) =>
-          prev.some((c) => c.name === name)
-            ? prev
-            : [...prev, { id: Date.now(), name }],
+          prev.some((c) => c.name === name) ? prev : [...prev, { id: Date.now(), name }],
         );
         pick(name);
         setNewName("");
@@ -145,12 +157,10 @@ export function ClassSelector({
   }
 
   const fontClass = mono ? "font-mono" : "";
-  const labelText =
-    label ?? (ar ? "اختر الصف" : "Choose class");
+  const labelText = label ?? (ar ? "اختر الصف" : "Choose class");
   const allLabel = ar ? "كل الصفوف" : "All classes";
   const display = value || allLabel;
 
-  // Group classes by groupName for prettier dropdown.
   const grouped = (() => {
     const map = new Map<string, TeacherClass[]>();
     for (const c of classes) {
@@ -161,6 +171,118 @@ export function ClassSelector({
     }
     return Array.from(map.entries());
   })();
+
+  const dropdownPanel = (
+    <div
+      ref={dropdownRef}
+      className={`rounded-xl shadow-2xl overflow-hidden ${fontClass} ${portaled ? "" : "absolute z-[200] left-0 right-0 mt-1.5"}`}
+      style={{
+        background: "#0c0820",
+        border: `1px solid ${accent}55`,
+        maxHeight: 280,
+        ...(portaled && portalRect
+          ? {
+              position: "fixed",
+              top: portalRect.top,
+              left: portalRect.left,
+              width: portalRect.width,
+              zIndex: 9999,
+            }
+          : {}),
+      }}
+    >
+      <div className="overflow-y-auto" style={{ maxHeight: 260 }}>
+        <button
+          type="button"
+          onClick={() => pick("")}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/85 hover:bg-white/5 text-start"
+        >
+          {value === "" && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
+          <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
+        </button>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-4 text-white/50">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </div>
+        ) : classes.length === 0 ? (
+          <p className="px-3 py-3 text-[11px] text-white/50">
+            {ar ? "لا توجد صفوف بعد. أضف صفًّا جديدًا." : "No classes yet. Add a new one."}
+          </p>
+        ) : (
+          grouped.map(([group, items]) => (
+            <div key={group}>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-white/40">{group}</p>
+              {items.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => pick(c.name)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:bg-white/5 text-start"
+                >
+                  {value === c.name && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
+                  <span className={value === c.name ? "font-extrabold" : ""}>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="border-t p-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        {adding ? (
+          <div className="flex items-center gap-1.5">
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void createClass();
+                } else if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewName("");
+                }
+              }}
+              placeholder={ar ? "اسم الصف الجديد" : "New class name"}
+              className="flex-1 bg-black/40 border rounded-lg px-2 py-1.5 text-xs text-white outline-none"
+              style={{ borderColor: `${accent}55` }}
+            />
+            <button
+              type="button"
+              disabled={creating || !newName.trim()}
+              onClick={() => void createClass()}
+              className="rounded-lg px-2 py-1.5 text-xs font-bold disabled:opacity-50"
+              style={{ background: accent, color: "#1c1003" }}
+            >
+              {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAdding(false);
+                setNewName("");
+              }}
+              className="rounded-lg px-2 py-1.5 text-xs text-white/60 hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold"
+            style={{ background: `${accent}22`, color: accent }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {ar ? "صف جديد" : "New class"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className={className} dir={dir}>
@@ -189,131 +311,10 @@ export function ClassSelector({
           />
         </button>
 
-        {open && (
-          <div
-            className={`absolute z-[200] left-0 right-0 mt-1.5 rounded-xl shadow-2xl overflow-hidden ${fontClass}`}
-            style={{
-              background: "#0c0820",
-              border: `1px solid ${accent}55`,
-              maxHeight: 280,
-            }}
-          >
-            <div className="overflow-y-auto" style={{ maxHeight: 260 }}>
-              <button
-                type="button"
-                onClick={() => pick("")}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/85 hover:bg-white/5 text-start"
-              >
-                {value === "" && (
-                  <Check className="w-3.5 h-3.5" style={{ color: accent }} />
-                )}
-                <span className={value === "" ? "font-extrabold" : ""}>
-                  {allLabel}
-                </span>
-              </button>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-4 text-white/50">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-              ) : classes.length === 0 ? (
-                <p className="px-3 py-3 text-[11px] text-white/50">
-                  {ar
-                    ? "لا توجد صفوف بعد. أضف صفًّا جديدًا."
-                    : "No classes yet. Add a new one."}
-                </p>
-              ) : (
-                grouped.map(([group, items]) => (
-                  <div key={group}>
-                    <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-white/40">
-                      {group}
-                    </p>
-                    {items.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => pick(c.name)}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/90 hover:bg-white/5 text-start"
-                      >
-                        {value === c.name && (
-                          <Check
-                            className="w-3.5 h-3.5"
-                            style={{ color: accent }}
-                          />
-                        )}
-                        <span
-                          className={value === c.name ? "font-extrabold" : ""}
-                        >
-                          {c.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div
-              className="border-t p-2"
-              style={{ borderColor: "rgba(255,255,255,0.08)" }}
-            >
-              {adding ? (
-                <div className="flex items-center gap-1.5">
-                  <input
-                    autoFocus
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void createClass();
-                      } else if (e.key === "Escape") {
-                        setAdding(false);
-                        setNewName("");
-                      }
-                    }}
-                    placeholder={ar ? "اسم الصف الجديد" : "New class name"}
-                    className="flex-1 bg-black/40 border rounded-lg px-2 py-1.5 text-xs text-white outline-none"
-                    style={{ borderColor: `${accent}55` }}
-                  />
-                  <button
-                    type="button"
-                    disabled={creating || !newName.trim()}
-                    onClick={() => void createClass()}
-                    className="rounded-lg px-2 py-1.5 text-xs font-bold disabled:opacity-50"
-                    style={{ background: accent, color: "#1c1003" }}
-                  >
-                    {creating ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Check className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAdding(false);
-                      setNewName("");
-                    }}
-                    className="rounded-lg px-2 py-1.5 text-xs text-white/60 hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAdding(true)}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold"
-                  style={{ background: `${accent}22`, color: accent }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {ar ? "صف جديد" : "New class"}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {open &&
+          (portaled && typeof document !== "undefined"
+            ? createPortal(dropdownPanel, document.body)
+            : dropdownPanel)}
       </div>
     </div>
   );

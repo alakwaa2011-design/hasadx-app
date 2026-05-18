@@ -17,24 +17,23 @@ import {
   SkipForward,
   Gift,
   Mic,
-  GraduationCap,
   Lock,
   Unlock,
   Ban,
   Copy,
   CheckCircle,
   Link2,
+  Share2,
   ArrowRightLeft,
+  ArrowRight,
   Smartphone,
   Power,
   LockKeyhole,
   Terminal,
-  Target,
   Bot,
+  GraduationCap,
   Info,
-  AlertTriangle,
   Settings,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,8 +41,9 @@ import { cn } from "@/lib/utils";
 const P = {
   bg: "#031b11",
   primary: "#0a4d26",
-  card: "#082b18",
-  cardDeep: "#02140c",
+  card: "#062415",
+  cardAlt: "#082b18",
+  cardDeep: "#021408",
   gold: "#d4a63a",
   goldLight: "#f4c95d",
   text: "#ffffff",
@@ -54,6 +54,8 @@ const P = {
 } as const;
 
 const MAX_LOBBY_PLAYERS = 20;
+
+const SETTING_CARD_LG = "lg:w-[min(188px,13.5vw)] lg:shrink-0";
 
 export type LobbyPlayer = {
   name: string;
@@ -125,11 +127,13 @@ function GoldToggle({
   onClick,
   disabled,
   dir,
+  large,
 }: {
   on: boolean;
   onClick: () => void;
   disabled?: boolean;
   dir: "rtl" | "ltr";
+  large?: boolean;
 }) {
   return (
     <button
@@ -137,14 +141,18 @@ function GoldToggle({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "relative h-8 w-[52px] shrink-0 rounded-full transition-all duration-300",
+        "relative shrink-0 rounded-full transition-all duration-300",
+        large ? "h-9 w-[58px]" : "h-8 w-[52px]",
         disabled && "cursor-not-allowed opacity-40",
         on ? "bg-gradient-to-b from-[#f4c95d] to-[#d4a63a] shadow-[0_0_16px_rgba(212,166,58,0.45)]" : "bg-[#02140c] border border-[rgba(212,166,58,0.2)]",
       )}
       aria-pressed={on}
     >
       <span
-        className="absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-300"
+        className={cn(
+          "absolute top-1 rounded-full bg-white shadow-md transition-transform duration-300",
+          large ? "h-7 w-7" : "h-6 w-6",
+        )}
         style={
           dir === "rtl"
             ? { right: 4, transform: on ? "translateX(-22px)" : "translateX(0)" }
@@ -159,7 +167,7 @@ function IconCircle({ children, className }: { children: React.ReactNode; classN
   return (
     <div
       className={cn(
-        "flex h-14 w-14 items-center justify-center rounded-full border",
+        "flex h-12 w-12 items-center justify-center rounded-full border sm:h-[52px] sm:w-[52px] lg:h-14 lg:w-14",
         "border-[rgba(212,166,58,0.22)] bg-gradient-to-b from-[#0a4d26] to-[#02140c]",
         "shadow-[inset_0_1px_0_rgba(244,201,93,0.12),0_4px_20px_rgba(0,0,0,0.25)]",
         className,
@@ -190,21 +198,19 @@ function SettingCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      whileHover={{
-        y: -4,
-        boxShadow: "0 12px 40px rgba(0,0,0,0.35), 0 0 24px rgba(212,166,58,0.08)",
-      }}
       className={cn(
-        "flex min-h-[200px] flex-col rounded-[22px] border p-5 backdrop-blur-sm",
-        "border-[rgba(212,166,58,0.22)] bg-gradient-to-b from-[#082b18] to-[#02140c]",
-        "transition-[border-color,box-shadow] duration-300 hover:border-[rgba(212,166,58,0.38)]",
+        "flex min-h-[168px] flex-col rounded-[20px] border p-4 backdrop-blur-sm sm:min-h-[180px]",
+        "lg:min-h-[200px] lg:rounded-[22px] lg:p-5 lg:transition-transform lg:hover:-translate-y-1",
+        "lg:hover:shadow-[0_12px_40px_rgba(0,0,0,0.35),0_0_24px_rgba(212,166,58,0.08)]",
+        "overflow-visible border-[rgba(212,166,58,0.22)] bg-gradient-to-b from-[#062415] to-[#021408]",
+        "transition-[border-color,box-shadow] duration-300 active:scale-[0.98] lg:hover:border-[rgba(212,166,58,0.38)]",
         className,
       )}
     >
       <IconCircle>{icon}</IconCircle>
-      <h3 className="mt-4 text-[15px] font-black text-white">{title}</h3>
-      {desc ? <p className="mt-1.5 text-xs leading-relaxed text-[#9fb89f]">{desc}</p> : null}
-      <div className="mt-auto flex items-center justify-end pt-4">{children}</div>
+      <h3 className="mt-3 text-sm font-black text-white sm:mt-4 sm:text-[15px]">{title}</h3>
+      {desc ? <p className="mt-1 text-[11px] leading-relaxed text-[#9fb89f] sm:text-xs">{desc}</p> : null}
+      <div className="mt-auto flex items-center justify-end pt-3 sm:pt-4">{children}</div>
     </motion.div>
   );
 }
@@ -237,6 +243,46 @@ function GoldDust() {
           transition={{ duration: 4 + i * 0.3, repeat: Infinity, delay: p.d, ease: "easeInOut" }}
         />
       ))}
+    </>
+  );
+}
+
+function PlayersZoneDecor() {
+  const silhouettes = ["🧑", "👩", "🧑‍🎓", "👨", "👧"];
+  return (
+    <>
+      <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.1]" aria-hidden>
+        <defs>
+          <linearGradient id="wameeth-zone-arc" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#d4a63a" stopOpacity="0" />
+            <stop offset="50%" stopColor="#f4c95d" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#d4a63a" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M 0 120 Q 180 40 360 100" fill="none" stroke="url(#wameeth-zone-arc)" strokeWidth="0.8" />
+        <path d="M 60 280 Q 280 220 520 260" fill="none" stroke="url(#wameeth-zone-arc)" strokeWidth="0.6" />
+        <path d="M 700 60 Q 900 140 1100 80" fill="none" stroke="url(#wameeth-zone-arc)" strokeWidth="0.7" />
+      </svg>
+      <GoldDust />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        {silhouettes.map((emoji, i) => (
+          <span
+            key={i}
+            className="absolute select-none text-[2.75rem] opacity-[0.1] sm:text-5xl"
+            style={{
+              insetInlineEnd: `${6 + i * 11}%`,
+              top: `${18 + (i % 3) * 24}%`,
+              filter: "grayscale(0.2)",
+            }}
+          >
+            {emoji}
+          </span>
+        ))}
+      </div>
+      <div
+        className="pointer-events-none absolute -end-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full opacity-25"
+        style={{ background: "radial-gradient(circle, rgba(10,77,38,0.5) 0%, transparent 70%)" }}
+      />
     </>
   );
 }
@@ -277,7 +323,7 @@ function SegmentedGold({
           type="button"
           onClick={() => onChange(opt.val)}
           className={cn(
-            "min-w-[72px] rounded-lg px-3 py-2 text-xs font-black transition-all duration-200",
+            "min-h-[40px] min-w-[72px] rounded-lg px-3 py-2 text-xs font-black transition-all duration-200 sm:min-h-0",
             value === opt.val
               ? "bg-gradient-to-b from-[#f4c95d] to-[#d4a63a] text-[#031b11] shadow-[0_2px_12px_rgba(212,166,58,0.35)]"
               : "text-[#9fb89f] hover:text-white",
@@ -349,6 +395,39 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
     hackPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
+  const scrollToSettings = () => {
+    document.getElementById("game-settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleShare = async () => {
+    const shareText = isAr ? `انضم إلى لعبة وميض! الكود: ${pin}` : `Join Wameeth! Code: ${pin}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: isAr ? "وميض — غرفة الانتظار" : "Wameeth — waiting room",
+          text: shareText,
+          url: joinUrl,
+        });
+        return;
+      } catch {
+        /* cancelled or unsupported */
+      }
+    }
+    onCopyLink();
+  };
+
+  const roomStatusLabel = roomLocked
+    ? isAr
+      ? "الغرفة مغلقة"
+      : "Room locked"
+    : players.length >= MAX_LOBBY_PLAYERS
+      ? isAr
+        ? "الغرفة ممتلئة"
+        : "Room full"
+      : isAr
+        ? "بانتظار اللاعبين"
+        : "Waiting for players";
+
   return (
     <Layout noHeader>
       <motion.div
@@ -359,9 +438,48 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           background: `radial-gradient(ellipse 120% 80% at 50% -20%, #0a4d26 0%, ${P.bg} 45%, ${P.cardDeep} 100%)`,
         }}
       >
-        {/* ── Header ── */}
+        {/* ── Header (mobile) ── */}
         <header
-          className="sticky top-0 z-50 border-b backdrop-blur-xl"
+          className="sticky top-0 z-50 border-b backdrop-blur-xl lg:hidden"
+          style={{ borderColor: P.border, background: "rgba(3,27,17,0.92)" }}
+        >
+          <motion.div className="relative flex h-[52px] items-center justify-between px-4">
+            <div className="flex items-center gap-2">
+              <img
+                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                alt={isAr ? "حصاد" : "Hasad"}
+                className="h-9 w-9 shrink-0 rounded-lg object-cover ring-2 ring-[rgba(212,166,58,0.25)]"
+              />
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16 text-center">
+              <p className="text-[15px] font-black leading-tight text-[#d4a63a]">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={scrollToSettings}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border transition-colors active:scale-95"
+                style={{ borderColor: P.border, background: "rgba(8,43,24,0.65)" }}
+                aria-label={isAr ? "إعدادات" : "Settings"}
+              >
+                <Settings className="h-[18px] w-[18px] text-[#d4a63a]" />
+              </button>
+              <button
+                type="button"
+                onClick={onHome}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border transition-colors active:scale-95"
+                style={{ borderColor: P.border, background: "rgba(8,43,24,0.65)" }}
+                aria-label={isAr ? "رجوع" : "Back"}
+              >
+                <ArrowRight className="h-5 w-5 text-[#f4c95d]" />
+              </button>
+            </div>
+          </motion.div>
+        </header>
+
+        {/* ── Header (desktop) ── */}
+        <header
+          className="sticky top-0 z-50 hidden border-b backdrop-blur-xl lg:block"
           style={{ borderColor: P.border, background: "rgba(3,27,17,0.88)" }}
         >
           <div className="mx-auto flex h-[68px] max-w-[1500px] items-center justify-between gap-4 px-5 lg:px-10">
@@ -435,15 +553,108 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </motion.button>
             </div>
           </div>
-          <p className="pb-2 text-center text-sm font-black text-[#d4a63a] md:hidden">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
         </header>
 
-        <main className="mx-auto max-w-[1500px] space-y-5 px-5 py-6 lg:space-y-6 lg:px-10 lg:py-8">
-          {/* ── Hero ── */}
+        <main className="mx-auto max-w-[1500px] space-y-4 px-4 py-5 pb-28 sm:space-y-5 sm:px-5 sm:py-6 lg:space-y-6 lg:px-10 lg:py-8 lg:pb-8">
+          {/* ── Hero (mobile) ── */}
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-[24px] border lg:hidden"
+            style={{
+              borderColor: P.border,
+              background: `linear-gradient(165deg, ${P.primary} 0%, #062a18 38%, ${P.cardDeep} 100%)`,
+              boxShadow: "0 12px 40px rgba(0,0,0,0.4), 0 0 48px rgba(212,166,58,0.1), inset 0 1px 0 rgba(244,201,93,0.12)",
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-60"
+              style={{ background: "radial-gradient(ellipse 80% 100% at 50% 0%, rgba(244,201,93,0.18) 0%, transparent 70%)" }}
+            />
+            <GoldDust />
+            <div className="relative z-10 flex flex-col items-center px-5 py-7 sm:py-8" dir={dir}>
+              <p className="text-xs font-bold tracking-[0.2em] text-[#9fb89f]">{isAr ? "كود اللعبة" : "Game code"}</p>
+              <span
+                className="mt-3 select-all font-black tabular-nums text-[#f4c95d]"
+                dir="ltr"
+                style={{
+                  fontSize: "clamp(3rem, 14vw, 4.25rem)",
+                  letterSpacing: "0.2em",
+                  lineHeight: 1,
+                  textShadow: "0 0 48px rgba(244,201,93,0.4), 0 2px 0 rgba(0,0,0,0.35)",
+                }}
+              >
+                {pin}
+              </span>
+              <div className="mt-6 rounded-2xl bg-white p-3 shadow-[0_8px_28px_rgba(0,0,0,0.35)]">
+                <GameQRCode url={joinUrl} pin={pin} size={108} />
+              </div>
+              <span className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#9fb89f]">
+                <Smartphone className="h-3.5 w-3.5 text-[#d4a63a]" />
+                {isAr ? "امسح للانضمام" : "Scan to join"}
+              </span>
+              <div className="mt-5 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row sm:gap-3">
+                <button
+                  type="button"
+                  onClick={onCopyLink}
+                  className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition-transform active:scale-[0.98]"
+                  style={{ borderColor: P.border, background: "rgba(2,20,12,0.55)", color: P.muted }}
+                >
+                  {linkCopied ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <Link2 className="h-4 w-4 text-[#d4a63a]" />}
+                  {linkCopied ? (isAr ? "تم النسخ!" : "Copied!") : isAr ? "نسخ الرابط" : "Copy link"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition-transform active:scale-[0.98]"
+                  style={{
+                    borderColor: "rgba(212,166,58,0.45)",
+                    background: "rgba(212,166,58,0.12)",
+                    color: P.goldLight,
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                  {isAr ? "مشاركة" : "Share"}
+                </button>
+              </div>
+            </div>
+          </motion.section>
+
+          {/* حالة اللاعبين (mobile) */}
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 }}
+            className="rounded-2xl border px-4 py-4 lg:hidden"
+            style={{
+              borderColor: P.border,
+              background: `linear-gradient(90deg, ${P.card} 0%, ${P.cardDeep} 100%)`,
+              boxShadow: "0 6px 24px rgba(0,0,0,0.28)",
+            }}
+          >
+            <motion.div className="flex items-stretch justify-between gap-3">
+              <div className="min-w-0 flex-1 text-center">
+                <p className="text-2xl font-black tabular-nums text-[#f4c95d]">{players.length}</p>
+                <p className="mt-0.5 text-sm font-bold text-[#9fb89f]">{isAr ? "لاعبون" : "Players"}</p>
+              </div>
+              <motion.div className="w-px shrink-0 bg-[rgba(212,166,58,0.2)]" aria-hidden />
+              <div className="min-w-0 flex-1 text-center">
+                <p className="text-2xl font-black tabular-nums text-white">{MAX_LOBBY_PLAYERS}</p>
+                <p className="mt-0.5 text-sm font-bold text-[#9fb89f]">{isAr ? "الحد الأقصى" : "Max"}</p>
+              </div>
+              <motion.div className="w-px shrink-0 bg-[rgba(212,166,58,0.2)]" aria-hidden />
+              <div className="min-w-0 flex-1 text-center">
+                <p className="text-sm font-black leading-snug text-[#f4c95d]">{roomStatusLabel}</p>
+                <p className="mt-0.5 text-sm font-bold text-[#9fb89f]">{isAr ? "حالة الغرفة" : "Room status"}</p>
+              </div>
+            </motion.div>
+          </motion.section>
+
+          {/* ── Hero (desktop) ── */}
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-[28px] border"
+            className="relative hidden overflow-hidden rounded-[28px] border lg:block"
             style={{
               borderColor: P.border,
               background: `linear-gradient(155deg, ${P.primary} 0%, #062a18 42%, ${P.cardDeep} 100%)`,
@@ -553,12 +764,6 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                   </p>
                   <p className="mt-1 text-sm font-bold text-[#9fb89f]">{isAr ? "لاعب متصل" : "player(s) joined"}</p>
                 </motion.div>
-                <span
-                  className="rounded-full border px-3 py-1 text-[10px] font-bold"
-                  style={{ borderColor: P.border, color: P.muted, background: "rgba(3,27,17,0.6)" }}
-                >
-                  {isAr ? `الحد الأقصى ${MAX_LOBBY_PLAYERS} لاعب` : `Max ${MAX_LOBBY_PLAYERS} players`}
-                </span>
               </div>
             </div>
           </motion.section>
@@ -569,7 +774,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="relative overflow-hidden rounded-[22px] border px-4 py-4 sm:px-6 sm:py-5"
+            className="relative overflow-visible rounded-[20px] border px-4 py-4 sm:rounded-[22px] sm:px-6 sm:py-5"
             style={{
               borderColor: P.border,
               background: `linear-gradient(90deg, ${P.card} 0%, #062818 50%, ${P.cardDeep} 100%)`,
@@ -577,38 +782,39 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               minHeight: 88,
             }}
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-              <div className="flex shrink-0 items-center gap-4">
+            <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex shrink-0 items-center gap-3 sm:gap-4">
                 <div
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 sm:h-16 sm:w-16"
                   style={{
                     borderColor: "rgba(212,166,58,0.4)",
-                    background: "linear-gradient(145deg, #0a4d26, #02140c)",
+                    background: "linear-gradient(145deg, #0a4d26, #021408)",
                     boxShadow: "0 0 28px rgba(212,166,58,0.12)",
                   }}
                 >
                   <GraduationCap className="h-8 w-8 text-[#f4c95d]" strokeWidth={1.5} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base font-black text-white">{isAr ? "الصف المستهدف" : "Target class"}</h2>
-                  <p className="mt-0.5 text-xs leading-relaxed text-[#9fb89f]">
+                  <h2 className="text-base font-black text-white sm:text-lg">{isAr ? "الصف المستهدف" : "Target class"}</h2>
+                  <p className="mt-0.5 text-sm leading-relaxed text-[#9fb89f] sm:text-xs">
                     {isAr ? "اختر الصف المناسب لضبط مستوى التجربة والأسئلة" : "Pick a class to tune difficulty and questions"}
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-1 flex-wrap items-center justify-center gap-3 lg:justify-center">
-                <div className="min-w-[200px] flex-1 max-w-md">
+              <div className="relative z-[60] flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:justify-center">
+                <div className="w-full min-w-0 flex-1 overflow-visible sm:min-w-[200px] sm:max-w-md">
                   <ClassSelector
                     value={targetClass}
                     onChange={onUpdateTargetClass}
                     accent={P.gold}
                     label=""
+                    portaled
                     className="[&_label]:hidden"
                   />
                 </div>
                 <span
-                  className="shrink-0 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-wide"
+                  className="w-fit shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-black"
                   style={{ borderColor: P.border, color: P.gold, background: "rgba(212,166,58,0.08)" }}
                 >
                   {isAr ? "اختياري" : "Optional"}
@@ -627,14 +833,16 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           </motion.section>
 
           {/* ── إعدادات اللعبة ── */}
-          <section>
+          <section id="game-settings">
             <div className="mb-4 flex items-center gap-2.5">
               <Settings className="h-5 w-5 text-[#d4a63a]" />
               <h2 className="text-base font-black text-white lg:text-lg">{isAr ? "إعدادات اللعبة" : "Game settings"}</h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="-mx-1 overflow-x-auto overflow-y-visible pb-2 lg:mx-0">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:flex lg:min-w-max lg:flex-nowrap lg:gap-4">
               <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.04}
                 icon={
                   currentGameMode === "teams" ? (
@@ -661,6 +869,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.06}
                 icon={<SkipForward className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "التنقل بين الأسئلة" : "Question navigation"}
@@ -678,12 +887,13 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </SettingCard>
 
               <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.08}
                 icon={<Gift className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "الهدايا" : "Gifts"}
                 desc={isAr ? "هدية لكل ٣ إجابات صحيحة متتالية" : "Gift every 3 correct answers"}
               >
-                <GoldToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} />
+                <GoldToggle on={giftsEnabled} onClick={onToggleGifts} disabled={hackMode} dir={dir} large />
               </SettingCard>
 
               {/* لعبة الاختراق — مميزة */}
@@ -691,96 +901,61 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                whileHover={{ y: -4 }}
                 className={cn(
-                  "flex min-h-[200px] flex-col rounded-[22px] border-2 p-5 backdrop-blur-sm",
+                  SETTING_CARD_LG,
+                  "flex min-h-[188px] flex-col rounded-[20px] border-2 p-4 backdrop-blur-sm sm:min-h-[200px] sm:rounded-[22px] sm:p-5",
+                  "lg:hover:-translate-y-1 lg:transition-transform",
                   hackMode
-                    ? "border-[#3dff8a]/60 bg-gradient-to-b from-[#031a0f] to-[#010a06]"
-                    : "border-[rgba(61,255,138,0.25)] bg-gradient-to-b from-[#041810] to-[#02140c]",
+                    ? "border-[#3dff8a]/65 bg-gradient-to-b from-[#021a10] to-[#010805]"
+                    : "border-[rgba(61,255,138,0.3)] bg-gradient-to-b from-[#031510] to-[#021408]",
                 )}
                 style={{
                   boxShadow: hackMode
-                    ? "0 0 32px rgba(61,255,138,0.18), inset 0 0 24px rgba(61,255,138,0.04)"
-                    : "0 8px 28px rgba(0,0,0,0.3)",
+                    ? "0 0 40px rgba(61,255,138,0.2), inset 0 0 28px rgba(61,255,138,0.06)"
+                    : "0 0 20px rgba(61,255,138,0.08), 0 8px 28px rgba(0,0,0,0.35)",
                 }}
               >
                 <div
-                  className="flex h-14 w-14 items-center justify-center rounded-full border-2"
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full border-2 sm:h-14 sm:w-14",
+                    hackMode && "shadow-[0_0_24px_rgba(61,255,138,0.35)]",
+                  )}
                   style={{
-                    borderColor: hackMode ? "rgba(61,255,138,0.5)" : "rgba(61,255,138,0.25)",
-                    background: "rgba(0,0,0,0.35)",
-                    boxShadow: hackMode ? "0 0 20px rgba(61,255,138,0.25)" : undefined,
+                    borderColor: hackMode ? "rgba(61,255,138,0.65)" : "rgba(61,255,138,0.28)",
+                    background: hackMode
+                      ? "linear-gradient(145deg, rgba(61,255,138,0.15), rgba(0,0,0,0.5))"
+                      : "rgba(0,0,0,0.4)",
                   }}
                 >
                   {hackMode ? (
-                    <Terminal className="h-6 w-6 text-[#3dff8a]" strokeWidth={2} />
+                    <Terminal className="h-7 w-7 text-[#3dff8a]" strokeWidth={2} />
                   ) : (
-                    <LockKeyhole className="h-6 w-6 text-[#3dff8a]/80" strokeWidth={2} />
+                    <LockKeyhole className="h-6 w-6 text-[#3dff8a]/75" strokeWidth={2} />
                   )}
                 </div>
-                <h3 className="mt-4 text-[15px] font-black text-white">{isAr ? "لعبة الاختراق" : "Hack game"}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-[#9fb89f]">
-                  {isAr ? "كلمات سر وصناديق غامضة وسحب نقاط" : "Passwords, mystery boxes & point heists"}
-                </p>
-                <div className="mt-auto space-y-3 pt-4">
-                  <div className="flex items-center justify-between">
-                    <GoldToggle on={hackMode} onClick={onToggleHackMode} dir={dir} />
-                  </div>
-                  <AnimatePresence>
-                    {hackMode && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="space-y-2 overflow-hidden"
-                      >
-                        <p className="flex items-start gap-1.5 text-[11px] font-bold leading-snug text-[#3dff8a]">
-                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                          {isAr ? "سيُطلب من كل لاعب إدخال كلمة سر قبل البدء" : "Each player must set a password before start"}
-                        </p>
-                        <button
-                          type="button"
-                          onClick={scrollToHackPanel}
-                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#3dff8a]/40 bg-[#3dff8a]/10 px-3 py-2 text-xs font-black text-[#3dff8a] transition-colors hover:bg-[#3dff8a]/20"
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                          {isAr ? "إعداد كلمة السر" : "Password setup"}
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <h3 className="mt-3 text-sm font-black text-white sm:mt-4 sm:text-[15px]">{isAr ? "لعبة الاختراق" : "Hack game"}</h3>
+                {!hackMode ? (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-[#9fb89f] sm:text-xs">
+                    {isAr ? "كلمات سر وصناديق غامضة" : "Passwords & mystery boxes"}
+                  </p>
+                ) : null}
+                <div className="mt-auto flex items-center justify-end pt-4">
+                  <GoldToggle on={hackMode} onClick={onToggleHackMode} dir={dir} large />
                 </div>
               </motion.div>
 
               <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.12}
                 icon={<Mic className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "قراءة صوتية" : "Voice reading"}
                 desc={isAr ? "قراءة نص السؤال بصوت واضح" : "Read question text aloud"}
               >
-                <GoldToggle on={ttsEnabled} onClick={onToggleTts} dir={dir} />
+                <GoldToggle on={ttsEnabled} onClick={onToggleTts} dir={dir} large />
               </SettingCard>
 
               <SettingCard
-                delay={0.14}
-                icon={<Target className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
-                title={isAr ? "تحديد الصف" : "Class targeting"}
-                desc={isAr ? "اضبط الصف من الشريط أعلاه" : "Use the bar above"}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    document.getElementById("target-class-bar")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                  className="flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition-colors hover:border-[rgba(212,166,58,0.45)]"
-                  style={{ borderColor: P.border, color: P.gold, background: "rgba(10,77,38,0.4)" }}
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                  {isAr ? "تحديد الصف" : "Select class"}
-                </button>
-              </SettingCard>
-
-              <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.16}
                 icon={
                   roomLocked ? (
@@ -792,10 +967,11 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 title={isAr ? "قفل الغرفة" : "Lock room"}
                 desc={isAr ? "منع انضمام طلاب جدد للغرفة" : "Block new players from joining"}
               >
-                <GoldToggle on={roomLocked} onClick={onToggleRoomLock} dir={dir} />
+                <GoldToggle on={roomLocked} onClick={onToggleRoomLock} dir={dir} large />
               </SettingCard>
 
               <SettingCard
+                className={SETTING_CARD_LG}
                 delay={0.18}
                 icon={<Bot className="h-6 w-6 text-[#f4c95d]" strokeWidth={2} />}
                 title={isAr ? "لاعبون وهميون" : "Bot players"}
@@ -830,6 +1006,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                   </button>
                 </motion.div>
               </SettingCard>
+            </div>
             </div>
           </section>
 
@@ -950,32 +1127,34 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 }}
-              className="relative overflow-hidden rounded-[28px] border p-6 sm:p-8"
+              className="relative overflow-hidden rounded-[24px] border p-6 sm:rounded-[28px] sm:p-10"
               style={{
                 borderColor: P.border,
-                background: `linear-gradient(180deg, ${P.card} 0%, ${P.cardDeep} 100%)`,
-                boxShadow: "0 12px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(244,201,93,0.05)",
-                minHeight: 280,
+                background: `linear-gradient(145deg, #021408 0%, ${P.card} 38%, #031510 100%)`,
+                boxShadow: "0 16px 56px rgba(0,0,0,0.5), inset 0 1px 0 rgba(244,201,93,0.06), 0 0 40px rgba(212,166,58,0.04)",
+                minHeight: 300,
               }}
             >
-              <GoldDust />
+              <PlayersZoneDecor />
               <div className="relative z-10">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-lg font-black text-white lg:text-xl">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
-                  <span
-                    className="rounded-full border px-4 py-1.5 text-xs font-black"
-                    style={{ borderColor: P.border, color: P.goldLight, background: "rgba(3,27,17,0.6)" }}
-                  >
-                    {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب جاهز" : "ready"}
-                  </span>
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-black text-white sm:text-xl">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
+                  {players.length > 0 ? (
+                    <span
+                      className="rounded-full border px-4 py-1.5 text-xs font-black"
+                      style={{ borderColor: P.border, color: P.goldLight, background: "rgba(3,27,17,0.75)" }}
+                    >
+                      {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب جاهز" : "ready"}
+                    </span>
+                  ) : null}
                 </div>
 
-                <div className="mb-8 h-2 overflow-hidden rounded-full bg-[#02140c]">
+                <div className="mb-7 h-3 overflow-hidden rounded-full border border-[rgba(212,166,58,0.12)] bg-[#010a06] sm:mb-8">
                   <motion.div
                     className="h-full rounded-full"
                     style={{
-                      background: `linear-gradient(90deg, ${P.primary}, ${P.goldLight}, ${P.gold})`,
-                      boxShadow: "0 0 12px rgba(212,166,58,0.4)",
+                      background: `linear-gradient(90deg, #0a4d26, ${P.goldLight}, ${P.gold})`,
+                      boxShadow: "0 0 16px rgba(212,166,58,0.45)",
                     }}
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.max(playerProgressPct, players.length === 0 ? 3 : 10)}%` }}
@@ -984,11 +1163,11 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 </div>
 
                 {players.length === 0 ? (
-                  <div className="flex flex-col items-center py-6 sm:py-10">
+                  <div className="flex flex-col items-center py-4 sm:py-10">
                     <motion.div
                       animate={{ scale: [1, 1.06, 1] }}
                       transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="relative mb-6 flex h-28 w-28 items-center justify-center"
+                      className="relative mb-6 flex h-36 w-36 items-center justify-center sm:h-28 sm:w-28"
                     >
                       <motion.span
                         className="absolute inset-0 rounded-full border-2 border-dashed"
@@ -997,20 +1176,20 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                         transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
                       />
                       <div
-                        className="flex h-24 w-24 items-center justify-center rounded-full"
+                        className="flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-full sm:h-24 sm:w-24"
                         style={{
-                          background: "linear-gradient(180deg, #0a4d26 0%, #02140c 100%)",
-                          boxShadow: "0 0 48px rgba(212,166,58,0.12), inset 0 1px 0 rgba(244,201,93,0.1)",
-                          border: "1px solid rgba(212,166,58,0.2)",
+                          background: "linear-gradient(180deg, #062415 0%, #021408 100%)",
+                          boxShadow: "0 0 56px rgba(212,166,58,0.15), inset 0 1px 0 rgba(244,201,93,0.12)",
+                          border: "2px solid rgba(212,166,58,0.28)",
                         }}
                       >
-                        <Users className="h-12 w-12 text-[#d4a63a]/90" strokeWidth={1.5} />
+                        <Users className="h-14 w-14 text-[#f4c95d]/95 sm:h-12 sm:w-12" strokeWidth={1.5} />
                       </div>
                     </motion.div>
-                    <p className="text-center text-base font-black text-white sm:text-lg">
+                    <p className="text-center text-xl font-black text-white sm:text-2xl">
                       {isAr ? "بانتظار انضمام اللاعبين..." : "Waiting for players to join…"}
                     </p>
-                    <p className="mt-2 max-w-md text-center text-sm text-[#9fb89f]">
+                    <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-[#9fb89f]">
                       {isAr ? "شارك كود اللعبة أو امسح رمز QR للانضمام" : "Share the game code or scan the QR code to join"}
                     </p>
                   </div>
@@ -1084,6 +1263,38 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
             </motion.section>
           )}
         </main>
+
+        {/* زر ابدأ اللعبة — sticky (mobile / tablet) */}
+        <motion.div
+          className="fixed inset-x-0 bottom-0 z-50 border-t px-4 pt-3 backdrop-blur-xl lg:hidden"
+          style={{
+            borderColor: P.border,
+            background: "rgba(3,27,17,0.94)",
+            paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+          }}
+          initial={{ y: 24, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.35 }}
+        >
+          <motion.button
+            type="button"
+            onClick={onStartGame}
+            disabled={players.length === 0}
+            whileTap={players.length > 0 ? { scale: 0.98 } : undefined}
+            className={cn(
+              "flex w-full min-h-[56px] items-center justify-center gap-3 rounded-[20px] text-lg font-black transition-opacity",
+              "disabled:cursor-not-allowed disabled:opacity-45",
+            )}
+            style={{
+              background: `linear-gradient(135deg, ${P.goldLight} 0%, ${P.gold} 55%, #b8892a 100%)`,
+              color: "#031b11",
+              boxShadow: players.length > 0 ? "0 6px 32px rgba(212,166,58,0.45), inset 0 1px 0 rgba(255,255,255,0.28)" : undefined,
+            }}
+          >
+            <Play className="h-6 w-6 fill-current" />
+            {isAr ? "ابدأ اللعبة" : "Start game"}
+          </motion.button>
+        </motion.div>
       </motion.div>
     </Layout>
   );
