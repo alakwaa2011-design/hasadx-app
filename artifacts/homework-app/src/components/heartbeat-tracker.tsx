@@ -36,10 +36,11 @@ function shouldTrack(pathname: string): boolean {
 }
 
 /**
- * Mounts once at the app root. Pings /api/analytics/heartbeat every 30s so
- * the admin "online now" dashboard can count this tab as active. Stops the
- * timer on unmount, pauses while the tab is hidden, and skips entirely on
- * auth / game-play / share routes.
+ * Mounts once at the app root. Pings /api/analytics/heartbeat every 120s
+ * (matched by a 180s offline cutoff in api-server/src/lib/analytics.ts)
+ * so the admin "online now" dashboard can count this tab as active.
+ * Stops the timer on unmount, pauses while the tab is hidden, and skips
+ * entirely on auth / game-play / live-presentation / share routes.
  */
 export function HeartbeatTracker() {
   const [location] = useLocation();
