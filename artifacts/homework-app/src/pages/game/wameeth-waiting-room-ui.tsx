@@ -32,7 +32,6 @@ import {
   Terminal,
   Bot,
   GraduationCap,
-  Info,
   Settings,
   Zap,
 } from "lucide-react";
@@ -342,36 +341,194 @@ function PersonSilhouette({ className, style }: { className?: string; style?: Re
   );
 }
 
+type SparkleSpec = { top: string; left?: string; right?: string; size: number; delay: number; rotate?: number };
+
+const SPARKLE_SETS: Record<"players" | "heroQr" | "heroPlayers", SparkleSpec[]> = {
+  players: [
+    { top: "12%", right: "8%", size: 14, delay: 0 },
+    { top: "28%", right: "22%", size: 10, delay: 0.4, rotate: 15 },
+    { top: "55%", right: "5%", size: 12, delay: 0.8 },
+    { top: "18%", left: "12%", size: 11, delay: 0.2 },
+    { top: "72%", left: "18%", size: 9, delay: 1.1 },
+    { top: "42%", left: "6%", size: 13, delay: 0.6 },
+  ],
+  heroQr: [
+    { top: "8%", left: "4%", size: 12, delay: 0 },
+    { top: "22%", left: "18%", size: 9, delay: 0.5 },
+    { top: "65%", left: "8%", size: 11, delay: 0.9 },
+    { top: "15%", right: "12%", size: 10, delay: 0.3 },
+  ],
+  heroPlayers: [
+    { top: "0%", right: "0%", size: 11, delay: 0.2 },
+    { top: "18%", left: "0%", size: 9, delay: 0.7 },
+    { top: "8%", left: "28%", size: 10, delay: 0.4 },
+  ],
+};
+
+function SparkleStars({ variant }: { variant: keyof typeof SPARKLE_SETS }) {
+  return (
+    <>
+      {SPARKLE_SETS[variant].map((s, i) => (
+        <motion.svg
+          key={i}
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute text-[#f4c95d]"
+          style={{
+            top: s.top,
+            left: s.left,
+            right: s.right,
+            width: s.size,
+            height: s.size,
+            filter: "drop-shadow(0 0 6px rgba(244,201,93,0.9)) drop-shadow(0 0 14px rgba(212,166,58,0.5))",
+            rotate: s.rotate ?? 0,
+          }}
+          animate={{ opacity: [0.35, 1, 0.35], scale: [0.85, 1.15, 0.85] }}
+          transition={{ duration: 2.2 + i * 0.2, repeat: Infinity, delay: s.delay, ease: "easeInOut" }}
+          aria-hidden
+        >
+          <line x1="12" y1="2" x2="12" y2="22" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.9" />
+          <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.9" />
+          <line x1="5" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.45" />
+          <line x1="19" y1="5" x2="5" y2="19" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.45" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+        </motion.svg>
+      ))}
+    </>
+  );
+}
+
+function GatheredSilhouettes({
+  compact,
+  className,
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
+  const figures = compact
+    ? [
+        { scale: 0.42, offset: -28, z: 1 },
+        { scale: 0.48, offset: -8, z: 2 },
+        { scale: 0.5, offset: 12, z: 3 },
+        { scale: 0.44, offset: 32, z: 2 },
+        { scale: 0.4, offset: 50, z: 1 },
+      ]
+    : [
+        { scale: 0.72, offset: -52, z: 1 },
+        { scale: 0.85, offset: -18, z: 2 },
+        { scale: 0.92, offset: 18, z: 3 },
+        { scale: 0.88, offset: 54, z: 2 },
+        { scale: 0.78, offset: 88, z: 1 },
+        { scale: 0.7, offset: 118, z: 1 },
+      ];
+  const h = compact ? 72 : 130;
+  const w = compact ? 140 : 240;
+
+  return (
+    <div
+      className={cn("pointer-events-none relative flex items-end justify-center", className)}
+      style={{ width: w, height: h }}
+      aria-hidden
+    >
+      {figures.map((f, i) => (
+        <PersonSilhouette
+          key={i}
+          className="absolute bottom-0 text-[#010805]"
+          style={{
+            left: `calc(50% + ${f.offset}px)`,
+            transform: "translateX(-50%)",
+            height: `${160 * f.scale}px`,
+            width: `${72 * f.scale}px`,
+            opacity: compact ? 0.22 : 0.18,
+            zIndex: f.z,
+            marginLeft: i > 0 ? -12 : 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function PlayersZoneDecor() {
-  const figures = [
-    { end: "4%", top: "22%", scale: 1, opacity: 0.14 },
-    { end: "14%", top: "48%", scale: 0.85, opacity: 0.1 },
-    { end: "8%", top: "68%", scale: 0.75, opacity: 0.08 },
-    { end: "22%", top: "32%", scale: 0.9, opacity: 0.11 },
-  ];
   return (
     <>
       <CinematicArcs id="wameeth-zone" />
       <GoldDust dense />
+      <SparkleStars variant="players" />
       <motion.div
         className="pointer-events-none absolute inset-0 overflow-hidden"
         style={{ background: "radial-gradient(ellipse 70% 55% at 50% 45%, rgba(212,166,58,0.06) 0%, transparent 65%)" }}
         aria-hidden
       />
-      {figures.map((f, i) => (
-        <PersonSilhouette
-          key={i}
-          className="pointer-events-none absolute text-[#010805]"
-          style={{
-            insetInlineEnd: f.end,
-            top: f.top,
-            height: `${140 * f.scale}px`,
-            width: `${64 * f.scale}px`,
-            opacity: f.opacity,
-          }}
-        />
-      ))}
+      <GatheredSilhouettes className="absolute bottom-4 end-2 z-[1] sm:bottom-6 sm:end-6 md:end-10" />
+      <GatheredSilhouettes
+        compact
+        className="absolute bottom-8 end-[14%] z-[1] hidden scale-110 opacity-95 sm:flex"
+      />
     </>
+  );
+}
+
+function ConnectedPlayersBadge({
+  count,
+  isAr,
+}: {
+  count: number;
+  isAr: boolean;
+}) {
+  return (
+    <div className="relative flex flex-col items-center">
+      <SparkleStars variant="heroPlayers" />
+      <div className="relative flex w-[168px] flex-col items-center">
+        <GatheredSilhouettes compact className="relative z-20 -mb-3" />
+        <motion.div
+          animate={{ scale: [1, 1.03, 1] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-10 flex w-full flex-col items-center justify-center rounded-full border-2 px-4 pb-5 pt-8 text-center"
+          style={{
+            borderColor: "rgba(244,201,93,0.45)",
+            background: "radial-gradient(circle at 50% 35%, rgba(10,77,38,0.9) 0%, #021408 70%)",
+            boxShadow:
+              "0 0 48px rgba(244,201,93,0.35), 0 0 88px rgba(212,166,58,0.2), inset 0 1px 0 rgba(255,224,138,0.15)",
+            minHeight: 132,
+          }}
+        >
+          <motion.div
+            className="pointer-events-none absolute inset-2 rounded-full"
+            style={{
+              background: "radial-gradient(circle, rgba(244,201,93,0.12) 0%, transparent 70%)",
+            }}
+            aria-hidden
+          />
+          <p
+            className="relative font-black tabular-nums text-[#f4c95d]"
+            style={{
+              fontSize: "2.25rem",
+              lineHeight: 1,
+              textShadow: "0 0 28px rgba(244,201,93,0.5)",
+            }}
+          >
+            {count}
+          </p>
+          <p className="relative mt-1.5 text-sm font-bold text-[#a8c4ad]">{isAr ? "لاعب متصل" : "player(s) joined"}</p>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function BrandLogoBlock({ isAr }: { isAr: boolean }) {
+  return (
+    <div className="flex min-w-0 items-center justify-self-start gap-3">
+      <img
+        src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+        alt={isAr ? "حصاد" : "Hasad"}
+        className="h-10 w-10 shrink-0 rounded-xl object-cover ring-2 ring-[rgba(212,166,58,0.3)]"
+      />
+      <div className="hidden flex-col sm:flex">
+        <span className="text-lg font-black leading-tight tracking-tight text-white">{isAr ? "حصاد" : "Hasad"}</span>
+        <span className="text-[11px] font-bold tracking-[0.22em] text-[#d4a63a]/90">HASADX</span>
+      </div>
+    </div>
   );
 }
 
@@ -675,16 +832,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           style={{ borderColor: P.border, background: "rgba(1,12,8,0.92)" }}
         >
           <div className="mx-auto grid h-[72px] max-w-[1500px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 lg:px-10">
-            <div className="flex min-w-0 items-center justify-self-start gap-3">
-              <img
-                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-                alt={isAr ? "حصاد" : "Hasad"}
-                className="h-10 w-10 shrink-0 rounded-xl object-cover ring-2 ring-[rgba(212,166,58,0.25)]"
-              />
-              <span className="hidden text-lg font-black tracking-tight text-white sm:inline">
-                {isAr ? "حصاد" : "Hasad"}
-              </span>
-            </div>
+            <BrandLogoBlock isAr={isAr} />
 
             <div className="justify-self-center text-center">
               <p className="text-xl font-black tracking-tight text-[#f4c95d] lg:text-[22px]">
@@ -764,20 +912,23 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               >
                 {pin}
               </span>
-              <div
-                className="relative mt-6 rounded-2xl bg-white p-3"
-                style={{
-                  boxShadow:
-                    "0 12px 36px rgba(0,0,0,0.45), 0 0 48px rgba(212,166,58,0.28), 0 0 80px rgba(244,201,93,0.12)",
-                  border: "1px solid rgba(212,166,58,0.2)",
-                }}
-              >
-                <GameQRCode url={joinUrl} pin={pin} size={108} />
+              <div className="relative mt-6 flex w-full max-w-[140px] flex-col items-center">
+                <SparkleStars variant="heroQr" />
+                <div
+                  className="relative rounded-2xl bg-white p-3"
+                  style={{
+                    boxShadow:
+                      "0 12px 36px rgba(0,0,0,0.45), 0 0 48px rgba(212,166,58,0.28), 0 0 80px rgba(244,201,93,0.12)",
+                    border: "1px solid rgba(212,166,58,0.2)",
+                  }}
+                >
+                  <GameQRCode url={joinUrl} pin={pin} size={108} />
+                </div>
+                <span className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-[#a8c4ad]">
+                  <Smartphone className="h-4 w-4 shrink-0 text-[#d4a63a]" strokeWidth={2} />
+                  {isAr ? "امسح للانضمام" : "Scan to join"}
+                </span>
               </div>
-              <span className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#9fb89f]">
-                <Smartphone className="h-3.5 w-3.5 text-[#d4a63a]" />
-                {isAr ? "امسح للانضمام" : "Scan to join"}
-              </span>
               <div className="mt-5 flex w-full max-w-sm flex-col gap-2.5 sm:flex-row sm:gap-3">
                 <button
                   type="button"
@@ -857,7 +1008,8 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               className="relative z-10 grid grid-cols-1 items-center gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(140px,auto)_1fr_minmax(160px,auto)] lg:gap-10 lg:p-10"
             >
               {/* QR يسار */}
-              <div className="flex flex-col items-center gap-3 lg:items-start">
+              <div className="relative flex flex-col items-center gap-3">
+                <SparkleStars variant="heroQr" />
                 <div
                   className="rounded-2xl bg-white p-3"
                   style={{
@@ -868,8 +1020,8 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 >
                   <GameQRCode url={joinUrl} pin={pin} size={120} />
                 </div>
-                <span className="flex items-center gap-1.5 text-xs font-bold text-[#a8c4ad]">
-                  <Smartphone className="h-3.5 w-3.5 text-[#d4a63a]" />
+                <span className="flex w-full items-center justify-center gap-2 text-xs font-bold text-[#a8c4ad]">
+                  <Smartphone className="h-4 w-4 shrink-0 text-[#d4a63a]" strokeWidth={2} />
                   {isAr ? "امسح للانضمام" : "Scan to join"}
                 </span>
               </div>
@@ -919,35 +1071,8 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </div>
 
               {/* لاعبون — يمين */}
-              <div
-                className="flex flex-col items-center gap-4 rounded-2xl border p-5 lg:items-end lg:p-6"
-                dir={dir}
-                style={{
-                  borderColor: "rgba(212,166,58,0.15)",
-                  background: "rgba(2,20,12,0.45)",
-                }}
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-                  className="flex h-[88px] w-[88px] items-center justify-center rounded-full border-2"
-                  style={{
-                    borderColor: "rgba(212,166,58,0.35)",
-                    background: "linear-gradient(180deg, #0a4d26 0%, #02140c 100%)",
-                    boxShadow: "0 0 40px rgba(212,166,58,0.15), inset 0 1px 0 rgba(244,201,93,0.1)",
-                  }}
-                >
-                  <Users className="h-10 w-10 text-[#d4a63a]" strokeWidth={1.75} />
-                </motion.div>
-                <motion.div className="text-center lg:text-end">
-                  <p
-                    className="font-black tabular-nums text-[#f4c95d]"
-                    style={{ fontSize: "2.5rem", lineHeight: 1, textShadow: "0 0 24px rgba(244,201,93,0.25)" }}
-                  >
-                    {players.length}
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-[#9fb89f]">{isAr ? "لاعب متصل" : "player(s) joined"}</p>
-                </motion.div>
+              <div className="flex flex-col items-center justify-center lg:items-end" dir={dir}>
+                <ConnectedPlayersBadge count={players.length} isAr={isAr} />
               </div>
             </div>
           </motion.section>
@@ -981,7 +1106,9 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <div className="min-w-0">
                   <h2 className="text-base font-black text-white sm:text-lg">{isAr ? "الصف المستهدف" : "Target class"}</h2>
                   <p className="mt-0.5 text-sm leading-relaxed text-[#9fb89f] sm:text-xs">
-                    {isAr ? "اختر الصف المناسب لضبط مستوى التجربة والأسئلة" : "Pick a class to tune difficulty and questions"}
+                    {isAr
+                      ? "اختيار صف من صفوفك يمكنك من معرفة درجات كل طالب في المسابقة"
+                      : "Pick one of your classes to track each student's scores in the competition"}
                   </p>
                 </div>
               </div>
@@ -1005,14 +1132,6 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 </span>
               </div>
 
-              <div className="hidden shrink-0 items-start gap-2 lg:flex lg:max-w-[220px]">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a63a]/70" />
-                <p className="text-[11px] leading-relaxed text-[#9fb89f]">
-                  {isAr
-                    ? "اختيار الصف يساعد على ضبط صعوبة اللعبة واحتساب النتائج"
-                    : "Class selection helps tune difficulty and score tracking"}
-                </p>
-              </div>
             </div>
           </motion.section>
 
@@ -1299,10 +1418,11 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <div className="flex flex-1 flex-col justify-center">
                 {players.length === 0 ? (
                   <div className="flex flex-col items-center py-4 sm:py-10">
+                    <GatheredSilhouettes compact className="mb-1 opacity-90" />
                     <motion.div
                       animate={{ scale: [1, 1.06, 1] }}
                       transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="relative mb-6 flex h-36 w-36 items-center justify-center sm:h-28 sm:w-28"
+                      className="relative -mt-10 mb-4 flex h-36 w-36 items-center justify-center sm:-mt-8 sm:h-28 sm:w-28"
                     >
                       <motion.span
                         className="absolute inset-0 rounded-full border-2 border-dashed"
