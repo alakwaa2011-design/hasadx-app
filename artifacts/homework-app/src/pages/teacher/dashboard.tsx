@@ -2058,8 +2058,8 @@ function CompetitiveTab({
     games: typeof liveGames;
     delayOffset: number;
   }) => (
-    <section className="space-y-4">
-      <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+    <section className="space-y-3">
+      <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 sm:px-5 sm:py-3.5">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <h3
@@ -2073,7 +2073,7 @@ function CompetitiveTab({
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {games.map((game, i) => (
           <motion.div
             key={`${game.type}-${i}`}
@@ -2134,10 +2134,10 @@ function CompetitiveTab({
   );
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-5 sm:space-y-6">
       {/* ألعاب ومسابقات جماهيرية — تحدّي حصاد + مسابقات عامة */}
-      <section className="space-y-4">
-        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+      <section className="space-y-3">
+        <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 sm:px-5 sm:py-3.5">
           <h3 className="text-lg sm:text-xl font-black tracking-tight text-foreground">
             {lang === "ar"
               ? "ألعاب ومسابقات جماهيرية"
@@ -2149,7 +2149,7 @@ function CompetitiveTab({
               : "Big-screen challenges for audiences plus ready quizzes you can share by link or PIN."}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <Card
             onClick={() => openGameFromCatalog(arenaGame)}
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
@@ -2207,24 +2207,6 @@ function CompetitiveTab({
           </Card>
         </div>
       </section>
-
-      <div className="text-center py-2 sm:py-4">
-        <motion.div
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-primary/15 to-amber-500/15 rounded-2xl mb-3 ring-1 ring-border/60"
-        >
-          <Trophy className="w-10 h-10 text-primary" />
-        </motion.div>
-        <h2 className="text-xl sm:text-3xl font-black text-foreground mb-2 tracking-tight">
-          {t.dashboard.tabCompetitive || "ألعاب تعليمية"}
-        </h2>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2">
-          {lang === "ar"
-            ? "مكتبة ألعاب منظّمة: مسابقات حية مع صفّك كما في المنصات العالمية، وتحديات فردية للتمرّن والترفيه."
-            : "A structured game library: live class modes like leading platforms, plus solo brain challenges."}
-        </p>
-      </div>
 
       <GameCatalogSection
         title={
@@ -2362,15 +2344,15 @@ function CompetitiveTab({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="pt-2 pb-2">
-                <Card className="p-4 sm:p-6 border-2 border-primary/25 bg-primary/[0.03] shadow-lg">
+              <div className="pt-1 pb-1">
+                <Card className="p-4 sm:p-5 border-2 border-primary/25 bg-primary/[0.03] shadow-lg">
                   <h3 className="text-lg font-black text-foreground mb-1 flex items-center gap-2">
                     <Gamepad2 className="w-6 h-6 text-primary shrink-0" />
                     {lang === "ar"
                       ? "وميض — اختر الواجب وابدأ المسابقة الحية"
                       : "Wameeth — pick an assignment to host"}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+                  <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                     {lang === "ar"
                       ? "كل واجب يحتوي أسئلة اختيار من متعدد يمكن استخدامه في الغرفة الحية. بعد الاختيار ستُفتح نافذة إعداد الفرق ثم مشاركة الرمز مع الطلاب."
                       : "Any assignment with MCQs can power your live room. After you pick one, you'll set teams/solo mode then share the PIN."}
