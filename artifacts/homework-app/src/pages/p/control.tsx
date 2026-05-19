@@ -360,36 +360,53 @@ export default function PresentationControl() {
           <h1 className="text-xl font-bold truncate">{info.deck?.title ?? ""}</h1>
           <div className="text-sm text-white/60">شريحة {idx + 1} / {total}</div>
         </div>
-        <div className="rounded-xl bg-black overflow-hidden border border-white/10 aspect-video">
-          {slide && info.deck && (
-            <SlideStage lang={info.deck.language} slide={slide} theme={info.deck.theme} pattern={info.deck.pattern} />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => go(-1)} disabled={idx === 0 || ended} className="flex-1">
-            <ChevronRight className="w-4 h-4 ms-1" /> السابقة
-          </Button>
-          <Button onClick={() => go(1)} disabled={idx >= total - 1 || ended} className="flex-1" style={{ background: "#225739" }}>
-            التالية <ChevronLeft className="w-4 h-4 me-1" />
-          </Button>
-        </div>
 
-        {activities.length > 0 && !ended && (
-          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
-            <div className="text-sm font-bold">الأنشطة في هذه الشريحة</div>
+        {/* TOP activities launcher — placed above the slide stage so
+            first-time teachers see "إطلاق اللعبة" immediately without
+            scrolling. Uses a warm gradient + pulsing Play icon to draw
+            the eye. Only renders when the current slide actually has
+            launchable activities and no inline quiz is already running. */}
+        {activities.length > 0 && !ended && !inlineActivity && (
+          <div
+            className="rounded-2xl p-4 space-y-3"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(217,165,33,0.18) 0%, rgba(34,87,57,0.32) 100%)",
+              border: "1px solid rgba(217,165,33,0.45)",
+              boxShadow: "0 8px 28px -8px rgba(217,165,33,0.35)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-full"
+                  style={{ background: "#D9A521", color: "#1c1003" }}
+                >
+                  <Play className="w-4 h-4" />
+                </span>
+                <div className="text-sm font-black text-white">
+                  نشاط جاهز للإطلاق على هذه الشريحة
+                </div>
+              </div>
+              <span className="text-[11px] text-amber-200/90 font-bold">
+                {activities.length} نشاط
+              </span>
+            </div>
             {activities.map((a: any) => {
               const open = live?.activeElementId === a.id;
               const isGame = a.kind === "hasad-game";
               const label = a.prompt || a.topic || (isGame ? "لعبة حصاد" : "نشاط");
               const qCount = isGame && Array.isArray(a.questions) ? a.questions.length : 0;
               return (
-                <div key={a.id} className="flex items-center gap-2">
-                  <div className="flex-1 text-sm truncate text-white/85">
-                    {isGame ? "🎮 " : ""}{label}
+                <div key={a.id} className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/10 p-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-white truncate">
+                      {isGame ? "🎮 " : ""}{label}
+                    </div>
                     {qCount > 0 && (
-                      <span className="ms-2 inline-block rounded-full bg-emerald-700/40 px-2 py-0.5 text-[10px] font-bold text-emerald-200 align-middle">
-                        {qCount} سؤال
-                      </span>
+                      <div className="text-[11px] text-amber-200/80 mt-0.5">
+                        {qCount} سؤال جاهز
+                      </div>
                     )}
                   </div>
                   {isGame ? (
@@ -398,8 +415,13 @@ export default function PresentationControl() {
                         <Square className="w-4 h-4" />
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => openActivity(a.id)} style={{ background: "#225739", color: "white" }}>
-                        <Play className="w-4 h-4 me-1" /> إطلاق اللعبة
+                      <Button
+                        size="default"
+                        onClick={() => openActivity(a.id)}
+                        className="font-black shadow-lg"
+                        style={{ background: "#D9A521", color: "#1c1003" }}
+                      >
+                        <Play className="w-4 h-4 me-1.5" /> إطلاق اللعبة الآن
                       </Button>
                     )
                   ) : open ? (
@@ -418,92 +440,199 @@ export default function PresentationControl() {
                     </>
                   ) : (
                     <Button size="sm" onClick={() => openActivity(a.id)} style={{ background: "#D9A521", color: "#1c1003" }}>
-                      <Play className="w-4 h-4" /> فتح
+                      <Play className="w-4 h-4 me-1" /> فتح النشاط
                     </Button>
                   )}
                 </div>
               );
             })}
-            {dist && live?.activeElementId && (
+          </div>
+        )}
+
+        {/* Slide stage. When an inline quiz is running, we expand the
+            stage from a cramped 16:9 thumbnail into a roomy panel
+            (~70vh) so the question + answers breathe across the whole
+            screen. The underlying slide stays mounted so the teacher
+            can flip back to it instantly after the activity ends. */}
+        <div
+          className={`relative rounded-xl bg-black overflow-hidden border border-white/10 ${
+            inlineActivity && !ended ? "min-h-[68vh]" : "aspect-video"
+          }`}
+        >
+          {slide && info.deck && (
+            <SlideStage lang={info.deck.language} slide={slide} theme={info.deck.theme} pattern={info.deck.pattern} />
+          )}
+
+          {/* Phase 6 — Inline live-quiz overlay. Replaces the old panel
+              below the slide; renders inside the stage so the teacher
+              sees the prompt + options in the same visual frame as the
+              slide itself. */}
+          {inlineActivity && !ended && (() => {
+            const q = {
+              prompt: inlineActivity.prompt,
+              options: inlineActivity.options,
+              correctIndex: inlineActivity.correctIndex,
+            };
+            if (!q.options || q.options.length === 0) return null;
+            const revealed = inlineActivity.phase === "revealed";
+            const isLast = inlineActivity.currentQuestionIndex >= inlineActivity.totalQuestions - 1;
+            return (
+              <div
+                className="absolute inset-0 flex flex-col p-6 sm:p-10 gap-5 sm:gap-7 overflow-y-auto"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(34,87,57,0.94) 60%, rgba(120,53,15,0.94) 100%)",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full"
+                      style={{ background: "#D9A521", color: "#1c1003" }}
+                    >
+                      <Play className="w-4 h-4" />
+                    </span>
+                    <span className="text-xs sm:text-sm uppercase tracking-wider text-amber-300 font-black">
+                      نشاط مباشر
+                    </span>
+                  </div>
+                  <div className="text-sm sm:text-base text-white/85 tabular-nums font-bold">
+                    سؤال {inlineActivity.currentQuestionIndex + 1} / {inlineActivity.totalQuestions}
+                  </div>
+                </div>
+
+                {/* Prompt card — centered, generous, easy to read from
+                    the back of a classroom. */}
+                <div className="rounded-2xl bg-black/35 border border-white/15 px-6 py-5 sm:px-8 sm:py-6">
+                  <div className="text-xl sm:text-3xl font-black text-white leading-snug break-words text-center">
+                    {q.prompt}
+                  </div>
+                </div>
+
+                {/* Wameedh-palette answer tiles. We use the same four
+                    warm colors as the slide editor (amber/orange/red/
+                    gold) so the teacher's control screen matches the
+                    student-facing live view. Tiles are deliberately
+                    compact: the teacher already sees the slide above
+                    them and doesn't need oversized buttons here.
+                    NOTE: we DON'T leak the correct answer before
+                    reveal — pre-reveal every tile uses the same neutral
+                    base. Only after `revealed=true` do we highlight the
+                    correct tile in green so the teacher can confirm. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 flex-1 content-center">
+                  {(() => {
+                    /* Wameedh tile palette — matches the live student
+                       view: A=red, B=blue, C=gold, D=purple. */
+                    const wameedhTiles = [
+                      "linear-gradient(135deg,#c0392b 0%,#7e1d1d 100%)",
+                      "linear-gradient(135deg,#2563b8 0%,#173f7a 100%)",
+                      "linear-gradient(135deg,#d9a521 0%,#a87a10 100%)",
+                      "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)",
+                    ];
+                    return (q.options as string[]).map((opt, i) => {
+                      const isCorrect = i === q.correctIndex;
+                      const highlight = revealed && isCorrect;
+                      const dim = revealed && !isCorrect;
+                      const tileBg = wameedhTiles[i % wameedhTiles.length];
+                      return (
+                        <div
+                          key={i}
+                          className={`rounded-2xl px-5 py-5 sm:px-6 sm:py-6 flex items-center gap-4 border-2 transition-all min-h-[88px] ${
+                            highlight
+                              ? "border-emerald-300 shadow-2xl scale-[1.02]"
+                              : dim
+                                ? "border-white/10 opacity-50"
+                                : "border-white/15 shadow-lg"
+                          }`}
+                          style={{
+                            background: highlight
+                              ? "linear-gradient(135deg,#059669 0%,#047857 100%)"
+                              : tileBg,
+                            color: "#fff",
+                          }}
+                        >
+                          <span
+                            className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full font-black text-base sm:text-lg shrink-0"
+                            style={{
+                              background: "rgba(0,0,0,0.4)",
+                              color: "#fff",
+                            }}
+                          >
+                            {String.fromCharCode(65 + i)}
+                          </span>
+                          <span className="flex-1 font-bold break-words text-base sm:text-xl leading-snug">{opt}</span>
+                          {highlight && <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-100 shrink-0" />}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                <div className="flex items-center justify-between text-sm sm:text-base text-white/85 font-bold">
+                  <span>أجاب: {inlineActivity.answeredCount} طالب</span>
+                  <span>{revealed ? "تم كشف الإجابة" : "بانتظار الإجابات…"}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {!revealed ? (
+                    <Button onClick={revealQuestion} className="flex-1 font-black h-12 text-base" style={{ background: "#225739", color: "white" }}>
+                      <Eye className="w-5 h-5 me-2" /> كشف الإجابة
+                    </Button>
+                  ) : (
+                    <Button onClick={nextQuestion} className="flex-1 font-black h-12 text-base" style={{ background: "#D9A521", color: "#1c1003" }}>
+                      {isLast ? "إنهاء النشاط" : "السؤال التالي"} <ChevronLeft className="w-5 h-5 me-2" />
+                    </Button>
+                  )}
+                  <Button variant="destructive" onClick={closeActivity} title="إغلاق النشاط" className="h-12 px-4">
+                    <Square className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button onClick={() => go(-1)} disabled={idx === 0 || ended} className="flex-1">
+            <ChevronRight className="w-4 h-4 ms-1" /> السابقة
+          </Button>
+          <Button onClick={() => go(1)} disabled={idx >= total - 1 || ended} className="flex-1" style={{ background: "#225739" }}>
+            التالية <ChevronLeft className="w-4 h-4 me-1" />
+          </Button>
+        </div>
+
+        {/* Compact running-activity status (text activities only — the
+            hasad-game inline quiz is shown as an overlay on the slide). */}
+        {activities.length > 0 && !ended && live?.activeElementId && !inlineActivity && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+            <div className="text-xs font-bold text-white/70">النشاط الجاري</div>
+            {activities
+              .filter((a: any) => a.id === live?.activeElementId)
+              .map((a: any) => {
+                const label = a.prompt || a.topic || "نشاط";
+                return (
+                  <div key={a.id} className="flex items-center gap-2">
+                    <div className="flex-1 text-sm truncate text-white/90">{label}</div>
+                    <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
+                      {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <span className="ms-1">توزيع</span>
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={closeActivity}>
+                      <Square className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            {dist && (
               <div className="text-xs text-white/60">إجابات مستلمة: {dist.total}</div>
             )}
           </div>
         )}
-
-        {/* Phase 6 — Inline live-quiz panel for the teacher. Replaces
-            the old "open new tab" runner. Shows the current question +
-            correct answer, the live answer count, and the reveal /
-            next / end controls. */}
-        {inlineActivity && !ended && (() => {
-          /* Read prompt + options straight from the inline payload —
-             that's the single source of truth and works even when the
-             teacher's deck cache lacks the element (e.g., race on
-             slide change). `correctIndex` is teacher-only via
-             audience-split, so we can highlight it pre-reveal. */
-          const q = {
-            prompt: inlineActivity.prompt,
-            options: inlineActivity.options,
-            correctIndex: inlineActivity.correctIndex,
-          };
-          if (!q.options || q.options.length === 0) return null;
-          const revealed = inlineActivity.phase === "revealed";
-          const isLast = inlineActivity.currentQuestionIndex >= inlineActivity.totalQuestions - 1;
-          return (
-            <div className="rounded-xl bg-amber-900/30 border border-amber-600/40 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-xs uppercase tracking-wider text-amber-300 font-bold">
-                  نشاط مباشر
-                </div>
-                <div className="text-xs text-white/70 tabular-nums">
-                  سؤال {inlineActivity.currentQuestionIndex + 1} / {inlineActivity.totalQuestions}
-                </div>
-              </div>
-              <div className="text-base font-bold text-white">{q.prompt}</div>
-              <div className="grid grid-cols-1 gap-2">
-                {(q.options as string[]).map((opt, i) => {
-                  const isCorrect = i === q.correctIndex;
-                  const highlight = revealed && isCorrect;
-                  return (
-                    <div
-                      key={i}
-                      className={`rounded-lg px-3 py-2 text-sm flex items-center gap-2 border ${
-                        highlight
-                          ? "bg-emerald-700/60 border-emerald-400 text-white"
-                          : isCorrect
-                            ? "bg-emerald-900/40 border-emerald-700/50 text-emerald-100"
-                            : "bg-white/5 border-white/10 text-white/85"
-                      }`}
-                    >
-                      <span className="inline-block w-6 h-6 rounded-full bg-black/30 text-center leading-6 text-xs font-bold">
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="flex-1">{opt}</span>
-                      {isCorrect && <CheckCircle2 className="w-4 h-4 text-emerald-300" />}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between text-xs text-white/70">
-                <span>أجاب: {inlineActivity.answeredCount} طالب</span>
-                <span>{revealed ? "تم كشف الإجابة" : "بانتظار الإجابات"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {!revealed ? (
-                  <Button size="sm" onClick={revealQuestion} className="flex-1" style={{ background: "#225739", color: "white" }}>
-                    <Eye className="w-4 h-4 me-1" /> كشف الإجابة
-                  </Button>
-                ) : (
-                  <Button size="sm" onClick={nextQuestion} className="flex-1" style={{ background: "#D9A521", color: "#1c1003" }}>
-                    {isLast ? "إنهاء النشاط" : "السؤال التالي"} <ChevronLeft className="w-4 h-4 me-1" />
-                  </Button>
-                )}
-                <Button size="sm" variant="destructive" onClick={closeActivity} title="إغلاق النشاط">
-                  <Square className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Phase 6 — End-of-quiz leaderboard for the teacher. */}
         {summary && !ended && (

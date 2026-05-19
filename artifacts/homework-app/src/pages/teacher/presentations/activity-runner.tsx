@@ -14,7 +14,7 @@ type Payload = {
 };
 
 const GAME_LABELS_AR: Record<string, string> = {
-  kahoot: "كاهوت", wheel: "عجلة الحظ", millionaire: "من سيربح المليون",
+  kahoot: "وميض", wheel: "عجلة الحظ", millionaire: "من سيربح المليون",
   "flag-quiz": "اختبار الأعلام", capitals: "العواصم", letrly: "حروفلي",
   rocket: "سباق الصواريخ", tug: "شد الحبل", maraqui: "السلّم والثعبان",
   hack: "تحدي الاختراق",

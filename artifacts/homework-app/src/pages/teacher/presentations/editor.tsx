@@ -54,7 +54,7 @@ import {
   pickDefaultTheme,
 } from "@/lib/slide-themes";
 import { LUCIDE_NAMES } from "@/lib/lucide-whitelist";
-import { SlideStage } from "@/lib/slide-render";
+import { SlideStage, HasadGameRenderer } from "@/lib/slide-render";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
@@ -2823,9 +2823,12 @@ function ElementContent({
           style={{
             width: "100%", height: "100%",
             objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
-            pointerEvents: "none",
+            // pointerEvents intentionally NOT "none" — the shell's pointerdown
+            // handler bubbles up and selects the element on click. The native
+            // image drag is suppressed via draggable={false}.
             transform: transforms.length ? transforms.join(" ") : undefined,
             filter: filters.length ? filters.join(" ") : undefined,
+            userSelect: "none",
           }}
           draggable={false}
         />
@@ -2845,7 +2848,9 @@ function ElementContent({
           width: "100%", height: "100%",
           color: el.color ?? defaultTextColor,
           display: "flex", alignItems: "center", justifyContent: "center",
-          pointerEvents: "none",
+          // Allow pointer events so clicks reach the EditableShell wrapper
+          // and trigger selection. Drag still works because the shell stops
+          // propagation in its own pointerdown handler.
         }}
       >
         <Icon size={size} strokeWidth={1.75} />
@@ -2854,10 +2859,18 @@ function ElementContent({
   }
   if (el.kind === "activity") {
     const accent = (el.accentColor as string | undefined) ?? BRAND_GREEN;
-    const opts = (el.options as string[] | undefined) ?? [];
-    const tfOpts = el.activityKind === "true_false" && opts.length === 0
+    /* Activity cards may carry a `questions` array (when materialized
+       from a hasad-game launcher with inline questions) OR just a
+       single `prompt`/`options`. Prefer the first question from the
+       array when present so the editor surfaces the real content
+       instead of a placeholder. */
+    const allQuestions = ((el as { questions?: { prompt: string; options: string[]; correctIndex: number }[] }).questions) ?? [];
+    const first = allQuestions[0];
+    const optsRaw = first ? first.options : ((el.options as string[] | undefined) ?? []);
+    const promptRaw = first ? first.prompt : (el.prompt as string | undefined);
+    const tfOpts = el.activityKind === "true_false" && optsRaw.length === 0
       ? ["صح", "خطأ"]
-      : opts;
+      : optsRaw;
     const labelMap: Record<string, string> = {
       mcq: isAr ? "اختيار من متعدد" : "Multiple choice",
       true_false: isAr ? "صح / خطأ" : "True / False",
@@ -2865,6 +2878,7 @@ function ElementContent({
       poll: isAr ? "تصويت" : "Poll",
     };
     const label = labelMap[el.activityKind ?? "open"] ?? (isAr ? "نشاط" : "Activity");
+    const correctIdx = first ? first.correctIndex : -1;
     return (
       <div style={{
         width: "100%", height: "100%",
@@ -2875,7 +2889,7 @@ function ElementContent({
         padding: "18px 22px",
         display: "flex", flexDirection: "column", gap: 12,
         overflow: "hidden",
-        pointerEvents: "none",
+        userSelect: "none",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span style={{
@@ -2883,31 +2897,49 @@ function ElementContent({
             fontSize: 12, fontWeight: 700,
             padding: "4px 10px", borderRadius: 999,
           }}>{label}</span>
-          <span style={{
-            background: BRAND_GOLD, color: "#1f2937",
-            fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 6,
-          }}>{isAr ? "نشاط" : "Activity"}</span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {allQuestions.length > 1 && (
+              <span style={{
+                background: "#f1f5f9", color: "#475569",
+                fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 6,
+              }}>
+                {isAr ? `س 1 من ${allQuestions.length}` : `Q 1 of ${allQuestions.length}`}
+              </span>
+            )}
+            <span style={{
+              background: BRAND_GOLD, color: "#1f2937",
+              fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 6,
+            }}>{isAr ? "نشاط" : "Activity"}</span>
+          </div>
         </div>
         <div style={{ color: "#0f172a", fontWeight: 700, fontSize: 22, lineHeight: 1.35, wordBreak: "break-word" }}>
-          {(el.prompt as string | undefined) || (isAr ? "نص السؤال…" : "Question text…")}
+          {promptRaw || (isAr ? "نص السؤال…" : "Question text…")}
         </div>
-        {(el.activityKind === "mcq" || el.activityKind === "poll" || el.activityKind === "true_false") && tfOpts.length > 0 && (
+        {(el.activityKind === "mcq" || el.activityKind === "poll" || el.activityKind === "true_false" || tfOpts.length > 0) && tfOpts.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {tfOpts.map((opt, i) => (
-              <div key={i} style={{
-                border: `1.5px solid ${accent}33`,
-                borderRadius: 10, padding: "8px 12px",
-                fontSize: 16, color: "#1f2937", background: "#f8fafc",
-              }}>
-                <span style={{ color: accent, fontWeight: 700, marginInlineEnd: 8 }}>
-                  {String.fromCharCode(65 + i)}.
-                </span>
-                {opt || (isAr ? "خيار" : "Option")}
-              </div>
-            ))}
+            {tfOpts.map((opt, i) => {
+              const isCorrect = i === correctIdx;
+              return (
+                <div key={i} style={{
+                  border: `1.5px solid ${isCorrect ? accent : `${accent}33`}`,
+                  borderRadius: 10, padding: "8px 12px",
+                  fontSize: 16, color: "#1f2937",
+                  background: isCorrect ? `${accent}14` : "#f8fafc",
+                  fontWeight: isCorrect ? 700 : 400,
+                }}>
+                  <span style={{ color: accent, fontWeight: 700, marginInlineEnd: 8 }}>
+                    {String.fromCharCode(65 + i)}.
+                  </span>
+                  {opt || (isAr ? "خيار" : "Option")}
+                  {isCorrect && (
+                    <span style={{ marginInlineStart: 8, color: accent, fontWeight: 900 }}>✓</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
-        {el.activityKind === "open" && (
+        {el.activityKind === "open" && tfOpts.length === 0 && (
           <div style={{
             flex: 1, minHeight: 40,
             border: `1.5px dashed ${accent}55`,
@@ -2917,6 +2949,17 @@ function ElementContent({
             {isAr ? "مساحة للإجابة" : "Answer space"}
           </div>
         )}
+      </div>
+    );
+  }
+  if (el.kind === "hasad-game") {
+    /* Delegate to the shared HasadGameRenderer (same component used by
+       SlideRender) so the editor card surfaces the real prompt, the
+       first question's options, the correct answer, and a "+N more"
+       hint when the launcher has additional questions. */
+    return (
+      <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
+        <HasadGameRenderer el={el} lang={isAr ? "ar" : "en"} />
       </div>
     );
   }
@@ -2933,7 +2976,8 @@ function ElementContent({
         borderRadius: 12,
         overflow: "hidden",
         position: "relative",
-        pointerEvents: "none",
+        userSelect: "none",
+        // pointerEvents auto so clicking the video thumbnail selects it.
       }}>
         {thumbUrl ? (
           <img
@@ -2972,7 +3016,7 @@ function ElementContent({
   }
   // shape
   return (
-    <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}>
+    <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
       <ShapeRenderer el={el} />
     </div>
   );
@@ -2991,6 +3035,12 @@ function EditableText({
   onCommit: (text: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  /* Track time of last pointerdown so we can detect a double-click
+     manually. We can't rely on e.detail because the EditableShell's
+     startGesture calls e.preventDefault() on the first pointerdown,
+     which stops the browser from counting subsequent clicks as part
+     of the same sequence — so e.detail stays at 1 forever. */
+  const lastPointerDownTime = useRef(0);
   /* contentEditable is uncontrolled to avoid caret-jump; we sync
      the DOM only when the underlying text changes externally
      (e.g. another element selected, slide switched). */
@@ -3040,19 +3090,47 @@ function EditableText({
         cursor: editing ? "text" : "inherit",
         userSelect: editing ? "text" : "none",
         WebkitUserSelect: editing ? "text" : "none",
-        pointerEvents: editing ? "auto" : "none",
+        /* Always auto so onDoubleClick fires. When NOT editing, the
+           pointerdown still bubbles up to the EditableShell which
+           handles selection + drag. When editing, we swallow it so
+           the contentEditable owns the caret. */
+        pointerEvents: "auto",
       }}
       contentEditable={!readOnly && editing}
       suppressContentEditableWarning
       onDoubleClick={(e) => {
         if (readOnly || editing) return;
         e.stopPropagation();
+        e.preventDefault();
         onEnterEdit();
       }}
       onPointerDown={(e) => {
         /* While editing, swallow pointer-down so the shell's drag
            handler doesn't interpret a caret placement as a drag. */
-        if (editing) e.stopPropagation();
+        if (editing) {
+          e.stopPropagation();
+          return;
+        }
+        if (readOnly) return;
+        /* Manual double-click detection: if a second pointerdown
+           arrives within 400ms of the first, enter edit mode. We
+           can't use e.detail or onDoubleClick because the shell's
+           startGesture calls e.preventDefault() on pointerdown,
+           which breaks the browser's click-sequence tracking and
+           suppresses the synthetic dblclick event. Stop propagation
+           so the shell never starts a drag for this pointerdown —
+           the existing useEffect on `editing` will focus the
+           contentEditable and place the caret at the end. */
+        const now = Date.now();
+        if (now - lastPointerDownTime.current < 400) {
+          e.stopPropagation();
+          lastPointerDownTime.current = 0;
+          onEnterEdit();
+          return;
+        }
+        lastPointerDownTime.current = now;
+        /* Single click: let it bubble so the shell selects + can start
+           a drag. */
       }}
       onBlur={onBlur}
       onKeyDown={(e) => {
@@ -3584,7 +3662,7 @@ function HasadGameInspector({
     [questions, onUpdateEl],
   );
   const labelMap: Record<string, string> = {
-    kahoot: isAr ? "كاهوت" : "Kahoot",
+    kahoot: isAr ? "وميض" : "Wameedh",
     wheel: isAr ? "عجلة الحظ" : "Wheel",
     millionaire: isAr ? "من سيربح المليون" : "Millionaire",
     "flag-quiz": isAr ? "اختبار الأعلام" : "Flag quiz",
@@ -3983,10 +4061,10 @@ function GameStyledQuestion({
 
   if (gameKind === "kahoot" && hasOptions) {
     const tiles: { bg: string; Icon: typeof Triangle }[] = [
-      { bg: "#e21b3c", Icon: Triangle },
-      { bg: "#1368ce", Icon: Diamond },
-      { bg: "#d89e00", Icon: CircleIcon },
-      { bg: "#26890c", Icon: Square },
+      { bg: "#f59e0b", Icon: Triangle },
+      { bg: "#ea580c", Icon: Diamond },
+      { bg: "#b91c1c", Icon: CircleIcon },
+      { bg: "#d97706", Icon: Square },
     ];
     return (
       <div className="space-y-3">

@@ -3,7 +3,13 @@ import { eq, sql } from "drizzle-orm";
 import { logger } from "../logger";
 import { sendEmail } from "../email";
 
-const TICK_MS = 30_000;
+// Fallback poll cadence. Bumped from 30s → 5min as part of the Autoscale
+// cost cleanup (task #616): the outbox sees ~zero rows most of the time
+// since users earn badges/levels infrequently, and a 5-minute worst-case
+// delay on transactional emails is well within users' tolerance. For
+// fresh inserts we don't wait — engine.ts calls `notifyEmailQueued()`
+// after each insert which triggers an immediate tick.
+const TICK_MS = 5 * 60_000;
 const STARTUP_DELAY_MS = 15_000;
 const BATCH_SIZE = 20;
 const MAX_ATTEMPTS = 5;
@@ -169,9 +175,29 @@ async function processOnce(): Promise<CycleStats> {
   };
 }
 
+/** Wakes a sleeping worker. Set by startEmailOutboxWorker. */
+let triggerTick: (() => void) | null = null;
+
+/** Signal the worker that a new outbox row was just inserted, so it can
+ *  send it without waiting for the next 5-minute poll. Safe to call from
+ *  anywhere; no-op until the worker is started. Debounced internally
+ *  (300ms) so a burst of inserts coalesces into a single tick. */
+export function notifyEmailQueued(): void {
+  triggerTick?.();
+}
+
 export function startEmailOutboxWorker(): void {
+  // If a wake-up arrives during an in-flight cycle, set this flag so we
+  // immediately re-tick after the current cycle finishes. Without this
+  // an insert that lands mid-claim could wait the full 5-minute fallback
+  // poll before getting picked up.
+  let rerunRequested = false;
+
   const tick = async () => {
-    if (inFlight) return;
+    if (inFlight) {
+      rerunRequested = true;
+      return;
+    }
     inFlight = true;
     try {
       await processOnce();
@@ -180,7 +206,26 @@ export function startEmailOutboxWorker(): void {
     } finally {
       inFlight = false;
     }
+    if (rerunRequested) {
+      rerunRequested = false;
+      // Defer to next macrotask so we don't unbounded-recurse if every
+      // cycle keeps requesting a rerun.
+      setTimeout(() => void tick(), 0);
+    }
   };
+
+  // Debounced wake-up so a burst of inserts (e.g. a quest completion
+  // that earns a badge + level-up in the same transaction) only fires
+  // one extra tick.
+  let pendingWake: ReturnType<typeof setTimeout> | null = null;
+  triggerTick = () => {
+    if (pendingWake) return;
+    pendingWake = setTimeout(() => {
+      pendingWake = null;
+      void tick();
+    }, 300);
+  };
+
   setTimeout(tick, STARTUP_DELAY_MS);
   setInterval(tick, TICK_MS);
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
-import { Loader2, CheckCircle2, LogOut } from "lucide-react";
+import { Loader2, CheckCircle2, LogOut, Play } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -498,62 +498,115 @@ export default function PresentationPlay() {
               </div>
             </div>
           ) : isInlineGame ? (
-            /* Phase 6 — inline live quiz: render the current question
-               directly on the student's phone with tap-to-answer.
-               Server reveals correctness when the teacher hits "كشف". */
-            <div className="flex-1 flex flex-col p-4">
-              <div className="rounded-2xl bg-white/95 shadow-xl p-5 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase tracking-wider" style={{ color: "#D9A521" }}>
-                    {isAr ? "نشاط مباشر" : "Live activity"}
-                  </div>
-                  <div className="text-xs font-bold tabular-nums text-slate-600">
-                    {isAr
-                      ? `سؤال ${inlineActivity!.currentQuestionIndex + 1} / ${inlineActivity!.totalQuestions}`
-                      : `Q ${inlineActivity!.currentQuestionIndex + 1} / ${inlineActivity!.totalQuestions}`}
-                  </div>
+            /* Phase 6 — inline live quiz. The student now sees the EXACT
+               same layout as the teacher's control overlay: dark gradient
+               stage, centered prompt card, 2-column Wameedh tiles with
+               English A/B/C/D letters, status footer. Keeping the two
+               screens visually identical means students can follow the
+               teacher's announcements without re-orienting. */
+            <div
+              className="flex-1 flex flex-col p-6 sm:p-10 gap-5 sm:gap-7 overflow-y-auto"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(34,87,57,0.94) 60%, rgba(120,53,15,0.94) 100%)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-sm sm:text-base text-white/85 tabular-nums font-bold">
+                  {isAr
+                    ? `سؤال ${inlineActivity!.currentQuestionIndex + 1} / ${inlineActivity!.totalQuestions}`
+                    : `Q ${inlineActivity!.currentQuestionIndex + 1} / ${inlineActivity!.totalQuestions}`}
                 </div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm uppercase tracking-wider text-amber-300 font-black">
+                    {isAr ? "نشاط مباشر" : "Live"}
+                  </span>
+                  <span
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full"
+                    style={{ background: "#D9A521", color: "#1c1003" }}
+                  >
+                    <Play className="w-4 h-4" />
+                  </span>
+                </div>
+              </div>
+
+              {/* Prompt card — matches teacher control */}
+              <div className="rounded-2xl bg-black/35 border border-white/15 px-6 py-5 sm:px-8 sm:py-6">
+                <div className="text-xl sm:text-3xl font-black text-white leading-snug break-words text-center">
                   {inlinePrompt || (isAr ? "سؤال" : "Question")}
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {inlineOpts.map((opt, i) => {
-                  const isChosen = chosen === i;
-                  const revealed = inlineActivity!.phase === "revealed";
-                  const correctIdx = inlineActivity!.correctIndex;
-                  const isCorrect = revealed && correctIdx === i;
-                  const isWrong = revealed && isChosen && typeof correctIdx === "number" && correctIdx !== i;
-                  const bg = isCorrect ? "#16a34a" : isWrong ? "#dc2626" : isChosen ? "#D9A521" : "rgba(255,255,255,0.95)";
-                  const fg = isCorrect || isWrong || isChosen ? "white" : "#0f172a";
-                  return (
-                    <button
-                      key={i}
-                      disabled={submitted || chosen != null || revealed}
-                      onClick={() => answer(i)}
-                      className="rounded-2xl px-4 py-4 text-start text-lg font-bold shadow-md transition-all disabled:cursor-not-allowed"
-                      style={{ background: bg, color: fg }}
-                    >
-                      <span className="inline-block w-7 h-7 rounded-full me-2 text-center leading-7 text-sm" style={{ background: "rgba(0,0,0,0.15)" }}>
-                        {optionLetter(i)}
-                      </span>
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {submitted && inlineActivity!.phase === "asking" && (
-                <div className="mt-4 rounded-xl bg-emerald-700/60 text-white text-center py-3 font-bold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  {isAr ? "تم إرسال إجابتك — في انتظار باقي الطلاب" : "Submitted — waiting for the others"}
                 </div>
-              )}
-              <div className="mt-2 text-center text-xs text-white/60">
-                {isAr
-                  ? `${inlineActivity!.answeredCount} زميل أجاب`
-                  : `${inlineActivity!.answeredCount} classmate${inlineActivity!.answeredCount === 1 ? "" : "s"} answered`}
+              </div>
+
+              {/* Wameedh tiles — identical sizing/colors/letters to
+                  control.tsx: A=red, B=blue, C=gold, D=purple, English
+                  letters always (not localized) so they line up 1:1 with
+                  the teacher's screen. A chosen-but-not-revealed answer
+                  gets a thick white ring. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 flex-1 content-center">
+                {(() => {
+                  const wameedhTiles = [
+                    "linear-gradient(135deg,#c0392b 0%,#7e1d1d 100%)",
+                    "linear-gradient(135deg,#2563b8 0%,#173f7a 100%)",
+                    "linear-gradient(135deg,#d9a521 0%,#a87a10 100%)",
+                    "linear-gradient(135deg,#7c3aed 0%,#5b21b6 100%)",
+                  ];
+                  return inlineOpts.map((opt, i) => {
+                    const isChosen = chosen === i;
+                    const revealed = inlineActivity!.phase === "revealed";
+                    const correctIdx = inlineActivity!.correctIndex;
+                    const isCorrect = revealed && correctIdx === i;
+                    const isWrong = revealed && isChosen && typeof correctIdx === "number" && correctIdx !== i;
+                    const dim = revealed && !isCorrect && !isWrong;
+                    const bg = isCorrect
+                      ? "linear-gradient(135deg,#059669 0%,#047857 100%)"
+                      : isWrong
+                        ? "linear-gradient(135deg,#dc2626 0%,#991b1b 100%)"
+                        : wameedhTiles[i % wameedhTiles.length];
+                    return (
+                      <button
+                        key={i}
+                        disabled={submitted || chosen != null || revealed}
+                        onClick={() => answer(i)}
+                        className={`rounded-2xl px-5 py-5 sm:px-6 sm:py-6 flex items-center gap-4 border-2 transition-all min-h-[88px] text-start disabled:cursor-not-allowed ${
+                          isCorrect
+                            ? "border-emerald-300 shadow-2xl scale-[1.02]"
+                            : isWrong
+                              ? "border-red-300 shadow-2xl"
+                              : isChosen && !revealed
+                                ? "border-white shadow-2xl ring-4 ring-white/40 scale-[1.01]"
+                                : dim
+                                  ? "border-white/10 opacity-50"
+                                  : "border-white/15 shadow-lg"
+                        }`}
+                        style={{ background: bg, color: "#fff" }}
+                      >
+                        <span
+                          className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full font-black text-base sm:text-lg shrink-0"
+                          style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}
+                        >
+                          {String.fromCharCode(65 + i)}
+                        </span>
+                        <span className="flex-1 font-bold break-words text-base sm:text-xl leading-snug">{opt}</span>
+                        {isCorrect && <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-100 shrink-0" />}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              <div className="flex items-center justify-between text-sm sm:text-base text-white/85 font-bold">
+                <span>
+                  {isAr
+                    ? `أجاب: ${inlineActivity!.answeredCount} طالب`
+                    : `${inlineActivity!.answeredCount} answered`}
+                </span>
+                <span>
+                  {inlineActivity!.phase === "revealed"
+                    ? (isAr ? "تم كشف الإجابة" : "Answer revealed")
+                    : submitted
+                      ? (isAr ? "تم إرسال إجابتك" : "Submitted")
+                      : (isAr ? "بانتظار اختيارك…" : "Pick your answer…")}
+                </span>
               </div>
             </div>
           ) : gameLaunch ? (

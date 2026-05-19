@@ -11,22 +11,39 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 export function PageViewTracker() {
   const [location] = useLocation();
   const lastSent = useRef<string | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (lastSent.current === location) return;
-    lastSent.current = location;
-    const url = window.location.pathname + window.location.search;
-    try {
-      fetch(`${API_BASE}/api/activity/page-view`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageUrl: url }),
-        keepalive: true,
-      }).catch(() => {});
-    } catch {
-      // ignore
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current);
     }
+    // Debounce 600ms so rapid sequential navigations (redirects, guards
+    // bouncing through intermediate routes) collapse into one tracked
+    // page-view instead of N. Cuts page-view request volume sharply on
+    // routes that redirect or render skeletons before settling.
+    debounceRef.current = window.setTimeout(() => {
+      lastSent.current = location;
+      const url = window.location.pathname + window.location.search;
+      try {
+        fetch(`${API_BASE}/api/activity/page-view`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pageUrl: url }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // ignore
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
   }, [location]);
 
   return null;

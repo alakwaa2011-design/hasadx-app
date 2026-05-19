@@ -21,6 +21,13 @@ const SKIP_PREFIXES = [
   "/share",
   "/embed",
   "/present/",
+  // Live presentation player + join routes (task #616 acceptance: these
+  // are presence-sensitive, so we keep heartbeat off entirely the way
+  // /play and /student-play already do — student presence is tracked by
+  // the live-session socket, not by the HTTP heartbeat).
+  "/p/play",
+  "/p/join",
+  "/p/show",
 ];
 
 function shouldTrack(pathname: string): boolean {
@@ -29,10 +36,11 @@ function shouldTrack(pathname: string): boolean {
 }
 
 /**
- * Mounts once at the app root. Pings /api/analytics/heartbeat every 30s so
- * the admin "online now" dashboard can count this tab as active. Stops the
- * timer on unmount, pauses while the tab is hidden, and skips entirely on
- * auth / game-play / share routes.
+ * Mounts once at the app root. Pings /api/analytics/heartbeat every 120s
+ * (matched by a 180s offline cutoff in api-server/src/lib/analytics.ts)
+ * so the admin "online now" dashboard can count this tab as active.
+ * Stops the timer on unmount, pauses while the tab is hidden, and skips
+ * entirely on auth / game-play / live-presentation / share routes.
  */
 export function HeartbeatTracker() {
   const [location] = useLocation();
@@ -41,7 +49,7 @@ export function HeartbeatTracker() {
       stopHeartbeat();
       return;
     }
-    startHeartbeat(30_000);
+    startHeartbeat(120_000);
     return () => stopHeartbeat();
   }, [location]);
   return null;
