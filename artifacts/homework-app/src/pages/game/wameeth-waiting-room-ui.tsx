@@ -57,15 +57,18 @@ const P = {
 } as const;
 
 const PAGE_BG =
-  "radial-gradient(ellipse 85% 55% at 50% -5%, rgba(12,72,42,0.4) 0%, transparent 50%), radial-gradient(ellipse 130% 95% at 50% 50%, transparent 28%, rgba(0,0,0,0.82) 100%), linear-gradient(180deg, #010805 0%, #02120c 40%, #031811 100%)";
+  "radial-gradient(ellipse 80% 50% at 50% -8%, rgba(10,58,34,0.32) 0%, transparent 48%), radial-gradient(ellipse 120% 90% at 50% 50%, transparent 18%, rgba(0,0,0,0.9) 100%), linear-gradient(180deg, #000503 0%, #010907 38%, #02140c 100%)";
 
 const HERO_CTA_STYLE: React.CSSProperties = {
-  background: "linear-gradient(180deg, #ffe08a 0%, #f4c95d 18%, #d4a63a 50%, #a67c28 100%)",
+  background: "linear-gradient(180deg, #ffe08a 0%, #f4c95d 16%, #d4a63a 48%, #9a7020 100%)",
   color: "#1a1008",
-  border: "2px solid #2a1c0a",
+  border: "2px solid #1a1208",
   boxShadow:
-    "0 0 20px rgba(244,201,93,0.55), 0 0 42px rgba(212,166,58,0.2), 0 10px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -3px 8px rgba(0,0,0,0.28), inset 0 0 24px rgba(255,224,138,0.22)",
+    "0 0 28px rgba(244,201,93,0.5), 0 0 56px rgba(212,166,58,0.22), 0 12px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -4px 10px rgba(0,0,0,0.32), inset 0 0 28px rgba(255,224,138,0.28)",
 };
+
+const NOISE_TEXTURE =
+  "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
 const MAX_LOBBY_PLAYERS = 20;
 
@@ -180,9 +183,9 @@ function GoldToggle({
 
 function IconCircle({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <motion.div
+    <div
       className={cn(
-        "mx-auto flex h-[52px] w-[52px] items-center justify-center rounded-full border lg:h-14 lg:w-14",
+        "mx-auto flex h-[46px] w-[46px] items-center justify-center rounded-full border lg:h-[50px] lg:w-[50px]",
         "border-[rgba(212,166,58,0.32)] bg-gradient-to-b from-[#0d3d22] to-[#021408]",
         "shadow-[inset_0_1px_0_rgba(244,201,93,0.2),0_0_28px_rgba(212,166,58,0.14)]",
         className,
@@ -205,34 +208,50 @@ function HeroStartButton({
   className?: string;
 }) {
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      whileHover={disabled ? undefined : { scale: 1.045, y: -1 }}
-      whileTap={disabled ? undefined : { scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 420, damping: 24 }}
-      className={cn(
-        "relative flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-black sm:px-7 sm:py-3 sm:text-[15px]",
-        "disabled:cursor-not-allowed disabled:opacity-45",
-        !disabled && "hover:shadow-[0_0_36px_rgba(244,201,93,0.55),0_12px_36px_rgba(0,0,0,0.45)]",
-        className,
+    <div className={cn("relative inline-flex", className)}>
+      {!disabled && (
+        <span
+          className="pointer-events-none absolute -inset-2 rounded-2xl opacity-70 blur-lg transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: "radial-gradient(ellipse 90% 70% at 50% 50%, rgba(244,201,93,0.45) 0%, rgba(212,166,58,0.12) 55%, transparent 75%)",
+          }}
+          aria-hidden
+        />
       )}
-      style={disabled ? { ...HERO_CTA_STYLE, opacity: 0.45 } : HERO_CTA_STYLE}
-    >
-      <span
-        className="pointer-events-none absolute inset-0 rounded-xl opacity-50"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(255,255,255,0.45) 0%, transparent 65%)" }}
-        aria-hidden
-      />
-      <span
-        className="pointer-events-none absolute inset-0 opacity-35"
-        style={{ background: "linear-gradient(105deg, transparent 28%, rgba(255,255,255,0.5) 50%, transparent 72%)" }}
-        aria-hidden
-      />
-      <Play className="relative h-4 w-4 fill-current sm:h-5 sm:w-5" />
-      <span className="relative">{isAr ? "ابدأ اللعبة" : "Start game"}</span>
-    </motion.button>
+      <motion.button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        whileHover={disabled ? undefined : { scale: 1.05, y: -1 }}
+        whileTap={disabled ? undefined : { scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 420, damping: 24 }}
+        className={cn(
+          "group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-black sm:px-7 sm:py-3 sm:text-[15px]",
+          "disabled:cursor-not-allowed disabled:opacity-45",
+          !disabled &&
+            "hover:shadow-[0_0_44px_rgba(244,201,93,0.62),0_0_72px_rgba(212,166,58,0.28),0_14px_40px_rgba(0,0,0,0.5)]",
+        )}
+        style={disabled ? { ...HERO_CTA_STYLE, opacity: 0.45 } : HERO_CTA_STYLE}
+      >
+        <span
+          className="pointer-events-none absolute inset-0 rounded-xl opacity-55"
+          style={{ background: "radial-gradient(ellipse 85% 55% at 50% 15%, rgba(255,255,255,0.5) 0%, transparent 62%)" }}
+          aria-hidden
+        />
+        <span
+          className="pointer-events-none absolute inset-[2px] rounded-[10px] opacity-40"
+          style={{ background: "radial-gradient(ellipse 70% 50% at 50% 100%, rgba(255,224,138,0.35) 0%, transparent 70%)" }}
+          aria-hidden
+        />
+        <span
+          className="pointer-events-none absolute inset-0 opacity-30"
+          style={{ background: "linear-gradient(105deg, transparent 26%, rgba(255,255,255,0.55) 50%, transparent 74%)" }}
+          aria-hidden
+        />
+        <Play className="relative h-4 w-4 fill-current sm:h-5 sm:w-5" />
+        <span className="relative">{isAr ? "ابدأ اللعبة" : "Start game"}</span>
+      </motion.button>
+    </div>
   );
 }
 
@@ -257,8 +276,8 @@ function SettingCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
       className={cn(
-        "flex min-h-[188px] flex-1 flex-col items-center rounded-[20px] border p-5 text-center backdrop-blur-sm sm:min-h-[200px]",
-        "lg:min-h-[210px] lg:rounded-[22px] lg:p-6 lg:transition-transform lg:hover:-translate-y-0.5",
+        "flex min-h-[160px] flex-1 flex-col items-center rounded-[20px] border p-4 text-center backdrop-blur-sm sm:min-h-[172px]",
+        "lg:min-h-[178px] lg:rounded-[22px] lg:p-5 lg:transition-transform lg:hover:-translate-y-0.5",
         "lg:hover:shadow-[0_16px_48px_rgba(0,0,0,0.45),0_0_32px_rgba(212,166,58,0.1)]",
         "overflow-visible border-[rgba(212,166,58,0.28)] bg-gradient-to-b from-[#062415] via-[#041a0e] to-[#010805]",
         "transition-[border-color,box-shadow] duration-300 lg:hover:border-[rgba(212,166,58,0.42)]",
@@ -268,14 +287,14 @@ function SettingCard({
       <motion.div className="flex w-full flex-1 flex-col items-center justify-between">
         <motion.div className="flex w-full flex-col items-center">
         <IconCircle>{icon}</IconCircle>
-        <h3 className="mt-5 text-sm font-black tracking-tight text-white sm:text-[15px]">{title}</h3>
+        <h3 className="mt-3.5 text-sm font-black tracking-tight text-white sm:text-[15px]">{title}</h3>
         {desc ? (
-          <p className="mt-3 max-w-[92%] text-[11px] leading-relaxed text-[#a8c4ad] sm:text-xs">{desc}</p>
+          <p className="mt-2 max-w-[92%] text-[11px] leading-relaxed text-[#bdd4c4] sm:text-xs">{desc}</p>
         ) : (
-          <div className="mt-3 h-3" aria-hidden />
+          <motion.div className="mt-2 h-3" aria-hidden />
         )}
         </motion.div>
-        <motion.div className="mt-6 flex w-full items-center justify-center pb-0.5 pt-2">{children}</motion.div>
+        <motion.div className="mt-4 flex w-full items-center justify-center pb-0.5 pt-1">{children}</motion.div>
       </motion.div>
     </motion.div>
   );
@@ -431,13 +450,21 @@ function GameCodeGlow({ children, className }: { children: React.ReactNode; clas
   return (
     <div className={cn("relative", className)}>
       <motion.div
-        className="pointer-events-none absolute inset-0 -inset-x-8 -inset-y-4"
+        className="pointer-events-none absolute -inset-x-12 -inset-y-8"
         style={{
           background:
-            "radial-gradient(ellipse 70% 55% at 50% 50%, rgba(244,201,93,0.22) 0%, rgba(212,166,58,0.08) 40%, transparent 72%)",
+            "radial-gradient(ellipse 75% 60% at 50% 50%, rgba(244,201,93,0.32) 0%, rgba(212,166,58,0.12) 38%, transparent 72%)",
         }}
-        animate={{ opacity: [0.65, 1, 0.65] }}
+        animate={{ opacity: [0.7, 1, 0.7], scale: [1, 1.03, 1] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -inset-x-6 -inset-y-3 opacity-80"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 45% at 50% 50%, rgba(255,224,138,0.18) 0%, transparent 68%)",
+        }}
         aria-hidden
       />
       <div className="relative z-10">{children}</div>
@@ -576,10 +603,76 @@ function PlayersZoneCenterGlow() {
   );
 }
 
+function PlayersWaveLines() {
+  return (
+    <svg className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full opacity-40" aria-hidden>
+      <defs>
+        <linearGradient id="wameeth-wave-gold" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#d4a63a" stopOpacity="0" />
+          <stop offset="50%" stopColor="#f4c95d" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#d4a63a" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M0 48 Q 120 28 240 44 T 480 40 T 720 46 T 960 38 T 1200 42" fill="none" stroke="url(#wameeth-wave-gold)" strokeWidth="0.9" />
+      <path d="M0 68 Q 160 52 320 64 T 640 58 T 960 66 T 1280 60" fill="none" stroke="url(#wameeth-wave-gold)" strokeWidth="0.65" opacity="0.7" />
+    </svg>
+  );
+}
+
+function PlayersProgressRing({ pct, size = 52 }: { pct: number; size?: number }) {
+  const r = (size - 6) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  return (
+    <svg width={size} height={size} className="shrink-0 -rotate-90" aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(212,166,58,0.15)" strokeWidth="3" />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="url(#wameeth-ring-grad)"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        style={{ filter: "drop-shadow(0 0 6px rgba(244,201,93,0.45))" }}
+      />
+      <defs>
+        <linearGradient id="wameeth-ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#d4a63a" />
+          <stop offset="100%" stopColor="#ffe08a" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function PageAtmosphere() {
+  return (
+    <>
+      <div
+        className="pointer-events-none fixed inset-0 z-[1] opacity-[0.04] mix-blend-overlay"
+        style={{ backgroundImage: NOISE_TEXTURE, backgroundSize: "180px 180px" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none fixed inset-0 z-[1]"
+        style={{
+          background:
+            "radial-gradient(ellipse 100% 85% at 50% 50%, transparent 25%, rgba(0,0,0,0.75) 100%)",
+        }}
+        aria-hidden
+      />
+    </>
+  );
+}
+
 function PlayersZoneDecor() {
   return (
     <>
       <CinematicArcs id="wameeth-zone" strong />
+      <PlayersWaveLines />
       <GoldDust dense />
       <SparkleStars variant="players" />
       <motion.div
@@ -678,14 +771,22 @@ function ConnectedPlayersBadge({
 function BrandLogoBlock({ isAr }: { isAr: boolean }) {
   return (
     <div className="flex min-w-0 items-center justify-self-start gap-3">
-      <img
-        src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-        alt={isAr ? "حصاد" : "Hasad"}
-        className="h-10 w-10 shrink-0 rounded-xl object-cover ring-2 ring-[rgba(212,166,58,0.3)]"
-      />
+      <div
+        className="shrink-0 rounded-xl p-0.5"
+        style={{
+          background: "linear-gradient(145deg, rgba(244,201,93,0.35), rgba(212,166,58,0.08))",
+          boxShadow: "0 0 20px rgba(212,166,58,0.15)",
+        }}
+      >
+        <img
+          src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+          alt={isAr ? "حصاد" : "Hasad"}
+          className="h-11 w-11 rounded-[10px] object-cover ring-1 ring-[rgba(212,166,58,0.35)]"
+        />
+      </div>
       <div className="hidden flex-col sm:flex">
         <span className="text-lg font-black leading-tight tracking-tight text-white">{isAr ? "حصاد" : "Hasad"}</span>
-        <span className="text-[11px] font-bold tracking-[0.22em] text-[#d4a63a]/90">HASADX</span>
+        <span className="text-[11px] font-bold tracking-[0.22em] text-[#f4c95d]/95">HASADX</span>
       </div>
     </div>
   );
@@ -746,38 +847,47 @@ function HackSettingCard({
       transition={{ delay: 0.1 }}
       className={cn(
         SETTING_CARD_DESKTOP,
-        "relative flex min-h-[188px] flex-1 flex-col items-center justify-between overflow-hidden rounded-[20px] border-2 p-5 text-center sm:min-h-[200px] sm:rounded-[22px]",
-        hackMode ? "border-[#3dff8a]/75" : "border-[#3dff8a]/35",
-        "bg-gradient-to-b from-[#010a06] via-[#021208] to-[#010805]",
+        "group relative flex min-h-[160px] flex-1 flex-col items-center justify-between overflow-hidden rounded-[20px] border-2 p-4 text-center sm:min-h-[172px] sm:rounded-[22px] lg:min-h-[178px] lg:p-5",
+        "transition-[box-shadow,border-color] duration-300 lg:hover:-translate-y-0.5",
+        hackMode ? "border-[#3dff8a]/85" : "border-[#3dff8a]/45",
+        "bg-gradient-to-b from-[#000805] via-[#010a06] to-[#000503]",
         className,
       )}
       style={{
         boxShadow: hackMode
-          ? "0 0 40px rgba(61,255,138,0.22), inset 0 0 32px rgba(61,255,138,0.06)"
-          : "0 0 18px rgba(61,255,138,0.1), 0 8px 32px rgba(0,0,0,0.4)",
+          ? "0 0 48px rgba(61,255,138,0.28), inset 0 0 36px rgba(61,255,138,0.08)"
+          : "0 0 22px rgba(61,255,138,0.14), 0 8px 32px rgba(0,0,0,0.45)",
       }}
     >
       <HackCyberTexture active={hackMode} />
+      <motion.span
+        className="pointer-events-none absolute inset-x-0 top-0 z-[2] h-[2px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{
+          background: "linear-gradient(90deg, transparent, rgba(61,255,138,0.85), transparent)",
+        }}
+        animate={{ y: ["-100%", "4200%"] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: "linear", repeatDelay: 0.6 }}
+        aria-hidden
+      />
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3, 4].map((i) => (
           <motion.span
             key={i}
             className="absolute rounded-full bg-[#3dff8a]"
             style={{
-              top: `${22 + i * 24}%`,
-              left: `${18 + i * 20}%`,
-              width: 2,
-              height: 2,
-              opacity: hackMode ? 0.28 : 0.12,
+              top: `${14 + i * 18}%`,
+              left: `${12 + i * 16}%`,
+              width: i % 2 === 0 ? 2 : 1.5,
+              height: i % 2 === 0 ? 2 : 1.5,
             }}
-            animate={{ opacity: hackMode ? [0.12, 0.35, 0.12] : [0.06, 0.18, 0.06] }}
-            transition={{ duration: 2.5 + i * 0.5, repeat: Infinity }}
+            animate={{ opacity: hackMode ? [0.1, 0.38, 0.1] : [0.05, 0.2, 0.05] }}
+            transition={{ duration: 2.2 + i * 0.45, repeat: Infinity }}
           />
         ))}
       </div>
       <motion.div
         className={cn(
-          "relative z-10 flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 lg:h-14 lg:w-14",
+          "relative z-10 flex h-[46px] w-[46px] items-center justify-center rounded-full border-2 lg:h-[50px] lg:w-[50px]",
           hackMode && "shadow-[0_0_32px_rgba(61,255,138,0.45)]",
         )}
         style={{
@@ -793,17 +903,17 @@ function HackSettingCard({
           <LockKeyhole className="h-6 w-6 text-[#3dff8a]/80" strokeWidth={2} />
         )}
       </motion.div>
-      <h3 className="relative z-10 mt-5 text-sm font-black text-white sm:text-[15px]">
+      <h3 className="relative z-10 mt-3.5 text-sm font-black text-white sm:text-[15px]">
         {isAr ? "لعبة الاختراق" : "Hack game"}
       </h3>
       {!hackMode ? (
-        <p className="relative z-10 mt-3 max-w-[90%] text-[11px] leading-relaxed text-[#7a9a82] sm:text-xs">
+        <p className="relative z-10 mt-2 max-w-[90%] text-[11px] leading-relaxed text-[#9ec4a8] sm:text-xs">
           {isAr ? "كلمات سر وصناديق غامضة" : "Passwords & mystery boxes"}
         </p>
       ) : (
-        <div className="relative z-10 mt-3 h-3" aria-hidden />
+        <div className="relative z-10 mt-2 h-3" aria-hidden />
       )}
-      <div className="relative z-10 mt-6 flex w-full justify-center pb-0.5">
+      <div className="relative z-10 mt-4 flex w-full justify-center pb-0.5">
         <GoldToggle on={hackMode} onClick={onToggle} dir={dir} large />
       </div>
     </motion.div>
@@ -949,9 +1059,10 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 100% 80% at 50% 50%, transparent 32%, rgba(0,0,0,0.68) 100%)",
+              "radial-gradient(ellipse 100% 80% at 50% 50%, transparent 22%, rgba(0,0,0,0.78) 100%)",
           }}
         />
+        <PageAtmosphere />
         <GlobalAmbientMotion />
         {/* ── Header (mobile) ── */}
         <header
@@ -1014,7 +1125,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center justify-self-end gap-2">
+            <div className="flex shrink-0 items-center justify-self-end gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={onHome}
@@ -1065,8 +1176,9 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           >
             <HeroAtmosphere />
             <div
-              className="pointer-events-none absolute left-1/2 top-1/2 h-40 w-[min(100%,420px)] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70"
-              style={{ background: "radial-gradient(circle, rgba(244,201,93,0.14) 0%, transparent 70%)" }}
+              className="pointer-events-none absolute left-1/2 top-1/2 h-48 w-[min(100%,480px)] -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(244,201,93,0.22) 0%, rgba(212,166,58,0.06) 45%, transparent 72%)" }}
+              aria-hidden
             />
             <div className="relative z-10 flex flex-col items-center px-5 py-7 sm:py-8" dir={dir}>
               <p className="text-xs font-bold tracking-[0.2em] text-[#9fb89f]">{isAr ? "كود اللعبة" : "Game code"}</p>
@@ -1090,8 +1202,8 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                   className="relative rounded-2xl bg-white p-3"
                   style={{
                     boxShadow:
-                      "0 12px 36px rgba(0,0,0,0.45), 0 0 48px rgba(212,166,58,0.28), 0 0 80px rgba(244,201,93,0.12)",
-                    border: "1px solid rgba(212,166,58,0.2)",
+                      "0 14px 42px rgba(0,0,0,0.5), 0 0 56px rgba(212,166,58,0.38), 0 0 96px rgba(244,201,93,0.16), inset 0 0 24px rgba(244,201,93,0.06)",
+                    border: "1px solid rgba(212,166,58,0.32)",
                   }}
                 >
                   <GameQRCode url={joinUrl} pin={pin} size={108} />
@@ -1171,8 +1283,9 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           >
             <HeroAtmosphere />
             <div
-              className="pointer-events-none absolute left-1/2 top-[42%] h-52 w-[min(90%,520px)] -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ background: "radial-gradient(circle, rgba(244,201,93,0.16) 0%, transparent 68%)" }}
+              className="pointer-events-none absolute left-1/2 top-[42%] h-64 w-[min(92%,560px)] -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ background: "radial-gradient(circle, rgba(244,201,93,0.24) 0%, rgba(212,166,58,0.08) 42%, transparent 70%)" }}
+              aria-hidden
             />
 
             <div
@@ -1187,7 +1300,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                   style={{
                     border: "1px solid rgba(212,166,58,0.22)",
                     boxShadow:
-                      "0 12px 40px rgba(0,0,0,0.45), 0 0 52px rgba(212,166,58,0.3), 0 0 88px rgba(244,201,93,0.1)",
+                      "0 14px 44px rgba(0,0,0,0.5), 0 0 60px rgba(212,166,58,0.4), 0 0 100px rgba(244,201,93,0.18), inset 0 0 28px rgba(244,201,93,0.07)",
                   }}
                 >
                   <GameQRCode url={joinUrl} pin={pin} size={120} />
@@ -1259,12 +1372,12 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="relative overflow-visible rounded-[20px] border px-4 py-4 sm:rounded-[22px] sm:px-6 sm:py-5"
+            className="relative overflow-visible rounded-[20px] border px-4 py-4 sm:rounded-[22px] sm:px-6 sm:py-4"
             style={{
-              borderColor: "rgba(212,166,58,0.32)",
-              background: `linear-gradient(90deg, ${P.card} 0%, #062818 50%, ${P.cardDeep} 100%)`,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.3), 0 0 28px rgba(212,166,58,0.06), inset 0 1px 0 rgba(244,201,93,0.06)",
-              minHeight: 88,
+              borderColor: "rgba(212,166,58,0.36)",
+              background: `linear-gradient(90deg, ${P.card} 0%, #062818 48%, ${P.cardDeep} 100%)`,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.35), 0 0 32px rgba(212,166,58,0.08), inset 0 1px 0 rgba(244,201,93,0.08)",
+              minHeight: 84,
             }}
           >
             <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:gap-6">
@@ -1579,17 +1692,20 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               <div className="relative z-10 flex min-h-[280px] flex-col">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-lg font-black text-white sm:text-xl">{isAr ? "منطقة اللاعبين" : "Players zone"}</h2>
-                  <span
-                    className="rounded-xl border px-4 py-2 text-xs font-black sm:text-sm"
-                    style={{
-                      borderColor: P.border,
-                      color: P.goldLight,
-                      background: "rgba(3,27,17,0.8)",
-                      boxShadow: "0 0 20px rgba(212,166,58,0.08)",
-                    }}
-                  >
-                    {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب حاضر" : "players present"}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <PlayersProgressRing pct={playerProgressPct} size={48} />
+                    <span
+                      className="rounded-xl border px-4 py-2 text-xs font-black sm:text-sm"
+                      style={{
+                        borderColor: P.border,
+                        color: P.goldLight,
+                        background: "rgba(3,27,17,0.8)",
+                        boxShadow: "0 0 20px rgba(212,166,58,0.08)",
+                      }}
+                    >
+                      {players.length} / {MAX_LOBBY_PLAYERS} {isAr ? "لاعب حاضر" : "players present"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-1 flex-col justify-center">
@@ -1612,8 +1728,8 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                         style={{
                           background: "linear-gradient(180deg, #0a4d26 0%, #021408 100%)",
                           boxShadow:
-                            "0 0 72px rgba(244,201,93,0.35), 0 0 120px rgba(212,166,58,0.15), inset 0 1px 0 rgba(244,201,93,0.2)",
-                          border: "2px solid rgba(244,201,93,0.4)",
+                            "0 0 80px rgba(244,201,93,0.42), 0 0 140px rgba(212,166,58,0.2), inset 0 1px 0 rgba(244,201,93,0.25)",
+                          border: "2px solid rgba(244,201,93,0.45)",
                         }}
                       >
                         <Users className="h-14 w-14 text-[#ffe08a] sm:h-12 sm:w-12" strokeWidth={1.75} />
