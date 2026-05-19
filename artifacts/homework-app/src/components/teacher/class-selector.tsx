@@ -203,8 +203,8 @@ export function ClassSelector({
           type="button"
           onClick={() => pick("")}
           className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
-            cinematic ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/10" : "px-3 py-2 text-white/85 hover:bg-white/5"
-          } ${cinematic && value === "" ? "bg-[#d4a63a]/12" : ""}`}
+            cinematic ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/16 hover:text-white" : "px-3 py-2 text-white/85 hover:bg-white/5"
+          } ${cinematic && value === "" ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
         >
           {value === "" && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
           <span className={value === "" ? "font-extrabold" : ""}>{allLabel}</span>
@@ -235,9 +235,9 @@ export function ClassSelector({
                   onClick={() => pick(c.name)}
                   className={`w-full flex items-center gap-2 text-sm text-start transition-colors ${
                     cinematic
-                      ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/10"
+                      ? "px-4 py-3 text-white/90 hover:bg-[#d4a63a]/16 hover:text-white"
                       : "px-3 py-2 text-white/90 hover:bg-white/5"
-                  } ${cinematic && value === c.name ? "bg-[#d4a63a]/12" : ""}`}
+                  } ${cinematic && value === c.name ? "bg-[#d4a63a]/14 text-[#f4c95d]" : ""}`}
                 >
                   {value === c.name && <Check className="w-3.5 h-3.5" style={{ color: accent }} />}
                   <span className={value === c.name ? "font-extrabold" : ""}>{c.name}</span>
@@ -326,9 +326,11 @@ export function ClassSelector({
           style={
             cinematic
               ? {
-                  background: "rgba(2,20,12,0.75)",
-                  border: `1.5px solid ${value ? accent : "rgba(212,166,58,0.22)"}`,
-                  boxShadow: open ? "0 0 20px rgba(212,166,58,0.12)" : undefined,
+                  background: "linear-gradient(180deg, rgba(4,28,16,0.92) 0%, rgba(2,16,10,0.88) 100%)",
+                  border: `1.5px solid ${value ? accent : "rgba(212,166,58,0.28)"}`,
+                  boxShadow: open
+                    ? "0 0 24px rgba(212,166,58,0.18), inset 0 1px 0 rgba(244,201,93,0.08)"
+                    : "inset 0 1px 0 rgba(244,201,93,0.04)",
                 }
               : {
                   background: "rgba(255,255,255,0.06)",
