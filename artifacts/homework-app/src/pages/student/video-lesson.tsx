@@ -320,11 +320,16 @@ export default function StudentVideoLesson() {
     if (!lesson || isYoutube) return;
     const vid = html5VideoRef.current;
     if (!vid) return;
-    vid.addEventListener("canplay", onReady);
-    vid.addEventListener("loadedmetadata", onMeta);
+    const handleReady = () => setPlayerReady(true);
+    const handleMeta = () => {
+      const d = vid.duration;
+      if (typeof d === "number" && isFinite(d) && d > 0) setDurationSec(Math.floor(d));
+    };
+    vid.addEventListener("canplay", handleReady);
+    vid.addEventListener("loadedmetadata", handleMeta);
     return () => {
-      vid.removeEventListener("canplay", onReady);
-      vid.removeEventListener("loadedmetadata", onMeta);
+      vid.removeEventListener("canplay", handleReady);
+      vid.removeEventListener("loadedmetadata", handleMeta);
     };
   }, [lesson, isYoutube, lesson?.videoUrl]);
 

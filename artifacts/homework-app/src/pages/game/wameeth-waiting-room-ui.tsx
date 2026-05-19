@@ -192,7 +192,7 @@ function IconCircle({ children, className }: { children: React.ReactNode; classN
       )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
