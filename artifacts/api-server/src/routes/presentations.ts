@@ -266,6 +266,17 @@ const hasadGameElement = baseElement.extend({
   questions: z.array(gameQuestionSchema).max(20).optional(),
 });
 
+/* Phase 4 — "Activity Hub" launcher. A `hasad-activity` element links
+   a teacher's existing Hasad assignment to a slide so it can be
+   launched during live presentation mode (teacher:create-game socket
+   event). Stores the assignment id + a denormalised display title so
+   the editor card preview doesn't require an extra API round-trip. */
+const hasadActivityElement = baseElement.extend({
+  kind: z.literal("hasad-activity"),
+  assignmentId: z.number().int().positive().optional(),
+  assignmentTitle: z.string().max(500).optional(),
+});
+
 /* Video embed element — YouTube or Hasad interactive video lesson.
    `url` is the original pasted link; `videoKind` and `videoId` are
    parsed on the client and stored so the renderer can build the embed
@@ -285,6 +296,7 @@ const elementSchema = z.discriminatedUnion("kind", [
   shapeElement,
   activityElement,
   hasadGameElement,
+  hasadActivityElement,
   videoEmbedElement,
 ]);
 
