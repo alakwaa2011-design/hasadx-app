@@ -3477,6 +3477,9 @@ function Inspector({
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
   const [gifLibraryCat, setGifLibraryCat] = useState("celebrate");
+  const [gifSearchQuery, setGifSearchQuery] = useState("");
+  const [gifSearchResults, setGifSearchResults] = useState<{ url: string; alt: string }[]>([]);
+  const [gifSearchLoading, setGifSearchLoading] = useState(false);
   /* When used from the desktop editor, gifLibraryOpen is lifted to the
      editor level so the left-rail toolbar can open it. When used from
      the mobile shell, these props are absent and the Inspector manages
@@ -3487,6 +3490,29 @@ function Inspector({
     if (setGifLibraryOpen) setGifLibraryOpen(v);
     else _setLocalGifOpen(v);
   };
+
+  /* Debounced GIPHY search */
+  useEffect(() => {
+    const q = gifSearchQuery.trim();
+    if (!q) { setGifSearchResults([]); setGifSearchLoading(false); return; }
+    setGifSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(q)}&limit=12&rating=g&lang=ar`
+        );
+        const json = await res.json() as { data: { images: { fixed_height: { url: string } }; title: string }[] };
+        setGifSearchResults(
+          (json.data ?? []).map(g => ({ url: g.images.fixed_height.url, alt: g.title || q }))
+        );
+      } catch {
+        setGifSearchResults([]);
+      } finally {
+        setGifSearchLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [gifSearchQuery]);
 
   /* Auto-scroll the right panel to the GIF section whenever it opens
      from the left-rail toolbar so the teacher sees it immediately. */
@@ -3932,68 +3958,146 @@ function Inspector({
 
             {activeGifOpen && (
               <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-                {/* Category tabs */}
-                <div className="flex overflow-x-auto gap-1 p-2 pb-1 scrollbar-none">
-                  {GIF_LIBRARY.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setGifLibraryCat(cat.id)}
-                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${
-                        gifLibraryCat === cat.id
-                          ? "text-white shadow"
-                          : "text-muted-foreground bg-background hover:bg-muted"
-                      }`}
-                      style={gifLibraryCat === cat.id ? { background: BRAND_GREEN } : {}}
-                    >
-                      {isAr ? cat.labelAr : cat.labelEn}
-                    </button>
-                  ))}
+                {/* Search input */}
+                <div className="p-2 pb-1">
+                  <div className="relative">
+                    <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      value={gifSearchQuery}
+                      onChange={e => setGifSearchQuery(e.target.value)}
+                      placeholder={isAr ? "ابحث في GIFs..." : "Search GIFs..."}
+                      dir={isAr ? "rtl" : "ltr"}
+                      className="h-8 text-xs rounded-xl ps-8 pe-7"
+                    />
+                    {gifSearchQuery && (
+                      <button
+                        onClick={() => setGifSearchQuery("")}
+                        className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* GIF grid */}
-                <div className="grid grid-cols-3 gap-1.5 p-2 pt-1.5">
-                  {GIF_LIBRARY.find(c => c.id === gifLibraryCat)?.items.map(item => (
-                    <button
-                      key={item.url}
-                      title={isAr ? item.altAr : item.altEn}
-                      disabled={readOnly}
-                      onClick={() => {
-                        onInsertElement({
-                          id: `img-${Date.now()}`,
-                          kind: "image",
-                          url: item.url,
-                          x: 440, y: 210, w: 380, h: 280,
-                          objectFit: "contain",
-                        } as SlideElement);
-                        activeSetGifOpen(false);
-                      }}
-                      className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
-                    >
-                      <img
-                        src={item.url}
-                        alt={isAr ? item.altAr : item.altEn}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            const fb = parent.querySelector(".gif-fallback") as HTMLElement | null;
-                            if (fb) fb.style.display = "flex";
-                          }
-                        }}
-                      />
-                      <div className="gif-fallback hidden absolute inset-0 items-center justify-center text-muted-foreground text-xs text-center px-1">
-                        {isAr ? item.altAr : item.altEn}
+                {gifSearchQuery.trim() ? (
+                  /* ── Search results ── */
+                  <div className="p-2 pt-1 min-h-[80px]">
+                    {gifSearchLoading ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground text-xs gap-2">
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V0a12 12 0 100 24v-4l-3 3 3 3v4A12 12 0 014 12z" />
+                        </svg>
+                        {isAr ? "جارٍ البحث..." : "Searching..."}
                       </div>
-                      {/* hover overlay */}
-                      <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
-                      <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
-                        {isAr ? item.altAr : item.altEn}
+                    ) : gifSearchResults.length === 0 ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">
+                        {isAr ? "لا نتائج — جرّب كلمة أخرى" : "No results — try another term"}
                       </div>
-                    </button>
-                  ))}
-                </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {gifSearchResults.map((item, i) => (
+                          <button
+                            key={item.url + i}
+                            title={item.alt}
+                            disabled={readOnly}
+                            onClick={() => {
+                              onInsertElement({
+                                id: `img-${Date.now()}`,
+                                kind: "image",
+                                url: item.url,
+                                x: 440, y: 210, w: 380, h: 280,
+                                objectFit: "contain",
+                              } as SlideElement);
+                              activeSetGifOpen(false);
+                              setGifSearchQuery("");
+                            }}
+                            className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.alt}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
+                            <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                              {item.alt}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* GIPHY attribution */}
+                    {!gifSearchLoading && gifSearchResults.length > 0 && (
+                      <p className="text-[9px] text-muted-foreground text-center mt-2 opacity-60">Powered by GIPHY</p>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Curated categories ── */
+                  <>
+                    <div className="flex overflow-x-auto gap-1 p-2 pb-1 scrollbar-none">
+                      {GIF_LIBRARY.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setGifLibraryCat(cat.id)}
+                          className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${
+                            gifLibraryCat === cat.id
+                              ? "text-white shadow"
+                              : "text-muted-foreground bg-background hover:bg-muted"
+                          }`}
+                          style={gifLibraryCat === cat.id ? { background: BRAND_GREEN } : {}}
+                        >
+                          {isAr ? cat.labelAr : cat.labelEn}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 p-2 pt-1.5">
+                      {GIF_LIBRARY.find(c => c.id === gifLibraryCat)?.items.map(item => (
+                        <button
+                          key={item.url}
+                          title={isAr ? item.altAr : item.altEn}
+                          disabled={readOnly}
+                          onClick={() => {
+                            onInsertElement({
+                              id: `img-${Date.now()}`,
+                              kind: "image",
+                              url: item.url,
+                              x: 440, y: 210, w: 380, h: 280,
+                              objectFit: "contain",
+                            } as SlideElement);
+                            activeSetGifOpen(false);
+                          }}
+                          className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
+                        >
+                          <img
+                            src={item.url}
+                            alt={isAr ? item.altAr : item.altEn}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                const fb = parent.querySelector(".gif-fallback") as HTMLElement | null;
+                                if (fb) fb.style.display = "flex";
+                              }
+                            }}
+                          />
+                          <div className="gif-fallback hidden absolute inset-0 items-center justify-center text-muted-foreground text-xs text-center px-1">
+                            {isAr ? item.altAr : item.altEn}
+                          </div>
+                          <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                            {isAr ? item.altAr : item.altEn}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
