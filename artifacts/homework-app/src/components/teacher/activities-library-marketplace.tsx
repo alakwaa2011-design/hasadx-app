@@ -95,6 +95,7 @@ export interface MarketplaceQuestion {
   isAdminContent?: boolean;
   hiddenByAdmin?: boolean;
   imageUrl?: string | null;
+  tags?: string | null;
   createdAt: string;
 }
 
@@ -528,7 +529,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
       >
         <div className="relative">
-          <ActivityCover kind={coverKind} subject={a.subject} title={a.title} aspect="video">
+          <ActivityCover kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
             <span className={cn("absolute top-2.5 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5", badge.cls)}>
               {badge.label}
             </span>
@@ -903,6 +904,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       kind={resolveCoverKind(item.kind, item.type)}
                       subject={item.subject}
                       title={item.title}
+                      type={item.type}
                       aspect="thumb"
                     />
                   </div>
@@ -946,6 +948,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                   kind={resolveCoverKind(item.kind, item.type)}
                   subject={item.subject}
                   title={item.title}
+                  type={item.type}
                   aspect="photo"
                 >
                   <span className={cn("absolute top-2 z-10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", activityBadge(item.kind, item.type, isAr).cls)}>
@@ -1019,7 +1022,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {displayQuestions.map((q, i) => (
                   <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col overflow-hidden rounded-2xl border bg-white hover:shadow-md" style={{ borderColor: C.border }}>
-                    <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} imageUrl={q.imageUrl} aspect="video">
+                    <ActivityCover kind="interactive" subject={q.subject} title={q.text.slice(0, 40)} tags={q.tags ?? undefined} imageUrl={q.imageUrl} aspect="video">
                       <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>
                         {isAr ? "تفاعلي" : "Interactive"}
                       </span>
