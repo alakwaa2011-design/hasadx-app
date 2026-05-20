@@ -66,6 +66,8 @@ interface LiveSession {
     submitted: Set<string>;
     nextId: number;
   };
+  /** Stage Mode — professional cinematic display mode for the projector. */
+  stageMode?: boolean;
   /** Phase 6 — inline hasad-game quiz state (when the launched game
    *  carries `questions[]`, we run it inline on the student/teacher
    *  screens instead of opening the legacy game-setup tab). Cleared
@@ -420,6 +422,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     revealDistribution: sess.revealDistribution,
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
+    stageMode: sessions.get(sid)?.stageMode ?? false,
   });
   /* Late-joiner support: if the teacher already revealed the answer,
      send the dedicated reveal event to this one socket so the UI can
@@ -1034,6 +1037,19 @@ export function setupPresentationSocket(io: Server) {
           .where(eq(presentationSessionsTable.id, sid));
         io.to(room(sid)).emit("session:ended");
       } catch (err) { logger.error({ err }, "session:end failed"); }
+    });
+
+    /* Stage Mode toggle — teacher-only. Stores state in-memory and
+       broadcasts to all clients in the room (show + students) so the
+       projector can switch visual modes instantly. */
+    socket.on("stage:toggle", ({ sessionId, on }: { sessionId: number; on: boolean }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        live.stageMode = !!on;
+        io.to(room(sid)).emit("stage:changed", { on: live.stageMode });
+      } catch (err) { logger.error({ err }, "stage:toggle failed"); }
     });
 
     /* Student answer — server validates correctness against the

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import {
   ChevronLeft, ChevronRight, Play, Square, Eye, EyeOff,
-  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon,
+  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon, Sparkles,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -100,6 +100,8 @@ export default function PresentationControl() {
   /* word_cloud / open_wall live state */
   const [wordCloudWords, setWordCloudWords] = useState<{ text: string; count: number }[]>([]);
   const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
+  /* Stage Mode — professional cinematic display mode for the projector. */
+  const [stageMode, setStageMode] = useState(false);
 
   async function loadHistory() {
     if (!Number.isFinite(sid)) return;
@@ -168,6 +170,7 @@ export default function PresentationControl() {
       setLive((p) => (p ? { ...p, status: "ended" } : p));
     };
     const onReconnect = () => s.emit("teacher:join-presentation", { sessionId: sid });
+    const onStageChanged = ({ on }: { on: boolean }) => setStageMode(!!on);
 
     s.on("state:sync", onSync);
     s.on("slide:changed", onSlide);
@@ -183,6 +186,7 @@ export default function PresentationControl() {
     s.on("connect", onReconnect);
     s.on("word_cloud:update", onWordCloudUpdate);
     s.on("wall:update", onWallUpdate);
+    s.on("stage:changed", onStageChanged);
 
     return () => {
       s.off("state:sync", onSync);
@@ -199,6 +203,7 @@ export default function PresentationControl() {
       s.off("connect", onReconnect);
       s.off("word_cloud:update", onWordCloudUpdate);
       s.off("wall:update", onWallUpdate);
+      s.off("stage:changed", onStageChanged);
     };
   }, [sid]);
 
@@ -823,6 +828,32 @@ export default function PresentationControl() {
         <Button onClick={openShow} className="w-full" variant="outline">
           فتح شاشة العرض في تبويب جديد
         </Button>
+
+        {/* Stage Mode toggle — professional cinematic mode for the projector.
+            Emits stage:toggle to the server which broadcasts stage:changed to the room. */}
+        <button
+          type="button"
+          onClick={() => getSocket().emit("stage:toggle", { sessionId: sid, on: !stageMode })}
+          className="w-full flex items-center justify-between rounded-xl px-4 py-3 font-bold text-sm transition-all border"
+          style={stageMode
+            ? { background: "rgba(217,165,33,0.15)", border: "1px solid #D9A521", color: "#D9A521" }
+            : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }
+          }
+        >
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            وضع المسرح
+          </span>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-black"
+            style={stageMode
+              ? { background: "#D9A521", color: "#1c1003" }
+              : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+            }
+          >
+            {stageMode ? "🎬 مفعّل" : "متوقف"}
+          </span>
+        </button>
 
         <Button onClick={endSession} disabled={ended} variant="destructive" className="w-full">
           <X className="w-4 h-4 me-1" /> إنهاء الجلسة

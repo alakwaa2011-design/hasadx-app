@@ -360,8 +360,8 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * coordinates so it scales letterboxed inside any container.
  */
 export function SlideRender({
-  slide, theme, pattern, lang,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en" }) {
+  slide, theme, pattern, lang, stageMode,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
   const bg = slideBgStyle(slide, theme, pattern);
   const dir = lang === "ar" ? "rtl" : "ltr";
   /* Per-slide default text color is contrast-aware: a slide with a
@@ -393,14 +393,24 @@ export function SlideRender({
       className="relative w-full h-full overflow-hidden"
       style={finalStyle}
     >
-      {(slide.elements ?? []).map((el: SlideElement) => {
+      {/* Stage Mode: inject keyframe for element stagger animation.
+          Using a <style> tag is the simplest way to define @keyframes
+          without adding a motion library dependency to this utility. */}
+      {stageMode && (
+        <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+      )}
+      {(slide.elements ?? []).map((el: SlideElement, i: number) => {
         const left = `${(el.x / CANVAS_W) * 100}%`;
         const top = `${(el.y / CANVAS_H) * 100}%`;
         const w = `${(el.w / CANVAS_W) * 100}%`;
         const h = `${(el.h / CANVAS_H) * 100}%`;
+        const stageAnim: React.CSSProperties = stageMode
+          ? { animation: `_stageElIn 0.45s ease-out ${i * 0.1}s both` }
+          : {};
         const style: React.CSSProperties = {
           position: "absolute",
           left, top, width: w, height: h,
+          ...stageAnim,
         };
         if (el.kind === "text") {
           return (
@@ -513,8 +523,8 @@ export function SlideRender({
  * mode and the public viewer.
  */
 export function SlideStage({
-  slide, theme, pattern, lang,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en" }) {
+  slide, theme, pattern, lang, stageMode,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
   /* Letterbox a 16:9 stage inside any parent (full-screen present
      mode OR a constrained modal). We render the inner frame at its
      canonical pixel size (1280×720) and use a JS-driven `transform:
@@ -564,7 +574,7 @@ export function SlideStage({
         }}
         data-slide-stage-frame=""
       >
-        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} />
+        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} />
       </div>
     </div>
   );
