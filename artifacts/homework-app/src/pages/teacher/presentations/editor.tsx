@@ -1765,7 +1765,7 @@ export default function PresentationEditor() {
                   readOnly={readOnly}
                   selectedElId={selectedElId}
                   multiSelectIds={multiSelectIds}
-                  onSelectEl={(id) => { setSelectedElId(id); setMultiSelectIds([]); }}
+                  onSelectEl={(id) => { setSelectedElId(id); setMultiSelectIds([]); setGifLibraryOpen(false); }}
                   onToggleMultiSelect={(id) => {
                     /* Shift/Ctrl-click toggles a secondary selection.
                        The first click promotes the existing primary
