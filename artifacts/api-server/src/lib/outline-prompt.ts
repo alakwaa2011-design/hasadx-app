@@ -339,6 +339,42 @@ Color theme is a deck-wide concern — not a per-slide decision.
 
 Mandatory: slideTheme = null on every single slide. No exceptions.`;
 
+/* ── Quick Mode: mandatory interactive structure injected when
+   presentationKind === "quick". Forces the model to distribute
+   interactive slides (warm-up poll → MCQ quiz → closing poll)
+   across the deck instead of clustering all content slides
+   together. Arabic and English variants kept in sync with the
+   rest of the prompt style. ────────────────────────────────── */
+const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — بنية الشرائح الإلزامية:
+هذا العرض يجب أن يكون حصةً تفاعليةً كاملة جاهزة في أقل من دقيقة. اتبع هذا الترتيب حرفياً:
+1. شريحة عنوان (kind: title) — تُسمَّى باسم الموضوع مباشرةً
+2. شريحة نشاط افتتاحية (kind: interactive, interactionHint: "poll") — سؤال قصير لتفعيل الطلاب وقياس معرفتهم المسبقة
+3. (slideCount - 5) شرائح محتوى تعليمي متنوعة بأنواع مختلفة (concept-card, visual-hero, steps, stat, …)
+4. شريحة أسئلة تقييمية (kind: interactive, interactionHint: "quiz") — 5-8 أسئلة اختيار متعدد مرتبطة بالمحتوى بالضبط
+5. شريحة استطلاع ختامي (kind: interactive, interactionHint: "poll") — سؤال تأملي أو تقييمي لقياس الفهم
+6. شريحة ختام (kind: closure) — ملخص نهائي مختصر
+
+⚠️ القواعد الإضافية لوضع الإنشاء السريع:
+- كل شريحة تفاعلية (interactive) يجب أن تحتوي على gameQuestions بـ 5-8 أسئلة جاهزة على الأقل.
+- interactionHint يجب أن يكون غير null على ≥ 3 شرائح في هذا العرض.
+- لا تضع أكثر من 2 شرائح interactive متتالية — وزّع الأنشطة بين شرائح المحتوى.
+- الهدف: معلم يُطلق حصةً تفاعليةً كاملة في أقل من 60 ثانية من الإعداد.`;
+
+const QUICK_MODE_RULES_EN = `⚡ Quick Mode — MANDATORY slide structure:
+This deck must be a complete interactive lesson ready to launch in under a minute. Follow this order exactly:
+1. title slide (kind: title) — named directly after the topic
+2. Warm-up activity slide (kind: interactive, interactionHint: "poll") — short question to activate students and gauge prior knowledge
+3. (slideCount - 5) educational content slides with varied kinds (concept-card, visual-hero, steps, stat, …)
+4. Assessment quiz slide (kind: interactive, interactionHint: "quiz") — 5-8 MCQ questions tied precisely to the content
+5. Closing poll slide (kind: interactive, interactionHint: "poll") — reflective or assessment question to gauge understanding
+6. closure slide (kind: closure) — concise final recap
+
+⚠️ Additional Quick Mode rules:
+- Every interactive slide MUST include gameQuestions with at least 5-8 ready questions.
+- interactionHint must be non-null on ≥ 3 slides in this deck.
+- Do NOT place more than 2 interactive slides in a row — distribute activities between content slides.
+- Goal: a teacher can launch a complete interactive lesson in under 60 seconds of setup.`;
+
 /* Build the user-message prompt for one outline-generation call. */
 export function buildOutlinePrompt(brief: OutlineBrief): string {
   const ar = brief.language === "ar";
@@ -351,6 +387,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const layoutRules = ar ? LAYOUT_RULES_AR : LAYOUT_RULES_EN;
   const gamesRules = ar ? GAMES_RULES_AR : GAMES_RULES_EN;
   const designRules = ar ? DESIGN_RULES_AR : DESIGN_RULES_EN;
+  const quickModeRules = brief.presentationKind === "quick"
+    ? (ar ? QUICK_MODE_RULES_AR : QUICK_MODE_RULES_EN)
+    : null;
 
   const togglesAr: string[] = [];
   const togglesEn: string[] = [];
@@ -472,6 +511,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     "",
     ar ? "ذكاء التصميم البصري" : "VISUAL DESIGN INTELLIGENCE",
     designRules,
+    ...(quickModeRules
+      ? ["", ar ? "⚡ وضع الإنشاء السريع" : "⚡ QUICK MODE", quickModeRules]
+      : []),
     "",
     ar ? "القواعد" : "RULES",
     ...rules.map((r) => `- ${r}`),

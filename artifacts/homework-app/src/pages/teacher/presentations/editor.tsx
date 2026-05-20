@@ -1022,6 +1022,18 @@ export default function PresentationEditor() {
             <div className="min-w-0 flex flex-col">
               <h1 className="text-base sm:text-lg font-bold truncate flex items-center gap-2 tracking-tight" style={{ color: BRAND_GREEN }}>
                 {data.title}
+                {/* Pro Studio identity badge — always visible so teachers
+                    know they are in the advanced editor, not Quick Mode. */}
+                <span
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 select-none"
+                  style={{
+                    background: `${BRAND_GREEN}18`,
+                    color: BRAND_GREEN,
+                    border: `1px solid ${BRAND_GREEN}35`,
+                  }}
+                >
+                  🎛 Pro Studio
+                </span>
                 {tier && !tier.isPro && (
                   <button
                     onClick={() => setShowUpgrade(true)}

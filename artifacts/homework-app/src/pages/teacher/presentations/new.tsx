@@ -1,222 +1,384 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { platformHarvestBg } from "@/lib/platform-harvest-bg";
+import { AiPresentationBuilder } from "./builder";
 import {
-  Sparkles,
-  Loader2,
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Wand2,
-  Palette,
-  Settings2,
-  CheckCircle2,
-  Bot,
+  Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
+  CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Play, Pencil,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-
-const THEMES: { key: string; labelAr: string; labelEn: string; grad: string | null }[] = [
-  { key: "harvest", labelAr: "الحصاد", labelEn: "Harvest", grad: null },
-  { key: "ocean", labelAr: "المحيط", labelEn: "Ocean", grad: "from-sky-500 via-blue-600 to-indigo-600" },
-  { key: "sunset", labelAr: "الغروب", labelEn: "Sunset", grad: "from-amber-400 via-orange-500 to-rose-500" },
-  { key: "midnight", labelAr: "منتصف الليل", labelEn: "Midnight", grad: "from-slate-700 via-indigo-900 to-purple-900" },
-  { key: "rose", labelAr: "الوردي", labelEn: "Rose", grad: "from-rose-400 via-pink-500 to-fuchsia-600" },
-];
-
-const EMOJIS = ["📚", "🌱", "🧪", "🌍", "🧮", "📐", "🎨", "🎵", "📖", "🔬", "🚀", "🏛️", "💡", "✨", "🌟", "🎯", "🧩", "📊"];
+const BRAND_GREEN = "#225739";
 
 const GRADES = [
-  "الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع", "الصف الخامس", "الصف السادس",
-  "الصف السابع", "الصف الثامن", "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر",
+  "الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع",
+  "الصف الخامس", "الصف السادس", "الصف السابع", "الصف الثامن",
+  "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر",
 ];
+
+type Mode = null | "quick" | "pro";
+type QuickPhase = "form" | "generating" | "preview" | "error";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 export default function NewPresentationPage() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
+  const isAr = lang === "ar";
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-
-  const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
-  const [gradeLevel, setGradeLevel] = useState("");
-  const [slideCount, setSlideCount] = useState(10);
-  const [outline, setOutline] = useState("");
-  const [includeQuizzes, setIncludeQuizzes] = useState(true);
-  const [includeActivities, setIncludeActivities] = useState(true);
-  const [includeDiscussion, setIncludeDiscussion] = useState(true);
-
-  const [theme, setTheme] = useState<string>("ai");
-  const [coverEmoji, setCoverEmoji] = useState("📚");
-
-  const [generating, setGenerating] = useState(false);
+  const [mode, setMode] = useState<Mode>(null);
+  const [quickPhase, setQuickPhase] = useState<QuickPhase>("form");
   const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [availableTiers, setAvailableTiers] = useState<("standard" | "pro" | "claude")[]>(["standard"]);
-  const [selectedTier, setSelectedTier] = useState<"standard" | "pro" | "claude">("standard");
+  const [topic, setTopic] = useState("");
+  const [grade, setGrade] = useState("");
+  const [subject, setSubject] = useState("");
+  const [slideCount, setSlideCount] = useState(10);
+
+  const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
+  const [proBuilderOpen, setProBuilderOpen] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/presentations/ai-options`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.tiers && Array.isArray(data.tiers)) {
-          const tiers = data.tiers.filter((t: string) => t === "standard" || t === "pro" || t === "claude");
-          setAvailableTiers(tiers as ("standard" | "pro" | "claude")[]);
-          if (tiers.includes("claude")) setSelectedTier("claude");
-          else if (tiers.includes("pro")) setSelectedTier("pro");
-        }
-      })
-      .catch(() => { /* fall back to standard */ });
-  }, []);
+    if (mode === "pro") setProBuilderOpen(true);
+  }, [mode]);
 
-  const canStep2 = title.trim().length >= 2;
+  const canGenerate = topic.trim().length >= 2;
 
-  const handleGenerate = async () => {
-    setGenerating(true);
-    setStep(3);
-    setStatusMsg(lang === "ar" ? "جاري التفكير في خطة الدرس…" : "Planning the lesson…");
+  const handleQuickGenerate = useCallback(async () => {
+    if (!canGenerate) return;
 
-    /* Cycle through nice status messages while waiting. */
-    const messages = lang === "ar"
-      ? ["جاري التفكير في خطة الدرس…", "إعداد الشرائح والأنشطة…", "تصميم الأسئلة التفاعلية…", "اللمسات الأخيرة…"]
-      : ["Planning the lesson…", "Preparing slides & activities…", "Designing interactive questions…", "Final touches…"];
-    let i = 0;
-    const timer = setInterval(() => {
-      i = (i + 1) % messages.length;
-      setStatusMsg(messages[i]);
+    setQuickPhase("generating");
+    setErrorMsg("");
+
+    const msgs = isAr
+      ? [
+          "جاري التفكير في خطة الدرس…",
+          "توليد المخطط التفصيلي…",
+          "بناء الشرائح…",
+          "إضافة الأنشطة التفاعلية…",
+          "اللمسات الأخيرة…",
+        ]
+      : [
+          "Planning the lesson…",
+          "Generating detailed outline…",
+          "Building slides…",
+          "Adding interactive activities…",
+          "Final touches…",
+        ];
+    let mi = 0;
+    setStatusMsg(msgs[0]);
+    const t = setInterval(() => {
+      mi = (mi + 1) % msgs.length;
+      setStatusMsg(msgs[mi]);
     }, 3500);
 
     try {
-      const r = await fetch(`${API_BASE}/api/presentations/generate`, {
+      const r1 = await fetch(`${API_BASE}/api/presentations/ai/outline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          title: title.trim(),
-          subject: subject.trim() || null,
-          gradeLevel: gradeLevel || null,
-          slideCount,
-          lessonOutline: outline.trim() || null,
-          includeQuizzes,
-          includeActivities,
-          includeDiscussion,
           language: "ar",
-          tier: selectedTier,
+          subject: subject.trim() || topic.trim(),
+          gradeLevel: grade || "غير محدد",
+          topic: topic.trim(),
+          presentationKind: "quick",
+          slideCount,
+          durationMinutes: 30,
+          languageLevel: "medium",
+          density: "balanced",
+          toggles: { activities: true, questions: true, poll: true, quiz: true },
         }),
       });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.message || "Generation failed");
+      if (!r1.ok) {
+        const e = await r1.json().catch(() => ({}));
+        throw new Error(
+          (e as { message?: string }).message ||
+            (isAr ? "فشل توليد المخطط" : "Outline generation failed"),
+        );
       }
-      const gen = await r.json();
-      setStatusMsg(lang === "ar" ? "حفظ العرض…" : "Saving…");
+      const draft = await r1.json() as { id: number };
+      const draftId = draft.id;
 
-      // When "ai" mode: use AI-suggested theme from generation, fallback to "harvest"
-      const effectiveTheme =
-        theme === "ai" ? (gen.theme ?? "harvest") : theme;
+      const r2 = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: "outline_ready" }),
+      });
+      if (!r2.ok) {
+        throw new Error(isAr ? "فشل اعتماد المخطط" : "Outline approval failed");
+      }
 
-      const saveRes = await fetch(`${API_BASE}/api/presentations`, {
+      setStatusMsg(isAr ? "بناء الشرائح…" : "Building slides…");
+      const r3 = await fetch(`${API_BASE}/api/presentations/ai/build/${draftId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          title: title.trim(),
-          subject: subject.trim() || null,
-          gradeLevel: gradeLevel || null,
-          theme: effectiveTheme,
-          coverEmoji: gen.coverEmoji || coverEmoji,
-          description: gen.description || null,
-          slides: gen.slides,
-        }),
+        body: JSON.stringify({ theme: "harvest", coverEmoji: "📚" }),
       });
-      if (!saveRes.ok) throw new Error("Save failed");
-      const saved = await saveRes.json();
-      clearInterval(timer);
-      toast.success(lang === "ar" ? "تم إنشاء العرض!" : "Created!");
-      setLocation(`/teacher/presentations/${saved.presentation.id}`);
+      if (!r3.ok) {
+        const e = await r3.json().catch(() => ({}));
+        throw new Error(
+          (e as { message?: string }).message ||
+            (isAr ? "فشل بناء الشرائح" : "Build failed"),
+        );
+      }
+
+      let presId: number | null = null;
+      for (let i = 0; i < 120; i++) {
+        await sleep(800);
+        const rp = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
+          credentials: "include",
+        });
+        if (!rp.ok) continue;
+        const pd = await rp.json() as { status: string; presentationId?: number; errorMessage?: string };
+        if (pd.status === "built" && pd.presentationId) {
+          presId = pd.presentationId;
+          break;
+        }
+        if (pd.status === "failed") {
+          throw new Error(
+            pd.errorMessage || (isAr ? "فشل الإنشاء" : "Build failed"),
+          );
+        }
+      }
+
+      clearInterval(t);
+      if (!presId) {
+        throw new Error(
+          isAr ? "انتهت المهلة، حاول مجدداً" : "Timed out, please retry",
+        );
+      }
+
+      setGeneratedPresentationId(presId);
+      setQuickPhase("preview");
     } catch (err) {
-      clearInterval(timer);
-      const msg = err instanceof Error ? err.message : "Failed";
+      clearInterval(t);
+      const msg =
+        err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error";
+      setErrorMsg(msg);
+      setQuickPhase("error");
       toast.error(msg);
-      setGenerating(false);
-      setStep(2);
     }
+  }, [topic, grade, subject, slideCount, isAr, canGenerate]);
+
+  const resetQuick = () => {
+    setQuickPhase("form");
+    setTopic("");
+    setGrade("");
+    setSubject("");
+    setSlideCount(10);
+    setGeneratedPresentationId(null);
+    setErrorMsg("");
   };
 
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        {/* Brand strip — same identity as list & dashboard */}
+        {/* Brand strip */}
         <div
           className="relative overflow-hidden rounded-2xl px-4 sm:px-5 py-3 sm:py-4 mb-6 shadow-md"
-          style={{ background: platformHarvestBg(lang === "ar") }}
+          style={{ background: platformHarvestBg(isAr) }}
         >
           <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-white/12 blur-2xl pointer-events-none" />
           <div
             className="absolute -bottom-10 -end-10 w-48 h-48 rounded-full blur-2xl pointer-events-none"
-            style={{ backgroundColor: "rgba(212, 175, 55, 0.35)" }}
+            style={{ backgroundColor: "rgba(212,175,55,0.35)" }}
           />
           <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
           <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0 flex-1 relative z-[1] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">
-              <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur px-2 py-0.5 rounded-full text-white text-[10px] sm:text-xs font-bold mb-2 ring-1 ring-white/25">
-                <Sparkles className="w-2.5 h-2.5" />
-                {lang === "ar" ? "جديد · ذكاء اصطناعي" : "New · AI"}
-              </div>
+              {mode !== null && (
+                <button
+                  onClick={() => {
+                    setMode(null);
+                    setQuickPhase("form");
+                    setProBuilderOpen(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-white/80 text-xs font-bold mb-2 hover:text-white transition-colors"
+                >
+                  {isAr ? (
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  )}
+                  {isAr ? "اختيار الوضع" : "Choose mode"}
+                </button>
+              )}
               <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight mb-1">
-                {lang === "ar" ? "إنشاء عرض تفاعلي" : "Create interactive deck"}
+                {mode === "quick"
+                  ? isAr
+                    ? "⚡ الإنشاء السريع"
+                    : "⚡ Quick Mode"
+                  : mode === "pro"
+                    ? isAr
+                      ? "🎛 استوديو المحترف"
+                      : "🎛 Pro Studio"
+                    : isAr
+                      ? "إنشاء عرض تفاعلي"
+                      : "Create interactive deck"}
               </h1>
               <p className="text-white/85 text-xs sm:text-sm max-w-xl leading-relaxed line-clamp-2">
-                {lang === "ar"
-                  ? "أدخل تفاصيل الدرس والخطوات التالية، ثم يبني الذكاء الاصطناعي العرض كاملاً."
-                  : "Add your lesson details, pick a look, then AI builds the full deck."}
+                {mode === "quick"
+                  ? isAr
+                    ? "ثلاث خطوات فقط — اكتب الموضوع واضغط أنشئ، والذكاء الاصطناعي يبني الحصة كاملةً."
+                    : "Three steps only — write your topic and hit generate, AI builds the full lesson."
+                  : mode === "pro"
+                    ? isAr
+                      ? "المحرر المتقدم — تحكم كامل في المخطط والشرائح والأنشطة."
+                      : "Advanced editor — full control over outline, slides, and activities."
+                    : isAr
+                      ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
+                      : "Choose your mode and AI will build your complete lesson."}
               </p>
             </div>
-            <Link href="/teacher/presentations" className="shrink-0 self-start sm:self-center">
+            <Link
+              href="/teacher/presentations"
+              className="shrink-0 self-start sm:self-center"
+            >
               <button
                 type="button"
                 className="inline-flex items-center gap-2 bg-white text-[#1f5a3e] hover:bg-amber-50 px-3.5 py-2 rounded-lg text-sm font-bold shadow-md shadow-black/10 transition-colors"
               >
-                {lang === "ar" ? "قائمة العروض" : "All decks"}
+                {isAr ? "قائمة العروض" : "All decks"}
               </button>
             </Link>
           </div>
         </div>
 
-        {/* Stepper */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {[1, 2, 3].map((s) => {
-            const active = step >= s;
-            return (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                    active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {step > s ? <Check className="w-4 h-4" /> : s}
+        {/* ── MODE PICKER ── */}
+        {mode === null && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Quick Mode */}
+            <button
+              onClick={() => setMode("quick")}
+              className="group relative overflow-hidden rounded-2xl border-2 border-transparent p-6 text-start transition-all hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-900/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              style={{
+                background:
+                  "linear-gradient(135deg, #1a4731 0%, #225739 55%, #2d7a4f 100%)",
+              }}
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(255,255,255,0.09),transparent_65%)] pointer-events-none" />
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center mb-4 group-hover:bg-white/22 transition-colors">
+                  <Zap className="w-6 h-6 text-amber-300" strokeWidth={2.5} />
                 </div>
-                {s < 3 && <div className={`w-12 h-1 rounded ${step > s ? "bg-primary" : "bg-muted"}`} />}
+                <div className="text-white text-xl font-extrabold mb-1.5">
+                  {isAr ? "إنشاء سريع ⚡" : "Quick Mode ⚡"}
+                </div>
+                <div className="text-white/75 text-sm leading-relaxed mb-4">
+                  {isAr
+                    ? "اكتب الموضوع فقط → الذكاء الاصطناعي يبني الحصة كاملةً في أقل من دقيقة"
+                    : "Write your topic → AI builds the full lesson in under a minute"}
+                </div>
+                <div className="flex flex-col gap-1.5 mb-5">
+                  {(isAr
+                    ? [
+                        "✓ شرائح محتوى تلقائية",
+                        "✓ أسئلة MCQ تفاعلية جاهزة",
+                        "✓ استطلاع + جدار أفكار",
+                        "✓ جاهز للإطلاق فوراً",
+                      ]
+                    : [
+                        "✓ Auto-generated content slides",
+                        "✓ Ready MCQ interactive questions",
+                        "✓ Poll + word wall included",
+                        "✓ Launch-ready instantly",
+                      ]
+                  ).map((item) => (
+                    <span key={item} className="text-[11px] text-white/65 font-medium">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-amber-400 text-[#1a4731] text-sm font-extrabold px-4 py-2 rounded-xl group-hover:bg-amber-300 transition-colors">
+                  {isAr ? "ابدأ الآن" : "Get started"}
+                  {isAr ? (
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  )}
+                </div>
               </div>
-            );
-          })}
-        </div>
+            </button>
 
-        {/* Step 1: details */}
-        {step === 1 && (
+            {/* Pro Studio */}
+            <button
+              onClick={() => setMode("pro")}
+              className="group relative overflow-hidden rounded-2xl border-2 border-transparent p-6 text-start transition-all hover:border-slate-400/60 hover:shadow-xl hover:shadow-slate-900/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-slate-400"
+              style={{
+                background:
+                  "linear-gradient(135deg, #1e293b 0%, #2d3748 55%, #374151 100%)",
+              }}
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(217,165,33,0.13),transparent_65%)] pointer-events-none" />
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-4 group-hover:bg-white/16 transition-colors">
+                  <Settings2 className="w-6 h-6 text-amber-400" strokeWidth={2} />
+                </div>
+                <div className="text-white text-xl font-extrabold mb-1.5">
+                  {isAr ? "استوديو المحترف 🎛" : "Pro Studio 🎛"}
+                </div>
+                <div className="text-white/75 text-sm leading-relaxed mb-4">
+                  {isAr
+                    ? "تحكم كامل — راجع المخطط وعدّله قبل بناء الشرائح، مع محرر احترافي"
+                    : "Full control — review and edit the outline before building, with an advanced editor"}
+                </div>
+                <div className="flex flex-col gap-1.5 mb-5">
+                  {(isAr
+                    ? [
+                        "✓ مراجعة المخطط قبل البناء",
+                        "✓ تخصيص كامل للشرائح",
+                        "✓ محرر متقدم بعد البناء",
+                        "✓ دعم المحتوى المتقدم",
+                      ]
+                    : [
+                        "✓ Review outline before build",
+                        "✓ Full slide customization",
+                        "✓ Advanced editor post-build",
+                        "✓ Advanced content support",
+                      ]
+                  ).map((item) => (
+                    <span key={item} className="text-[11px] text-white/65 font-medium">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-white text-sm font-extrabold px-4 py-2 rounded-xl group-hover:bg-white/18 transition-colors">
+                  {isAr ? "فتح الاستوديو" : "Open Studio"}
+                  {isAr ? (
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  )}
+                </div>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* ── QUICK MODE: FORM ── */}
+        {mode === "quick" && quickPhase === "form" && (
           <div className="bg-card rounded-3xl border border-border shadow-lg p-6 sm:p-8">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
-                <Wand2 className="w-5 h-5 text-emerald-600" />
+                <Zap className="w-5 h-5 text-emerald-600" strokeWidth={2.5} />
               </div>
               <div>
-                <h2 className="text-xl font-bold">{lang === "ar" ? "تفاصيل الدرس" : "Lesson details"}</h2>
+                <h2 className="text-xl font-bold">
+                  {isAr ? "أخبرنا عن الدرس" : "Tell us about the lesson"}
+                </h2>
                 <p className="text-xs text-muted-foreground">
-                  {lang === "ar" ? "أخبرنا عن الدرس وسنبني العرض كاملاً" : "Tell us about the lesson"}
+                  {isAr
+                    ? "ثلاثة حقول فقط — الباقي على الذكاء الاصطناعي"
+                    : "Three fields only — the rest is on AI"}
                 </p>
               </div>
             </div>
@@ -224,380 +386,258 @@ export default function NewPresentationPage() {
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  {lang === "ar" ? "عنوان الدرس *" : "Lesson title *"}
+                  {isAr ? "موضوع الدرس *" : "Lesson topic *"}
                 </label>
                 <input
                   autoFocus
                   type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={lang === "ar" ? "مثال: دورة الماء في الطبيعة" : "e.g. The water cycle"}
-                  className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30"
-                  maxLength={200}
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && canGenerate) handleQuickGenerate();
+                  }}
+                  placeholder={
+                    isAr
+                      ? "مثال: دورة الماء في الطبيعة"
+                      : "e.g. The water cycle"
+                  }
+                  className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30 text-base"
+                  maxLength={120}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    {lang === "ar" ? "المادة" : "Subject"}
+                    {isAr ? "الصف (اختياري)" : "Grade (optional)"}
+                  </label>
+                  <select
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">
+                      {isAr ? "— اختر الصف —" : "— Any grade —"}
+                    </option>
+                    {GRADES.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                    {isAr ? "المادة (اختياري)" : "Subject (optional)"}
                   </label>
                   <input
                     type="text"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    placeholder={lang === "ar" ? "علوم، رياضيات…" : "Science, Math…"}
+                    placeholder={isAr ? "علوم، رياضيات…" : "Science, Math…"}
                     className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30"
                     maxLength={100}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                    {lang === "ar" ? "الصف" : "Grade"}
-                  </label>
-                  <select
-                    value={gradeLevel}
-                    onChange={(e) => setGradeLevel(e.target.value)}
-                    className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="">{lang === "ar" ? "— غير محدد —" : "— Any —"}</option>
-                    {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  {lang === "ar" ? `عدد الشرائح: ${slideCount}` : `Slides: ${slideCount}`}
+                  {isAr
+                    ? `عدد الشرائح: ${slideCount}`
+                    : `Slides: ${slideCount}`}
                 </label>
                 <input
                   type="range"
                   min={5}
-                  max={20}
+                  max={15}
                   value={slideCount}
-                  onChange={(e) => setSlideCount(parseInt(e.target.value, 10))}
+                  onChange={(e) =>
+                    setSlideCount(parseInt(e.target.value, 10))
+                  }
                   className="w-full accent-primary"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>5</span><span>10</span><span>15</span><span>20</span>
+                  <span>5</span>
+                  <span>10</span>
+                  <span>15</span>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  {lang === "ar" ? "خطة درسك (اختياري)" : "Your outline (optional)"}
-                </label>
-                <textarea
-                  value={outline}
-                  onChange={(e) => setOutline(e.target.value)}
-                  placeholder={lang === "ar"
-                    ? "اكتب أهم النقاط التي تريد تغطيتها… (اختياري)"
-                    : "Key points to cover… (optional)"}
-                  rows={4}
-                  maxLength={2000}
-                  className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                />
-              </div>
-
-              <div className="bg-muted/40 rounded-2xl p-4 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-2">
-                  <Settings2 className="w-3.5 h-3.5" />
-                  {lang === "ar" ? "محتوى تفاعلي" : "Interactive content"}
+              {/* What you'll get */}
+              <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 rounded-2xl p-4">
+                <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2">
+                  {isAr ? "ستحصل على:" : "You'll get:"}
                 </div>
-                {[
-                  { key: "quizzes", label: lang === "ar" ? "أسئلة سريعة في العرض" : "Quick quizzes", val: includeQuizzes, set: setIncludeQuizzes, emoji: "❓" },
-                  { key: "act", label: lang === "ar" ? "ألعاب جماعية (وميض، المليون…)" : "Class games", val: includeActivities, set: setIncludeActivities, emoji: "🎮" },
-                  { key: "disc", label: lang === "ar" ? "أسئلة نقاش مفتوحة" : "Discussion prompts", val: includeDiscussion, set: setIncludeDiscussion, emoji: "💬" },
-                ].map((opt) => (
-                  <label key={opt.key} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-card">
-                    <input
-                      type="checkbox"
-                      checked={opt.val}
-                      onChange={(e) => opt.set(e.target.checked)}
-                      className="w-4 h-4 accent-primary"
-                    />
-                    <span className="text-lg">{opt.emoji}</span>
-                    <span className="text-sm">{opt.label}</span>
-                  </label>
-                ))}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                  {(isAr
+                    ? [
+                        `${slideCount} شريحة`,
+                        "أسئلة MCQ تفاعلية",
+                        "استطلاع + جدار أفكار",
+                        "جاهز للإطلاق فوراً",
+                      ]
+                    : [
+                        `${slideCount} slides`,
+                        "MCQ interactive questions",
+                        "Poll + word wall",
+                        "Launch-ready instantly",
+                      ]
+                  ).map((item, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <span className="text-emerald-500">✓</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                onClick={() => setStep(2)}
-                disabled={!canStep2}
-                className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-xl font-bold disabled:opacity-50 hover:opacity-90"
-              >
-                {lang === "ar" ? "التالي" : "Next"}
-                {lang === "ar" ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-              </button>
-            </div>
+            <button
+              onClick={handleQuickGenerate}
+              disabled={!canGenerate}
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl font-extrabold text-lg disabled:opacity-40 transition-all hover:opacity-90 active:scale-[0.98] shadow-lg text-white"
+              style={{
+                background: canGenerate
+                  ? `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7a4f 100%)`
+                  : "#94a3b8",
+              }}
+            >
+              <Sparkles className="w-5 h-5" />
+              {isAr ? "أنشئ الحصة الآن" : "Generate lesson now"}
+            </button>
           </div>
         )}
 
-        {/* Step 2: theme */}
-        {step === 2 && (
-          <div className="bg-card rounded-3xl border border-border shadow-lg p-6 sm:p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
-                <Palette className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">{lang === "ar" ? "اختر الهوية" : "Choose the look"}</h2>
-                <p className="text-xs text-muted-foreground">
-                  {lang === "ar" ? "لون وأسلوب العرض" : "Color and style"}
-                </p>
-              </div>
-            </div>
-
-            {/* Theme grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-              {/* AI auto-pick card */}
-              <button
-                onClick={() => setTheme("ai")}
-                className={`relative overflow-hidden rounded-2xl h-24 group ring-2 transition-all col-span-2 sm:col-span-3 ${
-                  theme === "ai" ? "ring-primary scale-[1.02]" : "ring-transparent hover:ring-border"
-                }`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(255,255,255,0.12),transparent_70%)]" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-                  <div className="flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-white drop-shadow" />
-                    <span className="text-white text-sm font-extrabold drop-shadow">
-                      {lang === "ar" ? "ذكاء اصطناعي — يختار لك تلقائياً" : "AI — auto-picks for you"}
-                    </span>
-                  </div>
-                  <span className="text-white/75 text-xs">
-                    {lang === "ar" ? "يختار الذكاء الاصطناعي اللون المناسب للموضوع" : "AI selects the best color for your topic"}
-                  </span>
-                </div>
-                {theme === "ai" && (
-                  <div className="absolute top-2 end-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-primary" />
-                  </div>
-                )}
-              </button>
-
-              {/* Manual theme options */}
-              {THEMES.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setTheme(t.key)}
-                  className={`relative overflow-hidden rounded-2xl h-24 group ring-2 transition-all ${
-                    theme === t.key ? "ring-primary scale-105" : "ring-transparent hover:ring-border"
-                  }`}
-                >
-                  <div
-                    className={cn("absolute inset-0", t.grad && `bg-gradient-to-br ${t.grad}`)}
-                    style={
-                      !t.grad ? { background: platformHarvestBg(lang === "ar") } : undefined
-                    }
-                  />
-                  <div className="absolute inset-0 flex items-end justify-center pb-2">
-                    <span className="text-white text-xs font-bold drop-shadow">
-                      {lang === "ar" ? t.labelAr : t.labelEn}
-                    </span>
-                  </div>
-                  {theme === t.key && (
-                    <div className="absolute top-2 end-2 w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                      <Check className="w-4 h-4 text-primary" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-muted-foreground mb-2">
-                {lang === "ar" ? "أيقونة الغلاف" : "Cover icon"}
-              </label>
-              <div className="grid grid-cols-9 gap-2">
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setCoverEmoji(e)}
-                    className={`text-2xl p-2 rounded-xl transition-all ${
-                      coverEmoji === e ? "bg-primary/10 ring-2 ring-primary scale-110" : "hover:bg-muted"
-                    }`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Live preview */}
-            <div className="mt-6">
-              <p className="text-xs font-bold text-muted-foreground mb-2">
-                {lang === "ar" ? "معاينة الغلاف" : "Cover preview"}
-              </p>
-              {theme === "ai" ? (
-                <div className="relative rounded-2xl h-40 flex flex-col items-center justify-center text-white shadow-xl overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,255,255,0.15),transparent_70%)]" />
-                  <Bot className="w-8 h-8 text-white/80 mb-1 relative z-10" />
-                  <div className="font-bold text-sm drop-shadow relative z-10 text-center px-4">
-                    {lang === "ar"
-                      ? "سيختار الذكاء الاصطناعي اللون المناسب عند الإنشاء"
-                      : "AI will pick the best color when generating"}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "relative rounded-2xl h-40 flex flex-col items-center justify-center text-white shadow-xl overflow-hidden",
-                    THEMES.find((t) => t.key === theme)?.grad &&
-                      `bg-gradient-to-br ${THEMES.find((t) => t.key === theme)?.grad}`,
-                  )}
-                  style={
-                    theme === "harvest"
-                      ? { background: platformHarvestBg(lang === "ar") }
-                      : undefined
-                  }
-                >
-                  <div className="text-5xl mb-2">{coverEmoji}</div>
-                  <div className="font-bold text-lg drop-shadow">{title || (lang==="ar"?"عنوان الدرس":"Lesson title")}</div>
-                  {subject && <div className="text-xs opacity-90 mt-0.5">{subject}</div>}
-                </div>
-              )}
-            </div>
-
-            {/* AI tier picker (only when teacher has access to >1 tier) */}
-            {availableTiers.length > 1 && (
-              <div className="mt-6">
-                <p className="text-xs font-bold text-muted-foreground mb-2">
-                  {lang === "ar" ? "جودة الذكاء الاصطناعي" : "AI quality"}
-                </p>
-                <div className={`grid gap-3 ${availableTiers.includes("claude") ? "grid-cols-3" : "grid-cols-2"}`}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTier("standard")}
-                    className={`text-start rounded-2xl border-2 p-4 transition-all ${
-                      selectedTier === "standard"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-border/70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
-                      <span className="font-bold text-sm">
-                        {lang === "ar" ? "عادي" : "Standard"}
-                      </span>
-                      {selectedTier === "standard" && (
-                        <Check className="w-4 h-4 text-primary ms-auto" />
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground leading-relaxed">
-                      {lang === "ar"
-                        ? "أسرع وأقل تكلفة. جودة جيدة لمعظم الدروس."
-                        : "Faster & cheaper. Solid quality for most lessons."}
-                    </div>
-                  </button>
-
-                  {availableTiers.includes("pro") && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTier("pro")}
-                      className={`text-start rounded-2xl border-2 p-4 transition-all relative ${
-                        selectedTier === "pro"
-                          ? "border-violet-500 bg-violet-50/60 dark:bg-violet-950/20"
-                          : "border-border hover:border-border/70"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="w-4 h-4 text-violet-600" />
-                        <span className="font-bold text-sm">
-                          {lang === "ar" ? "احترافي" : "Pro"}
-                        </span>
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
-                          PRO
-                        </span>
-                        {selectedTier === "pro" && (
-                          <Check className="w-4 h-4 text-violet-600 ms-auto" />
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        {lang === "ar"
-                          ? "أعمق وأرقى. مثالي للدروس المهمة والعروض النهائية."
-                          : "Deeper & richer. Ideal for important lessons."}
-                      </div>
-                    </button>
-                  )}
-
-                  {availableTiers.includes("claude") && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedTier("claude")}
-                      className={`text-start rounded-2xl border-2 p-4 transition-all relative ${
-                        selectedTier === "claude"
-                          ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/20"
-                          : "border-border hover:border-border/70"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Bot className="w-4 h-4 text-amber-600" />
-                        <span className="font-bold text-sm">
-                          {lang === "ar" ? "كلود" : "Claude"}
-                        </span>
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-                          Claude
-                        </span>
-                        {selectedTier === "claude" && (
-                          <Check className="w-4 h-4 text-amber-600 ms-auto" />
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground leading-relaxed">
-                        {lang === "ar"
-                          ? "كلود سونيت — أذكى نموذج. لأفضل جودة إبداعية وتربوية."
-                          : "Claude Sonnet — smartest model. Best creative & educational quality."}
-                      </div>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-between gap-2 mt-6">
-              <button
-                onClick={() => setStep(1)}
-                className="inline-flex items-center gap-2 bg-muted text-foreground px-5 py-3 rounded-xl font-bold hover:bg-muted/80"
-              >
-                {lang === "ar" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-                {lang === "ar" ? "السابق" : "Back"}
-              </button>
-              <button
-                onClick={handleGenerate}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-amber-500 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 shadow-lg"
-              >
-                <Sparkles className="w-4 h-4" />
-                {lang === "ar" ? "أنشئ العرض الآن" : "Generate now"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: generating */}
-        {step === 3 && (
+        {/* ── QUICK MODE: GENERATING ── */}
+        {mode === "quick" && quickPhase === "generating" && (
           <div className="bg-card rounded-3xl border border-border shadow-lg p-10 text-center">
             <div className="relative w-24 h-24 mx-auto mb-6">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400 to-amber-400 animate-pulse opacity-40 blur-xl" />
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 flex items-center justify-center">
-                {generating ? (
-                  <Loader2 className="w-10 h-10 text-white animate-spin" />
-                ) : (
-                  <CheckCircle2 className="w-10 h-10 text-white" />
-                )}
+                <Loader2 className="w-10 h-10 text-white animate-spin" />
               </div>
             </div>
             <h2 className="text-2xl font-bold mb-2">
-              {lang === "ar" ? "جاري إنشاء عرضك…" : "Generating your deck…"}
+              {isAr ? "جارٍ بناء حصتك…" : "Building your lesson…"}
             </h2>
             <p className="text-muted-foreground mb-1">{statusMsg}</p>
-            <p className="text-xs text-muted-foreground/80 mt-4">
-              {lang === "ar" ? "قد يستغرق هذا 30-60 ثانية" : "May take 30-60 seconds"}
+            <p className="text-xs text-muted-foreground/70 mt-4">
+              {isAr
+                ? "قد يستغرق هذا 30-60 ثانية"
+                : "May take 30-60 seconds"}
             </p>
           </div>
+        )}
+
+        {/* ── QUICK MODE: PREVIEW / DONE ── */}
+        {mode === "quick" &&
+          quickPhase === "preview" &&
+          generatedPresentationId && (
+            <div className="bg-card rounded-3xl border border-border shadow-lg p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">
+                {isAr ? "حصتك جاهزة! 🎉" : "Your lesson is ready! 🎉"}
+              </h2>
+              <p className="text-muted-foreground text-sm mb-2">
+                {isAr
+                  ? `تم إنشاء عرض تفاعلي بـ ${slideCount} شريحة تتضمن أسئلة وأنشطة جاهزة.`
+                  : `Created an interactive ${slideCount}-slide deck with questions and ready-to-use activities.`}
+              </p>
+              <p className="text-xs text-muted-foreground/70 mb-8">
+                {isAr
+                  ? "يمكنك إطلاق الحصة مباشرةً أو تعديلها في المحرر المتقدم"
+                  : "You can launch immediately or fine-tune in the advanced editor"}
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={() =>
+                    setLocation(
+                      `/teacher/presentations/${generatedPresentationId}`,
+                    )
+                  }
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-extrabold text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                  style={{
+                    background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7a4f 100%)`,
+                  }}
+                >
+                  <Play className="w-5 h-5" />
+                  {isAr ? "إطلاق الحصة الآن" : "Launch lesson now"}
+                </button>
+                <button
+                  onClick={() =>
+                    setLocation(
+                      `/teacher/presentations/${generatedPresentationId}`,
+                    )
+                  }
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold border border-border hover:bg-muted/50 active:scale-[0.98] transition-all"
+                >
+                  <Pencil className="w-4 h-4" />
+                  {isAr ? "تعديل في Pro Studio 🎛" : "Edit in Pro Studio 🎛"}
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setMode(null);
+                  resetQuick();
+                }}
+                className="mt-5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isAr ? "إنشاء عرض آخر" : "Create another deck"}
+              </button>
+            </div>
+          )}
+
+        {/* ── QUICK MODE: ERROR ── */}
+        {mode === "quick" && quickPhase === "error" && (
+          <div className="bg-card rounded-3xl border border-red-200 dark:border-red-900/50 shadow-lg p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold mb-2 text-red-700 dark:text-red-400">
+              {isAr ? "حدث خطأ" : "Something went wrong"}
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">{errorMsg}</p>
+            <button
+              onClick={() => setQuickPhase("form")}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold border border-border hover:bg-muted/50 transition-all"
+            >
+              {isAr ? "حاول مجدداً" : "Try again"}
+            </button>
+          </div>
+        )}
+
+        {/* ── PRO STUDIO — builder dialog ── */}
+        {mode === "pro" && !proBuilderOpen && (
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-8 text-center">
+            <p className="text-muted-foreground mb-4">
+              {isAr
+                ? "أغلق الحوار للعودة إلى قائمة الوضعَين"
+                : "Close the dialog to return to mode selection"}
+            </p>
+            <button
+              onClick={() => setProBuilderOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-white transition-all hover:opacity-90"
+              style={{ background: BRAND_GREEN }}
+            >
+              <Settings2 className="w-4 h-4" />
+              {isAr ? "إعادة فتح الاستوديو" : "Reopen Studio"}
+            </button>
+          </div>
+        )}
+
+        {mode === "pro" && (
+          <AiPresentationBuilder
+            open={proBuilderOpen}
+            onOpenChange={(open) => {
+              setProBuilderOpen(open);
+              if (!open) setMode(null);
+            }}
+          />
         )}
       </div>
     </Layout>

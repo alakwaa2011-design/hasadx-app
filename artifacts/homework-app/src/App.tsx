@@ -65,6 +65,7 @@ const CategoriesPage = lazy(() => import("@/pages/teacher/categories"));
 const CollectionsPage = lazy(() => import("@/pages/teacher/collections"));
 const ClassGrades = lazy(() => import("@/pages/teacher/class-grades"));
 const PresentationsIndex = lazy(() => import("@/pages/teacher/presentations/index"));
+const NewPresentation = lazy(() => import("@/pages/teacher/presentations/new"));
 const PresentationDrafts = lazy(() => import("@/pages/teacher/presentations/drafts"));
 const PresentationEditor = lazy(() => import("@/pages/teacher/presentations/editor"));
 const PresentationPresent = lazy(() => import("@/pages/teacher/presentations/present"));
@@ -279,8 +280,7 @@ function Router() {
         <Route path="/teacher/class-grades/:gradeLevel" component={ClassGrades} />
         {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/presentations" component={PresentationsIndex} />
-        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
-        <Route path="/teacher/presentations/new" component={PresentationsIndex} />
+        <Route path="/teacher/presentations/new" component={NewPresentation} />
         <Route path="/teacher/presentations/drafts" component={PresentationDrafts} />
         <Route path="/teacher/students/:classStudentId/timeline" component={StudentTimeline} />
         <Route path="/teacher/presentations/activity-runner/:seedId" component={PresentationActivityRunner} />
