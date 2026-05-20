@@ -669,7 +669,9 @@ export default function PresentationPlay() {
               <span className="truncate font-medium">{stored.name}</span>
               <div className="flex items-center gap-3">
                 <span className="opacity-70 tabular-nums">
-                  {isAr ? `شريحة ${(live?.currentSlideIndex ?? 0) + 1}` : `Slide ${(live?.currentSlideIndex ?? 0) + 1}`}
+                  {sessionMode === "self_paced" && selfPacedIdx != null
+                    ? (isAr ? `شريحة ${selfPacedIdx + 1} / ${selfPacedCount}` : `Slide ${selfPacedIdx + 1} / ${selfPacedCount}`)
+                    : (isAr ? `شريحة ${(live?.currentSlideIndex ?? 0) + 1}` : `Slide ${(live?.currentSlideIndex ?? 0) + 1}`)}
                 </span>
                 <button
                   type="button"
@@ -688,6 +690,53 @@ export default function PresentationPlay() {
               )}
             </div>
           </div>
+
+          {/* Self-Paced Mode: persistent prev/next nav shown even during an activity
+              so students are never stuck and must wait for teacher action. */}
+          {sessionMode === "self_paced" && selfPacedCount > 0 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2">
+              <button
+                type="button"
+                disabled={displaySlideIndex <= 0}
+                onClick={() => selfPacedNav(-1)}
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+              >
+                {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                {isAr ? "السابقة" : "Prev"}
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(selfPacedCount, 12) }).map((_, i) => {
+                  const active = i === Math.floor(displaySlideIndex / Math.max(1, Math.ceil(selfPacedCount / 12)));
+                  return (
+                    <div key={i} className="rounded-full transition-all"
+                      style={{ width: active ? 16 : 5, height: 5, background: active ? "#D9A521" : "rgba(255,255,255,0.3)" }} />
+                  );
+                })}
+              </div>
+              {displaySlideIndex >= selfPacedCount - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setSelfPacedDone(true)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all"
+                  style={{ background: "#D9A521", color: "#1c1003" }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {isAr ? "تم" : "Done"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => selfPacedNav(1)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+                >
+                  {isAr ? "التالية" : "Next"}
+                  {isAr ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              )}
+            </div>
+          )}
 
           {mySummary ? (
             /* Phase 6 — end-of-quiz summary card. Shows the student
