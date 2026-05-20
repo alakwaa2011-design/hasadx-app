@@ -1000,6 +1000,21 @@ export default function PresentationEditor() {
     } else if (toolType === "video") {
       /* pendingDropPosRef stays set — consumed by insertElement via onInsert. */
       setVideoEmbedDialogOpen(true);
+    } else if (toolType.startsWith("shape:")) {
+      const sh = toolType.replace("shape:", "") as "rect" | "circle" | "line" | "arrow" | "divider";
+      insertElement({
+        id: genId("sh"), kind: "shape", shape: sh,
+        x: 200, y: 220, w: 320, h: sh === "line" || sh === "divider" ? 6 : sh === "arrow" ? 60 : 200,
+        bgColor: sh === "rect" || sh === "circle" ? "#ffffff" : "transparent",
+        borderColor: BRAND_GREEN, borderWidth: 4,
+      } as SlideElement);
+    } else if (toolType.startsWith("icon:")) {
+      const iconName = toolType.replace("icon:", "");
+      insertElement({
+        id: genId("ic"), kind: "icon", iconName,
+        x: 540, y: 280, w: 200, h: 200,
+        color: BRAND_GREEN,
+      } as SlideElement);
     } else {
       pendingDropPosRef.current = null;
     }
@@ -4015,13 +4030,18 @@ function Inspector({
                 <button
                   key={sh}
                   disabled={readOnly}
+                  draggable={!readOnly}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "copy";
+                    e.dataTransfer.setData("application/hasad-tool", `shape:${sh}`);
+                  }}
                   onClick={() => onInsertElement({
                     id: genId("sh"), kind: "shape", shape: sh as never,
                     x: 200, y: 220, w: 320, h: sh === "line" || sh === "divider" ? 6 : sh === "arrow" ? 60 : 200,
                     bgColor: sh === "rect" || sh === "circle" ? "#ffffff" : "transparent",
                     borderColor: BRAND_GREEN, borderWidth: 4,
                   } as SlideElement)}
-                  className="aspect-square rounded-lg border border-border hover:border-emerald-500 flex items-center justify-center bg-white shadow-sm transition-all hover:-translate-y-0.5"
+                  className="aspect-square rounded-lg border border-border hover:border-emerald-500 flex items-center justify-center bg-white shadow-sm transition-all hover:-translate-y-0.5 cursor-grab active:cursor-grabbing"
                   title={sh}
                 >
                   {sh === "rect" ? <Square className="w-4 h-4 text-emerald-800" />
@@ -6108,8 +6128,13 @@ function IconPicker({
             <button
               key={name}
               disabled={disabled}
+              draggable={!disabled}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "copy";
+                e.dataTransfer.setData("application/hasad-tool", `icon:${name}`);
+              }}
               onClick={() => onChange(name)}
-              className="aspect-square rounded flex items-center justify-center hover:bg-emerald-500/10 transition-colors"
+              className="aspect-square rounded flex items-center justify-center hover:bg-emerald-500/10 transition-colors cursor-grab active:cursor-grabbing"
               style={{
                 background: selected ? BRAND_GREEN : "transparent",
                 color: selected ? "white" : "inherit",
