@@ -358,8 +358,8 @@ export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "
         background: `${accent}06`,
       }}>
         {isAr
-          ? "سيُشغَّل هذا النشاط أثناء العرض المباشر"
-          : "This activity will launch during the live presentation"}
+          ? "اضغط على زر «تشغيل النشاط» في شريط التحكم لإطلاق هذا النشاط"
+          : "Click the Launch Activity button in the control bar to start this activity"}
       </div>
     </div>
   );

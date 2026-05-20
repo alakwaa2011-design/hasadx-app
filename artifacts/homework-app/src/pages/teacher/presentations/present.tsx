@@ -14,14 +14,16 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play,
+  ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play, Rocket,
 } from "lucide-react";
 import { SlideStage } from "@/lib/slide-render";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
+import { getSocket, disconnectSocket } from "@/lib/socket";
 
 type GameQuestion = { prompt: string; options: string[]; correctIndex: number };
 type HasadGameEl = SlideElement & { questions?: GameQuestion[]; prompt?: string; topic?: string; gameKind?: string; accentColor?: string };
+type HasadActivityEl = SlideElement & { assignmentId?: number; assignmentTitle?: string };
 
 /** Write activity payload to localStorage then open the runner in a new tab. */
 function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined) {
@@ -99,6 +101,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
@@ -229,6 +232,52 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     return (el as HasadGameEl) ?? null;
   }, [current]);
 
+  /* Detect if the current slide has a hasad-activity element (linked assignment). */
+  const activeActivityEl = useMemo<HasadActivityEl | null>(() => {
+    if (!current?.elements) return null;
+    const el = (current.elements as SlideElement[]).find(
+      (e) => e.kind === "hasad-activity" && typeof (e as HasadActivityEl).assignmentId === "number",
+    );
+    return (el as HasadActivityEl) ?? null;
+  }, [current]);
+
+  /** Create a live game session from the linked assignment, then navigate
+   *  the pre-opened tab to the teacher game console.
+   *
+   *  The blank tab is opened synchronously inside the user-gesture handler
+   *  so browsers don't block it as a popup. The socket callback then sets
+   *  the tab's URL once the PIN is returned. */
+  const launchHasadActivity = useCallback(() => {
+    if (!activeActivityEl?.assignmentId || isLaunchingActivity) return;
+
+    /* Open the tab now, inside the synchronous user-gesture, so popup
+       blockers treat it as trusted. We'll set the URL in the callback. */
+    const gameTab = window.open("", "_blank", "noopener");
+
+    setIsLaunchingActivity(true);
+    const socket = getSocket();
+    socket.emit(
+      "teacher:create-game",
+      { assignmentId: activeActivityEl.assignmentId, gameMode: "kahoot" },
+      (res: { pin?: string; error?: string }) => {
+        setIsLaunchingActivity(false);
+        if (res.error || !res.pin) {
+          gameTab?.close();
+          disconnectSocket();
+          /* Brief visible error so the teacher knows the launch failed. */
+          alert(isAr ? "تعذّر إنشاء اللعبة. حاول مرة أخرى." : "Could not create game session. Please try again.");
+          return;
+        }
+        if (gameTab) {
+          gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
+        } else {
+          /* Fallback: tab was blocked despite the synchronous open — use same tab. */
+          setLocation(`/teacher/game/${encodeURIComponent(res.pin)}`);
+        }
+      },
+    );
+  }, [activeActivityEl, isLaunchingActivity, isAr, setLocation]);
+
   return (
     <div
       dir={dir}
@@ -349,6 +398,26 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 {isAr
                   ? `نشاط · ${activeGameEl.questions?.length ?? 0} سؤال`
                   : `Activity · ${activeGameEl.questions?.length ?? 0} Q`}
+              </button>
+            )}
+            {activeActivityEl && (
+              <button
+                onClick={launchHasadActivity}
+                disabled={isLaunchingActivity}
+                className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: "#D9A521", border: "1px solid #ffffff33", color: "#1f2937" }}
+                title={isAr ? "تشغيل نشاط حصاد" : "Launch Hasad activity"}
+              >
+                {isLaunchingActivity
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Rocket className="w-4 h-4" />}
+                {isAr
+                  ? (activeActivityEl.assignmentTitle
+                      ? `تشغيل · ${activeActivityEl.assignmentTitle}`
+                      : "تشغيل النشاط")
+                  : (activeActivityEl.assignmentTitle
+                      ? `Launch · ${activeActivityEl.assignmentTitle}`
+                      : "Launch Activity")}
               </button>
             )}
             <button
