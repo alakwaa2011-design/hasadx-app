@@ -3438,12 +3438,22 @@ function Inspector({
   onOpenImageSearch: () => void;
   uploading: boolean;
   onDeselect: () => void;
-  gifLibraryOpen: boolean;
-  setGifLibraryOpen: (v: boolean) => void;
+  gifLibraryOpen?: boolean;
+  setGifLibraryOpen?: (v: boolean) => void;
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
   const [gifLibraryCat, setGifLibraryCat] = useState("celebrate");
+  /* When used from the desktop editor, gifLibraryOpen is lifted to the
+     editor level so the left-rail toolbar can open it. When used from
+     the mobile shell, these props are absent and the Inspector manages
+     its own local GIF state instead (restoring original behaviour). */
+  const [_localGifOpen, _setLocalGifOpen] = useState(false);
+  const activeGifOpen = gifLibraryOpen !== undefined ? gifLibraryOpen : _localGifOpen;
+  const activeSetGifOpen = (v: boolean) => {
+    if (setGifLibraryOpen) setGifLibraryOpen(v);
+    else _setLocalGifOpen(v);
+  };
 
   if (!slide) return null;
 
@@ -3865,20 +3875,20 @@ function Inspector({
           <div className="space-y-2">
             <Button
               variant="outline"
-              className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${gifLibraryOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
-              onClick={() => { setGifLibraryOpen(!gifLibraryOpen); setGifOpen(false); }}
+              className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${activeGifOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
+              onClick={() => { activeSetGifOpen(!activeGifOpen); setGifOpen(false); }}
               disabled={readOnly}
             >
               <span className="text-base leading-none">🎞️</span>
               <span className="font-bold text-sm text-foreground">
                 {isAr ? "مكتبة GIF" : "GIF Library"}
               </span>
-              {gifLibraryOpen
+              {activeGifOpen
                 ? <XIcon className="w-3.5 h-3.5 text-muted-foreground ms-auto" />
                 : <span className="text-xs text-muted-foreground ms-auto font-normal">{isAr ? "اضغط لفتح" : "click to open"}</span>}
             </Button>
 
-            {gifLibraryOpen && (
+            {activeGifOpen && (
               <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
                 {/* Category tabs */}
                 <div className="flex overflow-x-auto gap-1 p-2 pb-1 scrollbar-none">
@@ -3913,7 +3923,7 @@ function Inspector({
                           x: 440, y: 210, w: 380, h: 280,
                           objectFit: "contain",
                         } as SlideElement);
-                        setGifLibraryOpen(false);
+                        activeSetGifOpen(false);
                       }}
                       className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
                     >
@@ -3946,7 +3956,7 @@ function Inspector({
             )}
 
             {/* Custom URL fallback */}
-            {!gifLibraryOpen && (
+            {!activeGifOpen && (
               gifOpen ? (
                 <div className="flex gap-2">
                   <Input
@@ -6216,8 +6226,6 @@ function MobileShell({
                   onOpenImageSearch={onOpenImageSearch}
                   uploading={uploading}
                   onDeselect={() => { onSelectEl(null); }}
-                  gifLibraryOpen={false}
-                  setGifLibraryOpen={() => {}}
                 />
               )}
             </div>
