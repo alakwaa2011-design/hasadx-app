@@ -307,59 +307,103 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
    presentation a future phase will launch the game inline; for now it
    displays a clear "will launch here" indicator so teachers know where
    the activity sits on the slide. */
+const HASAD_GAME_META: Record<string, { emoji: string; nameAr: string; nameEn: string }> = {
+  quiz:     { emoji: "🏆", nameAr: "مسابقة تفاعلية",   nameEn: "Interactive Quiz" },
+  wheel:    { emoji: "🎡", nameAr: "عجلة الحظ",         nameEn: "Wheel of Fortune" },
+  million:  { emoji: "💰", nameAr: "من سيربح المليون",  nameEn: "Who Wants a Million" },
+  flags:    { emoji: "🚩", nameAr: "اختبار الأعلام",    nameEn: "Flag Quiz" },
+  matching: { emoji: "🔗", nameAr: "مطابقة",            nameEn: "Matching" },
+};
+
 export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
   if (el.kind !== "hasad-activity") return null;
   const isAr = lang !== "en";
   const accent = "#225739";
-  const gold = "#D9A521";
-  const elAny = el as unknown as { assignmentId?: number; assignmentTitle?: string };
-  const title = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity");
+  const gold   = "#D9A521";
+  const elAny  = el as unknown as { assignmentId?: number; assignmentTitle?: string; gameType?: string };
+  const title  = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity");
+  const game   = elAny.gameType ? HASAD_GAME_META[elAny.gameType] : null;
 
   return (
     <div
       style={{
         width: "100%", height: "100%",
-        background: "#ffffff",
-        border: `3px solid ${accent}`,
+        background: "linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%)",
+        border: `2.5px solid ${accent}`,
         borderRadius: 18,
-        boxShadow: "0 8px 24px rgba(34,87,57,0.10)",
-        padding: "24px 30px",
+        boxShadow: "0 8px 32px rgba(34,87,57,0.12)",
+        padding: "28px 32px",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        gap: 18,
+        gap: 16,
         overflow: "hidden",
         textAlign: "center",
+        position: "relative",
       }}
     >
-      {/* Badge */}
+      {/* Subtle background watermark */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        background: gold, color: "#1f2937",
-        padding: "6px 16px", borderRadius: 999,
-        fontSize: 13, fontWeight: 800, letterSpacing: 0.3,
+        position: "absolute", inset: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 180, opacity: 0.04, pointerEvents: "none", userSelect: "none",
+        lineHeight: 1,
       }}>
-        🎮 {isAr ? "نشاط من حصاد" : "Hasad Activity"}
+        {game?.emoji ?? "🎮"}
       </div>
 
-      {/* Title */}
+      {/* Top badge row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: gold, color: "#1f2937",
+          padding: "5px 14px", borderRadius: 999,
+          fontSize: 12, fontWeight: 800, letterSpacing: 0.3,
+        }}>
+          🎮 {isAr ? "نشاط حصاد" : "Hasad Activity"}
+        </div>
+        {game && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: `${accent}12`, color: accent,
+            border: `1.5px solid ${accent}30`,
+            padding: "5px 12px", borderRadius: 999,
+            fontSize: 12, fontWeight: 700,
+          }}>
+            <span>{game.emoji}</span>
+            {isAr ? game.nameAr : game.nameEn}
+          </div>
+        )}
+      </div>
+
+      {/* Assignment title */}
       <div style={{
         color: accent, fontWeight: 900,
-        fontSize: 28, lineHeight: 1.3,
-        wordBreak: "break-word", maxWidth: "80%",
+        fontSize: 26, lineHeight: 1.3,
+        wordBreak: "break-word", maxWidth: "85%",
       }}>
         {title}
       </div>
 
-      {/* Hint */}
+      {/* Game type big display */}
+      {game && (
+        <div style={{
+          fontSize: 52, lineHeight: 1,
+          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.10))",
+        }}>
+          {game.emoji}
+        </div>
+      )}
+
+      {/* Launch hint */}
       <div style={{
-        color: "#64748b", fontSize: 14, fontWeight: 500,
-        border: `1.5px dashed ${accent}40`,
-        borderRadius: 12, padding: "10px 20px",
+        color: "#64748b", fontSize: 13, fontWeight: 500,
+        border: `1.5px dashed ${accent}35`,
+        borderRadius: 10, padding: "8px 18px",
         background: `${accent}06`,
       }}>
         {isAr
-          ? "اضغط على زر «تشغيل النشاط» في شريط التحكم لإطلاق هذا النشاط"
-          : "Click the Launch Activity button in the control bar to start this activity"}
+          ? "سيُطلق هذا النشاط تلقائياً أثناء العرض المباشر"
+          : "This activity will launch automatically during the live presentation"}
       </div>
     </div>
   );

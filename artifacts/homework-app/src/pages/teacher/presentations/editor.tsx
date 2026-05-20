@@ -1226,16 +1226,6 @@ export default function PresentationEditor() {
             >
               <Back className="w-4 h-4" />
             </button>
-            {/* Quick Mode shortcut — lets teachers jump straight to a new
-                Quick Mode session without going through the list page. */}
-            <button
-              onClick={() => setLocation("/teacher/presentations/new")}
-              className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-extrabold transition-colors hover:bg-amber-100/80 active:scale-95"
-              style={{ color: "#92570a", background: "rgba(251,191,36,0.12)" }}
-              title={isAr ? "إنشاء عرض سريع جديد" : "Create a new Quick Mode deck"}
-            >
-              ⚡ {isAr ? "وضع سريع" : "Quick Mode"}
-            </button>
             <div className="min-w-0 flex flex-col">
               <h1 className="text-base sm:text-lg font-bold truncate flex items-center gap-2 tracking-tight" style={{ color: BRAND_GREEN }}>
                 {data.title}
@@ -1270,12 +1260,6 @@ export default function PresentationEditor() {
                   saving={updateMutation.isPending}
                   isAr={isAr}
                 />
-                {tier && (
-                  <>
-                    <span className="opacity-40">•</span>
-                    <UsageStrip tier={tier} isAr={isAr} onUpgrade={() => setShowUpgrade(true)} />
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -1342,17 +1326,47 @@ export default function PresentationEditor() {
               </div>
             )}
 
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setAiBuilderOpen(true)}
-              disabled={readOnly}
-              className="h-9 gap-2 rounded-lg font-semibold transition-colors"
-              title={isAr ? "اقترح خطة من الذكاء" : "Suggest an AI outline"}
-            >
-              <Sparkles className="w-4 h-4" style={{ color: "#225739" }} />
-              <span className="hidden lg:inline">{isAr ? "اقترح خطة" : "AI outline"}</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={readOnly}
+                  className="h-9 gap-2 rounded-lg font-semibold transition-colors"
+                  title={isAr ? "توليد عرض بالذكاء الاصطناعي" : "Generate with AI"}
+                >
+                  <Sparkles className="w-4 h-4" style={{ color: BRAND_GREEN }} />
+                  <span className="hidden lg:inline">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={isAr ? "start" : "end"} className="rounded-xl shadow-lg border-border/50 w-56">
+                <div className="px-3 pt-2.5 pb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                    {isAr ? "اختر الوضع" : "Choose mode"}
+                  </p>
+                </div>
+                <DropdownMenuItem
+                  onClick={() => setLocation("/teacher/presentations/new")}
+                  className="gap-3 rounded-lg mx-1 mb-0.5 cursor-pointer py-2.5"
+                >
+                  <span className="text-xl leading-none">⚡</span>
+                  <div>
+                    <div className="font-bold text-xs">{isAr ? "الوضع السريع" : "Quick Mode"}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{isAr ? "عرض جديد بنقرة واحدة" : "New deck in one click"}</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setAiBuilderOpen(true)}
+                  className="gap-3 rounded-lg mx-1 mb-1 cursor-pointer py-2.5"
+                >
+                  <span className="text-xl leading-none">🎛</span>
+                  <div>
+                    <div className="font-bold text-xs">{isAr ? "برو استديو" : "Pro Studio"}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">{isAr ? "توليد كامل بالذكاء" : "Full AI generation"}</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Undo / Redo — small icon-only pair, sits with the rest of
                 the secondary toolbar so it never competes with the
@@ -1643,143 +1657,7 @@ export default function PresentationEditor() {
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
-            {/* Quick-action toolbar — desktop only (left rail is hidden on mobile). */}
-            {!readOnly && (
-              <div className="hidden lg:block mb-1 shrink-0">
-                {/* Prominent "Add Activity" button — opens ActivityHubDialog
-                    home tab so teacher can choose between Hasad or
-                    presentation activities from one place. */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivityHubInitialTab("home");
-                    setActivityHubOpen(true);
-                  }}
-                  className="w-full mb-2 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98]"
-                  style={{ background: BRAND_GREEN, color: "white", borderColor: BRAND_GREEN }}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {isAr ? "إضافة عنصر تفاعلي" : "Add Interactive Element"}
-                </button>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
-                  {isAr ? "أنشطة" : "Activities"}
-                </p>
-                <div className="grid grid-cols-6 gap-1">
-                  {([
-                    { kind: "word_cloud" as const, Icon: Cloud,          labelAr: "سحابة", labelEn: "Cloud" },
-                    { kind: "open_wall"  as const, Icon: MessageSquare,  labelAr: "جدار",  labelEn: "Wall"  },
-                    { kind: "mcq"        as const, Icon: HelpCircle,     labelAr: "MCQ",   labelEn: "MCQ"   },
-                    { kind: "true_false" as const, Icon: CheckCircle2,   labelAr: "صح/خطأ",labelEn: "T/F"   },
-                    { kind: "poll"       as const, Icon: BarChart2,      labelAr: "تصويت", labelEn: "Poll"  },
-                  ]).map(({ kind, Icon, labelAr, labelEn }) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = "copy";
-                        e.dataTransfer.setData("application/hasad-tool", `activity:${kind}`);
-                      }}
-                      title={(isAr ? labelAr : labelEn) + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                      onClick={() => {
-                        setPickerInitial({ kind });
-                        setPendingSuggestionKey(null);
-                        setActivityPickerOpen(true);
-                      }}
-                      className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
-                    </button>
-                  ))}
-                  {/* Hasad activity — drag onto slide to open ActivityHubDialog with hasad tab */}
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "copy";
-                      e.dataTransfer.setData("application/hasad-tool", "hasad-activity");
-                    }}
-                    title={(isAr ? "نشاط حصاد — اسحب على الشريحة" : "Hasad activity — drag onto slide")}
-                    onClick={() => {
-                      setActivityHubInitialTab("hasad");
-                      setActivityHubOpen(true);
-                    }}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-amber-50 hover:text-amber-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <Gamepad2 className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">{isAr ? "حصاد" : "Hasad"}</span>
-                  </button>
-                </div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mt-2.5 mb-1.5">
-                  {isAr ? "محتوى" : "Content"}
-                </p>
-                <div className="grid grid-cols-5 gap-1">
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "image"); }}
-                    title={(isAr ? "رفع صورة" : "Upload image") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                    onClick={onPickImage}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <ImagePlus className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">{isAr ? "صورة" : "Image"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "image-search"); }}
-                    title={(isAr ? "بحث عن صور" : "Search images") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                    onClick={() => setImageSearchOpen(true)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <Search className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "gif"); }}
-                    title={(isAr ? "مكتبة GIF" : "GIF library") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                    onClick={() => { setSelectedElId(null); setGifLibraryOpen(true); }}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <Film className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">GIF</span>
-                  </button>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "video"); }}
-                    title={(isAr ? "تضمين فيديو" : "Embed video") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                    onClick={() => setVideoEmbedDialogOpen(true)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <Video className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">{isAr ? "فيديو" : "Video"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "text"); }}
-                    title={(isAr ? "إضافة نص" : "Add text") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
-                    onClick={() => insertElement({
-                      id: genId("t"), kind: "text",
-                      x: 100, y: 100, w: 800, h: 120,
-                      text: isAr ? "نص جديد" : "New text",
-                      fontSize: 32, align: "start",
-                      fontWeight: "700",
-                    } as SlideElement)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
-                  >
-                    <TypeIcon className="w-4 h-4" />
-                    <span className="text-[9px] font-bold leading-none">{isAr ? "نص" : "Text"}</span>
-                  </button>
-                </div>
-                <div className="mt-2.5 border-t border-border/60" />
-              </div>
-            )}
+            {/* Tools moved to Inspector panel (left rail) */}
             {/* Slide bulk-selection row — only renders when at least one
                 slide is in the bulk set, OR shows a tiny "select all"
                 chip otherwise. Stays out of the way visually. */}
@@ -2036,6 +1914,12 @@ export default function PresentationEditor() {
                 onDeselect={() => setSelectedElId(null)}
                 gifLibraryOpen={gifLibraryOpen}
                 setGifLibraryOpen={setGifLibraryOpen}
+                onOpenActivityPickerWithKind={(kind) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  setPickerInitial({ kind } as any);
+                  setPendingSuggestionKey(null);
+                  setActivityPickerOpen(true);
+                }}
               />
             </div>
           </aside>
@@ -3721,6 +3605,7 @@ function Inspector({
   onOpenImageSearch, uploading,
   onDeselect,
   gifLibraryOpen, setGifLibraryOpen,
+  onOpenActivityPickerWithKind,
 }: {
   isAr: boolean;
   readOnly: boolean;
@@ -3744,6 +3629,7 @@ function Inspector({
   onDeselect: () => void;
   gifLibraryOpen?: boolean;
   setGifLibraryOpen?: (v: boolean) => void;
+  onOpenActivityPickerWithKind?: (kind: string) => void;
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
@@ -4093,6 +3979,72 @@ function Inspector({
 
   return (
     <div className="space-y-1">
+      {/* ── Quick-add elements — mirrors what was in the slide rail ── */}
+      <Section title={isAr ? "إضافة عناصر" : "Add Elements"} icon={<Plus className="w-4 h-4" />} defaultOpen>
+        <div className="space-y-2.5">
+          {/* Primary Add Activity button */}
+          <button
+            type="button"
+            onClick={onOpenActivityPicker}
+            disabled={readOnly}
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+            style={{ background: BRAND_GREEN, color: "white" }}
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            {isAr ? "إضافة نشاط" : "Add Activity"}
+          </button>
+          {/* Activity type quick-grid */}
+          <div className="grid grid-cols-5 gap-1">
+            {([
+              { kind: "word_cloud",  Icon: Cloud,         labelAr: "سحابة",  labelEn: "Cloud" },
+              { kind: "open_wall",   Icon: MessageSquare, labelAr: "جدار",   labelEn: "Wall"  },
+              { kind: "mcq",         Icon: HelpCircle,    labelAr: "MCQ",    labelEn: "MCQ"   },
+              { kind: "true_false",  Icon: CheckCircle2,  labelAr: "صح/خطأ", labelEn: "T/F"   },
+              { kind: "poll",        Icon: BarChart2,     labelAr: "تصويت",  labelEn: "Poll"  },
+            ] as const).map(({ kind, Icon, labelAr, labelEn }) => (
+              <button
+                key={kind}
+                type="button"
+                disabled={readOnly}
+                onClick={() => onOpenActivityPickerWithKind?.(kind)}
+                title={isAr ? labelAr : labelEn}
+                className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40"
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
+              </button>
+            ))}
+          </div>
+          {/* Media quick-grid */}
+          <div className="grid grid-cols-4 gap-1">
+            <button type="button" disabled={readOnly} onClick={onPickImage}
+              title={isAr ? "رفع صورة" : "Upload image"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <ImagePlus className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "صورة" : "Image"}</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={() => activeSetGifOpen(true)}
+              title="GIF"
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Film className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">GIF</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={onOpenVideoEmbedDialog}
+              title={isAr ? "تضمين فيديو" : "Embed video"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Video className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "فيديو" : "Video"}</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={onOpenImageSearch}
+              title={isAr ? "بحث صور" : "Image search"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Search className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
+            </button>
+          </div>
+        </div>
+      </Section>
+
       <Section title={isAr ? "السمات" : "Themes"} icon={<Palette className="w-4 h-4" />} defaultOpen>
         <ThemePanel value={theme} onChange={onChangeTheme} disabled={readOnly} isAr={isAr} />
       </Section>

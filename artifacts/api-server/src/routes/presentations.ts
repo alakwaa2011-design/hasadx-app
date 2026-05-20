@@ -275,6 +275,7 @@ const hasadActivityElement = baseElement.extend({
   kind: z.literal("hasad-activity"),
   assignmentId: z.number().int().positive().optional(),
   assignmentTitle: z.string().max(500).optional(),
+  gameType: z.string().max(50).optional(),
 });
 
 /* Video embed element — YouTube or Hasad interactive video lesson.
