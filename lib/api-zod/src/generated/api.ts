@@ -1041,6 +1041,7 @@ export const GetPresentationResponse = zod.object({
               "activity",
               "hasad-game",
               "video-embed",
+              "hasad-activity",
             ]),
             x: zod.number(),
             y: zod.number(),
@@ -1143,9 +1144,21 @@ export const GetPresentationResponse = zod.object({
               .describe(
                 "For `kind=video-embed` — optional display title shown in the editor preview.",
               ),
+            assignmentId: zod
+              .number()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.",
+              ),
+            assignmentTitle: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).",
+              ),
           })
           .describe(
-            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).",
           ),
       ),
     }),
@@ -1214,6 +1227,7 @@ export const UpdatePresentationBody = zod.object({
                 "activity",
                 "hasad-game",
                 "video-embed",
+                "hasad-activity",
               ]),
               x: zod.number(),
               y: zod.number(),
@@ -1318,9 +1332,21 @@ export const UpdatePresentationBody = zod.object({
                 .describe(
                   "For `kind=video-embed` — optional display title shown in the editor preview.",
                 ),
+              assignmentId: zod
+                .number()
+                .nullish()
+                .describe(
+                  "For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.",
+                ),
+              assignmentTitle: zod
+                .string()
+                .nullish()
+                .describe(
+                  "For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).",
+                ),
             })
             .describe(
-              "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+              "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).",
             ),
         ),
       }),
@@ -1359,6 +1385,7 @@ export const UpdatePresentationResponse = zod.object({
               "activity",
               "hasad-game",
               "video-embed",
+              "hasad-activity",
             ]),
             x: zod.number(),
             y: zod.number(),
@@ -1461,9 +1488,21 @@ export const UpdatePresentationResponse = zod.object({
               .describe(
                 "For `kind=video-embed` — optional display title shown in the editor preview.",
               ),
+            assignmentId: zod
+              .number()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.",
+              ),
+            assignmentTitle: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).",
+              ),
           })
           .describe(
-            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).",
           ),
       ),
     }),
@@ -1528,6 +1567,7 @@ export const PublishPresentationResponse = zod.object({
               "activity",
               "hasad-game",
               "video-embed",
+              "hasad-activity",
             ]),
             x: zod.number(),
             y: zod.number(),
@@ -1630,9 +1670,21 @@ export const PublishPresentationResponse = zod.object({
               .describe(
                 "For `kind=video-embed` — optional display title shown in the editor preview.",
               ),
+            assignmentId: zod
+              .number()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.",
+              ),
+            assignmentTitle: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).",
+              ),
           })
           .describe(
-            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).",
           ),
       ),
     }),
@@ -1686,6 +1738,7 @@ export const UnpublishPresentationResponse = zod.object({
               "activity",
               "hasad-game",
               "video-embed",
+              "hasad-activity",
             ]),
             x: zod.number(),
             y: zod.number(),
@@ -1788,9 +1841,21 @@ export const UnpublishPresentationResponse = zod.object({
               .describe(
                 "For `kind=video-embed` — optional display title shown in the editor preview.",
               ),
+            assignmentId: zod
+              .number()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.",
+              ),
+            assignmentTitle: zod
+              .string()
+              .nullish()
+              .describe(
+                "For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).",
+              ),
           })
           .describe(
-            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).",
+            "Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).",
           ),
       ),
     }),

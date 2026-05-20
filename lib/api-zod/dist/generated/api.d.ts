@@ -2290,7 +2290,7 @@ export declare const GetPresentationResponse: zod.ZodObject<{
         notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         elements: zod.ZodArray<zod.ZodObject<{
             id: zod.ZodString;
-            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed", "hasad-activity"]>;
             x: zod.ZodNumber;
             y: zod.ZodNumber;
             w: zod.ZodNumber;
@@ -2337,9 +2337,11 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
             videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            assignmentId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            assignmentTitle: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2378,9 +2380,11 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2419,12 +2423,14 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2463,6 +2469,8 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2472,7 +2480,7 @@ export declare const GetPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2511,6 +2519,8 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2539,7 +2549,7 @@ export declare const GetPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2578,6 +2588,8 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2609,7 +2621,7 @@ export declare const GetPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2648,6 +2660,8 @@ export declare const GetPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2703,7 +2717,7 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
         notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         elements: zod.ZodArray<zod.ZodObject<{
             id: zod.ZodString;
-            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed", "hasad-activity"]>;
             x: zod.ZodNumber;
             y: zod.ZodNumber;
             w: zod.ZodNumber;
@@ -2750,9 +2764,11 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
             videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            assignmentId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            assignmentTitle: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2791,9 +2807,11 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2832,12 +2850,14 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2876,6 +2896,8 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2885,7 +2907,7 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2924,6 +2946,8 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2939,7 +2963,7 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -2978,6 +3002,8 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -2997,7 +3023,7 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3036,6 +3062,8 @@ export declare const UpdatePresentationBody: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3066,7 +3094,7 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
         notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         elements: zod.ZodArray<zod.ZodObject<{
             id: zod.ZodString;
-            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed", "hasad-activity"]>;
             x: zod.ZodNumber;
             y: zod.ZodNumber;
             w: zod.ZodNumber;
@@ -3113,9 +3141,11 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
             videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            assignmentId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            assignmentTitle: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3154,9 +3184,11 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3195,12 +3227,14 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3239,6 +3273,8 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3248,7 +3284,7 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3287,6 +3323,8 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3315,7 +3353,7 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3354,6 +3392,8 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3385,7 +3425,7 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3424,6 +3464,8 @@ export declare const UpdatePresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3490,7 +3532,7 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
         notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         elements: zod.ZodArray<zod.ZodObject<{
             id: zod.ZodString;
-            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed", "hasad-activity"]>;
             x: zod.ZodNumber;
             y: zod.ZodNumber;
             w: zod.ZodNumber;
@@ -3537,9 +3579,11 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
             videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            assignmentId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            assignmentTitle: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3578,9 +3622,11 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3619,12 +3665,14 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3663,6 +3711,8 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3672,7 +3722,7 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3711,6 +3761,8 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3739,7 +3791,7 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3778,6 +3830,8 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3809,7 +3863,7 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3848,6 +3902,8 @@ export declare const PublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -3897,7 +3953,7 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
         notes: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         elements: zod.ZodArray<zod.ZodObject<{
             id: zod.ZodString;
-            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed"]>;
+            kind: zod.ZodEnum<["text", "image", "icon", "shape", "activity", "hasad-game", "video-embed", "hasad-activity"]>;
             x: zod.ZodNumber;
             y: zod.ZodNumber;
             w: zod.ZodNumber;
@@ -3944,9 +4000,11 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             videoKind: zod.ZodOptional<zod.ZodNullable<zod.ZodEnum<["youtube", "hasad-video"]>>>;
             videoId: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
             title: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+            assignmentId: zod.ZodOptional<zod.ZodNullable<zod.ZodNumber>>;
+            assignmentTitle: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
         }, "strip", zod.ZodTypeAny, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -3985,9 +4043,11 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }, {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -4026,12 +4086,14 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }>, "many">;
     }, "strip", zod.ZodTypeAny, {
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -4070,6 +4132,8 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -4079,7 +4143,7 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -4118,6 +4182,8 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -4146,7 +4212,7 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -4185,6 +4251,8 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;
@@ -4216,7 +4284,7 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
         id: string;
         elements: {
             id: string;
-            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed";
+            kind: "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "video-embed" | "hasad-activity";
             x: number;
             y: number;
             w: number;
@@ -4255,6 +4323,8 @@ export declare const UnpublishPresentationResponse: zod.ZodObject<{
             imageBorderRadius?: number | null | undefined;
             videoKind?: "youtube" | "hasad-video" | null | undefined;
             videoId?: string | null | undefined;
+            assignmentId?: number | null | undefined;
+            assignmentTitle?: string | null | undefined;
         }[];
         notes?: string | null | undefined;
         layout?: string | null | undefined;

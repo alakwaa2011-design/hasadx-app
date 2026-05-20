@@ -301,6 +301,70 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
   );
 }
 
+/* ── HasadActivityRenderer ─────────────────────────────────────────────
+   Editor + present-mode placeholder for `kind=hasad-activity` elements.
+   Renders a branded card showing the linked assignment. During live
+   presentation a future phase will launch the game inline; for now it
+   displays a clear "will launch here" indicator so teachers know where
+   the activity sits on the slide. */
+export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+  if (el.kind !== "hasad-activity") return null;
+  const isAr = lang !== "en";
+  const accent = "#225739";
+  const gold = "#D9A521";
+  const elAny = el as unknown as { assignmentId?: number; assignmentTitle?: string };
+  const title = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity");
+
+  return (
+    <div
+      style={{
+        width: "100%", height: "100%",
+        background: "#ffffff",
+        border: `3px solid ${accent}`,
+        borderRadius: 18,
+        boxShadow: "0 8px 24px rgba(34,87,57,0.10)",
+        padding: "24px 30px",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        gap: 18,
+        overflow: "hidden",
+        textAlign: "center",
+      }}
+    >
+      {/* Badge */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        background: gold, color: "#1f2937",
+        padding: "6px 16px", borderRadius: 999,
+        fontSize: 13, fontWeight: 800, letterSpacing: 0.3,
+      }}>
+        🎮 {isAr ? "نشاط من حصاد" : "Hasad Activity"}
+      </div>
+
+      {/* Title */}
+      <div style={{
+        color: accent, fontWeight: 900,
+        fontSize: 28, lineHeight: 1.3,
+        wordBreak: "break-word", maxWidth: "80%",
+      }}>
+        {title}
+      </div>
+
+      {/* Hint */}
+      <div style={{
+        color: "#64748b", fontSize: 14, fontWeight: 500,
+        border: `1.5px dashed ${accent}40`,
+        borderRadius: 12, padding: "10px 20px",
+        background: `${accent}06`,
+      }}>
+        {isAr
+          ? "سيُشغَّل هذا النشاط أثناء العرض المباشر"
+          : "This activity will launch during the live presentation"}
+      </div>
+    </div>
+  );
+}
+
 /* ── VideoEmbedRenderer ────────────────────────────────────────────────
    Present-mode renderer for video-embed elements. Renders a live iframe
    so the teacher can play the video directly from the slide. For YouTube
@@ -513,6 +577,9 @@ export function SlideRender({
         }
         if (el.kind === "hasad-game") {
           return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} /></div>;
+        }
+        if (el.kind === "hasad-activity") {
+          return <div key={el.id} style={style}><HasadActivityRenderer el={el} lang={lang} /></div>;
         }
         if (el.kind === "video-embed") {
           return <div key={el.id} style={style}><VideoEmbedRenderer el={el} /></div>;

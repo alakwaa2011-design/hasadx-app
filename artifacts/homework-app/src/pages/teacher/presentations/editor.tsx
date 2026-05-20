@@ -29,7 +29,7 @@ import {
   Undo2, Redo2, Bold, CheckSquare, Pencil,
   Triangle, Diamond, Crown, Phone, Users, Flag, MapPin,
   Rocket, Swords, Dice5, Zap, Search, Crop,
-  Cloud, MessageSquare, BarChart2, Film,
+  Cloud, MessageSquare, BarChart2, Film, Gamepad2,
 } from "lucide-react";
 import { useIsBelowLg } from "@/hooks/use-mobile";
 import * as LucideIcons from "lucide-react";
@@ -55,17 +55,17 @@ import {
   pickDefaultTheme,
 } from "@/lib/slide-themes";
 import { LUCIDE_NAMES } from "@/lib/lucide-whitelist";
-import { SlideStage, HasadGameRenderer } from "@/lib/slide-render";
+import { SlideStage, HasadGameRenderer, HasadActivityRenderer } from "@/lib/slide-render";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ActivityPickerDialog } from "@/components/teacher/presentations/activity-picker-dialog";
+import { ActivityHubDialog } from "@/components/teacher/presentations/activity-hub-dialog";
 import { ActivitySuggestionsBanner } from "@/components/teacher/presentations/activity-suggestions-banner";
 import { SmartAddSlideDialog } from "@/components/teacher/presentations/smart-add-slide-dialog";
 import { VideoEmbedDialog } from "@/components/teacher/presentations/video-embed-dialog";
 import { ImageSearchDialog } from "@/components/teacher/presentations/image-search-dialog";
 import { AiPresentationBuilder } from "./builder";
-import { LinkedActivitySelector } from "@/components/teacher/presentations/linked-activity-selector";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import {
   AlertDialog,
@@ -415,6 +415,11 @@ export default function PresentationEditor() {
      button can open it without remounting state. */
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+  /* Activity Hub — unified entry for "نشاط من حصاد" and "أنشطة العرض".
+     Both the Inspector button and the topbar "اربط نشاط" button open this hub.
+     initialTab controls which view opens first. */
+  const [activityHubOpen, setActivityHubOpen] = useState(false);
+  const [activityHubInitialTab, setActivityHubInitialTab] = useState<"home" | "hasad" | "presentation">("home");
   /* Seed values for the activity picker — populated when the teacher
      accepts a suggestion from the AI suggestions banner so the
      Compose tab opens prefilled instead of blank. */
@@ -1293,9 +1298,23 @@ export default function PresentationEditor() {
               ))}
             </div>
             
-            {/* Action buttons - hidden text on mobile */}
+            {/* اربط نشاط — opens the Activity Hub pre-navigated to the
+                Hasad assignment browser so a teacher can embed a game
+                into the current slide with one click. */}
             {Number.isFinite(id) && !readOnly && (
-              <LinkedActivitySelector presentationId={id} isAr={isAr} disabled={readOnly} />
+              <button
+                type="button"
+                onClick={() => {
+                  setActivityHubInitialTab("hasad");
+                  setActivityHubOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
+                style={{ color: BRAND_GREEN, borderColor: `${BRAND_GREEN}40` }}
+                title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Embed a Hasad activity into this slide"}
+              >
+                <Gamepad2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{isAr ? "اربط نشاط" : "Link activity"}</span>
+              </button>
             )}
 
             <Button
@@ -1950,7 +1969,8 @@ export default function PresentationEditor() {
                 onOpenActivityPicker={() => {
                   setPickerInitial({});
                   setPendingSuggestionKey(null);
-                  setActivityPickerOpen(true);
+                  setActivityHubInitialTab("home");
+                  setActivityHubOpen(true);
                 }}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
@@ -2003,7 +2023,10 @@ export default function PresentationEditor() {
             onChangePattern={onChangePattern}
             onPickImage={onPickImage}
             onInsertElement={insertElement}
-            onOpenActivityPicker={() => setActivityPickerOpen(true)}
+            onOpenActivityPicker={() => {
+              setActivityHubInitialTab("home");
+              setActivityHubOpen(true);
+            }}
             onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
             onOpenImageSearch={() => setImageSearchOpen(true)}
             onOpenPreview={() => setPreviewIdx(activeIdx)}
@@ -2219,6 +2242,27 @@ export default function PresentationEditor() {
                 })
                 .catch(() => toast.error(isAr ? "تعذّر الحفظ في البنك" : "Failed to save to bank"));
             }
+          }}
+        />
+
+        {/* Activity Hub — unified picker for "نشاط من حصاد" and "أنشطة العرض".
+            Opened from both the Inspector "إضافة نشاط" button and the
+            topbar "اربط نشاط" button. The hub's onPickPresentation callback
+            hands off to ActivityPickerDialog so both flows stay available. */}
+        <ActivityHubDialog
+          open={activityHubOpen}
+          onClose={() => setActivityHubOpen(false)}
+          initialTab={activityHubInitialTab}
+          isAr={isAr}
+          onPickHasad={(el) => {
+            insertElement(el);
+            setActivityHubOpen(false);
+          }}
+          onPickPresentation={() => {
+            setActivityHubOpen(false);
+            setPickerInitial({});
+            setPendingSuggestionKey(null);
+            setActivityPickerOpen(true);
           }}
         />
       </div>
@@ -3413,6 +3457,13 @@ function ElementContent({
       </div>
     );
   }
+  if (el.kind === "hasad-activity") {
+    return (
+      <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
+        <HasadActivityRenderer el={el} lang={isAr ? "ar" : "en"} />
+      </div>
+    );
+  }
   if (el.kind === "video-embed") {
     const vEl = el as typeof el & { videoKind?: string; videoId?: string; title?: string; url?: string };
     const isYt = vEl.videoKind === "youtube";
@@ -3871,6 +3922,27 @@ function Inspector({
           <HasadGameInspector el={selectedEl} onUpdateEl={onUpdateEl} disabled={readOnly} isAr={isAr} deckTheme={theme} />
         )}
 
+        {selectedEl.kind === "hasad-activity" && (() => {
+          const hEl = selectedEl as typeof selectedEl & { assignmentId?: number; assignmentTitle?: string };
+          return (
+            <Section title={isAr ? "نشاط من حصاد" : "Hasad Activity"} icon={<Gamepad2 className="w-4 h-4" />}>
+              <div className="space-y-3">
+                <div
+                  className="p-3 rounded-xl border text-sm font-medium"
+                  style={{ background: `${BRAND_GREEN}08`, borderColor: `${BRAND_GREEN}30`, color: BRAND_GREEN }}
+                >
+                  {hEl.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity")}
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {isAr
+                    ? "سيُشغَّل هذا النشاط أثناء العرض المباشر. لتغيير النشاط، احذف هذا العنصر وأضف عنصراً جديداً."
+                    : "This activity will launch during the live presentation. To change it, delete this element and add a new one."}
+                </p>
+              </div>
+            </Section>
+          );
+        })()}
+
         {selectedEl.kind === "video-embed" && (
           <VideoEmbedInspector el={selectedEl} onUpdateEl={onUpdateEl} disabled={readOnly} isAr={isAr} />
         )}
@@ -4003,22 +4075,20 @@ function Inspector({
       <Section title={isAr ? "العناصر" : "Elements"} icon={<Square className="w-4 h-4" />}>
         <div className="space-y-4">
           <div>
-            <Label className="text-xs font-bold text-muted-foreground block mb-2 flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5" />
-              {isAr ? "نشاط تفاعلي" : "Interactive activity"}
-            </Label>
             <Button
-              variant="outline" size="sm"
-              className="w-full justify-center gap-2 font-bold shadow-sm"
+              size="sm"
+              className="w-full justify-center gap-2 font-extrabold shadow-sm text-white"
               disabled={readOnly}
               onClick={onOpenActivityPicker}
-              style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
+              style={{ background: BRAND_GREEN, borderColor: BRAND_GREEN }}
             >
-              <HelpCircle className="w-3.5 h-3.5" />
-              {isAr ? "إضافة نشاط" : "Add activity"}
+              <Gamepad2 className="w-4 h-4" />
+              {isAr ? "إضافة نشاط" : "Add Activity"}
             </Button>
-            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-              {isAr ? "اختيار من متعدد، صح/خطأ، إجابة مفتوحة، أو تصويت." : "MCQ, true/false, open answer, or poll."}
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed text-center">
+              {isAr
+                ? "نشاط من حصاد · سحابة كلمات · اختيار من متعدد · وأكثر"
+                : "Hasad activity · Word cloud · MCQ · and more"}
             </p>
           </div>
           <div>

@@ -15,7 +15,7 @@ import type { SlideElementShape } from "./slideElementShape";
 import type { SlideElementVideoKind } from "./slideElementVideoKind";
 
 /**
- * Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).
+ * Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).
  */
 export interface SlideElement {
   id: string;
@@ -64,4 +64,8 @@ export interface SlideElement {
   videoId?: string | null;
   /** For `kind=video-embed` — optional display title shown in the editor preview. */
   title?: string | null;
+  /** For `kind=hasad-activity` — the Hasad assignment to launch during live presentation. */
+  assignmentId?: number | null;
+  /** For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview). */
+  assignmentTitle?: string | null;
 }

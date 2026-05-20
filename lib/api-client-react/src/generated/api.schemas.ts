@@ -643,6 +643,7 @@ export const SlideElementKind = {
   activity: "activity",
   "hasad-game": "hasad-game",
   "video-embed": "video-embed",
+  "hasad-activity": "hasad-activity",
 } as const;
 
 export type SlideElementAlign =
@@ -732,7 +733,7 @@ export const SlideElementVideoKind = {
 } as const;
 
 /**
- * Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).
+ * Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).
  */
 export interface SlideElement {
   id: string;
@@ -781,6 +782,10 @@ export interface SlideElement {
   videoId?: string | null;
   /** For `kind=video-embed` — optional display title shown in the editor preview. */
   title?: string | null;
+  /** For `kind=hasad-activity` — the Hasad assignment to launch during live presentation. */
+  assignmentId?: number | null;
+  /** For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview). */
+  assignmentTitle?: string | null;
 }
 
 export interface Slide {
