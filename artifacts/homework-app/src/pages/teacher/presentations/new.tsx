@@ -262,6 +262,14 @@ export default function NewPresentationPage() {
   const [, setLocation] = useLocation();
   const isAr = lang === "ar";
 
+  const goBack = useCallback(() => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    setLocation("/teacher/presentations");
+  }, [setLocation]);
+
   const [mode, setMode] = useState<Mode>(null);
   const [quickPhase, setQuickPhase] = useState<QuickPhase>("form");
   const [statusMsg, setStatusMsg] = useState("");
@@ -686,41 +694,51 @@ export default function NewPresentationPage() {
         {/* ── HERO HEADER ── */}
         {mode === null ? (
           /* Full hero for mode picker */
-          <div
-            className="relative overflow-hidden rounded-3xl mb-8 shadow-2xl"
-            style={{ background: platformHarvestBg(isAr) }}
-          >
-            {/* Decorative blobs */}
-            <div className="absolute -top-16 -start-16 w-64 h-64 rounded-full bg-white/8 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-16 -end-16 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: "rgba(212,175,55,0.28)" }} />
-            <div className="absolute top-0 start-1/2 -translate-x-1/2 w-96 h-32 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-            <div className="absolute inset-0 rounded-3xl ring-1 ring-white/15 pointer-events-none" />
+          <div className="mb-8 space-y-3">
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isAr ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              {isAr ? "رجوع" : "Back"}
+            </button>
+            <div
+              className="relative overflow-hidden rounded-3xl shadow-2xl"
+              style={{ background: platformHarvestBg(isAr) }}
+            >
+              {/* Decorative blobs */}
+              <div className="absolute -top-16 -start-16 w-64 h-64 rounded-full bg-white/8 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-16 -end-16 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: "rgba(212,175,55,0.28)" }} />
+              <div className="absolute top-0 start-1/2 -translate-x-1/2 w-96 h-32 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+              <div className="absolute inset-0 rounded-3xl ring-1 ring-white/15 pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-10 py-8 sm:py-10">
-              <div className="text-center sm:text-start [text-shadow:0_2px_8px_rgba(0,0,0,0.4)]">
-                <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-3 py-1 mb-4">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  <span className="text-white/90 text-xs font-bold tracking-wide">
-                    {isAr ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
-                  </span>
+              <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-10 py-8 sm:py-10">
+                <div className="text-center sm:text-start [text-shadow:0_2px_8px_rgba(0,0,0,0.4)]">
+                  <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-3 py-1 mb-4">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="text-white/90 text-xs font-bold tracking-wide">
+                      {isAr ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
+                    </span>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-2">
+                    {isAr ? "إنشاء عرض تفاعلي" : "Create Interactive Deck"}
+                  </h1>
+                  <p className="text-white/75 text-sm sm:text-base max-w-sm leading-relaxed">
+                    {isAr
+                      ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
+                      : "Choose your mode and AI will build your complete lesson."}
+                  </p>
                 </div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-2">
-                  {isAr ? "إنشاء عرض تفاعلي" : "Create Interactive Deck"}
-                </h1>
-                <p className="text-white/75 text-sm sm:text-base max-w-sm leading-relaxed">
-                  {isAr
-                    ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
-                    : "Choose your mode and AI will build your complete lesson."}
-                </p>
+                <Link href="/teacher/presentations" className="shrink-0">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/30 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-colors backdrop-blur-sm"
+                  >
+                    {isAr ? "قائمة العروض" : "All decks"}
+                  </button>
+                </Link>
               </div>
-              <Link href="/teacher/presentations" className="shrink-0">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/30 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-colors backdrop-blur-sm"
-                >
-                  {isAr ? "قائمة العروض" : "All decks"}
-                </button>
-              </Link>
             </div>
           </div>
         ) : (

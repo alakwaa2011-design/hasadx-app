@@ -329,7 +329,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
             >
               <Sparkles className="w-4 h-4" />
-              {isAr ? "مساعد البناء" : "AI builder"}
+              {isAr ? "توليد بالذكاء" : "AI Generate"}
             </Button>
             <Button
               onClick={() => setShowCreate(true)}
@@ -358,6 +358,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
             style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
           >
             <Sparkles className="w-5 h-5" />
+            <span className="sr-only">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
           </Button>
           <Button
             onClick={() => setShowCreate(true)}
