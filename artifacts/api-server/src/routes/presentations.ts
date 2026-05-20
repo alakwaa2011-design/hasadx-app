@@ -217,7 +217,7 @@ const shapeElement = baseElement.extend({
    styled read-only card in present mode + exports. */
 const activityElement = baseElement.extend({
   kind: z.literal("activity"),
-  activityKind: z.enum(["mcq", "true_false", "open", "poll"]),
+  activityKind: z.enum(["mcq", "true_false", "open", "poll", "word_cloud", "open_wall"]),
   /* Optional pointer into question_bank. When present, `prompt` may be
      omitted — the renderer/exporter resolves the question text from
      the bank by id (questionId-only reference path). When absent, the
