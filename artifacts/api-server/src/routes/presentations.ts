@@ -1029,6 +1029,199 @@ router.post(
   },
 );
 
+/* ── Import from a shared Google Slides URL ─────────────────────────────
+   Accepts a public Google Slides share/edit/pub link, converts it to the
+   PPTX export URL, downloads the file, then runs it through the same PPTX
+   pipeline as the file-upload path.  Returns the same JSON shape as
+   /import-file so the frontend can reuse the same result handler. */
+
+/** Extract the presentation ID from a Google Slides URL.
+ *  Handles /edit, /pub, /present, bare /d/{id}, and /d/{id}/... variants. */
+function parseGoogleSlidesId(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl.trim());
+    if (u.hostname !== "docs.google.com") return null;
+    const m = u.pathname.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+router.post(
+  "/presentations/import-url",
+  requireTeacher,
+  async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+
+      const bodySchema = z.object({ url: z.string().url("Invalid URL") });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "يرجى إدخال رابط صحيح / Please enter a valid URL" });
+        return;
+      }
+      const { url } = parsed.data;
+
+      /* ── Detect Canva links early and give a helpful message ── */
+      try {
+        const u = new URL(url);
+        if (u.hostname === "www.canva.com" || u.hostname === "canva.com") {
+          res.status(422).json({
+            message:
+              "روابط Canva لا تدعم التنزيل المباشر — يرجى تصدير العرض من Canva كملف PPTX ثم رفعه هنا / " +
+              "Canva links don't support direct download — please export your design from Canva as PPTX and upload it here.",
+          });
+          return;
+        }
+      } catch { /* ignore parse errors — caught below */ }
+
+      /* ── Validate Google Slides URL and extract ID ── */
+      const slideId = parseGoogleSlidesId(url);
+      if (!slideId) {
+        res.status(422).json({
+          message:
+            "الرابط غير مدعوم. الروابط المدعومة: Google Slides العامة فقط / " +
+            "Unsupported link. Only public Google Slides links are supported.",
+        });
+        return;
+      }
+
+      /* Build the direct PPTX export URL (works for "anyone with link" public decks). */
+      const exportUrl = `https://docs.google.com/presentation/d/${slideId}/export?format=pptx`;
+
+      req.log.info({ slideId, exportUrl }, "Import URL: fetching Google Slides PPTX");
+
+      /* Fetch with a 30-second timeout so we don't hold the connection open. */
+      let pptxBuffer: Buffer;
+      let contentType: string;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30_000);
+        let fetchRes: globalThis.Response;
+        try {
+          fetchRes = await fetch(exportUrl, {
+            signal: controller.signal,
+            headers: { "User-Agent": "HasadX/1.0 (+https://hasadx.com)" },
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        /* Google redirects to the sign-in page or shows an HTML error when
+           the presentation is private or the ID is wrong.  Detect this by
+           checking content-type: a successful export always returns a PPTX
+           binary (application/...) NOT text/html. */
+        contentType = fetchRes.headers.get("content-type") ?? "";
+        if (!fetchRes.ok || contentType.includes("text/html")) {
+          res.status(422).json({
+            message:
+              "تعذّر تنزيل العرض — تأكد من أن الرابط عام (مشارك مع الجميع) / " +
+              "Could not download the presentation — make sure the link is set to 'Anyone with the link'.",
+          });
+          return;
+        }
+
+        const arrayBuf = await fetchRes.arrayBuffer();
+        pptxBuffer = Buffer.from(arrayBuf);
+      } catch (fetchErr: unknown) {
+        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+          res.status(504).json({ message: "انتهت مهلة تنزيل العرض / Download timed out — please try again." });
+          return;
+        }
+        req.log.warn({ fetchErr }, "Import URL: fetch failed");
+        res.status(502).json({ message: "تعذّر الوصول إلى الرابط / Could not reach the URL." });
+        return;
+      }
+
+      const tier = await resolvePresentationsTier(teacherId);
+      const svc = new ObjectStorageService();
+
+      /* Size guard — same limit as the file-upload path. */
+      const maxBytes = (tier.limits.maxSizeMbRegular ?? 50) * 1024 * 1024;
+      if (pptxBuffer.length > maxBytes) {
+        res.status(413).json({
+          message: `الملف أكبر من الحد المسموح به (${tier.limits.maxSizeMbRegular} م.ب) / File exceeds the ${tier.limits.maxSizeMbRegular} MB limit`,
+        });
+        return;
+      }
+
+      /* Derive a friendly title from the slide ID (we don't have a filename). */
+      const titleFromUrl = `Google Slides (${slideId.slice(0, 8)}…)`;
+
+      req.log.info({ bytes: pptxBuffer.length }, "Import URL: PPTX downloaded — parsing");
+
+      /* ── Parse PPTX through the shared pipeline ── */
+      let finalSlides: unknown[];
+      let deckLanguage: "ar" | "en" = "ar";
+      let contentExtractionFailed = false;
+
+      try {
+        const parsedSlides = await parsePptx(pptxBuffer);
+        deckLanguage = detectLangFromText(
+          parsedSlides.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
+        );
+        const built = buildSlidesFromParsed(parsedSlides, deckLanguage);
+        const validated = slidesSchema.safeParse(built);
+        finalSlides =
+          validated.success && validated.data.length > 0
+            ? validated.data
+            : defaultSlides(deckLanguage);
+      } catch (err) {
+        req.log.warn({ err }, "Import URL: PPTX parsing failed — using blank deck");
+        contentExtractionFailed = true;
+        finalSlides = defaultSlides(deckLanguage);
+      }
+
+      /* ── Create deck row ── */
+      const themeKey = pickServerDefaultTheme();
+      const [deck] = await db
+        .insert(presentationsTable)
+        .values({
+          teacherId,
+          title: titleFromUrl,
+          language: deckLanguage,
+          theme: themeKey,
+          pattern: "solid",
+          coverEmoji: "📊",
+          slides: finalSlides,
+          status: "draft",
+        })
+        .returning();
+
+      /* ── Persist a reference asset (best-effort) ── */
+      let assetUrl = "";
+      try {
+        assetUrl = await svc.uploadBufferAsPublic({
+          buffer: pptxBuffer,
+          contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          extension: ".pptx",
+        });
+      } catch (uploadErr) {
+        req.log.warn({ uploadErr }, "Import URL: object-storage upload skipped");
+      }
+
+      await db.insert(presentationAssetsTable).values({
+        presentationId: deck.id,
+        kind: "file",
+        url: assetUrl,
+        byteSize: pptxBuffer.length,
+      });
+
+      res.status(201).json({
+        presentationId: deck.id,
+        title: deck.title,
+        slideCount: (finalSlides as unknown[]).length,
+        aiGenerated: false,
+        ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
+      });
+    } catch (err) {
+      req.log.error({ err }, "Import presentation URL failed");
+      res.status(500).json({ message: "Failed to import from URL" });
+    }
+  },
+);
+
 /* ── Create. Seeds with a single empty cover slide so the editor
    immediately renders. */
 router.post("/presentations", requireTeacher, async (req, res) => {

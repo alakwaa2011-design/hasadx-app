@@ -68,6 +68,7 @@ export default function NewPresentationPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importErrorMsg, setImportErrorMsg] = useState("");
   const [importDragOver, setImportDragOver] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
 
   useEffect(() => {
     if (mode === "pro") setProBuilderOpen(true);
@@ -251,7 +252,38 @@ export default function NewPresentationPage() {
     setImportResult(null);
     setImportErrorMsg("");
     setImportDragOver(false);
+    setImportUrl("");
   };
+
+  /* Submit a URL (Google Slides) to the import-url endpoint. */
+  const handleImportUrl = useCallback(async () => {
+    const trimmed = importUrl.trim();
+    if (!trimmed) return;
+    setImportPhase("uploading");
+    setImportErrorMsg("");
+    try {
+      const r = await fetch(`${API_BASE}/api/presentations/import-url`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(
+          (j as { message?: string }).message ??
+            (isAr ? "فشل استيراد الرابط" : "URL import failed"),
+        );
+      }
+      setImportResult(j as ImportResult);
+      setImportPhase("preview");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error";
+      setImportErrorMsg(msg);
+      setImportPhase("error");
+      toast.error(msg);
+    }
+  }, [importUrl, isAr]);
 
   /* Creates a live session for the generated deck and jumps to the
      control panel — this is the distinct "launch now" path, separate
@@ -871,6 +903,43 @@ export default function NewPresentationPage() {
                   {icon} {label}
                 </span>
               ))}
+            </div>
+
+            {/* ── URL import separator ── */}
+            <div className="flex items-center gap-3 mt-6">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium px-1">
+                {isAr ? "أو استورد من رابط" : "or import from a link"}
+              </span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* ── Google Slides URL input ── */}
+            <div className="mt-4 flex flex-col gap-2">
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  dir="ltr"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleImportUrl(); }}
+                  placeholder="https://docs.google.com/presentation/d/..."
+                  className="flex-1 min-w-0 rounded-xl border border-border bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all"
+                />
+                <button
+                  type="button"
+                  disabled={!importUrl.trim()}
+                  onClick={handleImportUrl}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  {isAr ? "استيراد" : "Import"}
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground/70 text-center">
+                {isAr
+                  ? "Google Slides العامة فقط — تأكد من تعيين المشاركة على «أي شخص لديه الرابط»"
+                  : "Public Google Slides only — make sure sharing is set to \"Anyone with the link\""}
+              </p>
             </div>
           </div>
         )}
