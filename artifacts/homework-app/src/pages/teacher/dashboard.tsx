@@ -2208,24 +2208,6 @@ function CompetitiveTab({
         </div>
       </section>
 
-      <div className="text-center py-2 sm:py-4">
-        <motion.div
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="inline-flex p-4 bg-gradient-to-br from-primary/15 to-amber-500/15 rounded-2xl mb-3 ring-1 ring-border/60"
-        >
-          <Trophy className="w-10 h-10 text-primary" />
-        </motion.div>
-        <h2 className="text-xl sm:text-3xl font-black text-foreground mb-2 tracking-tight">
-          {t.dashboard.tabCompetitive || "ألعاب تعليمية"}
-        </h2>
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed px-2">
-          {lang === "ar"
-            ? "مكتبة ألعاب منظّمة: مسابقات حية مع صفّك كما في المنصات العالمية، وتحديات فردية للتمرّن والترفيه."
-            : "A structured game library: live class modes like leading platforms, plus solo brain challenges."}
-        </p>
-      </div>
-
       <GameCatalogSection
         title={
           lang === "ar"
