@@ -95,29 +95,27 @@ function formatRelative(d: Date | string | undefined, isAr: boolean): string {
   return date.toLocaleDateString(isAr ? "ar" : "en");
 }
 
-const PRESENTATION_COVERS = [
-  { from: "#0f3d2e", via: "#225739", to: "#d9a521", accent: "rgba(255,255,255,0.16)" },
-  { from: "#172554", via: "#2563eb", to: "#38bdf8", accent: "rgba(255,255,255,0.14)" },
-  { from: "#312e81", via: "#7c3aed", to: "#f59e0b", accent: "rgba(255,255,255,0.14)" },
-  { from: "#7f1d1d", via: "#dc2626", to: "#fbbf24", accent: "rgba(255,255,255,0.13)" },
-  { from: "#134e4a", via: "#0f766e", to: "#99f6e4", accent: "rgba(255,255,255,0.15)" },
-  { from: "#3b0764", via: "#9333ea", to: "#f0abfc", accent: "rgba(255,255,255,0.13)" },
+// ألوان accent هادئة — لا تسيطر على البطاقة، تُستخدم كشريط جانبي فقط
+const SLIDE_ACCENTS = [
+  { bar: "#225739", bg: "#f0faf4", text: "#1a4730" },
+  { bar: "#1e40af", bg: "#eff6ff", text: "#1e3a8a" },
+  { bar: "#7c3aed", bg: "#f5f3ff", text: "#4c1d95" },
+  { bar: "#0f766e", bg: "#f0fdfa", text: "#134e4a" },
+  { bar: "#b45309", bg: "#fffbeb", text: "#92400e" },
+  { bar: "#be185d", bg: "#fdf2f8", text: "#831843" },
 ];
 
-function getPresentationVisual(title: string) {
-  let hash = 0;
-  for (let i = 0; i < title.length; i += 1) {
-    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
-  }
-  return PRESENTATION_COVERS[hash % PRESENTATION_COVERS.length];
+function getSlideAccent(title: string) {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
+  return SLIDE_ACCENTS[h % SLIDE_ACCENTS.length];
 }
 
-function getTitleMark(title: string, isAr: boolean): string {
-  const clean = title.trim();
-  if (!clean) return isAr ? "عرض" : "P";
-  const parts = clean.split(/\s+/).filter(Boolean);
-  if (isAr) return parts.slice(0, 2).map((part) => part[0]).join("");
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+// أنماط pseudo-preview مختلفة حسب hash — تمنع التكرار البصري
+function getSlideLayout(title: string): 0 | 1 | 2 | 3 {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 17 + title.charCodeAt(i)) >>> 0;
+  return (h % 4) as 0 | 1 | 2 | 3;
 }
 
 export default function PresentationsIndex({ embedded }: { embedded?: boolean } = {}) {
@@ -596,8 +594,8 @@ function PresentationCard({
   isOwner: boolean;
 }) {
   const isPublished = p.status === "published";
-  const cover = getPresentationVisual(p.title);
-  const titleMark = p.coverEmoji || getTitleMark(p.title, isAr);
+  const accent = getSlideAccent(p.title);
+  const layout = getSlideLayout(p.title);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(p.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -620,63 +618,120 @@ function PresentationCard({
     setEditValue(p.title);
   }, [p.title]);
 
+  // محاكاة شريحة حقيقية — أربعة أنماط مختلفة
+  const SlidePreview = () => {
+    const base = "w-full h-full flex flex-col";
+    if (layout === 0) {
+      // نمط: عنوان + خطوط محتوى
+      return (
+        <div className={`${base} p-5 gap-3`}>
+          <div className="h-2 rounded-full w-3/4" style={{ background: accent.bar, opacity: 0.85 }} />
+          <div className="h-1.5 rounded-full w-1/2 bg-current opacity-15" />
+          <div className="flex-1 flex flex-col justify-end gap-1.5">
+            <div className="h-1 rounded-full w-full bg-current opacity-10" />
+            <div className="h-1 rounded-full w-5/6 bg-current opacity-10" />
+            <div className="h-1 rounded-full w-4/6 bg-current opacity-10" />
+          </div>
+        </div>
+      );
+    }
+    if (layout === 1) {
+      // نمط: شريط جانبي + محتوى
+      return (
+        <div className={`${base} flex-row p-0`}>
+          <div className="w-1.5 rounded-e-none" style={{ background: accent.bar }} />
+          <div className="flex-1 p-4 flex flex-col gap-2.5">
+            <div className="h-2 rounded-full w-2/3" style={{ background: accent.bar, opacity: 0.7 }} />
+            <div className="h-1 rounded-full w-1/2 bg-current opacity-12" />
+            <div className="flex-1 grid grid-cols-2 gap-1.5 mt-1">
+              {[0.15, 0.1, 0.12, 0.08].map((op, i) => (
+                <div key={i} className="rounded bg-current" style={{ opacity: op }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (layout === 2) {
+      // نمط: محتوى + صورة مستطيلة (placeholder)
+      return (
+        <div className={`${base} p-4 gap-2`}>
+          <div className="h-2 rounded-full w-3/5" style={{ background: accent.bar, opacity: 0.8 }} />
+          <div className="flex-1 flex gap-3 mt-1">
+            <div className="flex-1 flex flex-col gap-1.5 justify-center">
+              <div className="h-1 rounded-full w-full bg-current opacity-12" />
+              <div className="h-1 rounded-full w-5/6 bg-current opacity-10" />
+              <div className="h-1 rounded-full w-4/6 bg-current opacity-10" />
+            </div>
+            <div className="w-12 rounded-lg" style={{ background: accent.bar, opacity: 0.18 }} />
+          </div>
+        </div>
+      );
+    }
+    // layout === 3: عنوان مركزي كبير
+    return (
+      <div className={`${base} items-center justify-center p-5 gap-2`}>
+        <div className="h-2.5 rounded-full w-2/3" style={{ background: accent.bar, opacity: 0.8 }} />
+        <div className="h-1.5 rounded-full w-2/5 bg-current opacity-12" />
+        <div className="h-px w-10 rounded-full mt-1" style={{ background: accent.bar, opacity: 0.35 }} />
+      </div>
+    );
+  };
+
   return (
     <div
       onClick={editing ? undefined : onOpen}
-      className="group relative rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5"
+      className="group relative flex flex-col rounded-2xl border border-border/70 bg-card overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/8 hover:-translate-y-px hover:border-border"
       style={{ cursor: editing ? "default" : "pointer" }}
     >
-      {/* Cover */}
+      {/* ── Slide pseudo-preview ──────────────────────────── */}
       <div
-        className="h-36 relative overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${cover.from} 0%, ${cover.via} 56%, ${cover.to} 125%)`,
-        }}
+        className="relative overflow-hidden shrink-0"
+        style={{ height: 128, background: accent.bg, color: accent.text }}
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.22),transparent_26%),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.12),transparent_24%)]" />
-        <div
-          className="absolute -bottom-8 -end-8 w-32 h-32 rounded-full border border-white/20"
-          style={{ background: cover.accent }}
-        />
-        <div className="absolute bottom-4 start-4 end-4 flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <div className="inline-flex h-14 min-w-14 px-3 items-center justify-center rounded-2xl bg-white/18 border border-white/25 text-white text-2xl font-black shadow-sm backdrop-blur-sm">
-              {titleMark}
-            </div>
-            <div className="mt-3 h-1.5 w-20 rounded-full bg-white/30" />
-          </div>
-          <div className="hidden sm:grid grid-cols-2 gap-1 opacity-75">
-            <div className="w-8 h-5 rounded bg-white/18" />
-            <div className="w-8 h-5 rounded bg-white/12" />
-            <div className="w-8 h-5 rounded bg-white/12" />
-            <div className="w-8 h-5 rounded bg-white/18" />
-          </div>
+        {/* نسبة عرض الشريحة 16:9 */}
+        <div className="absolute inset-0">
+          <SlidePreview />
         </div>
-        <div className="absolute top-3 flex items-center gap-1.5" style={{ [isAr ? "right" : "left"]: 12 } as React.CSSProperties}>
+
+        {/* شريط علوي شفاف مع badges */}
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-2.5 pb-1">
+          {/* حالة النشر */}
           {isPublished ? (
             <span
-              className="px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1 bg-white/90 shadow-sm"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/80 backdrop-blur-sm shadow-sm"
               style={{ color: BRAND_GREEN }}
             >
-              <Globe className="w-3 h-3" />
+              <Globe className="w-2.5 h-2.5" />
               {isAr ? "منشور" : "Published"}
             </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-white/85 text-foreground shadow-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/70 text-muted-foreground backdrop-blur-sm">
               {isAr ? "مسودة" : "Draft"}
             </span>
           )}
+          {/* لغة العرض */}
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/60 text-muted-foreground backdrop-blur-sm">
+            {p.language === "ar" ? "AR" : "EN"}
+          </span>
         </div>
-        <span className="absolute top-3 px-2.5 py-1 rounded-full text-[10px] font-black bg-black/20 text-white border border-white/15 backdrop-blur-sm"
-          style={{ [isAr ? "left" : "right"]: 12 } as React.CSSProperties}
-        >
-          {p.language === "ar" ? "AR" : "EN"}
-        </span>
+
+        {/* زر فتح يظهر عند hover */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/8">
+          <span
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white shadow-md text-foreground"
+            style={{ color: accent.text }}
+          >
+            <Pencil className="w-3 h-3" />
+            {isAr ? "فتح المحرر" : "Open editor"}
+          </span>
+        </div>
       </div>
 
-      {/* Body */}
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start gap-2 mb-3">
+      {/* ── Body ──────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 px-3.5 pt-3 pb-3">
+        {/* العنوان + قائمة الإجراءات */}
+        <div className="flex items-start gap-1.5 mb-2.5">
           {editing ? (
             <input
               ref={inputRef}
@@ -690,42 +745,30 @@ function PresentationCard({
               onClick={(e) => e.stopPropagation()}
               maxLength={200}
               dir={isAr ? "rtl" : "ltr"}
-              className="flex-1 text-sm font-black text-foreground leading-snug bg-muted/60 border border-border rounded-xl px-2.5 py-1 outline-none focus:ring-2 focus:ring-offset-0 min-w-0"
-              style={{ boxShadow: `0 0 0 2px ${BRAND_GREEN}55` }}
+              className="flex-1 text-sm font-bold text-foreground bg-muted/50 border border-border rounded-lg px-2.5 py-1 outline-none min-w-0"
+              style={{ boxShadow: `0 0 0 2px ${BRAND_GREEN}40` }}
             />
           ) : (
             <h3
-              className={`flex-1 text-base font-black text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
+              className={`flex-1 text-sm font-bold text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
               onDoubleClick={isOwner ? startEdit : undefined}
               title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
               {p.title}
             </h3>
           )}
-          {isOwner && !editing && (
-            <button
-              onClick={startEdit}
-              className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0 -mt-1"
-              aria-label={isAr ? "إعادة تسمية" : "Rename"}
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
-          )}
           {!editing && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-1"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-0.5"
                   aria-label={isAr ? "إجراءات" : "Actions"}
                 >
-                  <MoreVertical className="w-4 h-4" />
+                  <MoreVertical className="w-3.5 h-3.5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align={isAr ? "start" : "end"}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <DropdownMenuContent align={isAr ? "start" : "end"} onClick={(e) => e.stopPropagation()}>
                 {isOwner && (
                   <DropdownMenuItem onClick={startEdit}>
                     <Pencil className="w-4 h-4 me-2" />
@@ -741,11 +784,9 @@ function PresentationCard({
                     onClick={(e) => { e.stopPropagation(); onGoLive(); }}
                     disabled={goLiveLoading}
                     className="font-bold"
-                    style={{ color: "#D9A521" }}
+                    style={{ color: BRAND_GOLD }}
                   >
-                    {goLiveLoading
-                      ? <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                      : <Radio className="w-4 h-4 me-2" />}
+                    {goLiveLoading ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Radio className="w-4 h-4 me-2" />}
                     {isAr ? "بدء عرض مباشر" : "Start live session"}
                   </DropdownMenuItem>
                 )}
@@ -768,10 +809,7 @@ function PresentationCard({
                 ))}
                 {isOwner && <DropdownMenuSeparator />}
                 {isOwner && (
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
+                  <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                     <Trash2 className="w-4 h-4 me-2" />
                     {isAr ? "حذف" : "Delete"}
                   </DropdownMenuItem>
@@ -780,21 +818,23 @@ function PresentationCard({
             </DropdownMenu>
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" />
-            {p.slideCount} {isAr ? "شريحة" : p.slideCount === 1 ? "slide" : "slides"}
+
+        {/* ── Footer: المعلومات ────────────────────────────── */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto pt-1 border-t border-border/50">
+          <span className="inline-flex items-center gap-1">
+            <FileText className="w-3 h-3" />
+            {p.slideCount} {isAr ? "شريحة" : "slides"}
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1 ms-auto">
+            <Clock className="w-3 h-3" />
             {formatRelative(p.updatedAt, isAr)}
           </span>
+          {!isOwner && p.ownerName && (
+            <span className="truncate max-w-[80px]" title={p.ownerName}>
+              {p.ownerName}
+            </span>
+          )}
         </div>
-        {!isOwner && p.ownerName && (
-          <div className="mt-3 text-[11px] text-muted-foreground">
-            {isAr ? "بواسطة" : "by"} {p.ownerName}
-          </div>
-        )}
       </div>
     </div>
   );
