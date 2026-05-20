@@ -297,79 +297,39 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
   const presentationsInner = (
     <>
     <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl"} dir={isAr ? "rtl" : "ltr"}>
-        {/* Header */}
-        <div className="mb-6 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
-          <div className="relative p-5 sm:p-6">
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(34,87,57,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(217,165,33,0.12),transparent_35%)]" />
-            <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-              <div className="flex items-start gap-4 min-w-0">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border"
-                  style={{ background: `${BRAND_GREEN}10`, color: BRAND_GREEN, borderColor: `${BRAND_GREEN}18` }}
-                >
-                  <Monitor className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h1 className="text-2xl sm:text-3xl font-black text-foreground leading-tight">
-                      {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
-                    </h1>
-                    {showLock && tier && (
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black border bg-white/70"
-                        style={{ color: BRAND_GREEN, borderColor: BRAND_GOLD }}
-                        title={
-                          isAr
-                            ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
-                            : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`
-                        }
-                      >
-                        <Lock className="w-3 h-3" />
-                        {isAr ? "الباقة المجانية" : "Free tier"}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                    {isAr
-                      ? "مساحة هادئة لتنظيم العروض، توليد محتوى جديد، واستئناف العمل بسرعة."
-                      : "A calm workspace to organize decks, generate new content, and continue editing quickly."}
-                  </p>
-                  {showLock && tier && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {isAr
-                        ? `حدود كل عرض: ${tier.limits.maxSlidesRegular} شريحة، ${tier.limits.maxImagesRegular} صورة، ${tier.limits.maxFilesRegular} ملف، ${tier.limits.maxSizeMbRegular} م.ب`
-                        : `Per deck: ${tier.limits.maxSlidesRegular} slides, ${tier.limits.maxImagesRegular} images, ${tier.limits.maxFilesRegular} files, ${tier.limits.maxSizeMbRegular} MB`}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="hidden sm:flex items-center gap-2 shrink-0">
-                <Button
-                  onClick={() => setShowImport(true)}
-                  variant="outline"
-                  className="gap-2 font-bold bg-white/75"
-                >
-                  <Upload className="w-4 h-4" />
-                  {isAr ? "استيراد" : "Import"}
-                </Button>
-                <Button
-                  onClick={() => setLocation("/teacher/presentations/new")}
-                  variant="outline"
-                  className="gap-2 font-bold bg-white/75"
-                  style={{ borderColor: `${BRAND_GREEN}45`, color: BRAND_GREEN }}
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {isAr ? "توليد بالذكاء" : "AI Generate"}
-                </Button>
-                <Button
-                  onClick={() => setShowCreate(true)}
-                  className="gap-2 font-bold shadow-sm"
-                  style={{ background: BRAND_GREEN, color: "white" }}
-                >
-                  <Plus className="w-4 h-4" />
-                  {isAr ? "عرض جديد" : "New deck"}
-                </Button>
-              </div>
+        {/* Header — معلوماتي فقط، بدون أزرار إجراء */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${BRAND_GREEN}10`, color: BRAND_GREEN }}
+            >
+              <Monitor className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-foreground leading-tight flex items-center gap-2 flex-wrap">
+                {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
+                {showLock && tier && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                    style={{ color: BRAND_GREEN, borderColor: `${BRAND_GOLD}80`, background: `${BRAND_GOLD}10` }}
+                    title={isAr
+                      ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
+                      : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`}
+                  >
+                    <Lock className="w-2.5 h-2.5" />
+                    {isAr ? "مجاني" : "Free"}
+                  </span>
+                )}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {!isLoading && (
+                  <>
+                    <span className="font-semibold text-foreground">{counts.recent}</span>
+                    {" "}{isAr ? `عرض · ${counts.published} منشور · ${counts.drafts} مسودة` : `deck${counts.recent !== 1 ? "s" : ""} · ${counts.published} published · ${counts.drafts} draft${counts.drafts !== 1 ? "s" : ""}`}
+                  </>
+                )}
+              </p>
             </div>
           </div>
         </div>
