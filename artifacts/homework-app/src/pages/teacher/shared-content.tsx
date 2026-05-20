@@ -12,6 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { cn } from "@/lib/utils";
+import { ActivitiesLibraryMarketplace } from "@/components/teacher/activities-library-marketplace";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -564,6 +565,18 @@ export default function SharedContentPage({
       ? (b.points - a.points)
       : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const filteredVideos = videoLessons
+    .filter(v =>
+      (!search || v.title.includes(search) || v.teacherName?.includes(search)) &&
+      matchesSubject(v.subject) &&
+      (!gradeFilter || gradeMatchesQuery(v.targetClass, gradeFilter))
+    )
+    .sort((a, b) =>
+      sortBy === "questions"
+        ? b.questionCount - a.questionCount
+        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
   if (loading) {
     const spinner = (
       <div className="flex h-96 items-center justify-center">
@@ -571,6 +584,63 @@ export default function SharedContentPage({
       </div>
     );
     return embedded ? spinner : <Layout>{spinner}</Layout>;
+  }
+
+  if (isActivitiesLibrary) {
+    const marketplace = (
+      <ActivitiesLibraryMarketplace
+        embedded={embedded}
+        lang={lang}
+        dir={dir}
+        assignments={assignments}
+        questions={questions}
+        videoLessons={videoLessons}
+        filteredAssignments={filteredAssignments}
+        filteredQuestions={filteredQuestions}
+        filteredVideos={filteredVideos}
+        popularIds={activitiesPopularIds}
+        newIds={activitiesNewIds}
+        currentTeacherId={currentTeacherId}
+        isAdmin={isAdmin}
+        showHidden={showHidden}
+        onShowHiddenChange={setShowHidden}
+        search={search}
+        onSearchChange={setSearch}
+        subjectFilter={subjectFilter}
+        onSubjectFilterChange={setSubjectFilter}
+        gradeFilter={gradeFilter}
+        onGradeFilterChange={setGradeFilter}
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        allSubjects={allSubjects}
+        allGrades={allGrades}
+        activeTab={activeTab}
+        onActiveTabChange={setActiveTab}
+        onClearFilters={() => {
+          setSearch("");
+          setSubjectFilter("");
+          setGradeFilter("");
+        }}
+        onPresentations={() => setLocation("/teacher/presentations")}
+        launchAsGame={launchAsGame}
+        importAssignment={importAssignment}
+        copyLink={copyLink}
+        dismissAssignment={(id) => dismissItem("assignment", id)}
+        importQuestion={importQuestion}
+        dismissQuestion={(id) => dismissItem("question", id)}
+        importVideo={importVideoLesson}
+        launchingIds={launchingIds}
+        importingIds={importingIds}
+        importedIds={importedIds}
+        importingQIds={importingQIds}
+        importedQIds={importedQIds}
+        importingVIds={importingVIds}
+        importedVIds={importedVIds}
+        dismissingIds={dismissingIds}
+        t={t}
+      />
+    );
+    return embedded ? marketplace : <Layout>{marketplace}</Layout>;
   }
 
   const inner = (
