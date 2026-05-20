@@ -768,9 +768,14 @@ function ConnectedPlayersBadge({
   );
 }
 
-function BrandLogoBlock({ isAr }: { isAr: boolean }) {
+function BrandLogoBlock({ isAr, onHome }: { isAr: boolean; onHome: () => void }) {
   return (
-    <div className="flex min-w-0 items-center justify-self-start gap-3">
+    <button
+      type="button"
+      onClick={onHome}
+      className="flex min-w-0 items-center justify-self-start gap-3 rounded-xl text-start transition-opacity hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a63a]/50"
+      aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasad"}
+    >
       <div
         className="shrink-0 rounded-xl p-0.5"
         style={{
@@ -780,7 +785,7 @@ function BrandLogoBlock({ isAr }: { isAr: boolean }) {
       >
         <img
           src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-          alt={isAr ? "حصاد" : "Hasad"}
+          alt=""
           className="h-11 w-11 rounded-[10px] object-cover ring-1 ring-[rgba(212,166,58,0.35)]"
         />
       </div>
@@ -788,7 +793,7 @@ function BrandLogoBlock({ isAr }: { isAr: boolean }) {
         <span className="text-lg font-black leading-tight tracking-tight text-white">{isAr ? "حصاد" : "Hasad"}</span>
         <span className="text-[11px] font-bold tracking-[0.22em] text-[#f4c95d]/95">HASADX</span>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -1070,13 +1075,18 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           style={{ borderColor: P.border, background: "rgba(3,27,17,0.92)" }}
         >
           <motion.div className="relative flex h-[52px] items-center justify-between px-4">
-            <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onHome}
+              className="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a63a]/50"
+              aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasad"}
+            >
               <img
                 src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
-                alt={isAr ? "حصاد" : "Hasad"}
+                alt=""
                 className="h-9 w-9 shrink-0 rounded-lg object-cover ring-2 ring-[rgba(212,166,58,0.25)]"
               />
-            </div>
+            </button>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16 text-center">
               <p className="text-[15px] font-black leading-tight text-[#f4c95d]">{isAr ? "غرفة الانتظار" : "Waiting Room"}</p>
               <p className="mt-0.5 flex items-center justify-center gap-1 text-[10px] font-semibold text-[#a8c4ad]">
@@ -1113,7 +1123,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
           style={{ borderColor: P.border, background: "rgba(1,12,8,0.92)" }}
         >
           <div className="mx-auto grid h-[72px] max-w-[1500px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 lg:px-10">
-            <BrandLogoBlock isAr={isAr} />
+            <BrandLogoBlock isAr={isAr} onHome={onHome} />
 
             <div className="justify-self-center text-center">
               <p className="text-xl font-black tracking-tight text-[#f4c95d] lg:text-[22px]">
