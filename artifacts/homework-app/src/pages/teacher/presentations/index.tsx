@@ -627,9 +627,30 @@ function PresentationCard({
       {/* Body */}
       <div className="p-4">
         <div className="flex items-start gap-2 mb-2">
-          <h3 className="flex-1 text-sm font-black text-foreground line-clamp-2 leading-snug">
+          <h3
+            className={`flex-1 text-sm font-black text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
+            onDoubleClick={
+              isOwner
+                ? (e) => { e.stopPropagation(); onRename(); }
+                : undefined
+            }
+            title={
+              isOwner
+                ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename")
+                : undefined
+            }
+          >
             {p.title}
           </h3>
+          {isOwner && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRename(); }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0 mt-0.5"
+              aria-label={isAr ? "إعادة تسمية" : "Rename"}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
