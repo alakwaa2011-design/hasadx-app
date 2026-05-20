@@ -435,6 +435,7 @@ export default function PresentationEditor() {
   const [pendingSuggestionKey, setPendingSuggestionKey] =
     useState<number | null>(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   /* Canva-style mobile/tablet shell (<1024px). Desktop is byte-for-byte
      unchanged when isMobile is false. The bottom sheet drives all the
      contextual editing surfaces. */
@@ -1058,11 +1059,29 @@ export default function PresentationEditor() {
         const ids = els.map((el) => el.id);
         setSelectedElId(ids[0]);
         setMultiSelectIds(ids.slice(1));
+        return;
+      }
+      if (k === "d") {
+        if (inField) return;
+        e.preventDefault();
+        duplicateActive();
+        return;
+      }
+      if (k === "s") {
+        e.preventDefault();
+        saveNow();
+        return;
+      }
+      if (k === "/") {
+        if (inField) return;
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, undo, redo, activeSlide]);
+  }, [readOnly, undo, redo, activeSlide, duplicateActive, saveNow]);
 
   /* Loading / error guards live AFTER every hook so the hook count
      stays identical between the loading render and the loaded render
@@ -1391,6 +1410,16 @@ export default function PresentationEditor() {
               <History className="w-4 h-4" />
               <span className="hidden lg:inline">{isAr ? "الجلسات" : "Sessions"}</span>
             </Button>
+            {/* Keyboard shortcuts help button */}
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-black text-muted-foreground border border-border hover:border-emerald-600/40 hover:text-emerald-700 hover:bg-emerald-50/60 transition-colors select-none"
+              title={isAr ? "اختصارات لوحة المفاتيح (Ctrl+/)" : "Keyboard shortcuts (Ctrl+/)"}
+              aria-label={isAr ? "اختصارات لوحة المفاتيح" : "Keyboard shortcuts"}
+            >
+              ?
+            </button>
           </div>
         </div>
         )}
@@ -2007,6 +2036,10 @@ export default function PresentationEditor() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {showShortcuts && (
+          <KeyboardShortcutsPanel isAr={isAr} onClose={() => setShowShortcuts(false)} />
+        )}
 
         <ActivityPickerDialog
           open={activityPickerOpen}
@@ -6411,6 +6444,135 @@ function MobileAddGrid({
           <span className="text-[11px] font-medium text-slate-700">{item.label}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ── Keyboard Shortcuts Panel ─────────────────────────────────────── */
+function KeyboardShortcutsPanel({ isAr, onClose }: { isAr: boolean; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const sections: Array<{
+    titleAr: string;
+    titleEn: string;
+    shortcuts: Array<{ keys: string[]; labelAr: string; labelEn: string }>;
+  }> = [
+    {
+      titleAr: "عام",
+      titleEn: "General",
+      shortcuts: [
+        { keys: ["Ctrl", "Z"],           labelAr: "تراجع",                   labelEn: "Undo" },
+        { keys: ["Ctrl", "Y"],           labelAr: "إعادة",                   labelEn: "Redo" },
+        { keys: ["Ctrl", "⇧", "Z"],     labelAr: "إعادة (بديل)",            labelEn: "Redo (alt)" },
+        { keys: ["Ctrl", "S"],           labelAr: "حفظ الآن",                labelEn: "Save now" },
+        { keys: ["Ctrl", "/"],           labelAr: "إظهار/إخفاء الاختصارات", labelEn: "Toggle shortcuts panel" },
+      ],
+    },
+    {
+      titleAr: "الشرائح",
+      titleEn: "Slides",
+      shortcuts: [
+        { keys: ["Ctrl", "D"],           labelAr: "تكرار الشريحة الحالية",  labelEn: "Duplicate current slide" },
+      ],
+    },
+    {
+      titleAr: "العناصر",
+      titleEn: "Elements",
+      shortcuts: [
+        { keys: ["Ctrl", "A"],           labelAr: "تحديد جميع العناصر",     labelEn: "Select all elements" },
+        { keys: ["Del"],                 labelAr: "حذف العنصر المحدد",       labelEn: "Delete selected element" },
+        { keys: ["Backspace"],           labelAr: "حذف العنصر المحدد",       labelEn: "Delete selected element" },
+        { keys: ["Esc"],                 labelAr: "إلغاء التحديد",           labelEn: "Deselect / cancel edit" },
+      ],
+    },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        dir={isAr ? "rtl" : "ltr"}
+        style={{ maxHeight: "90vh" }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b border-slate-100"
+          style={{ background: `#22573910` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-black tracking-tight" style={{ color: "#225739" }}>
+              {isAr ? "⌨️ اختصارات لوحة المفاتيح" : "⌨️ Keyboard Shortcuts"}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label={isAr ? "إغلاق" : "Close"}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto p-5 space-y-5" style={{ maxHeight: "calc(90vh - 68px)" }}>
+          {sections.map((section) => (
+            <div key={section.titleEn}>
+              <div
+                className="text-[11px] font-extrabold uppercase tracking-wider mb-2.5"
+                style={{ color: "#225739" }}
+              >
+                {isAr ? section.titleAr : section.titleEn}
+              </div>
+              <div className="space-y-1.5">
+                {section.shortcuts.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 py-1">
+                    <span className="text-sm text-slate-700 font-medium">
+                      {isAr ? s.labelAr : s.labelEn}
+                    </span>
+                    {!isAr && (
+                      <span className="text-xs text-slate-500 font-medium ms-1">
+                        {s.labelAr}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {s.keys.map((k, ki) => (
+                        <span key={ki} className="flex items-center gap-1">
+                          <kbd
+                            className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[11px] font-black text-slate-600 border border-slate-300 shadow-[0_1px_0_rgba(0,0,0,0.15)]"
+                            style={{ background: "#f6f8fa", minWidth: "1.6rem" }}
+                          >
+                            {k}
+                          </kbd>
+                          {ki < s.keys.length - 1 && (
+                            <span className="text-[10px] text-slate-400 font-bold">+</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Footer hint */}
+          <p className="text-[11px] text-slate-400 text-center pt-1 border-t border-slate-100">
+            {isAr
+              ? "اضغط Esc أو انقر خارج اللوحة للإغلاق"
+              : "Press Esc or click outside to close"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
