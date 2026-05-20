@@ -461,6 +461,10 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(120,242,177,0.18); }
   50% { box-shadow: 0 0 0 14px rgba(120,242,177,0); }
 }
+@keyframes activity-cover-pulse {
+  0%, 100% { opacity: 0.28; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.06); }
+}
 @keyframes shimmer-move {
   0% { background-position: 0% 50%; }
   100% { background-position: 100% 50%; }
