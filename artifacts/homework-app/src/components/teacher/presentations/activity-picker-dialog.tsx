@@ -58,23 +58,14 @@ function genId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function trueFalseOptions(isAr: boolean): [string, string] {
-  return isAr ? ["صح", "خطأ"] : ["True", "False"];
-}
-
-function blankElement(kind: ActivityKind, isAr: boolean): SlideElement {
+function blankElement(kind: ActivityKind): SlideElement {
   return {
     id: genId("a"),
     kind: "activity",
     activityKind: kind,
     prompt: "",
-    options:
-      kind === "mcq" || kind === "poll"
-        ? ["", ""]
-        : kind === "true_false"
-          ? [...trueFalseOptions(isAr)]
-          : undefined,
-    correctIndex: kind === "mcq" || kind === "true_false" ? 0 : undefined,
+    options: kind === "mcq" || kind === "poll" ? ["", ""] : kind === "true_false" ? ["صح", "خطأ"] : undefined,
+    correctIndex: kind === "mcq" ? 0 : undefined,
     x: 140, y: 120, w: 1000, h: 480,
   } as SlideElement;
 }
@@ -123,12 +114,12 @@ export function ActivityPickerDialog({
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (kind === "true_false") setOptions([...trueFalseOptions(isAr)]);
+    if (kind === "true_false") setOptions(["صح", "خطأ"]);
     else if (kind === "open") setOptions([]);
     else if (options.length < 2) setOptions(["", ""]);
     setCorrectIndex(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, isAr]);
+  }, [kind]);
 
   /* Lazy-load whichever bank slice the user is viewing. Cache per
      source so toggling between own/shared doesn't refetch. */
@@ -178,19 +169,13 @@ export function ActivityPickerDialog({
       toast.error(isAr ? "أضف خيارين على الأقل" : "Add at least 2 options");
       return;
     }
-    const tfOpts = trueFalseOptions(isAr);
     const el: SlideElement = {
       id: genId("a"),
       kind: "activity",
       activityKind: kind,
       prompt: trimmed.slice(0, 2000),
-      options: kind === "open" ? undefined : kind === "true_false" ? tfOpts : cleanOpts,
-      correctIndex:
-        kind === "mcq" && correctIndex < cleanOpts.length
-          ? correctIndex
-          : kind === "true_false"
-            ? (correctIndex === 0 || correctIndex === 1 ? correctIndex : 0)
-            : undefined,
+      options: kind === "open" ? undefined : (kind === "true_false" ? ["صح", "خطأ"] : cleanOpts),
+      correctIndex: kind === "mcq" && correctIndex < cleanOpts.length ? correctIndex : undefined,
       x: 140, y: 120, w: 1000, h: 480,
     } as SlideElement;
     onPick({ element: el, saveToBank });
@@ -263,13 +248,12 @@ export function ActivityPickerDialog({
       kind: "activity",
       activityKind: targetKind,
       prompt: text,
-      options:
-        targetKind === "mcq" || targetKind === "poll"
-          ? ["", ""]
-          : targetKind === "true_false"
-            ? [...trueFalseOptions(isAr)]
-            : undefined,
-      correctIndex: targetKind === "mcq" || targetKind === "true_false" ? 0 : undefined,
+      options: targetKind === "mcq" || targetKind === "poll"
+        ? ["", ""]
+        : targetKind === "true_false"
+          ? ["صح", "خطأ"]
+          : undefined,
+      correctIndex: targetKind === "mcq" ? 0 : undefined,
       x: 140, y: 120, w: 1000, h: 480,
     } as SlideElement;
     onPick({ element: el, replaceElementId: convertCandidate.id });
@@ -392,31 +376,9 @@ export function ActivityPickerDialog({
               )}
 
               {kind === "true_false" && (
-                <div>
-                  <Label className="text-xs font-bold text-muted-foreground block mb-2">
-                    {isAr ? "الخيارات — حدّد الإجابة الصحيحة" : "Options — mark the correct answer"}
-                  </Label>
-                  <div className="space-y-2">
-                    {trueFalseOptions(isAr).map((opt, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="tf-correct-compose"
-                          checked={correctIndex === i}
-                          onChange={() => setCorrectIndex(i)}
-                          className="w-4 h-4 accent-emerald-700 shrink-0"
-                          title={isAr ? "الإجابة الصحيحة" : "Correct"}
-                        />
-                        <div
-                          className="flex-1 px-3 py-2 text-sm font-semibold rounded-lg border bg-muted/30"
-                          style={{ borderColor: correctIndex === i ? BRAND_GREEN : "#e5e7eb" }}
-                        >
-                          {opt}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isAr ? "الخياران ثابتان: «صح» و «خطأ»." : 'Options are fixed: "True" and "False".'}
+                </p>
               )}
 
               <label className="flex items-center gap-2 text-xs font-medium cursor-pointer mt-2 select-none">

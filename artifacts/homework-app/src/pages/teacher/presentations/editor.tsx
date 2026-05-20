@@ -2878,13 +2878,7 @@ function ElementContent({
       poll: isAr ? "تصويت" : "Poll",
     };
     const label = labelMap[el.activityKind ?? "open"] ?? (isAr ? "نشاط" : "Activity");
-    const correctIdx = first
-      ? first.correctIndex
-      : typeof el.correctIndex === "number"
-        ? el.correctIndex
-        : el.activityKind === "true_false"
-          ? 0
-          : -1;
+    const correctIdx = first ? first.correctIndex : -1;
     return (
       <div style={{
         width: "100%", height: "100%",
@@ -4832,21 +4826,8 @@ function ActivityInspector({
   isAr: boolean;
 }) {
   const kind = (el.activityKind ?? "open") as "mcq" | "true_false" | "open" | "poll";
-  const tfDefaults = isAr ? ["صح", "خطأ"] : ["True", "False"];
-  const rawOpts = (el.options as string[] | undefined) ?? [];
-  const opts =
-    kind === "true_false"
-      ? rawOpts.length >= 2
-        ? rawOpts.slice(0, 2)
-        : [...tfDefaults]
-      : rawOpts;
-  const correctIndexRaw = el.correctIndex as number | undefined;
-  const correctIndex =
-    typeof correctIndexRaw === "number" && correctIndexRaw >= 0
-      ? correctIndexRaw
-      : kind === "true_false"
-        ? 0
-        : -1;
+  const opts = (el.options as string[] | undefined) ?? [];
+  const correctIndex = (el.correctIndex as number | undefined) ?? -1;
   const labelMap: Record<string, string> = {
     mcq: isAr ? "اختيار من متعدد" : "Multiple choice",
     true_false: isAr ? "صح / خطأ" : "True / False",
@@ -4890,52 +4871,29 @@ function ActivityInspector({
         />
       </Field>
 
-      {(kind === "mcq" || kind === "poll" || kind === "true_false") && (
-        <Field
-          label={
-            kind === "true_false"
-              ? (isAr ? "الخيارات — حدّد الإجابة الصحيحة" : "Options — mark correct")
-              : (isAr ? "الخيارات" : "Options")
-          }
-        >
+      {(kind === "mcq" || kind === "poll") && (
+        <Field label={isAr ? "الخيارات" : "Options"}>
           <div className="space-y-1.5">
             {opts.map((opt, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                {kind === "mcq" || kind === "true_false" ? (
+                {kind === "mcq" && (
                   <input
                     type="radio"
                     checked={correctIndex === i}
-                    onChange={() =>
-                      onUpdateEl({
-                        correctIndex: i,
-                        ...(kind === "true_false" && rawOpts.length < 2 ? { options: [...tfDefaults] } : {}),
-                      })
-                    }
+                    onChange={() => onUpdateEl({ correctIndex: i })}
                     disabled={disabled}
                     className="w-4 h-4 accent-emerald-700 shrink-0"
                     title={isAr ? "الإجابة الصحيحة" : "Correct"}
                   />
-                ) : null}
-                {kind === "true_false" ? (
-                  <div
-                    className="flex-1 h-8 px-3 flex items-center text-xs font-bold rounded-md border bg-muted/30"
-                    style={{
-                      borderColor: correctIndex === i ? BRAND_GREEN : "var(--border)",
-                      color: correctIndex === i ? BRAND_GREEN : "inherit",
-                    }}
-                  >
-                    {opt || tfDefaults[i]}
-                  </div>
-                ) : (
-                  <Input
-                    value={opt}
-                    onChange={(e) => setOpt(i, e.target.value)}
-                    disabled={disabled}
-                    placeholder={`${isAr ? "خيار" : "Option"} ${String.fromCharCode(65 + i)}`}
-                    className="h-8 text-xs"
-                  />
                 )}
-                {kind !== "true_false" && opts.length > 2 && (
+                <Input
+                  value={opt}
+                  onChange={(e) => setOpt(i, e.target.value)}
+                  disabled={disabled}
+                  placeholder={`${isAr ? "خيار" : "Option"} ${String.fromCharCode(65 + i)}`}
+                  className="h-8 text-xs"
+                />
+                {opts.length > 2 && (
                   <button
                     onClick={() => removeOpt(i)}
                     disabled={disabled}
@@ -4944,11 +4902,33 @@ function ActivityInspector({
                 )}
               </div>
             ))}
-            {kind !== "true_false" && opts.length < 8 && (
+            {opts.length < 8 && (
               <Button size="sm" variant="outline" onClick={addOpt} disabled={disabled} className="h-7 text-xs">
                 + {isAr ? "خيار" : "Add"}
               </Button>
             )}
+          </div>
+        </Field>
+      )}
+
+      {kind === "true_false" && (
+        <Field label={isAr ? "الإجابة الصحيحة" : "Correct answer"}>
+          <div className="grid grid-cols-2 gap-1">
+            {[0, 1].map((i) => (
+              <button
+                key={i}
+                onClick={() => onUpdateEl({ correctIndex: i })}
+                disabled={disabled}
+                className="px-3 py-1.5 text-xs font-bold rounded border transition-colors"
+                style={{
+                  background: correctIndex === i ? BRAND_GREEN : "white",
+                  color: correctIndex === i ? "white" : "inherit",
+                  borderColor: correctIndex === i ? BRAND_GREEN : "var(--border)",
+                }}
+              >
+                {i === 0 ? (isAr ? "صح" : "True") : (isAr ? "خطأ" : "False")}
+              </button>
+            ))}
           </div>
         </Field>
       )}
