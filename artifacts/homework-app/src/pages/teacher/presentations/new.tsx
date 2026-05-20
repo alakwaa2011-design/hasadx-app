@@ -9,6 +9,7 @@ import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Play, Pencil,
   MessageSquare, HelpCircle, BarChart2, Type,
+  UploadCloud, FileText, X,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -20,8 +21,21 @@ const GRADES = [
   "الصف التاسع", "الصف العاشر", "الصف الحادي عشر", "الصف الثاني عشر",
 ];
 
-type Mode = null | "quick" | "pro";
+type Mode = null | "quick" | "pro" | "import";
 type QuickPhase = "form" | "generating" | "preview" | "error";
+type ImportPhase = "dropzone" | "uploading" | "preview" | "error";
+
+interface ImportResult {
+  presentationId: number;
+  title: string;
+  slideCount: number;
+  aiGenerated: boolean;
+  warning?: string;
+}
+
+const IMPORT_ACCEPT = ".pdf,.pptx,.ppt,.docx,.doc,.jpg,.jpeg,.png,.webp";
+const IMPORT_ACCEPT_LABEL_AR = "PDF، PPTX، Word، صور (JPG / PNG)";
+const IMPORT_ACCEPT_LABEL_EN = "PDF, PPTX, Word, images (JPG / PNG)";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -48,6 +62,12 @@ export default function NewPresentationPage() {
   >([]);
   const [launchLoading, setLaunchLoading] = useState(false);
   const [proBuilderOpen, setProBuilderOpen] = useState(false);
+
+  /* ── Import mode state ── */
+  const [importPhase, setImportPhase] = useState<ImportPhase>("dropzone");
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importErrorMsg, setImportErrorMsg] = useState("");
+  const [importDragOver, setImportDragOver] = useState(false);
 
   useEffect(() => {
     if (mode === "pro") setProBuilderOpen(true);
@@ -197,6 +217,42 @@ export default function NewPresentationPage() {
     setErrorMsg("");
   };
 
+  /* Upload a file to the import endpoint and handle the result. */
+  const handleImportFile = useCallback(async (file: File) => {
+    setImportPhase("uploading");
+    setImportErrorMsg("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch(`${API_BASE}/api/presentations/import-file`, {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        throw new Error(
+          (j as { message?: string }).message ??
+            (isAr ? "فشل استيراد الملف" : "File import failed"),
+        );
+      }
+      setImportResult(j as ImportResult);
+      setImportPhase("preview");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error";
+      setImportErrorMsg(msg);
+      setImportPhase("error");
+      toast.error(msg);
+    }
+  }, [isAr]);
+
+  const resetImport = () => {
+    setImportPhase("dropzone");
+    setImportResult(null);
+    setImportErrorMsg("");
+    setImportDragOver(false);
+  };
+
   /* Creates a live session for the generated deck and jumps to the
      control panel — this is the distinct "launch now" path, separate
      from "edit in Pro Studio" which opens the editor. */
@@ -251,6 +307,7 @@ export default function NewPresentationPage() {
                     setMode(null);
                     setQuickPhase("form");
                     setProBuilderOpen(false);
+                    resetImport();
                   }}
                   className="inline-flex items-center gap-1.5 text-white/80 text-xs font-bold mb-2 hover:text-white transition-colors"
                 >
@@ -264,16 +321,12 @@ export default function NewPresentationPage() {
               )}
               <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight mb-1">
                 {mode === "quick"
-                  ? isAr
-                    ? "⚡ الإنشاء السريع"
-                    : "⚡ Quick Mode"
+                  ? isAr ? "⚡ الإنشاء السريع" : "⚡ Quick Mode"
                   : mode === "pro"
-                    ? isAr
-                      ? "🎛 استوديو المحترف"
-                      : "🎛 Pro Studio"
-                    : isAr
-                      ? "إنشاء عرض تفاعلي"
-                      : "Create interactive deck"}
+                    ? isAr ? "🎛 استوديو المحترف" : "🎛 Pro Studio"
+                    : mode === "import"
+                      ? isAr ? "📂 استيراد ملف" : "📂 Import File"
+                      : isAr ? "إنشاء عرض تفاعلي" : "Create interactive deck"}
               </h1>
               <p className="text-white/85 text-xs sm:text-sm max-w-xl leading-relaxed line-clamp-2">
                 {mode === "quick"
@@ -284,9 +337,13 @@ export default function NewPresentationPage() {
                     ? isAr
                       ? "المحرر المتقدم — تحكم كامل في المخطط والشرائح والأنشطة."
                       : "Advanced editor — full control over outline, slides, and activities."
-                    : isAr
-                      ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
-                      : "Choose your mode and AI will build your complete lesson."}
+                    : mode === "import"
+                      ? isAr
+                        ? "ارفع ملفاً وحوّله تلقائياً إلى عرض تفاعلي جاهز للإطلاق."
+                        : "Upload a file and convert it into a ready-to-launch interactive deck."
+                      : isAr
+                        ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
+                        : "Choose your mode and AI will build your complete lesson."}
               </p>
             </div>
             <Link
@@ -408,6 +465,32 @@ export default function NewPresentationPage() {
                   ) : (
                     <ArrowRight className="w-3.5 h-3.5" />
                   )}
+                </div>
+              </div>
+            </button>
+
+            {/* Import File — full-width third card */}
+            <button
+              onClick={() => setMode("import")}
+              className="group relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300/60 dark:border-slate-600/60 p-5 text-start transition-all hover:border-blue-400/70 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-1 sm:col-span-2 bg-card"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0 group-hover:bg-blue-200/70 transition-colors">
+                  <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-400" strokeWidth={2} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-base mb-0.5">
+                    {isAr ? "استيراد ملف 📂" : "Import File 📂"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {isAr
+                      ? `ارفع ${IMPORT_ACCEPT_LABEL_AR} وحوّله تلقائياً إلى عرض تفاعلي`
+                      : `Upload ${IMPORT_ACCEPT_LABEL_EN} — auto-converted to an interactive deck`}
+                  </div>
+                </div>
+                <div className="shrink-0 hidden sm:flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                  {isAr ? "ابدأ" : "Start"}
+                  {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                 </div>
               </div>
             </button>
@@ -704,6 +787,194 @@ export default function NewPresentationPage() {
             <p className="text-muted-foreground text-sm mb-6">{errorMsg}</p>
             <button
               onClick={() => setQuickPhase("form")}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold border border-border hover:bg-muted/50 transition-all"
+            >
+              {isAr ? "حاول مجدداً" : "Try again"}
+            </button>
+          </div>
+        )}
+
+        {/* ── IMPORT MODE: DROPZONE ── */}
+        {mode === "import" && importPhase === "dropzone" && (
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-6 sm:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
+                <UploadCloud className="w-5 h-5 text-blue-600" strokeWidth={2} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">
+                  {isAr ? "ارفع ملفاً" : "Upload a file"}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {isAr ? IMPORT_ACCEPT_LABEL_AR : IMPORT_ACCEPT_LABEL_EN}
+                </p>
+              </div>
+            </div>
+
+            {/* Drag-and-drop zone */}
+            <label
+              htmlFor="import-file-input"
+              onDragOver={(e) => { e.preventDefault(); setImportDragOver(true); }}
+              onDragLeave={() => setImportDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setImportDragOver(false);
+                const file = e.dataTransfer.files[0];
+                if (file) handleImportFile(file);
+              }}
+              className={`flex flex-col items-center justify-center gap-4 border-2 border-dashed rounded-2xl p-10 cursor-pointer transition-all ${
+                importDragOver
+                  ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/30"
+                  : "border-border hover:border-blue-400/70 hover:bg-blue-50/20 dark:hover:bg-blue-950/10"
+              }`}
+            >
+              <input
+                id="import-file-input"
+                type="file"
+                accept={IMPORT_ACCEPT}
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImportFile(file);
+                  e.target.value = "";
+                }}
+              />
+              <div className="w-16 h-16 rounded-2xl bg-blue-100/80 dark:bg-blue-950/50 flex items-center justify-center">
+                <UploadCloud className="w-8 h-8 text-blue-500" strokeWidth={1.5} />
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base mb-1">
+                  {isAr
+                    ? "اسحب الملف هنا أو انقر للاختيار"
+                    : "Drag file here or click to browse"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isAr
+                    ? `الحد الأقصى للحجم 50 م.ب — ${IMPORT_ACCEPT_LABEL_AR}`
+                    : `Max 50 MB — ${IMPORT_ACCEPT_LABEL_EN}`}
+                </p>
+              </div>
+            </label>
+
+            {/* Format chips */}
+            <div className="flex flex-wrap gap-2 mt-5 justify-center">
+              {[
+                { icon: "📄", label: "PDF" },
+                { icon: "📊", label: "PPTX" },
+                { icon: "📝", label: "DOCX" },
+                { icon: "🖼️", label: isAr ? "صور" : "Images" },
+              ].map(({ icon, label }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-muted/60 text-muted-foreground border border-border"
+                >
+                  {icon} {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── IMPORT MODE: UPLOADING ── */}
+        {mode === "import" && importPhase === "uploading" && (
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-10 text-center">
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 animate-pulse opacity-40 blur-xl" />
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-white animate-spin" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              {isAr ? "جارٍ قراءة المحتوى…" : "Reading content…"}
+            </h2>
+            <p className="text-muted-foreground text-sm mb-1">
+              {isAr
+                ? "يتم استخراج النصوص والشرائح من ملفك"
+                : "Extracting text and slides from your file"}
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-4">
+              {isAr ? "قد يستغرق ذلك 15–60 ثانية" : "May take 15–60 seconds"}
+            </p>
+          </div>
+        )}
+
+        {/* ── IMPORT MODE: PREVIEW / DONE ── */}
+        {mode === "import" && importPhase === "preview" && importResult && (
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">
+              {isAr ? "تم الاستيراد! 🎉" : "Import complete! 🎉"}
+            </h2>
+
+            {/* Result summary */}
+            <div className="inline-flex items-center gap-3 bg-muted/40 border border-border rounded-2xl px-5 py-3 mb-5">
+              <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+              <div className="text-start min-w-0">
+                <p className="text-sm font-bold truncate max-w-[220px]">{importResult.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {importResult.slideCount}{" "}
+                  {isAr ? "شريحة" : "slides"}
+                  {importResult.aiGenerated && (
+                    <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <Sparkles className="w-3 h-3" />
+                      {isAr ? "بتحسين AI" : "AI enriched"}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {importResult.warning === "content_extraction_failed" && (
+              <div className="mb-5 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 rounded-xl px-4 py-3 text-start text-sm text-amber-700 dark:text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  {isAr
+                    ? "تعذّر استخراج المحتوى تلقائياً — تم إنشاء عرض فارغ يمكنك تعديله في المحرر."
+                    : "Content could not be extracted automatically — a blank deck was created. Edit it in the editor."}
+                </span>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground/70 mb-8">
+              {isAr
+                ? "راجع وعدّل الشرائح في Pro Studio قبل الإطلاق"
+                : "Review and edit slides in Pro Studio before launching"}
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => setLocation(`/teacher/presentations/${importResult.presentationId}`)}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-extrabold text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                style={{ background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7a4f 100%)` }}
+              >
+                <Pencil className="w-4 h-4" />
+                {isAr ? "تعديل في Pro Studio 🎛" : "Edit in Pro Studio 🎛"}
+              </button>
+            </div>
+
+            <button
+              onClick={() => { setMode(null); resetImport(); }}
+              className="mt-5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {isAr ? "استيراد ملف آخر" : "Import another file"}
+            </button>
+          </div>
+        )}
+
+        {/* ── IMPORT MODE: ERROR ── */}
+        {mode === "import" && importPhase === "error" && (
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
+              <X className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold mb-2 text-red-700 dark:text-red-400">
+              {isAr ? "فشل الاستيراد" : "Import failed"}
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">{importErrorMsg}</p>
+            <button
+              onClick={resetImport}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold border border-border hover:bg-muted/50 transition-all"
             >
               {isAr ? "حاول مجدداً" : "Try again"}
