@@ -149,6 +149,10 @@ export function ActivityPickerDialog({
       .filter((b) => q ? (b.text ?? "").toLowerCase().includes(q) : true);
   }, [bankRows, search, typeFilter]);
 
+  /* importing state must be declared before any early-return so that
+     the hook call count stays stable across open/closed renders. */
+  const [importing, setImporting] = useState(false);
+
   if (!open) return null;
 
   const labels: Record<ActivityKind, string> = {
@@ -195,7 +199,6 @@ export function ActivityPickerDialog({
      referenced questionId, so we first POST `/question-bank/:id/import`
      to clone the shared row into the current teacher's bank and then
      reference the new id. */
-  const [importing, setImporting] = useState(false);
   const submitFromBank = async (q: BankItem) => {
     const guessedKind: ActivityKind =
       q.questionType === "true_false" ? "true_false"

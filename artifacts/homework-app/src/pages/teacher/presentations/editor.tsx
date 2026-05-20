@@ -1309,15 +1309,14 @@ export default function PresentationEditor() {
               ))}
             </div>
             
-            {/* اربط نشاط — opens the Activity Hub pre-navigated to the
-                Hasad assignment browser so a teacher can embed a game
-                into the current slide with one click. */}
+            {/* إضافة نشاط — opens the Activity Hub so teachers can pick
+                either a Hasad assignment or a presentation activity. */}
             {Number.isFinite(id) && !readOnly && (
               <div className="relative inline-flex">
                 <button
                   type="button"
                   onClick={() => {
-                    setActivityHubInitialTab("hasad");
+                    setActivityHubInitialTab("home");
                     setActivityHubOpen(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
@@ -1326,10 +1325,10 @@ export default function PresentationEditor() {
                     borderColor: hasLinkedHasadActivity ? BRAND_GREEN : `${BRAND_GREEN}40`,
                     background: hasLinkedHasadActivity ? `${BRAND_GREEN}08` : undefined,
                   }}
-                  title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Embed a Hasad activity into this slide"}
+                  title={isAr ? "أضف نشاطاً إلى الشريحة" : "Add an activity to this slide"}
                 >
                   <Gamepad2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{isAr ? "اربط نشاط" : "Link activity"}</span>
+                  <span className="hidden md:inline">{isAr ? "إضافة نشاط" : "Add activity"}</span>
                 </button>
                 {/* Badge — appears when at least one hasad-activity element exists in the deck */}
                 {hasLinkedHasadActivity && (
@@ -1647,6 +1646,21 @@ export default function PresentationEditor() {
             {/* Quick-action toolbar — desktop only (left rail is hidden on mobile). */}
             {!readOnly && (
               <div className="hidden lg:block mb-1 shrink-0">
+                {/* Prominent "Add Activity" button — opens ActivityHubDialog
+                    home tab so teacher can choose between Hasad or
+                    presentation activities from one place. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivityHubInitialTab("home");
+                    setActivityHubOpen(true);
+                  }}
+                  className="w-full mb-2 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: BRAND_GREEN, color: "white", borderColor: BRAND_GREEN }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  {isAr ? "إضافة عنصر تفاعلي" : "Add Interactive Element"}
+                </button>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
                   {isAr ? "أنشطة" : "Activities"}
                 </p>
