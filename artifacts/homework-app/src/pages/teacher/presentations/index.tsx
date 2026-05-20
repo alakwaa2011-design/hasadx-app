@@ -374,6 +374,77 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
           </div>
         </div>
 
+        {/* ── ابدأ بسرعة ─────────────────────────────────── */}
+        <div className="mb-8">
+          <h2 className="text-sm font-bold text-muted-foreground mb-3 tracking-wide">
+            {isAr ? "ابدأ بسرعة" : "Quick start"}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* عرض جديد */}
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-[#225739]/40 hover:bg-[#225739]/[0.03] hover:shadow-sm active:scale-[0.99]"
+            >
+              <span
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-105"
+                style={{ background: `${BRAND_GREEN}12`, color: BRAND_GREEN }}
+              >
+                <Plus className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground leading-tight">
+                  {isAr ? "عرض جديد" : "New deck"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  {isAr ? "ابنِ شرائحك يدوياً من الصفر" : "Build slides manually from scratch"}
+                </p>
+              </div>
+            </button>
+
+            {/* توليد بالذكاء */}
+            <button
+              type="button"
+              onClick={() => setLocation("/teacher/presentations/new")}
+              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-amber-400/50 hover:bg-amber-50/40 hover:shadow-sm active:scale-[0.99]"
+            >
+              <span
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-105"
+                style={{ background: `${BRAND_GOLD}18`, color: "#a16207" }}
+              >
+                <Sparkles className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground leading-tight">
+                  {isAr ? "توليد بالذكاء" : "AI Generate"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  {isAr ? "الذكاء يبني الحصة كاملةً تلقائياً" : "AI builds a complete lesson for you"}
+                </p>
+              </div>
+            </button>
+
+            {/* استيراد ملف */}
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-blue-400/40 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99]"
+            >
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-blue-600 bg-blue-50 transition-all group-hover:scale-105">
+                <Upload className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-foreground leading-tight">
+                  {isAr ? "استيراد ملف" : "Import file"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                  {isAr ? "PDF، Word، PPTX، أو صور" : "PDF, Word, PPTX, or images"}
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Sticky mobile CTA */}
         <div className="sm:hidden fixed bottom-4 inset-x-4 z-40 flex gap-2">
           <Button
