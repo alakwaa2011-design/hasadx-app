@@ -28,7 +28,7 @@ import { Loader2, Search, Sparkles, Wand2 } from "lucide-react";
 const BRAND_GREEN = "#225739";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-type ActivityKind = "mcq" | "true_false" | "open" | "poll";
+type ActivityKind = "mcq" | "true_false" | "open" | "poll" | "word_cloud" | "open_wall";
 type BankSource = "own" | "shared";
 type TypeFilter = "all" | "mcq" | "true_false" | "open";
 
@@ -149,6 +149,10 @@ export function ActivityPickerDialog({
       .filter((b) => q ? (b.text ?? "").toLowerCase().includes(q) : true);
   }, [bankRows, search, typeFilter]);
 
+  /* importing state must be declared before any early-return so that
+     the hook call count stays stable across open/closed renders. */
+  const [importing, setImporting] = useState(false);
+
   if (!open) return null;
 
   const labels: Record<ActivityKind, string> = {
@@ -156,14 +160,18 @@ export function ActivityPickerDialog({
     true_false: isAr ? "صح / خطأ" : "True / False",
     open: isAr ? "إجابة مفتوحة" : "Open answer",
     poll: isAr ? "تصويت" : "Poll",
+    word_cloud: isAr ? "☁ سحابة الكلمات" : "☁ Word Cloud",
+    open_wall: isAr ? "💬 جدار الردود" : "💬 Response Wall",
   };
 
   const submitCompose = () => {
     const trimmed = prompt.trim();
     if (!trimmed) {
-      toast.error(isAr ? "اكتب نص السؤال" : "Enter a question");
+      toast.error(isAr ? "اكتب نص السؤال / التعليمات" : "Enter a question or prompt");
       return;
     }
+    /* word_cloud and open_wall never need options. */
+    const isTextOnly = kind === "word_cloud" || kind === "open_wall";
     const cleanOpts = options.map((o) => o.trim()).filter((o) => o.length > 0);
     if ((kind === "mcq" || kind === "poll") && cleanOpts.length < 2) {
       toast.error(isAr ? "أضف خيارين على الأقل" : "Add at least 2 options");
@@ -174,7 +182,7 @@ export function ActivityPickerDialog({
       kind: "activity",
       activityKind: kind,
       prompt: trimmed.slice(0, 2000),
-      options: kind === "open" ? undefined : (kind === "true_false" ? ["صح", "خطأ"] : cleanOpts),
+      options: isTextOnly || kind === "open" ? undefined : (kind === "true_false" ? ["صح", "خطأ"] : cleanOpts),
       correctIndex: kind === "mcq" && correctIndex < cleanOpts.length ? correctIndex : undefined,
       x: 140, y: 120, w: 1000, h: 480,
     } as SlideElement;
@@ -191,7 +199,6 @@ export function ActivityPickerDialog({
      referenced questionId, so we first POST `/question-bank/:id/import`
      to clone the shared row into the current teacher's bank and then
      reference the new id. */
-  const [importing, setImporting] = useState(false);
   const submitFromBank = async (q: BankItem) => {
     const guessedKind: ActivityKind =
       q.questionType === "true_false" ? "true_false"
@@ -305,8 +312,8 @@ export function ActivityPickerDialog({
                 <Label className="text-xs font-bold text-muted-foreground block mb-2">
                   {isAr ? "نوع النشاط" : "Activity type"}
                 </Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {(["mcq", "true_false", "open", "poll"] as ActivityKind[]).map((k) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(["mcq", "true_false", "open", "poll", "word_cloud", "open_wall"] as ActivityKind[]).map((k) => (
                     <button
                       key={k}
                       onClick={() => setKind(k)}

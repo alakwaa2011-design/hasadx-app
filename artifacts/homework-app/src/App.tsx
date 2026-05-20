@@ -65,6 +65,7 @@ const CategoriesPage = lazy(() => import("@/pages/teacher/categories"));
 const CollectionsPage = lazy(() => import("@/pages/teacher/collections"));
 const ClassGrades = lazy(() => import("@/pages/teacher/class-grades"));
 const PresentationsIndex = lazy(() => import("@/pages/teacher/presentations/index"));
+const NewPresentation = lazy(() => import("@/pages/teacher/presentations/new"));
 const PresentationDrafts = lazy(() => import("@/pages/teacher/presentations/drafts"));
 const PresentationEditor = lazy(() => import("@/pages/teacher/presentations/editor"));
 const PresentationPresent = lazy(() => import("@/pages/teacher/presentations/present"));
@@ -279,8 +280,11 @@ function Router() {
         <Route path="/teacher/class-grades/:gradeLevel" component={ClassGrades} />
         {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
         <Route path="/teacher/presentations" component={PresentationsIndex} />
-        {/* @ts-expect-error wouter RouteComponentProps mismatch — benign, component works at runtime */}
-        <Route path="/teacher/presentations/new" component={PresentationsIndex} />
+        <Route path="/teacher/presentations/new">
+          <ErrorBoundary label="إنشاء عرض">
+            <NewPresentation />
+          </ErrorBoundary>
+        </Route>
         <Route path="/teacher/presentations/drafts" component={PresentationDrafts} />
         <Route path="/teacher/students/:classStudentId/timeline" component={StudentTimeline} />
         <Route path="/teacher/presentations/activity-runner/:seedId" component={PresentationActivityRunner} />
@@ -317,7 +321,15 @@ function Router() {
             in the editor. A clean unmount/remount eliminates all of
             it: fresh state, fresh react-query, fresh hydration. */}
         <Route path="/teacher/presentations/:id">
-          {(params) => <PresentationEditor key={params?.id ?? "__none"} />}
+          {(params) => (
+            <ErrorBoundary label="محرر العروض">
+              <PresentationEditor key={params?.id ?? "__none"} />
+            </ErrorBoundary>
+          )}
+        </Route>
+        {/* /p/new — convenience alias → teacher creation page */}
+        <Route path="/p/new">
+          {() => { window.location.replace("/teacher/presentations/new"); return null; }}
         </Route>
         <Route path="/p/control/:sessionId" component={PresentationControl} />
         <Route path="/p/show/:sessionId" component={PresentationShow} />

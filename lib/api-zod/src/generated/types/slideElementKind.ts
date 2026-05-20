@@ -17,4 +17,5 @@ export const SlideElementKind = {
   activity: "activity",
   "hasad-game": "hasad-game",
   "video-embed": "video-embed",
+  "hasad-activity": "hasad-activity",
 } as const;

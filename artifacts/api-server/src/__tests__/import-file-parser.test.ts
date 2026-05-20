@@ -131,7 +131,7 @@ describe("buildSlidesFromParsed", () => {
     const titleEl = elements.find((e) => e.fontWeight === "700");
     expect(titleEl).toBeDefined();
     expect(titleEl!.text).toBe("Hello World");
-    expect(titleEl!.fontSize).toBe(38);
+    expect(titleEl!.fontSize).toBe(48);
   });
 
   it("includes a body text element when bullets are present", () => {
@@ -158,6 +158,56 @@ describe("buildSlidesFromParsed", () => {
     const elements = slides[0].elements as Array<Record<string, unknown>>;
     const bodyEl = elements.find((e) => e.fontWeight === "400");
     expect(bodyEl!.align).toBe("start");
+  });
+
+  it("sets RTL alignment on the title element for Arabic language", () => {
+    const parsed = [{ title: "عنوان عربي", bullets: [] }];
+    const slides = buildSlidesFromParsed(parsed, "ar") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    const titleEl = elements.find((e) => e.fontWeight === "700");
+    expect(titleEl!.align).toBe("end");
+  });
+
+  it("sets Cairo fontFamily on all text elements for Arabic language", () => {
+    const parsed = [{ title: "عنوان", bullets: ["نقطة أولى", "نقطة ثانية"] }];
+    const slides = buildSlidesFromParsed(parsed, "ar") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    for (const el of elements) {
+      expect(el.fontFamily).toBe("'Cairo', sans-serif");
+    }
+  });
+
+  it("does not set fontFamily for English language", () => {
+    const parsed = [{ title: "Title", bullets: ["bullet"] }];
+    const slides = buildSlidesFromParsed(parsed, "en") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    for (const el of elements) {
+      expect(el.fontFamily == null).toBe(true);
+    }
+  });
+
+  it("uses adaptive font size: 26 for ≤5 bullets", () => {
+    const parsed = [{ title: "T", bullets: ["a", "b", "c", "d", "e"] }];
+    const slides = buildSlidesFromParsed(parsed, "en") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    const bodyEl = elements.find((e) => e.fontWeight === "400");
+    expect(bodyEl!.fontSize).toBe(26);
+  });
+
+  it("uses adaptive font size: 24 for 6–8 bullets", () => {
+    const parsed = [{ title: "T", bullets: ["a", "b", "c", "d", "e", "f", "g"] }];
+    const slides = buildSlidesFromParsed(parsed, "en") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    const bodyEl = elements.find((e) => e.fontWeight === "400");
+    expect(bodyEl!.fontSize).toBe(24);
+  });
+
+  it("uses adaptive font size: 20 for 9+ bullets", () => {
+    const parsed = [{ title: "T", bullets: ["a","b","c","d","e","f","g","h","i","j"] }];
+    const slides = buildSlidesFromParsed(parsed, "en") as Array<Record<string, unknown>>;
+    const elements = slides[0].elements as Array<Record<string, unknown>>;
+    const bodyEl = elements.find((e) => e.fontWeight === "400");
+    expect(bodyEl!.fontSize).toBe(20);
   });
 
   it("produces an empty elements array for a slide with no title or bullets", () => {

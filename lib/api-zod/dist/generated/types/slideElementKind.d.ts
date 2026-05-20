@@ -14,5 +14,6 @@ export declare const SlideElementKind: {
     readonly activity: "activity";
     readonly "hasad-game": "hasad-game";
     readonly "video-embed": "video-embed";
+    readonly "hasad-activity": "hasad-activity";
 };
 //# sourceMappingURL=slideElementKind.d.ts.map

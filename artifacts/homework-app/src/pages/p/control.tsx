@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import {
   ChevronLeft, ChevronRight, Play, Square, Eye, EyeOff,
-  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon,
+  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon, Sparkles, MonitorPlay,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -97,6 +97,16 @@ export default function PresentationControl() {
   };
   const [history, setHistory] = useState<InlineRun[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /* word_cloud / open_wall live state */
+  const [wordCloudWords, setWordCloudWords] = useState<{ text: string; count: number }[]>([]);
+  const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
+  /* Stage Mode — professional cinematic display mode for the projector. */
+  const [stageMode, setStageMode] = useState(false);
+  /* Self-Paced Mode — tracks session pacing and per-student progress. */
+  const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
+  const [studentProgress, setStudentProgress] = useState<
+    Record<string, { name: string; slideIndex: number; slideCount: number; activitiesCompleted: number }>
+  >({});
 
   async function loadHistory() {
     if (!Number.isFinite(sid)) return;
@@ -128,23 +138,29 @@ export default function PresentationControl() {
     const s = getSocket();
     s.emit("teacher:join-presentation", { sessionId: sid });
 
-    const onSync = (st: LiveState) => setLive(st);
+    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced" }) => {
+      setLive(st);
+      if (typeof st.stageMode === "boolean") setStageMode(st.stageMode);
+      if (st.sessionMode) setSessionMode(st.sessionMode);
+    };
     const onSlide = ({ index }: { index: number }) => {
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
+      setWordCloudWords([]); setWallCards([]);
     };
     const onOpened = ({ elementId, element }: { elementId: string; element: any }) => {
       setLive((p) => (p ? { ...p, activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
       setSummary(null);
-      /* Clear stale inline-quiz panel when the teacher opens a
-         different element. The matching `activity:state` event will
-         re-set it for inline-capable hasad-games. */
+      setWordCloudWords([]); setWallCards([]);
       setInlineActivity((prev) => (prev && prev.elementId !== elementId ? null : prev));
     };
     const onClosed = () => {
       setLive((p) => (p ? { ...p, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
+      setWordCloudWords([]); setWallCards([]);
     };
+    const onWordCloudUpdate = ({ words }: { elementId: string; words: { text: string; count: number }[] }) => setWordCloudWords(words ?? []);
+    const onWallUpdate = ({ cards }: { elementId: string; cards: { id: string; text: string; visible: boolean; studentKey: string }[] }) => setWallCards(cards ?? []);
     const onInlineState = (p: any) => { setInlineActivity(p); setSummary(null); };
     const onInlineSummary = (p: any) => {
       setSummary(p); setInlineActivity(null);
@@ -163,6 +179,24 @@ export default function PresentationControl() {
       setLive((p) => (p ? { ...p, status: "ended" } : p));
     };
     const onReconnect = () => s.emit("teacher:join-presentation", { sessionId: sid });
+    const onStageChanged = ({ on }: { on: boolean }) => setStageMode(!!on);
+    /* Self-Paced Mode: student sent progress update. */
+    const onStudentProgress = (p: { studentKey: string; name: string; slideIndex: number; slideCount: number; activitiesCompleted?: number }) => {
+      setStudentProgress((prev) => ({
+        ...prev,
+        [p.studentKey]: {
+          name: p.name,
+          slideIndex: p.slideIndex,
+          slideCount: p.slideCount,
+          activitiesCompleted: p.activitiesCompleted ?? prev[p.studentKey]?.activitiesCompleted ?? 0,
+        },
+      }));
+    };
+    /* Self-Paced Mode: teacher reclaimed control — mode reverted to "teacher". */
+    const onSelfPacedEnded = () => {
+      setSessionMode("teacher");
+      setStudentProgress({});
+    };
 
     s.on("state:sync", onSync);
     s.on("slide:changed", onSlide);
@@ -176,6 +210,11 @@ export default function PresentationControl() {
     s.on("results:distribution", onDist);
     s.on("session:ended", onEnded);
     s.on("connect", onReconnect);
+    s.on("word_cloud:update", onWordCloudUpdate);
+    s.on("wall:update", onWallUpdate);
+    s.on("stage:changed", onStageChanged);
+    s.on("student:progress", onStudentProgress);
+    s.on("self_paced:ended", onSelfPacedEnded);
 
     return () => {
       s.off("state:sync", onSync);
@@ -190,6 +229,11 @@ export default function PresentationControl() {
       s.off("results:distribution", onDist);
       s.off("session:ended", onEnded);
       s.off("connect", onReconnect);
+      s.off("word_cloud:update", onWordCloudUpdate);
+      s.off("wall:update", onWallUpdate);
+      s.off("stage:changed", onStageChanged);
+      s.off("student:progress", onStudentProgress);
+      s.off("self_paced:ended", onSelfPacedEnded);
     };
   }, [sid]);
 
@@ -424,6 +468,15 @@ export default function PresentationControl() {
                         <Play className="w-4 h-4 me-1.5" /> إطلاق اللعبة الآن
                       </Button>
                     )
+                  ) : open && (a.activityKind === "word_cloud" || a.activityKind === "open_wall") ? (
+                    <>
+                      <span className="text-xs text-white/60 tabular-nums">
+                        {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
+                      </span>
+                      <Button size="sm" variant="destructive" onClick={closeActivity}>
+                        <Square className="w-4 h-4" />
+                      </Button>
+                    </>
                   ) : open ? (
                     <>
                       <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
@@ -611,26 +664,97 @@ export default function PresentationControl() {
               .filter((a: any) => a.id === live?.activeElementId)
               .map((a: any) => {
                 const label = a.prompt || a.topic || "نشاط";
+                const isTextActivity = a.activityKind === "word_cloud" || a.activityKind === "open_wall";
                 return (
                   <div key={a.id} className="flex items-center gap-2">
                     <div className="flex-1 text-sm truncate text-white/90">{label}</div>
-                    <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
-                      {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      <span className="ms-1">توزيع</span>
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={closeActivity}>
-                      <Square className="w-4 h-4" />
-                    </Button>
+                    {isTextActivity ? (
+                      <>
+                        <span className="text-xs text-white/50 tabular-nums">
+                          {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
+                        </span>
+                        <Button size="sm" variant="destructive" onClick={closeActivity}>
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
+                          {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <span className="ms-1">توزيع</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={closeActivity}>
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 );
               })}
             {dist && (
               <div className="text-xs text-white/60">إجابات مستلمة: {dist.total}</div>
             )}
+          </div>
+        )}
+
+        {/* ── Open Wall card moderation panel ── */}
+        {!ended && wallCards.length > 0 && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+            <div className="text-xs font-bold text-white/70">
+              بطاقات جدار الردود ({wallCards.length})
+            </div>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {wallCards.map((card) => (
+                <div key={card.id} className="flex items-start gap-2 rounded-lg bg-black/30 border border-white/10 p-2">
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm break-words leading-snug ${card.visible ? "text-white/90" : "text-white/40 line-through"}`}>
+                      {card.text}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, elementId: live?.activeElementId, cardId: card.id, visible: !card.visible })}
+                    className="shrink-0 rounded-md p-1.5 transition-colors"
+                    style={{ background: card.visible ? "rgba(34,87,57,0.4)" : "rgba(255,255,255,0.06)" }}
+                    title={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}
+                  >
+                    {card.visible ? <Eye className="w-4 h-4 text-emerald-300" /> : <EyeOff className="w-4 h-4 text-white/40" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Word cloud live count ── */}
+        {!ended && wordCloudWords.length > 0 && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="text-xs font-bold text-white/70 mb-2">
+              ☁ سحابة الكلمات ({wordCloudWords.reduce((s, w) => s + w.count, 0)} إجابة)
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {wordCloudWords
+                .slice()
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 20)
+                .map((w) => (
+                  <span
+                    key={w.text}
+                    className="rounded-full px-2 py-0.5 text-xs font-bold"
+                    style={{
+                      background: "rgba(34,87,57,0.5)",
+                      color: w.count >= 3 ? "#D9A521" : "rgba(255,255,255,0.8)",
+                      fontSize: `${Math.min(14 + w.count * 2, 20)}px`,
+                    }}
+                  >
+                    {w.text} ({w.count})
+                  </span>
+                ))}
+            </div>
           </div>
         )}
 
@@ -727,13 +851,114 @@ export default function PresentationControl() {
         </div>
 
         <div className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm"><Users className="w-4 h-4" /> المشاركون</span>
-          <span className="font-bold text-lg">{count}</span>
+          <span className="flex items-center gap-2 text-sm">
+            <Users className="w-4 h-4" /> المشاركون
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg">{count}</span>
+            {sessionMode === "self_paced" && (
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(217,165,33,0.2)", color: "#D9A521", border: "1px solid rgba(217,165,33,0.4)" }}
+              >
+                🧑‍💻 ذاتي
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Self-Paced Mode: per-student progress bars + takeover button. */}
+        {sessionMode === "self_paced" && !ended && (
+          <div className="rounded-xl border p-3 space-y-3" style={{ background: "rgba(217,165,33,0.07)", border: "1px solid rgba(217,165,33,0.3)" }}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-black" style={{ color: "#D9A521" }}>
+                <MonitorPlay className="w-4 h-4" />
+                وضع الطالب يتحكم
+              </div>
+              <Button
+                size="sm"
+                onClick={() => getSocket().emit("self_paced:takeover", { sessionId: sid })}
+                className="font-black text-xs gap-1.5 border-0"
+                style={{ background: "#225739", color: "white" }}
+              >
+                استعادة التحكم
+              </Button>
+            </div>
+            {Object.keys(studentProgress).length === 0 ? (
+              <div className="text-xs text-white/40 text-center py-1">
+                في انتظار تقدم الطلاب…
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {Object.entries(studentProgress)
+                  .sort(([, a], [, b]) => b.slideIndex - a.slideIndex)
+                  .map(([key, p]) => {
+                    const sc = p.slideCount || total || 1;
+                    const pct = sc > 0 ? Math.round(((p.slideIndex + 1) / sc) * 100) : 0;
+                    const done = p.slideIndex >= sc - 1;
+                    return (
+                      <div key={key} className="space-y-0.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="truncate text-white/85 font-medium">{p.name}</span>
+                          <div className="flex items-center gap-2 shrink-0 ms-2">
+                            {p.activitiesCompleted > 0 && (
+                              <span className="text-emerald-400 font-bold tabular-nums">
+                                ✓{p.activitiesCompleted}
+                              </span>
+                            )}
+                            <span className="tabular-nums text-white/50">
+                              {p.slideIndex + 1}/{sc}{done && " 🏁"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              background: done
+                                ? "linear-gradient(90deg, #059669, #047857)"
+                                : "linear-gradient(90deg, #D9A521, #a87a10)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
 
         <Button onClick={openShow} className="w-full" variant="outline">
           فتح شاشة العرض في تبويب جديد
         </Button>
+
+        {/* Stage Mode toggle — professional cinematic mode for the projector.
+            Emits stage:toggle to the server which broadcasts stage:changed to the room. */}
+        <button
+          type="button"
+          onClick={() => getSocket().emit("stage:toggle", { sessionId: sid, on: !stageMode })}
+          className="w-full flex items-center justify-between rounded-xl px-4 py-3 font-bold text-sm transition-all border"
+          style={stageMode
+            ? { background: "rgba(217,165,33,0.15)", border: "1px solid #D9A521", color: "#D9A521" }
+            : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }
+          }
+        >
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            وضع المسرح
+          </span>
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-black"
+            style={stageMode
+              ? { background: "#D9A521", color: "#1c1003" }
+              : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }
+            }
+          >
+            {stageMode ? "🎬 مفعّل" : "متوقف"}
+          </span>
+        </button>
 
         <Button onClick={endSession} disabled={ended} variant="destructive" className="w-full">
           <X className="w-4 h-4 me-1" /> إنهاء الجلسة

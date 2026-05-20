@@ -34,6 +34,14 @@ import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
  *   session:ended
  */
 
+interface WallCard {
+  id: string;
+  studentKey: string;
+  name: string;
+  text: string;
+  visible: boolean;
+}
+
 interface LiveSession {
   id: number;
   teacherId: number;
@@ -42,6 +50,38 @@ interface LiveSession {
   participants: Map<string, { name: string; studentKey: string; isShow: boolean; classStudentId: number | null }>;
   /** track teacher control sockets so emit-from-teacher can verify. */
   teacherSockets: Set<string>;
+  /** Session pacing mode — "teacher" (default) or "self_paced". */
+  sessionMode?: "teacher" | "self_paced";
+  /** Self-paced progress: studentKey -> current slide index (0-based). */
+  selfPacedProgress?: Map<string, number>;
+  /** Self-paced activity completions: studentKey -> count of answered activities. */
+  selfPacedActivitiesCompleted?: Map<string, number>;
+  /** Self-paced word_cloud submissions: elementId -> { words, submitted }. */
+  selfPacedWordClouds?: Map<string, { words: Map<string, number>; submitted: Set<string> }>;
+  /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
+  selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
+  /** word_cloud activity: tracks word frequency in memory. */
+  wordCloudActivity?: {
+    elementId: string;
+    /** word (lowercased) -> count */
+    words: Map<string, number>;
+    /** studentKeys that already submitted a word */
+    submitted: Set<string>;
+  };
+  /** open_wall activity: list of submitted response cards. */
+  openWallActivity?: {
+    elementId: string;
+    cards: WallCard[];
+    /** studentKeys that already submitted */
+    submitted: Set<string>;
+    nextId: number;
+  };
+  /** Stage Mode — professional cinematic display mode for the projector. */
+  stageMode?: boolean;
+  /** Unix ms timestamp when the current activity element was opened.
+   *  Used by the StageTimer on show.tsx to synchronise the countdown
+   *  even for late-joining or reconnecting projector clients. */
+  activeElementOpenedAt?: number;
   /** Phase 6 — inline hasad-game quiz state (when the launched game
    *  carries `questions[]`, we run it inline on the student/teacher
    *  screens instead of opening the legacy game-setup tab). Cleared
@@ -385,6 +425,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
      when reveal is currently on), so we never expose it in any other
      payload. */
   const safeActive = isTeacher ? active : sanitizeElementForStudents(active);
+  const liveSess = sessions.get(sid);
   socket.emit("state:sync", {
     sessionId: sess.id,
     status: sess.status,
@@ -396,6 +437,9 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     revealDistribution: sess.revealDistribution,
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
+    stageMode: liveSess?.stageMode ?? false,
+    activeElementOpenedAt: liveSess?.activeElementOpenedAt ?? null,
+    sessionMode: (sess as any).sessionMode ?? liveSess?.sessionMode ?? "teacher",
   });
   /* Late-joiner support: if the teacher already revealed the answer,
      send the dedicated reveal event to this one socket so the UI can
@@ -407,6 +451,20 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
       correctIndex: active.correctIndex,
     });
   }
+  /* Late-joiner support for word_cloud / open_wall activities. */
+  const live0 = sessions.get(sid);
+  if (live0?.wordCloudActivity && sess.activeElementId === live0.wordCloudActivity.elementId) {
+    const wordArr = Array.from(live0.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
+    socket.emit("word_cloud:update", { elementId: sess.activeElementId, words: wordArr });
+  }
+  if (live0?.openWallActivity && sess.activeElementId === live0.openWallActivity.elementId) {
+    const isTeach = isTeacher;
+    const cards = isTeach
+      ? live0.openWallActivity.cards
+      : live0.openWallActivity.cards.filter((c) => c.visible);
+    socket.emit("wall:update", { elementId: sess.activeElementId, cards });
+  }
+
   /* Late-joiner support for active Hasad-game launchers. */
   if (active && (active as any).kind === "hasad-game" && sess.activeElementId) {
     const hasInlineQuestions =
@@ -502,6 +560,8 @@ export function setupPresentationSocket(io: Server) {
           live = { id: sess.id, teacherId: sess.teacherId, presentationId: sess.presentationId, participants: new Map(), teacherSockets: new Set() };
           sessions.set(sess.id, live);
         }
+        /* Hydrate session pacing mode from the DB row on first load. */
+        if (!live.sessionMode) live.sessionMode = ((sess as any).sessionMode ?? "teacher") as "teacher" | "self_paced";
         live.teacherSockets.add(socket.id);
         await emitStateSync(io, socket, sess.id, true);
         io.to(room(sess.id)).emit("participants:count", { n: studentCount(live) });
@@ -612,6 +672,9 @@ export function setupPresentationSocket(io: Server) {
           sessions.set(sid, live);
         }
         live.participants.set(socket.id, { name: cleanName, studentKey: cleanKey, isShow: false, classStudentId });
+        /* Hydrate sessionMode from DB so student:slide-change works even
+           when students connect before the teacher control socket joins. */
+        if (!live.sessionMode) live.sessionMode = ((sess as any).sessionMode ?? "teacher") as "teacher" | "self_paced";
         await emitStateSync(io, socket, sid, false);
         io.to(room(sid)).emit("participants:count", { n: studentCount(live) });
         logger.info({ sid, socketId: socket.id, name: cleanName, participants: studentCount(live) }, "student:join ok");
@@ -632,7 +695,11 @@ export function setupPresentationSocket(io: Server) {
           .set({ currentSlideIndex: idx, activeElementId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
           .where(eq(presentationSessionsTable.id, sid));
         const liveSess = sessions.get(sid);
-        if (liveSess) liveSess.inlineActivity = undefined;
+        if (liveSess) {
+          liveSess.inlineActivity = undefined;
+          liveSess.wordCloudActivity = undefined;
+          liveSess.openWallActivity = undefined;
+        }
         const deck = await loadDeckRow(sess.presentationId);
         const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
         const rawSlide = slides[idx] ?? null;
@@ -663,10 +730,37 @@ export function setupPresentationSocket(io: Server) {
           isHasadGame && Array.isArray((element as any).questions) ? (element as any).questions : [];
         const useInline = inlineQuestions.length > 0;
 
+        /* Record the open timestamp once so all audience-split payloads
+           share the same value — the StageTimer on show.tsx uses it to
+           synchronise the countdown for late-joining projectors. */
+        const openedAt = Date.now();
+        if (live) live.activeElementOpenedAt = openedAt;
+
         await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
           elementId: String(elementId),
           element: forTeacher ? element : sanitizeElementForStudents(element),
+          openedAt,
         }));
+
+        /* Word-cloud / open-wall: initialise in-memory tracking so
+           students can immediately start submitting. */
+        const elKind = (element as any)?.activityKind;
+        if (live && elKind === "word_cloud") {
+          live.wordCloudActivity = {
+            elementId: String(elementId),
+            words: new Map(),
+            submitted: new Set(),
+          };
+          io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: [] });
+        } else if (live && elKind === "open_wall") {
+          live.openWallActivity = {
+            elementId: String(elementId),
+            cards: [],
+            submitted: new Set(),
+            nextId: 1,
+          };
+          io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: [] });
+        }
 
         if (useInline && live) {
           /* Phase 6 — inline quiz: initialize per-question state and
@@ -704,9 +798,188 @@ export function setupPresentationSocket(io: Server) {
           .set({ activeElementId: null, revealDistribution: false, revealAnswer: false })
           .where(eq(presentationSessionsTable.id, sid));
         const live = sessions.get(sid);
-        if (live) live.inlineActivity = undefined;
+        if (live) {
+          live.inlineActivity = undefined;
+          live.wordCloudActivity = undefined;
+          live.openWallActivity = undefined;
+        }
         io.to(room(sid)).emit("activity:closed");
       } catch (err) { logger.error({ err }, "activity:close failed"); }
+    });
+
+    /* Word cloud — student submits a word/short phrase. Server tracks
+       frequency in memory and broadcasts the updated cloud to all
+       projector/show clients. One submission per student per element. */
+    socket.on("word_cloud:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+
+        /* Self-Paced Mode: no global activity open — validate element on
+           student's current slide and persist answer to DB directly. */
+        if (live.sessionMode === "self_paced") {
+          const spSess = await loadSessionRow(sid);
+          if (!spSess) return;
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const spDeck = await loadDeckRow(spSess.presentationId);
+          const spEl = await resolveActiveElement(spDeck?.slides, studentSlideIdx, String(elementId));
+          if (!spEl) return;
+          const word = String(text ?? "").trim().slice(0, 60);
+          if (!word) return;
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: null,
+              answerText: word,
+              isCorrect: null,
+            });
+          } catch { return socket.emit("answer:already"); }
+          socket.emit("answer:accepted");
+          /* Also maintain an in-memory per-element word map so the
+             student sees an updated cloud immediately. */
+          if (!live.selfPacedWordClouds) live.selfPacedWordClouds = new Map();
+          let wc = live.selfPacedWordClouds.get(String(elementId));
+          if (!wc) { wc = { words: new Map(), submitted: new Set() }; live.selfPacedWordClouds.set(String(elementId), wc); }
+          wc.words.set(word.toLowerCase(), (wc.words.get(word.toLowerCase()) ?? 0) + 1);
+          wc.submitted.add(me.studentKey);
+          socket.emit("word_cloud:update", { elementId: String(elementId), words: Array.from(wc.words.entries()).map(([w, c]) => ({ text: w, count: c })) });
+          /* Track completion and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevWc = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevWc + 1);
+          const spSlides = Array.isArray(spDeck?.slides) ? (spDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", { studentKey: me.studentKey, name: me.name, slideIndex: studentSlideIdx, slideCount: spSlides.length, activitiesCompleted: prevWc + 1 });
+          }
+          return;
+        }
+
+        /* Must be the active element */
+        if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== String(elementId)) return;
+        if (live.wordCloudActivity.submitted.has(me.studentKey)) {
+          return socket.emit("answer:already");
+        }
+        const word = String(text ?? "").trim().slice(0, 60);
+        if (!word) return;
+        const key = word.toLowerCase();
+        const cur = live.wordCloudActivity.words.get(key) ?? 0;
+        live.wordCloudActivity.words.set(key, cur + 1);
+        live.wordCloudActivity.submitted.add(me.studentKey);
+        socket.emit("answer:accepted");
+        /* Build serializable payload — use the original casing of the
+           first submission for display (the map stores lowercased keys
+           for frequency but we want readable output). We keep it simple
+           by storing the display word alongside the count. */
+        const wordArr = Array.from(live.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
+        io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: wordArr });
+      } catch (err) { logger.error({ err }, "word_cloud:submit failed"); }
+    });
+
+    /* Open wall — student submits a free-text response card.
+       Server stores cards in memory. Teachers toggle visibility.
+       One submission per student per element. */
+    socket.on("wall:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+
+        /* Self-Paced Mode: no global open_wall activity open — validate
+           element on student's slide and persist to DB directly. */
+        if (live.sessionMode === "self_paced") {
+          const wpSess = await loadSessionRow(sid);
+          if (!wpSess) return;
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const wpDeck = await loadDeckRow(wpSess.presentationId);
+          const wpEl = await resolveActiveElement(wpDeck?.slides, studentSlideIdx, String(elementId));
+          if (!wpEl) return;
+          const cleaned = String(text ?? "").trim().slice(0, 500);
+          if (!cleaned) return;
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: null,
+              answerText: cleaned,
+              isCorrect: null,
+            });
+          } catch { return socket.emit("answer:already"); }
+          socket.emit("answer:accepted");
+          /* Maintain per-element in-memory wall so the student sees their card. */
+          if (!live.selfPacedOpenWalls) live.selfPacedOpenWalls = new Map();
+          let ow = live.selfPacedOpenWalls.get(String(elementId));
+          if (!ow) { ow = { cards: [], nextId: 1, submitted: new Set() }; live.selfPacedOpenWalls.set(String(elementId), ow); }
+          if (!ow.submitted.has(me.studentKey)) {
+            ow.cards.push({ id: String(ow.nextId++), studentKey: me.studentKey, name: me.name, text: cleaned, visible: true });
+            ow.submitted.add(me.studentKey);
+            socket.emit("wall:update", { elementId: String(elementId), cards: ow.cards });
+          }
+          /* Track completion and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevWp = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevWp + 1);
+          const wpSlides = Array.isArray(wpDeck?.slides) ? (wpDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", { studentKey: me.studentKey, name: me.name, slideIndex: studentSlideIdx, slideCount: wpSlides.length, activitiesCompleted: prevWp + 1 });
+          }
+          return;
+        }
+
+        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
+        if (live.openWallActivity.submitted.has(me.studentKey)) {
+          return socket.emit("answer:already");
+        }
+        const cleaned = String(text ?? "").trim().slice(0, 500);
+        if (!cleaned) return;
+        const card: WallCard = {
+          id: String(live.openWallActivity.nextId++),
+          studentKey: me.studentKey,
+          name: me.name,
+          text: cleaned,
+          visible: true,
+        };
+        live.openWallActivity.cards.push(card);
+        live.openWallActivity.submitted.add(me.studentKey);
+        socket.emit("answer:accepted");
+        /* Teacher sees all cards; projector/students see visible only. */
+        const allCards = live.openWallActivity.cards;
+        const visibleCards = allCards.filter((c) => c.visible);
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
+        }
+        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
+      } catch (err) { logger.error({ err }, "wall:submit failed"); }
+    });
+
+    /* Teacher toggles visibility of a wall card. */
+    socket.on("wall:toggle-card", ({ sessionId, elementId, cardId, visible }: { sessionId: number; elementId: string; cardId: string; visible: boolean }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
+        const card = live.openWallActivity.cards.find((c) => c.id === String(cardId));
+        if (!card) return;
+        card.visible = !!visible;
+        const allCards = live.openWallActivity.cards;
+        const visibleCards = allCards.filter((c) => c.visible);
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
+        }
+        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
+      } catch (err) { logger.error({ err }, "wall:toggle-card failed"); }
     });
 
     /* Phase 6 — teacher advances the inline quiz to the next question.
@@ -886,6 +1159,98 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) { logger.error({ err }, "session:end failed"); }
     });
 
+    /* Self-Paced Mode: student reports their current slide index.
+       Stored in-memory; teacher control panel shows progress bars.
+       Server also sends back the requested slide content so the student
+       can navigate without a separate REST call. */
+    socket.on("student:slide-change", async ({ sessionId, slideIndex }: { sessionId: number; slideIndex: number }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+        if (live.sessionMode !== "self_paced") return;
+
+        const sess = await loadSessionRow(sid);
+        if (!sess) return;
+        const deck = await loadDeckRow(sess.presentationId);
+        const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
+        const slideCount = slides.length;
+        const idx = Math.max(0, Math.min(slideCount - 1, Number(slideIndex) | 0));
+
+        if (!live.selfPacedProgress) live.selfPacedProgress = new Map();
+        live.selfPacedProgress.set(me.studentKey, idx);
+
+        /* Send the requested slide back to this student. Include the first
+           activity element on this slide (sanitized) so the student can
+           interact with it without the teacher explicitly opening it. */
+        const rawSlide = slides[idx] ?? null;
+        const rawElements: any[] = Array.isArray(rawSlide?.elements) ? rawSlide.elements : [];
+        const firstActivity = rawElements.find(
+          (e: any) => e?.kind === "activity" || e?.kind === "hasad-game",
+        ) ?? null;
+        const activitiesCompleted = live.selfPacedActivitiesCompleted?.get(me.studentKey) ?? 0;
+        socket.emit("self_paced:slide", {
+          slideIndex: idx,
+          slide: sanitizeSlide(rawSlide),
+          slideCount,
+          activeElement: firstActivity ? sanitizeElementForStudents(firstActivity) : null,
+          activitiesCompleted,
+        });
+
+        /* Broadcast progress to all teacher sockets. */
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("student:progress", {
+            studentKey: me.studentKey,
+            name: me.name,
+            slideIndex: idx,
+            slideCount,
+            activitiesCompleted,
+          });
+        }
+      } catch (err) { logger.error({ err }, "student:slide-change failed"); }
+    });
+
+    /* Self-Paced Mode: teacher reclaims control — switches mode back to
+       "teacher", resyncs everyone to the teacher's current slide, and
+       broadcasts a self_paced:ended event so student UIs lock nav. */
+    socket.on("self_paced:takeover", async ({ sessionId }: { sessionId: number }) => {
+      try {
+        const sid = Number(sessionId);
+        const sess = await loadSessionRow(sid);
+        if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
+        const live = sessions.get(sid);
+        if (!live) return;
+        live.sessionMode = "teacher";
+        live.selfPacedProgress = undefined;
+        /* Persist the mode change to DB so reconnecting clients get the right mode. */
+        await db.update(presentationSessionsTable)
+          .set({ sessionMode: "teacher" } as any)
+          .where(eq(presentationSessionsTable.id, sid));
+        const deck = await loadDeckRow(sess.presentationId);
+        const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
+        const rawSlide = slides[sess.currentSlideIndex] ?? null;
+        /* Broadcast the teacher's current slide to all clients. */
+        io.to(room(sid)).emit("self_paced:ended", {
+          currentSlideIndex: sess.currentSlideIndex,
+          slide: sanitizeSlide(rawSlide),
+        });
+      } catch (err) { logger.error({ err }, "self_paced:takeover failed"); }
+    });
+
+    /* Stage Mode toggle — teacher-only. Stores state in-memory and
+       broadcasts to all clients in the room (show + students) so the
+       projector can switch visual modes instantly. */
+    socket.on("stage:toggle", ({ sessionId, on }: { sessionId: number; on: boolean }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        live.stageMode = !!on;
+        io.to(room(sid)).emit("stage:changed", { on: live.stageMode });
+      } catch (err) { logger.error({ err }, "stage:toggle failed"); }
+    });
+
     /* Student answer — server validates correctness against the
        hydrated element and inserts. The DB unique constraint blocks
        duplicate answers per (session, element, student_key). For
@@ -902,6 +1267,56 @@ export function setupPresentationSocket(io: Server) {
 
         const sess = await loadSessionRow(sid);
         if (!sess || sess.status === "ended") return socket.emit("answer:rejected", { reason: "ended" });
+
+        /* Self-Paced Mode: students answer activities from their own current
+           slide, not a globally teacher-opened element. Validate that the
+           elementId exists on the student's current slide and record the
+           answer per-student. Then notify the teacher with updated progress. */
+        if (live.sessionMode === "self_paced") {
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const selfDeck = await loadDeckRow(sess.presentationId);
+          const selfEl = await resolveActiveElement(selfDeck?.slides, studentSlideIdx, String(elementId));
+          if (!selfEl) return socket.emit("answer:rejected", { reason: "element-not-found" });
+
+          let isCorrect: boolean | null = null;
+          if (typeof selfEl.correctIndex === "number" && typeof answerIndex === "number") {
+            isCorrect = answerIndex === selfEl.correctIndex;
+          }
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: typeof answerIndex === "number" ? answerIndex : null,
+              answerText: typeof answerText === "string" ? answerText.slice(0, 500) : null,
+              isCorrect,
+            });
+          } catch {
+            return socket.emit("answer:already");
+          }
+          socket.emit("answer:accepted");
+
+          /* Track per-student completion count and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevCount = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevCount + 1);
+          const activitiesCompleted = prevCount + 1;
+          const selfSlides = Array.isArray(selfDeck?.slides) ? (selfDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", {
+              studentKey: me.studentKey,
+              name: me.name,
+              slideIndex: studentSlideIdx,
+              slideCount: selfSlides.length,
+              activitiesCompleted,
+            });
+          }
+          return;
+        }
+
         if (sess.activeElementId !== String(elementId)) return socket.emit("answer:rejected", { reason: "not-active" });
 
         const deck = await loadDeckRow(sess.presentationId);

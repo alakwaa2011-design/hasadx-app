@@ -4,7 +4,9 @@ export type SlideThemeKey =
   | "harvest" | "ocean" | "sunset" | "midnight" | "rose"
   | "royal" | "noor" | "sage" | "sand" | "obsidian"
   /* New calm/sophisticated palette (May 2026 redesign). */
-  | "linen" | "mist" | "clay" | "pine" | "ink";
+  | "linen" | "mist" | "clay" | "pine" | "ink"
+  /* وميض identity themes (Jun 2026). */
+  | "wameedh_night" | "wameedh_dawn" | "wameedh_steel" | "wameedh_amber";
 
 export type SlidePatternKey =
   | "solid" | "dots" | "grid" | "lines" | "waves" | "geometric" | "stars" | "glow" | "ai";
@@ -124,6 +126,31 @@ const meshInk =
   "radial-gradient(at 82% 78%, rgba(74,74,85,0.55) 0px, transparent 55%)," +
   "linear-gradient(155deg, #0c0c0e 0%, #1a1a1d 50%, #2c2c33 100%)";
 
+/* ── وميض identity meshes ─────────────────────────────────────── */
+const meshWameedhNight =
+  "radial-gradient(at 15% 20%, rgba(30,40,80,0.70) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 75%, rgba(180,145,55,0.14) 0px, transparent 50%)," +
+  "radial-gradient(at 50% 95%, rgba(10,10,18,0.90) 0px, transparent 55%)," +
+  "linear-gradient(160deg, #060608 0%, #0d0d14 50%, #141420 100%)";
+
+const meshWameedhDawn =
+  "radial-gradient(at 12% 88%, rgba(217,165,32,0.55) 0px, transparent 55%)," +
+  "radial-gradient(at 80% 15%, rgba(30,58,100,0.75) 0px, transparent 50%)," +
+  "radial-gradient(at 55% 52%, rgba(130,80,30,0.30) 0px, transparent 55%)," +
+  "linear-gradient(155deg, #080d1e 0%, #0f1a35 45%, #2a1a08 100%)";
+
+const meshWameedhSteel =
+  "radial-gradient(at 18% 22%, rgba(100,130,165,0.45) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 78%, rgba(40,60,90,0.65) 0px, transparent 55%)," +
+  "radial-gradient(at 50% 10%, rgba(160,185,210,0.18) 0px, transparent 50%)," +
+  "linear-gradient(155deg, #111b28 0%, #1a2a3e 50%, #243348 100%)";
+
+const meshWameedhAmber =
+  "radial-gradient(at 18% 22%, rgba(200,140,40,0.50) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 78%, rgba(120,70,15,0.65) 0px, transparent 55%)," +
+  "radial-gradient(at 50% 95%, rgba(60,30,5,0.80) 0px, transparent 55%)," +
+  "linear-gradient(155deg, #1a0d02 0%, #2e1a05 50%, #3f2508 100%)";
+
 export const SLIDE_THEMES: SlideTheme[] = [
   { key: "harvest",  labelAr: "الحصاد",      labelEn: "Harvest",  tier: "free", grad: "from-emerald-500 via-green-700 to-amber-600",        cssGrad: meshHarvest,  accent: "bg-amber-300", accentHex: "#d4af37" },
   { key: "ocean",    labelAr: "المحيط",      labelEn: "Ocean",    tier: "free", grad: "from-sky-500 via-blue-700 to-indigo-800",            cssGrad: meshOcean,    accent: "bg-cyan-300",  accentHex: "#38bdf8" },
@@ -142,6 +169,11 @@ export const SLIDE_THEMES: SlideTheme[] = [
   /* Pine / Ink — calm dark palettes (sage-green / charcoal). */
   { key: "pine",     labelAr: "صنوبر",        labelEn: "Pine",     tier: "pro",  grad: "from-[#1f2d24] via-[#2c4034] to-[#476054]",          cssGrad: meshPine,     accent: "bg-[#d9c79a]", accentHex: "#d9c79a" },
   { key: "ink",      labelAr: "حبري",         labelEn: "Ink",      tier: "pro",  grad: "from-[#1a1a1d] via-[#2c2c33] to-[#4a4a55]",          cssGrad: meshInk,      accent: "bg-[#c9b87a]", accentHex: "#c9b87a" },
+  /* وميض identity themes — signature editorial Arabic brand palette. */
+  { key: "wameedh_night", labelAr: "ليل وميض", labelEn: "Wameedh Night",  tier: "pro", grad: "from-[#060608] via-[#0d0d14] to-[#141420]", cssGrad: meshWameedhNight, accent: "bg-[#d9a521]", accentHex: "#d9a521" },
+  { key: "wameedh_dawn",  labelAr: "فجر وميض", labelEn: "Wameedh Dawn",   tier: "pro", grad: "from-[#080d1e] via-[#0f1a35] to-[#2a1a08]",  cssGrad: meshWameedhDawn,  accent: "bg-[#d9a521]", accentHex: "#d9a521" },
+  { key: "wameedh_steel", labelAr: "فولاذي",   labelEn: "Wameedh Steel",  tier: "pro", grad: "from-[#111b28] via-[#1a2a3e] to-[#243348]",  cssGrad: meshWameedhSteel, accent: "bg-[#8ab4d4]", accentHex: "#8ab4d4" },
+  { key: "wameedh_amber", labelAr: "عنبري",    labelEn: "Wameedh Amber",  tier: "pro", grad: "from-[#1a0d02] via-[#2e1a05] to-[#3f2508]",  cssGrad: meshWameedhAmber, accent: "bg-[#d9a521]", accentHex: "#d9a521" },
 ];
 
 export const SLIDE_PATTERNS: SlidePattern[] = [
@@ -417,6 +449,7 @@ export function getTheme(key: string | undefined | null): SlideTheme {
    poster. The picker rotates across these so two decks created in a
    row look different — much more like Pitch / Tome / Gamma. */
 export const TASTEFUL_DEFAULT_THEMES: SlideThemeKey[] = [
+  "wameedh_night", "wameedh_dawn", "wameedh_steel", "wameedh_amber",
   "mist", "obsidian", "linen", "ink", "sage", "ocean", "pine", "clay",
 ];
 

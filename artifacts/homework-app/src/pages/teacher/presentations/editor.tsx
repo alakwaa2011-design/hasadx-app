@@ -29,6 +29,7 @@ import {
   Undo2, Redo2, Bold, CheckSquare, Pencil,
   Triangle, Diamond, Crown, Phone, Users, Flag, MapPin,
   Rocket, Swords, Dice5, Zap, Search, Crop,
+  Cloud, MessageSquare, BarChart2, Film, Gamepad2,
 } from "lucide-react";
 import { useIsBelowLg } from "@/hooks/use-mobile";
 import * as LucideIcons from "lucide-react";
@@ -54,17 +55,17 @@ import {
   pickDefaultTheme,
 } from "@/lib/slide-themes";
 import { LUCIDE_NAMES } from "@/lib/lucide-whitelist";
-import { SlideStage, HasadGameRenderer } from "@/lib/slide-render";
+import { SlideStage, HasadGameRenderer, HasadActivityRenderer } from "@/lib/slide-render";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { ActivityPickerDialog } from "@/components/teacher/presentations/activity-picker-dialog";
+import { ActivityHubDialog } from "@/components/teacher/presentations/activity-hub-dialog";
 import { ActivitySuggestionsBanner } from "@/components/teacher/presentations/activity-suggestions-banner";
 import { SmartAddSlideDialog } from "@/components/teacher/presentations/smart-add-slide-dialog";
 import { VideoEmbedDialog } from "@/components/teacher/presentations/video-embed-dialog";
 import { ImageSearchDialog } from "@/components/teacher/presentations/image-search-dialog";
 import { AiPresentationBuilder } from "./builder";
-import { LinkedActivitySelector } from "@/components/teacher/presentations/linked-activity-selector";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
 import {
   AlertDialog,
@@ -95,9 +96,93 @@ function getLucideIcon(name: string | null | undefined): React.ComponentType<{ s
 }
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+/* ── Curated GIF library ──────────────────────────────────────────── */
+const GIF_LIBRARY: {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  items: { url: string; altAr: string; altEn: string }[];
+}[] = [
+  {
+    id: "celebrate",
+    labelAr: "🎉 احتفال",
+    labelEn: "🎉 Celebrate",
+    items: [
+      { url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",  altAr: "قصاصات ورقية",   altEn: "Confetti" },
+      { url: "https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif",  altAr: "مفرقعات",        altEn: "Party Poppers" },
+      { url: "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif",  altAr: "ألعاب نارية",    altEn: "Fireworks" },
+      { url: "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",      altAr: "ياي!",            altEn: "Yay!" },
+      { url: "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",      altAr: "رقص",             altEn: "Happy Dance" },
+      { url: "https://media.giphy.com/media/LHZyixOnHwDDy/giphy.gif",      altAr: "مبروك!",          altEn: "Congrats!" },
+    ],
+  },
+  {
+    id: "bravo",
+    labelAr: "👏 أحسنت",
+    labelEn: "👏 Bravo",
+    items: [
+      { url: "https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif", altAr: "تصفيق بطيء",     altEn: "Slow Clap" },
+      { url: "https://media.giphy.com/media/111ebonIs1cX0c/giphy.gif",     altAr: "إبهام لأعلى",    altEn: "Thumbs Up" },
+      { url: "https://media.giphy.com/media/7yojoQtevjOci/giphy.gif",      altAr: "تصفيق مينيونز",  altEn: "Minions Clap" },
+      { url: "https://media.giphy.com/media/xNrM4cGJ8u3ao/giphy.gif",      altAr: "عمل رائع!",      altEn: "Great Job!" },
+      { url: "https://media.giphy.com/media/l41lI8X3bQ3AKIQM8/giphy.gif",  altAr: "ممتاز",          altEn: "Excellent" },
+      { url: "https://media.giphy.com/media/ZdUnQhlmH0F4tT5LvO/giphy.gif", altAr: "فعلتها!",        altEn: "You Did It!" },
+    ],
+  },
+  {
+    id: "think",
+    labelAr: "🤔 تفكير",
+    labelEn: "🤔 Thinking",
+    items: [
+      { url: "https://media.giphy.com/media/a5viI92PAF89q/giphy.gif",      altAr: "وجه التفكير",    altEn: "Thinking Face" },
+      { url: "https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif", altAr: "أفكّر…",         altEn: "Hmm..." },
+      { url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", altAr: "مندهش!",         altEn: "Surprised!" },
+      { url: "https://media.giphy.com/media/3oKIPseqKZUd1XIFHK/giphy.gif", altAr: "محتار",          altEn: "Confused" },
+      { url: "https://media.giphy.com/media/WRQBpd3G8TlZ6/giphy.gif",      altAr: "انتظر ماذا؟",    altEn: "Wait What?" },
+    ],
+  },
+  {
+    id: "fun",
+    labelAr: "😂 مرح",
+    labelEn: "😂 Fun",
+    items: [
+      { url: "https://media.giphy.com/media/MNmyTku20WHpCZIKB7/giphy.gif", altAr: "ضحك",             altEn: "LOL" },
+      { url: "https://media.giphy.com/media/ely5Fud8a0HH6/giphy.gif",      altAr: "هههه",            altEn: "Hehe" },
+      { url: "https://media.giphy.com/media/l3q2Kciqt3yNuqD5e/giphy.gif",  altAr: "قهقهة",          altEn: "Laughing" },
+      { url: "https://media.giphy.com/media/Vccpm1O9gV1g4/giphy.gif",      altAr: "قطة مضحكة",      altEn: "Funny Cat" },
+      { url: "https://media.giphy.com/media/JltOMwYmi0VrO/giphy.gif",      altAr: "لا أصدق",        altEn: "No Way" },
+    ],
+  },
+  {
+    id: "stars",
+    labelAr: "⭐ نجوم",
+    labelEn: "⭐ Stars",
+    items: [
+      { url: "https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif",  altAr: "بريق",            altEn: "Sparkles" },
+      { url: "https://media.giphy.com/media/3o6gDWzmAzv1ALnkyk/giphy.gif", altAr: "سحر",             altEn: "Magic" },
+      { url: "https://media.giphy.com/media/26tPnAAH7PhAYBJBW/giphy.gif",  altAr: "نجوم متساقطة",   altEn: "Star Rain" },
+      { url: "https://media.giphy.com/media/1AgrwTATMjqbeFsYo9/giphy.gif", altAr: "نجمة ذهبية",     altEn: "Gold Star" },
+      { url: "https://media.giphy.com/media/mf8uIoMpYhFBDmE6Qh/giphy.gif", altAr: "لامع",            altEn: "Glitter" },
+    ],
+  },
+  {
+    id: "education",
+    labelAr: "📚 تعليم",
+    labelEn: "📚 Education",
+    items: [
+      { url: "https://media.giphy.com/media/3oKIPdlB8uDHPBkAY0/giphy.gif", altAr: "قراءة",          altEn: "Reading" },
+      { url: "https://media.giphy.com/media/l4FGmHTcdl3R4jGXi/giphy.gif",  altAr: "فكرة!",          altEn: "Lightbulb!" },
+      { url: "https://media.giphy.com/media/xUOxf9EbYbFcWiLBYY/giphy.gif", altAr: "ذكي!",           altEn: "Smart!" },
+      { url: "https://media.giphy.com/media/BFSRdwvNw0OvBH1Gqv/giphy.gif", altAr: "كتب",            altEn: "Books" },
+      { url: "https://media.giphy.com/media/3oz8xRF0v9WMAUVLNK/giphy.gif", altAr: "يكتب",           altEn: "Typing" },
+    ],
+  },
+];
+
 const FONT_FAMILIES: Array<{ value: string; label: string }> = [
   { value: "inherit", label: "Default" },
   { value: "'Cairo', sans-serif", label: "Cairo" },
+  { value: "'IBM Plex Sans Arabic', sans-serif", label: "IBM Plex Arabic" },
   { value: "'Tajawal', sans-serif", label: "Tajawal" },
   { value: "'Amiri', serif", label: "Amiri" },
   { value: "'Noto Naskh Arabic', serif", label: "Noto Naskh" },
@@ -330,13 +415,19 @@ export default function PresentationEditor() {
      button can open it without remounting state. */
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [activityPickerOpen, setActivityPickerOpen] = useState(false);
+  /* Activity Hub — unified entry for "نشاط من حصاد" and "أنشطة العرض".
+     Both the Inspector button and the topbar "اربط نشاط" button open this hub.
+     initialTab controls which view opens first. */
+  const [activityHubOpen, setActivityHubOpen] = useState(false);
+  const [activityHubInitialTab, setActivityHubInitialTab] = useState<"home" | "hasad" | "presentation">("home");
   /* Seed values for the activity picker — populated when the teacher
      accepts a suggestion from the AI suggestions banner so the
      Compose tab opens prefilled instead of blank. */
   const [pickerInitial, setPickerInitial] = useState<{
     prompt?: string;
-    kind?: "mcq" | "true_false" | "open" | "poll";
+    kind?: "mcq" | "true_false" | "open" | "poll" | "word_cloud" | "open_wall";
   }>({});
+  const [gifLibraryOpen, setGifLibraryOpen] = useState(false);
   /* Outline indices the editor has already inserted activities for via
      the AI suggestions banner. Reported back to the banner so the
      corresponding chip is dismissed only after a real insertion (not
@@ -349,6 +440,7 @@ export default function PresentationEditor() {
   const [pendingSuggestionKey, setPendingSuggestionKey] =
     useState<number | null>(null);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   /* Canva-style mobile/tablet shell (<1024px). Desktop is byte-for-byte
      unchanged when isMobile is false. The bottom sheet drives all the
      contextual editing surfaces. */
@@ -360,6 +452,12 @@ export default function PresentationEditor() {
   /* Mirror readOnly into a ref so async/event handlers like DnD can
      bail out without a stale closure or extra re-binds. */
   const readOnlyRef = useRef(false);
+  /* Toolbar drag-and-drop: canvas-space coordinates of the last drop
+     event from the left-rail toolbar. Consumed (and cleared) by the
+     next insertElement / insertImageFromUrl / onImageChosen call so
+     the element lands where the teacher dropped it instead of the
+     default centered position. */
+  const pendingDropPosRef = useRef<{ x: number; y: number } | null>(null);
 
   /* DnD sensors — pointer + keyboard for accessible reorder. */
   const sensors = useSensors(
@@ -409,6 +507,7 @@ export default function PresentationEditor() {
     setDismissedSuggestionKeys(new Set());
     setPreviewIdx(null);
     setActivityPickerOpen(false);
+    setGifLibraryOpen(false);
   }, [id]);
 
   /* Hydrate local state once when the deck first loads — and again
@@ -463,6 +562,13 @@ export default function PresentationEditor() {
   const selectedEl = useMemo(
     () => activeSlide?.elements?.find((e) => e.id === selectedElId) ?? null,
     [activeSlide, selectedElId],
+  );
+
+  /* True when any slide in the deck already has a hasad-activity element.
+     Used to show a small "مرتبط / Linked" badge on the topbar button. */
+  const hasLinkedHasadActivity = useMemo(
+    () => slides.some((s) => (s.elements ?? []).some((e) => e.kind === "hasad-activity")),
+    [slides],
   );
 
   /* ── Autosave: debounced PATCH 500ms after last edit. */
@@ -697,12 +803,22 @@ export default function PresentationEditor() {
 
   /* Element helpers used by the inspector toolbar. */
   const insertElement = (el: SlideElement) => {
+    /* When the element was dropped from the toolbar, re-position it so
+       the drop point becomes the element's center (clamped to canvas). */
+    let finalEl = el;
+    if (pendingDropPosRef.current) {
+      const { x: dx, y: dy } = pendingDropPosRef.current;
+      pendingDropPosRef.current = null;
+      const nx = Math.min(Math.max(0, dx - el.w / 2), Math.max(0, CANVAS_W - el.w));
+      const ny = Math.min(Math.max(0, dy - el.h / 2), Math.max(0, CANVAS_H - el.h));
+      finalEl = { ...el, x: nx, y: ny };
+    }
     mutateSlides((prev) =>
       prev.map((s, i) =>
-        i === activeIdx ? { ...s, elements: [...(s.elements ?? []), el] } : s,
+        i === activeIdx ? { ...s, elements: [...(s.elements ?? []), finalEl] } : s,
       ),
     );
-    setSelectedElId(el.id);
+    setSelectedElId(finalEl.id);
   };
 
   /* Same as `insertElement` but targets a specific slide index instead
@@ -760,6 +876,14 @@ export default function PresentationEditor() {
   const insertImageFromUrl = (url: string) => {
     const w = 480;
     const h = 320;
+    let x = (CANVAS_W - w) / 2;
+    let y = (CANVAS_H - h) / 2;
+    if (pendingDropPosRef.current) {
+      const { x: dx, y: dy } = pendingDropPosRef.current;
+      pendingDropPosRef.current = null;
+      x = Math.min(Math.max(0, dx - w / 2), Math.max(0, CANVAS_W - w));
+      y = Math.min(Math.max(0, dy - h / 2), Math.max(0, CANVAS_H - h));
+    }
     mutateSlides((prev) =>
       prev.map((s, i) =>
         i === activeIdx
@@ -770,9 +894,7 @@ export default function PresentationEditor() {
                 {
                   id: genId("i"),
                   kind: "image",
-                  x: (CANVAS_W - w) / 2,
-                  y: (CANVAS_H - h) / 2,
-                  w, h,
+                  x, y, w, h,
                   url,
                   objectFit: "cover",
                 } as SlideElement,
@@ -814,9 +936,17 @@ export default function PresentationEditor() {
         }
         queryClient.invalidateQueries({ queryKey: getGetPresentationUsageQueryKey(id) });
       }
-      // Insert image roughly centered with safe bounds.
+      // Insert image at drop position when dragged from toolbar, else centered.
       const w = 480;
       const h = 320;
+      let imgX = (CANVAS_W - w) / 2;
+      let imgY = (CANVAS_H - h) / 2;
+      if (pendingDropPosRef.current) {
+        const { x: dx, y: dy } = pendingDropPosRef.current;
+        pendingDropPosRef.current = null;
+        imgX = Math.min(Math.max(0, dx - w / 2), Math.max(0, CANVAS_W - w));
+        imgY = Math.min(Math.max(0, dy - h / 2), Math.max(0, CANVAS_H - h));
+      }
       mutateSlides((prev) =>
         prev.map((s, i) =>
           i === activeIdx
@@ -827,8 +957,8 @@ export default function PresentationEditor() {
                   {
                     id: genId("i"),
                     kind: "image",
-                    x: (CANVAS_W - w) / 2,
-                    y: (CANVAS_H - h) / 2,
+                    x: imgX,
+                    y: imgY,
                     w, h,
                     url,
                   } as SlideElement,
@@ -843,6 +973,66 @@ export default function PresentationEditor() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  /* Called by SlideCanvas when a toolbar item is dropped onto the slide.
+     `toolType` encodes the kind: "text", "image", "image-search", "gif",
+     "video", or "activity:<activityKind>".
+     `canvasX` / `canvasY` are in the logical 1280×720 coordinate space. */
+  const handleToolDrop = (toolType: string, canvasX: number, canvasY: number) => {
+    if (readOnly) return;
+    pendingDropPosRef.current = { x: canvasX, y: canvasY };
+    if (toolType === "text") {
+      insertElement({
+        id: genId("t"), kind: "text",
+        x: 100, y: 100, w: 800, h: 120,
+        text: isAr ? "نص جديد" : "New text",
+        fontSize: 32, align: "start", fontWeight: "700",
+      } as SlideElement);
+    } else if (toolType.startsWith("activity:")) {
+      const activityKind = toolType.replace("activity:", "") as
+        "word_cloud" | "open_wall" | "poll" | "mcq" | "true_false" | "open";
+      insertElement({
+        id: genId("a"), kind: "activity", activityKind,
+        prompt: "", options: activityKind === "open" ? undefined : ["", ""],
+        correctIndex: activityKind === "mcq" ? 0 : undefined,
+        x: 140, y: 120, w: 1000, h: 480,
+      } as SlideElement);
+    } else if (toolType === "image") {
+      /* pendingDropPosRef stays set — consumed by onImageChosen. */
+      fileInputRef.current?.click();
+    } else if (toolType === "image-search") {
+      /* pendingDropPosRef stays set — consumed by insertImageFromUrl. */
+      setImageSearchOpen(true);
+    } else if (toolType === "gif") {
+      /* pendingDropPosRef stays set — consumed by insertElement (GIF library
+         calls insertElement with a fixed position which gets overridden). */
+      setGifLibraryOpen(true);
+    } else if (toolType === "video") {
+      /* pendingDropPosRef stays set — consumed by insertElement via onInsert. */
+      setVideoEmbedDialogOpen(true);
+    } else if (toolType === "hasad-activity") {
+      /* pendingDropPosRef stays set — consumed by insertElement inside onPickHasad. */
+      setActivityHubInitialTab("hasad");
+      setActivityHubOpen(true);
+    } else if (toolType.startsWith("shape:")) {
+      const sh = toolType.replace("shape:", "") as "rect" | "circle" | "line" | "arrow" | "divider";
+      insertElement({
+        id: genId("sh"), kind: "shape", shape: sh,
+        x: 200, y: 220, w: 320, h: sh === "line" || sh === "divider" ? 6 : sh === "arrow" ? 60 : 200,
+        bgColor: sh === "rect" || sh === "circle" ? "#ffffff" : "transparent",
+        borderColor: BRAND_GREEN, borderWidth: 4,
+      } as SlideElement);
+    } else if (toolType.startsWith("icon:")) {
+      const iconName = toolType.replace("icon:", "");
+      insertElement({
+        id: genId("ic"), kind: "icon", iconName,
+        x: 540, y: 280, w: 200, h: 200,
+        color: BRAND_GREEN,
+      } as SlideElement);
+    } else {
+      pendingDropPosRef.current = null;
     }
   };
 
@@ -971,11 +1161,29 @@ export default function PresentationEditor() {
         const ids = els.map((el) => el.id);
         setSelectedElId(ids[0]);
         setMultiSelectIds(ids.slice(1));
+        return;
+      }
+      if (k === "d") {
+        if (inField) return;
+        e.preventDefault();
+        duplicateActive();
+        return;
+      }
+      if (k === "s") {
+        e.preventDefault();
+        saveNow();
+        return;
+      }
+      if (k === "/") {
+        if (inField) return;
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, undo, redo, activeSlide]);
+  }, [readOnly, undo, redo, activeSlide, duplicateActive, saveNow]);
 
   /* Loading / error guards live AFTER every hook so the hook count
      stays identical between the loading render and the loaded render
@@ -1021,6 +1229,18 @@ export default function PresentationEditor() {
             <div className="min-w-0 flex flex-col">
               <h1 className="text-base sm:text-lg font-bold truncate flex items-center gap-2 tracking-tight" style={{ color: BRAND_GREEN }}>
                 {data.title}
+                {/* Pro Studio identity badge — always visible so teachers
+                    know they are in the advanced editor, not Quick Mode. */}
+                <span
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-extrabold shrink-0 select-none"
+                  style={{
+                    background: `${BRAND_GREEN}18`,
+                    color: BRAND_GREEN,
+                    border: `1px solid ${BRAND_GREEN}35`,
+                  }}
+                >
+                  🎛 Pro Studio
+                </span>
                 {tier && !tier.isPro && (
                   <button
                     onClick={() => setShowUpgrade(true)}
@@ -1040,12 +1260,6 @@ export default function PresentationEditor() {
                   saving={updateMutation.isPending}
                   isAr={isAr}
                 />
-                {tier && (
-                  <>
-                    <span className="opacity-40">•</span>
-                    <UsageStrip tier={tier} isAr={isAr} onUpgrade={() => setShowUpgrade(true)} />
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -1079,21 +1293,49 @@ export default function PresentationEditor() {
               ))}
             </div>
             
-            {/* Action buttons - hidden text on mobile */}
+            {/* إضافة نشاط — opens the Activity Hub so teachers can pick
+                either a Hasad assignment or a presentation activity. */}
             {Number.isFinite(id) && !readOnly && (
-              <LinkedActivitySelector presentationId={id} isAr={isAr} disabled={readOnly} />
+              <div className="relative inline-flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivityHubInitialTab("hasad");
+                    setActivityHubOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
+                  style={{
+                    color: BRAND_GREEN,
+                    borderColor: hasLinkedHasadActivity ? BRAND_GREEN : `${BRAND_GREEN}40`,
+                    background: hasLinkedHasadActivity ? `${BRAND_GREEN}08` : undefined,
+                  }}
+                  title={isAr ? "أضف نشاطاً إلى الشريحة" : "Add an activity to this slide"}
+                >
+                  <Gamepad2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">{isAr ? "إضافة نشاط" : "Add activity"}</span>
+                </button>
+                {/* Badge — appears when at least one hasad-activity element exists in the deck */}
+                {hasLinkedHasadActivity && (
+                  <span
+                    className="absolute -top-1.5 -end-1.5 px-1.5 py-px text-[9px] font-extrabold leading-none rounded-full text-white pointer-events-none"
+                    style={{ background: BRAND_GREEN }}
+                  >
+                    {isAr ? "مرتبط" : "Linked"}
+                  </span>
+                )}
+              </div>
             )}
 
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setAiBuilderOpen(true)}
               disabled={readOnly}
+              onClick={() => setLocation("/teacher/presentations/new")}
               className="h-9 gap-2 rounded-lg font-semibold transition-colors"
-              title={isAr ? "اقترح خطة من الذكاء" : "Suggest an AI outline"}
+              title={isAr ? "توليد عرض بالذكاء الاصطناعي" : "Generate with AI"}
             >
-              <Sparkles className="w-4 h-4" style={{ color: "#225739" }} />
-              <span className="hidden lg:inline">{isAr ? "اقترح خطة" : "AI outline"}</span>
+              <Sparkles className="w-4 h-4" style={{ color: BRAND_GREEN }} />
+              <span className="hidden lg:inline">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
             </Button>
 
             {/* Undo / Redo — small icon-only pair, sits with the rest of
@@ -1282,6 +1524,16 @@ export default function PresentationEditor() {
               <History className="w-4 h-4" />
               <span className="hidden lg:inline">{isAr ? "الجلسات" : "Sessions"}</span>
             </Button>
+            {/* Keyboard shortcuts help button */}
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-black text-muted-foreground border border-border hover:border-emerald-600/40 hover:text-emerald-700 hover:bg-emerald-50/60 transition-colors select-none"
+              title={isAr ? "اختصارات لوحة المفاتيح (Ctrl+/)" : "Keyboard shortcuts (Ctrl+/)"}
+              aria-label={isAr ? "اختصارات لوحة المفاتيح" : "Keyboard shortcuts"}
+            >
+              ?
+            </button>
           </div>
         </div>
         )}
@@ -1299,13 +1551,13 @@ export default function PresentationEditor() {
             isAr={isAr}
             mode={goLiveOpen.mode}
             onClose={() => setGoLiveOpen(null)}
-            onConfirm={async (targetClass) => {
+            onConfirm={async (targetClass, sessionMode) => {
               try {
                 const r = await fetch(`/api/presentations/${id}/sessions`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   credentials: "include",
-                  body: JSON.stringify({ targetClass: targetClass || null }),
+                  body: JSON.stringify({ targetClass: targetClass || null, sessionMode }),
                 });
                 if (!r.ok) {
                   const j = await r.json().catch(() => ({}));
@@ -1375,6 +1627,7 @@ export default function PresentationEditor() {
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
+            {/* Tools moved to Inspector panel (left rail) */}
             {/* Slide bulk-selection row — only renders when at least one
                 slide is in the bulk set, OR shows a tiny "select all"
                 chip otherwise. Stays out of the way visually. */}
@@ -1567,7 +1820,7 @@ export default function PresentationEditor() {
                   readOnly={readOnly}
                   selectedElId={selectedElId}
                   multiSelectIds={multiSelectIds}
-                  onSelectEl={(id) => { setSelectedElId(id); setMultiSelectIds([]); }}
+                  onSelectEl={(id) => { setSelectedElId(id); setMultiSelectIds([]); setGifLibraryOpen(false); }}
                   onToggleMultiSelect={(id) => {
                     /* Shift/Ctrl-click toggles a secondary selection.
                        The first click promotes the existing primary
@@ -1591,6 +1844,7 @@ export default function PresentationEditor() {
                   onRemoveMany={removeElements}
                   theme={theme}
                   pattern={pattern}
+                  onDropTool={handleToolDrop}
                 />
                 <div className="text-[11px] font-medium text-slate-500 bg-white/70 px-3 py-1 rounded-full ring-1 ring-slate-200/70 backdrop-blur-sm tracking-wide">
                   16:9 · {isAr ? `شريحة ${activeIdx + 1} من ${slides.length}` : `Slide ${activeIdx + 1} of ${slides.length}`}
@@ -1623,10 +1877,22 @@ export default function PresentationEditor() {
                   setPendingSuggestionKey(null);
                   setActivityPickerOpen(true);
                 }}
+                onOpenActivityHub={() => {
+                  setActivityHubInitialTab("home");
+                  setActivityHubOpen(true);
+                }}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
                 uploading={uploading}
                 onDeselect={() => setSelectedElId(null)}
+                gifLibraryOpen={gifLibraryOpen}
+                setGifLibraryOpen={setGifLibraryOpen}
+                onOpenActivityPickerWithKind={(kind) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  setPickerInitial({ kind } as any);
+                  setPendingSuggestionKey(null);
+                  setActivityPickerOpen(true);
+                }}
               />
             </div>
           </aside>
@@ -1672,7 +1938,14 @@ export default function PresentationEditor() {
             onChangePattern={onChangePattern}
             onPickImage={onPickImage}
             onInsertElement={insertElement}
-            onOpenActivityPicker={() => setActivityPickerOpen(true)}
+            onOpenActivityPicker={() => {
+              setActivityHubInitialTab("home");
+              setActivityHubOpen(true);
+            }}
+            onOpenActivityHub={() => {
+              setActivityHubInitialTab("hasad");
+              setActivityHubOpen(true);
+            }}
             onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
             onOpenImageSearch={() => setImageSearchOpen(true)}
             onOpenPreview={() => setPreviewIdx(activeIdx)}
@@ -1808,6 +2081,10 @@ export default function PresentationEditor() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {showShortcuts && (
+          <KeyboardShortcutsPanel isAr={isAr} onClose={() => setShowShortcuts(false)} />
+        )}
+
         <ActivityPickerDialog
           open={activityPickerOpen}
           onClose={() => {
@@ -1884,6 +2161,27 @@ export default function PresentationEditor() {
                 })
                 .catch(() => toast.error(isAr ? "تعذّر الحفظ في البنك" : "Failed to save to bank"));
             }
+          }}
+        />
+
+        {/* Activity Hub — unified picker for "نشاط من حصاد" and "أنشطة العرض".
+            Opened from both the Inspector "إضافة نشاط" button and the
+            topbar "اربط نشاط" button. The hub's onPickPresentation callback
+            hands off to ActivityPickerDialog so both flows stay available. */}
+        <ActivityHubDialog
+          open={activityHubOpen}
+          onClose={() => setActivityHubOpen(false)}
+          initialTab={activityHubInitialTab}
+          isAr={isAr}
+          onPickHasad={(el) => {
+            insertElement(el);
+            setActivityHubOpen(false);
+          }}
+          onPickPresentation={() => {
+            setActivityHubOpen(false);
+            setPickerInitial({});
+            setPendingSuggestionKey(null);
+            setActivityPickerOpen(true);
           }}
         />
       </div>
@@ -1992,9 +2290,10 @@ function GoLiveDialog({
   isAr: boolean;
   mode: "newTab" | "sameTab";
   onClose: () => void;
-  onConfirm: (targetClass: string) => void | Promise<void>;
+  onConfirm: (targetClass: string, sessionMode: "teacher" | "self_paced") => void | Promise<void>;
 }) {
   const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
+  const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
   const [submitting, setSubmitting] = useState(false);
   return (
     <div
@@ -2022,7 +2321,49 @@ function GoLiveDialog({
               : "Optionally pick a class so students join by name, or leave empty for guest mode."}
           </p>
         </div>
-        <div className="p-5 space-y-3" style={{ overflow: "visible" }}>
+        <div className="p-5 space-y-4" style={{ overflow: "visible" }}>
+
+          {/* Session pacing mode — Teacher-Paced vs Self-Paced */}
+          <div>
+            <div className="text-sm font-bold text-slate-700 mb-2">
+              {isAr ? "كيف تريد تشغيل الجلسة؟" : "How do you want to run the session?"}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSessionMode("teacher")}
+                className="rounded-xl border-2 p-3 text-start transition-all"
+                style={sessionMode === "teacher"
+                  ? { borderColor: BRAND_GREEN, background: "rgba(34,87,57,0.07)" }
+                  : { borderColor: "#e2e8f0", background: "transparent" }}
+              >
+                <div className="text-xl mb-1">🎓</div>
+                <div className="font-bold text-sm text-slate-800">
+                  {isAr ? "المعلم يتحكم" : "Teacher-Paced"}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {isAr ? "أنت تتحكم بتقدم الشرائح" : "You drive the slides"}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionMode("self_paced")}
+                className="rounded-xl border-2 p-3 text-start transition-all"
+                style={sessionMode === "self_paced"
+                  ? { borderColor: BRAND_GOLD, background: "rgba(217,165,33,0.08)" }
+                  : { borderColor: "#e2e8f0", background: "transparent" }}
+              >
+                <div className="text-xl mb-1">🧑‍💻</div>
+                <div className="font-bold text-sm text-slate-800">
+                  {isAr ? "الطالب يتحكم" : "Self-Paced"}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {isAr ? "كل طالب يتصفح بنفسه" : "Each student browses freely"}
+                </div>
+              </button>
+            </div>
+          </div>
+
           <ClassSelector
             value={targetClass}
             onChange={setTargetClass}
@@ -2051,7 +2392,7 @@ function GoLiveDialog({
               onClick={async () => {
                 setSubmitting(true);
                 try {
-                  await onConfirm(targetClass);
+                  await onConfirm(targetClass, sessionMode);
                 } finally {
                   setSubmitting(false);
                 }
@@ -2430,7 +2771,7 @@ function SlideThumbnail({
    doesn't fight the caret. Editing exits on Escape / Enter / blur. */
 function SlideCanvas({
   slide, isAr, readOnly, selectedElId, multiSelectIds, onSelectEl, onToggleMultiSelect,
-  onUpdateEl, onRemoveEl, onRemoveMany, theme, pattern,
+  onUpdateEl, onRemoveEl, onRemoveMany, theme, pattern, onDropTool,
 }: {
   slide: Slide;
   isAr: boolean;
@@ -2444,6 +2785,10 @@ function SlideCanvas({
   onRemoveMany: (ids: string[]) => void;
   theme: string;
   pattern: string;
+  /** Called when a toolbar item is dropped onto the canvas.
+   *  toolType: "text" | "image" | "image-search" | "gif" | "video" | "activity:<kind>"
+   *  canvasX / canvasY are in the logical 1280×720 coordinate space. */
+  onDropTool?: (toolType: string, canvasX: number, canvasY: number) => void;
 }) {
   const bg = slideBgStyle(slide, theme, pattern);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2458,6 +2803,8 @@ function SlideCanvas({
      here so the EditableShell can disable its drag handler while the
      contentEditable inside owns the pointer. */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /* Visual feedback while a toolbar item hovers over the canvas. */
+  const [toolDragOver, setToolDragOver] = useState(false);
 
   /* Esc/Delete keyboard support — feels broken without it. Bulk-aware:
      when Ctrl+A (or shift-click) populated `multiSelectIds`, Delete
@@ -2514,7 +2861,57 @@ function SlideCanvas({
              selection any time the bubble reached the container. */
           if (e.target === e.currentTarget && !readOnly) onSelectEl(null);
         }}
+        /* ── Toolbar drag-and-drop drop-zone ─────────────────────────
+           We only accept drags that carry our "application/hasad-tool"
+           MIME type so random browser drags (text selection, links, etc.)
+           are ignored and don't trigger the indicator. */
+        onDragOver={(e) => {
+          if (!onDropTool || readOnly) return;
+          if (!e.dataTransfer.types.includes("application/hasad-tool")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          if (!toolDragOver) setToolDragOver(true);
+        }}
+        onDragEnter={(e) => {
+          if (!onDropTool || readOnly) return;
+          if (!e.dataTransfer.types.includes("application/hasad-tool")) return;
+          e.preventDefault();
+          setToolDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          /* Only clear when the pointer truly leaves the canvas
+             (not when moving over a child element). */
+          if (!containerRef.current) return;
+          const related = e.relatedTarget as Node | null;
+          if (related && containerRef.current.contains(related)) return;
+          setToolDragOver(false);
+        }}
+        onDrop={(e) => {
+          setToolDragOver(false);
+          if (!onDropTool || readOnly) return;
+          const toolType = e.dataTransfer.getData("application/hasad-tool");
+          if (!toolType) return;
+          e.preventDefault();
+          /* Convert client coordinates to logical canvas coordinates. */
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const canvasX = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
+          const canvasY = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
+          onDropTool(toolType, canvasX, canvasY);
+        }}
       >
+        {/* Drop overlay — shown while a toolbar tool hovers over the canvas */}
+        {toolDragOver && (
+          <div
+            className="pointer-events-none absolute inset-0 z-50 rounded-xl border-4 border-dashed border-emerald-500 bg-emerald-500/10 flex items-center justify-center"
+            aria-hidden
+          >
+            <div className="rounded-xl bg-emerald-600/90 px-4 py-2 text-white text-sm font-bold shadow-lg backdrop-blur-sm select-none">
+              {/* Label language mirrors the deck direction */}
+              {typeof isAr === "undefined" || isAr ? "أفلت هنا لإضافة العنصر" : "Drop here to place"}
+            </div>
+          </div>
+        )}
         {(slide.elements ?? []).map((el) => {
           const live = transform && transform.id === el.id ? transform : null;
           const lw = Math.max(20, el.w + (live?.dw ?? 0));
@@ -2795,6 +3192,9 @@ function ElementContent({
   if (el.kind === "image") {
     const imgEl = el as typeof el & {
       objectFit?: string;
+      objectPositionX?: number;
+      objectPositionY?: number;
+      cropPct?: { x: number; y: number; w: number; h: number };
       imageOpacity?: number;
       imageBorderRadius?: number;
       flipH?: boolean;
@@ -2810,6 +3210,9 @@ function ElementContent({
     if (imgEl.brightness !== undefined && imgEl.brightness !== 100) filters.push(`brightness(${imgEl.brightness}%)`);
     if (imgEl.contrast  !== undefined && imgEl.contrast  !== 100) filters.push(`contrast(${imgEl.contrast}%)`);
     if (imgEl.saturation !== undefined && imgEl.saturation !== 100) filters.push(`saturate(${imgEl.saturation}%)`);
+    const crop = imgEl.cropPct;
+    const transformStr = transforms.length ? transforms.join(" ") : undefined;
+    const filterStr    = filters.length ? filters.join(" ") : undefined;
     return el.url ? (
       <div style={{
         width: "100%", height: "100%",
@@ -2817,21 +3220,31 @@ function ElementContent({
         overflow: "hidden",
         opacity: imgEl.imageOpacity ?? 1,
       }}>
-        <img
-          src={el.url}
-          alt=""
-          style={{
-            width: "100%", height: "100%",
-            objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
-            // pointerEvents intentionally NOT "none" — the shell's pointerdown
-            // handler bubbles up and selects the element on click. The native
-            // image drag is suppressed via draggable={false}.
-            transform: transforms.length ? transforms.join(" ") : undefined,
-            filter: filters.length ? filters.join(" ") : undefined,
-            userSelect: "none",
-          }}
-          draggable={false}
-        />
+        {crop ? (
+          <div style={{
+            width: `${100 / crop.w}%`,
+            height: `${100 / crop.h}%`,
+            transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
+          }}>
+            <img src={el.url} alt="" draggable={false}
+              style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
+                transform: transformStr, filter: filterStr, userSelect: "none" }} />
+          </div>
+        ) : (
+          <img
+            src={el.url}
+            alt=""
+            style={{
+              width: "100%", height: "100%",
+              objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
+              objectPosition: `${imgEl.objectPositionX ?? 50}% ${imgEl.objectPositionY ?? 50}%`,
+              transform: transformStr,
+              filter: filterStr,
+              userSelect: "none",
+            }}
+            draggable={false}
+          />
+        )}
       </div>
     ) : (
       <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">
@@ -2960,6 +3373,13 @@ function ElementContent({
     return (
       <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
         <HasadGameRenderer el={el} lang={isAr ? "ar" : "en"} />
+      </div>
+    );
+  }
+  if (el.kind === "hasad-activity") {
+    return (
+      <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
+        <HasadActivityRenderer el={el} lang={isAr ? "ar" : "en"} />
       </div>
     );
   }
@@ -3154,9 +3574,11 @@ function Inspector({
   isAr, readOnly, slide, selectedEl, theme, pattern,
   onChangeTheme, onChangePattern,
   onUpdateSlide, onUpdateEl, onRemoveEl, onDuplicateEl, onMoveZ,
-  onPickImage, onInsertElement, onOpenActivityPicker, onOpenVideoEmbedDialog,
+  onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, uploading,
   onDeselect,
+  gifLibraryOpen, setGifLibraryOpen,
+  onOpenActivityPickerWithKind,
 }: {
   isAr: boolean;
   readOnly: boolean;
@@ -3174,11 +3596,64 @@ function Inspector({
   onPickImage: () => void;
   onInsertElement: (el: SlideElement) => void;
   onOpenActivityPicker: () => void;
+  onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
   uploading: boolean;
   onDeselect: () => void;
+  gifLibraryOpen?: boolean;
+  setGifLibraryOpen?: (v: boolean) => void;
+  onOpenActivityPickerWithKind?: (kind: string) => void;
 }) {
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifUrl, setGifUrl] = useState("");
+  const [gifLibraryCat, setGifLibraryCat] = useState("celebrate");
+  const [gifSearchQuery, setGifSearchQuery] = useState("");
+  const [gifSearchResults, setGifSearchResults] = useState<{ url: string; alt: string }[]>([]);
+  const [gifSearchLoading, setGifSearchLoading] = useState(false);
+  /* When used from the desktop editor, gifLibraryOpen is lifted to the
+     editor level so the left-rail toolbar can open it. When used from
+     the mobile shell, these props are absent and the Inspector manages
+     its own local GIF state instead (restoring original behaviour). */
+  const [_localGifOpen, _setLocalGifOpen] = useState(false);
+  const activeGifOpen = gifLibraryOpen !== undefined ? gifLibraryOpen : _localGifOpen;
+  const activeSetGifOpen = (v: boolean) => {
+    if (setGifLibraryOpen) setGifLibraryOpen(v);
+    else _setLocalGifOpen(v);
+  };
+
+  /* Debounced GIPHY search */
+  useEffect(() => {
+    const q = gifSearchQuery.trim();
+    if (!q) { setGifSearchResults([]); setGifSearchLoading(false); return; }
+    setGifSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(q)}&limit=12&rating=g&lang=ar`
+        );
+        const json = await res.json() as { data: { images: { fixed_height: { url: string } }; title: string }[] };
+        setGifSearchResults(
+          (json.data ?? []).map(g => ({ url: g.images.fixed_height.url, alt: g.title || q }))
+        );
+      } catch {
+        setGifSearchResults([]);
+      } finally {
+        setGifSearchLoading(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [gifSearchQuery]);
+
+  /* Auto-scroll the right panel to the GIF section whenever it opens
+     from the left-rail toolbar so the teacher sees it immediately. */
+  const gifSectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeGifOpen && gifSectionRef.current) {
+      gifSectionRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [activeGifOpen]);
+
   if (!slide) return null;
 
   if (selectedEl) {
@@ -3369,6 +3844,27 @@ function Inspector({
           <HasadGameInspector el={selectedEl} onUpdateEl={onUpdateEl} disabled={readOnly} isAr={isAr} deckTheme={theme} />
         )}
 
+        {selectedEl.kind === "hasad-activity" && (() => {
+          const hEl = selectedEl as typeof selectedEl & { assignmentId?: number; assignmentTitle?: string };
+          return (
+            <Section title={isAr ? "نشاط من حصاد" : "Hasad Activity"} icon={<Gamepad2 className="w-4 h-4" />}>
+              <div className="space-y-3">
+                <div
+                  className="p-3 rounded-xl border text-sm font-medium"
+                  style={{ background: `${BRAND_GREEN}08`, borderColor: `${BRAND_GREEN}30`, color: BRAND_GREEN }}
+                >
+                  {hEl.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity")}
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {isAr
+                    ? "سيُشغَّل هذا النشاط أثناء العرض المباشر. لتغيير النشاط، احذف هذا العنصر وأضف عنصراً جديداً."
+                    : "This activity will launch during the live presentation. To change it, delete this element and add a new one."}
+                </p>
+              </div>
+            </Section>
+          );
+        })()}
+
         {selectedEl.kind === "video-embed" && (
           <VideoEmbedInspector el={selectedEl} onUpdateEl={onUpdateEl} disabled={readOnly} isAr={isAr} />
         )}
@@ -3457,6 +3953,72 @@ function Inspector({
 
   return (
     <div className="space-y-1">
+      {/* ── Quick-add elements — mirrors what was in the slide rail ── */}
+      <Section title={isAr ? "إضافة عناصر" : "Add Elements"} icon={<Plus className="w-4 h-4" />} defaultOpen>
+        <div className="space-y-2.5">
+          {/* Primary Add Activity button — opens ActivityHubDialog (hasad + presentation) */}
+          <button
+            type="button"
+            onClick={onOpenActivityHub}
+            disabled={readOnly}
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+            style={{ background: BRAND_GREEN, color: "white" }}
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            {isAr ? "إضافة نشاط" : "Add Activity"}
+          </button>
+          {/* Activity type quick-grid */}
+          <div className="grid grid-cols-5 gap-1">
+            {([
+              { kind: "word_cloud",  Icon: Cloud,         labelAr: "سحابة",  labelEn: "Cloud" },
+              { kind: "open_wall",   Icon: MessageSquare, labelAr: "جدار",   labelEn: "Wall"  },
+              { kind: "mcq",         Icon: HelpCircle,    labelAr: "MCQ",    labelEn: "MCQ"   },
+              { kind: "true_false",  Icon: CheckCircle2,  labelAr: "صح/خطأ", labelEn: "T/F"   },
+              { kind: "poll",        Icon: BarChart2,     labelAr: "تصويت",  labelEn: "Poll"  },
+            ] as const).map(({ kind, Icon, labelAr, labelEn }) => (
+              <button
+                key={kind}
+                type="button"
+                disabled={readOnly}
+                onClick={() => onOpenActivityPickerWithKind?.(kind)}
+                title={isAr ? labelAr : labelEn}
+                className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40"
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
+              </button>
+            ))}
+          </div>
+          {/* Media quick-grid */}
+          <div className="grid grid-cols-4 gap-1">
+            <button type="button" disabled={readOnly} onClick={onPickImage}
+              title={isAr ? "رفع صورة" : "Upload image"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <ImagePlus className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "صورة" : "Image"}</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={() => activeSetGifOpen(true)}
+              title="GIF"
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Film className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">GIF</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={onOpenVideoEmbedDialog}
+              title={isAr ? "تضمين فيديو" : "Embed video"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Video className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "فيديو" : "Video"}</span>
+            </button>
+            <button type="button" disabled={readOnly} onClick={onOpenImageSearch}
+              title={isAr ? "بحث صور" : "Image search"}
+              className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+              <Search className="w-4 h-4" />
+              <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
+            </button>
+          </div>
+        </div>
+      </Section>
+
       <Section title={isAr ? "السمات" : "Themes"} icon={<Palette className="w-4 h-4" />} defaultOpen>
         <ThemePanel value={theme} onChange={onChangeTheme} disabled={readOnly} isAr={isAr} />
       </Section>
@@ -3501,22 +4063,20 @@ function Inspector({
       <Section title={isAr ? "العناصر" : "Elements"} icon={<Square className="w-4 h-4" />}>
         <div className="space-y-4">
           <div>
-            <Label className="text-xs font-bold text-muted-foreground block mb-2 flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5" />
-              {isAr ? "نشاط تفاعلي" : "Interactive activity"}
-            </Label>
             <Button
-              variant="outline" size="sm"
-              className="w-full justify-center gap-2 font-bold shadow-sm"
+              size="sm"
+              className="w-full justify-center gap-2 font-extrabold shadow-sm text-white"
               disabled={readOnly}
-              onClick={onOpenActivityPicker}
-              style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
+              onClick={onOpenActivityHub}
+              style={{ background: BRAND_GREEN, borderColor: BRAND_GREEN }}
             >
-              <HelpCircle className="w-3.5 h-3.5" />
-              {isAr ? "إضافة نشاط" : "Add activity"}
+              <Gamepad2 className="w-4 h-4" />
+              {isAr ? "إضافة نشاط" : "Add Activity"}
             </Button>
-            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-              {isAr ? "اختيار من متعدد، صح/خطأ، إجابة مفتوحة، أو تصويت." : "MCQ, true/false, open answer, or poll."}
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed text-center">
+              {isAr
+                ? "نشاط من حصاد · سحابة كلمات · اختيار من متعدد · وأكثر"
+                : "Hasad activity · Word cloud · MCQ · and more"}
             </p>
           </div>
           <div>
@@ -3528,13 +4088,18 @@ function Inspector({
                 <button
                   key={sh}
                   disabled={readOnly}
+                  draggable={!readOnly}
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "copy";
+                    e.dataTransfer.setData("application/hasad-tool", `shape:${sh}`);
+                  }}
                   onClick={() => onInsertElement({
                     id: genId("sh"), kind: "shape", shape: sh as never,
                     x: 200, y: 220, w: 320, h: sh === "line" || sh === "divider" ? 6 : sh === "arrow" ? 60 : 200,
                     bgColor: sh === "rect" || sh === "circle" ? "#ffffff" : "transparent",
                     borderColor: BRAND_GREEN, borderWidth: 4,
                   } as SlideElement)}
-                  className="aspect-square rounded-lg border border-border hover:border-emerald-500 flex items-center justify-center bg-white shadow-sm transition-all hover:-translate-y-0.5"
+                  className="aspect-square rounded-lg border border-border hover:border-emerald-500 flex items-center justify-center bg-white shadow-sm transition-all hover:-translate-y-0.5 cursor-grab active:cursor-grabbing"
                   title={sh}
                 >
                   {sh === "rect" ? <Square className="w-4 h-4 text-emerald-800" />
@@ -3595,6 +4160,211 @@ function Inspector({
               {isAr ? "إدراج فيديو (يوتيوب / حصاد)" : "Embed Video (YouTube / Hasad)"}
             </span>
           </Button>
+          {/* GIF Library */}
+          <div ref={gifSectionRef} className="space-y-2">
+            <Button
+              variant="outline"
+              className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${activeGifOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
+              onClick={() => { activeSetGifOpen(!activeGifOpen); setGifOpen(false); }}
+              disabled={readOnly}
+            >
+              <span className="text-base leading-none">🎞️</span>
+              <span className="font-bold text-sm text-foreground">
+                {isAr ? "مكتبة GIF" : "GIF Library"}
+              </span>
+              {activeGifOpen
+                ? <XIcon className="w-3.5 h-3.5 text-muted-foreground ms-auto" />
+                : <span className="text-xs text-muted-foreground ms-auto font-normal">{isAr ? "اضغط لفتح" : "click to open"}</span>}
+            </Button>
+
+            {activeGifOpen && (
+              <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                {/* Search input */}
+                <div className="p-2 pb-1">
+                  <div className="relative">
+                    <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      value={gifSearchQuery}
+                      onChange={e => setGifSearchQuery(e.target.value)}
+                      placeholder={isAr ? "ابحث في GIFs..." : "Search GIFs..."}
+                      dir={isAr ? "rtl" : "ltr"}
+                      className="h-8 text-xs rounded-xl ps-8 pe-7"
+                    />
+                    {gifSearchQuery && (
+                      <button
+                        onClick={() => setGifSearchQuery("")}
+                        className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {gifSearchQuery.trim() ? (
+                  /* ── Search results ── */
+                  <div className="p-2 pt-1 min-h-[80px]">
+                    {gifSearchLoading ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground text-xs gap-2">
+                        <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V0a12 12 0 100 24v-4l-3 3 3 3v4A12 12 0 014 12z" />
+                        </svg>
+                        {isAr ? "جارٍ البحث..." : "Searching..."}
+                      </div>
+                    ) : gifSearchResults.length === 0 ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">
+                        {isAr ? "لا نتائج — جرّب كلمة أخرى" : "No results — try another term"}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {gifSearchResults.map((item, i) => (
+                          <button
+                            key={item.url + i}
+                            title={item.alt}
+                            disabled={readOnly}
+                            onClick={() => {
+                              onInsertElement({
+                                id: `img-${Date.now()}`,
+                                kind: "image",
+                                url: item.url,
+                                x: 440, y: 210, w: 380, h: 280,
+                                objectFit: "contain",
+                              } as SlideElement);
+                              activeSetGifOpen(false);
+                              setGifSearchQuery("");
+                            }}
+                            className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.alt}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
+                            <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                              {item.alt}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {/* GIPHY attribution */}
+                    {!gifSearchLoading && gifSearchResults.length > 0 && (
+                      <p className="text-[9px] text-muted-foreground text-center mt-2 opacity-60">Powered by GIPHY</p>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Curated categories ── */
+                  <>
+                    <div className="flex overflow-x-auto gap-1 p-2 pb-1 scrollbar-none">
+                      {GIF_LIBRARY.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setGifLibraryCat(cat.id)}
+                          className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${
+                            gifLibraryCat === cat.id
+                              ? "text-white shadow"
+                              : "text-muted-foreground bg-background hover:bg-muted"
+                          }`}
+                          style={gifLibraryCat === cat.id ? { background: BRAND_GREEN } : {}}
+                        >
+                          {isAr ? cat.labelAr : cat.labelEn}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1.5 p-2 pt-1.5">
+                      {GIF_LIBRARY.find(c => c.id === gifLibraryCat)?.items.map(item => (
+                        <button
+                          key={item.url}
+                          title={isAr ? item.altAr : item.altEn}
+                          disabled={readOnly}
+                          onClick={() => {
+                            onInsertElement({
+                              id: `img-${Date.now()}`,
+                              kind: "image",
+                              url: item.url,
+                              x: 440, y: 210, w: 380, h: 280,
+                              objectFit: "contain",
+                            } as SlideElement);
+                            activeSetGifOpen(false);
+                          }}
+                          className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
+                        >
+                          <img
+                            src={item.url}
+                            alt={isAr ? item.altAr : item.altEn}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                const fb = parent.querySelector(".gif-fallback") as HTMLElement | null;
+                                if (fb) fb.style.display = "flex";
+                              }
+                            }}
+                          />
+                          <div className="gif-fallback hidden absolute inset-0 items-center justify-center text-muted-foreground text-xs text-center px-1">
+                            {isAr ? item.altAr : item.altEn}
+                          </div>
+                          <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                            {isAr ? item.altAr : item.altEn}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Custom URL fallback */}
+            {!activeGifOpen && (
+              gifOpen ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={gifUrl}
+                    onChange={(e) => setGifUrl(e.target.value)}
+                    placeholder={isAr ? "رابط GIF مخصص..." : "Custom GIF URL..."}
+                    dir="ltr"
+                    className="flex-1 h-9 text-xs rounded-xl"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && gifUrl.trim()) {
+                        onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 210, w: 380, h: 280, objectFit: "contain" } as SlideElement);
+                        setGifUrl(""); setGifOpen(false);
+                      }
+                      if (e.key === "Escape") { setGifOpen(false); setGifUrl(""); }
+                    }}
+                    autoFocus
+                  />
+                  <Button size="sm" disabled={!gifUrl.trim() || readOnly}
+                    className="shrink-0 rounded-xl" style={{ background: BRAND_GREEN }}
+                    onClick={() => {
+                      if (!gifUrl.trim()) return;
+                      onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 210, w: 380, h: 280, objectFit: "contain" } as SlideElement);
+                      setGifUrl(""); setGifOpen(false);
+                    }}>
+                    {isAr ? "إضافة" : "Add"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setGifOpen(false); setGifUrl(""); }}
+                    className="shrink-0 rounded-xl px-2">
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="sm"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  onClick={() => setGifOpen(true)} disabled={readOnly}>
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {isAr ? "أو أضف برابط مخصص" : "or add by custom URL"}
+                </Button>
+              )
+            )}
+          </div>
         </div>
       </Section>
 
@@ -3769,6 +4539,123 @@ function HasadGameInspector({
    teacher can label a lesson (e.g. "مقدمة الكيمياء"). */
 /* Inspector for an "image" element — fit mode, opacity, corner radius,
    and quick-replace shortcuts (re-upload or re-search). */
+/* ── CropPanel ────────────────────────────────────────────────────────────
+   Inline mini-preview crop UI. The user drags a crop rect over a scaled
+   preview of the image; on Apply we compute cropPct (all values 0..1)
+   that the image renderer uses to zoom + offset the image. */
+type CropPct = { x: number; y: number; w: number; h: number };
+const CPREV_W = 220;
+const CPREV_H = 138;
+const CROP_MIN = 20;
+
+function CropPanel({ url, value, isAr, onApply, onCancel }: {
+  url: string;
+  value?: CropPct;
+  isAr: boolean;
+  onApply: (c: CropPct) => void;
+  onCancel: () => void;
+}) {
+  const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number }>(() =>
+    value
+      ? { x: value.x * CPREV_W, y: value.y * CPREV_H, w: value.w * CPREV_W, h: value.h * CPREV_H }
+      : { x: 8, y: 5, w: CPREV_W - 16, h: CPREV_H - 10 }
+  );
+  const dragRef = useRef<{
+    kind: "move" | "tl" | "tr" | "bl" | "br";
+    sx: number; sy: number;
+    sr: typeof rect;
+  } | null>(null);
+
+  function clamp(r: typeof rect) {
+    const x = Math.max(0, Math.min(CPREV_W - CROP_MIN, r.x));
+    const y = Math.max(0, Math.min(CPREV_H - CROP_MIN, r.y));
+    const w = Math.max(CROP_MIN, Math.min(CPREV_W - x, r.w));
+    const h = Math.max(CROP_MIN, Math.min(CPREV_H - y, r.h));
+    return { x, y, w, h };
+  }
+
+  function startDrag(kind: NonNullable<typeof dragRef.current>["kind"], e: React.PointerEvent) {
+    e.stopPropagation();
+    dragRef.current = { kind, sx: e.clientX, sy: e.clientY, sr: { ...rect } };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  }
+
+  function onMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const { kind, sx, sy, sr } = dragRef.current;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    let nr = { ...sr };
+    if      (kind === "move") nr = { ...sr, x: sr.x + dx, y: sr.y + dy };
+    else if (kind === "br")   nr = { ...sr, w: sr.w + dx, h: sr.h + dy };
+    else if (kind === "bl")   nr = { x: sr.x + dx, y: sr.y,      w: sr.w - dx, h: sr.h + dy };
+    else if (kind === "tr")   nr = { x: sr.x,      y: sr.y + dy, w: sr.w + dx, h: sr.h - dy };
+    else if (kind === "tl")   nr = { x: sr.x + dx, y: sr.y + dy, w: sr.w - dx, h: sr.h - dy };
+    setRect(clamp(nr));
+  }
+
+  const { x, y, w, h } = rect;
+  const cp = [
+    `0 0`, `${CPREV_W}px 0`, `${CPREV_W}px ${CPREV_H}px`, `0 ${CPREV_H}px`,
+    `0 ${y}px`, `${x}px ${y}px`, `${x}px ${y + h}px`,
+    `${x + w}px ${y + h}px`, `${x + w}px ${y}px`, `0 ${y}px`,
+  ].join(", ");
+
+  const handle = (kind: NonNullable<typeof dragRef.current>["kind"], style: React.CSSProperties) => (
+    <div
+      key={kind}
+      onPointerDown={(e) => startDrag(kind, e)}
+      style={{
+        position: "absolute", width: 14, height: 14,
+        background: "#fff", border: "2px solid #225739", borderRadius: 3,
+        cursor: (kind === "tl" || kind === "br") ? "nwse-resize" : "nesw-resize",
+        ...style,
+      }}
+    />
+  );
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-center text-muted-foreground">
+        {isAr ? "اسحب لتحديد منطقة القص" : "Drag to set crop area"}
+      </p>
+      <div
+        className="relative overflow-hidden rounded-lg border border-border mx-auto select-none"
+        style={{ width: CPREV_W, height: CPREV_H }}
+        onPointerMove={onMove}
+        onPointerUp={() => { dragRef.current = null; }}
+      >
+        <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+        <div className="absolute inset-0 bg-black/50 pointer-events-none"
+          style={{ clipPath: `polygon(${cp})` }} />
+        <div
+          className="absolute border-2 border-white cursor-move"
+          style={{ left: x, top: y, width: w, height: h }}
+          onPointerDown={(e) => startDrag("move", e)}
+        >
+          {handle("tl", { top: -7, left: -7 })}
+          {handle("tr", { top: -7, right: -7 })}
+          {handle("bl", { bottom: -7, left: -7 })}
+          {handle("br", { bottom: -7, right: -7 })}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button size="sm"
+          className="text-xs gap-1"
+          style={{ background: BRAND_GREEN }}
+          onClick={() => onApply({ x: x / CPREV_W, y: y / CPREV_H, w: w / CPREV_W, h: h / CPREV_H })}
+        >
+          <XIcon className="w-3 h-3 rotate-45" />
+          {isAr ? "تطبيق" : "Apply"}
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs gap-1" onClick={onCancel}>
+          <XIcon className="w-3 h-3" />
+          {isAr ? "إلغاء" : "Cancel"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ImageInspector({
   el, onUpdateEl, disabled, isAr, onPickImage, onOpenImageSearch, uploading,
 }: {
@@ -3782,6 +4669,9 @@ function ImageInspector({
 }) {
   type ImgEl = SlideElement & {
     objectFit?: string;
+    objectPositionX?: number;
+    objectPositionY?: number;
+    cropPct?: CropPct;
     imageOpacity?: number;
     imageBorderRadius?: number;
     flipH?: boolean;
@@ -3792,6 +4682,9 @@ function ImageInspector({
   };
   const imgEl = el as ImgEl;
   const fit        = imgEl.objectFit          ?? "cover";
+  const posX       = imgEl.objectPositionX    ?? 50;
+  const posY       = imgEl.objectPositionY    ?? 50;
+  const cropPct    = imgEl.cropPct;
   const opacity    = imgEl.imageOpacity       ?? 1;
   const radius     = imgEl.imageBorderRadius  ?? 0;
   const flipH      = imgEl.flipH              ?? false;
@@ -3799,6 +4692,8 @@ function ImageInspector({
   const brightness = imgEl.brightness         ?? 100;
   const contrast   = imgEl.contrast           ?? 100;
   const saturation = imgEl.saturation         ?? 100;
+
+  const [cropOpen, setCropOpen] = useState(false);
 
   const fitOptions: Array<{ value: string; labelAr: string; label: string }> = [
     { value: "cover",   labelAr: "تملأ الإطار", label: "Cover"   },
@@ -3813,13 +4708,12 @@ function ImageInspector({
   const filtersChanged = brightness !== 100 || contrast !== 100 || saturation !== 100 || opacity !== 1;
 
   return (
-    <>
-      <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: "#225739" }}>
-        {isAr ? "إعدادات الصورة" : "Image settings"}
-      </div>
-
-      {/* Fit mode */}
-      <Field label={isAr ? "ملاءمة الصورة" : "Image fit"}>
+    <div className="space-y-4">
+      {/* ── Fit mode ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "ملاءمة الصورة" : "Image fit"}
+        </Label>
         <div className="grid grid-cols-2 gap-1">
           {fitOptions.map((opt) => (
             <button
@@ -3828,136 +4722,174 @@ function ImageInspector({
               onClick={() => onUpdateEl({ objectFit: opt.value } as Partial<SlideElement>)}
               className="px-2 py-1.5 text-xs rounded-lg border transition-colors text-center"
               style={{
-                background: fit === opt.value ? "#225739" : "transparent",
+                background: fit === opt.value ? BRAND_GREEN : "transparent",
                 color: fit === opt.value ? "#fff" : "inherit",
-                borderColor: fit === opt.value ? "#225739" : undefined,
+                borderColor: fit === opt.value ? BRAND_GREEN : undefined,
               }}
             >
               {isAr ? opt.labelAr : opt.label}
             </button>
           ))}
         </div>
-      </Field>
+      </div>
 
-      {/* Flip */}
-      <Field label={isAr ? "قلب الصورة" : "Flip"}>
-        <div className="grid grid-cols-2 gap-1">
-          <button
-            disabled={disabled}
-            onClick={() => onUpdateEl({ flipH: !flipH } as Partial<SlideElement>)}
-            className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
-            style={{
-              background: flipH ? "#225739" : "transparent",
-              color: flipH ? "#fff" : "inherit",
-              borderColor: flipH ? "#225739" : undefined,
+      {/* ── Object-position (only when cover & no crop) ── */}
+      {fit === "cover" && !cropPct && (
+        <div>
+          <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+            {isAr ? "موضع الصورة داخل الإطار" : "Image position"}
+          </Label>
+          <div className="space-y-2 bg-muted/30 rounded-lg p-2">
+            <div>
+              <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5">
+                <span>{isAr ? "أفقي" : "Horizontal"}</span>
+                <span>{posX}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={1} value={posX} disabled={disabled}
+                onChange={(e) => onUpdateEl({ objectPositionX: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+                className="w-full accent-emerald-700" />
+            </div>
+            <div>
+              <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5">
+                <span>{isAr ? "رأسي" : "Vertical"}</span>
+                <span>{posY}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={1} value={posY} disabled={disabled}
+                onChange={(e) => onUpdateEl({ objectPositionY: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+                className="w-full accent-emerald-700" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Crop ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "قص الصورة" : "Crop"}
+        </Label>
+        {cropOpen && el.url ? (
+          <CropPanel
+            url={el.url}
+            value={cropPct}
+            isAr={isAr}
+            onApply={(c) => {
+              onUpdateEl({ cropPct: c } as Partial<SlideElement>);
+              setCropOpen(false);
             }}
-          >
+            onCancel={() => setCropOpen(false)}
+          />
+        ) : (
+          <div className="flex gap-2">
+            <button
+              disabled={disabled}
+              onClick={() => setCropOpen(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-xl border-2 border-dashed transition-all hover:border-emerald-500 hover:bg-emerald-50/50"
+              style={cropPct
+                ? { borderColor: BRAND_GREEN, color: BRAND_GREEN, background: "#e8f4ed" }
+                : { borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+            >
+              <Crop className="w-3.5 h-3.5" />
+              {cropPct
+                ? (isAr ? "✓ تعديل القص" : "✓ Edit crop")
+                : (isAr ? "قص الصورة" : "Crop image")}
+            </button>
+            {cropPct && (
+              <button
+                disabled={disabled}
+                onClick={() => onUpdateEl({ cropPct: undefined } as Partial<SlideElement>)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-dashed text-red-500 hover:bg-red-50 transition-colors"
+                title={isAr ? "إزالة القص" : "Remove crop"}
+              >
+                <XIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Filters ── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <Label className="text-xs font-bold text-muted-foreground">
+            {isAr ? "تعديل الصورة" : "Adjustments"}
+          </Label>
+          {filtersChanged && (
+            <button disabled={disabled} onClick={resetFilters}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5">
+              ↺ {isAr ? "إعادة ضبط" : "Reset"}
+            </button>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Field label={`${isAr ? "الشفافية" : "Opacity"}: ${Math.round(opacity * 100)}%`}>
+            <input type="range" min={0} max={1} step={0.05} value={opacity} disabled={disabled}
+              onChange={(e) => onUpdateEl({ imageOpacity: parseFloat(e.target.value) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "السطوع" : "Brightness"}: ${brightness}%`}>
+            <input type="range" min={0} max={200} step={5} value={brightness} disabled={disabled}
+              onChange={(e) => onUpdateEl({ brightness: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "التباين" : "Contrast"}: ${contrast}%`}>
+            <input type="range" min={0} max={200} step={5} value={contrast} disabled={disabled}
+              onChange={(e) => onUpdateEl({ contrast: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "التشبّع" : "Saturation"}: ${saturation}%`}>
+            <input type="range" min={0} max={200} step={5} value={saturation} disabled={disabled}
+              onChange={(e) => onUpdateEl({ saturation: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+        </div>
+      </div>
+
+      {/* ── Flip ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "قلب الصورة" : "Flip"}
+        </Label>
+        <div className="grid grid-cols-2 gap-1">
+          <button disabled={disabled} onClick={() => onUpdateEl({ flipH: !flipH } as Partial<SlideElement>)}
+            className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
+            style={{ background: flipH ? BRAND_GREEN : "transparent", color: flipH ? "#fff" : "inherit", borderColor: flipH ? BRAND_GREEN : undefined }}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M8 2v12M4 5l-3 3 3 3M12 5l3 3-3 3" />
             </svg>
             {isAr ? "أفقي" : "Horiz."}
           </button>
-          <button
-            disabled={disabled}
-            onClick={() => onUpdateEl({ flipV: !flipV } as Partial<SlideElement>)}
+          <button disabled={disabled} onClick={() => onUpdateEl({ flipV: !flipV } as Partial<SlideElement>)}
             className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
-            style={{
-              background: flipV ? "#225739" : "transparent",
-              color: flipV ? "#fff" : "inherit",
-              borderColor: flipV ? "#225739" : undefined,
-            }}
-          >
+            style={{ background: flipV ? BRAND_GREEN : "transparent", color: flipV ? "#fff" : "inherit", borderColor: flipV ? BRAND_GREEN : undefined }}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M2 8h12M5 4l3-3 3 3M5 12l3 3 3-3" />
             </svg>
             {isAr ? "رأسي" : "Vert."}
           </button>
         </div>
-      </Field>
+      </div>
 
-      {/* Opacity */}
-      <Field label={`${isAr ? "الشفافية" : "Opacity"}: ${Math.round(opacity * 100)}%`}>
-        <input
-          type="range" min={0} max={1} step={0.05}
-          value={opacity} disabled={disabled}
-          onChange={(e) => onUpdateEl({ imageOpacity: parseFloat(e.target.value) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Brightness */}
-      <Field label={`${isAr ? "السطوع" : "Brightness"}: ${brightness}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={brightness} disabled={disabled}
-          onChange={(e) => onUpdateEl({ brightness: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Contrast */}
-      <Field label={`${isAr ? "التباين" : "Contrast"}: ${contrast}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={contrast} disabled={disabled}
-          onChange={(e) => onUpdateEl({ contrast: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Saturation */}
-      <Field label={`${isAr ? "التشبّع" : "Saturation"}: ${saturation}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={saturation} disabled={disabled}
-          onChange={(e) => onUpdateEl({ saturation: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Reset filters */}
-      {filtersChanged && (
-        <button
-          disabled={disabled}
-          onClick={resetFilters}
-          className="w-full text-xs py-1 rounded border border-dashed text-foreground/60 hover:text-foreground/90 transition-colors"
-        >
-          {isAr ? "↺ إعادة ضبط المرشّحات" : "↺ Reset filters"}
-        </button>
-      )}
-
-      {/* Border radius */}
+      {/* ── Border radius ── */}
       <Field label={`${isAr ? "تدوير الزوايا" : "Corner radius"}: ${radius}px`}>
-        <input
-          type="range" min={0} max={200} step={4}
-          value={radius} disabled={disabled}
+        <input type="range" min={0} max={200} step={4} value={radius} disabled={disabled}
           onChange={(e) => onUpdateEl({ imageBorderRadius: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
+          className="w-full accent-emerald-700" />
       </Field>
 
-      {/* Replace image shortcuts */}
+      {/* ── Replace shortcuts ── */}
       <div className="flex gap-2 pt-1">
-        <Button
-          size="sm" variant="outline"
-          className="flex-1 gap-1 rounded-lg h-8 text-xs"
-          disabled={disabled || uploading}
-          onClick={onPickImage}
-        >
+        <Button size="sm" variant="outline" className="flex-1 gap-1 rounded-lg h-8 text-xs"
+          disabled={disabled || uploading} onClick={onPickImage}>
           <ImagePlus className="w-3.5 h-3.5" />
           {isAr ? "استبدال" : "Replace"}
         </Button>
-        <Button
-          size="sm" variant="outline"
-          className="flex-1 gap-1 rounded-lg h-8 text-xs"
-          disabled={disabled}
-          onClick={onOpenImageSearch}
-        >
+        <Button size="sm" variant="outline" className="flex-1 gap-1 rounded-lg h-8 text-xs"
+          disabled={disabled} onClick={onOpenImageSearch}>
           <Search className="w-3.5 h-3.5" />
           {isAr ? "من الويب" : "From web"}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -5254,8 +6186,13 @@ function IconPicker({
             <button
               key={name}
               disabled={disabled}
+              draggable={!disabled}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "copy";
+                e.dataTransfer.setData("application/hasad-tool", `icon:${name}`);
+              }}
               onClick={() => onChange(name)}
-              className="aspect-square rounded flex items-center justify-center hover:bg-emerald-500/10 transition-colors"
+              className="aspect-square rounded flex items-center justify-center hover:bg-emerald-500/10 transition-colors cursor-grab active:cursor-grabbing"
               style={{
                 background: selected ? BRAND_GREEN : "transparent",
                 color: selected ? "white" : "inherit",
@@ -5288,7 +6225,7 @@ function MobileShell({
   onRemoveEl, onDuplicateEl, onMoveZ,
   onAddSlide, onDuplicateSlide, onDeleteSlide, onMoveSlide,
   onChangeTheme, onChangePattern,
-  onPickImage, onInsertElement, onOpenActivityPicker, onOpenVideoEmbedDialog,
+  onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
   onOpenSessions, onGoLive, onExport, onBack, onUpgrade,
 }: {
@@ -5326,6 +6263,7 @@ function MobileShell({
   onPickImage: () => void;
   onInsertElement: (el: SlideElement) => void;
   onOpenActivityPicker: () => void;
+  onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
   onOpenPreview: () => void;
@@ -5544,6 +6482,7 @@ function MobileShell({
                   onAddShape={() => setSheet("shapes")}
                   onAddIcon={() => setSheet("icons")}
                   onAddActivity={() => { onOpenActivityPicker(); setSheet("none"); }}
+                  onAddHasad={() => { onOpenActivityHub(); setSheet("none"); }}
                   onOpenTheme={() => setSheet("theme")}
                   onOpenPattern={() => setSheet("pattern")}
                   onOpenNotes={() => setSheet("notes")}
@@ -5657,6 +6596,7 @@ function MobileShell({
                   onPickImage={onPickImage}
                   onInsertElement={onInsertElement}
                   onOpenActivityPicker={onOpenActivityPicker}
+                  onOpenActivityHub={onOpenActivityHub}
                   onOpenVideoEmbedDialog={onOpenVideoEmbedDialog}
                   onOpenImageSearch={onOpenImageSearch}
                   uploading={uploading}
@@ -5785,7 +6725,7 @@ function SlideStrip({
    grid sized for thumbs. */
 function MobileAddGrid({
   isAr, uploading, readOnly,
-  onAddText, onAddImage, onAddImageSearch, onAddShape, onAddIcon, onAddActivity,
+  onAddText, onAddImage, onAddImageSearch, onAddShape, onAddIcon, onAddActivity, onAddHasad,
   onOpenTheme, onOpenPattern, onOpenNotes,
 }: {
   isAr: boolean;
@@ -5797,6 +6737,7 @@ function MobileAddGrid({
   onAddShape: () => void;
   onAddIcon: () => void;
   onAddActivity: () => void;
+  onAddHasad: () => void;
   onOpenTheme: () => void;
   onOpenPattern: () => void;
   onOpenNotes: () => void;
@@ -5815,6 +6756,7 @@ function MobileAddGrid({
     { icon: Shapes, label: isAr ? "شكل" : "Shape", color: "#F59E0B", onClick: onAddShape },
     { icon: Smile, label: isAr ? "أيقونة" : "Icon", color: "#EC4899", onClick: onAddIcon },
     { icon: Sparkles, label: isAr ? "نشاط" : "Activity", color: BRAND_GREEN, onClick: onAddActivity },
+    { icon: Gamepad2, label: isAr ? "حصاد" : "Hasad", color: "#D97706", onClick: onAddHasad },
     { icon: Palette, label: isAr ? "ثيم" : "Theme", color: "#475569", onClick: onOpenTheme },
     { icon: Layers, label: isAr ? "نقش" : "Pattern", color: "#0891B2", onClick: onOpenPattern },
     { icon: FileText, label: isAr ? "ملاحظات" : "Notes", color: "#94A3B8", onClick: onOpenNotes },
@@ -5837,6 +6779,135 @@ function MobileAddGrid({
           <span className="text-[11px] font-medium text-slate-700">{item.label}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+/* ── Keyboard Shortcuts Panel ─────────────────────────────────────── */
+function KeyboardShortcutsPanel({ isAr, onClose }: { isAr: boolean; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const sections: Array<{
+    titleAr: string;
+    titleEn: string;
+    shortcuts: Array<{ keys: string[]; labelAr: string; labelEn: string }>;
+  }> = [
+    {
+      titleAr: "عام",
+      titleEn: "General",
+      shortcuts: [
+        { keys: ["Ctrl", "Z"],           labelAr: "تراجع",                   labelEn: "Undo" },
+        { keys: ["Ctrl", "Y"],           labelAr: "إعادة",                   labelEn: "Redo" },
+        { keys: ["Ctrl", "⇧", "Z"],     labelAr: "إعادة (بديل)",            labelEn: "Redo (alt)" },
+        { keys: ["Ctrl", "S"],           labelAr: "حفظ الآن",                labelEn: "Save now" },
+        { keys: ["Ctrl", "/"],           labelAr: "إظهار/إخفاء الاختصارات", labelEn: "Toggle shortcuts panel" },
+      ],
+    },
+    {
+      titleAr: "الشرائح",
+      titleEn: "Slides",
+      shortcuts: [
+        { keys: ["Ctrl", "D"],           labelAr: "تكرار الشريحة الحالية",  labelEn: "Duplicate current slide" },
+      ],
+    },
+    {
+      titleAr: "العناصر",
+      titleEn: "Elements",
+      shortcuts: [
+        { keys: ["Ctrl", "A"],           labelAr: "تحديد جميع العناصر",     labelEn: "Select all elements" },
+        { keys: ["Del"],                 labelAr: "حذف العنصر المحدد",       labelEn: "Delete selected element" },
+        { keys: ["Backspace"],           labelAr: "حذف العنصر المحدد",       labelEn: "Delete selected element" },
+        { keys: ["Esc"],                 labelAr: "إلغاء التحديد",           labelEn: "Deselect / cancel edit" },
+      ],
+    },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        dir={isAr ? "rtl" : "ltr"}
+        style={{ maxHeight: "90vh" }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b border-slate-100"
+          style={{ background: `#22573910` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-black tracking-tight" style={{ color: "#225739" }}>
+              {isAr ? "⌨️ اختصارات لوحة المفاتيح" : "⌨️ Keyboard Shortcuts"}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label={isAr ? "إغلاق" : "Close"}
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto p-5 space-y-5" style={{ maxHeight: "calc(90vh - 68px)" }}>
+          {sections.map((section) => (
+            <div key={section.titleEn}>
+              <div
+                className="text-[11px] font-extrabold uppercase tracking-wider mb-2.5"
+                style={{ color: "#225739" }}
+              >
+                {isAr ? section.titleAr : section.titleEn}
+              </div>
+              <div className="space-y-1.5">
+                {section.shortcuts.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between gap-4 py-1">
+                    <span className="text-sm text-slate-700 font-medium">
+                      {isAr ? s.labelAr : s.labelEn}
+                    </span>
+                    {!isAr && (
+                      <span className="text-xs text-slate-500 font-medium ms-1">
+                        {s.labelAr}
+                      </span>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {s.keys.map((k, ki) => (
+                        <span key={ki} className="flex items-center gap-1">
+                          <kbd
+                            className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[11px] font-black text-slate-600 border border-slate-300 shadow-[0_1px_0_rgba(0,0,0,0.15)]"
+                            style={{ background: "#f6f8fa", minWidth: "1.6rem" }}
+                          >
+                            {k}
+                          </kbd>
+                          {ki < s.keys.length - 1 && (
+                            <span className="text-[10px] text-slate-400 font-bold">+</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Footer hint */}
+          <p className="text-[11px] text-slate-400 text-center pt-1 border-t border-slate-100">
+            {isAr
+              ? "اضغط Esc أو انقر خارج اللوحة للإغلاق"
+              : "Press Esc or click outside to close"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

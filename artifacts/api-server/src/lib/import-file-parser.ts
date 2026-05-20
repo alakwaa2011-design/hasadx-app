@@ -41,9 +41,16 @@ export interface ParsedPdfPage {
 const CANVAS_W = 1280;
 const CANVAS_H = 720;
 const MARGIN   = 64;
-const TITLE_H  = 90;
-const TITLE_FS = 38;
-const BODY_FS  = 20;
+const TITLE_H  = 100;
+const TITLE_FS = 48;
+const BODY_FS  = 26;
+
+/** Adaptive body font size — shrinks when many bullets are present. */
+function adaptiveBodyFs(lineCount: number): number {
+  if (lineCount >= 9) return 20;
+  if (lineCount >= 6) return 24;
+  return BODY_FS;
+}
 
 // ─── Slide builders ────────────────────────────────────────────────────────────
 
@@ -57,6 +64,7 @@ export function buildSlidesFromParsed(
 ): object[] {
   const isRtl = language === "ar";
   const align = isRtl ? ("end" as const) : ("start" as const);
+  const fontFamily = isRtl ? "'Cairo', sans-serif" : undefined;
   const bodyY = MARGIN + TITLE_H + 20;
   const bodyH = CANVAS_H - bodyY - MARGIN;
 
@@ -64,6 +72,8 @@ export function buildSlidesFromParsed(
     const slideId = `s${i + 1}`;
     const elements: object[] = [];
     let elIdx = 0;
+
+    const textDirection = isRtl ? ("rtl" as const) : undefined;
 
     if (p.title?.trim()) {
       elements.push({
@@ -76,7 +86,9 @@ export function buildSlidesFromParsed(
         text: p.title.trim().slice(0, 200),
         fontSize: TITLE_FS,
         fontWeight: "700",
-        align: "center" as const,
+        align,
+        textDirection,
+        fontFamily,
         color: "#1a1a1a",
       });
     }
@@ -92,9 +104,11 @@ export function buildSlidesFromParsed(
         w: CANVAS_W - MARGIN * 2,
         h: p.title?.trim() ? bodyH : CANVAS_H - MARGIN * 2,
         text: bodyText,
-        fontSize: BODY_FS,
+        fontSize: adaptiveBodyFs(bodyLines.length),
         fontWeight: "400",
         align,
+        textDirection,
+        fontFamily,
         color: "#333333",
       });
     }
@@ -106,6 +120,7 @@ export function buildSlidesFromParsed(
           ? "title-only"
           : "blank",
       background: "#ffffff",
+      ...(isRtl ? { dir: "rtl" as const, lang: "ar" as const } : {}),
       elements,
     };
   });

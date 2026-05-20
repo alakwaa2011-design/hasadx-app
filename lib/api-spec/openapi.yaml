@@ -2208,13 +2208,13 @@ components:
 
     SlideElement:
       type: object
-      description: Discriminated by `kind` (text | image | icon | shape | activity | hasad-game).
+      description: Discriminated by `kind` (text | image | icon | shape | activity | hasad-game | hasad-activity).
       properties:
         id:
           type: string
         kind:
           type: string
-          enum: [text, image, icon, shape, activity, hasad-game, video-embed]
+          enum: [text, image, icon, shape, activity, hasad-game, video-embed, hasad-activity]
         x:
           type: number
         y:
@@ -2341,6 +2341,14 @@ components:
           type: string
           nullable: true
           description: For `kind=video-embed` — optional display title shown in the editor preview.
+        assignmentId:
+          type: integer
+          nullable: true
+          description: For `kind=hasad-activity` — the Hasad assignment to launch during live presentation.
+        assignmentTitle:
+          type: string
+          nullable: true
+          description: For `kind=hasad-activity` — display title of the linked assignment (denormalised for editor preview).
       required:
         - id
         - kind

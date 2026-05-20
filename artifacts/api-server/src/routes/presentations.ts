@@ -22,6 +22,7 @@ import { extractFileContent } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
+import { generateMcqQuestions, materializeMcqSlides, type McqQuestion } from "../lib/generate-mcq-slides";
 
 const router: IRouter = Router();
 
@@ -182,6 +183,7 @@ const textElement = baseElement.extend({
   fontSize: z.number().min(6).max(220).optional(),
   fontWeight: z.string().max(20).optional(),
   align: z.enum(["start", "center", "end", "justify"]).optional(),
+  textDirection: z.enum(["ltr", "rtl"]).optional(),
   color: colorSchema.optional(),
   bgColor: colorSchema.optional(),
 });
@@ -217,7 +219,7 @@ const shapeElement = baseElement.extend({
    styled read-only card in present mode + exports. */
 const activityElement = baseElement.extend({
   kind: z.literal("activity"),
-  activityKind: z.enum(["mcq", "true_false", "open", "poll"]),
+  activityKind: z.enum(["mcq", "true_false", "open", "poll", "word_cloud", "open_wall"]),
   /* Optional pointer into question_bank. When present, `prompt` may be
      omitted — the renderer/exporter resolves the question text from
      the bank by id (questionId-only reference path). When absent, the
@@ -264,6 +266,18 @@ const hasadGameElement = baseElement.extend({
   questions: z.array(gameQuestionSchema).max(20).optional(),
 });
 
+/* Phase 4 — "Activity Hub" launcher. A `hasad-activity` element links
+   a teacher's existing Hasad assignment to a slide so it can be
+   launched during live presentation mode (teacher:create-game socket
+   event). Stores the assignment id + a denormalised display title so
+   the editor card preview doesn't require an extra API round-trip. */
+const hasadActivityElement = baseElement.extend({
+  kind: z.literal("hasad-activity"),
+  assignmentId: z.number().int().positive().optional(),
+  assignmentTitle: z.string().max(500).optional(),
+  gameType: z.string().max(50).optional(),
+});
+
 /* Video embed element — YouTube or Hasad interactive video lesson.
    `url` is the original pasted link; `videoKind` and `videoId` are
    parsed on the client and stored so the renderer can build the embed
@@ -283,6 +297,7 @@ const elementSchema = z.discriminatedUnion("kind", [
   shapeElement,
   activityElement,
   hasadGameElement,
+  hasadActivityElement,
   videoEmbedElement,
 ]);
 
@@ -292,6 +307,8 @@ const slideSchema = z.object({
   background: slideBackgroundSchema.optional(),
   backgroundImage: z.string().max(2000).optional(),
   notes: z.string().max(4000).optional(),
+  dir: z.enum(["ltr", "rtl"]).optional(),
+  lang: z.enum(["ar", "en"]).optional(),
   elements: z.array(elementSchema).max(80).default([]),
 });
 
@@ -853,6 +870,7 @@ router.post(
       let deckLanguage: "ar" | "en" = "ar";
       let contentExtractionFailed = false;
       let aiGenerated = false;
+      let pendingMcqQuestions: McqQuestion[] | undefined;
 
       if (mime === "application/pdf" || ext === ".pdf") {
         /* PDF → render each page as a PNG image via pdftoppm, upload to
@@ -886,18 +904,28 @@ router.post(
         ext === ".pptx" ||
         ext === ".ppt"
       ) {
-        /* PPTX → extract slide text then lay out as styled slides. */
+        /* PPTX → extract slide text, lay out as styled slides, then generate
+           2-3 AI MCQ questions for teacher review (not saved yet). */
         try {
           const parsed = await parsePptx(file.buffer);
-          deckLanguage = detectLangFromText(
-            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
-          );
+          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          deckLanguage = detectLangFromText(extractedText);
           const built = buildSlidesFromParsed(parsed, deckLanguage);
           const validated = slidesSchema.safeParse(built);
-          finalSlides =
+          const contentSlides =
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
+          finalSlides = contentSlides;
+          aiGenerated = true;
+          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
+          if (pendingQuestions.length > 0) {
+            pendingMcqQuestions = pendingQuestions;
+          }
+          req.log.info(
+            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
+            "Import (PPTX): content slides built, MCQ pending review",
+          );
         } catch (err) {
           req.log.warn({ err }, "Import: PPTX parsing failed — using blank deck");
           contentExtractionFailed = true;
@@ -909,18 +937,28 @@ router.post(
         ext === ".docx" ||
         ext === ".doc"
       ) {
-        /* DOCX → extract headings and paragraphs then distribute across slides. */
+        /* DOCX → extract headings and paragraphs, distribute across slides, then
+           generate 2-3 AI MCQ questions for teacher review (not saved yet). */
         try {
           const parsed = await parseDocx(file.buffer);
-          deckLanguage = detectLangFromText(
-            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
-          );
+          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          deckLanguage = detectLangFromText(extractedText);
           const built = buildSlidesFromParsed(parsed, deckLanguage);
           const validated = slidesSchema.safeParse(built);
-          finalSlides =
+          const contentSlides =
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
+          finalSlides = contentSlides;
+          aiGenerated = true;
+          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
+          if (pendingQuestions.length > 0) {
+            pendingMcqQuestions = pendingQuestions;
+          }
+          req.log.info(
+            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
+            "Import (DOCX): content slides built, MCQ pending review",
+          );
         } catch (err) {
           req.log.warn({ err }, "Import: DOCX parsing failed — using blank deck");
           contentExtractionFailed = true;
@@ -1020,11 +1058,299 @@ router.post(
         title: deck.title,
         slideCount: (finalSlides as unknown[]).length,
         aiGenerated,
+        ...(pendingMcqQuestions && pendingMcqQuestions.length > 0
+          ? { pendingMcqQuestions }
+          : {}),
         ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
       });
     } catch (err) {
       req.log.error({ err }, "Import presentation file failed");
       res.status(500).json({ message: "Failed to import file" });
+    }
+  },
+);
+
+/* ── Append reviewed MCQ questions as interactive slides ─────────────────
+   Called by the frontend after the teacher has reviewed, edited, or
+   deleted the AI-suggested questions from the import flow.
+   Only questions the teacher keeps are materialized and appended.        */
+router.post(
+  "/presentations/:id/append-mcq",
+  requireTeacher,
+  async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+      const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const presentationId = parseInt(rawId ?? "", 10);
+      if (isNaN(presentationId)) {
+        res.status(400).json({ message: "Invalid presentation ID" });
+        return;
+      }
+
+      const bodySchema = z.object({
+        questions: z
+          .array(
+            z.object({
+              prompt: z.string().min(1).max(500),
+              options: z.array(z.string().min(1).max(200)).min(2).max(6),
+              correctIndex: z.number().int().min(0).max(5),
+              slideTitle: z.string().min(1).max(80).optional(),
+            }),
+          )
+          .min(0)
+          .max(5),
+      });
+
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid question data", details: parsed.error.flatten() });
+        return;
+      }
+
+      const [deck] = await db
+        .select()
+        .from(presentationsTable)
+        .where(and(eq(presentationsTable.id, presentationId), eq(presentationsTable.teacherId, teacherId)))
+        .limit(1);
+
+      if (!deck) {
+        res.status(404).json({ message: "Presentation not found" });
+        return;
+      }
+
+      const { questions } = parsed.data;
+
+      if (questions.length === 0) {
+        res.status(200).json({ slideCount: (deck.slides as unknown[]).length });
+        return;
+      }
+
+      const currentSlides = (deck.slides as unknown[]) ?? [];
+      const newSlides = materializeMcqSlides(
+        questions,
+        (deck.language as "ar" | "en") ?? "ar",
+        deck.theme ?? "mist",
+        currentSlides.length + 1,
+      );
+
+      const updatedSlides = [...currentSlides, ...newSlides];
+      await db
+        .update(presentationsTable)
+        .set({ slides: updatedSlides })
+        .where(eq(presentationsTable.id, presentationId));
+
+      req.log.info(
+        { presentationId, appended: newSlides.length, total: updatedSlides.length },
+        "append-mcq: MCQ slides appended",
+      );
+
+      res.status(200).json({ slideCount: updatedSlides.length });
+    } catch (err) {
+      req.log.error({ err }, "append-mcq failed");
+      res.status(500).json({ message: "Failed to append questions" });
+    }
+  },
+);
+
+/* ── Import from a shared Google Slides URL ─────────────────────────────
+   Accepts a public Google Slides share/edit/pub link, converts it to the
+   PPTX export URL, downloads the file, then runs it through the same PPTX
+   pipeline as the file-upload path.  Returns the same JSON shape as
+   /import-file so the frontend can reuse the same result handler. */
+
+/** Extract the presentation ID from a Google Slides URL.
+ *  Handles /edit, /pub, /present, bare /d/{id}, and /d/{id}/... variants. */
+function parseGoogleSlidesId(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl.trim());
+    if (u.hostname !== "docs.google.com") return null;
+    const m = u.pathname.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+router.post(
+  "/presentations/import-url",
+  requireTeacher,
+  async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+
+      const bodySchema = z.object({ url: z.string().url("Invalid URL") });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "يرجى إدخال رابط صحيح / Please enter a valid URL" });
+        return;
+      }
+      const { url } = parsed.data;
+
+      /* ── Detect Canva links early and give a helpful message ── */
+      try {
+        const u = new URL(url);
+        if (u.hostname === "www.canva.com" || u.hostname === "canva.com") {
+          res.status(422).json({
+            message:
+              "روابط Canva لا تدعم التنزيل المباشر — يرجى تصدير العرض من Canva كملف PPTX ثم رفعه هنا / " +
+              "Canva links don't support direct download — please export your design from Canva as PPTX and upload it here.",
+          });
+          return;
+        }
+      } catch { /* ignore parse errors — caught below */ }
+
+      /* ── Validate Google Slides URL and extract ID ── */
+      const slideId = parseGoogleSlidesId(url);
+      if (!slideId) {
+        res.status(422).json({
+          message:
+            "الرابط غير مدعوم. الروابط المدعومة: Google Slides العامة فقط / " +
+            "Unsupported link. Only public Google Slides links are supported.",
+        });
+        return;
+      }
+
+      /* Build the direct PPTX export URL (works for "anyone with link" public decks). */
+      const exportUrl = `https://docs.google.com/presentation/d/${slideId}/export?format=pptx`;
+
+      req.log.info({ slideId, exportUrl }, "Import URL: fetching Google Slides PPTX");
+
+      /* Fetch with a 30-second timeout so we don't hold the connection open. */
+      let pptxBuffer: Buffer;
+      let contentType: string;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30_000);
+        let fetchRes: globalThis.Response;
+        try {
+          fetchRes = await fetch(exportUrl, {
+            signal: controller.signal,
+            headers: { "User-Agent": "HasadX/1.0 (+https://hasadx.com)" },
+          });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        /* Google redirects to the sign-in page or shows an HTML error when
+           the presentation is private or the ID is wrong.  Detect this by
+           checking content-type: a successful export always returns a PPTX
+           binary (application/...) NOT text/html. */
+        contentType = fetchRes.headers.get("content-type") ?? "";
+        if (!fetchRes.ok || contentType.includes("text/html")) {
+          res.status(422).json({
+            message:
+              "تعذّر تنزيل العرض — تأكد من أن الرابط عام (مشارك مع الجميع) / " +
+              "Could not download the presentation — make sure the link is set to 'Anyone with the link'.",
+          });
+          return;
+        }
+
+        const arrayBuf = await fetchRes.arrayBuffer();
+        pptxBuffer = Buffer.from(arrayBuf);
+      } catch (fetchErr: unknown) {
+        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+          res.status(504).json({ message: "انتهت مهلة تنزيل العرض / Download timed out — please try again." });
+          return;
+        }
+        req.log.warn({ fetchErr }, "Import URL: fetch failed");
+        res.status(502).json({ message: "تعذّر الوصول إلى الرابط / Could not reach the URL." });
+        return;
+      }
+
+      const tier = await resolvePresentationsTier(teacherId);
+      const svc = new ObjectStorageService();
+
+      /* Size guard — same limit as the file-upload path. */
+      const maxBytes = (tier.limits.maxSizeMbRegular ?? 50) * 1024 * 1024;
+      if (pptxBuffer.length > maxBytes) {
+        res.status(413).json({
+          message: `الملف أكبر من الحد المسموح به (${tier.limits.maxSizeMbRegular} م.ب) / File exceeds the ${tier.limits.maxSizeMbRegular} MB limit`,
+        });
+        return;
+      }
+
+      req.log.info({ bytes: pptxBuffer.length }, "Import URL: PPTX downloaded — parsing");
+
+      /* ── Parse PPTX through the shared pipeline ── */
+      let finalSlides: unknown[];
+      let deckLanguage: "ar" | "en" = "ar";
+      let contentExtractionFailed = false;
+      let titleFromUrl: string | undefined;
+
+      try {
+        const parsedSlides = await parsePptx(pptxBuffer);
+        deckLanguage = detectLangFromText(
+          parsedSlides.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
+        );
+        /* Use the first non-empty slide title as the deck name.
+         * If no slide has a formal title placeholder, fall back to the first
+         * non-empty bullet of the first slide (truncated to 60 chars). */
+        titleFromUrl =
+          parsedSlides.find((s) => s.title?.trim())?.title?.trim() ??
+          parsedSlides[0]?.bullets.find((b) => b.trim())?.trim().slice(0, 60) ??
+          undefined;
+        const built = buildSlidesFromParsed(parsedSlides, deckLanguage);
+        const validated = slidesSchema.safeParse(built);
+        finalSlides =
+          validated.success && validated.data.length > 0
+            ? validated.data
+            : defaultSlides(deckLanguage);
+      } catch (err) {
+        req.log.warn({ err }, "Import URL: PPTX parsing failed — using blank deck");
+        contentExtractionFailed = true;
+        finalSlides = defaultSlides(deckLanguage);
+      }
+
+      /* Fall back to a translated generic name when no slide title was found. */
+      const deckTitle =
+        titleFromUrl ||
+        (deckLanguage === "ar" ? "عرض مستورد" : "Imported Presentation");
+
+      /* ── Create deck row ── */
+      const themeKey = pickServerDefaultTheme();
+      const [deck] = await db
+        .insert(presentationsTable)
+        .values({
+          teacherId,
+          title: deckTitle,
+          language: deckLanguage,
+          theme: themeKey,
+          pattern: "solid",
+          coverEmoji: "📊",
+          slides: finalSlides,
+          status: "draft",
+        })
+        .returning();
+
+      /* ── Persist a reference asset (best-effort) ── */
+      let assetUrl = "";
+      try {
+        assetUrl = await svc.uploadBufferAsPublic({
+          buffer: pptxBuffer,
+          contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          extension: ".pptx",
+        });
+      } catch (uploadErr) {
+        req.log.warn({ uploadErr }, "Import URL: object-storage upload skipped");
+      }
+
+      await db.insert(presentationAssetsTable).values({
+        presentationId: deck.id,
+        kind: "file",
+        url: assetUrl,
+        byteSize: pptxBuffer.length,
+      });
+
+      res.status(201).json({
+        presentationId: deck.id,
+        title: deck.title,
+        slideCount: (finalSlides as unknown[]).length,
+        aiGenerated: false,
+        ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
+      });
+    } catch (err) {
+      req.log.error({ err }, "Import presentation URL failed");
+      res.status(500).json({ message: "Failed to import from URL" });
     }
   },
 );

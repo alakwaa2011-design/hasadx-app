@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
-import { Loader2, CheckCircle2, LogOut, Play } from "lucide-react";
+import { Loader2, CheckCircle2, LogOut, Play, ChevronLeft, ChevronRight } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -53,6 +53,20 @@ export default function PresentationPlay() {
     correctIndex?: number;
   } | null>(null);
   const [mySummary, setMySummary] = useState<{ correct: number; total: number } | null>(null);
+  const [textInput, setTextInput] = useState("");
+  const [textSubmitted, setTextSubmitted] = useState(false);
+  /* Self-Paced Mode state */
+  const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
+  const [selfPacedIdx, setSelfPacedIdx] = useState<number | null>(null);
+  const [selfPacedCount, setSelfPacedCount] = useState(0);
+  const [selfPacedSlide, setSelfPacedSlide] = useState<any>(null);
+  /** Activity element on the student's current self-paced slide (sanitized, no correctIndex). */
+  const [selfPacedActiveEl, setSelfPacedActiveEl] = useState<any>(null);
+  const [activitiesCompleted, setActivitiesCompleted] = useState(0);
+  const [selfPacedDone, setSelfPacedDone] = useState(false);
+  /* Tracks whether we've already initialized self-paced navigation so we
+     don't re-trigger a slide request on every state:sync event. */
+  const selfPacedInitRef = useRef(false);
 
   useEffect(() => {
     const s = loadStored();
@@ -100,7 +114,18 @@ export default function PresentationPlay() {
           activeElement: j.activeElement ?? null,
           revealDistribution: !!j.revealDistribution,
           revealAnswer: !!j.revealAnswer,
+          sessionMode: j.sessionMode ?? "teacher",
         }));
+        /* Rehydrate self-paced mode from REST polling so degraded-socket
+           reconnects still enable student navigation. On first detection
+           (selfPacedInitRef not yet set) we request slide 0 via socket. */
+        if (j.sessionMode === "self_paced" && !selfPacedInitRef.current) {
+          selfPacedInitRef.current = true;
+          setSessionMode("self_paced");
+          getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: 0 });
+        } else if (j.sessionMode === "teacher") {
+          setSessionMode("teacher");
+        }
         /* Phase 6 — REST hydration of inline-quiz state for first
            paint and reload-mid-question. Falls back to socket
            `activity:state` for live updates from there. */
@@ -134,16 +159,20 @@ export default function PresentationPlay() {
           slide: st?.slide ?? prev?.slide ?? null,
           activeElement: st?.activeElement ?? prev?.activeElement ?? null,
         };
-        /* If the active element changed, reset our local submission
-           state so the answer card is interactive for the new prompt.
-           Done inside the setLive callback so we get the freshest
-           previous active element id without depending on the React
-           closure's stale `live`. */
         if (st?.activeElementId !== prev?.activeElementId) {
           setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
         }
         return next;
       });
+      /* Self-Paced Mode: on first state:sync that carries the mode, request
+         slide 0 so the student starts from the beginning of the deck. */
+      if (st?.sessionMode === "self_paced" && !selfPacedInitRef.current) {
+        selfPacedInitRef.current = true;
+        setSessionMode("self_paced");
+        getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: 0 });
+      } else if (st?.sessionMode === "teacher") {
+        setSessionMode("teacher");
+      }
     };
     const onSockError = (e: any) => {
       // eslint-disable-next-line no-console
@@ -154,20 +183,21 @@ export default function PresentationPlay() {
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null); setTotalAnswered(0);
       setGameLaunch(null);
       setInlineActivity(null); setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onOpened = ({ elementId, element }: any) => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       if (element?.kind !== "hasad-game") setGameLaunch(null);
-      /* If this is an inline-quiz hasad-game, the server will follow
-         up immediately with `activity:state`; clear any prior summary. */
       setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onClosed = () => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       setGameLaunch(null);
       setInlineActivity(null); setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onGameLaunch = (p: { gameKind: string; studentUrl: string; label: string }) => {
       setGameLaunch({ gameKind: p.gameKind, studentUrl: p.studentUrl, label: p.label ?? "" });
@@ -197,8 +227,42 @@ export default function PresentationPlay() {
     };
     const onDist = (d: any) => { setDist({ counts: d.counts, total: d.total }); setTotalAnswered(d.total); };
     const onTotal = (d: any) => setTotalAnswered(d.total);
-    const onAccepted = () => setSubmitted(true);
+    const onAccepted = () => {
+      setSubmitted(true);
+      /* Mark text-based activities (word_cloud, open_wall) as submitted here —
+         the onClick no longer optimistically sets this so we never show "sent"
+         before the server confirms. */
+      setTextSubmitted(true);
+      /* In self-paced mode, count each accepted answer as a completed activity. */
+      if (selfPacedInitRef.current) {
+        setActivitiesCompleted((n) => n + 1);
+      }
+    };
     const onAlready = () => setSubmitted(true);
+    /* Self-Paced Mode: server sends back the requested slide + count + optional activity. */
+    const onSelfPacedSlide = ({ slideIndex, slide, slideCount, activeElement, activitiesCompleted: ac }: {
+      slideIndex: number; slide: any; slideCount: number; activeElement?: any; activitiesCompleted?: number;
+    }) => {
+      setSelfPacedIdx(slideIndex);
+      setSelfPacedCount(slideCount);
+      setSelfPacedSlide(slide);
+      setSelfPacedActiveEl(activeElement ?? null);
+      if (typeof ac === "number") setActivitiesCompleted(ac);
+      /* Reset per-slide activity state whenever the slide changes. */
+      setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
+      setInlineActivity(null); setMySummary(null); setTextInput(""); setTextSubmitted(false);
+      setGameLaunch(null);
+    };
+    /* Self-Paced Mode: teacher reclaimed control — lock back to teacher pace. */
+    const onSelfPacedEnded = ({ currentSlideIndex, slide }: { currentSlideIndex: number; slide: any }) => {
+      selfPacedInitRef.current = false;
+      setSessionMode("teacher");
+      setSelfPacedIdx(null);
+      setSelfPacedSlide(null);
+      setSelfPacedActiveEl(null);
+      setSelfPacedDone(false);
+      setLive((prev: any) => ({ ...(prev ?? {}), currentSlideIndex, slide }));
+    };
     const onEnded = () => {
       try { localStorage.removeItem(KEY); } catch { /* ignore */ }
       /* Bounce back to /p/join so the student can scan a fresh QR
@@ -225,6 +289,8 @@ export default function PresentationPlay() {
     s.on("connect", onReconnect);
     s.on("error", onSockError);
     s.on("connect_error", onSockError);
+    s.on("self_paced:slide", onSelfPacedSlide);
+    s.on("self_paced:ended", onSelfPacedEnded);
     /* Defensive REST polling — if for any reason the socket layer
        fails to deliver state:sync (auth race, network blip, proxy
        hiccup), poll the REST `/state` endpoint every 4s so the
@@ -302,6 +368,8 @@ export default function PresentationPlay() {
       s.off("connect", onReconnect);
       s.off("error", onSockError);
       s.off("connect_error", onSockError);
+      s.off("self_paced:slide", onSelfPacedSlide);
+      s.off("self_paced:ended", onSelfPacedEnded);
     };
     /* Intentionally NOT depending on `live?.activeElementId` — that
        caused the effect (and the poll interval, and the listener
@@ -312,12 +380,27 @@ export default function PresentationPlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stored, sid]);
 
+  /* Self-Paced Mode: navigate to next/prev slide. */
+  function selfPacedNav(delta: 1 | -1) {
+    const current = selfPacedIdx ?? 0;
+    const next = Math.max(0, Math.min(selfPacedCount - 1, current + delta));
+    if (next === current && delta > 0 && current >= selfPacedCount - 1) {
+      /* Already on last slide — show completion screen. */
+      setSelfPacedDone(true);
+      return;
+    }
+    getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: next });
+  }
+
   function answer(i: number) {
     if (submitted || chosen != null) return;
     setChosen(i);
+    /* Self-paced: use the element rendered on the student's current slide;
+       teacher-paced: use the globally teacher-opened element id. */
+    const answerElementId = sessionMode === "self_paced" ? selfPacedActiveEl?.id : live?.activeElementId;
     getSocket().emit("student:answer", {
       sessionId: sid,
-      elementId: live?.activeElementId,
+      elementId: answerElementId,
       answerIndex: i,
       /* Phase 6 — included for inline hasad-game quizzes; ignored
          server-side for legacy single-question activity elements. */
@@ -332,19 +415,70 @@ export default function PresentationPlay() {
   const isAr = deckMeta ? deckMeta.language !== "en" : true;
   const dir = isAr ? "rtl" : "ltr";
 
-  if (!stored) return <div className="fixed inset-0 bg-emerald-950 flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  const wameedhBg =
+    "radial-gradient(at 15% 18%, rgba(34,87,57,0.75) 0px, transparent 55%)," +
+    "radial-gradient(at 82% 80%, rgba(8,30,16,0.85) 0px, transparent 55%)," +
+    "linear-gradient(160deg, #0a1a0f 0%, #0e2118 55%, #121a14 100%)";
+
+  if (!stored) return (
+    <div className="fixed inset-0 flex items-center justify-center" style={{ background: wameedhBg }}>
+      <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+    </div>
+  );
 
   if (live?.status === "ended") {
     return (
-      <div dir={dir} className="fixed inset-0 flex flex-col items-center justify-center text-white p-4 text-center" style={{ background: "linear-gradient(135deg,#225739,#143523)" }}>
+      <div
+        dir={dir}
+        className="fixed inset-0 flex flex-col items-center justify-center text-white p-4 text-center"
+        style={{ background: wameedhBg, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
+      >
         <div className="text-5xl mb-4">👋</div>
         <h1 className="text-2xl font-black mb-2">{isAr ? "انتهت الجلسة" : "Session ended"}</h1>
-        <p className="text-white/70">{isAr ? "شكراً لمشاركتك!" : "Thanks for joining!"}</p>
+        <p style={{ color: "rgba(255,255,255,0.55)" }}>{isAr ? "شكراً لمشاركتك!" : "Thanks for joining!"}</p>
       </div>
     );
   }
 
-  const el = live?.activeElement;
+  /* Self-Paced Mode completion screen — shown when student reaches the last
+     slide and presses the "تم" / "Done" button. */
+  if (selfPacedDone) {
+    return (
+      <div
+        dir={dir}
+        className="fixed inset-0 flex flex-col items-center justify-center text-white p-6 text-center"
+        style={{ background: wameedhBg, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
+      >
+        <div className="rounded-3xl p-8 max-w-sm w-full" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(12px)" }}>
+          <div className="text-6xl mb-4">🎉</div>
+          <h1 className="text-2xl font-black mb-2" style={{ color: "#D9A521" }}>
+            {isAr ? "أتممت العرض!" : "All done!"}
+          </h1>
+          <p className="text-sm mb-4" style={{ color: "rgba(255,255,255,0.7)" }}>
+            {isAr ? `أكملت ${selfPacedCount} شريحة` : `You went through ${selfPacedCount} slide${selfPacedCount === 1 ? "" : "s"}`}
+            {activitiesCompleted > 0 && (isAr ? ` وأجبت على ${activitiesCompleted} نشاط` : ` and completed ${activitiesCompleted} activit${activitiesCompleted === 1 ? "y" : "ies"}`)}
+          </p>
+          {activitiesCompleted > 0 && (
+            <div className="rounded-2xl px-4 py-3 mb-4" style={{ background: "rgba(34,87,57,0.4)", border: "1px solid rgba(34,87,57,0.6)" }}>
+              <div className="flex items-center justify-center gap-2 text-white font-bold">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span>
+                  {isAr ? `${activitiesCompleted} نشاط مكتمل` : `${activitiesCompleted} activit${activitiesCompleted === 1 ? "y" : "ies"} completed`}
+                </span>
+              </div>
+            </div>
+          )}
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+            {isAr ? "سيُعلمك المعلم عند انتهاء الجلسة." : "Your teacher will let you know when the session ends."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* In self-paced mode, use the activity element bundled with the student's
+     current slide. In teacher-paced mode, use the globally opened element. */
+  const el = sessionMode === "self_paced" ? (selfPacedActiveEl ?? live?.activeElement) : live?.activeElement;
   const opts: string[] = Array.isArray(el?.options) ? el.options : [];
 
   /* English students get Latin A/B/C/D markers; Arabic students keep
@@ -361,6 +495,19 @@ export default function PresentationPlay() {
   const slideLang = (deckMeta?.language ?? (isAr ? "ar" : "en")) as "ar" | "en";
   const slideTheme = deckMeta?.theme ?? "emerald-gold";
   const slidePattern = deckMeta?.pattern ?? "dots";
+
+  /* In self-paced mode, always use the student's own slide (delivered by
+     the server via self_paced:slide). Fall back to the teacher's current
+     slide (live.slide) if the self-paced slide hasn't loaded yet. */
+  const displaySlide = sessionMode === "self_paced" && selfPacedSlide != null
+    ? selfPacedSlide
+    : live?.slide;
+  const displaySlideIndex = sessionMode === "self_paced" && selfPacedIdx != null
+    ? selfPacedIdx
+    : (live?.currentSlideIndex ?? 0);
+  const displaySlideCount = sessionMode === "self_paced" && selfPacedCount > 0
+    ? selfPacedCount
+    : undefined;
 
   /* Two-mode layout. The default ("watch") view is immersive — the
      teacher's slide fills the entire viewport so a student watching on
@@ -401,7 +548,12 @@ export default function PresentationPlay() {
     <div
       dir={dir}
       className="min-h-screen flex flex-col items-stretch"
-      style={{ background: "linear-gradient(135deg,#225739,#143523)" }}
+      style={{
+        background:
+          "radial-gradient(at 15% 18%, rgba(34,87,57,0.75) 0px, transparent 55%)," +
+          "radial-gradient(at 82% 80%, rgba(8,30,16,0.85) 0px, transparent 55%)," +
+          "linear-gradient(160deg, #0a1a0f 0%, #0e2118 55%, #121a14 100%)",
+      }}
     >
       {/* === WATCH MODE — slide fills viewport === */}
       {!inActivity && (
@@ -410,21 +562,22 @@ export default function PresentationPlay() {
               header. Sanitized server-side (no correctIndex, no future
               slides). */}
           <div className="relative flex-1 bg-black overflow-hidden">
-            {live?.slide ? (
-              <SlideStage lang={slideLang} slide={live.slide} theme={slideTheme} pattern={slidePattern} />
+            {displaySlide ? (
+              <SlideStage lang={slideLang} slide={displaySlide} theme={slideTheme} pattern={slidePattern} />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 text-base gap-3">
                 <Loader2 className="w-7 h-7 animate-spin" />
                 <span>{isAr ? "في انتظار المعلم لبدء العرض…" : "Waiting for the teacher to start…"}</span>
               </div>
             )}
-            {/* Overlay header — minimal, semi-transparent, never steals
-                meaningful slide real-estate. */}
+            {/* Overlay header — minimal, semi-transparent. */}
             <div className="absolute top-0 inset-x-0 flex items-center justify-between gap-2 px-4 py-2 text-white/85 text-[11px] bg-gradient-to-b from-black/55 to-transparent">
               <span className="truncate font-medium pointer-events-none">{isAr ? `مرحباً، ${stored.name}` : `Welcome, ${stored.name}`}</span>
               <div className="flex items-center gap-3">
                 <span className="opacity-80 tabular-nums pointer-events-none">
-                  {isAr ? `شريحة ${(live?.currentSlideIndex ?? 0) + 1}` : `Slide ${(live?.currentSlideIndex ?? 0) + 1}`}
+                  {displaySlideCount != null
+                    ? (isAr ? `شريحة ${displaySlideIndex + 1} / ${displaySlideCount}` : `Slide ${displaySlideIndex + 1} / ${displaySlideCount}`)
+                    : (isAr ? `شريحة ${displaySlideIndex + 1}` : `Slide ${displaySlideIndex + 1}`)}
                 </span>
                 <button
                   type="button"
@@ -437,9 +590,65 @@ export default function PresentationPlay() {
                 </button>
               </div>
             </div>
-            {/* Footer hint — tiny pill, only there if a slide is visible
-                so the empty-state already conveys the same info. */}
-            {live?.slide && (
+
+            {/* Self-Paced Mode: navigation controls at the bottom. */}
+            {sessionMode === "self_paced" && selfPacedCount > 0 && (
+              <div className="absolute bottom-0 inset-x-0 flex items-center justify-between gap-3 px-4 py-3 bg-gradient-to-t from-black/70 to-transparent">
+                <button
+                  type="button"
+                  disabled={displaySlideIndex <= 0}
+                  onClick={() => selfPacedNav(-1)}
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ background: "rgba(255,255,255,0.15)", color: "white", backdropFilter: "blur(6px)" }}
+                >
+                  {isAr ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                  {isAr ? "السابقة" : "Prev"}
+                </button>
+
+                {/* Dot-style progress indicator */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(selfPacedCount, 12) }).map((_, i) => {
+                    const active = i === Math.floor(displaySlideIndex / Math.max(1, Math.ceil(selfPacedCount / 12)));
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-full transition-all"
+                        style={{
+                          width: active ? 20 : 6,
+                          height: 6,
+                          background: active ? "#D9A521" : "rgba(255,255,255,0.3)",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {displaySlideIndex >= selfPacedCount - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelfPacedDone(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all"
+                    style={{ background: "#D9A521", color: "#1c1003" }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {isAr ? "تم" : "Done"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => selfPacedNav(1)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all"
+                    style={{ background: "rgba(255,255,255,0.15)", color: "white", backdropFilter: "blur(6px)" }}
+                  >
+                    {isAr ? "التالية" : "Next"}
+                    {isAr ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Footer hint — teacher-paced mode only. */}
+            {sessionMode !== "self_paced" && displaySlide && (
               <div className="absolute bottom-3 inset-x-0 flex justify-center pointer-events-none">
                 <div className="rounded-full bg-black/40 backdrop-blur-sm px-3 py-1 text-[11px] text-white/80">
                   {isAr ? "تابع مع المعلم — سيظهر السؤال هنا عند فتحه" : "Follow along — questions appear when opened"}
@@ -460,7 +669,9 @@ export default function PresentationPlay() {
               <span className="truncate font-medium">{stored.name}</span>
               <div className="flex items-center gap-3">
                 <span className="opacity-70 tabular-nums">
-                  {isAr ? `شريحة ${(live?.currentSlideIndex ?? 0) + 1}` : `Slide ${(live?.currentSlideIndex ?? 0) + 1}`}
+                  {sessionMode === "self_paced" && selfPacedIdx != null
+                    ? (isAr ? `شريحة ${selfPacedIdx + 1} / ${selfPacedCount}` : `Slide ${selfPacedIdx + 1} / ${selfPacedCount}`)
+                    : (isAr ? `شريحة ${(live?.currentSlideIndex ?? 0) + 1}` : `Slide ${(live?.currentSlideIndex ?? 0) + 1}`)}
                 </span>
                 <button
                   type="button"
@@ -474,11 +685,58 @@ export default function PresentationPlay() {
               </div>
             </div>
             <div className="rounded-xl overflow-hidden border border-white/10 bg-black w-full" style={{ aspectRatio: "16 / 9", maxHeight: "22vh" }}>
-              {live?.slide && (
-                <SlideStage lang={slideLang} slide={live.slide} theme={slideTheme} pattern={slidePattern} />
+              {displaySlide && (
+                <SlideStage lang={slideLang} slide={displaySlide} theme={slideTheme} pattern={slidePattern} />
               )}
             </div>
           </div>
+
+          {/* Self-Paced Mode: persistent prev/next nav shown even during an activity
+              so students are never stuck and must wait for teacher action. */}
+          {sessionMode === "self_paced" && selfPacedCount > 0 && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2">
+              <button
+                type="button"
+                disabled={displaySlideIndex <= 0}
+                onClick={() => selfPacedNav(-1)}
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+              >
+                {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                {isAr ? "السابقة" : "Prev"}
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(selfPacedCount, 12) }).map((_, i) => {
+                  const active = i === Math.floor(displaySlideIndex / Math.max(1, Math.ceil(selfPacedCount / 12)));
+                  return (
+                    <div key={i} className="rounded-full transition-all"
+                      style={{ width: active ? 16 : 5, height: 5, background: active ? "#D9A521" : "rgba(255,255,255,0.3)" }} />
+                  );
+                })}
+              </div>
+              {displaySlideIndex >= selfPacedCount - 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setSelfPacedDone(true)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all"
+                  style={{ background: "#D9A521", color: "#1c1003" }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {isAr ? "تم" : "Done"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => selfPacedNav(1)}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition-all"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "white" }}
+                >
+                  {isAr ? "التالية" : "Next"}
+                  {isAr ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                </button>
+              )}
+            </div>
+          )}
 
           {mySummary ? (
             /* Phase 6 — end-of-quiz summary card. Shows the student
@@ -633,6 +891,70 @@ export default function PresentationPlay() {
                     ? "سيعطيك المعلم رمز الانضمام (PIN). افتح اللعبة في تبويب جديد ثم أدخل الرمز."
                     : "Your teacher will share a join code (PIN). Open the game in a new tab and enter the code."}
                 </p>
+              </div>
+            </div>
+          ) : el && (el.activityKind === "word_cloud" || el.activityKind === "open_wall") ? (
+            /* ── Word cloud / open wall — text input card ── */
+            <div className="flex-1 flex flex-col p-4">
+              <div className="rounded-2xl bg-white/95 shadow-xl p-5 mb-4">
+                <div className="text-xs uppercase tracking-wider mb-2" style={{ color: el.activityKind === "word_cloud" ? "#7ec8e3" : "#D9A521" }}>
+                  {el.activityKind === "word_cloud"
+                    ? (isAr ? "☁ سحابة الكلمات" : "☁ Word Cloud")
+                    : (isAr ? "💬 جدار الردود" : "💬 Response Wall")}
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">
+                  {el.prompt || (isAr ? "أرسل ردك" : "Send your response")}
+                </h2>
+
+                {textSubmitted ? (
+                  <div className="flex flex-col items-center gap-3 py-4 text-center">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                    <div className="text-lg font-bold text-slate-800">
+                      {isAr ? "تم إرسال ردك!" : "Response sent!"}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {el.activityKind === "word_cloud"
+                        ? (isAr ? "شاهد الكلمات تظهر على الشاشة" : "Watch the words appear on screen")
+                        : (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value.slice(0, el.activityKind === "word_cloud" ? 60 : 500))}
+                      rows={el.activityKind === "word_cloud" ? 2 : 4}
+                      className="w-full p-3 text-base border-2 border-slate-200 rounded-xl bg-white resize-none outline-none focus:border-emerald-500 transition-colors"
+                      placeholder={
+                        el.activityKind === "word_cloud"
+                          ? (isAr ? "اكتب كلمة أو عبارة قصيرة…" : "Type a word or short phrase…")
+                          : (isAr ? "اكتب ردك هنا…" : "Type your response here…")
+                      }
+                      dir={isAr ? "rtl" : "ltr"}
+                    />
+                    <button
+                      disabled={!textInput.trim()}
+                      onClick={() => {
+                        const cleaned = textInput.trim();
+                        if (!cleaned) return;
+                        const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
+                        /* Self-paced: use the slide-bundled activity id; teacher-paced: global id. */
+                        const textElementId = sessionMode === "self_paced" ? selfPacedActiveEl?.id : live?.activeElementId;
+                        getSocket().emit(event, {
+                          sessionId: sid,
+                          elementId: textElementId,
+                          text: cleaned,
+                        });
+                        /* setTextSubmitted is called in onAccepted (answer:accepted)
+                           so we only show "sent" after server confirmation. */
+                      }}
+                      className="mt-3 w-full rounded-xl py-3 text-base font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: "#225739", color: "white" }}
+                    >
+                      {isAr ? "إرسال" : "Send"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : el ? (

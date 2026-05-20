@@ -92,7 +92,7 @@ function ShapeRenderer({ el }: { el: SlideElement }) {
  * interactive answering runtime ships in Phase 2B; for now we render
  * a styled brand card so the slide is presentable + exports cleanly.
  * Falls back gracefully when `prompt` is missing (e.g. mid-edit). */
-function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "ar" | "en"; stageMode?: boolean }) {
   if (el.kind !== "activity") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -102,6 +102,8 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
     true_false: { ar: "صح / خطأ", en: "True / False" },
     open: { ar: "إجابة مفتوحة", en: "Open answer" },
     poll: { ar: "تصويت", en: "Poll" },
+    word_cloud: { ar: "سحابة الكلمات", en: "Word Cloud" },
+    open_wall: { ar: "جدار الردود", en: "Response Wall" },
   };
   const label = (kindLabel[el.activityKind ?? "open"] ?? { ar: "نشاط", en: "Activity" })[isAr ? "ar" : "en"];
   const opts = (el.options ?? []).slice(0, 8);
@@ -142,9 +144,11 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
           opacity: 0.9,
         }}>{isAr ? "نشاط" : "Activity"}</span>
       </div>
+      {/* Stage Mode: title appears first (0.15 s), then options stagger at 200 ms intervals. */}
       <div style={{
         color: "#0f172a", fontWeight: 700, fontSize: 22, lineHeight: 1.35,
         wordBreak: "break-word",
+        animation: stageMode ? "_stageElIn 0.4s ease-out 0.15s both" : undefined,
       }}>
         {el.prompt || (isAr ? "نص السؤال…" : "Question text…")}
       </div>
@@ -158,6 +162,7 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
               fontSize: 16,
               color: "#1f2937",
               background: "#f8fafc",
+              animation: stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined,
             }}>
               <span style={{ color: accent, fontWeight: 700, marginInlineEnd: 8 }}>
                 {String.fromCharCode(65 + i)}.
@@ -296,6 +301,114 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
   );
 }
 
+/* ── HasadActivityRenderer ─────────────────────────────────────────────
+   Editor + present-mode placeholder for `kind=hasad-activity` elements.
+   Renders a branded card showing the linked assignment. During live
+   presentation a future phase will launch the game inline; for now it
+   displays a clear "will launch here" indicator so teachers know where
+   the activity sits on the slide. */
+const HASAD_GAME_META: Record<string, { emoji: string; nameAr: string; nameEn: string }> = {
+  quiz:     { emoji: "🏆", nameAr: "مسابقة تفاعلية",   nameEn: "Interactive Quiz" },
+  wheel:    { emoji: "🎡", nameAr: "عجلة الحظ",         nameEn: "Wheel of Fortune" },
+  million:  { emoji: "💰", nameAr: "من سيربح المليون",  nameEn: "Who Wants a Million" },
+  flags:    { emoji: "🚩", nameAr: "اختبار الأعلام",    nameEn: "Flag Quiz" },
+  matching: { emoji: "🔗", nameAr: "مطابقة",            nameEn: "Matching" },
+};
+
+export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+  if (el.kind !== "hasad-activity") return null;
+  const isAr = lang !== "en";
+  const accent = "#225739";
+  const gold   = "#D9A521";
+  const elAny  = el as unknown as { assignmentId?: number; assignmentTitle?: string; gameType?: string };
+  const title  = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity");
+  const game   = elAny.gameType ? HASAD_GAME_META[elAny.gameType] : null;
+
+  return (
+    <div
+      style={{
+        width: "100%", height: "100%",
+        background: "linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%)",
+        border: `2.5px solid ${accent}`,
+        borderRadius: 18,
+        boxShadow: "0 8px 32px rgba(34,87,57,0.12)",
+        padding: "28px 32px",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        gap: 16,
+        overflow: "hidden",
+        textAlign: "center",
+        position: "relative",
+      }}
+    >
+      {/* Subtle background watermark */}
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 180, opacity: 0.04, pointerEvents: "none", userSelect: "none",
+        lineHeight: 1,
+      }}>
+        {game?.emoji ?? "🎮"}
+      </div>
+
+      {/* Top badge row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: gold, color: "#1f2937",
+          padding: "5px 14px", borderRadius: 999,
+          fontSize: 12, fontWeight: 800, letterSpacing: 0.3,
+        }}>
+          🎮 {isAr ? "نشاط حصاد" : "Hasad Activity"}
+        </div>
+        {game && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 5,
+            background: `${accent}12`, color: accent,
+            border: `1.5px solid ${accent}30`,
+            padding: "5px 12px", borderRadius: 999,
+            fontSize: 12, fontWeight: 700,
+          }}>
+            <span>{game.emoji}</span>
+            {isAr ? game.nameAr : game.nameEn}
+          </div>
+        )}
+      </div>
+
+      {/* Assignment title */}
+      <div style={{
+        color: accent, fontWeight: 900,
+        fontSize: 26, lineHeight: 1.3,
+        wordBreak: "break-word", maxWidth: "85%",
+      }}>
+        {title}
+      </div>
+
+      {/* Game type big display */}
+      {game && (
+        <div style={{
+          fontSize: 52, lineHeight: 1,
+          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.10))",
+        }}>
+          {game.emoji}
+        </div>
+      )}
+
+      {/* Launch hint */}
+      <div style={{
+        color: "#64748b", fontSize: 13, fontWeight: 500,
+        border: `1.5px dashed ${accent}35`,
+        borderRadius: 10, padding: "8px 18px",
+        background: `${accent}06`,
+      }}>
+        {isAr
+          ? "سيُطلق هذا النشاط تلقائياً أثناء العرض المباشر"
+          : "This activity will launch automatically during the live presentation"}
+      </div>
+    </div>
+  );
+}
+
 /* ── VideoEmbedRenderer ────────────────────────────────────────────────
    Present-mode renderer for video-embed elements. Renders a live iframe
    so the teacher can play the video directly from the slide. For YouTube
@@ -358,10 +471,11 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * coordinates so it scales letterboxed inside any container.
  */
 export function SlideRender({
-  slide, theme, pattern, lang,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en" }) {
+  slide, theme, pattern, lang, stageMode,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
   const bg = slideBgStyle(slide, theme, pattern);
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const slideDir = (slide as unknown as { dir?: string }).dir;
+  const dir = (slideDir === "rtl" || slideDir === "ltr") ? slideDir : (lang === "ar" ? "rtl" : "ltr");
   /* Per-slide default text color is contrast-aware: a slide with a
      light custom background must NOT inherit the dark theme's white
      default (that produced the white-on-white bug teachers reported).
@@ -391,16 +505,27 @@ export function SlideRender({
       className="relative w-full h-full overflow-hidden"
       style={finalStyle}
     >
-      {(slide.elements ?? []).map((el: SlideElement) => {
+      {/* Stage Mode: inject keyframe for element stagger animation.
+          Using a <style> tag is the simplest way to define @keyframes
+          without adding a motion library dependency to this utility. */}
+      {stageMode && (
+        <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+      )}
+      {(slide.elements ?? []).map((el: SlideElement, i: number) => {
         const left = `${(el.x / CANVAS_W) * 100}%`;
         const top = `${(el.y / CANVAS_H) * 100}%`;
         const w = `${(el.w / CANVAS_W) * 100}%`;
         const h = `${(el.h / CANVAS_H) * 100}%`;
+        const stageAnim: React.CSSProperties = stageMode
+          ? { animation: `_stageElIn 0.45s ease-out ${i * 0.2}s both` }
+          : {};
         const style: React.CSSProperties = {
           position: "absolute",
           left, top, width: w, height: h,
+          ...stageAnim,
         };
         if (el.kind === "text") {
+          const elTextDirection = (el as unknown as { textDirection?: string }).textDirection;
           return (
             <div
               key={el.id}
@@ -411,6 +536,7 @@ export function SlideRender({
                 fontSize: `${el.fontSize ?? 28}px`,
                 fontWeight: el.fontWeight ?? "400",
                 textAlign: (el.align as React.CSSProperties["textAlign"]) ?? "start",
+                direction: (elTextDirection === "rtl" || elTextDirection === "ltr") ? elTextDirection : undefined,
                 background: el.bgColor ?? undefined,
                 lineHeight: 1.2,
                 wordBreak: "break-word",
@@ -426,6 +552,9 @@ export function SlideRender({
         if (el.kind === "image") {
           const imgEl = el as typeof el & {
             objectFit?: "cover" | "contain" | "fill" | "none";
+            objectPositionX?: number;
+            objectPositionY?: number;
+            cropPct?: { x: number; y: number; w: number; h: number };
             imageOpacity?: number;
             imageBorderRadius?: number;
             flipH?: boolean;
@@ -441,21 +570,39 @@ export function SlideRender({
           if (imgEl.brightness !== undefined && imgEl.brightness !== 100) filters.push(`brightness(${imgEl.brightness}%)`);
           if (imgEl.contrast   !== undefined && imgEl.contrast   !== 100) filters.push(`contrast(${imgEl.contrast}%)`);
           if (imgEl.saturation !== undefined && imgEl.saturation !== 100) filters.push(`saturate(${imgEl.saturation}%)`);
+          const crop = imgEl.cropPct;
+          const transformStr = transforms.length ? transforms.join(" ") : undefined;
+          const filterStr   = filters.length ? filters.join(" ") : undefined;
           return (
             <div key={el.id} style={{ ...style, borderRadius: imgEl.imageBorderRadius ? `${imgEl.imageBorderRadius}px` : undefined, overflow: "hidden", opacity: imgEl.imageOpacity ?? 1 }}>
               {el.url
-                ? <img
-                    src={el.url}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: imgEl.objectFit ?? "cover",
-                      transform: transforms.length ? transforms.join(" ") : undefined,
-                      filter: filters.length ? filters.join(" ") : undefined,
-                    }}
-                    draggable={false}
-                  />
+                ? crop
+                  ? (
+                    <div style={{
+                      width: `${100 / crop.w}%`,
+                      height: `${100 / crop.h}%`,
+                      transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
+                    }}>
+                      <img src={el.url} alt="" draggable={false}
+                        style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
+                          transform: transformStr, filter: filterStr }} />
+                    </div>
+                  )
+                  : (
+                    <img
+                      src={el.url}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: imgEl.objectFit ?? "cover",
+                        objectPosition: `${imgEl.objectPositionX ?? 50}% ${imgEl.objectPositionY ?? 50}%`,
+                        transform: transformStr,
+                        filter: filterStr,
+                      }}
+                      draggable={false}
+                    />
+                  )
                 : null}
             </div>
           );
@@ -470,10 +617,13 @@ export function SlideRender({
           );
         }
         if (el.kind === "activity") {
-          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} /></div>;
+          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} /></div>;
         }
         if (el.kind === "hasad-game") {
           return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} /></div>;
+        }
+        if (el.kind === "hasad-activity") {
+          return <div key={el.id} style={style}><HasadActivityRenderer el={el} lang={lang} /></div>;
         }
         if (el.kind === "video-embed") {
           return <div key={el.id} style={style}><VideoEmbedRenderer el={el} /></div>;
@@ -490,8 +640,8 @@ export function SlideRender({
  * mode and the public viewer.
  */
 export function SlideStage({
-  slide, theme, pattern, lang,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en" }) {
+  slide, theme, pattern, lang, stageMode,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
   /* Letterbox a 16:9 stage inside any parent (full-screen present
      mode OR a constrained modal). We render the inner frame at its
      canonical pixel size (1280×720) and use a JS-driven `transform:
@@ -541,7 +691,7 @@ export function SlideStage({
         }}
         data-slide-stage-frame=""
       >
-        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} />
+        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} />
       </div>
     </div>
   );

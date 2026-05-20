@@ -331,7 +331,17 @@ router.get("/presentations/ai/limits", requireTeacher, async (req, res) => {
 router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter, async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
-    const brief = briefSchema.parse(req.body) as OutlineBrief;
+    let brief = briefSchema.parse(req.body) as OutlineBrief;
+
+    /* Quick Mode always enables all interactive toggles regardless of
+       what the client sent — the whole point of the mode is to produce
+       a fully interactive deck with no manual configuration. */
+    if (brief.presentationKind === "quick") {
+      brief = {
+        ...brief,
+        toggles: { activities: true, questions: true, poll: true, quiz: true },
+      };
+    }
 
     const tier = await resolveTier(teacherId);
     const cfg = outlineConfigForTier(tier);

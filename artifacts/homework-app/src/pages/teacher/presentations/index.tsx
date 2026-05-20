@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -116,8 +116,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
       setLocation("/teacher/presentations", { replace: true });
     }
   }, [location, setLocation]);
-  const [renameTarget, setRenameTarget] = useState<PresentationSummary | null>(null);
-  const [renameValue, setRenameValue] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<PresentationSummary | null>(null);
 
   const { data: me } = useGetCurrentTeacher({
@@ -163,7 +161,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
       onSuccess: () => {
         invalidate();
         toast.success(isAr ? "تم التحديث" : "Updated");
-        setRenameTarget(null);
       },
       onError: () => toast.error(isAr ? "تعذّر التحديث" : "Update failed"),
     },
@@ -439,10 +436,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 p={p}
                 isAr={isAr}
                 onOpen={() => setLocation(`/teacher/presentations/${p.id}`)}
-                onRename={() => {
-                  setRenameValue(p.title);
-                  setRenameTarget(p);
-                }}
+                onSave={(title) => updateMut.mutate({ id: p.id, data: { title } })}
                 onResults={() => setLocation(`/teacher/presentations/${p.id}/sessions`)}
                 onDuplicate={() => duplicateMut.mutate({ id: p.id })}
                 onDelete={() => setDeleteTarget(p)}
@@ -480,44 +474,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
         maxImages={tier?.isPro ? 10 : 5}
       />
 
-      {/* Rename dialog */}
-      <Dialog
-        open={!!renameTarget}
-        onOpenChange={(o) => !o && setRenameTarget(null)}
-      >
-        <DialogContent dir={isAr ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle>{isAr ? "إعادة تسمية" : "Rename"}</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <Label className="mb-2 block">{isAr ? "العنوان" : "Title"}</Label>
-            <Input
-              value={renameValue}
-              onChange={(e) => setRenameValue(e.target.value)}
-              maxLength={200}
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRenameTarget(null)}>
-              {isAr ? "إلغاء" : "Cancel"}
-            </Button>
-            <Button
-              onClick={() => {
-                if (!renameTarget) return;
-                const title = renameValue.trim();
-                if (!title) return;
-                updateMut.mutate({ id: renameTarget.id, data: { title } });
-              }}
-              disabled={updateMut.isPending || !renameValue.trim()}
-              style={{ background: BRAND_GREEN, color: "white" }}
-            >
-              {updateMut.isPending && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
-              {isAr ? "حفظ" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete confirm */}
       <AlertDialog
@@ -560,7 +516,7 @@ function PresentationCard({
   p,
   isAr,
   onOpen,
-  onRename,
+  onSave,
   onResults,
   onDuplicate,
   onDelete,
@@ -573,7 +529,7 @@ function PresentationCard({
   p: PresentationSummary;
   isAr: boolean;
   onOpen: () => void;
-  onRename: () => void;
+  onSave: (title: string) => void;
   onResults: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -584,11 +540,33 @@ function PresentationCard({
   isOwner: boolean;
 }) {
   const isPublished = p.status === "published";
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(p.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditValue(p.title);
+    setEditing(true);
+    setTimeout(() => { inputRef.current?.select(); }, 0);
+  }, [p.title]);
+
+  const commit = useCallback(() => {
+    const title = editValue.trim();
+    if (title && title !== p.title) onSave(title);
+    setEditing(false);
+  }, [editValue, p.title, onSave]);
+
+  const cancel = useCallback(() => {
+    setEditing(false);
+    setEditValue(p.title);
+  }, [p.title]);
+
   return (
     <div
-      onClick={onOpen}
-      className="group relative rounded-2xl border-2 border-border bg-card overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5"
-      style={{ borderColor: undefined }}
+      onClick={editing ? undefined : onOpen}
+      className="group relative rounded-2xl border-2 border-border bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5"
+      style={{ cursor: editing ? "default" : "pointer" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = BRAND_GREEN)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
     >
@@ -627,75 +605,108 @@ function PresentationCard({
       {/* Body */}
       <div className="p-4">
         <div className="flex items-start gap-2 mb-2">
-          <h3 className="flex-1 text-sm font-black text-foreground line-clamp-2 leading-snug">
-            {p.title}
-          </h3>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0"
-                aria-label={isAr ? "إجراءات" : "Actions"}
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align={isAr ? "start" : "end"}
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commit(); }
+                if (e.key === "Escape") { e.preventDefault(); cancel(); }
+              }}
+              onBlur={commit}
               onClick={(e) => e.stopPropagation()}
+              maxLength={200}
+              dir={isAr ? "rtl" : "ltr"}
+              className="flex-1 text-sm font-black text-foreground leading-snug bg-muted/60 border border-border rounded-md px-2 py-0.5 outline-none focus:ring-2 focus:ring-offset-0 min-w-0"
+              style={{ boxShadow: `0 0 0 2px ${BRAND_GREEN}55` }}
+            />
+          ) : (
+            <h3
+              className={`flex-1 text-sm font-black text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
+              onDoubleClick={isOwner ? startEdit : undefined}
+              title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
-              {isOwner && (
-                <DropdownMenuItem onClick={onRename}>
-                  <Pencil className="w-4 h-4 me-2" />
-                  {isAr ? "إعادة تسمية" : "Rename"}
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={onDuplicate}>
-                <Copy className="w-4 h-4 me-2" />
-                {isAr ? "نسخ" : "Duplicate"}
-              </DropdownMenuItem>
-              {isOwner && (
-                <DropdownMenuItem
-                  onClick={(e) => { e.stopPropagation(); onGoLive(); }}
-                  disabled={goLiveLoading}
-                  className="font-bold"
-                  style={{ color: "#D9A521" }}
+              {p.title}
+            </h3>
+          )}
+          {isOwner && !editing && (
+            <button
+              onClick={startEdit}
+              className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0 mt-0.5"
+              aria-label={isAr ? "إعادة تسمية" : "Rename"}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {!editing && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0"
+                  aria-label={isAr ? "إجراءات" : "Actions"}
                 >
-                  {goLiveLoading
-                    ? <Loader2 className="w-4 h-4 me-2 animate-spin" />
-                    : <Radio className="w-4 h-4 me-2" />}
-                  {isAr ? "بدء عرض مباشر" : "Start live session"}
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align={isAr ? "start" : "end"}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {isOwner && (
+                  <DropdownMenuItem onClick={startEdit}>
+                    <Pencil className="w-4 h-4 me-2" />
+                    {isAr ? "إعادة تسمية" : "Rename"}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={onDuplicate}>
+                  <Copy className="w-4 h-4 me-2" />
+                  {isAr ? "نسخ" : "Duplicate"}
                 </DropdownMenuItem>
-              )}
-              {isOwner && (
-                <DropdownMenuItem onClick={onResults}>
-                  <BarChart3 className="w-4 h-4 me-2" />
-                  {isAr ? "النتائج السابقة" : "Past results"}
-                </DropdownMenuItem>
-              )}
-              {isOwner && (isPublished ? (
-                <DropdownMenuItem onClick={onUnpublish}>
-                  <EyeOff className="w-4 h-4 me-2" />
-                  {isAr ? "إلغاء النشر" : "Unpublish"}
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem onClick={onPublish}>
-                  <Globe className="w-4 h-4 me-2" />
-                  {isAr ? "نشر" : "Publish"}
-                </DropdownMenuItem>
-              ))}
-              {isOwner && <DropdownMenuSeparator />}
-              {isOwner && (
-                <DropdownMenuItem
-                  onClick={onDelete}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4 me-2" />
-                  {isAr ? "حذف" : "Delete"}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {isOwner && (
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); onGoLive(); }}
+                    disabled={goLiveLoading}
+                    className="font-bold"
+                    style={{ color: "#D9A521" }}
+                  >
+                    {goLiveLoading
+                      ? <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                      : <Radio className="w-4 h-4 me-2" />}
+                    {isAr ? "بدء عرض مباشر" : "Start live session"}
+                  </DropdownMenuItem>
+                )}
+                {isOwner && (
+                  <DropdownMenuItem onClick={onResults}>
+                    <BarChart3 className="w-4 h-4 me-2" />
+                    {isAr ? "النتائج السابقة" : "Past results"}
+                  </DropdownMenuItem>
+                )}
+                {isOwner && (isPublished ? (
+                  <DropdownMenuItem onClick={onUnpublish}>
+                    <EyeOff className="w-4 h-4 me-2" />
+                    {isAr ? "إلغاء النشر" : "Unpublish"}
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={onPublish}>
+                    <Globe className="w-4 h-4 me-2" />
+                    {isAr ? "نشر" : "Publish"}
+                  </DropdownMenuItem>
+                ))}
+                {isOwner && <DropdownMenuSeparator />}
+                {isOwner && (
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 me-2" />
+                    {isAr ? "حذف" : "Delete"}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <span>
