@@ -18,7 +18,6 @@ import {
 } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Link } from "wouter";
-import { AiPresentationBuilder } from "./builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,7 +105,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
   const [tab, setTab] = useState<TabId>("recent");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [showAiBuilder, setShowAiBuilder] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [goLiveLoading, setGoLiveLoading] = useState<number | null>(null);
 
@@ -325,7 +323,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               {isAr ? "استيراد ملف" : "Import file"}
             </Button>
             <Button
-              onClick={() => setShowAiBuilder(true)}
+              onClick={() => setLocation("/teacher/presentations/new")}
               variant="outline"
               className="gap-2 font-bold border-2"
               style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
@@ -354,7 +352,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
             <Upload className="w-5 h-5" />
           </Button>
           <Button
-            onClick={() => setShowAiBuilder(true)}
+            onClick={() => setLocation("/teacher/presentations/new")}
             variant="outline"
             className="gap-2 font-bold shadow-xl py-6 bg-background border-2"
             style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
@@ -459,9 +457,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
         loading={createMut.isPending}
         onSubmit={(payload) => createMut.mutate({ data: payload })}
       />
-
-      {/* AI builder */}
-      <AiPresentationBuilder open={showAiBuilder} onOpenChange={setShowAiBuilder} />
 
       {/* Import file */}
       <ImportModal
