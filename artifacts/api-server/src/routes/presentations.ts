@@ -22,6 +22,7 @@ import { extractFileContent } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
+import { generateMcqSlides } from "../lib/generate-mcq-slides";
 
 const router: IRouter = Router();
 
@@ -886,18 +887,31 @@ router.post(
         ext === ".pptx" ||
         ext === ".ppt"
       ) {
-        /* PPTX → extract slide text then lay out as styled slides. */
+        /* PPTX → extract slide text, lay out as styled slides, then append
+           2-3 AI-generated MCQ interactive slides at the end. */
         try {
           const parsed = await parsePptx(file.buffer);
-          deckLanguage = detectLangFromText(
-            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
-          );
+          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          deckLanguage = detectLangFromText(extractedText);
           const built = buildSlidesFromParsed(parsed, deckLanguage);
           const validated = slidesSchema.safeParse(built);
-          finalSlides =
+          const contentSlides =
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
+          const themeForMcq = pickServerDefaultTheme();
+          const mcqSlides = await generateMcqSlides(
+            extractedText,
+            deckLanguage,
+            themeForMcq,
+            contentSlides.length + 1,
+          );
+          finalSlides = [...contentSlides, ...mcqSlides];
+          aiGenerated = true;
+          req.log.info(
+            { contentSlides: contentSlides.length, mcqSlides: mcqSlides.length },
+            "Import (PPTX): AI MCQ slides appended",
+          );
         } catch (err) {
           req.log.warn({ err }, "Import: PPTX parsing failed — using blank deck");
           contentExtractionFailed = true;
@@ -909,18 +923,31 @@ router.post(
         ext === ".docx" ||
         ext === ".doc"
       ) {
-        /* DOCX → extract headings and paragraphs then distribute across slides. */
+        /* DOCX → extract headings and paragraphs, distribute across slides, then
+           append 2-3 AI-generated MCQ interactive slides at the end. */
         try {
           const parsed = await parseDocx(file.buffer);
-          deckLanguage = detectLangFromText(
-            parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
-          );
+          const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
+          deckLanguage = detectLangFromText(extractedText);
           const built = buildSlidesFromParsed(parsed, deckLanguage);
           const validated = slidesSchema.safeParse(built);
-          finalSlides =
+          const contentSlides =
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
+          const themeForMcq = pickServerDefaultTheme();
+          const mcqSlides = await generateMcqSlides(
+            extractedText,
+            deckLanguage,
+            themeForMcq,
+            contentSlides.length + 1,
+          );
+          finalSlides = [...contentSlides, ...mcqSlides];
+          aiGenerated = true;
+          req.log.info(
+            { contentSlides: contentSlides.length, mcqSlides: mcqSlides.length },
+            "Import (DOCX): AI MCQ slides appended",
+          );
         } catch (err) {
           req.log.warn({ err }, "Import: DOCX parsing failed — using blank deck");
           contentExtractionFailed = true;

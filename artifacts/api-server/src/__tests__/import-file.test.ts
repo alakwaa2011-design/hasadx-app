@@ -69,6 +69,11 @@ vi.mock("../lib/import-file-parser", () => ({
   buildSlidesFromPdfPages: vi.fn(),
 }));
 
+/* ── MCQ slides generator mock ───────────────────────────────────────────────── */
+vi.mock("../lib/generate-mcq-slides", () => ({
+  generateMcqSlides: vi.fn(),
+}));
+
 /* ── ObjectStorageService mock ───────────────────────────────────────────────── */
 vi.mock("../lib/objectStorage", () => ({
   ObjectStorageService: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
@@ -100,6 +105,7 @@ import {
   buildSlidesFromParsed,
   buildSlidesFromPdfPages,
 } from "../lib/import-file-parser";
+import { generateMcqSlides } from "../lib/generate-mcq-slides";
 import JSZip from "jszip";
 
 type Session = { teacherId?: number };
@@ -135,6 +141,14 @@ const DECK_STUB = { id: 42, title: "Test Deck", teacherId: 1, language: "en", sl
 /* Returned asset stub from the DB insert. */
 const ASSET_STUB = [{ id: 1 }];
 
+/* Minimal valid slide shape that passes slideSchema validation. */
+const MCQ_SLIDE_STUB = {
+  id: "mcq-1",
+  layout: "interactive",
+  background: "#ffffff",
+  elements: [],
+};
+
 beforeEach(() => {
   mockState.queue.length = 0;
   /* Reset only the parser mocks between tests (preserve tier/storage stubs). */
@@ -143,6 +157,9 @@ beforeEach(() => {
   vi.mocked(parseDocx).mockReset();
   vi.mocked(buildSlidesFromParsed).mockReset();
   vi.mocked(buildSlidesFromPdfPages).mockReset();
+  vi.mocked(generateMcqSlides).mockReset();
+  /* Default: MCQ generator returns one stub slide. */
+  vi.mocked(generateMcqSlides).mockResolvedValue([MCQ_SLIDE_STUB]);
 });
 
 // ─── Auth guard ────────────────────────────────────────────────────────────────
@@ -183,12 +200,13 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
   }
 
-  it("calls parsePptx and creates a deck with extracted slides", async () => {
+  it("calls parsePptx and creates a deck with extracted slides plus MCQ slides", async () => {
     const parsedSlides = [{ title: "Slide 1", bullets: [] }];
     const builtSlides  = [{ id: "s1", layout: "title-only", background: "#ffffff", elements: [] }];
 
     vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    /* MCQ generator returns one extra slide by default from beforeEach. */
 
     /* DB: resolvePresentationsTier → insert deck → insert asset */
     pushQueue([DECK_STUB], [ASSET_STUB]);
@@ -200,9 +218,49 @@ describe("POST /api/presentations/import-file — PPTX", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.presentationId).toBe(42);
-    expect(res.body.slideCount).toBe(1);
+    /* 1 content slide + 1 MCQ slide */
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.aiGenerated).toBe(true);
     expect(parsePptx).toHaveBeenCalledOnce();
     expect(buildSlidesFromParsed).toHaveBeenCalledWith(parsedSlides, expect.any(String));
+    expect(generateMcqSlides).toHaveBeenCalledOnce();
+  });
+
+  it("sets aiGenerated true and appends MCQ slides after content slides", async () => {
+    const parsedSlides = [
+      { title: "Intro", bullets: ["Point 1", "Point 2"] },
+      { title: "Topic", bullets: ["Detail A", "Detail B"] },
+    ];
+    const builtSlides = [
+      { id: "s1", layout: "title-only", background: "#ffffff", elements: [] },
+      { id: "s2", layout: "concept-card", background: "#ffffff", elements: [] },
+    ];
+    const mcqSlides = [
+      { id: "mcq-1", layout: "interactive", background: "#ffffff", elements: [] },
+      { id: "mcq-2", layout: "interactive", background: "#ffffff", elements: [] },
+    ];
+
+    vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
+    vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    vi.mocked(generateMcqSlides).mockResolvedValue(mcqSlides);
+
+    pushQueue([DECK_STUB], [ASSET_STUB]);
+
+    const pptxBuf = await makePptxBuffer();
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-file")
+      .attach("file", pptxBuf, { filename: "Lesson.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.aiGenerated).toBe(true);
+    expect(res.body.slideCount).toBe(4); /* 2 content + 2 MCQ */
+    /* generateMcqSlides was called with startIdx = 3 (after the 2 content slides) */
+    expect(generateMcqSlides).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      3,
+    );
   });
 
   it("falls back to a blank deck when parsePptx throws", async () => {
@@ -214,6 +272,26 @@ describe("POST /api/presentations/import-file — PPTX", () => {
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/presentations/import-file")
       .attach("file", pptxBuf, { filename: "Corrupt.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.warning).toBe("content_extraction_failed");
+  });
+
+  it("still succeeds when MCQ generation fails (graceful degradation)", async () => {
+    const parsedSlides = [{ title: "Slide 1", bullets: ["content"] }];
+    const builtSlides  = [{ id: "s1", layout: "title-only", background: "#ffffff", elements: [] }];
+
+    vi.mocked(parsePptx).mockResolvedValue(parsedSlides);
+    vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    /* Simulate MCQ generator throwing — the whole PPTX path catches and falls back. */
+    vi.mocked(generateMcqSlides).mockRejectedValue(new Error("OpenAI timeout"));
+
+    pushQueue([DECK_STUB], [ASSET_STUB]);
+
+    const pptxBuf = await makePptxBuffer();
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-file")
+      .attach("file", pptxBuf, { filename: "Fail.pptx", contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
 
     expect(res.status).toBe(201);
     expect(res.body.warning).toBe("content_extraction_failed");
@@ -232,9 +310,7 @@ describe("POST /api/presentations/import-file — DOCX", () => {
     return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
   }
 
-  it("calls parseDocx and applies balanced distribution", async () => {
-    /* Balanced layout: two slides — first with title "Chapter 1" and
-       body text, second auto-break slide. */
+  it("calls parseDocx, applies balanced distribution, and appends MCQ slides", async () => {
     const parsedSlides = [
       { title: "Chapter 1", bullets: ["Some content here."] },
     ];
@@ -242,6 +318,7 @@ describe("POST /api/presentations/import-file — DOCX", () => {
 
     vi.mocked(parseDocx).mockResolvedValue(parsedSlides);
     vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    /* MCQ generator returns one stub slide from beforeEach default. */
 
     pushQueue([DECK_STUB], [ASSET_STUB]);
 
@@ -251,9 +328,47 @@ describe("POST /api/presentations/import-file — DOCX", () => {
       .attach("file", docxBuf, { filename: "Notes.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 
     expect(res.status).toBe(201);
-    expect(res.body.slideCount).toBe(1);
+    /* 1 content slide + 1 MCQ slide */
+    expect(res.body.slideCount).toBe(2);
+    expect(res.body.aiGenerated).toBe(true);
     expect(parseDocx).toHaveBeenCalledOnce();
     expect(buildSlidesFromParsed).toHaveBeenCalledWith(parsedSlides, expect.any(String));
+    expect(generateMcqSlides).toHaveBeenCalledOnce();
+  });
+
+  it("sets aiGenerated true for DOCX and places MCQ slides at the end", async () => {
+    const parsedSlides = [
+      { title: "Chapter 1", bullets: ["Detail A"] },
+      { title: "Chapter 2", bullets: ["Detail B"] },
+    ];
+    const builtSlides = [
+      { id: "s1", layout: "blank", background: "#ffffff", elements: [] },
+      { id: "s2", layout: "blank", background: "#ffffff", elements: [] },
+    ];
+    const mcqSlides = [
+      { id: "mcq-1", layout: "interactive", background: "#ffffff", elements: [] },
+    ];
+
+    vi.mocked(parseDocx).mockResolvedValue(parsedSlides);
+    vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    vi.mocked(generateMcqSlides).mockResolvedValue(mcqSlides);
+
+    pushQueue([DECK_STUB], [ASSET_STUB]);
+
+    const docxBuf = await makeMinimalDocx();
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-file")
+      .attach("file", docxBuf, { filename: "Notes.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.aiGenerated).toBe(true);
+    expect(res.body.slideCount).toBe(3); /* 2 content + 1 MCQ */
+    expect(generateMcqSlides).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      3,
+    );
   });
 
   it("falls back to a blank deck when parseDocx throws", async () => {
