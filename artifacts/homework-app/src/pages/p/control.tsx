@@ -148,8 +148,8 @@ export default function PresentationControl() {
       setInlineActivity(null); setSummary(null);
       setWordCloudWords([]); setWallCards([]);
     };
-    const onWordCloudUpdate = (words: { text: string; count: number }[]) => setWordCloudWords(words);
-    const onWallUpdate = (cards: { id: string; text: string; visible: boolean; studentKey: string }[]) => setWallCards(cards);
+    const onWordCloudUpdate = ({ words }: { elementId: string; words: { text: string; count: number }[] }) => setWordCloudWords(words ?? []);
+    const onWallUpdate = ({ cards }: { elementId: string; cards: { id: string; text: string; visible: boolean; studentKey: string }[] }) => setWallCards(cards ?? []);
     const onInlineState = (p: any) => { setInlineActivity(p); setSummary(null); };
     const onInlineSummary = (p: any) => {
       setSummary(p); setInlineActivity(null);
@@ -682,7 +682,7 @@ export default function PresentationControl() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, cardId: card.id })}
+                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, elementId: live?.activeElementId, cardId: card.id, visible: !card.visible })}
                     className="shrink-0 rounded-md p-1.5 transition-colors"
                     style={{ background: card.visible ? "rgba(34,87,57,0.4)" : "rgba(255,255,255,0.06)" }}
                     title={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}
