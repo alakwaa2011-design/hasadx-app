@@ -206,7 +206,22 @@ export default function NewPresentationPage() {
       }
 
       setGeneratedPresentationId(presId);
-      setQuickRenameValue(topic.trim());
+
+      /* Fetch the actual AI-generated title; fall back to the raw topic. */
+      let aiTitle = topic.trim();
+      try {
+        const presRes = await fetch(`${API_BASE}/api/presentations/${presId}`, {
+          credentials: "include",
+        });
+        if (presRes.ok) {
+          const presData = await presRes.json();
+          if (presData?.title) aiTitle = presData.title;
+        }
+      } catch {
+        /* ignore – fall back to topic */
+      }
+
+      setQuickRenameValue(aiTitle);
       setQuickRenameConfirmed(false);
       setQuickPhase("preview");
     } catch (err) {
