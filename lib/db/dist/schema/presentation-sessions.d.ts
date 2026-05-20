@@ -191,6 +191,23 @@ export declare const presentationSessionsTable: import("drizzle-orm/pg-core").Pg
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        sessionMode: import("drizzle-orm/pg-core").PgColumn<{
+            name: "session_mode";
+            tableName: "presentation_sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         startedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "started_at";
             tableName: "presentation_sessions";

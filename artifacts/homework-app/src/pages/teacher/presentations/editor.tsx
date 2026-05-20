@@ -1300,13 +1300,13 @@ export default function PresentationEditor() {
             isAr={isAr}
             mode={goLiveOpen.mode}
             onClose={() => setGoLiveOpen(null)}
-            onConfirm={async (targetClass) => {
+            onConfirm={async (targetClass, sessionMode) => {
               try {
                 const r = await fetch(`/api/presentations/${id}/sessions`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   credentials: "include",
-                  body: JSON.stringify({ targetClass: targetClass || null }),
+                  body: JSON.stringify({ targetClass: targetClass || null, sessionMode }),
                 });
                 if (!r.ok) {
                   const j = await r.json().catch(() => ({}));
@@ -1993,9 +1993,10 @@ function GoLiveDialog({
   isAr: boolean;
   mode: "newTab" | "sameTab";
   onClose: () => void;
-  onConfirm: (targetClass: string) => void | Promise<void>;
+  onConfirm: (targetClass: string, sessionMode: "teacher" | "self_paced") => void | Promise<void>;
 }) {
   const [targetClass, setTargetClass] = useState<string>(() => getRememberedTargetClass());
+  const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
   const [submitting, setSubmitting] = useState(false);
   return (
     <div
@@ -2023,7 +2024,49 @@ function GoLiveDialog({
               : "Optionally pick a class so students join by name, or leave empty for guest mode."}
           </p>
         </div>
-        <div className="p-5 space-y-3" style={{ overflow: "visible" }}>
+        <div className="p-5 space-y-4" style={{ overflow: "visible" }}>
+
+          {/* Session pacing mode — Teacher-Paced vs Self-Paced */}
+          <div>
+            <div className="text-sm font-bold text-slate-700 mb-2">
+              {isAr ? "كيف تريد تشغيل الجلسة؟" : "How do you want to run the session?"}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSessionMode("teacher")}
+                className="rounded-xl border-2 p-3 text-start transition-all"
+                style={sessionMode === "teacher"
+                  ? { borderColor: BRAND_GREEN, background: "rgba(34,87,57,0.07)" }
+                  : { borderColor: "#e2e8f0", background: "transparent" }}
+              >
+                <div className="text-xl mb-1">🎓</div>
+                <div className="font-bold text-sm text-slate-800">
+                  {isAr ? "المعلم يتحكم" : "Teacher-Paced"}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {isAr ? "أنت تتحكم بتقدم الشرائح" : "You drive the slides"}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionMode("self_paced")}
+                className="rounded-xl border-2 p-3 text-start transition-all"
+                style={sessionMode === "self_paced"
+                  ? { borderColor: BRAND_GOLD, background: "rgba(217,165,33,0.08)" }
+                  : { borderColor: "#e2e8f0", background: "transparent" }}
+              >
+                <div className="text-xl mb-1">🧑‍💻</div>
+                <div className="font-bold text-sm text-slate-800">
+                  {isAr ? "الطالب يتحكم" : "Self-Paced"}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {isAr ? "كل طالب يتصفح بنفسه" : "Each student browses freely"}
+                </div>
+              </button>
+            </div>
+          </div>
+
           <ClassSelector
             value={targetClass}
             onChange={setTargetClass}
@@ -2052,7 +2095,7 @@ function GoLiveDialog({
               onClick={async () => {
                 setSubmitting(true);
                 try {
-                  await onConfirm(targetClass);
+                  await onConfirm(targetClass, sessionMode);
                 } finally {
                   setSubmitting(false);
                 }

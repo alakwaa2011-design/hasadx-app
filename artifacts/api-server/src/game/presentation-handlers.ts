@@ -50,6 +50,10 @@ interface LiveSession {
   participants: Map<string, { name: string; studentKey: string; isShow: boolean; classStudentId: number | null }>;
   /** track teacher control sockets so emit-from-teacher can verify. */
   teacherSockets: Set<string>;
+  /** Session pacing mode — "teacher" (default) or "self_paced". */
+  sessionMode?: "teacher" | "self_paced";
+  /** Self-paced progress: studentKey -> current slide index (0-based). */
+  selfPacedProgress?: Map<string, number>;
   /** word_cloud activity: tracks word frequency in memory. */
   wordCloudActivity?: {
     elementId: string;
@@ -415,6 +419,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
      when reveal is currently on), so we never expose it in any other
      payload. */
   const safeActive = isTeacher ? active : sanitizeElementForStudents(active);
+  const liveSess = sessions.get(sid);
   socket.emit("state:sync", {
     sessionId: sess.id,
     status: sess.status,
@@ -426,8 +431,9 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     revealDistribution: sess.revealDistribution,
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
-    stageMode: sessions.get(sid)?.stageMode ?? false,
-    activeElementOpenedAt: sessions.get(sid)?.activeElementOpenedAt ?? null,
+    stageMode: liveSess?.stageMode ?? false,
+    activeElementOpenedAt: liveSess?.activeElementOpenedAt ?? null,
+    sessionMode: (sess as any).sessionMode ?? liveSess?.sessionMode ?? "teacher",
   });
   /* Late-joiner support: if the teacher already revealed the answer,
      send the dedicated reveal event to this one socket so the UI can
@@ -548,6 +554,8 @@ export function setupPresentationSocket(io: Server) {
           live = { id: sess.id, teacherId: sess.teacherId, presentationId: sess.presentationId, participants: new Map(), teacherSockets: new Set() };
           sessions.set(sess.id, live);
         }
+        /* Hydrate session pacing mode from the DB row on first load. */
+        if (!live.sessionMode) live.sessionMode = ((sess as any).sessionMode ?? "teacher") as "teacher" | "self_paced";
         live.teacherSockets.add(socket.id);
         await emitStateSync(io, socket, sess.id, true);
         io.to(room(sess.id)).emit("participants:count", { n: studentCount(live) });
@@ -1049,6 +1057,75 @@ export function setupPresentationSocket(io: Server) {
           .where(eq(presentationSessionsTable.id, sid));
         io.to(room(sid)).emit("session:ended");
       } catch (err) { logger.error({ err }, "session:end failed"); }
+    });
+
+    /* Self-Paced Mode: student reports their current slide index.
+       Stored in-memory; teacher control panel shows progress bars.
+       Server also sends back the requested slide content so the student
+       can navigate without a separate REST call. */
+    socket.on("student:slide-change", async ({ sessionId, slideIndex }: { sessionId: number; slideIndex: number }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+        if (live.sessionMode !== "self_paced") return;
+
+        const sess = await loadSessionRow(sid);
+        if (!sess) return;
+        const deck = await loadDeckRow(sess.presentationId);
+        const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
+        const slideCount = slides.length;
+        const idx = Math.max(0, Math.min(slideCount - 1, Number(slideIndex) | 0));
+
+        if (!live.selfPacedProgress) live.selfPacedProgress = new Map();
+        live.selfPacedProgress.set(me.studentKey, idx);
+
+        /* Send the requested slide back to this student. */
+        const rawSlide = slides[idx] ?? null;
+        socket.emit("self_paced:slide", {
+          slideIndex: idx,
+          slide: sanitizeSlide(rawSlide),
+          slideCount,
+        });
+
+        /* Broadcast progress to all teacher sockets. */
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("student:progress", {
+            studentKey: me.studentKey,
+            name: me.name,
+            slideIndex: idx,
+            slideCount,
+          });
+        }
+      } catch (err) { logger.error({ err }, "student:slide-change failed"); }
+    });
+
+    /* Self-Paced Mode: teacher reclaims control — switches mode back to
+       "teacher", resyncs everyone to the teacher's current slide, and
+       broadcasts a self_paced:ended event so student UIs lock nav. */
+    socket.on("self_paced:takeover", async ({ sessionId }: { sessionId: number }) => {
+      try {
+        const sid = Number(sessionId);
+        const sess = await loadSessionRow(sid);
+        if (!sess || !isTeacherForSession(socket, sess.teacherId)) return;
+        const live = sessions.get(sid);
+        if (!live) return;
+        live.sessionMode = "teacher";
+        live.selfPacedProgress = undefined;
+        /* Persist the mode change to DB so reconnecting clients get the right mode. */
+        await db.update(presentationSessionsTable)
+          .set({ sessionMode: "teacher" } as any)
+          .where(eq(presentationSessionsTable.id, sid));
+        const deck = await loadDeckRow(sess.presentationId);
+        const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
+        const rawSlide = slides[sess.currentSlideIndex] ?? null;
+        /* Broadcast the teacher's current slide to all clients. */
+        io.to(room(sid)).emit("self_paced:ended", {
+          currentSlideIndex: sess.currentSlideIndex,
+          slide: sanitizeSlide(rawSlide),
+        });
+      } catch (err) { logger.error({ err }, "self_paced:takeover failed"); }
     });
 
     /* Stage Mode toggle — teacher-only. Stores state in-memory and

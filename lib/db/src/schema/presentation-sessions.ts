@@ -20,6 +20,8 @@ export const presentationSessionsTable = pgTable("presentation_sessions", {
   revealAnswer: boolean("reveal_answer").notNull().default(false),
   targetClassId: integer("target_class_id").references(() => teacherClassesTable.id, { onDelete: "set null" }),
   mode: text("mode").notNull().default("guest"),
+  /** Pacing mode: "teacher" = teacher drives slides; "self_paced" = each student browses independently. */
+  sessionMode: text("session_mode").notNull().default("teacher"),
   startedAt: timestamp("started_at"),
   endedAt: timestamp("ended_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

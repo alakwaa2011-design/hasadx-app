@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import {
   ChevronLeft, ChevronRight, Play, Square, Eye, EyeOff,
-  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon, Sparkles,
+  CheckCircle2, Users, Copy, X, Loader2, Share2, LinkIcon, Sparkles, MonitorPlay,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -102,6 +102,11 @@ export default function PresentationControl() {
   const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
   /* Stage Mode — professional cinematic display mode for the projector. */
   const [stageMode, setStageMode] = useState(false);
+  /* Self-Paced Mode — tracks session pacing and per-student progress. */
+  const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
+  const [studentProgress, setStudentProgress] = useState<
+    Record<string, { name: string; slideIndex: number; slideCount: number }>
+  >({});
 
   async function loadHistory() {
     if (!Number.isFinite(sid)) return;
@@ -133,11 +138,10 @@ export default function PresentationControl() {
     const s = getSocket();
     s.emit("teacher:join-presentation", { sessionId: sid });
 
-    const onSync = (st: LiveState & { stageMode?: boolean }) => {
+    const onSync = (st: LiveState & { stageMode?: boolean; sessionMode?: "teacher" | "self_paced" }) => {
       setLive(st);
-      /* Restore Stage Mode from state:sync so the toggle button reflects the
-         correct state after reconnect or page reload while a session is live. */
       if (typeof st.stageMode === "boolean") setStageMode(st.stageMode);
+      if (st.sessionMode) setSessionMode(st.sessionMode);
     };
     const onSlide = ({ index }: { index: number }) => {
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
@@ -176,6 +180,18 @@ export default function PresentationControl() {
     };
     const onReconnect = () => s.emit("teacher:join-presentation", { sessionId: sid });
     const onStageChanged = ({ on }: { on: boolean }) => setStageMode(!!on);
+    /* Self-Paced Mode: student sent progress update. */
+    const onStudentProgress = (p: { studentKey: string; name: string; slideIndex: number; slideCount: number }) => {
+      setStudentProgress((prev) => ({
+        ...prev,
+        [p.studentKey]: { name: p.name, slideIndex: p.slideIndex, slideCount: p.slideCount },
+      }));
+    };
+    /* Self-Paced Mode: teacher reclaimed control — mode reverted to "teacher". */
+    const onSelfPacedEnded = () => {
+      setSessionMode("teacher");
+      setStudentProgress({});
+    };
 
     s.on("state:sync", onSync);
     s.on("slide:changed", onSlide);
@@ -192,6 +208,8 @@ export default function PresentationControl() {
     s.on("word_cloud:update", onWordCloudUpdate);
     s.on("wall:update", onWallUpdate);
     s.on("stage:changed", onStageChanged);
+    s.on("student:progress", onStudentProgress);
+    s.on("self_paced:ended", onSelfPacedEnded);
 
     return () => {
       s.off("state:sync", onSync);
@@ -209,6 +227,8 @@ export default function PresentationControl() {
       s.off("word_cloud:update", onWordCloudUpdate);
       s.off("wall:update", onWallUpdate);
       s.off("stage:changed", onStageChanged);
+      s.off("student:progress", onStudentProgress);
+      s.off("self_paced:ended", onSelfPacedEnded);
     };
   }, [sid]);
 
@@ -826,9 +846,78 @@ export default function PresentationControl() {
         </div>
 
         <div className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm"><Users className="w-4 h-4" /> المشاركون</span>
-          <span className="font-bold text-lg">{count}</span>
+          <span className="flex items-center gap-2 text-sm">
+            <Users className="w-4 h-4" /> المشاركون
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg">{count}</span>
+            {sessionMode === "self_paced" && (
+              <span
+                className="text-[10px] font-black px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(217,165,33,0.2)", color: "#D9A521", border: "1px solid rgba(217,165,33,0.4)" }}
+              >
+                🧑‍💻 ذاتي
+              </span>
+            )}
+          </div>
         </div>
+
+        {/* Self-Paced Mode: per-student progress bars + takeover button. */}
+        {sessionMode === "self_paced" && !ended && (
+          <div className="rounded-xl border p-3 space-y-3" style={{ background: "rgba(217,165,33,0.07)", border: "1px solid rgba(217,165,33,0.3)" }}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-black" style={{ color: "#D9A521" }}>
+                <MonitorPlay className="w-4 h-4" />
+                وضع الطالب يتحكم
+              </div>
+              <Button
+                size="sm"
+                onClick={() => getSocket().emit("self_paced:takeover", { sessionId: sid })}
+                className="font-black text-xs gap-1.5 border-0"
+                style={{ background: "#225739", color: "white" }}
+              >
+                استعادة التحكم
+              </Button>
+            </div>
+            {Object.keys(studentProgress).length === 0 ? (
+              <div className="text-xs text-white/40 text-center py-1">
+                في انتظار تقدم الطلاب…
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {Object.entries(studentProgress)
+                  .sort(([, a], [, b]) => b.slideIndex - a.slideIndex)
+                  .map(([key, p]) => {
+                    const sc = p.slideCount || total || 1;
+                    const pct = sc > 0 ? Math.round(((p.slideIndex + 1) / sc) * 100) : 0;
+                    const done = p.slideIndex >= sc - 1;
+                    return (
+                      <div key={key} className="space-y-0.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="truncate text-white/85 font-medium">{p.name}</span>
+                          <span className="tabular-nums text-white/50 shrink-0 ms-2">
+                            {p.slideIndex + 1} / {sc}
+                            {done && " ✓"}
+                          </span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              background: done
+                                ? "linear-gradient(90deg, #059669, #047857)"
+                                : "linear-gradient(90deg, #D9A521, #a87a10)",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
 
         <Button onClick={openShow} className="w-full" variant="outline">
           فتح شاشة العرض في تبويب جديد

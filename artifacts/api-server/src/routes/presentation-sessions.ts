@@ -136,6 +136,12 @@ router.post("/presentations/:id/sessions", requireTeacher, async (req: any, res)
 
     const pin = await generateUniquePin();
 
+    /* Session pacing mode — defaults to "teacher"; front-end sends
+       "self_paced" when the teacher picks the self-paced option. */
+    const rawSessionMode = req.body?.sessionMode;
+    const sessionMode: "teacher" | "self_paced" =
+      rawSessionMode === "self_paced" ? "self_paced" : "teacher";
+
     const [created] = await db
       .insert(presentationSessionsTable)
       .values({
@@ -146,6 +152,7 @@ router.post("/presentations/:id/sessions", requireTeacher, async (req: any, res)
         currentSlideIndex: 0,
         targetClassId,
         mode,
+        sessionMode,
         startedAt: new Date(),
       })
       .returning();
@@ -154,6 +161,7 @@ router.post("/presentations/:id/sessions", requireTeacher, async (req: any, res)
       sessionId: created.id,
       pin: created.pin,
       mode: created.mode,
+      sessionMode: created.sessionMode,
       controlUrl: `/p/control/${created.id}`,
       showUrl: `/p/show/${created.id}`,
       joinUrl: `/p/join`,
