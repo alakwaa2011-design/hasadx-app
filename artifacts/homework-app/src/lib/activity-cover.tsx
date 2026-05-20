@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ArabicEducationCover, pickArabicPreset } from "@/lib/arabic-education-cover";
 
 export type ActivityCoverKind =
   | "homework"
@@ -38,16 +39,31 @@ export type SubjectTheme =
 const SUBJECT_RULES: { theme: SubjectTheme; keywords: string[] }[] = [
   { theme: "science", keywords: ["علوم", "كيمياء", "فيزياء", "أحياء", "science", "physics", "biology"] },
   { theme: "math", keywords: ["رياضيات", "حساب", "هندسة", "math", "algebra", "geometry"] },
-  { theme: "arabic", keywords: ["عربي", "عربية", "نحو", "أدب", "شعر", "arabic", "لغة"] },
+  {
+    theme: "arabic",
+    keywords: [
+      "عربي",
+      "عربية",
+      "اللغة العربية",
+      "لغة عربية",
+      "نحو",
+      "صرف",
+      "إملاء",
+      "بلاغة",
+      "أدب",
+      "شعر",
+      "arabic",
+    ],
+  },
   { theme: "islamic", keywords: ["إسلام", "اسلام", "قرآن", "فقه", "حديث", "islam", "quran"] },
   { theme: "social", keywords: ["اجتماع", "تاريخ", "جغراف", "مدني", "social", "history", "geo"] },
 ];
 
+/** Arabic uses generated covers only — no photo assets */
 const THEME_ASSETS: Partial<Record<SubjectTheme, string>> = {
   science: "/arena-covers/solar-system.webp",
   islamic: "/arena-covers/scholars-wisdom.webp",
   social: "/arena-covers/europe-capitals.webp",
-  arabic: "/arena-covers/arabic-food.webp",
   math: "/arena-covers/world-scientists.webp",
 };
 
@@ -63,8 +79,8 @@ const THEME_STYLES: Record<SubjectTheme, { gradient: string; accent: string; Ico
     Icon: Calculator,
   },
   arabic: {
-    gradient: "linear-gradient(145deg,#3d2817 0%,#78350f 50%,#b45309 100%)",
-    accent: "rgba(251,191,36,0.3)",
+    gradient: "linear-gradient(152deg,#f7f3eb 0%,#ebe4d4 50%,#d9cdb8 100%)",
+    accent: "rgba(196, 154, 88, 0.28)",
     Icon: Languages,
   },
   islamic: {
@@ -158,6 +174,7 @@ export function resolveCoverKind(
 export function sanitizeCoverImageUrl(url?: string | null): string | undefined {
   if (!url?.trim()) return undefined;
   const u = url.trim();
+  if (/arabic-food/i.test(u)) return undefined;
   if (u.startsWith("/arena-covers/") || u.startsWith("/uploads/") || u.startsWith("/assets/")) return u;
   if (u.startsWith("data:image/")) return u;
   return undefined;
@@ -190,6 +207,7 @@ export interface ActivityCoverProps {
 export function ActivityCover({
   kind,
   subject,
+  title,
   imageUrl,
   thumbnailUrl,
   className,
@@ -199,18 +217,62 @@ export function ActivityCover({
   children,
 }: ActivityCoverProps) {
   const theme = resolveSubjectTheme(subject);
+  const isArabicTheme = theme === "arabic";
   const themeStyle = THEME_STYLES[theme];
   const kindStyle = KIND_STYLES[kind];
   const useKindFirst =
-    kind === "live" ||
-    kind === "featured-live" ||
-    kind === "video" ||
-    kind === "presentation" ||
-    kind === "interactive";
+    !isArabicTheme &&
+    (kind === "live" ||
+      kind === "featured-live" ||
+      kind === "video" ||
+      kind === "presentation" ||
+      kind === "interactive");
   const base = useKindFirst ? kindStyle : themeStyle;
-  const asset = !useKindFirst ? THEME_ASSETS[theme] : undefined;
+  const asset = !useKindFirst && !isArabicTheme ? THEME_ASSETS[theme] : undefined;
   const safeImage = sanitizeCoverImageUrl(imageUrl);
   const bgImage = thumbnailUrl || safeImage || asset;
+
+  const coverSeed = `${subject ?? ""}|${title ?? ""}|${kind}`;
+  const arabicIcon =
+    kind === "video"
+      ? Video
+      : kind === "quiz" || kind === "live"
+        ? ClipboardList
+        : kind === "presentation"
+          ? Presentation
+          : Languages;
+
+  if (isArabicTheme && !thumbnailUrl && !safeImage) {
+    const preset = pickArabicPreset(coverSeed);
+    return (
+      <ArabicEducationCover
+        preset={preset}
+        seed={coverSeed}
+        aspect={aspect}
+        premium={premium}
+        Icon={arabicIcon}
+        className={className}
+      >
+        {kind === "video" && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/30 shadow-md backdrop-blur-sm ring-1 ring-white/40">
+              <Play className="h-5 w-5 fill-white text-white" />
+            </div>
+          </div>
+        )}
+        {livePulse && (
+          <div
+            className="pointer-events-none absolute right-[18%] top-[22%] z-[1] h-16 w-16 rounded-full blur-2xl"
+            style={{
+              background: "rgba(212, 166, 58, 0.25)",
+              animation: "activity-cover-pulse 4.5s ease-in-out infinite",
+            }}
+          />
+        )}
+        {children}
+      </ArabicEducationCover>
+    );
+  }
 
   const Icon = base.Icon;
   const iconSize = aspect === "thumb" ? "h-10 w-10" : premium ? "h-24 w-24 sm:h-28 sm:w-28" : "h-20 w-20 sm:h-24 sm:w-24";
