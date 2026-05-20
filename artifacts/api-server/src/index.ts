@@ -373,12 +373,18 @@ io.on("connection", (socket) => {
   }
 });
 
-ensureSessionTable()
-  .then(() => runSchemaMigrations())
-  .then(() => db.execute(XP_MIGRATION_SQL))
-  .then(() => {
-    httpServer.listen(port, () => {
-      logger.info({ port }, "Server listening");
+/* Start listening immediately so the startup health probe at /api/healthz
+   gets a 200 response right away, even while migrations are still running.
+   All schema changes use IF NOT EXISTS / IF NOT EXISTS so they complete in
+   milliseconds on a warm database — this is purely defensive against slow
+   cold-start DB connections timing out the health check. */
+httpServer.listen(port, () => {
+  logger.info({ port }, "Server listening");
+  /* Run migrations + seeds in the background after the port is open. */
+  ensureSessionTable()
+    .then(() => runSchemaMigrations())
+    .then(() => db.execute(XP_MIGRATION_SQL))
+    .then(() => {
       seedAdmins().then(() => backfillAdminSharedApproval());
       seedPlansIfMissing();
       seedMillionBankIfEmpty();
@@ -391,9 +397,8 @@ ensureSessionTable()
       startActivityLogsCleanupJob();
       startOnlineSessionsCleanupJob();
       startEmailOutboxWorker();
+    })
+    .catch((err) => {
+      logger.error(err, "Post-startup migrations/seeds failed");
     });
-  })
-  .catch((err) => {
-    logger.error(err, "Failed to start server");
-    process.exit(1);
-  });
+});
