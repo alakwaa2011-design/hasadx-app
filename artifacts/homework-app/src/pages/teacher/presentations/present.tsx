@@ -16,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play, Rocket,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { SlideStage } from "@/lib/slide-render";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
@@ -102,6 +103,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
+  const [activePin, setActivePin] = useState<string | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
@@ -268,6 +270,10 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           alert(isAr ? "تعذّر إنشاء اللعبة. حاول مرة أخرى." : "Could not create game session. Please try again.");
           return;
         }
+        /* Show the PIN overlay on the slide so students can join without
+           the teacher switching windows. The teacher console still opens
+           in the background tab as before. */
+        setActivePin(res.pin);
         if (gameTab) {
           gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
         } else {
@@ -317,6 +323,99 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>
+
+      {/* PIN + QR overlay — shown after a hasad-activity is launched so
+          students can join without the teacher switching windows. The
+          teacher can dismiss it once everyone has joined. Clicking outside
+          the card does NOT dismiss it (accidental taps during navigation),
+          only the explicit × button does. */}
+      {activePin && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 40 }}
+        >
+          <div
+            className="pointer-events-auto"
+            style={{
+              background: "rgba(0,0,0,0.82)",
+              backdropFilter: "blur(12px)",
+              borderRadius: 24,
+              padding: "32px 40px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 20,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+              border: "1.5px solid rgba(217,165,33,0.35)",
+              minWidth: 320,
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: 16 }}>
+              <div style={{
+                color: "#D9A521", fontWeight: 900, fontSize: 15, letterSpacing: 1, textTransform: "uppercase",
+              }}>
+                {isAr ? "رمز الانضمام" : "Join Code"}
+              </div>
+              <button
+                onClick={() => setActivePin(null)}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "none", cursor: "pointer",
+                  borderRadius: "50%", width: 32, height: 32,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "white",
+                }}
+                title={isAr ? "إخفاء" : "Dismiss"}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* QR code */}
+            <div style={{
+              background: "white",
+              borderRadius: 16,
+              padding: 12,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            }}>
+              <QRCodeSVG
+                value={`${window.location.origin}/game/join/${activePin}`}
+                size={160}
+                fgColor="#1f2937"
+                bgColor="#ffffff"
+                level="M"
+              />
+            </div>
+
+            {/* PIN digits */}
+            <div style={{
+              color: "white",
+              fontFamily: "monospace",
+              fontSize: 60,
+              fontWeight: 900,
+              letterSpacing: 12,
+              lineHeight: 1,
+              textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+            }}>
+              {activePin}
+            </div>
+
+            {/* Instruction */}
+            <div style={{
+              color: "rgba(255,255,255,0.65)",
+              fontSize: 13,
+              fontWeight: 500,
+              textAlign: "center",
+              maxWidth: 260,
+            }}>
+              {isAr
+                ? "امسح الرمز أو اكتب الرمز على hasadx.com"
+                : "Scan the code or go to hasadx.com and enter the PIN"}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top progress bar */}
       <div
