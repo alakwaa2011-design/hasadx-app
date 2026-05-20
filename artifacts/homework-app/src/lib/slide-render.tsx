@@ -92,7 +92,7 @@ function ShapeRenderer({ el }: { el: SlideElement }) {
  * interactive answering runtime ships in Phase 2B; for now we render
  * a styled brand card so the slide is presentable + exports cleanly.
  * Falls back gracefully when `prompt` is missing (e.g. mid-edit). */
-function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "ar" | "en"; stageMode?: boolean }) {
   if (el.kind !== "activity") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -144,9 +144,11 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
           opacity: 0.9,
         }}>{isAr ? "نشاط" : "Activity"}</span>
       </div>
+      {/* Stage Mode: title appears first (0.15 s), then options stagger at 200 ms intervals. */}
       <div style={{
         color: "#0f172a", fontWeight: 700, fontSize: 22, lineHeight: 1.35,
         wordBreak: "break-word",
+        animation: stageMode ? "_stageElIn 0.4s ease-out 0.15s both" : undefined,
       }}>
         {el.prompt || (isAr ? "نص السؤال…" : "Question text…")}
       </div>
@@ -160,6 +162,7 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
               fontSize: 16,
               color: "#1f2937",
               background: "#f8fafc",
+              animation: stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined,
             }}>
               <span style={{ color: accent, fontWeight: 700, marginInlineEnd: 8 }}>
                 {String.fromCharCode(65 + i)}.
@@ -405,7 +408,7 @@ export function SlideRender({
         const w = `${(el.w / CANVAS_W) * 100}%`;
         const h = `${(el.h / CANVAS_H) * 100}%`;
         const stageAnim: React.CSSProperties = stageMode
-          ? { animation: `_stageElIn 0.45s ease-out ${i * 0.1}s both` }
+          ? { animation: `_stageElIn 0.45s ease-out ${i * 0.2}s both` }
           : {};
         const style: React.CSSProperties = {
           position: "absolute",
@@ -503,7 +506,7 @@ export function SlideRender({
           );
         }
         if (el.kind === "activity") {
-          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} /></div>;
+          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} /></div>;
         }
         if (el.kind === "hasad-game") {
           return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} /></div>;

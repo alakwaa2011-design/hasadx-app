@@ -130,18 +130,35 @@ function OpenWallOverlay({ cards, isAr }: { cards: WallCard[]; isAr: boolean }) 
 /* ── Stage Mode: Countdown timer ───────────────────────────────────── */
 const STAGE_TIMER_SECS = 60;
 
-function StageTimer({ active, isAr }: { active: boolean; isAr: boolean }) {
-  const [remaining, setRemaining] = useState(STAGE_TIMER_SECS);
+/**
+ * Circular SVG countdown for Stage Mode. Receives `startedAt` — the unix-ms
+ * timestamp when the activity was opened on the server — so late-joining or
+ * reconnecting projectors show the correct remaining time rather than
+ * restarting from 60s.  Pass `null` to hide the timer (no activity open).
+ */
+function StageTimer({ startedAt, isAr }: { startedAt: number | null; isAr: boolean }) {
+  const computeRemaining = () =>
+    startedAt
+      ? Math.max(0, STAGE_TIMER_SECS - Math.floor((Date.now() - startedAt) / 1000))
+      : STAGE_TIMER_SECS;
+
+  const [remaining, setRemaining] = useState(computeRemaining);
   const [shaking, setShaking] = useState(false);
 
   useEffect(() => {
-    if (!active) {
+    if (startedAt === null) {
       setRemaining(STAGE_TIMER_SECS);
       setShaking(false);
       return;
     }
-    setRemaining(STAGE_TIMER_SECS);
+    const init = computeRemaining();
+    setRemaining(init);
     setShaking(false);
+    if (init <= 0) {
+      setShaking(true);
+      setTimeout(() => setShaking(false), 1200);
+      return;
+    }
     const id = setInterval(() => {
       setRemaining((p) => {
         if (p <= 1) {
@@ -154,9 +171,10 @@ function StageTimer({ active, isAr }: { active: boolean; isAr: boolean }) {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [active]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startedAt]);
 
-  if (!active) return null;
+  if (startedAt === null) return null;
 
   const pct = remaining / STAGE_TIMER_SECS;
   const color = pct > 0.5 ? "#22c55e" : pct > 0.25 ? "#D9A521" : "#ef4444";
@@ -320,6 +338,11 @@ export default function PresentationShow() {
   const [revealStageVisible, setRevealStageVisible] = useState(false);
   const revealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* Timer synchronisation — tracks when the current activity was opened.
+     Provided by the server in activity:opened and state:sync so that
+     reconnecting projectors show the correct remaining time. */
+  const [activityOpenedAt, setActivityOpenedAt] = useState<number | null>(null);
+
   function clearReveal() {
     if (revealTimeoutRef.current) clearTimeout(revealTimeoutRef.current);
     setRevealAnswer(false);
@@ -353,6 +376,9 @@ export default function PresentationShow() {
         setRevealAnswer(true);
         setRevealStageVisible(true);
       }
+      /* Restore timer position from server timestamp so a reconnecting
+         projector shows the correct remaining time. */
+      setActivityOpenedAt(typeof st.activeElementOpenedAt === "number" ? st.activeElementOpenedAt : null);
     };
 
     const onSlide = ({ index, slide }: { index: number; slide: any }) => {
@@ -369,13 +395,17 @@ export default function PresentationShow() {
       setWordCloudWords([]);
       setWallCards([]);
       clearReveal();
+      setActivityOpenedAt(null);
     };
 
-    const onOpened = ({ elementId, element }: any) => {
+    const onOpened = ({ elementId, element, openedAt }: any) => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element }));
       setWordCloudWords([]);
       setWallCards([]);
       clearReveal();
+      /* Use the server-provided timestamp (or fall back to now) so the
+         timer is accurate even for late-joining projectors. */
+      setActivityOpenedAt(typeof openedAt === "number" ? openedAt : Date.now());
     };
 
     const onClosed = () => {
@@ -383,6 +413,7 @@ export default function PresentationShow() {
       setWordCloudWords([]);
       setWallCards([]);
       clearReveal();
+      setActivityOpenedAt(null);
     };
 
     const onEnded = () => setLive((p: any) => ({ ...(p ?? {}), status: "ended" }));
@@ -708,7 +739,7 @@ export default function PresentationShow() {
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
             style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 19 }}
           >
-            <StageTimer active={true} isAr={isAr} />
+            <StageTimer startedAt={activityOpenedAt} isAr={isAr} />
           </motion.div>
         )}
       </AnimatePresence>

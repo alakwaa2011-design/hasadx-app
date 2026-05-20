@@ -133,7 +133,12 @@ export default function PresentationControl() {
     const s = getSocket();
     s.emit("teacher:join-presentation", { sessionId: sid });
 
-    const onSync = (st: LiveState) => setLive(st);
+    const onSync = (st: LiveState & { stageMode?: boolean }) => {
+      setLive(st);
+      /* Restore Stage Mode from state:sync so the toggle button reflects the
+         correct state after reconnect or page reload while a session is live. */
+      if (typeof st.stageMode === "boolean") setStageMode(st.stageMode);
+    };
     const onSlide = ({ index }: { index: number }) => {
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);

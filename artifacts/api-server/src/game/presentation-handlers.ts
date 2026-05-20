@@ -68,6 +68,10 @@ interface LiveSession {
   };
   /** Stage Mode — professional cinematic display mode for the projector. */
   stageMode?: boolean;
+  /** Unix ms timestamp when the current activity element was opened.
+   *  Used by the StageTimer on show.tsx to synchronise the countdown
+   *  even for late-joining or reconnecting projector clients. */
+  activeElementOpenedAt?: number;
   /** Phase 6 — inline hasad-game quiz state (when the launched game
    *  carries `questions[]`, we run it inline on the student/teacher
    *  screens instead of opening the legacy game-setup tab). Cleared
@@ -423,6 +427,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     revealAnswer: sess.revealAnswer,
     pin: sess.pin,
     stageMode: sessions.get(sid)?.stageMode ?? false,
+    activeElementOpenedAt: sessions.get(sid)?.activeElementOpenedAt ?? null,
   });
   /* Late-joiner support: if the teacher already revealed the answer,
      send the dedicated reveal event to this one socket so the UI can
@@ -708,9 +713,16 @@ export function setupPresentationSocket(io: Server) {
           isHasadGame && Array.isArray((element as any).questions) ? (element as any).questions : [];
         const useInline = inlineQuestions.length > 0;
 
+        /* Record the open timestamp once so all audience-split payloads
+           share the same value — the StageTimer on show.tsx uses it to
+           synchronise the countdown for late-joining projectors. */
+        const openedAt = Date.now();
+        if (live) live.activeElementOpenedAt = openedAt;
+
         await emitToRoomSplit(io, sid, "activity:opened", (forTeacher) => ({
           elementId: String(elementId),
           element: forTeacher ? element : sanitizeElementForStudents(element),
+          openedAt,
         }));
 
         /* Word-cloud / open-wall: initialise in-memory tracking so
