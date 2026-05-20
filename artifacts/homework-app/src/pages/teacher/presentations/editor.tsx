@@ -1019,6 +1019,16 @@ export default function PresentationEditor() {
             >
               <Back className="w-4 h-4" />
             </button>
+            {/* Quick Mode shortcut — lets teachers jump straight to a new
+                Quick Mode session without going through the list page. */}
+            <button
+              onClick={() => setLocation("/teacher/presentations/new")}
+              className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-extrabold transition-colors hover:bg-amber-100/80 active:scale-95"
+              style={{ color: "#92570a", background: "rgba(251,191,36,0.12)" }}
+              title={isAr ? "إنشاء عرض سريع جديد" : "Create a new Quick Mode deck"}
+            >
+              ⚡ {isAr ? "وضع سريع" : "Quick Mode"}
+            </button>
             <div className="min-w-0 flex flex-col">
               <h1 className="text-base sm:text-lg font-bold truncate flex items-center gap-2 tracking-tight" style={{ color: BRAND_GREEN }}>
                 {data.title}

@@ -8,6 +8,7 @@ import { AiPresentationBuilder } from "./builder";
 import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Play, Pencil,
+  MessageSquare, HelpCircle, BarChart2, Type,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -42,6 +43,9 @@ export default function NewPresentationPage() {
   const [slideCount, setSlideCount] = useState(10);
 
   const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
+  const [generatedSlides, setGeneratedSlides] = useState<
+    Array<{ title: string; kind: string; interactionHint: string | null }>
+  >([]);
   const [proBuilderOpen, setProBuilderOpen] = useState(false);
 
   useEffect(() => {
@@ -132,15 +136,27 @@ export default function NewPresentationPage() {
       }
 
       let presId: number | null = null;
+      type DraftOutlineSlide = { title: string; kind: string; interactionHint?: string | null };
+      type DraftPoll = { status: string; presentationId?: number; errorMessage?: string; outline?: { slides?: DraftOutlineSlide[] } };
       for (let i = 0; i < 120; i++) {
         await sleep(800);
         const rp = await fetch(`${API_BASE}/api/presentations/drafts/${draftId}`, {
           credentials: "include",
         });
         if (!rp.ok) continue;
-        const pd = await rp.json() as { status: string; presentationId?: number; errorMessage?: string };
+        const pd = await rp.json() as DraftPoll;
         if (pd.status === "built" && pd.presentationId) {
           presId = pd.presentationId;
+          /* Capture up to 6 outline slide cards for thumbnail preview. */
+          if (pd.outline?.slides?.length) {
+            setGeneratedSlides(
+              pd.outline.slides.slice(0, 6).map((s) => ({
+                title: s.title,
+                kind: s.kind,
+                interactionHint: s.interactionHint ?? null,
+              })),
+            );
+          }
           break;
         }
         if (pd.status === "failed") {
@@ -176,6 +192,7 @@ export default function NewPresentationPage() {
     setSubject("");
     setSlideCount(10);
     setGeneratedPresentationId(null);
+    setGeneratedSlides([]);
     setErrorMsg("");
   };
 
@@ -546,11 +563,59 @@ export default function NewPresentationPage() {
                   ? `تم إنشاء عرض تفاعلي بـ ${slideCount} شريحة تتضمن أسئلة وأنشطة جاهزة.`
                   : `Created an interactive ${slideCount}-slide deck with questions and ready-to-use activities.`}
               </p>
-              <p className="text-xs text-muted-foreground/70 mb-8">
+              <p className="text-xs text-muted-foreground/70 mb-6">
                 {isAr
                   ? "يمكنك إطلاق الحصة مباشرةً أو تعديلها في المحرر المتقدم"
                   : "You can launch immediately or fine-tune in the advanced editor"}
               </p>
+
+              {/* ── Slide thumbnail strip ── */}
+              {generatedSlides.length > 0 && (
+                <div className="mb-8">
+                  <p className="text-xs font-semibold text-muted-foreground mb-3 text-start">
+                    {isAr ? "معاينة الشرائح المولّدة" : "Generated slides preview"}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {generatedSlides.map((sl, idx) => {
+                      /* Pick icon + colour by interaction type */
+                      type IconMeta = { Icon: React.ElementType; bg: string; text: string };
+                      const meta: Record<string, IconMeta> = {
+                        poll:        { Icon: BarChart2,     bg: "bg-blue-50 dark:bg-blue-950/30",    text: "text-blue-600" },
+                        quiz:        { Icon: HelpCircle,    bg: "bg-amber-50 dark:bg-amber-950/30",  text: "text-amber-600" },
+                        discussion:  { Icon: MessageSquare, bg: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-600" },
+                        activity:    { Icon: Type,          bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-600" },
+                      };
+                      const { Icon, bg, text } = meta[sl.interactionHint ?? ""] ??
+                        { Icon: Sparkles, bg: "bg-muted/30", text: "text-muted-foreground" };
+                      return (
+                        <div
+                          key={idx}
+                          className={`rounded-xl border border-border p-3 text-start flex items-start gap-2 ${bg}`}
+                        >
+                          <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${text}`} />
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold truncate leading-tight">{sl.title}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 capitalize">
+                              {sl.interactionHint
+                                ? (isAr
+                                    ? { poll: "تصويت", quiz: "اختبار", discussion: "نقاش", activity: "نشاط" }[sl.interactionHint] ?? sl.interactionHint
+                                    : sl.interactionHint)
+                                : (isAr ? "محتوى" : sl.kind)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* "…and more" chip when we have more slides than we display */}
+                    {slideCount > generatedSlides.length && (
+                      <div className="rounded-xl border border-dashed border-border p-3 flex items-center justify-center text-xs text-muted-foreground">
+                        +{slideCount - generatedSlides.length}{" "}
+                        {isAr ? "شريحة إضافية" : "more slides"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button

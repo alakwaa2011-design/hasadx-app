@@ -319,6 +319,10 @@ function Router() {
         <Route path="/teacher/presentations/:id">
           {(params) => <PresentationEditor key={params?.id ?? "__none"} />}
         </Route>
+        {/* /p/new — convenience alias → teacher creation page */}
+        <Route path="/p/new">
+          {() => { window.location.replace("/teacher/presentations/new"); return null; }}
+        </Route>
         <Route path="/p/control/:sessionId" component={PresentationControl} />
         <Route path="/p/show/:sessionId" component={PresentationShow} />
         <Route path="/p/join" component={PresentationJoin} />

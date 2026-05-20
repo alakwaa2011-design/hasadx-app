@@ -345,35 +345,51 @@ Mandatory: slideTheme = null on every single slide. No exceptions.`;
    across the deck instead of clustering all content slides
    together. Arabic and English variants kept in sync with the
    rest of the prompt style. ────────────────────────────────── */
-const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — بنية الشرائح الإلزامية:
-هذا العرض يجب أن يكون حصةً تفاعليةً كاملة جاهزة في أقل من دقيقة. اتبع هذا الترتيب حرفياً:
-1. شريحة عنوان (kind: title) — تُسمَّى باسم الموضوع مباشرةً
-2. شريحة نشاط افتتاحية (kind: interactive, interactionHint: "poll") — سؤال قصير لتفعيل الطلاب وقياس معرفتهم المسبقة
-3. (slideCount - 5) شرائح محتوى تعليمي متنوعة بأنواع مختلفة (concept-card, visual-hero, steps, stat, …)
-4. شريحة أسئلة تقييمية (kind: interactive, interactionHint: "quiz") — 5-8 أسئلة اختيار متعدد مرتبطة بالمحتوى بالضبط
-5. شريحة استطلاع ختامي (kind: interactive, interactionHint: "poll") — سؤال تأملي أو تقييمي لقياس الفهم
-6. شريحة ختام (kind: closure) — ملخص نهائي مختصر
+const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — بنية الشرائح الإلزامية (التزام حرفي):
+هذا العرض يجب أن يكون حصةً تفاعليةً كاملة جاهزة في أقل من دقيقة.
+اتبع هذه البنية بالترتيب المحدد تماماً:
 
-⚠️ القواعد الإضافية لوضع الإنشاء السريع:
-- كل شريحة تفاعلية (interactive) يجب أن تحتوي على gameQuestions بـ 5-8 أسئلة جاهزة على الأقل.
-- interactionHint يجب أن يكون غير null على ≥ 3 شرائح في هذا العرض.
-- لا تضع أكثر من 2 شرائح interactive متتالية — وزّع الأنشطة بين شرائح المحتوى.
-- الهدف: معلم يُطلق حصةً تفاعليةً كاملة في أقل من 60 ثانية من الإعداد.`;
+المرحلة أ — المقدمة:
+  [1] شريحة عنوان (kind: title) — اسم الموضوع مباشرةً.
+  [2] شريحة سحابة كلمات (kind: interactive, interactionHint: "activity") — اسأل الطلاب عن كلمة/فكرة واحدة لتفعيل المعرفة السابقة. talkingPoints[0] = نص الطلب ("أكتب كلمة واحدة تصف …"). لا gameQuestions على هذه الشريحة.
 
-const QUICK_MODE_RULES_EN = `⚡ Quick Mode — MANDATORY slide structure:
-This deck must be a complete interactive lesson ready to launch in under a minute. Follow this order exactly:
-1. title slide (kind: title) — named directly after the topic
-2. Warm-up activity slide (kind: interactive, interactionHint: "poll") — short question to activate students and gauge prior knowledge
-3. (slideCount - 5) educational content slides with varied kinds (concept-card, visual-hero, steps, stat, …)
-4. Assessment quiz slide (kind: interactive, interactionHint: "quiz") — 5-8 MCQ questions tied precisely to the content
-5. Closing poll slide (kind: interactive, interactionHint: "poll") — reflective or assessment question to gauge understanding
-6. closure slide (kind: closure) — concise final recap
+المرحلة ب — المحتوى:
+  [3..N-3] شرائح محتوى تعليمي متنوعة (concept-card, visual-hero, steps, stat, comparison, …)
+  منها 2-3 شرائح تقييمية (kind: interactive, interactionHint: "quiz") كل منها يحتوي على 5-8 أسئلة MCQ جاهزة (gameQuestions مطلوبة).
 
-⚠️ Additional Quick Mode rules:
-- Every interactive slide MUST include gameQuestions with at least 5-8 ready questions.
-- interactionHint must be non-null on ≥ 3 slides in this deck.
-- Do NOT place more than 2 interactive slides in a row — distribute activities between content slides.
-- Goal: a teacher can launch a complete interactive lesson in under 60 seconds of setup.`;
+المرحلة ج — الختام:
+  [N-2] شريحة تصويت ختامي (kind: interactive, interactionHint: "poll") — سؤال واحد متعدد الخيارات يقيس الفهم. gameQuestions مطلوبة (5 أسئلة).
+  [N-1] شريحة جدار الردود (kind: interactive, interactionHint: "discussion") — سؤال مفتوح يدعو الطلاب لمشاركة تأملاتهم. talkingPoints[0] = نص السؤال المفتوح. لا gameQuestions على هذه الشريحة.
+  [N]   شريحة ختام (kind: closure) — 3-4 نقاط رئيسية.
+
+⚠️ القواعد الإضافية الإلزامية:
+- كل شريحة interactionHint="quiz" أو interactionHint="poll" يجب أن تحتوي على gameQuestions (5-8 أسئلة).
+- شرائح interactionHint="activity" و"discussion" لا تحتوي على gameQuestions.
+- إجمالي الشرائح التفاعلية يجب أن يكون ≥ 4 من إجمالي الشرائح.
+- لا تضع أكثر من 2 شريحة interactive متتالية — وزّع بينها شرائح محتوى.`;
+
+const QUICK_MODE_RULES_EN = `⚡ Quick Mode — MANDATORY slide structure (strict compliance):
+This deck must be a complete interactive lesson ready to launch in under a minute.
+Follow this structure in exact order:
+
+Phase A — Opener:
+  [1] title slide (kind: title) — named directly after the topic.
+  [2] Word cloud slide (kind: interactive, interactionHint: "activity") — ask students for one word/idea to activate prior knowledge. talkingPoints[0] = the prompt ("Write one word that describes …"). No gameQuestions on this slide.
+
+Phase B — Content:
+  [3..N-3] Varied educational content slides (concept-card, visual-hero, steps, stat, comparison, …)
+  Among them 2-3 assessment slides (kind: interactive, interactionHint: "quiz"), each with 5-8 ready MCQ questions (gameQuestions required).
+
+Phase C — Closure:
+  [N-2] Closing vote slide (kind: interactive, interactionHint: "poll") — one multiple-choice question measuring understanding. gameQuestions required (5 questions).
+  [N-1] Open wall slide (kind: interactive, interactionHint: "discussion") — open-ended question inviting students to share reflections. talkingPoints[0] = the open question text. No gameQuestions on this slide.
+  [N]   closure slide (kind: closure) — 3-4 key takeaways.
+
+⚠️ Additional mandatory rules:
+- Every slide with interactionHint="quiz" or interactionHint="poll" MUST include gameQuestions (5-8 questions).
+- Slides with interactionHint="activity" or "discussion" do NOT include gameQuestions.
+- Total interactive slides must be ≥ 4 out of the full deck.
+- Never place more than 2 interactive slides in a row — intersperse content slides between activities.`;
 
 /* Build the user-message prompt for one outline-generation call. */
 export function buildOutlinePrompt(brief: OutlineBrief): string {
