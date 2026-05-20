@@ -1146,21 +1146,22 @@ router.post(
         return;
       }
 
-      /* Derive a friendly title from the slide ID (we don't have a filename). */
-      const titleFromUrl = `Google Slides (${slideId.slice(0, 8)}…)`;
-
       req.log.info({ bytes: pptxBuffer.length }, "Import URL: PPTX downloaded — parsing");
 
       /* ── Parse PPTX through the shared pipeline ── */
       let finalSlides: unknown[];
       let deckLanguage: "ar" | "en" = "ar";
       let contentExtractionFailed = false;
+      let titleFromUrl: string | undefined;
 
       try {
         const parsedSlides = await parsePptx(pptxBuffer);
         deckLanguage = detectLangFromText(
           parsedSlides.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
         );
+        /* Use the first non-empty slide title as the deck name. */
+        titleFromUrl =
+          parsedSlides.find((s) => s.title?.trim())?.title?.trim() ?? undefined;
         const built = buildSlidesFromParsed(parsedSlides, deckLanguage);
         const validated = slidesSchema.safeParse(built);
         finalSlides =
@@ -1173,13 +1174,18 @@ router.post(
         finalSlides = defaultSlides(deckLanguage);
       }
 
+      /* Fall back to a translated generic name when no slide title was found. */
+      const deckTitle =
+        titleFromUrl ||
+        (deckLanguage === "ar" ? "عرض مستورد" : "Imported Presentation");
+
       /* ── Create deck row ── */
       const themeKey = pickServerDefaultTheme();
       const [deck] = await db
         .insert(presentationsTable)
         .values({
           teacherId,
-          title: titleFromUrl,
+          title: deckTitle,
           language: deckLanguage,
           theme: themeKey,
           pattern: "solid",
