@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { trackPageView } from "@/lib/gtag";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -25,6 +26,13 @@ export function PageViewTracker() {
     debounceRef.current = window.setTimeout(() => {
       lastSent.current = location;
       const url = window.location.pathname + window.location.search;
+      // GA4 page_view (SPA navigation — gtag is configured with
+      // send_page_view: false so we fire this manually).
+      try {
+        trackPageView(url);
+      } catch {
+        // ignore
+      }
       try {
         fetch(`${API_BASE}/api/activity/page-view`, {
           method: "POST",
