@@ -95,28 +95,34 @@ function formatRelative(d: Date | string | undefined, isAr: boolean): string {
   return date.toLocaleDateString(isAr ? "ar" : "en");
 }
 
-// ألوان accent هادئة — لا تسيطر على البطاقة، تُستخدم كشريط جانبي فقط
-const SLIDE_ACCENTS = [
-  { bar: "#225739", bg: "#f0faf4", text: "#1a4730" },
-  { bar: "#1e40af", bg: "#eff6ff", text: "#1e3a8a" },
-  { bar: "#7c3aed", bg: "#f5f3ff", text: "#4c1d95" },
-  { bar: "#0f766e", bg: "#f0fdfa", text: "#134e4a" },
-  { bar: "#b45309", bg: "#fffbeb", text: "#92400e" },
-  { bar: "#be185d", bg: "#fdf2f8", text: "#831843" },
-];
+// ─── كشف نوع العرض من العنوان ───────────────────────────
+type ContentKind = "islamic" | "math" | "science" | "arabic-lang" | "history" | "general";
 
-function getSlideAccent(title: string) {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-  return SLIDE_ACCENTS[h % SLIDE_ACCENTS.length];
+function detectContentKind(title: string): ContentKind {
+  const t = title.toLowerCase();
+  const has = (...kw: string[]) => kw.some((k) => t.includes(k));
+  if (has("قرآن", "سورة", "آية", "تفسير", "فقه", "حديث", "إسلام", "صلاة", "زكاة", "حج", "سيرة", "نبي", "رسول", "عقيدة", "توحيد", "quran", "islamic", "seerah"))
+    return "islamic";
+  if (has("رياضيات", "حساب", "جبر", "هندسة", "معادل", "كسر", "ضرب", "قسمة", "إحصاء", "تفاضل", "تكامل", "math", "algebra", "geometry", "equation", "calculus", "fraction"))
+    return "math";
+  if (has("علوم", "فيزياء", "كيمياء", "أحياء", "نبات", "حيوان", "ذرة", "خلية", "تجربة", "science", "physics", "chemistry", "biology", "atom", "cell", "experiment"))
+    return "science";
+  if (has("لغة عربية", "نحو", "صرف", "بلاغة", "إملاء", "تعبير", "قراءة", "أدب", "شعر", "نص", "arabic language", "grammar", "spelling", "literature"))
+    return "arabic-lang";
+  if (has("تاريخ", "حضارة", "قديم", "عصر", "دولة", "معركة", "history", "civilization", "ancient", "empire", "battle", "era"))
+    return "history";
+  return "general";
 }
 
-// أنماط pseudo-preview مختلفة حسب hash — تمنع التكرار البصري
-function getSlideLayout(title: string): 0 | 1 | 2 | 3 {
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 17 + title.charCodeAt(i)) >>> 0;
-  return (h % 4) as 0 | 1 | 2 | 3;
-}
+// ألوان ثابتة لكل نوع
+const KIND_THEME: Record<ContentKind, { bar: string; bg: string; text: string; dim: string }> = {
+  "islamic":    { bar: "#1a5c3a", bg: "#f0faf4", text: "#0f3d25", dim: "#1a5c3a" },
+  "math":       { bar: "#1e3a8a", bg: "#eff6ff", text: "#1e3a8a", dim: "#3b82f6" },
+  "science":    { bar: "#0d5f6c", bg: "#ecfeff", text: "#0e4f5a", dim: "#06b6d4" },
+  "arabic-lang":{ bar: "#5b21b6", bg: "#f5f3ff", text: "#3b0764", dim: "#8b5cf6" },
+  "history":    { bar: "#7c2d12", bg: "#fff7ed", text: "#7c2d12", dim: "#ea580c" },
+  "general":    { bar: "#374151", bg: "#f9fafb", text: "#1f2937", dim: "#6b7280" },
+};
 
 export default function PresentationsIndex({ embedded }: { embedded?: boolean } = {}) {
   const { lang } = useI18n();
@@ -594,8 +600,12 @@ function PresentationCard({
   isOwner: boolean;
 }) {
   const isPublished = p.status === "published";
-  const accent = getSlideAccent(p.title);
-  const layout = getSlideLayout(p.title);
+  const kind = detectContentKind(p.title);
+  const theme = KIND_THEME[kind];
+  // hash بسيط للتنويع داخل نفس النوع
+  let _h = 0;
+  for (let i = 0; i < p.title.length; i++) _h = (_h * 31 + p.title.charCodeAt(i)) >>> 0;
+  const variant = _h % 3; // 0, 1, 2 داخل كل نوع
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(p.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -618,62 +628,175 @@ function PresentationCard({
     setEditValue(p.title);
   }, [p.title]);
 
-  // محاكاة شريحة حقيقية — أربعة أنماط مختلفة
-  const SlidePreview = () => {
-    const base = "w-full h-full flex flex-col";
-    if (layout === 0) {
-      // نمط: عنوان + خطوط محتوى
+  // ── معاينة ذكية حسب نوع المحتوى ─────────────────────
+  const SmartPreview = () => {
+    const b = theme.bar;
+    const d = theme.dim;
+
+    if (kind === "islamic") {
+      // هوية إسلامية: قوس هادئ + خطوط نص عربي
       return (
-        <div className={`${base} p-5 gap-3`}>
-          <div className="h-2 rounded-full w-3/4" style={{ background: accent.bar, opacity: 0.85 }} />
-          <div className="h-1.5 rounded-full w-1/2 bg-current opacity-15" />
-          <div className="flex-1 flex flex-col justify-end gap-1.5">
-            <div className="h-1 rounded-full w-full bg-current opacity-10" />
-            <div className="h-1 rounded-full w-5/6 bg-current opacity-10" />
-            <div className="h-1 rounded-full w-4/6 bg-current opacity-10" />
+        <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-5 relative overflow-hidden">
+          {/* قوس ديكوري */}
+          <svg className="absolute top-0 inset-x-0 w-full opacity-10" viewBox="0 0 200 60" preserveAspectRatio="none">
+            <path d="M0 60 Q50 0 100 20 Q150 40 200 0 L200 60Z" fill={b} />
+          </svg>
+          <div className="relative z-10 flex flex-col items-center gap-2 w-full">
+            {/* زخرفة دائرية */}
+            <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center" style={{ borderColor: b, opacity: 0.45 }}>
+              <div className="w-3 h-3 rounded-full" style={{ background: b, opacity: 0.6 }} />
+            </div>
+            <div className="h-1.5 rounded-full w-1/2" style={{ background: b, opacity: 0.6 }} />
+            <div className="h-1 rounded-full w-2/5" style={{ background: b, opacity: 0.3 }} />
+          </div>
+          {/* نقاط زخرفية */}
+          <div className="absolute bottom-3 flex gap-1.5">
+            {[0.25, 0.4, 0.25].map((op, i) => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: b, opacity: op }} />
+            ))}
           </div>
         </div>
       );
     }
-    if (layout === 1) {
-      // نمط: شريط جانبي + محتوى
+
+    if (kind === "math") {
+      // رياضيات: شبكة + رموز معادلات
       return (
-        <div className={`${base} flex-row p-0`}>
-          <div className="w-1.5 rounded-e-none" style={{ background: accent.bar }} />
-          <div className="flex-1 p-4 flex flex-col gap-2.5">
-            <div className="h-2 rounded-full w-2/3" style={{ background: accent.bar, opacity: 0.7 }} />
-            <div className="h-1 rounded-full w-1/2 bg-current opacity-12" />
-            <div className="flex-1 grid grid-cols-2 gap-1.5 mt-1">
-              {[0.15, 0.1, 0.12, 0.08].map((op, i) => (
-                <div key={i} className="rounded bg-current" style={{ opacity: op }} />
+        <div className="w-full h-full relative overflow-hidden">
+          {/* شبكة خلفية */}
+          <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id={`grid-${variant}`} width="16" height="16" patternUnits="userSpaceOnUse">
+                <path d="M 16 0 L 0 0 0 16" fill="none" stroke={b} strokeWidth="0.8" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill={`url(#grid-${variant})`} />
+          </svg>
+          <div className="relative z-10 flex flex-col p-4 gap-2 h-full">
+            <div className="h-2 rounded w-3/5" style={{ background: b, opacity: 0.7 }} />
+            <div className="flex-1 flex items-center justify-center">
+              {variant === 0 && (
+                <div className="flex items-center gap-2 opacity-30" style={{ color: b }}>
+                  <div className="w-7 h-5 rounded border-2" style={{ borderColor: d }} />
+                  <span className="text-base font-black" style={{ color: d }}>+</span>
+                  <div className="w-5 h-5 rounded border-2" style={{ borderColor: d }} />
+                  <span className="text-base font-black" style={{ color: d }}>=</span>
+                  <div className="w-6 h-5 rounded" style={{ background: d, opacity: 0.25 }} />
+                </div>
+              )}
+              {variant === 1 && (
+                <div className="flex gap-1.5 items-end opacity-50" style={{ color: d }}>
+                  {[60, 90, 70, 100, 55, 80].map((h, i) => (
+                    <div key={i} className="w-3 rounded-t" style={{ height: h * 0.35, background: d, opacity: 0.5 + i * 0.08 }} />
+                  ))}
+                </div>
+              )}
+              {variant === 2 && (
+                <div className="text-center opacity-25" style={{ color: d }}>
+                  <div className="text-lg font-black tracking-wider" style={{ fontFamily: "serif" }}>∑ · ∫ · π</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (kind === "science") {
+      // علوم: عناصر دائرية (ذرة / خلية)
+      return (
+        <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+          {variant === 0 && (
+            /* نموذج ذرة مبسط */
+            <svg viewBox="0 0 100 80" className="w-24 opacity-20" style={{ color: d }}>
+              <circle cx="50" cy="40" r="6" fill={b} opacity="0.7" />
+              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.5" />
+              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.4" transform="rotate(60 50 40)" />
+              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.4" transform="rotate(-60 50 40)" />
+            </svg>
+          )}
+          {variant === 1 && (
+            /* خلايا شبكية */
+            <div className="grid grid-cols-3 gap-1.5 p-5 w-full h-full">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className="rounded-full border" style={{ borderColor: b, opacity: 0.15 + (i % 3) * 0.08 }} />
               ))}
             </div>
-          </div>
-        </div>
-      );
-    }
-    if (layout === 2) {
-      // نمط: محتوى + صورة مستطيلة (placeholder)
-      return (
-        <div className={`${base} p-4 gap-2`}>
-          <div className="h-2 rounded-full w-3/5" style={{ background: accent.bar, opacity: 0.8 }} />
-          <div className="flex-1 flex gap-3 mt-1">
-            <div className="flex-1 flex flex-col gap-1.5 justify-center">
-              <div className="h-1 rounded-full w-full bg-current opacity-12" />
-              <div className="h-1 rounded-full w-5/6 bg-current opacity-10" />
-              <div className="h-1 rounded-full w-4/6 bg-current opacity-10" />
+          )}
+          {variant === 2 && (
+            /* مخطط مراحل */
+            <div className="flex items-center gap-1.5 px-4">
+              {[1, 2, 3, 4].map((n, i) => (
+                <div key={n} className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold"
+                    style={{ borderColor: b, color: b, opacity: 0.45 + i * 0.12 }}>
+                    {n}
+                  </div>
+                  {i < 3 && <div className="w-3 h-px" style={{ background: b, opacity: 0.3 }} />}
+                </div>
+              ))}
             </div>
-            <div className="w-12 rounded-lg" style={{ background: accent.bar, opacity: 0.18 }} />
+          )}
+          {/* عنوان */}
+          <div className="absolute bottom-3 inset-x-0 px-4">
+            <div className="h-1.5 rounded-full w-1/2" style={{ background: b, opacity: 0.45 }} />
           </div>
         </div>
       );
     }
-    // layout === 3: عنوان مركزي كبير
+
+    if (kind === "arabic-lang") {
+      // لغة عربية: typography واضح + خطوط نصية
+      return (
+        <div className="w-full h-full flex flex-col p-4 gap-2 relative overflow-hidden" dir="rtl">
+          {/* زخرفة نقطية */}
+          <div className="absolute top-3 left-3 w-6 h-6 rounded-full opacity-8" style={{ background: b }} />
+          <div className="h-2.5 rounded w-3/4" style={{ background: b, opacity: 0.65 }} />
+          <div className="h-px w-1/3 mt-0.5" style={{ background: b, opacity: 0.35 }} />
+          <div className="flex-1 flex flex-col justify-center gap-1.5">
+            {[0.13, 0.09, 0.11, 0.07].map((op, i) => (
+              <div key={i} className="h-1 rounded-full" style={{ background: b, opacity: op, width: `${85 - i * 12}%` }} />
+            ))}
+          </div>
+          {/* علامة تشكيل ديكورية */}
+          <div className="absolute bottom-3 end-4 text-base font-black opacity-15" style={{ color: b }}>ـ</div>
+        </div>
+      );
+    }
+
+    if (kind === "history") {
+      // تاريخ: timeline أفقي
+      return (
+        <div className="w-full h-full flex flex-col p-4 gap-3 relative overflow-hidden">
+          <div className="h-2 rounded-full w-2/3" style={{ background: b, opacity: 0.7 }} />
+          <div className="flex-1 flex items-center">
+            <div className="relative flex-1">
+              {/* خط الزمن */}
+              <div className="absolute top-1/2 inset-x-0 h-px" style={{ background: b, opacity: 0.25 }} />
+              <div className="relative flex justify-between items-center">
+                {[0.5, 0.35, 0.55, 0.3, 0.45].map((op, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <div className="w-2 h-2 rounded-full border-2" style={{ borderColor: b, opacity: op, background: i === 2 ? b : "transparent" }} />
+                    <div className="w-4 h-0.5 rounded" style={{ background: b, opacity: op * 0.7 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // general — نمط نظيف بدون تصميم مفرط
     return (
-      <div className={`${base} items-center justify-center p-5 gap-2`}>
-        <div className="h-2.5 rounded-full w-2/3" style={{ background: accent.bar, opacity: 0.8 }} />
-        <div className="h-1.5 rounded-full w-2/5 bg-current opacity-12" />
-        <div className="h-px w-10 rounded-full mt-1" style={{ background: accent.bar, opacity: 0.35 }} />
+      <div className="w-full h-full flex flex-col p-4 gap-2.5">
+        <div className="h-2 rounded-full" style={{ background: b, opacity: 0.6, width: variant === 0 ? "60%" : variant === 1 ? "75%" : "55%" }} />
+        <div className="h-1.5 rounded-full w-2/5" style={{ background: b, opacity: 0.25 }} />
+        <div className="flex-1 flex flex-col justify-end gap-1.5">
+          {[0.09, 0.07, 0.06].map((op, i) => (
+            <div key={i} className="h-1 rounded-full bg-current" style={{ opacity: op, width: `${90 - i * 15}%` }} />
+          ))}
+        </div>
       </div>
     );
   };
@@ -687,11 +810,10 @@ function PresentationCard({
       {/* ── Slide pseudo-preview ──────────────────────────── */}
       <div
         className="relative overflow-hidden shrink-0"
-        style={{ height: 128, background: accent.bg, color: accent.text }}
+        style={{ height: 128, background: theme.bg, color: theme.text }}
       >
-        {/* نسبة عرض الشريحة 16:9 */}
         <div className="absolute inset-0">
-          <SlidePreview />
+          <SmartPreview />
         </div>
 
         {/* شريط علوي شفاف مع badges */}
@@ -720,7 +842,7 @@ function PresentationCard({
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/8">
           <span
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white shadow-md text-foreground"
-            style={{ color: accent.text }}
+            style={{ color: theme.text }}
           >
             <Pencil className="w-3 h-3" />
             {isAr ? "فتح المحرر" : "Open editor"}
