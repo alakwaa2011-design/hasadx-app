@@ -16,7 +16,7 @@
  *                        parent should then open ActivityPickerDialog
  *  - isAr            — language / direction flag
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SlideElement } from "@workspace/api-client-react";
 import {
   useListAssignments,
@@ -65,15 +65,13 @@ export function ActivityHubDialog({
     return rows.filter((a) => (a.title ?? "").toLowerCase().includes(q));
   }, [assignmentsQ.data, search]);
 
-  /* Reset to correct initial tab each time the dialog opens */
-  const [lastOpen, setLastOpen] = useState(false);
-  if (open !== lastOpen) {
-    setLastOpen(open);
+  /* Reset state when the dialog opens or when its initialTab changes */
+  useEffect(() => {
     if (open) {
       setTab(initialTab);
       setSearch("");
     }
-  }
+  }, [open, initialTab]);
 
   if (!open) return null;
 

@@ -564,6 +564,13 @@ export default function PresentationEditor() {
     [activeSlide, selectedElId],
   );
 
+  /* True when any slide in the deck already has a hasad-activity element.
+     Used to show a small "مرتبط / Linked" badge on the topbar button. */
+  const hasLinkedHasadActivity = useMemo(
+    () => slides.some((s) => (s.elements ?? []).some((e) => e.kind === "hasad-activity")),
+    [slides],
+  );
+
   /* ── Autosave: debounced PATCH 500ms after last edit. */
   const saveTimerRef = useRef<number | null>(null);
   const persist = useCallback(
@@ -1302,19 +1309,34 @@ export default function PresentationEditor() {
                 Hasad assignment browser so a teacher can embed a game
                 into the current slide with one click. */}
             {Number.isFinite(id) && !readOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActivityHubInitialTab("hasad");
-                  setActivityHubOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
-                style={{ color: BRAND_GREEN, borderColor: `${BRAND_GREEN}40` }}
-                title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Embed a Hasad activity into this slide"}
-              >
-                <Gamepad2 className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">{isAr ? "اربط نشاط" : "Link activity"}</span>
-              </button>
+              <div className="relative inline-flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivityHubInitialTab("hasad");
+                    setActivityHubOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
+                  style={{
+                    color: BRAND_GREEN,
+                    borderColor: hasLinkedHasadActivity ? BRAND_GREEN : `${BRAND_GREEN}40`,
+                    background: hasLinkedHasadActivity ? `${BRAND_GREEN}08` : undefined,
+                  }}
+                  title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Embed a Hasad activity into this slide"}
+                >
+                  <Gamepad2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">{isAr ? "اربط نشاط" : "Link activity"}</span>
+                </button>
+                {/* Badge — appears when at least one hasad-activity element exists in the deck */}
+                {hasLinkedHasadActivity && (
+                  <span
+                    className="absolute -top-1.5 -end-1.5 px-1.5 py-px text-[9px] font-extrabold leading-none rounded-full text-white pointer-events-none"
+                    style={{ background: BRAND_GREEN }}
+                  >
+                    {isAr ? "مرتبط" : "Linked"}
+                  </span>
+                )}
+              </div>
             )}
 
             <Button
