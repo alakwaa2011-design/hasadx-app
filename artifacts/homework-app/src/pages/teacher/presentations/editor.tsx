@@ -95,6 +95,89 @@ function getLucideIcon(name: string | null | undefined): React.ComponentType<{ s
 }
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+/* ── Curated GIF library ──────────────────────────────────────────── */
+const GIF_LIBRARY: {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  items: { url: string; altAr: string; altEn: string }[];
+}[] = [
+  {
+    id: "celebrate",
+    labelAr: "🎉 احتفال",
+    labelEn: "🎉 Celebrate",
+    items: [
+      { url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",  altAr: "قصاصات ورقية",   altEn: "Confetti" },
+      { url: "https://media.giphy.com/media/26tOZ42Mg6pbTUPHW/giphy.gif",  altAr: "مفرقعات",        altEn: "Party Poppers" },
+      { url: "https://media.giphy.com/media/l3q2K5jinAlChoCLS/giphy.gif",  altAr: "ألعاب نارية",    altEn: "Fireworks" },
+      { url: "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif",      altAr: "ياي!",            altEn: "Yay!" },
+      { url: "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif",      altAr: "رقص",             altEn: "Happy Dance" },
+      { url: "https://media.giphy.com/media/LHZyixOnHwDDy/giphy.gif",      altAr: "مبروك!",          altEn: "Congrats!" },
+    ],
+  },
+  {
+    id: "bravo",
+    labelAr: "👏 أحسنت",
+    labelEn: "👏 Bravo",
+    items: [
+      { url: "https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif", altAr: "تصفيق بطيء",     altEn: "Slow Clap" },
+      { url: "https://media.giphy.com/media/111ebonIs1cX0c/giphy.gif",     altAr: "إبهام لأعلى",    altEn: "Thumbs Up" },
+      { url: "https://media.giphy.com/media/7yojoQtevjOci/giphy.gif",      altAr: "تصفيق مينيونز",  altEn: "Minions Clap" },
+      { url: "https://media.giphy.com/media/xNrM4cGJ8u3ao/giphy.gif",      altAr: "عمل رائع!",      altEn: "Great Job!" },
+      { url: "https://media.giphy.com/media/l41lI8X3bQ3AKIQM8/giphy.gif",  altAr: "ممتاز",          altEn: "Excellent" },
+      { url: "https://media.giphy.com/media/ZdUnQhlmH0F4tT5LvO/giphy.gif", altAr: "فعلتها!",        altEn: "You Did It!" },
+    ],
+  },
+  {
+    id: "think",
+    labelAr: "🤔 تفكير",
+    labelEn: "🤔 Thinking",
+    items: [
+      { url: "https://media.giphy.com/media/a5viI92PAF89q/giphy.gif",      altAr: "وجه التفكير",    altEn: "Thinking Face" },
+      { url: "https://media.giphy.com/media/3o7bu3XilJ5BOiSGic/giphy.gif", altAr: "أفكّر…",         altEn: "Hmm..." },
+      { url: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif", altAr: "مندهش!",         altEn: "Surprised!" },
+      { url: "https://media.giphy.com/media/3oKIPseqKZUd1XIFHK/giphy.gif", altAr: "محتار",          altEn: "Confused" },
+      { url: "https://media.giphy.com/media/WRQBpd3G8TlZ6/giphy.gif",      altAr: "انتظر ماذا؟",    altEn: "Wait What?" },
+    ],
+  },
+  {
+    id: "fun",
+    labelAr: "😂 مرح",
+    labelEn: "😂 Fun",
+    items: [
+      { url: "https://media.giphy.com/media/MNmyTku20WHpCZIKB7/giphy.gif", altAr: "ضحك",             altEn: "LOL" },
+      { url: "https://media.giphy.com/media/ely5Fud8a0HH6/giphy.gif",      altAr: "هههه",            altEn: "Hehe" },
+      { url: "https://media.giphy.com/media/l3q2Kciqt3yNuqD5e/giphy.gif",  altAr: "قهقهة",          altEn: "Laughing" },
+      { url: "https://media.giphy.com/media/Vccpm1O9gV1g4/giphy.gif",      altAr: "قطة مضحكة",      altEn: "Funny Cat" },
+      { url: "https://media.giphy.com/media/JltOMwYmi0VrO/giphy.gif",      altAr: "لا أصدق",        altEn: "No Way" },
+    ],
+  },
+  {
+    id: "stars",
+    labelAr: "⭐ نجوم",
+    labelEn: "⭐ Stars",
+    items: [
+      { url: "https://media.giphy.com/media/l0MYC0LajbaPoEADu/giphy.gif",  altAr: "بريق",            altEn: "Sparkles" },
+      { url: "https://media.giphy.com/media/3o6gDWzmAzv1ALnkyk/giphy.gif", altAr: "سحر",             altEn: "Magic" },
+      { url: "https://media.giphy.com/media/26tPnAAH7PhAYBJBW/giphy.gif",  altAr: "نجوم متساقطة",   altEn: "Star Rain" },
+      { url: "https://media.giphy.com/media/1AgrwTATMjqbeFsYo9/giphy.gif", altAr: "نجمة ذهبية",     altEn: "Gold Star" },
+      { url: "https://media.giphy.com/media/mf8uIoMpYhFBDmE6Qh/giphy.gif", altAr: "لامع",            altEn: "Glitter" },
+    ],
+  },
+  {
+    id: "education",
+    labelAr: "📚 تعليم",
+    labelEn: "📚 Education",
+    items: [
+      { url: "https://media.giphy.com/media/3oKIPdlB8uDHPBkAY0/giphy.gif", altAr: "قراءة",          altEn: "Reading" },
+      { url: "https://media.giphy.com/media/l4FGmHTcdl3R4jGXi/giphy.gif",  altAr: "فكرة!",          altEn: "Lightbulb!" },
+      { url: "https://media.giphy.com/media/xUOxf9EbYbFcWiLBYY/giphy.gif", altAr: "ذكي!",           altEn: "Smart!" },
+      { url: "https://media.giphy.com/media/BFSRdwvNw0OvBH1Gqv/giphy.gif", altAr: "كتب",            altEn: "Books" },
+      { url: "https://media.giphy.com/media/3oz8xRF0v9WMAUVLNK/giphy.gif", altAr: "يكتب",           altEn: "Typing" },
+    ],
+  },
+];
+
 const FONT_FAMILIES: Array<{ value: string; label: string }> = [
   { value: "inherit", label: "Default" },
   { value: "'Cairo', sans-serif", label: "Cairo" },
@@ -3263,6 +3346,8 @@ function Inspector({
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
+  const [gifLibraryOpen, setGifLibraryOpen] = useState(false);
+  const [gifLibraryCat, setGifLibraryCat] = useState("celebrate");
 
   if (!slide) return null;
 
@@ -3680,54 +3765,133 @@ function Inspector({
               {isAr ? "إدراج فيديو (يوتيوب / حصاد)" : "Embed Video (YouTube / Hasad)"}
             </span>
           </Button>
-          {/* GIF via URL */}
-          {gifOpen ? (
-            <div className="flex gap-2">
-              <Input
-                value={gifUrl}
-                onChange={(e) => setGifUrl(e.target.value)}
-                placeholder={isAr ? "رابط GIF..." : "GIF URL..."}
-                dir="ltr"
-                className="flex-1 h-9 text-xs rounded-xl"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && gifUrl.trim()) {
-                    onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 220, w: 400, h: 300, objectFit: "contain" } as SlideElement);
-                    setGifUrl("");
-                    setGifOpen(false);
-                  }
-                  if (e.key === "Escape") { setGifOpen(false); setGifUrl(""); }
-                }}
-                autoFocus
-              />
-              <Button size="sm" disabled={!gifUrl.trim() || readOnly}
-                className="shrink-0 rounded-xl"
-                style={{ background: BRAND_GREEN }}
-                onClick={() => {
-                  if (!gifUrl.trim()) return;
-                  onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 220, w: 400, h: 300, objectFit: "contain" } as SlideElement);
-                  setGifUrl("");
-                  setGifOpen(false);
-                }}>
-                {isAr ? "إضافة" : "Add"}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setGifOpen(false); setGifUrl(""); }}
-                className="shrink-0 rounded-xl px-2">
-                <XIcon className="w-4 h-4" />
-              </Button>
-            </div>
-          ) : (
+          {/* GIF Library */}
+          <div className="space-y-2">
             <Button
               variant="outline"
-              className="w-full justify-center gap-2 border-dashed hover:border-emerald-500 hover:bg-emerald-50/50 rounded-xl"
-              onClick={() => setGifOpen(true)}
+              className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${gifLibraryOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
+              onClick={() => { setGifLibraryOpen(o => !o); setGifOpen(false); }}
               disabled={readOnly}
             >
-              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-base leading-none">🎞️</span>
               <span className="font-bold text-sm text-foreground">
-                {isAr ? "إضافة GIF برابط" : "Add GIF by URL"}
+                {isAr ? "مكتبة GIF" : "GIF Library"}
               </span>
+              {gifLibraryOpen
+                ? <XIcon className="w-3.5 h-3.5 text-muted-foreground ms-auto" />
+                : <span className="text-xs text-muted-foreground ms-auto font-normal">{isAr ? "اضغط لفتح" : "click to open"}</span>}
             </Button>
-          )}
+
+            {gifLibraryOpen && (
+              <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
+                {/* Category tabs */}
+                <div className="flex overflow-x-auto gap-1 p-2 pb-1 scrollbar-none">
+                  {GIF_LIBRARY.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setGifLibraryCat(cat.id)}
+                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${
+                        gifLibraryCat === cat.id
+                          ? "text-white shadow"
+                          : "text-muted-foreground bg-background hover:bg-muted"
+                      }`}
+                      style={gifLibraryCat === cat.id ? { background: BRAND_GREEN } : {}}
+                    >
+                      {isAr ? cat.labelAr : cat.labelEn}
+                    </button>
+                  ))}
+                </div>
+
+                {/* GIF grid */}
+                <div className="grid grid-cols-3 gap-1.5 p-2 pt-1.5">
+                  {GIF_LIBRARY.find(c => c.id === gifLibraryCat)?.items.map(item => (
+                    <button
+                      key={item.url}
+                      title={isAr ? item.altAr : item.altEn}
+                      disabled={readOnly}
+                      onClick={() => {
+                        onInsertElement({
+                          id: `img-${Date.now()}`,
+                          kind: "image",
+                          url: item.url,
+                          x: 440, y: 210, w: 380, h: 280,
+                          objectFit: "contain",
+                        } as SlideElement);
+                        setGifLibraryOpen(false);
+                      }}
+                      className="relative group overflow-hidden rounded-lg border border-border bg-muted/50 aspect-video hover:border-emerald-500 hover:ring-2 hover:ring-emerald-400/40 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-40"
+                    >
+                      <img
+                        src={item.url}
+                        alt={isAr ? item.altAr : item.altEn}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            const fb = parent.querySelector(".gif-fallback") as HTMLElement | null;
+                            if (fb) fb.style.display = "flex";
+                          }
+                        }}
+                      />
+                      <div className="gif-fallback hidden absolute inset-0 items-center justify-center text-muted-foreground text-xs text-center px-1">
+                        {isAr ? item.altAr : item.altEn}
+                      </div>
+                      {/* hover overlay */}
+                      <div className="absolute inset-0 bg-emerald-900/0 group-hover:bg-emerald-900/10 transition-colors pointer-events-none" />
+                      <div className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] text-center py-0.5 opacity-0 group-hover:opacity-100 transition-opacity truncate px-1">
+                        {isAr ? item.altAr : item.altEn}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom URL fallback */}
+            {!gifLibraryOpen && (
+              gifOpen ? (
+                <div className="flex gap-2">
+                  <Input
+                    value={gifUrl}
+                    onChange={(e) => setGifUrl(e.target.value)}
+                    placeholder={isAr ? "رابط GIF مخصص..." : "Custom GIF URL..."}
+                    dir="ltr"
+                    className="flex-1 h-9 text-xs rounded-xl"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && gifUrl.trim()) {
+                        onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 210, w: 380, h: 280, objectFit: "contain" } as SlideElement);
+                        setGifUrl(""); setGifOpen(false);
+                      }
+                      if (e.key === "Escape") { setGifOpen(false); setGifUrl(""); }
+                    }}
+                    autoFocus
+                  />
+                  <Button size="sm" disabled={!gifUrl.trim() || readOnly}
+                    className="shrink-0 rounded-xl" style={{ background: BRAND_GREEN }}
+                    onClick={() => {
+                      if (!gifUrl.trim()) return;
+                      onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 210, w: 380, h: 280, objectFit: "contain" } as SlideElement);
+                      setGifUrl(""); setGifOpen(false);
+                    }}>
+                    {isAr ? "إضافة" : "Add"}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setGifOpen(false); setGifUrl(""); }}
+                    className="shrink-0 rounded-xl px-2">
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="sm"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                  onClick={() => setGifOpen(true)} disabled={readOnly}>
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {isAr ? "أو أضف برابط مخصص" : "or add by custom URL"}
+                </Button>
+              )
+            )}
+          </div>
         </div>
       </Section>
 
