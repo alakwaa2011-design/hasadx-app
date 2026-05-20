@@ -15,6 +15,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play, Rocket,
+  User, UsersRound, Gamepad2, Flame,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SlideStage } from "@/lib/slide-render";
@@ -104,6 +105,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
   const [activePin, setActivePin] = useState<string | null>(null);
+  const [showGameModeModal, setShowGameModeModal] = useState(false);
+  const [selectedGameMode, setSelectedGameMode] = useState<"solo" | "teams" | "rocket" | "hotseat">("solo");
+  const [selectedTeamCount, setSelectedTeamCount] = useState(2);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
@@ -243,30 +247,57 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     return (el as HasadActivityEl) ?? null;
   }, [current]);
 
-  /** Create a live game session from the linked assignment, then navigate
-   *  the pre-opened tab to the teacher game console.
-   *
-   *  The blank tab is opened synchronously inside the user-gesture handler
-   *  so browsers don't block it as a popup. The socket callback then sets
-   *  the tab's URL once the PIN is returned. */
+  /** Show the game-mode picker modal instead of immediately launching. */
   const launchHasadActivity = useCallback(() => {
     if (!activeActivityEl?.assignmentId || isLaunchingActivity) return;
+    setSelectedGameMode("solo");
+    setSelectedTeamCount(2);
+    setShowGameModeModal(true);
+  }, [activeActivityEl, isLaunchingActivity]);
 
-    /* Open the tab now, inside the synchronous user-gesture, so popup
-       blockers treat it as trusted. We'll set the URL in the callback. */
+  /** Confirm the game-mode selection and launch the appropriate game session.
+   *
+   *  - solo / teams  → teacher:create-game socket → /teacher/game/:pin
+   *  - rocket        → navigate to /game/rocket/create?assignmentId=...
+   *  - hotseat       → navigate to /game/hotseat/create
+   *
+   *  For socket-based modes, the blank tab is opened synchronously inside
+   *  the user-gesture handler so popup blockers treat it as trusted. */
+  const confirmLaunchActivity = useCallback(() => {
+    if (!activeActivityEl?.assignmentId || isLaunchingActivity) return;
+    setShowGameModeModal(false);
+
+    if (selectedGameMode === "rocket") {
+      window.open(
+        `/game/rocket/create?assignmentId=${activeActivityEl.assignmentId}`,
+        "_blank",
+        "noopener",
+      );
+      return;
+    }
+
+    if (selectedGameMode === "hotseat") {
+      window.open("/game/hotseat/create", "_blank", "noopener");
+      return;
+    }
+
+    /* solo / teams — use the socket to create a game session then open
+       the teacher console in the pre-opened tab. */
     const gameTab = window.open("", "_blank", "noopener");
-
     setIsLaunchingActivity(true);
     const socket = getSocket();
     socket.emit(
       "teacher:create-game",
-      { assignmentId: activeActivityEl.assignmentId, gameMode: "kahoot" },
+      {
+        assignmentId: activeActivityEl.assignmentId,
+        gameMode: selectedGameMode,
+        teamCount: selectedGameMode === "teams" ? selectedTeamCount : undefined,
+      },
       (res: { pin?: string; error?: string }) => {
         setIsLaunchingActivity(false);
         if (res.error || !res.pin) {
           gameTab?.close();
           disconnectSocket();
-          /* Brief visible error so the teacher knows the launch failed. */
           alert(isAr ? "تعذّر إنشاء اللعبة. حاول مرة أخرى." : "Could not create game session. Please try again.");
           return;
         }
@@ -277,12 +308,11 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         if (gameTab) {
           gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
         } else {
-          /* Fallback: tab was blocked despite the synchronous open — use same tab. */
           setLocation(`/teacher/game/${encodeURIComponent(res.pin)}`);
         }
       },
     );
-  }, [activeActivityEl, isLaunchingActivity, isAr, setLocation]);
+  }, [activeActivityEl, isLaunchingActivity, selectedGameMode, selectedTeamCount, isAr, setLocation]);
 
   return (
     <div
@@ -448,6 +478,128 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         onClick={goNext}
         className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`}
       />
+
+      {/* Game mode picker modal */}
+      {showGameModeModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+          onClick={() => setShowGameModeModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-200 dark:border-gray-700"
+            onClick={(e) => e.stopPropagation()}
+            dir={dir}
+          >
+            <div className="text-center mb-5">
+              <Gamepad2 className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+              <h3 className="text-lg font-black text-gray-900 dark:text-white">
+                {isAr ? "وضع اللعب" : "Game Mode"}
+              </h3>
+              {activeActivityEl?.assignmentTitle && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">
+                  {activeActivityEl.assignmentTitle}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {(
+                [
+                  {
+                    key: "solo" as const,
+                    icon: <User className="w-6 h-6 mx-auto mb-1" />,
+                    labelAr: "فردي",
+                    labelEn: "Individual",
+                    descAr: "كل لاعب يتنافس لوحده",
+                    descEn: "Every player alone",
+                  },
+                  {
+                    key: "teams" as const,
+                    icon: <UsersRound className="w-6 h-6 mx-auto mb-1" />,
+                    labelAr: "فرق",
+                    labelEn: "Teams",
+                    descAr: "اللاعبون في فرق",
+                    descEn: "Players divided into teams",
+                  },
+                  {
+                    key: "rocket" as const,
+                    icon: <Rocket className="w-6 h-6 mx-auto mb-1" />,
+                    labelAr: "سباق الصواريخ",
+                    labelEn: "Rocket Race",
+                    descAr: "تنافس بالصواريخ",
+                    descEn: "Race to the finish",
+                  },
+                  {
+                    key: "hotseat" as const,
+                    icon: <Flame className="w-6 h-6 mx-auto mb-1" />,
+                    labelAr: "الكرسي الساخن",
+                    labelEn: "Hot Seat",
+                    descAr: "طالب يجيب وزملاؤه يصوّتون",
+                    descEn: "One student, class votes",
+                  },
+                ] as const
+              ).map(({ key, icon, labelAr, labelEn, descAr, descEn }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedGameMode(key)}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    selectedGameMode === key
+                      ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                      : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-purple-300"
+                  }`}
+                >
+                  {icon}
+                  <p className="font-black text-sm">{isAr ? labelAr : labelEn}</p>
+                  <p className="text-xs mt-0.5 opacity-70">{isAr ? descAr : descEn}</p>
+                </button>
+              ))}
+            </div>
+
+            {selectedGameMode === "teams" && (
+              <div className="mb-5">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 text-center">
+                  {isAr ? "عدد الفرق" : "Number of Teams"}
+                </label>
+                <div className="flex justify-center gap-2">
+                  {[2, 3, 4, 5, 6].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setSelectedTeamCount(n)}
+                      className={`w-10 h-10 rounded-xl font-black text-base transition-all ${
+                        selectedTeamCount === n
+                          ? "bg-purple-500 text-white shadow-lg shadow-purple-500/30"
+                          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowGameModeModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                {isAr ? "إلغاء" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                onClick={confirmLaunchActivity}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-black shadow-lg shadow-green-500/20 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Gamepad2 className="w-5 h-5" />
+                {isAr ? "ابدأ اللعبة!" : "Start Game!"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom control bar */}
       <div
