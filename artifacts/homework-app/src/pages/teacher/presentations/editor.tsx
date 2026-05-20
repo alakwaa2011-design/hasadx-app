@@ -59,6 +59,9 @@ import { SlideStage, HasadGameRenderer, HasadActivityRenderer } from "@/lib/slid
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { ActivityPickerDialog } from "@/components/teacher/presentations/activity-picker-dialog";
 import { ActivityHubDialog } from "@/components/teacher/presentations/activity-hub-dialog";
 import { ActivitySuggestionsBanner } from "@/components/teacher/presentations/activity-suggestions-banner";
@@ -392,6 +395,7 @@ export default function PresentationEditor() {
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [aiBuilderOpen, setAiBuilderOpen] = useState(false);
+  const [aiModeDialogOpen, setAiModeDialogOpen] = useState(false);
   const [smartAddOpen, setSmartAddOpen] = useState(false);
   const [videoEmbedDialogOpen, setVideoEmbedDialogOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
@@ -1326,47 +1330,17 @@ export default function PresentationEditor() {
               </div>
             )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={readOnly}
-                  className="h-9 gap-2 rounded-lg font-semibold transition-colors"
-                  title={isAr ? "توليد عرض بالذكاء الاصطناعي" : "Generate with AI"}
-                >
-                  <Sparkles className="w-4 h-4" style={{ color: BRAND_GREEN }} />
-                  <span className="hidden lg:inline">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align={isAr ? "start" : "end"} className="rounded-xl shadow-lg border-border/50 w-56">
-                <div className="px-3 pt-2.5 pb-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
-                    {isAr ? "اختر الوضع" : "Choose mode"}
-                  </p>
-                </div>
-                <DropdownMenuItem
-                  onClick={() => setLocation("/teacher/presentations/new")}
-                  className="gap-3 rounded-lg mx-1 mb-0.5 cursor-pointer py-2.5"
-                >
-                  <span className="text-xl leading-none">⚡</span>
-                  <div>
-                    <div className="font-bold text-xs">{isAr ? "الوضع السريع" : "Quick Mode"}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{isAr ? "عرض جديد بنقرة واحدة" : "New deck in one click"}</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setAiBuilderOpen(true)}
-                  className="gap-3 rounded-lg mx-1 mb-1 cursor-pointer py-2.5"
-                >
-                  <span className="text-xl leading-none">🎛</span>
-                  <div>
-                    <div className="font-bold text-xs">{isAr ? "برو استديو" : "Pro Studio"}</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{isAr ? "توليد كامل بالذكاء" : "Full AI generation"}</div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={readOnly}
+              onClick={() => setAiModeDialogOpen(true)}
+              className="h-9 gap-2 rounded-lg font-semibold transition-colors"
+              title={isAr ? "توليد عرض بالذكاء الاصطناعي" : "Generate with AI"}
+            >
+              <Sparkles className="w-4 h-4" style={{ color: BRAND_GREEN }} />
+              <span className="hidden lg:inline">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
+            </Button>
 
             {/* Undo / Redo — small icon-only pair, sits with the rest of
                 the secondary toolbar so it never competes with the
@@ -2036,6 +2010,53 @@ export default function PresentationEditor() {
             branch, which made the mobile "اقترح خطة" button silently
             no-op: state flipped to open but no dialog was mounted.) */}
         <AiPresentationBuilder open={aiBuilderOpen} onOpenChange={setAiBuilderOpen} />
+
+        {/* AI Mode picker — two big visual cards: Quick Mode and Pro Studio */}
+        <Dialog open={aiModeDialogOpen} onOpenChange={setAiModeDialogOpen}>
+          <DialogContent dir={dir} className="max-w-md rounded-2xl p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50">
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Sparkles className="w-4 h-4" style={{ color: BRAND_GREEN }} />
+                {isAr ? "توليد بالذكاء الاصطناعي" : "AI Generation"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAiModeDialogOpen(false);
+                  setLocation("/teacher/presentations/new");
+                }}
+                className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-border/60 hover:border-[#D9A521] bg-muted/20 hover:bg-amber-50/60 p-5 text-center transition-all duration-200 cursor-pointer"
+              >
+                <span className="text-4xl leading-none group-hover:scale-110 transition-transform duration-200">⚡</span>
+                <div>
+                  <div className="font-bold text-sm text-foreground">{isAr ? "الوضع السريع" : "Quick Mode"}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                    {isAr ? "عرض جديد بنقرة واحدة" : "New deck in one click"}
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAiModeDialogOpen(false);
+                  setAiBuilderOpen(true);
+                }}
+                className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-border/60 hover:border-emerald-600 bg-muted/20 hover:bg-emerald-50/60 p-5 text-center transition-all duration-200 cursor-pointer"
+                style={{ "--hover-border": BRAND_GREEN } as React.CSSProperties}
+              >
+                <span className="text-4xl leading-none group-hover:scale-110 transition-transform duration-200">🎛</span>
+                <div>
+                  <div className="font-bold text-sm text-foreground">{isAr ? "برو استديو" : "Pro Studio"}</div>
+                  <div className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                    {isAr ? "توليد كامل بالذكاء" : "Full AI generation"}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Smart Add Slide — kind picker + AI generator, shared between
             desktop rail button and mobile shell add button so a single
