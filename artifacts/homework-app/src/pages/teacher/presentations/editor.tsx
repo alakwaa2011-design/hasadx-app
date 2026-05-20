@@ -1330,7 +1330,7 @@ export default function PresentationEditor() {
               size="sm"
               variant="outline"
               disabled={readOnly}
-              onClick={() => setAiBuilderOpen(true)}
+              onClick={() => setLocation("/teacher/presentations/new")}
               className="h-9 gap-2 rounded-lg font-semibold transition-colors"
               title={isAr ? "توليد عرض بالذكاء الاصطناعي" : "Generate with AI"}
             >
