@@ -53,6 +53,8 @@ export default function PresentationPlay() {
     correctIndex?: number;
   } | null>(null);
   const [mySummary, setMySummary] = useState<{ correct: number; total: number } | null>(null);
+  const [textInput, setTextInput] = useState("");
+  const [textSubmitted, setTextSubmitted] = useState(false);
 
   useEffect(() => {
     const s = loadStored();
@@ -154,20 +156,21 @@ export default function PresentationPlay() {
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null); setTotalAnswered(0);
       setGameLaunch(null);
       setInlineActivity(null); setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onOpened = ({ elementId, element }: any) => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       if (element?.kind !== "hasad-game") setGameLaunch(null);
-      /* If this is an inline-quiz hasad-game, the server will follow
-         up immediately with `activity:state`; clear any prior summary. */
       setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onClosed = () => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       setGameLaunch(null);
       setInlineActivity(null); setMySummary(null);
+      setTextInput(""); setTextSubmitted(false);
     };
     const onGameLaunch = (p: { gameKind: string; studentUrl: string; label: string }) => {
       setGameLaunch({ gameKind: p.gameKind, studentUrl: p.studentUrl, label: p.label ?? "" });
@@ -651,6 +654,67 @@ export default function PresentationPlay() {
                     ? "سيعطيك المعلم رمز الانضمام (PIN). افتح اللعبة في تبويب جديد ثم أدخل الرمز."
                     : "Your teacher will share a join code (PIN). Open the game in a new tab and enter the code."}
                 </p>
+              </div>
+            </div>
+          ) : el && (el.activityKind === "word_cloud" || el.activityKind === "open_wall") ? (
+            /* ── Word cloud / open wall — text input card ── */
+            <div className="flex-1 flex flex-col p-4">
+              <div className="rounded-2xl bg-white/95 shadow-xl p-5 mb-4">
+                <div className="text-xs uppercase tracking-wider mb-2" style={{ color: el.activityKind === "word_cloud" ? "#7ec8e3" : "#D9A521" }}>
+                  {el.activityKind === "word_cloud"
+                    ? (isAr ? "☁ سحابة الكلمات" : "☁ Word Cloud")
+                    : (isAr ? "💬 جدار الردود" : "💬 Response Wall")}
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-4">
+                  {el.prompt || (isAr ? "أرسل ردك" : "Send your response")}
+                </h2>
+
+                {textSubmitted ? (
+                  <div className="flex flex-col items-center gap-3 py-4 text-center">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                    <div className="text-lg font-bold text-slate-800">
+                      {isAr ? "تم إرسال ردك!" : "Response sent!"}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {el.activityKind === "word_cloud"
+                        ? (isAr ? "شاهد الكلمات تظهر على الشاشة" : "Watch the words appear on screen")
+                        : (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <textarea
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value.slice(0, el.activityKind === "word_cloud" ? 60 : 500))}
+                      rows={el.activityKind === "word_cloud" ? 2 : 4}
+                      className="w-full p-3 text-base border-2 border-slate-200 rounded-xl bg-white resize-none outline-none focus:border-emerald-500 transition-colors"
+                      placeholder={
+                        el.activityKind === "word_cloud"
+                          ? (isAr ? "اكتب كلمة أو عبارة قصيرة…" : "Type a word or short phrase…")
+                          : (isAr ? "اكتب ردك هنا…" : "Type your response here…")
+                      }
+                      dir={isAr ? "rtl" : "ltr"}
+                    />
+                    <button
+                      disabled={!textInput.trim()}
+                      onClick={() => {
+                        const cleaned = textInput.trim();
+                        if (!cleaned) return;
+                        const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
+                        getSocket().emit(event, {
+                          sessionId: sid,
+                          elementId: live?.activeElementId,
+                          text: cleaned,
+                        });
+                        setTextSubmitted(true);
+                      }}
+                      className="mt-3 w-full rounded-xl py-3 text-base font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ background: "#225739", color: "white" }}
+                    >
+                      {isAr ? "إرسال" : "Send"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : el ? (

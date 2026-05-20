@@ -102,6 +102,8 @@ function ActivityRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }
     true_false: { ar: "صح / خطأ", en: "True / False" },
     open: { ar: "إجابة مفتوحة", en: "Open answer" },
     poll: { ar: "تصويت", en: "Poll" },
+    word_cloud: { ar: "سحابة الكلمات", en: "Word Cloud" },
+    open_wall: { ar: "جدار الردود", en: "Response Wall" },
   };
   const label = (kindLabel[el.activityKind ?? "open"] ?? { ar: "نشاط", en: "Activity" })[isAr ? "ar" : "en"];
   const opts = (el.options ?? []).slice(0, 8);

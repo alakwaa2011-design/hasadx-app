@@ -3,7 +3,129 @@ import { useParams } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
-import { Loader2 } from "lucide-react";
+import { Loader2, Cloud, MessageSquare } from "lucide-react";
+
+/* ── Word cloud overlay ────────────────────────────────────────────── */
+interface CloudWord { text: string; count: number }
+const CLOUD_COLORS = [
+  "#D9A521", "#60b8a0", "#7ec8e3", "#f4845f", "#b5a1dc",
+  "#6bcb77", "#f9c74f", "#f8961e", "#90e0ef", "#c77dff",
+];
+function WordCloudOverlay({ words, isAr }: { words: CloudWord[]; isAr: boolean }) {
+  if (words.length === 0) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
+        <Cloud className="w-16 h-16 opacity-30 text-white" />
+        <div className="text-white/50 text-lg font-bold">
+          {isAr ? "في انتظار كلمات الطلاب…" : "Waiting for student words…"}
+        </div>
+      </div>
+    );
+  }
+  const maxCount = Math.max(...words.map((w) => w.count), 1);
+  const sorted = [...words].sort((a, b) => b.count - a.count);
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-black/75 p-10">
+      <div
+        dir={isAr ? "rtl" : "ltr"}
+        className="w-full h-full flex flex-wrap items-center justify-center gap-x-6 gap-y-3 content-center"
+      >
+        <AnimatePresence>
+          {sorted.map((w, i) => {
+            const ratio = w.count / maxCount;
+            const size = Math.round(28 + ratio * 72);
+            const color = CLOUD_COLORS[i % CLOUD_COLORS.length];
+            const rot = ((i * 37) % 21) - 10;
+            return (
+              <motion.span
+                key={w.text}
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.4 }}
+                transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                style={{
+                  fontSize: size,
+                  color,
+                  fontWeight: ratio > 0.6 ? 900 : ratio > 0.3 ? 700 : 500,
+                  transform: `rotate(${rot}deg)`,
+                  textShadow: `0 2px 12px ${color}44`,
+                  fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif",
+                  lineHeight: 1.1,
+                  userSelect: "none",
+                  display: "inline-block",
+                }}
+              >
+                {w.text}
+              </motion.span>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+      <div
+        className="absolute bottom-5 right-5 text-white/40 text-sm font-bold tabular-nums"
+        dir="ltr"
+      >
+        {words.length} {isAr ? "كلمة" : "words"}
+      </div>
+    </div>
+  );
+}
+
+/* ── Open wall overlay ─────────────────────────────────────────────── */
+interface WallCard { id: string; name: string; text: string; visible: boolean }
+function OpenWallOverlay({ cards, isAr }: { cards: WallCard[]; isAr: boolean }) {
+  const visible = cards.filter((c) => c.visible);
+  if (visible.length === 0) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/70">
+        <MessageSquare className="w-16 h-16 opacity-30 text-white" />
+        <div className="text-white/50 text-lg font-bold">
+          {isAr ? "في انتظار ردود الطلاب…" : "Waiting for student responses…"}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="absolute inset-0 bg-black/80 p-8 overflow-hidden">
+      <div
+        dir={isAr ? "rtl" : "ltr"}
+        className="h-full grid gap-4 content-start"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
+      >
+        <AnimatePresence>
+          {visible.slice(0, 16).map((c, i) => (
+            <motion.div
+              key={c.id}
+              initial={{ opacity: 0, y: 24, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ delay: i * 0.06, type: "spring", stiffness: 260, damping: 24 }}
+              className="rounded-2xl p-5 flex flex-col gap-2 shadow-xl"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                backdropFilter: "blur(6px)",
+              }}
+            >
+              <div className="text-xs font-bold" style={{ color: "#D9A521" }}>
+                {c.name}
+              </div>
+              <div
+                className="text-white font-bold break-words"
+                style={{ fontSize: "clamp(14px, 2vw, 22px)", lineHeight: 1.4 }}
+              >
+                {c.text}
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      <div className="absolute bottom-5 right-5 text-white/40 text-sm font-bold tabular-nums" dir="ltr">
+        {visible.length} {isAr ? "رد" : "responses"}
+      </div>
+    </div>
+  );
+}
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -23,6 +145,8 @@ export default function PresentationShow() {
 
   const [state, setState] = useState<any>(null);
   const [live, setLive] = useState<any>(null);
+  const [wordCloudWords, setWordCloudWords] = useState<CloudWord[]>([]);
+  const [wallCards, setWallCards] = useState<WallCard[]>([]);
   /* Track slide key for AnimatePresence — each unique slide id triggers
      the cross-fade transition without touching socket event logic. */
   const slideKeyRef = useRef<string | number>(0);
@@ -51,18 +175,30 @@ export default function PresentationShow() {
         revealAnswer: false,
         revealDistribution: false,
       }));
+      setWordCloudWords([]);
+      setWallCards([]);
     };
-    const onOpened = ({ elementId, element }: any) =>
+    const onOpened = ({ elementId, element }: any) => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element }));
-    const onClosed = () =>
+      setWordCloudWords([]);
+      setWallCards([]);
+    };
+    const onClosed = () => {
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: null, activeElement: null }));
+      setWordCloudWords([]);
+      setWallCards([]);
+    };
     const onEnded = () => setLive((p: any) => ({ ...(p ?? {}), status: "ended" }));
+    const onWordCloud = ({ words }: { words: CloudWord[] }) => setWordCloudWords(words);
+    const onWall = ({ cards }: { cards: WallCard[] }) => setWallCards(cards);
     const onReconnect = () => s.emit("show:join", { sessionId: sid });
     s.on("state:sync", onSync);
     s.on("slide:changed", onSlide);
     s.on("activity:opened", onOpened);
     s.on("activity:closed", onClosed);
     s.on("session:ended", onEnded);
+    s.on("word_cloud:update", onWordCloud);
+    s.on("wall:update", onWall);
     s.on("connect", onReconnect);
     return () => {
       s.off("state:sync", onSync);
@@ -70,6 +206,8 @@ export default function PresentationShow() {
       s.off("activity:opened", onOpened);
       s.off("activity:closed", onClosed);
       s.off("session:ended", onEnded);
+      s.off("word_cloud:update", onWordCloud);
+      s.off("wall:update", onWall);
       s.off("connect", onReconnect);
     };
   }, [sid]);
@@ -79,6 +217,8 @@ export default function PresentationShow() {
   const inLobby = (live?.status ?? state?.status) === "lobby";
   const ended = (live?.status ?? state?.status) === "ended";
   const slideKey = slide?.id ?? live?.currentSlideIndex ?? 0;
+  const activeKind: string | undefined = live?.activeElement?.activityKind ?? state?.activeElement?.activityKind;
+  const isAr = state?.deck?.language !== "en";
 
   /* ── Ended ──────────────────────────────────────────────────────── */
   if (ended) {
@@ -274,9 +414,41 @@ export default function PresentationShow() {
         )}
       </AnimatePresence>
 
+      {/* ── Word cloud overlay ───────────────────────────────── */}
+      <AnimatePresence>
+        {live?.activeElementId && !inLobby && activeKind === "word_cloud" && (
+          <motion.div
+            key="word-cloud-overlay"
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <WordCloudOverlay words={wordCloudWords} isAr={isAr} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Open wall overlay ────────────────────────────────── */}
+      <AnimatePresence>
+        {live?.activeElementId && !inLobby && activeKind === "open_wall" && (
+          <motion.div
+            key="open-wall-overlay"
+            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <OpenWallOverlay cards={wallCards} isAr={isAr} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Active activity badge ─────────────────────────────── */}
       <AnimatePresence>
-        {live?.activeElementId && !inLobby && (
+        {live?.activeElementId && !inLobby && activeKind !== "word_cloud" && activeKind !== "open_wall" && (
           <motion.div
             key="activity-badge"
             className="absolute bottom-5 left-1/2"

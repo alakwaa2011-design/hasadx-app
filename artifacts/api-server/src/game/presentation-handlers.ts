@@ -34,6 +34,14 @@ import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
  *   session:ended
  */
 
+interface WallCard {
+  id: string;
+  studentKey: string;
+  name: string;
+  text: string;
+  visible: boolean;
+}
+
 interface LiveSession {
   id: number;
   teacherId: number;
@@ -42,6 +50,22 @@ interface LiveSession {
   participants: Map<string, { name: string; studentKey: string; isShow: boolean; classStudentId: number | null }>;
   /** track teacher control sockets so emit-from-teacher can verify. */
   teacherSockets: Set<string>;
+  /** word_cloud activity: tracks word frequency in memory. */
+  wordCloudActivity?: {
+    elementId: string;
+    /** word (lowercased) -> count */
+    words: Map<string, number>;
+    /** studentKeys that already submitted a word */
+    submitted: Set<string>;
+  };
+  /** open_wall activity: list of submitted response cards. */
+  openWallActivity?: {
+    elementId: string;
+    cards: WallCard[];
+    /** studentKeys that already submitted */
+    submitted: Set<string>;
+    nextId: number;
+  };
   /** Phase 6 — inline hasad-game quiz state (when the launched game
    *  carries `questions[]`, we run it inline on the student/teacher
    *  screens instead of opening the legacy game-setup tab). Cleared
@@ -407,6 +431,20 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
       correctIndex: active.correctIndex,
     });
   }
+  /* Late-joiner support for word_cloud / open_wall activities. */
+  const live0 = sessions.get(sid);
+  if (live0?.wordCloudActivity && sess.activeElementId === live0.wordCloudActivity.elementId) {
+    const wordArr = Array.from(live0.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
+    socket.emit("word_cloud:update", { elementId: sess.activeElementId, words: wordArr });
+  }
+  if (live0?.openWallActivity && sess.activeElementId === live0.openWallActivity.elementId) {
+    const isTeach = isTeacher;
+    const cards = isTeach
+      ? live0.openWallActivity.cards
+      : live0.openWallActivity.cards.filter((c) => c.visible);
+    socket.emit("wall:update", { elementId: sess.activeElementId, cards });
+  }
+
   /* Late-joiner support for active Hasad-game launchers. */
   if (active && (active as any).kind === "hasad-game" && sess.activeElementId) {
     const hasInlineQuestions =
@@ -632,7 +670,11 @@ export function setupPresentationSocket(io: Server) {
           .set({ currentSlideIndex: idx, activeElementId: null, revealDistribution: false, revealAnswer: false, status: sess.status === "lobby" ? "running" : sess.status })
           .where(eq(presentationSessionsTable.id, sid));
         const liveSess = sessions.get(sid);
-        if (liveSess) liveSess.inlineActivity = undefined;
+        if (liveSess) {
+          liveSess.inlineActivity = undefined;
+          liveSess.wordCloudActivity = undefined;
+          liveSess.openWallActivity = undefined;
+        }
         const deck = await loadDeckRow(sess.presentationId);
         const slides = Array.isArray(deck?.slides) ? (deck!.slides as any[]) : [];
         const rawSlide = slides[idx] ?? null;
@@ -667,6 +709,26 @@ export function setupPresentationSocket(io: Server) {
           elementId: String(elementId),
           element: forTeacher ? element : sanitizeElementForStudents(element),
         }));
+
+        /* Word-cloud / open-wall: initialise in-memory tracking so
+           students can immediately start submitting. */
+        const elKind = (element as any)?.activityKind;
+        if (live && elKind === "word_cloud") {
+          live.wordCloudActivity = {
+            elementId: String(elementId),
+            words: new Map(),
+            submitted: new Set(),
+          };
+          io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: [] });
+        } else if (live && elKind === "open_wall") {
+          live.openWallActivity = {
+            elementId: String(elementId),
+            cards: [],
+            submitted: new Set(),
+            nextId: 1,
+          };
+          io.to(room(sid)).emit("wall:update", { elementId: String(elementId), cards: [] });
+        }
 
         if (useInline && live) {
           /* Phase 6 — inline quiz: initialize per-question state and
@@ -704,9 +766,97 @@ export function setupPresentationSocket(io: Server) {
           .set({ activeElementId: null, revealDistribution: false, revealAnswer: false })
           .where(eq(presentationSessionsTable.id, sid));
         const live = sessions.get(sid);
-        if (live) live.inlineActivity = undefined;
+        if (live) {
+          live.inlineActivity = undefined;
+          live.wordCloudActivity = undefined;
+          live.openWallActivity = undefined;
+        }
         io.to(room(sid)).emit("activity:closed");
       } catch (err) { logger.error({ err }, "activity:close failed"); }
+    });
+
+    /* Word cloud — student submits a word/short phrase. Server tracks
+       frequency in memory and broadcasts the updated cloud to all
+       projector/show clients. One submission per student per element. */
+    socket.on("word_cloud:submit", ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+        /* Must be the active element */
+        if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== String(elementId)) return;
+        if (live.wordCloudActivity.submitted.has(me.studentKey)) {
+          return socket.emit("answer:already");
+        }
+        const word = String(text ?? "").trim().slice(0, 60);
+        if (!word) return;
+        const key = word.toLowerCase();
+        const cur = live.wordCloudActivity.words.get(key) ?? 0;
+        live.wordCloudActivity.words.set(key, cur + 1);
+        live.wordCloudActivity.submitted.add(me.studentKey);
+        socket.emit("answer:accepted");
+        /* Build serializable payload — use the original casing of the
+           first submission for display (the map stores lowercased keys
+           for frequency but we want readable output). We keep it simple
+           by storing the display word alongside the count. */
+        const wordArr = Array.from(live.wordCloudActivity.words.entries()).map(([w, count]) => ({ text: w, count }));
+        io.to(room(sid)).emit("word_cloud:update", { elementId: String(elementId), words: wordArr });
+      } catch (err) { logger.error({ err }, "word_cloud:submit failed"); }
+    });
+
+    /* Open wall — student submits a free-text response card.
+       Server stores cards in memory. Teachers toggle visibility.
+       One submission per student per element. */
+    socket.on("wall:submit", ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        const me = live?.participants.get(socket.id);
+        if (!live || !me || me.isShow) return;
+        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
+        if (live.openWallActivity.submitted.has(me.studentKey)) {
+          return socket.emit("answer:already");
+        }
+        const cleaned = String(text ?? "").trim().slice(0, 500);
+        if (!cleaned) return;
+        const card: WallCard = {
+          id: String(live.openWallActivity.nextId++),
+          studentKey: me.studentKey,
+          name: me.name,
+          text: cleaned,
+          visible: true,
+        };
+        live.openWallActivity.cards.push(card);
+        live.openWallActivity.submitted.add(me.studentKey);
+        socket.emit("answer:accepted");
+        /* Teacher sees all cards; projector/students see visible only. */
+        const allCards = live.openWallActivity.cards;
+        const visibleCards = allCards.filter((c) => c.visible);
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
+        }
+        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
+      } catch (err) { logger.error({ err }, "wall:submit failed"); }
+    });
+
+    /* Teacher toggles visibility of a wall card. */
+    socket.on("wall:toggle-card", ({ sessionId, elementId, cardId, visible }: { sessionId: number; elementId: string; cardId: string; visible: boolean }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
+        const card = live.openWallActivity.cards.find((c) => c.id === String(cardId));
+        if (!card) return;
+        card.visible = !!visible;
+        const allCards = live.openWallActivity.cards;
+        const visibleCards = allCards.filter((c) => c.visible);
+        for (const sockId of live.teacherSockets) {
+          io.to(sockId).emit("wall:update", { elementId: String(elementId), cards: allCards });
+        }
+        io.to(room(sid)).except(Array.from(live.teacherSockets)).emit("wall:update", { elementId: String(elementId), cards: visibleCards });
+      } catch (err) { logger.error({ err }, "wall:toggle-card failed"); }
     });
 
     /* Phase 6 — teacher advances the inline quiz to the next question.

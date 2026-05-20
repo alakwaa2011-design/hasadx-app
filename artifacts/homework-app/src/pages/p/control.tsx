@@ -97,6 +97,9 @@ export default function PresentationControl() {
   };
   const [history, setHistory] = useState<InlineRun[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  /* word_cloud / open_wall live state */
+  const [wordCloudWords, setWordCloudWords] = useState<{ text: string; count: number }[]>([]);
+  const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
 
   async function loadHistory() {
     if (!Number.isFinite(sid)) return;
@@ -132,19 +135,21 @@ export default function PresentationControl() {
     const onSlide = ({ index }: { index: number }) => {
       setLive((p) => (p ? { ...p, currentSlideIndex: index, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
+      setWordCloudWords([]); setWallCards([]);
     };
     const onOpened = ({ elementId, element }: { elementId: string; element: any }) => {
       setLive((p) => (p ? { ...p, activeElementId: elementId, activeElement: element, revealDistribution: false, revealAnswer: false } : p));
       setSummary(null);
-      /* Clear stale inline-quiz panel when the teacher opens a
-         different element. The matching `activity:state` event will
-         re-set it for inline-capable hasad-games. */
+      setWordCloudWords([]); setWallCards([]);
       setInlineActivity((prev) => (prev && prev.elementId !== elementId ? null : prev));
     };
     const onClosed = () => {
       setLive((p) => (p ? { ...p, activeElementId: null, activeElement: null, revealDistribution: false, revealAnswer: false } : p));
       setInlineActivity(null); setSummary(null);
+      setWordCloudWords([]); setWallCards([]);
     };
+    const onWordCloudUpdate = (words: { text: string; count: number }[]) => setWordCloudWords(words);
+    const onWallUpdate = (cards: { id: string; text: string; visible: boolean; studentKey: string }[]) => setWallCards(cards);
     const onInlineState = (p: any) => { setInlineActivity(p); setSummary(null); };
     const onInlineSummary = (p: any) => {
       setSummary(p); setInlineActivity(null);
@@ -176,6 +181,8 @@ export default function PresentationControl() {
     s.on("results:distribution", onDist);
     s.on("session:ended", onEnded);
     s.on("connect", onReconnect);
+    s.on("word_cloud:update", onWordCloudUpdate);
+    s.on("wall:update", onWallUpdate);
 
     return () => {
       s.off("state:sync", onSync);
@@ -190,6 +197,8 @@ export default function PresentationControl() {
       s.off("results:distribution", onDist);
       s.off("session:ended", onEnded);
       s.off("connect", onReconnect);
+      s.off("word_cloud:update", onWordCloudUpdate);
+      s.off("wall:update", onWallUpdate);
     };
   }, [sid]);
 
@@ -424,6 +433,15 @@ export default function PresentationControl() {
                         <Play className="w-4 h-4 me-1.5" /> إطلاق اللعبة الآن
                       </Button>
                     )
+                  ) : open && (a.activityKind === "word_cloud" || a.activityKind === "open_wall") ? (
+                    <>
+                      <span className="text-xs text-white/60 tabular-nums">
+                        {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
+                      </span>
+                      <Button size="sm" variant="destructive" onClick={closeActivity}>
+                        <Square className="w-4 h-4" />
+                      </Button>
+                    </>
                   ) : open ? (
                     <>
                       <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
@@ -611,26 +629,97 @@ export default function PresentationControl() {
               .filter((a: any) => a.id === live?.activeElementId)
               .map((a: any) => {
                 const label = a.prompt || a.topic || "نشاط";
+                const isTextActivity = a.activityKind === "word_cloud" || a.activityKind === "open_wall";
                 return (
                   <div key={a.id} className="flex items-center gap-2">
                     <div className="flex-1 text-sm truncate text-white/90">{label}</div>
-                    <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
-                      {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      <span className="ms-1">توزيع</span>
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={closeActivity}>
-                      <Square className="w-4 h-4" />
-                    </Button>
+                    {isTextActivity ? (
+                      <>
+                        <span className="text-xs text-white/50 tabular-nums">
+                          {a.activityKind === "word_cloud" ? `${wordCloudWords.length} كلمة` : `${wallCards.length} بطاقة`}
+                        </span>
+                        <Button size="sm" variant="destructive" onClick={closeActivity}>
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={toggleDist} className="border-amber-400/40 text-amber-300">
+                          {live?.revealDistribution ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <span className="ms-1">توزيع</span>
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={toggleAns} className="border-emerald-400/40 text-emerald-300">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="ms-1">{live?.revealAnswer ? "إخفاء" : "كشف"}</span>
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={closeActivity}>
+                          <Square className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 );
               })}
             {dist && (
               <div className="text-xs text-white/60">إجابات مستلمة: {dist.total}</div>
             )}
+          </div>
+        )}
+
+        {/* ── Open Wall card moderation panel ── */}
+        {!ended && wallCards.length > 0 && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
+            <div className="text-xs font-bold text-white/70">
+              بطاقات جدار الردود ({wallCards.length})
+            </div>
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {wallCards.map((card) => (
+                <div key={card.id} className="flex items-start gap-2 rounded-lg bg-black/30 border border-white/10 p-2">
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm break-words leading-snug ${card.visible ? "text-white/90" : "text-white/40 line-through"}`}>
+                      {card.text}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, cardId: card.id })}
+                    className="shrink-0 rounded-md p-1.5 transition-colors"
+                    style={{ background: card.visible ? "rgba(34,87,57,0.4)" : "rgba(255,255,255,0.06)" }}
+                    title={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}
+                  >
+                    {card.visible ? <Eye className="w-4 h-4 text-emerald-300" /> : <EyeOff className="w-4 h-4 text-white/40" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Word cloud live count ── */}
+        {!ended && wordCloudWords.length > 0 && (
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="text-xs font-bold text-white/70 mb-2">
+              ☁ سحابة الكلمات ({wordCloudWords.reduce((s, w) => s + w.count, 0)} إجابة)
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {wordCloudWords
+                .slice()
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 20)
+                .map((w) => (
+                  <span
+                    key={w.text}
+                    className="rounded-full px-2 py-0.5 text-xs font-bold"
+                    style={{
+                      background: "rgba(34,87,57,0.5)",
+                      color: w.count >= 3 ? "#D9A521" : "rgba(255,255,255,0.8)",
+                      fontSize: `${Math.min(14 + w.count * 2, 20)}px`,
+                    }}
+                  >
+                    {w.text} ({w.count})
+                  </span>
+                ))}
+            </div>
           </div>
         )}
 
