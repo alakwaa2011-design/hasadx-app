@@ -75,6 +75,11 @@ export default function NewPresentationPage() {
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameConfirmed, setRenameConfirmed] = useState(false);
 
+  /* ── Inline rename state (shown after Quick Mode success) ── */
+  const [quickRenameValue, setQuickRenameValue] = useState("");
+  const [quickRenameSaving, setQuickRenameSaving] = useState(false);
+  const [quickRenameConfirmed, setQuickRenameConfirmed] = useState(false);
+
   useEffect(() => {
     if (mode === "pro") setProBuilderOpen(true);
   }, [mode]);
@@ -201,6 +206,8 @@ export default function NewPresentationPage() {
       }
 
       setGeneratedPresentationId(presId);
+      setQuickRenameValue(topic.trim());
+      setQuickRenameConfirmed(false);
       setQuickPhase("preview");
     } catch (err) {
       clearInterval(t);
@@ -221,6 +228,9 @@ export default function NewPresentationPage() {
     setGeneratedPresentationId(null);
     setGeneratedSlides([]);
     setErrorMsg("");
+    setQuickRenameValue("");
+    setQuickRenameSaving(false);
+    setQuickRenameConfirmed(false);
   };
 
   /* Upload a file to the import endpoint and handle the result. */
@@ -298,6 +308,38 @@ export default function NewPresentationPage() {
       setRenameSaving(false);
     }
   }, [importResult, renameValue, isAr]);
+
+  /* Save a new title for the just-generated (Quick Mode) presentation. */
+  const handleQuickRename = useCallback(async () => {
+    if (!generatedPresentationId) return;
+    const trimmed = quickRenameValue.trim();
+    if (!trimmed) {
+      setQuickRenameConfirmed(true);
+      return;
+    }
+    setQuickRenameSaving(true);
+    try {
+      const r = await fetch(
+        `${API_BASE}/api/presentations/${generatedPresentationId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title: trimmed }),
+        },
+      );
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error((e as { message?: string }).message ?? (isAr ? "فشل حفظ الاسم" : "Failed to save title"));
+      }
+      setQuickRenameConfirmed(true);
+      toast.success(isAr ? "تم حفظ الاسم" : "Title saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error");
+    } finally {
+      setQuickRenameSaving(false);
+    }
+  }, [generatedPresentationId, quickRenameValue, isAr]);
 
   /* Submit a URL (Google Slides) to the import-url endpoint. */
   const handleImportUrl = useCallback(async () => {
@@ -758,11 +800,61 @@ export default function NewPresentationPage() {
                   ? `تم إنشاء عرض تفاعلي بـ ${slideCount} شريحة تتضمن أسئلة وأنشطة جاهزة.`
                   : `Created an interactive ${slideCount}-slide deck with questions and ready-to-use activities.`}
               </p>
-              <p className="text-xs text-muted-foreground/70 mb-6">
+              <p className="text-xs text-muted-foreground/70 mb-4">
                 {isAr
                   ? "يمكنك إطلاق الحصة مباشرةً أو تعديلها في المحرر المتقدم"
                   : "You can launch immediately or fine-tune in the advanced editor"}
               </p>
+
+              {/* ── Inline rename prompt ── */}
+              {!quickRenameConfirmed ? (
+                <div className="mb-6 bg-muted/40 border border-border rounded-2xl px-5 py-4 text-start">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    {isAr ? "اسم العرض" : "Deck title"}
+                  </p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      dir="auto"
+                      value={quickRenameValue}
+                      onChange={(e) => setQuickRenameValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") void handleQuickRename(); }}
+                      disabled={quickRenameSaving}
+                      className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all disabled:opacity-60"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleQuickRename()}
+                      disabled={quickRenameSaving || !quickRenameValue.trim()}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      {quickRenameSaving
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Check className="w-4 h-4" />}
+                      {isAr ? "حفظ" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickRenameConfirmed(true)}
+                      disabled={quickRenameSaving}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted/50 disabled:opacity-40 transition-all"
+                    >
+                      {isAr ? "تخطي" : "Skip"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1.5">
+                    {isAr
+                      ? "يمكنك تغيير الاسم الآن أو تخطي هذه الخطوة"
+                      : "Rename it now or skip — you can always change it later"}
+                  </p>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-3 bg-muted/40 border border-border rounded-2xl px-5 py-3 mb-6">
+                  <Sparkles className="w-5 h-5 text-emerald-500 shrink-0" />
+                  <p className="text-sm font-bold truncate max-w-[220px]">{quickRenameValue || topic.trim()}</p>
+                </div>
+              )}
 
               {/* ── Slide thumbnail strip ── */}
               {generatedSlides.length > 0 && (
