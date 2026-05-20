@@ -380,9 +380,12 @@ export default function PresentationPlay() {
   function answer(i: number) {
     if (submitted || chosen != null) return;
     setChosen(i);
+    /* Self-paced: use the element rendered on the student's current slide;
+       teacher-paced: use the globally teacher-opened element id. */
+    const answerElementId = sessionMode === "self_paced" ? selfPacedActiveEl?.id : live?.activeElementId;
     getSocket().emit("student:answer", {
       sessionId: sid,
-      elementId: live?.activeElementId,
+      elementId: answerElementId,
       answerIndex: i,
       /* Phase 6 — included for inline hasad-game quizzes; ignored
          server-side for legacy single-question activity elements. */
@@ -871,9 +874,11 @@ export default function PresentationPlay() {
                         const cleaned = textInput.trim();
                         if (!cleaned) return;
                         const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
+                        /* Self-paced: use the slide-bundled activity id; teacher-paced: global id. */
+                        const textElementId = sessionMode === "self_paced" ? selfPacedActiveEl?.id : live?.activeElementId;
                         getSocket().emit(event, {
                           sessionId: sid,
-                          elementId: live?.activeElementId,
+                          elementId: textElementId,
                           text: cleaned,
                         });
                         setTextSubmitted(true);

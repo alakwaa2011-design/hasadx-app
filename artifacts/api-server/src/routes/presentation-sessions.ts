@@ -1535,6 +1535,10 @@ router.get("/p/sessions/:id/state", async (req: any, res) => {
       presentationId: sess.presentationId,
       status: sess.status,
       mode: sess.mode,
+      /* sessionMode lets the polling fallback rehydrate pacing state
+         (teacher vs self_paced) after a socket reconnect without losing
+         the student's ability to navigate slides independently. */
+      sessionMode: (sess as any).sessionMode ?? "teacher",
       currentSlideIndex: sess.currentSlideIndex,
       slideCount: slides.length,
       activeElementId: sess.activeElementId,
