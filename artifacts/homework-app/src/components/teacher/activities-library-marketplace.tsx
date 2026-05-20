@@ -21,24 +21,26 @@ import {
   X,
   EyeOff,
   MoreVertical,
-  GraduationCap,
   User,
   Bookmark,
   Presentation,
-  Gamepad2,
   ClipboardList,
   Sparkles,
   TrendingUp,
-  ChevronLeft,
-  Globe,
+  Radio,
   Layers,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   ActivityCover,
   formatUseCount,
   resolveCoverKind,
+  resolveSubjectTheme,
 } from "@/lib/activity-cover";
+
+const FILTER_INPUT =
+  "h-10 rounded-xl border border-[#e8e1d8] bg-[#fcfbfa] text-sm text-[#1f2d24] shadow-[inset_0_1px_2px_rgba(31,45,36,0.04)] outline-none transition-shadow placeholder:text-[#9aa89f] focus:border-[#0a4d26]/35 focus:ring-2 focus:ring-[#0a4d26]/10";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -241,7 +243,10 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
       setStatsLoading(true);
       setStatsError(false);
       try {
-        const res = await fetch(`${API_BASE}/api/teacher/activity-library/stats`, {
+        const statsUrl = API_BASE
+          ? `${API_BASE}/api/teacher/activity-library/stats`
+          : "/api/teacher/activity-library/stats";
+        const res = await fetch(statsUrl, {
           credentials: "include",
         });
         if (!res.ok) throw new Error("stats failed");
@@ -391,27 +396,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     { id: "interactive", ar: "أنشطة تفاعلية", en: "Interactive", icon: <Sparkles className="w-3.5 h-3.5" /> },
   ];
 
-  const statsDisplay = [
-    {
-      icon: <BookText className="w-4 h-4 text-[#0a4d26]" />,
-      value: statsError ? "—" : formatUseCount(libraryStats?.totalActivities),
-      label: isAr ? "نشاط جاهز" : "Ready activities",
-    },
-    {
-      icon: <Users className="w-4 h-4 text-[#0a4d26]" />,
-      value: statsError ? "—" : formatUseCount(libraryStats?.contributingTeachers),
-      label: isAr ? "معلم مشارك" : "Contributing teachers",
-    },
-    {
-      icon: <TrendingUp className="w-4 h-4 text-[#0a4d26]" />,
-      value: statsError ? "—" : formatUseCount(libraryStats?.totalUses),
-      label: isAr ? "مرات الاستخدام" : "Total uses",
-    },
-    {
-      icon: <Zap className="w-4 h-4 text-[#0a4d26]" />,
-      value: statsError ? "—" : formatUseCount(libraryStats?.newThisWeek),
-      label: isAr ? "جديد هذا الأسبوع" : "New this week",
-    },
+  const statsLabels = [
+    { icon: <BookText className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "نشاط جاهز" : "Ready activities", value: formatUseCount(libraryStats?.totalActivities) },
+    { icon: <Users className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "معلم مشارك" : "Contributing teachers", value: formatUseCount(libraryStats?.contributingTeachers) },
+    { icon: <TrendingUp className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "مرات الاستخدام" : "Total uses", value: formatUseCount(libraryStats?.totalUses) },
+    { icon: <Zap className="w-4 h-4 text-[#0a4d26]" />, label: isAr ? "جديد هذا الأسبوع" : "New this week", value: formatUseCount(libraryStats?.newThisWeek) },
   ];
 
   const topVideoByUses = useMemo(() => {
@@ -427,6 +416,99 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     }
     return best;
   }, [videoLessons, libraryStats]);
+
+  const trendingNow = useMemo(() => {
+    type Trend = {
+      key: string;
+      title: string;
+      kind: "assignment" | "video";
+      id: number;
+      type?: string;
+      subject?: string | null;
+      uses: number;
+      typeLabel: string;
+      activeLabel: string;
+    };
+    const out: Trend[] = [];
+
+    if (wameethPick) {
+      const u = libraryStats?.assignmentUses[String(wameethPick.id)] ?? 0;
+      out.push({
+        key: `w-${wameethPick.id}`,
+        title: wameethPick.title,
+        kind: "assignment",
+        id: wameethPick.id,
+        type: wameethPick.type,
+        subject: wameethPick.subject,
+        uses: u,
+        typeLabel: isAr ? "مسابقة مباشرة" : "Live quiz",
+        activeLabel: isAr
+          ? (u > 0 ? `${formatUseCount(u)} استخدام حديث` : "جاهز للتشغيل")
+          : (u > 0 ? `${formatUseCount(u)} recent uses` : "Ready to launch"),
+      });
+    }
+
+    const sciencePick = [...assignments]
+      .filter((a) => resolveSubjectTheme(a.subject) === "science" && a.id !== wameethPick?.id)
+      .sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))[0];
+    if (sciencePick) {
+      const u = libraryStats?.assignmentUses[String(sciencePick.id)] ?? 0;
+      out.push({
+        key: `a-${sciencePick.id}`,
+        title: sciencePick.title,
+        kind: "assignment",
+        id: sciencePick.id,
+        type: sciencePick.type,
+        subject: sciencePick.subject,
+        uses: u,
+        typeLabel: isAr ? "واجب / اختبار" : "Assignment",
+        activeLabel: isAr
+          ? (u > 0 ? `${formatUseCount(u)} استخدام` : `${sciencePick.questionCount} سؤال`)
+          : (u > 0 ? `${formatUseCount(u)} uses` : `${sciencePick.questionCount} Q`),
+      });
+    }
+
+    if (topVideoByUses) {
+      const u = libraryStats?.videoUses[String(topVideoByUses.id)] ?? 0;
+      if (!out.some((t) => t.kind === "video" && t.id === topVideoByUses.id)) {
+        out.push({
+          key: `v-${topVideoByUses.id}`,
+          title: topVideoByUses.title,
+          kind: "video",
+          id: topVideoByUses.id,
+          subject: topVideoByUses.subject,
+          uses: u,
+          typeLabel: isAr ? "فيديو" : "Video",
+          activeLabel: isAr
+            ? (u > 0 ? `${formatUseCount(u)} مشاهدة` : `${topVideoByUses.questionCount} سؤال`)
+            : (u > 0 ? `${formatUseCount(u)} views` : `${topVideoByUses.questionCount} Q`),
+        });
+      }
+    }
+
+    if (out.length < 3) {
+      const extra = [...assignments]
+        .filter((a) => !out.some((t) => t.kind === "assignment" && t.id === a.id))
+        .sort((a, b) => assignmentUseCount(b.id) - assignmentUseCount(a.id))
+        .slice(0, 3 - out.length);
+      for (const a of extra) {
+        const u = libraryStats?.assignmentUses[String(a.id)] ?? 0;
+        out.push({
+          key: `a-${a.id}`,
+          title: a.title,
+          kind: "assignment",
+          id: a.id,
+          type: a.type,
+          subject: a.subject,
+          uses: u,
+          typeLabel: activityBadge("assignment", a.type, isAr).label,
+          activeLabel: isAr ? `${formatUseCount(u) || "0"} استخدام` : `${formatUseCount(u) || "0"} uses`,
+        });
+      }
+    }
+
+    return out.slice(0, 4);
+  }, [assignments, wameethPick, topVideoByUses, libraryStats, isAr]);
 
   const renderAssignmentCard = (a: MarketplaceAssignment, i: number, compact?: boolean) => {
     const badge = activityBadge("assignment", a.type, isAr);
@@ -463,22 +545,24 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             </button>
           </ActivityCover>
         </div>
-        <div className={cn("flex flex-1 flex-col p-3.5", compact && "p-3")}>
-          <h3 className="line-clamp-2 text-sm font-black leading-snug" style={{ color: C.text }}>
+        <div className={cn("flex flex-1 flex-col px-3 pb-3 pt-2.5", compact && "px-2.5 pb-2.5")}>
+          <h3 className="line-clamp-2 text-[13px] font-extrabold leading-snug tracking-tight" style={{ color: C.text }}>
             {a.title}
           </h3>
           {a.description ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: C.muted }}>
+            <p className="mt-0.5 line-clamp-1 text-[11px] leading-relaxed" style={{ color: "#9aa89f" }}>
               {a.description}
             </p>
           ) : null}
-          <p className="mt-1.5 text-[11px] font-medium" style={{ color: C.muted }}>
-            {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" • ")}
+          <p className="mt-1 text-[10px] font-medium tracking-wide" style={{ color: C.muted }}>
+            {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" · ")}
           </p>
-          <div className="mt-auto flex items-center justify-between gap-2 border-t pt-2.5 text-[11px]" style={{ borderColor: C.border, color: C.muted }}>
-            <span>
-              {formatUseCount(uses, statsError)} {isAr ? "استخدام" : "uses"}
-            </span>
+          <div className="mt-2 flex items-center justify-between gap-2 text-[10px]" style={{ color: C.muted }}>
+            {!statsError && (
+              <span>
+                {formatUseCount(uses)} {isAr ? "استخدام" : "uses"}
+              </span>
+            )}
             {a.teacherName && !a.isAdminContent ? (
               <span className="flex min-w-0 items-center gap-1 truncate">
                 <User className="w-3 h-3 shrink-0" />
@@ -576,31 +660,46 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </Link>
         </div>
 
-        {/* Stats — real counts from GET /api/teacher/activity-library/stats */}
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {statsLoading
-            ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-xl border bg-white p-3.5 sm:p-4" style={{ borderColor: C.border }}>
-                  <div className="mb-2 h-8 w-8 rounded-lg bg-[#e8f4ec]" />
-                  <div className="mb-2 h-7 w-16 rounded-md bg-[#f0ebe3]" />
-                  <div className="h-3 w-24 rounded bg-[#f0ebe3]" />
-                </div>
-              ))
-            : statsDisplay.map((s, i) => (
-                <div key={i} className="rounded-xl border bg-white p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
-                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
-                    {s.icon}
+        {/* Stats — GET /api/teacher/activity-library/stats */}
+        <div className="mb-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {statsLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="overflow-hidden rounded-xl border bg-white p-3.5 sm:p-4"
+                    style={{ borderColor: C.border }}
+                  >
+                    <div className="mb-3 flex h-9 w-9 animate-pulse items-center justify-center rounded-lg bg-gradient-to-br from-[#e8f4ec] to-[#f0ebe3]" />
+                    <div className="mb-2 h-8 w-20 animate-pulse rounded-md bg-gradient-to-r from-[#f0ebe3] via-[#e8e1d8] to-[#f0ebe3] bg-[length:200%_100%]" style={{ animation: "shimmer 1.8s ease-in-out infinite" }} />
+                    <div className="h-3 w-28 animate-pulse rounded bg-[#f0ebe3]" />
                   </div>
-                  <p className="text-lg font-black sm:text-xl" style={{ color: C.text }}>{s.value}</p>
-                  <p className="text-[11px] font-medium sm:text-xs" style={{ color: C.muted }}>{s.label}</p>
-                </div>
-              ))}
+                ))
+              : statsError
+                ? statsLabels.map((s, i) => (
+                    <div key={i} className="rounded-xl border bg-white px-3.5 py-4 sm:px-4" style={{ borderColor: C.border }}>
+                      <div className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
+                        {s.icon}
+                      </div>
+                      <p className="text-[11px] font-semibold sm:text-xs" style={{ color: C.muted }}>{s.label}</p>
+                    </div>
+                  ))
+                : statsLabels.map((s, i) => (
+                    <div key={i} className="rounded-xl border bg-white p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
+                      <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
+                        {s.icon}
+                      </div>
+                      <p className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: C.text }}>{s.value}</p>
+                      <p className="text-[10px] font-medium sm:text-[11px]" style={{ color: C.muted }}>{s.label}</p>
+                    </div>
+                  ))}
+          </div>
+          {statsError && !statsLoading && (
+            <p className="mt-2.5 text-center text-[11px] font-medium" style={{ color: "#9aa89f" }} role="status">
+              {isAr ? "سيتم تحديث الإحصائيات قريباً" : "Stats will update shortly"}
+            </p>
+          )}
         </div>
-        {statsError && (
-          <p className="-mt-3 mb-4 text-center text-xs text-amber-700" role="status">
-            {isAr ? "تعذّر تحميل الإحصائيات — الأرقام غير متاحة مؤقتاً" : "Stats unavailable — showing placeholders"}
-          </p>
-        )}
 
         {/* Category tabs */}
         <div className="mb-4 flex gap-1 overflow-x-auto border-b pb-0 scrollbar-thin" style={{ borderColor: C.border }}>
@@ -620,16 +719,15 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         </div>
 
         {/* Filters */}
-        <div className="mb-4 space-y-3 rounded-2xl border bg-white p-3.5 sm:p-4" style={{ borderColor: C.border }}>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className={cn("absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#6f8176]", isAr ? "right-3" : "left-3")} />
+        <div className="mb-4 space-y-3 rounded-2xl border bg-white/90 p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
+          <div className="flex flex-wrap items-stretch gap-2.5">
+            <div className="relative min-w-[min(100%,220px)] flex-1">
+              <Search className={cn("absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa89f]", isAr ? "right-3" : "left-3")} />
               <input
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder={isAr ? "ابحث عن نشاط أو موضوع..." : "Search activity or topic..."}
-                className={cn("w-full rounded-xl border py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#0a4d26]/20", isAr ? "pr-10 pl-3" : "pl-10 pr-3")}
-                style={{ borderColor: C.border, background: "#fff", color: C.text }}
+                className={cn("w-full", FILTER_INPUT, isAr ? "pr-10 pl-3" : "pl-10 pr-3")}
               />
             </div>
             <input
@@ -637,8 +735,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               onChange={(e) => onSubjectFilterChange(e.target.value)}
               list="lib-subjects"
               placeholder={isAr ? "المادة" : "Subject"}
-              className="min-w-[120px] rounded-xl border px-3 py-2.5 text-sm"
-              style={{ borderColor: C.border }}
+              className={cn("min-w-[108px] flex-1 sm:flex-none sm:w-[128px]", FILTER_INPUT, "px-3")}
             />
             <datalist id="lib-subjects">{allSubjects.map((s) => <option key={s} value={s} />)}</datalist>
             <input
@@ -646,15 +743,13 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               onChange={(e) => onGradeFilterChange(e.target.value)}
               list="lib-grades"
               placeholder={isAr ? "الصف" : "Grade"}
-              className="min-w-[100px] rounded-xl border px-3 py-2.5 text-sm"
-              style={{ borderColor: C.border }}
+              className={cn("min-w-[96px] flex-1 sm:flex-none sm:w-[112px]", FILTER_INPUT, "px-3")}
             />
             <datalist id="lib-grades">{allGrades.map((g) => <option key={g} value={g} />)}</datalist>
             <select
               value={sortBy}
               onChange={(e) => onSortByChange(e.target.value as "newest" | "questions")}
-              className="rounded-xl border px-3 py-2.5 text-sm"
-              style={{ borderColor: C.border, color: C.text }}
+              className={cn("min-w-[120px] flex-1 sm:flex-none", FILTER_INPUT, "px-3")}
             >
               <option value="newest">{isAr ? "الأحدث" : "Newest"}</option>
               <option value="questions">{isAr ? "الأكثر أسئلة" : "Most questions"}</option>
@@ -719,7 +814,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
 
         {/* Featured */}
         <section className="mb-6">
-          <h2 className="mb-3 text-base font-black" style={{ color: C.text }}>{isAr ? "أنشطة مميزة" : "Featured activities"}</h2>
+          <h2 className="mb-3 text-base font-extrabold tracking-tight" style={{ color: C.text }}>{isAr ? "أنشطة مميزة" : "Featured activities"}</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <FeaturedCard
               isAr={isAr}
@@ -734,12 +829,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               coverKind="featured-live"
               subject={wameethPick?.subject}
               usesLabel={
-                wameethPick && !statsError
+                wameethPick && !statsError && assignmentUseCount(wameethPick.id) > 0
                   ? `${formatUseCount(assignmentUseCount(wameethPick.id))} ${isAr ? "استخدام" : "uses"}`
-                  : statsError
-                    ? "—"
-                    : `0 ${isAr ? "استخدام" : "uses"}`
+                  : ""
               }
+              ctaLabel={isAr ? "فتح النشاط" : "Open activity"}
               teacher={wameethPick?.teacherName ?? (isAr ? "حصاد" : "Hasad")}
               accent="live"
               onAction={() => wameethPick && launchAsGame(wameethPick.id)}
@@ -752,10 +846,11 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               desc={isAr ? "شرائح تفاعلية للفصل مع أسئلة فورية ومشاركة مباشرة." : "Interactive slides for class with instant questions."}
               coverKind="presentation"
               usesLabel={
-                statsError
-                  ? "—"
-                  : `${formatUseCount(libraryStats?.presentationUses)} ${isAr ? "جلسة عرض" : "presentation runs"}`
+                !statsError && (libraryStats?.presentationUses ?? 0) > 0
+                  ? `${formatUseCount(libraryStats?.presentationUses)} ${isAr ? "جلسة عرض" : "presentation runs"}`
+                  : ""
               }
+              ctaLabel={isAr ? "عرض النشاط" : "View decks"}
               teacher={isAr ? "مكتبة العروض" : "Presentations"}
               onAction={onPresentations}
             />
@@ -771,17 +866,65 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               coverKind="video"
               subject={topVideoByUses?.subject}
               usesLabel={
-                topVideoByUses && !statsError
+                topVideoByUses && !statsError && videoUseCount(topVideoByUses.id) > 0
                   ? `${formatUseCount(videoUseCount(topVideoByUses.id))} ${isAr ? "استخدام" : "uses"}`
-                  : statsError
-                    ? "—"
-                    : `0 ${isAr ? "استخدام" : "uses"}`
+                  : ""
               }
+              ctaLabel={isAr ? "عرض النشاط" : "View lessons"}
               teacher={topVideoByUses?.teacherName ?? (isAr ? "مجتمع المعلمين" : "Community")}
               onAction={() => onActiveTabChange("videos")}
             />
           </div>
         </section>
+
+        {/* Trending now */}
+        {trendingNow.length > 0 && (
+          <section className="mb-6">
+            <div className="mb-2.5 flex items-center gap-2">
+              <Radio className="h-4 w-4 text-[#0a4d26]" />
+              <h2 className="text-sm font-extrabold tracking-tight" style={{ color: C.text }}>
+                {isAr ? "رائج الآن" : "Trending now"}
+              </h2>
+            </div>
+            <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
+              {trendingNow.map((item, idx) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    if (item.kind === "assignment") launchAsGame(item.id);
+                    else onActiveTabChange("videos");
+                  }}
+                  className="group flex w-[min(100%,260px)] shrink-0 items-center gap-2.5 rounded-xl border bg-white p-2 text-start shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md sm:w-[240px]"
+                  style={{ borderColor: C.border }}
+                >
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                    <ActivityCover
+                      kind={resolveCoverKind(item.kind, item.type)}
+                      subject={item.subject}
+                      aspect="thumb"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-1">
+                      {idx === 0 && (
+                        <span className="inline-flex items-center gap-0.5 rounded-md bg-[#0a4d26] px-1.5 py-0.5 text-[9px] font-bold text-white">
+                          <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-300" />
+                          {isAr ? "نشط الآن" : "Active"}
+                        </span>
+                      )}
+                      <span className="rounded-md bg-[#f5f2ec] px-1.5 py-0.5 text-[9px] font-semibold" style={{ color: C.muted }}>
+                        {item.typeLabel}
+                      </span>
+                    </div>
+                    <p className="line-clamp-1 text-xs font-extrabold" style={{ color: C.text }}>{item.title}</p>
+                    <p className="mt-0.5 text-[10px] font-medium" style={{ color: C.muted }}>{item.activeLabel}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* New this week */}
         <section className="mb-6">
@@ -848,8 +991,10 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                       <p className="mt-1 text-[11px] text-[#6f8176]">
                         {[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" • ")}
                       </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-[#6f8176]">
-                        <span>{formatUseCount(statsError ? undefined : videoUseCount(v.id), statsError)} {isAr ? "استخدام" : "uses"}</span>
+                      <div className="mt-2 flex items-center justify-between text-[10px] text-[#6f8176]">
+                        {!statsError && (
+                          <span>{formatUseCount(videoUseCount(v.id))} {isAr ? "استخدام" : "uses"}</span>
+                        )}
                         {v.teacherName ? (
                           <span className="flex items-center gap-1 truncate">
                             <User className="w-3 h-3" />
@@ -918,6 +1063,7 @@ function FeaturedCard({
   subject,
   usesLabel,
   teacher,
+  ctaLabel,
   accent,
   onAction,
 }: {
@@ -930,37 +1076,66 @@ function FeaturedCard({
   subject?: string | null;
   usesLabel: string;
   teacher: string;
+  ctaLabel: string;
   accent?: "live";
   onAction: () => void;
 }) {
+  const isLive = accent === "live";
   return (
     <button
       type="button"
       onClick={onAction}
       className={cn(
-        "group overflow-hidden rounded-2xl border bg-white text-start transition-all hover:-translate-y-1 hover:shadow-lg",
-        accent === "live" && "ring-1 ring-[#d4a63a]/30",
+        "group flex w-full flex-col overflow-hidden rounded-2xl border bg-white text-start",
+        "transition-all duration-300 ease-out",
+        "hover:-translate-y-1 hover:shadow-[0_14px_40px_-12px_rgba(31,45,36,0.18)]",
+        isLive &&
+          "shadow-[0_6px_28px_-8px_rgba(91,33,182,0.22),0_2px_12px_-4px_rgba(212,166,58,0.12)] ring-1 ring-[#d4a63a]/25",
       )}
-      style={{ borderColor: accent === "live" ? "#d4a63a55" : C.border }}
+      style={{ borderColor: isLive ? "#d4a63a44" : C.border }}
     >
-      <div className="relative">
-        <ActivityCover kind={coverKind} subject={subject} title={title} aspect="video">
-          <span className={cn("absolute top-3 z-10 rounded-lg bg-black/30 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm", dir === "rtl" ? "right-3" : "left-3")}>{badge}</span>
-          <span className={cn("absolute bottom-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md transition-transform group-hover:scale-110", dir === "rtl" ? "left-3" : "right-3")}>
-            <ChevronLeft className={cn("h-5 w-5 text-[#0a4d26]", dir === "ltr" && "rotate-180")} />
+      <div className="relative overflow-hidden">
+        <ActivityCover
+          kind={coverKind}
+          subject={subject}
+          title={title}
+          aspect="video"
+          premium
+          livePulse={isLive}
+        >
+          <span
+            className={cn(
+              "absolute top-3 z-10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md",
+              dir === "rtl" ? "right-3" : "left-3",
+              isLive
+                ? "border border-amber-200/30 bg-gradient-to-r from-violet-900/75 to-purple-800/70 shadow-sm"
+                : "border border-white/20 bg-black/35",
+            )}
+          >
+            {isLive && <Zap className="h-3 w-3 text-amber-200" />}
+            {badge}
           </span>
         </ActivityCover>
       </div>
-      <div className="p-4">
-        <h3 className="text-base font-black text-[#1f2d24]">{title}</h3>
-        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#6f8176]">{desc}</p>
-        <div className="mt-3 flex items-center justify-between text-[11px] text-[#6f8176]">
-          <span className="font-semibold" style={{ color: C.primary }}>{usesLabel}</span>
+      <div className="flex flex-1 flex-col px-3.5 pb-3 pt-2.5">
+        <h3 className="line-clamp-1 text-[15px] font-extrabold tracking-tight text-[#1f2d24]">{title}</h3>
+        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[#9aa89f]">{desc}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#6f8176]">
+          {usesLabel ? <span className="font-semibold text-[#0a4d26]">{usesLabel}</span> : null}
+          <span className="inline-flex items-center gap-1">
+            <User className="h-3 w-3 shrink-0 opacity-70" />
+            <span className="truncate">{teacher}</span>
+          </span>
         </div>
-        <p className="mt-1 flex items-center gap-1 text-[11px] text-[#6f8176]">
-          <User className="h-3 w-3" />
-          {teacher}
-        </p>
+        <div
+          className={cn(
+            "mt-2.5 flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-bold transition-colors",
+            "border-[#e8e1d8] text-[#0a4d26] group-hover:border-[#0a4d26]/25 group-hover:bg-[#e8f4ec]/80",
+          )}
+        >
+          {ctaLabel}
+          <ArrowLeft className={cn("h-3.5 w-3.5 opacity-70", isAr ? "" : "rotate-180")} />
+        </div>
       </div>
     </button>
   );
