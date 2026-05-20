@@ -22,7 +22,7 @@ import { extractFileContent } from "../lib/file-extractor";
 import { fileToOutline, multiImagesToOutline } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
-import { generateMcqSlides } from "../lib/generate-mcq-slides";
+import { generateMcqQuestions, materializeMcqSlides, type McqQuestion } from "../lib/generate-mcq-slides";
 
 const router: IRouter = Router();
 
@@ -854,6 +854,7 @@ router.post(
       let deckLanguage: "ar" | "en" = "ar";
       let contentExtractionFailed = false;
       let aiGenerated = false;
+      let pendingMcqQuestions: McqQuestion[] | undefined;
 
       if (mime === "application/pdf" || ext === ".pdf") {
         /* PDF → render each page as a PNG image via pdftoppm, upload to
@@ -887,8 +888,8 @@ router.post(
         ext === ".pptx" ||
         ext === ".ppt"
       ) {
-        /* PPTX → extract slide text, lay out as styled slides, then append
-           2-3 AI-generated MCQ interactive slides at the end. */
+        /* PPTX → extract slide text, lay out as styled slides, then generate
+           2-3 AI MCQ questions for teacher review (not saved yet). */
         try {
           const parsed = await parsePptx(file.buffer);
           const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
@@ -899,18 +900,15 @@ router.post(
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
-          const themeForMcq = pickServerDefaultTheme();
-          const mcqSlides = await generateMcqSlides(
-            extractedText,
-            deckLanguage,
-            themeForMcq,
-            contentSlides.length + 1,
-          );
-          finalSlides = [...contentSlides, ...mcqSlides];
+          finalSlides = contentSlides;
           aiGenerated = true;
+          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
+          if (pendingQuestions.length > 0) {
+            pendingMcqQuestions = pendingQuestions;
+          }
           req.log.info(
-            { contentSlides: contentSlides.length, mcqSlides: mcqSlides.length },
-            "Import (PPTX): AI MCQ slides appended",
+            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
+            "Import (PPTX): content slides built, MCQ pending review",
           );
         } catch (err) {
           req.log.warn({ err }, "Import: PPTX parsing failed — using blank deck");
@@ -924,7 +922,7 @@ router.post(
         ext === ".doc"
       ) {
         /* DOCX → extract headings and paragraphs, distribute across slides, then
-           append 2-3 AI-generated MCQ interactive slides at the end. */
+           generate 2-3 AI MCQ questions for teacher review (not saved yet). */
         try {
           const parsed = await parseDocx(file.buffer);
           const extractedText = parsed.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" ");
@@ -935,18 +933,15 @@ router.post(
             validated.success && validated.data.length > 0
               ? validated.data
               : defaultSlides(deckLanguage);
-          const themeForMcq = pickServerDefaultTheme();
-          const mcqSlides = await generateMcqSlides(
-            extractedText,
-            deckLanguage,
-            themeForMcq,
-            contentSlides.length + 1,
-          );
-          finalSlides = [...contentSlides, ...mcqSlides];
+          finalSlides = contentSlides;
           aiGenerated = true;
+          const pendingQuestions = await generateMcqQuestions(extractedText, deckLanguage);
+          if (pendingQuestions.length > 0) {
+            pendingMcqQuestions = pendingQuestions;
+          }
           req.log.info(
-            { contentSlides: contentSlides.length, mcqSlides: mcqSlides.length },
-            "Import (DOCX): AI MCQ slides appended",
+            { contentSlides: contentSlides.length, pendingMcq: pendingQuestions.length },
+            "Import (DOCX): content slides built, MCQ pending review",
           );
         } catch (err) {
           req.log.warn({ err }, "Import: DOCX parsing failed — using blank deck");
@@ -1047,11 +1042,96 @@ router.post(
         title: deck.title,
         slideCount: (finalSlides as unknown[]).length,
         aiGenerated,
+        ...(pendingMcqQuestions && pendingMcqQuestions.length > 0
+          ? { pendingMcqQuestions }
+          : {}),
         ...(contentExtractionFailed ? { warning: "content_extraction_failed" } : {}),
       });
     } catch (err) {
       req.log.error({ err }, "Import presentation file failed");
       res.status(500).json({ message: "Failed to import file" });
+    }
+  },
+);
+
+/* ── Append reviewed MCQ questions as interactive slides ─────────────────
+   Called by the frontend after the teacher has reviewed, edited, or
+   deleted the AI-suggested questions from the import flow.
+   Only questions the teacher keeps are materialized and appended.        */
+router.post(
+  "/presentations/:id/append-mcq",
+  requireTeacher,
+  async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.session.teacherId as number;
+      const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const presentationId = parseInt(rawId ?? "", 10);
+      if (isNaN(presentationId)) {
+        res.status(400).json({ message: "Invalid presentation ID" });
+        return;
+      }
+
+      const bodySchema = z.object({
+        questions: z
+          .array(
+            z.object({
+              prompt: z.string().min(1).max(500),
+              options: z.array(z.string().min(1).max(200)).min(2).max(6),
+              correctIndex: z.number().int().min(0).max(5),
+              slideTitle: z.string().min(1).max(80).optional(),
+            }),
+          )
+          .min(0)
+          .max(5),
+      });
+
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ message: "Invalid question data", details: parsed.error.flatten() });
+        return;
+      }
+
+      const [deck] = await db
+        .select()
+        .from(presentationsTable)
+        .where(and(eq(presentationsTable.id, presentationId), eq(presentationsTable.teacherId, teacherId)))
+        .limit(1);
+
+      if (!deck) {
+        res.status(404).json({ message: "Presentation not found" });
+        return;
+      }
+
+      const { questions } = parsed.data;
+
+      if (questions.length === 0) {
+        res.status(200).json({ slideCount: (deck.slides as unknown[]).length });
+        return;
+      }
+
+      const currentSlides = (deck.slides as unknown[]) ?? [];
+      const newSlides = materializeMcqSlides(
+        questions,
+        (deck.language as "ar" | "en") ?? "ar",
+        deck.theme ?? "mist",
+        currentSlides.length + 1,
+      );
+
+      const updatedSlides = [...currentSlides, ...newSlides];
+      await db
+        .update(presentationsTable)
+        .set({ slides: updatedSlides })
+        .where(eq(presentationsTable.id, presentationId));
+
+      req.log.info(
+        { presentationId, appended: newSlides.length, total: updatedSlides.length },
+        "append-mcq: MCQ slides appended",
+      );
+
+      res.status(200).json({ slideCount: updatedSlides.length });
+    } catch (err) {
+      req.log.error({ err }, "append-mcq failed");
+      res.status(500).json({ message: "Failed to append questions" });
     }
   },
 );

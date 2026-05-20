@@ -24,7 +24,7 @@ const mcqResponseSchema = z.object({
   questions: z.array(mcqQuestionSchema).min(1).max(5),
 });
 
-type McqQuestion = z.infer<typeof mcqQuestionSchema>;
+export type McqQuestion = z.infer<typeof mcqQuestionSchema>;
 
 /* ── Loose JSON parser (same pattern as file-to-outline.ts) ──────── */
 function parseJsonLoose(text: string): unknown {
@@ -106,25 +106,21 @@ function questionToCard(q: McqQuestion, index: number, lang: "ar" | "en"): Outli
   };
 }
 
-/* ── Main entry point ────────────────────────────────────────────── */
+/* ── Generate raw MCQ questions (no slide materialization) ───────── */
 
 /**
- * Given extracted text from a PPTX/DOCX file, calls OpenAI to generate
- * 2-3 MCQ questions and returns them as validated slide objects that can
- * be appended to the final deck.
+ * Given extracted text, calls OpenAI to generate 2-3 MCQ questions and
+ * returns them as raw question objects (not yet materialized as slides).
+ * This allows the caller to present questions for review before saving.
  *
- * @param text      The full extracted text (titles + bullets joined).
- * @param lang      Detected deck language.
- * @param themeKey  Theme to apply when materializing slides.
- * @param startIdx  The index to start numbering OutlineCards from.
- * @returns         Array of validated slide objects (may be empty on failure).
+ * @param text  The full extracted text (titles + bullets joined).
+ * @param lang  Detected deck language.
+ * @returns     Array of raw MCQ question objects (may be empty on failure).
  */
-export async function generateMcqSlides(
+export async function generateMcqQuestions(
   text: string,
   lang: "ar" | "en",
-  themeKey: string,
-  startIdx: number,
-): Promise<unknown[]> {
+): Promise<McqQuestion[]> {
   if (!text.trim()) return [];
 
   const prompt = buildMcqPrompt(text, lang);
@@ -148,9 +144,27 @@ export async function generateMcqSlides(
   const parsed = mcqResponseSchema.safeParse(raw);
   if (!parsed.success) return [];
 
-  /* Limit to 3 questions max. */
-  const questions = parsed.data.questions.slice(0, 3);
+  return parsed.data.questions.slice(0, 3);
+}
 
+/* ── Materialize a set of raw MCQ questions into slide objects ────── */
+
+/**
+ * Converts a list of reviewed/approved McqQuestion objects into validated
+ * slide objects ready to be appended to a deck.
+ *
+ * @param questions  Array of accepted McqQuestion objects.
+ * @param lang       Deck language.
+ * @param themeKey   Theme to apply when materializing slides.
+ * @param startIdx   The index to start numbering OutlineCards from.
+ * @returns          Array of validated slide objects (may be empty on failure).
+ */
+export function materializeMcqSlides(
+  questions: McqQuestion[],
+  lang: "ar" | "en",
+  themeKey: string,
+  startIdx: number,
+): unknown[] {
   const slides: unknown[] = [];
   for (let i = 0; i < questions.length; i++) {
     const card = questionToCard(questions[i], startIdx + i, lang);
@@ -166,4 +180,27 @@ export async function generateMcqSlides(
     }
   }
   return slides;
+}
+
+/* ── Main entry point (legacy — generates AND materializes) ──────── */
+
+/**
+ * Given extracted text from a PPTX/DOCX file, calls OpenAI to generate
+ * 2-3 MCQ questions and returns them as validated slide objects that can
+ * be appended to the final deck.
+ *
+ * @param text      The full extracted text (titles + bullets joined).
+ * @param lang      Detected deck language.
+ * @param themeKey  Theme to apply when materializing slides.
+ * @param startIdx  The index to start numbering OutlineCards from.
+ * @returns         Array of validated slide objects (may be empty on failure).
+ */
+export async function generateMcqSlides(
+  text: string,
+  lang: "ar" | "en",
+  themeKey: string,
+  startIdx: number,
+): Promise<unknown[]> {
+  const questions = await generateMcqQuestions(text, lang);
+  return materializeMcqSlides(questions, lang, themeKey, startIdx);
 }
