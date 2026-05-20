@@ -95,6 +95,31 @@ function formatRelative(d: Date | string | undefined, isAr: boolean): string {
   return date.toLocaleDateString(isAr ? "ar" : "en");
 }
 
+const PRESENTATION_COVERS = [
+  { from: "#0f3d2e", via: "#225739", to: "#d9a521", accent: "rgba(255,255,255,0.16)" },
+  { from: "#172554", via: "#2563eb", to: "#38bdf8", accent: "rgba(255,255,255,0.14)" },
+  { from: "#312e81", via: "#7c3aed", to: "#f59e0b", accent: "rgba(255,255,255,0.14)" },
+  { from: "#7f1d1d", via: "#dc2626", to: "#fbbf24", accent: "rgba(255,255,255,0.13)" },
+  { from: "#134e4a", via: "#0f766e", to: "#99f6e4", accent: "rgba(255,255,255,0.15)" },
+  { from: "#3b0764", via: "#9333ea", to: "#f0abfc", accent: "rgba(255,255,255,0.13)" },
+];
+
+function getPresentationVisual(title: string) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i += 1) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+  }
+  return PRESENTATION_COVERS[hash % PRESENTATION_COVERS.length];
+}
+
+function getTitleMark(title: string, isAr: boolean): string {
+  const clean = title.trim();
+  if (!clean) return isAr ? "عرض" : "P";
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (isAr) return parts.slice(0, 2).map((part) => part[0]).join("");
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+}
+
 export default function PresentationsIndex({ embedded }: { embedded?: boolean } = {}) {
   const { lang } = useI18n();
   const isAr = lang === "ar";
@@ -273,72 +298,79 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
     <>
     <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl"} dir={isAr ? "rtl" : "ltr"}>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${BRAND_GREEN}15`, color: BRAND_GREEN }}
-            >
-              <Monitor className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-foreground leading-tight flex items-center gap-2 flex-wrap">
-                {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
-                {showLock && tier && (
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black border"
-                    style={{ background: `${BRAND_GOLD}22`, color: BRAND_GREEN, borderColor: BRAND_GOLD }}
-                    title={
-                      isAr
-                        ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
-                        : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`
-                    }
-                  >
-                    <Lock className="w-3 h-3" />
-                    {isAr ? "الباقة المجانية" : "Free tier"}
-                  </span>
-                )}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {isAr
-                  ? "أنشئ، نظّم، وانشر عروضك التقديمية لطلابك"
-                  : "Create, organize, and publish your slide decks"}
-                {showLock && tier && (
-                  <span className="ms-2">
+        <div className="mb-6 overflow-hidden rounded-3xl border border-border/70 bg-card shadow-sm">
+          <div className="relative p-5 sm:p-6">
+            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(34,87,57,0.10),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(217,165,33,0.12),transparent_35%)]" />
+            <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="flex items-start gap-4 min-w-0">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border"
+                  style={{ background: `${BRAND_GREEN}10`, color: BRAND_GREEN, borderColor: `${BRAND_GREEN}18` }}
+                >
+                  <Monitor className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h1 className="text-2xl sm:text-3xl font-black text-foreground leading-tight">
+                      {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
+                    </h1>
+                    {showLock && tier && (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black border bg-white/70"
+                        style={{ color: BRAND_GREEN, borderColor: BRAND_GOLD }}
+                        title={
+                          isAr
+                            ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
+                            : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`
+                        }
+                      >
+                        <Lock className="w-3 h-3" />
+                        {isAr ? "الباقة المجانية" : "Free tier"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
                     {isAr
-                      ? ` · حدود لكل عرض: ${tier.limits.maxSlidesRegular} شريحة، ${tier.limits.maxImagesRegular} صورة، ${tier.limits.maxFilesRegular} ملف، ${tier.limits.maxSizeMbRegular} م.ب`
-                      : ` · Per-deck caps: ${tier.limits.maxSlidesRegular} slides, ${tier.limits.maxImagesRegular} images, ${tier.limits.maxFilesRegular} files, ${tier.limits.maxSizeMbRegular} MB`}
-                  </span>
-                )}
-              </p>
+                      ? "مساحة هادئة لتنظيم العروض، توليد محتوى جديد، واستئناف العمل بسرعة."
+                      : "A calm workspace to organize decks, generate new content, and continue editing quickly."}
+                  </p>
+                  {showLock && tier && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {isAr
+                        ? `حدود كل عرض: ${tier.limits.maxSlidesRegular} شريحة، ${tier.limits.maxImagesRegular} صورة، ${tier.limits.maxFilesRegular} ملف، ${tier.limits.maxSizeMbRegular} م.ب`
+                        : `Per deck: ${tier.limits.maxSlidesRegular} slides, ${tier.limits.maxImagesRegular} images, ${tier.limits.maxFilesRegular} files, ${tier.limits.maxSizeMbRegular} MB`}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <Button
+                  onClick={() => setShowImport(true)}
+                  variant="outline"
+                  className="gap-2 font-bold bg-white/75"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isAr ? "استيراد" : "Import"}
+                </Button>
+                <Button
+                  onClick={() => setLocation("/teacher/presentations/new")}
+                  variant="outline"
+                  className="gap-2 font-bold bg-white/75"
+                  style={{ borderColor: `${BRAND_GREEN}45`, color: BRAND_GREEN }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isAr ? "توليد بالذكاء" : "AI Generate"}
+                </Button>
+                <Button
+                  onClick={() => setShowCreate(true)}
+                  className="gap-2 font-bold shadow-sm"
+                  style={{ background: BRAND_GREEN, color: "white" }}
+                >
+                  <Plus className="w-4 h-4" />
+                  {isAr ? "عرض جديد" : "New deck"}
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <Button
-              onClick={() => setShowImport(true)}
-              variant="outline"
-              className="gap-2 font-bold"
-            >
-              <Upload className="w-4 h-4" />
-              {isAr ? "استيراد ملف" : "Import file"}
-            </Button>
-            <Button
-              onClick={() => setLocation("/teacher/presentations/new")}
-              variant="outline"
-              className="gap-2 font-bold border-2"
-              style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
-            >
-              <Sparkles className="w-4 h-4" />
-              {isAr ? "توليد بالذكاء" : "AI Generate"}
-            </Button>
-            <Button
-              onClick={() => setShowCreate(true)}
-              className="gap-2 font-bold shadow-md"
-              style={{ background: BRAND_GREEN, color: "white" }}
-            >
-              <Plus className="w-4 h-4" />
-              {isAr ? "عرض جديد" : "New presentation"}
-            </Button>
           </div>
         </div>
 
@@ -371,8 +403,8 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
         </div>
 
         {/* Tabs + search */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border w-fit">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-1 p-1 rounded-2xl bg-muted/40 border border-border w-full sm:w-fit overflow-x-auto">
             {(
               [
                 { id: "recent", label: isAr ? "الأحدث" : "Recent", icon: Clock },
@@ -386,7 +418,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
                     active
                       ? "bg-white shadow-sm text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -402,7 +434,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               );
             })}
           </div>
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 lg:max-w-sm">
             <Search className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
               style={{ [isAr ? "right" : "left"]: 12 } as React.CSSProperties}
             />
@@ -410,25 +442,22 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={isAr ? "ابحث عن عرض..." : "Search presentations..."}
-              className={isAr ? "pr-9" : "pl-9"}
+              className={`${isAr ? "pr-9" : "pl-9"} rounded-2xl bg-card`}
             />
           </div>
         </div>
 
         {/* Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="h-44 rounded-2xl border border-border bg-card animate-pulse"
-              />
+              <div key={i} className="h-64 rounded-3xl border border-border bg-card animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState isAr={isAr} onCreate={() => setShowCreate(true)} hasSearch={!!search} tab={tab} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {filtered.map((p) => (
               <PresentationCard
                 key={p.id}
@@ -536,6 +565,8 @@ function PresentationCard({
   isOwner: boolean;
 }) {
   const isPublished = p.status === "published";
+  const cover = getPresentationVisual(p.title);
+  const titleMark = p.coverEmoji || getTitleMark(p.title, isAr);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(p.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -561,46 +592,60 @@ function PresentationCard({
   return (
     <div
       onClick={editing ? undefined : onOpen}
-      className="group relative rounded-2xl border-2 border-border bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5"
+      className="group relative rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5"
       style={{ cursor: editing ? "default" : "pointer" }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = BRAND_GREEN)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
     >
       {/* Cover */}
       <div
-        className="h-28 flex items-center justify-center text-5xl relative"
+        className="h-36 relative overflow-hidden"
         style={{
-          background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7050 100%)`,
+          background: `linear-gradient(135deg, ${cover.from} 0%, ${cover.via} 56%, ${cover.to} 125%)`,
         }}
       >
-        <span>{p.coverEmoji || "📊"}</span>
-        <div className="absolute top-2 flex items-center gap-1.5"
-          style={{ [isAr ? "right" : "left"]: 8 } as React.CSSProperties}
-        >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.22),transparent_26%),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.12),transparent_24%)]" />
+        <div
+          className="absolute -bottom-8 -end-8 w-32 h-32 rounded-full border border-white/20"
+          style={{ background: cover.accent }}
+        />
+        <div className="absolute bottom-4 start-4 end-4 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="inline-flex h-14 min-w-14 px-3 items-center justify-center rounded-2xl bg-white/18 border border-white/25 text-white text-2xl font-black shadow-sm backdrop-blur-sm">
+              {titleMark}
+            </div>
+            <div className="mt-3 h-1.5 w-20 rounded-full bg-white/30" />
+          </div>
+          <div className="hidden sm:grid grid-cols-2 gap-1 opacity-75">
+            <div className="w-8 h-5 rounded bg-white/18" />
+            <div className="w-8 h-5 rounded bg-white/12" />
+            <div className="w-8 h-5 rounded bg-white/12" />
+            <div className="w-8 h-5 rounded bg-white/18" />
+          </div>
+        </div>
+        <div className="absolute top-3 flex items-center gap-1.5" style={{ [isAr ? "right" : "left"]: 12 } as React.CSSProperties}>
           {isPublished ? (
             <span
-              className="px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1"
-              style={{ background: BRAND_GOLD, color: BRAND_GREEN }}
+              className="px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1 bg-white/90 shadow-sm"
+              style={{ color: BRAND_GREEN }}
             >
               <Globe className="w-3 h-3" />
               {isAr ? "منشور" : "Published"}
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/90 text-foreground">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-white/85 text-foreground shadow-sm">
               {isAr ? "مسودة" : "Draft"}
             </span>
           )}
         </div>
-        <span className="absolute top-2 px-2 py-0.5 rounded-full text-[10px] font-black bg-white/90 text-foreground"
-          style={{ [isAr ? "left" : "right"]: 8 } as React.CSSProperties}
+        <span className="absolute top-3 px-2.5 py-1 rounded-full text-[10px] font-black bg-black/20 text-white border border-white/15 backdrop-blur-sm"
+          style={{ [isAr ? "left" : "right"]: 12 } as React.CSSProperties}
         >
           {p.language === "ar" ? "AR" : "EN"}
         </span>
       </div>
 
       {/* Body */}
-      <div className="p-4">
-        <div className="flex items-start gap-2 mb-2">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start gap-2 mb-3">
           {editing ? (
             <input
               ref={inputRef}
@@ -614,12 +659,12 @@ function PresentationCard({
               onClick={(e) => e.stopPropagation()}
               maxLength={200}
               dir={isAr ? "rtl" : "ltr"}
-              className="flex-1 text-sm font-black text-foreground leading-snug bg-muted/60 border border-border rounded-md px-2 py-0.5 outline-none focus:ring-2 focus:ring-offset-0 min-w-0"
+              className="flex-1 text-sm font-black text-foreground leading-snug bg-muted/60 border border-border rounded-xl px-2.5 py-1 outline-none focus:ring-2 focus:ring-offset-0 min-w-0"
               style={{ boxShadow: `0 0 0 2px ${BRAND_GREEN}55` }}
             />
           ) : (
             <h3
-              className={`flex-1 text-sm font-black text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
+              className={`flex-1 text-base font-black text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
               onDoubleClick={isOwner ? startEdit : undefined}
               title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
@@ -629,7 +674,7 @@ function PresentationCard({
           {isOwner && !editing && (
             <button
               onClick={startEdit}
-              className="opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0 mt-0.5"
+              className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground flex-shrink-0 -mt-1"
               aria-label={isAr ? "إعادة تسمية" : "Rename"}
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -640,7 +685,7 @@ function PresentationCard({
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-1"
                   aria-label={isAr ? "إجراءات" : "Actions"}
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -704,14 +749,18 @@ function PresentationCard({
             </DropdownMenu>
           )}
         </div>
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" />
             {p.slideCount} {isAr ? "شريحة" : p.slideCount === 1 ? "slide" : "slides"}
           </span>
-          <span>{formatRelative(p.updatedAt, isAr)}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            {formatRelative(p.updatedAt, isAr)}
+          </span>
         </div>
         {!isOwner && p.ownerName && (
-          <div className="mt-2 text-[10px] text-muted-foreground">
+          <div className="mt-3 text-[11px] text-muted-foreground">
             {isAr ? "بواسطة" : "by"} {p.ownerName}
           </div>
         )}
@@ -736,9 +785,9 @@ function EmptyState({
 }) {
   if (hasSearch) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
-        <p className="text-sm">
+      <div className="text-center py-16 px-6 rounded-3xl border border-border/70 bg-card text-muted-foreground">
+        <Search className="w-10 h-10 mx-auto mb-3 opacity-35" />
+        <p className="text-sm font-medium">
           {isAr ? "لا توجد نتائج مطابقة" : "No matching results"}
         </p>
       </div>
@@ -757,9 +806,9 @@ function EmptyState({
           ? "ابدأ بإنشاء أول عرض تفاعلي لك"
           : "Create your first interactive presentation";
   return (
-    <div className="text-center py-16 px-6 rounded-2xl border-2 border-dashed border-border bg-muted/30">
+    <div className="text-center py-16 px-6 rounded-3xl border border-dashed border-border bg-card">
       <div
-        className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+        className="w-16 h-16 mx-auto mb-4 rounded-3xl flex items-center justify-center"
         style={{ background: `${BRAND_GREEN}15`, color: BRAND_GREEN }}
       >
         <Sparkles className="w-8 h-8" />
@@ -770,7 +819,7 @@ function EmptyState({
       <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">{msg}</p>
       <Button
         onClick={onCreate}
-        className="gap-2 font-bold"
+        className="gap-2 font-bold rounded-2xl"
         style={{ background: BRAND_GREEN, color: "white" }}
       >
         <Plus className="w-4 h-4" />
@@ -839,10 +888,12 @@ function ImportModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
-      <DialogContent dir={isAr ? "rtl" : "ltr"} className="sm:max-w-md">
+      <DialogContent dir={isAr ? "rtl" : "ltr"} className="sm:max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileUp className="w-5 h-5" style={{ color: BRAND_GREEN }} />
+            <span className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: `${BRAND_GREEN}12`, color: BRAND_GREEN }}>
+              <FileUp className="w-5 h-5" />
+            </span>
             {isAr ? "استيراد ملف كعرض جديد" : "Import file as new deck"}
           </DialogTitle>
         </DialogHeader>
@@ -866,7 +917,7 @@ function ImportModal({
           ))}
         </div>
         <div
-          className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${dragging ? "border-current bg-muted/30" : "border-muted hover:border-muted-foreground/50"}`}
+          className={`relative rounded-3xl border border-dashed p-8 text-center transition-colors cursor-pointer ${dragging ? "border-current bg-muted/30" : "border-muted hover:border-muted-foreground/50"}`}
           style={dragging ? { borderColor: BRAND_GREEN } : undefined}
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -926,14 +977,14 @@ function ImportModal({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="rounded-2xl">
             {isAr ? "إلغاء" : "Cancel"}
           </Button>
           <Button
             onClick={() => { if (canSubmit) onImport(files); }}
             disabled={!canSubmit || loading}
             style={{ background: BRAND_GREEN, color: "white" }}
-            className="gap-2 font-bold"
+            className="gap-2 font-bold rounded-2xl"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {loading
@@ -989,10 +1040,12 @@ function CreateModal({
         if (!o) reset();
       }}
     >
-      <DialogContent dir={isAr ? "rtl" : "ltr"} className="sm:max-w-md">
+      <DialogContent dir={isAr ? "rtl" : "ltr"} className="sm:max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5" style={{ color: BRAND_GOLD }} />
+            <span className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: `${BRAND_GOLD}18`, color: BRAND_GREEN }}>
+              <Sparkles className="w-5 h-5" />
+            </span>
             {isAr ? "عرض تفاعلي جديد" : "New Presentation"}
           </DialogTitle>
         </DialogHeader>
@@ -1008,12 +1061,13 @@ function CreateModal({
               placeholder={isAr ? "مثال: مقدمة في الكسور" : "e.g. Intro to fractions"}
               maxLength={200}
               autoFocus
+              className="rounded-2xl"
             />
           </div>
           <div>
             <Label className="mb-2 block">{isAr ? "اللغة" : "Language"}</Label>
             <Select value={language} onValueChange={(v) => setLanguage(v as "ar" | "en")}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-2xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1032,6 +1086,7 @@ function CreateModal({
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder={isAr ? "علوم" : "Science"}
                 maxLength={100}
+                className="rounded-2xl"
               />
             </div>
             <div>
@@ -1043,12 +1098,13 @@ function CreateModal({
                 onChange={(e) => setGradeLevel(e.target.value)}
                 placeholder={isAr ? "السادس" : "Grade 6"}
                 maxLength={50}
+                className="rounded-2xl"
               />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-2xl">
             {isAr ? "إلغاء" : "Cancel"}
           </Button>
           <Button
@@ -1064,7 +1120,7 @@ function CreateModal({
             }}
             disabled={loading || !title.trim()}
             style={{ background: BRAND_GREEN, color: "white" }}
-            className="gap-2 font-bold"
+            className="gap-2 font-bold rounded-2xl"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {isAr ? "إنشاء وفتح المحرر" : "Create & open editor"}
