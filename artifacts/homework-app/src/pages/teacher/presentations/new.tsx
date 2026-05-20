@@ -682,210 +682,214 @@ export default function NewPresentationPage() {
 
   return (
     <Layout>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        {/* Brand strip */}
-        <div
-          className="relative overflow-hidden rounded-2xl px-4 sm:px-5 py-3 sm:py-4 mb-6 shadow-md"
-          style={{ background: platformHarvestBg(isAr) }}
-        >
-          <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-white/12 blur-2xl pointer-events-none" />
+      <div className={mode === null ? "max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10" : "max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10"}>
+        {/* ── HERO HEADER ── */}
+        {mode === null ? (
+          /* Full hero for mode picker */
           <div
-            className="absolute -bottom-10 -end-10 w-48 h-48 rounded-full blur-2xl pointer-events-none"
-            style={{ backgroundColor: "rgba(212,175,55,0.35)" }}
-          />
-          <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
-          <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="min-w-0 flex-1 relative z-[1] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">
-              {mode !== null && (
+            className="relative overflow-hidden rounded-3xl mb-8 shadow-2xl"
+            style={{ background: platformHarvestBg(isAr) }}
+          >
+            {/* Decorative blobs */}
+            <div className="absolute -top-16 -start-16 w-64 h-64 rounded-full bg-white/8 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -end-16 w-80 h-80 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: "rgba(212,175,55,0.28)" }} />
+            <div className="absolute top-0 start-1/2 -translate-x-1/2 w-96 h-32 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+            <div className="absolute inset-0 rounded-3xl ring-1 ring-white/15 pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 px-6 sm:px-10 py-8 sm:py-10">
+              <div className="text-center sm:text-start [text-shadow:0_2px_8px_rgba(0,0,0,0.4)]">
+                <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-3 py-1 mb-4">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="text-white/90 text-xs font-bold tracking-wide">
+                    {isAr ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-2">
+                  {isAr ? "إنشاء عرض تفاعلي" : "Create Interactive Deck"}
+                </h1>
+                <p className="text-white/75 text-sm sm:text-base max-w-sm leading-relaxed">
+                  {isAr
+                    ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
+                    : "Choose your mode and AI will build your complete lesson."}
+                </p>
+              </div>
+              <Link href="/teacher/presentations" className="shrink-0">
                 <button
-                  onClick={() => {
-                    setMode(null);
-                    setQuickPhase("form");
-                    setProBuilderOpen(false);
-                    resetImport();
-                  }}
+                  type="button"
+                  className="inline-flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/30 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-colors backdrop-blur-sm"
+                >
+                  {isAr ? "قائمة العروض" : "All decks"}
+                </button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          /* Compact strip for sub-modes */
+          <div
+            className="relative overflow-hidden rounded-2xl px-4 sm:px-5 py-3 sm:py-4 mb-6 shadow-md"
+            style={{ background: platformHarvestBg(isAr) }}
+          >
+            <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-white/12 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 -end-10 w-48 h-48 rounded-full blur-2xl pointer-events-none" style={{ backgroundColor: "rgba(212,175,55,0.35)" }} />
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 flex-1 relative z-[1] [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]">
+                <button
+                  onClick={() => { setMode(null); setQuickPhase("form"); setProBuilderOpen(false); resetImport(); }}
                   className="inline-flex items-center gap-1.5 text-white/80 text-xs font-bold mb-2 hover:text-white transition-colors"
                 >
-                  {isAr ? (
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  )}
+                  {isAr ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
                   {isAr ? "اختيار الوضع" : "Choose mode"}
                 </button>
-              )}
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight mb-1">
-                {mode === "quick"
-                  ? isAr ? "⚡ الإنشاء السريع" : "⚡ Quick Mode"
-                  : mode === "pro"
-                    ? isAr ? "🎛 استوديو المحترف" : "🎛 Pro Studio"
-                    : mode === "import"
-                      ? isAr ? "📂 استيراد ملف" : "📂 Import File"
-                      : isAr ? "إنشاء عرض تفاعلي" : "Create interactive deck"}
-              </h1>
-              <p className="text-white/85 text-xs sm:text-sm max-w-xl leading-relaxed line-clamp-2">
-                {mode === "quick"
-                  ? isAr
-                    ? "ثلاث خطوات فقط — اكتب الموضوع واضغط أنشئ، والذكاء الاصطناعي يبني الحصة كاملةً."
-                    : "Three steps only — write your topic and hit generate, AI builds the full lesson."
-                  : mode === "pro"
-                    ? isAr
-                      ? "المحرر المتقدم — تحكم كامل في المخطط والشرائح والأنشطة."
-                      : "Advanced editor — full control over outline, slides, and activities."
-                    : mode === "import"
-                      ? isAr
-                        ? "ارفع ملفاً وحوّله تلقائياً إلى عرض تفاعلي جاهز للإطلاق."
-                        : "Upload a file and convert it into a ready-to-launch interactive deck."
-                      : isAr
-                        ? "اختر الوضع المناسب وسيبني الذكاء الاصطناعي حصتك كاملةً."
-                        : "Choose your mode and AI will build your complete lesson."}
-              </p>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight mb-1">
+                  {mode === "quick"
+                    ? isAr ? "⚡ الإنشاء السريع" : "⚡ Quick Mode"
+                    : mode === "pro"
+                      ? isAr ? "🎛 استوديو المحترف" : "🎛 Pro Studio"
+                      : isAr ? "📂 استيراد ملف" : "📂 Import File"}
+                </h1>
+                <p className="text-white/85 text-xs sm:text-sm max-w-xl leading-relaxed line-clamp-2">
+                  {mode === "quick"
+                    ? isAr ? "ثلاث خطوات فقط — اكتب الموضوع واضغط أنشئ، والذكاء الاصطناعي يبني الحصة كاملةً." : "Three steps only — write your topic and hit generate, AI builds the full lesson."
+                    : mode === "pro"
+                      ? isAr ? "المحرر المتقدم — تحكم كامل في المخطط والشرائح والأنشطة." : "Advanced editor — full control over outline, slides, and activities."
+                      : isAr ? "ارفع ملفاً وحوّله تلقائياً إلى عرض تفاعلي جاهز للإطلاق." : "Upload a file and convert it into a ready-to-launch interactive deck."}
+                </p>
+              </div>
+              <Link href="/teacher/presentations" className="shrink-0 self-start sm:self-center">
+                <button type="button" className="inline-flex items-center gap-2 bg-white text-[#1f5a3e] hover:bg-amber-50 px-3.5 py-2 rounded-lg text-sm font-bold shadow-md shadow-black/10 transition-colors">
+                  {isAr ? "قائمة العروض" : "All decks"}
+                </button>
+              </Link>
             </div>
-            <Link
-              href="/teacher/presentations"
-              className="shrink-0 self-start sm:self-center"
-            >
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 bg-white text-[#1f5a3e] hover:bg-amber-50 px-3.5 py-2 rounded-lg text-sm font-bold shadow-md shadow-black/10 transition-colors"
-              >
-                {isAr ? "قائمة العروض" : "All decks"}
-              </button>
-            </Link>
           </div>
-        </div>
+        )}
 
         {/* ── MODE PICKER ── */}
         {mode === null && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Quick Mode */}
-            <button
-              onClick={() => setMode("quick")}
-              className="group relative overflow-hidden rounded-2xl border-2 border-transparent p-6 text-start transition-all hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-900/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              style={{
-                background:
-                  "linear-gradient(135deg, #1a4731 0%, #225739 55%, #2d7a4f 100%)",
-              }}
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(255,255,255,0.09),transparent_65%)] pointer-events-none" />
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center mb-4 group-hover:bg-white/22 transition-colors">
-                  <Zap className="w-6 h-6 text-amber-300" strokeWidth={2.5} />
-                </div>
-                <div className="text-white text-xl font-extrabold mb-1.5">
-                  {isAr ? "إنشاء سريع ⚡" : "Quick Mode ⚡"}
-                </div>
-                <div className="text-white/75 text-sm leading-relaxed mb-4">
-                  {isAr
-                    ? "اكتب الموضوع فقط → الذكاء الاصطناعي يبني الحصة كاملةً في أقل من دقيقة"
-                    : "Write your topic → AI builds the full lesson in under a minute"}
-                </div>
-                <div className="flex flex-col gap-1.5 mb-5">
-                  {(isAr
-                    ? [
-                        "✓ شرائح محتوى تلقائية",
-                        "✓ أسئلة MCQ تفاعلية جاهزة",
-                        "✓ استطلاع + جدار أفكار",
-                        "✓ جاهز للإطلاق فوراً",
-                      ]
-                    : [
-                        "✓ Auto-generated content slides",
-                        "✓ Ready MCQ interactive questions",
-                        "✓ Poll + word wall included",
-                        "✓ Launch-ready instantly",
-                      ]
-                  ).map((item) => (
-                    <span key={item} className="text-[11px] text-white/65 font-medium">
-                      {item}
+          <div className="space-y-4">
+            {/* Two primary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {/* Quick Mode */}
+              <button
+                onClick={() => setMode("quick")}
+                className="group relative overflow-hidden rounded-3xl border-2 border-transparent p-7 sm:p-9 text-start transition-all duration-300 hover:border-emerald-400/50 hover:shadow-2xl hover:shadow-emerald-900/25 hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                style={{ background: "linear-gradient(150deg, #12382a 0%, #1a4d38 40%, #225739 70%, #2d7a50 100%)" }}
+              >
+                {/* Shine overlay */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_15%,rgba(255,255,255,0.11),transparent_60%)] pointer-events-none" />
+                <div className="absolute bottom-0 start-0 w-48 h-48 rounded-full bg-amber-400/8 blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col h-full">
+                  {/* Icon */}
+                  <div className="w-14 h-14 rounded-2xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center mb-5 group-hover:bg-amber-400/30 group-hover:scale-105 transition-all duration-300">
+                    <Zap className="w-7 h-7 text-amber-300" strokeWidth={2.5} />
+                  </div>
+                  {/* Badge */}
+                  <div className="inline-flex self-start items-center gap-1.5 bg-amber-400/20 border border-amber-400/30 rounded-full px-2.5 py-0.5 mb-3">
+                    <span className="text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                      {isAr ? "الأسرع" : "Fastest"}
                     </span>
-                  ))}
+                  </div>
+                  <div className="text-white text-2xl font-extrabold mb-2 leading-tight">
+                    {isAr ? "إنشاء سريع" : "Quick Mode"}
+                    <span className="ms-2 text-xl">⚡</span>
+                  </div>
+                  <div className="text-white/70 text-sm leading-relaxed mb-6 flex-1">
+                    {isAr
+                      ? "اكتب الموضوع فقط → الذكاء الاصطناعي يبني الحصة كاملةً في أقل من دقيقة"
+                      : "Write your topic only → AI builds the full lesson in under a minute"}
+                  </div>
+                  <div className="flex flex-col gap-2 mb-7">
+                    {(isAr
+                      ? ["شرائح محتوى تلقائية", "أسئلة MCQ تفاعلية جاهزة", "استطلاع + جدار أفكار", "جاهز للإطلاق فوراً"]
+                      : ["Auto-generated content slides", "Ready MCQ interactive questions", "Poll + word wall included", "Launch-ready instantly"]
+                    ).map((item) => (
+                      <div key={item} className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-emerald-400/30 flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 text-emerald-300" strokeWidth={3} />
+                        </div>
+                        <span className="text-[12px] text-white/70 font-medium">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="inline-flex items-center gap-2 bg-amber-400 text-[#1a4731] text-sm font-extrabold px-5 py-2.5 rounded-2xl group-hover:bg-amber-300 group-hover:gap-3 transition-all duration-200 self-start">
+                    {isAr ? "ابدأ الآن" : "Get started"}
+                    {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-1.5 bg-amber-400 text-[#1a4731] text-sm font-extrabold px-4 py-2 rounded-xl group-hover:bg-amber-300 transition-colors">
-                  {isAr ? "ابدأ الآن" : "Get started"}
-                  {isAr ? (
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                  ) : (
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  )}
-                </div>
-              </div>
-            </button>
+              </button>
 
-            {/* Pro Studio */}
-            <button
-              onClick={() => setMode("pro")}
-              className="group relative overflow-hidden rounded-2xl border-2 border-transparent p-6 text-start transition-all hover:border-slate-400/60 hover:shadow-xl hover:shadow-slate-900/20 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-slate-400"
-              style={{
-                background:
-                  "linear-gradient(135deg, #1e293b 0%, #2d3748 55%, #374151 100%)",
-              }}
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_20%,rgba(217,165,33,0.13),transparent_65%)] pointer-events-none" />
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-4 group-hover:bg-white/16 transition-colors">
-                  <Settings2 className="w-6 h-6 text-amber-400" strokeWidth={2} />
-                </div>
-                <div className="text-white text-xl font-extrabold mb-1.5">
-                  {isAr ? "استوديو المحترف 🎛" : "Pro Studio 🎛"}
-                </div>
-                <div className="text-white/75 text-sm leading-relaxed mb-4">
-                  {isAr
-                    ? "تحكم كامل — راجع المخطط وعدّله قبل بناء الشرائح، مع محرر احترافي"
-                    : "Full control — review and edit the outline before building, with an advanced editor"}
-                </div>
-                <div className="flex flex-col gap-1.5 mb-5">
-                  {(isAr
-                    ? [
-                        "✓ مراجعة المخطط قبل البناء",
-                        "✓ تخصيص كامل للشرائح",
-                        "✓ محرر متقدم بعد البناء",
-                        "✓ دعم المحتوى المتقدم",
-                      ]
-                    : [
-                        "✓ Review outline before build",
-                        "✓ Full slide customization",
-                        "✓ Advanced editor post-build",
-                        "✓ Advanced content support",
-                      ]
-                  ).map((item) => (
-                    <span key={item} className="text-[11px] text-white/65 font-medium">
-                      {item}
+              {/* Pro Studio */}
+              <button
+                onClick={() => setMode("pro")}
+                className="group relative overflow-hidden rounded-3xl border-2 border-transparent p-7 sm:p-9 text-start transition-all duration-300 hover:border-slate-400/40 hover:shadow-2xl hover:shadow-slate-900/30 hover:-translate-y-0.5 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-slate-400"
+                style={{ background: "linear-gradient(150deg, #0f172a 0%, #1e293b 40%, #2d3748 75%, #374151 100%)" }}
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_15%,rgba(217,165,33,0.14),transparent_60%)] pointer-events-none" />
+                <div className="absolute bottom-0 end-0 w-48 h-48 rounded-full bg-amber-400/6 blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center mb-5 group-hover:bg-white/18 group-hover:scale-105 transition-all duration-300">
+                    <Settings2 className="w-7 h-7 text-amber-400" strokeWidth={2} />
+                  </div>
+                  <div className="inline-flex self-start items-center gap-1.5 bg-white/10 border border-white/15 rounded-full px-2.5 py-0.5 mb-3">
+                    <span className="text-white/70 text-[10px] font-bold uppercase tracking-wider">
+                      {isAr ? "تحكم كامل" : "Full control"}
                     </span>
-                  ))}
+                  </div>
+                  <div className="text-white text-2xl font-extrabold mb-2 leading-tight">
+                    {isAr ? "استوديو المحترف" : "Pro Studio"}
+                    <span className="ms-2 text-xl">🎛</span>
+                  </div>
+                  <div className="text-white/70 text-sm leading-relaxed mb-6 flex-1">
+                    {isAr
+                      ? "تحكم كامل — راجع المخطط وعدّله قبل بناء الشرائح، مع محرر احترافي متقدم"
+                      : "Full control — review and edit the outline before building, with an advanced editor"}
+                  </div>
+                  <div className="flex flex-col gap-2 mb-7">
+                    {(isAr
+                      ? ["مراجعة المخطط قبل البناء", "تخصيص كامل للشرائح", "محرر متقدم بعد البناء", "دعم المحتوى المتقدم"]
+                      : ["Review outline before build", "Full slide customization", "Advanced editor post-build", "Advanced content support"]
+                    ).map((item) => (
+                      <div key={item} className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-amber-400/25 flex items-center justify-center shrink-0">
+                          <Check className="w-2.5 h-2.5 text-amber-300" strokeWidth={3} />
+                        </div>
+                        <span className="text-[12px] text-white/70 font-medium">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="inline-flex items-center gap-2 bg-white/12 border border-white/20 text-white text-sm font-extrabold px-5 py-2.5 rounded-2xl group-hover:bg-white/20 group-hover:gap-3 transition-all duration-200 self-start">
+                    {isAr ? "فتح الاستوديو" : "Open Studio"}
+                    {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-white text-sm font-extrabold px-4 py-2 rounded-xl group-hover:bg-white/18 transition-colors">
-                  {isAr ? "فتح الاستوديو" : "Open Studio"}
-                  {isAr ? (
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                  ) : (
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  )}
-                </div>
-              </div>
-            </button>
+              </button>
+            </div>
 
-            {/* Import File — full-width third card */}
+            {/* Import File — full-width accent card */}
             <button
               onClick={() => setMode("import")}
-              className="group relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-300/60 dark:border-slate-600/60 p-5 text-start transition-all hover:border-blue-400/70 hover:bg-blue-50/40 dark:hover:bg-blue-950/20 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-400 col-span-1 sm:col-span-2 bg-card"
+              className="group w-full relative overflow-hidden rounded-2xl border border-slate-200/70 dark:border-slate-700/60 bg-card hover:bg-muted/40 p-5 sm:p-6 text-start transition-all duration-200 hover:shadow-lg hover:border-blue-400/50 active:scale-[0.995] focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-950/50 flex items-center justify-center shrink-0 group-hover:bg-blue-200/70 transition-colors">
-                  <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-400" strokeWidth={2} />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(59,130,246,0.05),transparent_70%)] pointer-events-none group-hover:opacity-100 opacity-0 transition-opacity" />
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center shrink-0 group-hover:bg-blue-200/80 group-hover:scale-105 transition-all duration-300 border border-blue-200/50 dark:border-blue-800/50">
+                  <UploadCloud className="w-6 h-6 text-blue-600 dark:text-blue-400" strokeWidth={2} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-base mb-0.5">
-                    {isAr ? "استيراد ملف 📂" : "Import File 📂"}
+                  <div className="font-extrabold text-base mb-0.5 flex items-center gap-2">
+                    {isAr ? "استيراد ملف" : "Import File"}
+                    <span className="text-base">📂</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground leading-relaxed">
                     {isAr
-                      ? `ارفع ${IMPORT_ACCEPT_LABEL_AR} وحوّله تلقائياً إلى عرض تفاعلي`
-                      : `Upload ${IMPORT_ACCEPT_LABEL_EN} — auto-converted to an interactive deck`}
+                      ? `ارفع ${IMPORT_ACCEPT_LABEL_AR} — يُحوَّل تلقائياً إلى عرض تفاعلي كامل`
+                      : `Upload ${IMPORT_ACCEPT_LABEL_EN} — auto-converted to a full interactive deck`}
                   </div>
                 </div>
-                <div className="shrink-0 hidden sm:flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400">
+                <div className="shrink-0 flex items-center gap-1.5 text-sm font-bold text-blue-600 dark:text-blue-400 group-hover:gap-2.5 transition-all duration-200">
                   {isAr ? "ابدأ" : "Start"}
-                  {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                 </div>
               </div>
             </button>
