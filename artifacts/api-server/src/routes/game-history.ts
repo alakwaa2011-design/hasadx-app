@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, gameHistoryTable, studentsTable, assignmentsTable } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { db, gameHistoryTable, studentsTable, assignmentsTable, presentationSessionsTable } from "@workspace/db";
+import { eq, desc, and, ne } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
 import { getGame, findActiveGameByTeacher } from "../game/manager.js";
 
@@ -340,6 +340,25 @@ router.get("/pin-lookup/:pin", async (req, res) => {
   // 7. Scramble
   const { getScrambleSession } = await import("../game/scramble-socket-handlers.js");
   if (getScrambleSession && getScrambleSession(pin)) { res.json({ gameType: "scramble" }); return; }
+
+  // 8. Flags multiplayer
+  const { getFlagGame } = await import("../game/flag-manager.js");
+  if (getFlagGame(pin)) { res.json({ gameType: "flags" }); return; }
+
+  // 9. Capitals multiplayer
+  const { getCapitalGame } = await import("../game/capital-manager.js");
+  if (getCapitalGame(pin)) { res.json({ gameType: "capitals" }); return; }
+
+  // 10. Presentation live session
+  const [presSession] = await db
+    .select({ id: presentationSessionsTable.id })
+    .from(presentationSessionsTable)
+    .where(and(
+      eq(presentationSessionsTable.pin, pin),
+      ne(presentationSessionsTable.status, "ended"),
+    ))
+    .limit(1);
+  if (presSession) { res.json({ gameType: "presentation" }); return; }
 
   res.json({ gameType: "unknown" });
 });

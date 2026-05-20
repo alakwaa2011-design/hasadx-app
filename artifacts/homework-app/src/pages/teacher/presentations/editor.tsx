@@ -1300,7 +1300,7 @@ export default function PresentationEditor() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActivityHubInitialTab("home");
+                    setActivityHubInitialTab("hasad");
                     setActivityHubOpen(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
@@ -1875,6 +1875,9 @@ export default function PresentationEditor() {
                 onOpenActivityPicker={() => {
                   setPickerInitial({});
                   setPendingSuggestionKey(null);
+                  setActivityPickerOpen(true);
+                }}
+                onOpenActivityHub={() => {
                   setActivityHubInitialTab("home");
                   setActivityHubOpen(true);
                 }}
@@ -3571,7 +3574,7 @@ function Inspector({
   isAr, readOnly, slide, selectedEl, theme, pattern,
   onChangeTheme, onChangePattern,
   onUpdateSlide, onUpdateEl, onRemoveEl, onDuplicateEl, onMoveZ,
-  onPickImage, onInsertElement, onOpenActivityPicker, onOpenVideoEmbedDialog,
+  onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, uploading,
   onDeselect,
   gifLibraryOpen, setGifLibraryOpen,
@@ -3593,6 +3596,7 @@ function Inspector({
   onPickImage: () => void;
   onInsertElement: (el: SlideElement) => void;
   onOpenActivityPicker: () => void;
+  onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
   uploading: boolean;
@@ -3952,10 +3956,10 @@ function Inspector({
       {/* ── Quick-add elements — mirrors what was in the slide rail ── */}
       <Section title={isAr ? "إضافة عناصر" : "Add Elements"} icon={<Plus className="w-4 h-4" />} defaultOpen>
         <div className="space-y-2.5">
-          {/* Primary Add Activity button */}
+          {/* Primary Add Activity button — opens ActivityHubDialog (hasad + presentation) */}
           <button
             type="button"
-            onClick={onOpenActivityPicker}
+            onClick={onOpenActivityHub}
             disabled={readOnly}
             className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
             style={{ background: BRAND_GREEN, color: "white" }}
@@ -4063,7 +4067,7 @@ function Inspector({
               size="sm"
               className="w-full justify-center gap-2 font-extrabold shadow-sm text-white"
               disabled={readOnly}
-              onClick={onOpenActivityPicker}
+              onClick={onOpenActivityHub}
               style={{ background: BRAND_GREEN, borderColor: BRAND_GREEN }}
             >
               <Gamepad2 className="w-4 h-4" />
@@ -6592,6 +6596,7 @@ function MobileShell({
                   onPickImage={onPickImage}
                   onInsertElement={onInsertElement}
                   onOpenActivityPicker={onOpenActivityPicker}
+                  onOpenActivityHub={onOpenActivityHub}
                   onOpenVideoEmbedDialog={onOpenVideoEmbedDialog}
                   onOpenImageSearch={onOpenImageSearch}
                   uploading={uploading}

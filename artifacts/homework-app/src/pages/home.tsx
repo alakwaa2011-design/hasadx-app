@@ -1324,11 +1324,19 @@ export default function Home() {
         });
         if (code?.data) {
           const raw = code.data.trim();
+          // Presentation QR: …/p/join#pin=123456
+          const presMatch = raw.match(/\/p\/join[^#]*#pin=(\d{6})/);
+          if (presMatch) {
+            stopScanner();
+            setScannerSuccess(true);
+            setTimeout(() => setLocation(`/p/join#pin=${presMatch[1]}`), 600);
+            return;
+          }
           const millionMatch = raw.match(
             /\/game\/million\/join\/([a-zA-Z0-9]+)/,
           );
           const urlMatch = raw.match(
-            /\/game\/(?:join|[a-z]+\/join)\/([a-zA-Z0-9]+)/,
+            /\/game\/(?:join|[a-z-]+\/join)\/([a-zA-Z0-9]+)/,
           );
           const extracted =
             millionMatch?.[1] ??
@@ -1337,12 +1345,22 @@ export default function Home() {
           if (extracted) {
             stopScanner();
             setScannerSuccess(true);
-            setTimeout(() => {
+            setTimeout(async () => {
               if (millionMatch) {
                 setLocation(`/game/million/join/${extracted}`);
-              } else {
-                setLocation(`/game/join/${extracted}`);
+                return;
               }
+              // Look up which activity this pin belongs to
+              try {
+                const r = await fetch(`${API_BASE}/api/pin-lookup/${extracted}`);
+                if (r.ok) {
+                  const d: { gameType: string } = await r.json();
+                  if (d.gameType === "flags") { setLocation(`/game/flags/join/${extracted}`); return; }
+                  if (d.gameType === "capitals") { setLocation(`/game/capitals/join/${extracted}`); return; }
+                  if (d.gameType === "presentation") { setLocation(`/p/join#pin=${extracted}`); return; }
+                }
+              } catch { /* fall through */ }
+              setLocation(`/game/join/${extracted}`);
             }, 600);
             return;
           }
@@ -1378,19 +1396,22 @@ export default function Home() {
       return;
     }
 
-    // Ask the server which game this PIN belongs to
+    // Ask the server which activity this PIN belongs to
     try {
       const r = await fetch(`${API_BASE}/api/pin-lookup/${trimmed}`);
       if (r.ok) {
         const data: { gameType: string } = await r.json();
         switch (data.gameType) {
-          case "tug":         setLocation(`/game/tug/join/${trimmed}`); return;
-          case "rocket":      setLocation(`/game/rocket/join/${trimmed}`); return;
-          case "hotseat":     setLocation(`/game/hotseat/join/${trimmed}`); return;
-          case "million-team":setLocation(`/game/million/team-play/${trimmed}`); return;
-          case "million":     setLocation(`/game/million/join/${trimmed}`); return;
-          case "scramble":    setLocation(`/game/scramble/play?pin=${trimmed}`); return;
-          case "wameeth":     setLocation(`/game/join/${trimmed}`); return;
+          case "tug":          setLocation(`/game/tug/join/${trimmed}`); return;
+          case "rocket":       setLocation(`/game/rocket/join/${trimmed}`); return;
+          case "hotseat":      setLocation(`/game/hotseat/join/${trimmed}`); return;
+          case "million-team": setLocation(`/game/million/team-play/${trimmed}`); return;
+          case "million":      setLocation(`/game/million/join/${trimmed}`); return;
+          case "scramble":     setLocation(`/game/scramble/play?pin=${trimmed}`); return;
+          case "wameeth":      setLocation(`/game/join/${trimmed}`); return;
+          case "flags":        setLocation(`/game/flags/join/${trimmed}`); return;
+          case "capitals":     setLocation(`/game/capitals/join/${trimmed}`); return;
+          case "presentation": setLocation(`/p/join#pin=${trimmed}`); return;
           default: break; // unknown — fall through to generic join
         }
       }
