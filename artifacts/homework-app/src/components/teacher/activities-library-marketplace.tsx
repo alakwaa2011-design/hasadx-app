@@ -1,7 +1,7 @@
 /**
  * مكتبة الأنشطة — واجهة Marketplace (عرض فقط، المنطق من shared-content)
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -24,7 +24,6 @@ import {
   GraduationCap,
   User,
   Bookmark,
-  Star,
   Presentation,
   Gamepad2,
   ClipboardList,
@@ -35,6 +34,24 @@ import {
   Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ActivityCover,
+  formatUseCount,
+  resolveCoverKind,
+} from "@/lib/activity-cover";
+
+const API_BASE = import.meta.env.VITE_API_URL || "";
+
+interface ActivityLibraryStats {
+  totalActivities: number;
+  contributingTeachers: number;
+  totalUses: number;
+  newThisWeek: number;
+  assignmentUses: Record<string, number>;
+  videoUses: Record<string, number>;
+  presentationUses: number;
+  questionUsesTracked: boolean;
+}
 
 const C = {
   bg: "#faf8f3",
@@ -62,6 +79,7 @@ export interface MarketplaceAssignment {
   hiddenByAdmin?: boolean;
   subject?: string | null;
   targetClass?: string | null;
+  description?: string | null;
   createdAt: string;
 }
 
@@ -74,6 +92,7 @@ export interface MarketplaceQuestion {
   teacherName: string | null;
   isAdminContent?: boolean;
   hiddenByAdmin?: boolean;
+  imageUrl?: string | null;
   createdAt: string;
 }
 
@@ -81,6 +100,7 @@ export interface MarketplaceVideo {
   id: number;
   title: string;
   subject: string | null;
+  description?: string | null;
   targetClass: string | null;
   teacherId: number;
   teacherName: string | null;
@@ -144,28 +164,6 @@ export interface ActivitiesLibraryMarketplaceProps {
       copyLink: string;
     };
   };
-}
-
-function fmtUses(id: number, q: number) {
-  const n = q * 89 + id * 17 + 120;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
-}
-
-function coverGradient(seed: string, kind: "assignment" | "video" | "question") {
-  const hues: Record<string, string> = {
-    assignment: "linear-gradient(135deg,#0a4d26 0%,#1a6b42 45%,#2d8a5c 100%)",
-    video: "linear-gradient(135deg,#1e3a5f 0%,#2563eb 55%,#38bdf8 100%)",
-    question: "linear-gradient(135deg,#4c1d95 0%,#7c3aed 55%,#a78bfa 100%)",
-  };
-  const hash = seed.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const alts = [
-    "linear-gradient(135deg,#0a4d26,#1f6b47)",
-    "linear-gradient(135deg,#155e75,#0d9488)",
-    "linear-gradient(135deg,#92400e,#d97706)",
-    "linear-gradient(135deg,#3730a3,#6366f1)",
-  ];
-  return alts[hash % alts.length] || hues[kind];
 }
 
 function activityBadge(
@@ -233,6 +231,38 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   const [categoryTab, setCategoryTab] = useState<CategoryTab>("all");
   const [typeChip, setTypeChip] = useState<TypeChip>("all");
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
+  const [libraryStats, setLibraryStats] = useState<ActivityLibraryStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setStatsLoading(true);
+      setStatsError(false);
+      try {
+        const res = await fetch(`${API_BASE}/api/teacher/activity-library/stats`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("stats failed");
+        const data = (await res.json()) as ActivityLibraryStats;
+        if (!cancelled) setLibraryStats(data);
+      } catch {
+        if (!cancelled) {
+          setStatsError(true);
+          setLibraryStats(null);
+        }
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const assignmentUseCount = (id: number) => libraryStats?.assignmentUses[String(id)] ?? 0;
+  const videoUseCount = (id: number) => libraryStats?.videoUses[String(id)] ?? 0;
 
   const toggleBookmark = (id: number) => {
     setBookmarks((prev) => {
@@ -244,7 +274,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   };
 
   const isRecent = (createdAt: string) =>
-    Date.now() - new Date(createdAt).getTime() < 14 * 24 * 60 * 60 * 1000;
+    Date.now() - new Date(createdAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 
   const filterByCategory = <T extends { id: number; isAdminContent?: boolean; teacherId: number; createdAt: string }>(
     list: T[],
@@ -361,17 +391,48 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
     { id: "interactive", ar: "أنشطة تفاعلية", en: "Interactive", icon: <Sparkles className="w-3.5 h-3.5" /> },
   ];
 
-  const stats = [
-    { icon: <BookText className="w-4 h-4 text-[#0a4d26]" />, value: "12.5K", label: isAr ? "نشاط جاهز" : "Ready activities" },
-    { icon: <Users className="w-4 h-4 text-[#0a4d26]" />, value: "3.2K", label: isAr ? "معلم مشارك" : "Contributing teachers" },
-    { icon: <TrendingUp className="w-4 h-4 text-[#0a4d26]" />, value: "560K", label: isAr ? "استخدام من الطلاب" : "Student uses" },
-    { icon: <Zap className="w-4 h-4 text-[#0a4d26]" />, value: "98K", label: isAr ? "هذا الأسبوع" : "This week" },
+  const statsDisplay = [
+    {
+      icon: <BookText className="w-4 h-4 text-[#0a4d26]" />,
+      value: statsError ? "—" : formatUseCount(libraryStats?.totalActivities),
+      label: isAr ? "نشاط جاهز" : "Ready activities",
+    },
+    {
+      icon: <Users className="w-4 h-4 text-[#0a4d26]" />,
+      value: statsError ? "—" : formatUseCount(libraryStats?.contributingTeachers),
+      label: isAr ? "معلم مشارك" : "Contributing teachers",
+    },
+    {
+      icon: <TrendingUp className="w-4 h-4 text-[#0a4d26]" />,
+      value: statsError ? "—" : formatUseCount(libraryStats?.totalUses),
+      label: isAr ? "مرات الاستخدام" : "Total uses",
+    },
+    {
+      icon: <Zap className="w-4 h-4 text-[#0a4d26]" />,
+      value: statsError ? "—" : formatUseCount(libraryStats?.newThisWeek),
+      label: isAr ? "جديد هذا الأسبوع" : "New this week",
+    },
   ];
+
+  const topVideoByUses = useMemo(() => {
+    if (!libraryStats?.videoUses) return videoLessons[0];
+    let best = videoLessons[0];
+    let max = -1;
+    for (const v of videoLessons) {
+      const u = libraryStats.videoUses[String(v.id)] ?? 0;
+      if (u > max) {
+        max = u;
+        best = v;
+      }
+    }
+    return best;
+  }, [videoLessons, libraryStats]);
 
   const renderAssignmentCard = (a: MarketplaceAssignment, i: number, compact?: boolean) => {
     const badge = activityBadge("assignment", a.type, isAr);
     const isOwn = a.teacherId === currentTeacherId;
-    const rating = (4 + ((a.id * 7) % 10) / 10).toFixed(1);
+    const uses = statsError ? undefined : assignmentUseCount(a.id);
+    const coverKind = resolveCoverKind("assignment", a.type);
     return (
       <motion.article
         key={a.id}
@@ -384,42 +445,51 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         )}
         style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
       >
-        <div className="relative h-28 sm:h-32 overflow-hidden" style={{ background: coverGradient(a.title, "assignment") }}>
-          <span className={cn("absolute top-2.5 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5", badge.cls)}>
-            {badge.label}
-          </span>
-          <button
-            type="button"
-            onClick={() => toggleBookmark(a.id)}
-            className={cn("absolute top-2.5 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5", bookmarks.has(a.id) && "text-[#d4a63a]")}
-            aria-label={isAr ? "حفظ" : "Bookmark"}
-          >
-            <Bookmark className={cn("w-3.5 h-3.5", bookmarks.has(a.id) && "fill-current")} />
-          </button>
-          <div className="absolute inset-0 flex items-center justify-center opacity-20">
-            <BookText className="w-14 h-14 text-white" />
-          </div>
+        <div className="relative">
+          <ActivityCover kind={coverKind} subject={a.subject} title={a.title} aspect="video">
+            <span className={cn("absolute top-2.5 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5", badge.cls)}>
+              {badge.label}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleBookmark(a.id);
+              }}
+              className={cn("absolute top-2.5 z-10 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors", dir === "rtl" ? "left-2.5" : "right-2.5", bookmarks.has(a.id) && "text-[#d4a63a]")}
+              aria-label={isAr ? "حفظ" : "Bookmark"}
+            >
+              <Bookmark className={cn("w-3.5 h-3.5", bookmarks.has(a.id) && "fill-current")} />
+            </button>
+          </ActivityCover>
         </div>
         <div className={cn("flex flex-1 flex-col p-3.5", compact && "p-3")}>
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-black leading-snug" style={{ color: C.text }}>
+          <h3 className="line-clamp-2 text-sm font-black leading-snug" style={{ color: C.text }}>
             {a.title}
           </h3>
-          <p className="mt-1.5 text-xs" style={{ color: C.muted }}>
-            {[a.subject, a.targetClass].filter(Boolean).join(" • ") || (isAr ? "عام" : "General")}
-          </p>
-          <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: C.muted }}>
-            <span className="inline-flex items-center gap-0.5 font-semibold text-amber-600">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              {rating}
-            </span>
-            <span>{fmtUses(a.id, a.questionCount)} {isAr ? "استخدام" : "uses"}</span>
-          </div>
-          {a.teacherName && !a.isAdminContent && (
-            <p className="mt-1 flex items-center gap-1 truncate text-[11px]" style={{ color: C.muted }}>
-              <User className="w-3 h-3 shrink-0" />
-              {a.teacherName}
+          {a.description ? (
+            <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: C.muted }}>
+              {a.description}
             </p>
-          )}
+          ) : null}
+          <p className="mt-1.5 text-[11px] font-medium" style={{ color: C.muted }}>
+            {[a.subject, a.targetClass, `${a.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" • ")}
+          </p>
+          <div className="mt-auto flex items-center justify-between gap-2 border-t pt-2.5 text-[11px]" style={{ borderColor: C.border, color: C.muted }}>
+            <span>
+              {formatUseCount(uses, statsError)} {isAr ? "استخدام" : "uses"}
+            </span>
+            {a.teacherName && !a.isAdminContent ? (
+              <span className="flex min-w-0 items-center gap-1 truncate">
+                <User className="w-3 h-3 shrink-0" />
+                {a.teacherName}
+              </span>
+            ) : a.isAdminContent ? (
+              <span className="truncate font-semibold" style={{ color: C.primary }}>
+                {isAr ? "حصاد" : "Hasad"}
+              </span>
+            ) : null}
+          </div>
           <div className="mt-3 flex items-center gap-1.5 border-t pt-3" style={{ borderColor: C.border }}>
             {isOwn ? (
               <span className="flex w-full items-center justify-center gap-1 rounded-xl border py-2 text-xs font-bold" style={{ borderColor: C.border, color: C.primary, background: C.soft }}>
@@ -506,18 +576,31 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </Link>
         </div>
 
-        {/* Stats */}
+        {/* Stats — real counts from GET /api/teacher/activity-library/stats */}
         <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {stats.map((s, i) => (
-            <div key={i} className="rounded-xl border bg-white p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
-              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
-                {s.icon}
-              </div>
-              <p className="text-lg font-black sm:text-xl" style={{ color: C.text }}>{s.value}</p>
-              <p className="text-[11px] font-medium sm:text-xs" style={{ color: C.muted }}>{s.label}</p>
-            </div>
-          ))}
+          {statsLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-xl border bg-white p-3.5 sm:p-4" style={{ borderColor: C.border }}>
+                  <div className="mb-2 h-8 w-8 rounded-lg bg-[#e8f4ec]" />
+                  <div className="mb-2 h-7 w-16 rounded-md bg-[#f0ebe3]" />
+                  <div className="h-3 w-24 rounded bg-[#f0ebe3]" />
+                </div>
+              ))
+            : statsDisplay.map((s, i) => (
+                <div key={i} className="rounded-xl border bg-white p-3.5 shadow-sm sm:p-4" style={{ borderColor: C.border }}>
+                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.soft }}>
+                    {s.icon}
+                  </div>
+                  <p className="text-lg font-black sm:text-xl" style={{ color: C.text }}>{s.value}</p>
+                  <p className="text-[11px] font-medium sm:text-xs" style={{ color: C.muted }}>{s.label}</p>
+                </div>
+              ))}
         </div>
+        {statsError && (
+          <p className="-mt-3 mb-4 text-center text-xs text-amber-700" role="status">
+            {isAr ? "تعذّر تحميل الإحصائيات — الأرقام غير متاحة مؤقتاً" : "Stats unavailable — showing placeholders"}
+          </p>
+        )}
 
         {/* Category tabs */}
         <div className="mb-4 flex gap-1 overflow-x-auto border-b pb-0 scrollbar-thin" style={{ borderColor: C.border }}>
@@ -641,40 +724,60 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             <FeaturedCard
               isAr={isAr}
               dir={dir}
-              title={isAr ? "وميض" : "Wameeth"}
+              title={wameethPick?.title ?? (isAr ? "وميض" : "Wameeth")}
               badge={isAr ? "مسابقة مباشرة" : "Live quiz"}
-              desc={isAr ? "مسابقة حية سريعة على الشاشة مع إجابات الطلاب من هواتفهم." : "Fast live quiz on screen with student phone answers."}
-              gradient="linear-gradient(135deg,#0a4d26,#1a7a45,#2d9a62)"
-              icon={<Zap className="w-10 h-10 text-white/90" />}
-              uses="24.8K"
-              rating="4.9"
-              teacher={isAr ? "حصاد" : "Hasad"}
+              desc={
+                wameethPick
+                  ? (isAr ? `${wameethPick.questionCount} سؤال — مسابقة حية سريعة مع إجابات الطلاب.` : `${wameethPick.questionCount} questions — fast live quiz.`)
+                  : (isAr ? "مسابقة حية سريعة على الشاشة مع إجابات الطلاب من هواتفهم." : "Fast live quiz on screen with student phone answers.")
+              }
+              coverKind="featured-live"
+              subject={wameethPick?.subject}
+              usesLabel={
+                wameethPick && !statsError
+                  ? `${formatUseCount(assignmentUseCount(wameethPick.id))} ${isAr ? "استخدام" : "uses"}`
+                  : statsError
+                    ? "—"
+                    : `0 ${isAr ? "استخدام" : "uses"}`
+              }
+              teacher={wameethPick?.teacherName ?? (isAr ? "حصاد" : "Hasad")}
+              accent="live"
               onAction={() => wameethPick && launchAsGame(wameethPick.id)}
             />
             <FeaturedCard
               isAr={isAr}
               dir={dir}
-              title={isAr ? "عرض تفاعلي" : "Interactive deck"}
+              title={isAr ? "عروض تفاعلية" : "Interactive decks"}
               badge={isAr ? "عرض تفاعلي" : "Presentation"}
               desc={isAr ? "شرائح تفاعلية للفصل مع أسئلة فورية ومشاركة مباشرة." : "Interactive slides for class with instant questions."}
-              gradient="linear-gradient(135deg,#1e40af,#3b82f6,#60a5fa)"
-              icon={<Presentation className="w-10 h-10 text-white/90" />}
-              uses="18.2K"
-              rating="4.8"
-              teacher={isAr ? "معلمون" : "Teachers"}
+              coverKind="presentation"
+              usesLabel={
+                statsError
+                  ? "—"
+                  : `${formatUseCount(libraryStats?.presentationUses)} ${isAr ? "جلسة عرض" : "presentation runs"}`
+              }
+              teacher={isAr ? "مكتبة العروض" : "Presentations"}
               onAction={onPresentations}
             />
             <FeaturedCard
               isAr={isAr}
               dir={dir}
-              title={isAr ? "فيديو تعليمي" : "Video lesson"}
+              title={topVideoByUses?.title ?? (isAr ? "فيديو تعليمي" : "Video lesson")}
               badge={isAr ? "فيديو" : "Video"}
-              desc={isAr ? "درس فيديو مع أسئلة توقيت تلقائي أثناء المشاهدة." : "Video lesson with timed questions while watching."}
-              gradient="linear-gradient(135deg,#0f172a,#334155,#64748b)"
-              icon={<Video className="w-10 h-10 text-white/90" />}
-              uses="31.5K"
-              rating="4.7"
-              teacher={isAr ? "مجتمع المعلمين" : "Community"}
+              desc={
+                topVideoByUses?.description ??
+                (isAr ? "درس فيديو مع أسئلة توقيت تلقائي أثناء المشاهدة." : "Video lesson with timed questions while watching.")
+              }
+              coverKind="video"
+              subject={topVideoByUses?.subject}
+              usesLabel={
+                topVideoByUses && !statsError
+                  ? `${formatUseCount(videoUseCount(topVideoByUses.id))} ${isAr ? "استخدام" : "uses"}`
+                  : statsError
+                    ? "—"
+                    : `0 ${isAr ? "استخدام" : "uses"}`
+              }
+              teacher={topVideoByUses?.teacherName ?? (isAr ? "مجتمع المعلمين" : "Community")}
               onAction={() => onActiveTabChange("videos")}
             />
           </div>
@@ -695,11 +798,16 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 className="group overflow-hidden rounded-2xl border bg-white text-start transition-all hover:-translate-y-0.5 hover:shadow-md"
                 style={{ borderColor: C.border }}
               >
-                <div className="relative h-24" style={{ background: coverGradient(item.title, item.kind) }}>
-                  <span className={cn("absolute top-2 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", activityBadge(item.kind, item.type, isAr).cls)}>
+                <ActivityCover
+                  kind={resolveCoverKind(item.kind, item.type)}
+                  subject={item.subject}
+                  title={item.title}
+                  aspect="photo"
+                >
+                  <span className={cn("absolute top-2 z-10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", activityBadge(item.kind, item.type, isAr).cls)}>
                     {activityBadge(item.kind, item.type, isAr).label}
                   </span>
-                </div>
+                </ActivityCover>
                 <div className="p-2.5">
                   <p className="line-clamp-2 text-xs font-black leading-snug" style={{ color: C.text }}>{item.title}</p>
                   <p className="mt-1 truncate text-[10px]" style={{ color: C.muted }}>{[item.subject, item.grade].filter(Boolean).join(" • ")}</p>
@@ -730,14 +838,25 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             displayVideos.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {displayVideos.map((v, i) => (
-                  <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="group overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md" style={{ borderColor: C.border }}>
-                    <div className="relative h-28" style={{ background: coverGradient(v.title, "video") }}>
-                      <span className={cn("absolute top-2 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>{isAr ? "فيديو" : "Video"}</span>
-                      <Video className="absolute inset-0 m-auto h-10 w-10 text-white/30" />
-                    </div>
-                    <div className="p-3">
+                  <motion.article key={v.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="group flex flex-col overflow-hidden rounded-2xl border bg-white hover:-translate-y-1 hover:shadow-md" style={{ borderColor: C.border }}>
+                    <ActivityCover kind="video" subject={v.subject} title={v.title} aspect="video">
+                      <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-blue-600/90")}>{isAr ? "فيديو" : "Video"}</span>
+                    </ActivityCover>
+                    <div className="flex flex-1 flex-col p-3">
                       <p className="line-clamp-2 text-sm font-black">{v.title}</p>
-                      <p className="mt-1 text-xs text-[#6f8176]">{[v.subject, v.targetClass].filter(Boolean).join(" • ")}</p>
+                      {v.description ? <p className="mt-1 line-clamp-2 text-xs text-[#6f8176]">{v.description}</p> : null}
+                      <p className="mt-1 text-[11px] text-[#6f8176]">
+                        {[v.subject, v.targetClass, `${v.questionCount} ${isAr ? "سؤال" : "Q"}`].filter(Boolean).join(" • ")}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-[#6f8176]">
+                        <span>{formatUseCount(statsError ? undefined : videoUseCount(v.id), statsError)} {isAr ? "استخدام" : "uses"}</span>
+                        {v.teacherName ? (
+                          <span className="flex items-center gap-1 truncate">
+                            <User className="w-3 h-3" />
+                            {v.teacherName}
+                          </span>
+                        ) : null}
+                      </div>
                       <button type="button" onClick={() => importVideo(v.id)} disabled={importingVIds.has(v.id) || v.teacherId === currentTeacherId} className="mt-2 w-full rounded-xl py-2 text-xs font-bold text-white disabled:opacity-40" style={{ background: C.primary }}>
                         {importingVIds.has(v.id) ? <Loader2 className="mx-auto w-4 h-4 animate-spin" /> : isAr ? "استيراد" : "Import"}
                       </button>
@@ -753,12 +872,29 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
             displayQuestions.length > 0 ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {displayQuestions.map((q, i) => (
-                  <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border bg-white p-4 hover:shadow-md" style={{ borderColor: C.border }}>
-                    <p className="line-clamp-3 text-sm font-bold">{q.text}</p>
-                    <p className="mt-2 text-xs text-[#6f8176]">{q.subject}</p>
-                    <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-3 rounded-xl px-4 py-2 text-xs font-bold text-white" style={{ background: C.primary }}>
-                      {isAr ? "استيراد" : "Import"}
-                    </button>
+                  <motion.article key={q.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col overflow-hidden rounded-2xl border bg-white hover:shadow-md" style={{ borderColor: C.border }}>
+                    <ActivityCover kind="interactive" subject={q.subject} imageUrl={q.imageUrl} aspect="video">
+                      <span className={cn("absolute top-2 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white", dir === "rtl" ? "right-2" : "left-2", "bg-violet-600/90")}>
+                        {isAr ? "تفاعلي" : "Interactive"}
+                      </span>
+                    </ActivityCover>
+                    <div className="p-4">
+                      <p className="line-clamp-3 text-sm font-bold">{q.text}</p>
+                      <p className="mt-2 text-xs text-[#6f8176]">{[q.subject, `${q.points} ${isAr ? "نقطة" : "pts"}`].filter(Boolean).join(" • ")}</p>
+                      <div className="mt-2 text-[11px] text-[#6f8176]">
+                        {/* questionUsesTracked=false: no per-question usage in DB yet */}
+                        {formatUseCount(0)} {isAr ? "استخدام" : "uses"}
+                      </div>
+                      {q.teacherName ? (
+                        <p className="mt-1 flex items-center gap-1 text-[11px] text-[#6f8176]">
+                          <User className="w-3 h-3" />
+                          {q.teacherName}
+                        </p>
+                      ) : null}
+                      <button type="button" onClick={() => importQuestion(q.id)} disabled={importingQIds.has(q.id)} className="mt-3 w-full rounded-xl px-4 py-2 text-xs font-bold text-white" style={{ background: C.primary }}>
+                        {isAr ? "استيراد" : "Import"}
+                      </button>
+                    </div>
                   </motion.article>
                 ))}
               </div>
@@ -778,11 +914,11 @@ function FeaturedCard({
   title,
   badge,
   desc,
-  gradient,
-  icon,
-  uses,
-  rating,
+  coverKind,
+  subject,
+  usesLabel,
   teacher,
+  accent,
   onAction,
 }: {
   isAr: boolean;
@@ -790,36 +926,36 @@ function FeaturedCard({
   title: string;
   badge: string;
   desc: string;
-  gradient: string;
-  icon: React.ReactNode;
-  uses: string;
-  rating: string;
+  coverKind: import("@/lib/activity-cover").ActivityCoverKind;
+  subject?: string | null;
+  usesLabel: string;
   teacher: string;
+  accent?: "live";
   onAction: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onAction}
-      className="group overflow-hidden rounded-2xl border bg-white text-start transition-all hover:-translate-y-1 hover:shadow-lg"
-      style={{ borderColor: C.border }}
+      className={cn(
+        "group overflow-hidden rounded-2xl border bg-white text-start transition-all hover:-translate-y-1 hover:shadow-lg",
+        accent === "live" && "ring-1 ring-[#d4a63a]/30",
+      )}
+      style={{ borderColor: accent === "live" ? "#d4a63a55" : C.border }}
     >
-      <div className="relative h-36 sm:h-40" style={{ background: gradient }}>
-        <span className={cn("absolute top-3 rounded-lg bg-black/25 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm", dir === "rtl" ? "right-3" : "left-3")}>{badge}</span>
-        <div className="absolute inset-0 flex items-center justify-center opacity-40">{icon}</div>
-        <span className={cn("absolute bottom-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md transition-transform group-hover:scale-110", dir === "rtl" ? "left-3" : "right-3")}>
-          <ChevronLeft className={cn("h-5 w-5 text-[#0a4d26]", dir === "ltr" && "rotate-180")} />
-        </span>
+      <div className="relative">
+        <ActivityCover kind={coverKind} subject={subject} title={title} aspect="video">
+          <span className={cn("absolute top-3 z-10 rounded-lg bg-black/30 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm", dir === "rtl" ? "right-3" : "left-3")}>{badge}</span>
+          <span className={cn("absolute bottom-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md transition-transform group-hover:scale-110", dir === "rtl" ? "left-3" : "right-3")}>
+            <ChevronLeft className={cn("h-5 w-5 text-[#0a4d26]", dir === "ltr" && "rotate-180")} />
+          </span>
+        </ActivityCover>
       </div>
       <div className="p-4">
         <h3 className="text-base font-black text-[#1f2d24]">{title}</h3>
         <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#6f8176]">{desc}</p>
         <div className="mt-3 flex items-center justify-between text-[11px] text-[#6f8176]">
-          <span className="inline-flex items-center gap-1 font-semibold text-amber-600">
-            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-            {rating}
-          </span>
-          <span>{uses} {isAr ? "استخدام" : "uses"}</span>
+          <span className="font-semibold" style={{ color: C.primary }}>{usesLabel}</span>
         </div>
         <p className="mt-1 flex items-center gap-1 text-[11px] text-[#6f8176]">
           <User className="h-3 w-3" />

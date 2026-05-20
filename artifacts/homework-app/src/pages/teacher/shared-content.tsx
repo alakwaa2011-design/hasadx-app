@@ -124,6 +124,7 @@ interface SharedAssignment {
   targetClass?: string | null;
   targetClasses?: string[] | null;
   contentKind?: string | null;
+  description?: string | null;
 }
 
 interface SharedQuestion {
@@ -228,7 +229,7 @@ export default function SharedContentPage({
 
   const activitiesNewIds = useMemo(() => {
     if (!isActivitiesLibrary) return new Set<number>();
-    const windowMs = 14 * 24 * 60 * 60 * 1000;
+    const windowMs = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     const ids = [...assignments]
       .filter((a) => !a.isAdminContent && now - new Date(a.createdAt).getTime() < windowMs)
