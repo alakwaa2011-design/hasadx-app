@@ -46,6 +46,7 @@ export default function NewPresentationPage() {
   const [generatedSlides, setGeneratedSlides] = useState<
     Array<{ title: string; kind: string; interactionHint: string | null }>
   >([]);
+  const [launchLoading, setLaunchLoading] = useState(false);
   const [proBuilderOpen, setProBuilderOpen] = useState(false);
 
   useEffect(() => {
@@ -195,6 +196,38 @@ export default function NewPresentationPage() {
     setGeneratedSlides([]);
     setErrorMsg("");
   };
+
+  /* Creates a live session for the generated deck and jumps to the
+     control panel — this is the distinct "launch now" path, separate
+     from "edit in Pro Studio" which opens the editor. */
+  const handleLaunchNow = useCallback(async () => {
+    if (!generatedPresentationId) return;
+    setLaunchLoading(true);
+    try {
+      const r = await fetch(
+        `${API_BASE}/api/presentations/${generatedPresentationId}/sessions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ targetClass: null }),
+        },
+      );
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        toast.error(
+          (j as { message?: string }).message ??
+            (isAr ? "تعذّر بدء الجلسة" : "Failed to start session"),
+        );
+        return;
+      }
+      setLocation(`/p/control/${(j as { sessionId: string }).sessionId}`);
+    } catch {
+      toast.error(isAr ? "خطأ في الشبكة" : "Network error");
+    } finally {
+      setLaunchLoading(false);
+    }
+  }, [generatedPresentationId, isAr, setLocation]);
 
   return (
     <Layout>
@@ -618,20 +651,22 @@ export default function NewPresentationPage() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {/* PRIMARY: creates a live session and opens the control panel.
+                    Distinct from "Edit" — the two buttons lead to different routes. */}
                 <button
-                  onClick={() =>
-                    setLocation(
-                      `/teacher/presentations/${generatedPresentationId}`,
-                    )
-                  }
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-extrabold text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all"
+                  onClick={handleLaunchNow}
+                  disabled={launchLoading}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-extrabold text-white shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{
                     background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7a4f 100%)`,
                   }}
                 >
-                  <Play className="w-5 h-5" />
+                  {launchLoading
+                    ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : <Play className="w-5 h-5" />}
                   {isAr ? "إطلاق الحصة الآن" : "Launch lesson now"}
                 </button>
+                {/* SECONDARY: opens the full editor (Pro Studio) for tweaks. */}
                 <button
                   onClick={() =>
                     setLocation(
