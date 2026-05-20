@@ -114,7 +114,18 @@ export default function PresentationPlay() {
           activeElement: j.activeElement ?? null,
           revealDistribution: !!j.revealDistribution,
           revealAnswer: !!j.revealAnswer,
+          sessionMode: j.sessionMode ?? "teacher",
         }));
+        /* Rehydrate self-paced mode from REST polling so degraded-socket
+           reconnects still enable student navigation. On first detection
+           (selfPacedInitRef not yet set) we request slide 0 via socket. */
+        if (j.sessionMode === "self_paced" && !selfPacedInitRef.current) {
+          selfPacedInitRef.current = true;
+          setSessionMode("self_paced");
+          getSocket().emit("student:slide-change", { sessionId: sid, slideIndex: 0 });
+        } else if (j.sessionMode === "teacher") {
+          setSessionMode("teacher");
+        }
         /* Phase 6 — REST hydration of inline-quiz state for first
            paint and reload-mid-question. Falls back to socket
            `activity:state` for live updates from there. */
