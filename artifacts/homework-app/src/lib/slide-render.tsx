@@ -426,6 +426,9 @@ export function SlideRender({
         if (el.kind === "image") {
           const imgEl = el as typeof el & {
             objectFit?: "cover" | "contain" | "fill" | "none";
+            objectPositionX?: number;
+            objectPositionY?: number;
+            cropPct?: { x: number; y: number; w: number; h: number };
             imageOpacity?: number;
             imageBorderRadius?: number;
             flipH?: boolean;
@@ -441,21 +444,39 @@ export function SlideRender({
           if (imgEl.brightness !== undefined && imgEl.brightness !== 100) filters.push(`brightness(${imgEl.brightness}%)`);
           if (imgEl.contrast   !== undefined && imgEl.contrast   !== 100) filters.push(`contrast(${imgEl.contrast}%)`);
           if (imgEl.saturation !== undefined && imgEl.saturation !== 100) filters.push(`saturate(${imgEl.saturation}%)`);
+          const crop = imgEl.cropPct;
+          const transformStr = transforms.length ? transforms.join(" ") : undefined;
+          const filterStr   = filters.length ? filters.join(" ") : undefined;
           return (
             <div key={el.id} style={{ ...style, borderRadius: imgEl.imageBorderRadius ? `${imgEl.imageBorderRadius}px` : undefined, overflow: "hidden", opacity: imgEl.imageOpacity ?? 1 }}>
               {el.url
-                ? <img
-                    src={el.url}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: imgEl.objectFit ?? "cover",
-                      transform: transforms.length ? transforms.join(" ") : undefined,
-                      filter: filters.length ? filters.join(" ") : undefined,
-                    }}
-                    draggable={false}
-                  />
+                ? crop
+                  ? (
+                    <div style={{
+                      width: `${100 / crop.w}%`,
+                      height: `${100 / crop.h}%`,
+                      transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
+                    }}>
+                      <img src={el.url} alt="" draggable={false}
+                        style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
+                          transform: transformStr, filter: filterStr }} />
+                    </div>
+                  )
+                  : (
+                    <img
+                      src={el.url}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: imgEl.objectFit ?? "cover",
+                        objectPosition: `${imgEl.objectPositionX ?? 50}% ${imgEl.objectPositionY ?? 50}%`,
+                        transform: transformStr,
+                        filter: filterStr,
+                      }}
+                      draggable={false}
+                    />
+                  )
                 : null}
             </div>
           );

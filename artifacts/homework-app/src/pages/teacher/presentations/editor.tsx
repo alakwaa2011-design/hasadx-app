@@ -2795,6 +2795,9 @@ function ElementContent({
   if (el.kind === "image") {
     const imgEl = el as typeof el & {
       objectFit?: string;
+      objectPositionX?: number;
+      objectPositionY?: number;
+      cropPct?: { x: number; y: number; w: number; h: number };
       imageOpacity?: number;
       imageBorderRadius?: number;
       flipH?: boolean;
@@ -2810,6 +2813,9 @@ function ElementContent({
     if (imgEl.brightness !== undefined && imgEl.brightness !== 100) filters.push(`brightness(${imgEl.brightness}%)`);
     if (imgEl.contrast  !== undefined && imgEl.contrast  !== 100) filters.push(`contrast(${imgEl.contrast}%)`);
     if (imgEl.saturation !== undefined && imgEl.saturation !== 100) filters.push(`saturate(${imgEl.saturation}%)`);
+    const crop = imgEl.cropPct;
+    const transformStr = transforms.length ? transforms.join(" ") : undefined;
+    const filterStr    = filters.length ? filters.join(" ") : undefined;
     return el.url ? (
       <div style={{
         width: "100%", height: "100%",
@@ -2817,21 +2823,31 @@ function ElementContent({
         overflow: "hidden",
         opacity: imgEl.imageOpacity ?? 1,
       }}>
-        <img
-          src={el.url}
-          alt=""
-          style={{
-            width: "100%", height: "100%",
-            objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
-            // pointerEvents intentionally NOT "none" — the shell's pointerdown
-            // handler bubbles up and selects the element on click. The native
-            // image drag is suppressed via draggable={false}.
-            transform: transforms.length ? transforms.join(" ") : undefined,
-            filter: filters.length ? filters.join(" ") : undefined,
-            userSelect: "none",
-          }}
-          draggable={false}
-        />
+        {crop ? (
+          <div style={{
+            width: `${100 / crop.w}%`,
+            height: `${100 / crop.h}%`,
+            transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
+          }}>
+            <img src={el.url} alt="" draggable={false}
+              style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
+                transform: transformStr, filter: filterStr, userSelect: "none" }} />
+          </div>
+        ) : (
+          <img
+            src={el.url}
+            alt=""
+            style={{
+              width: "100%", height: "100%",
+              objectFit: (imgEl.objectFit ?? "cover") as React.CSSProperties["objectFit"],
+              objectPosition: `${imgEl.objectPositionX ?? 50}% ${imgEl.objectPositionY ?? 50}%`,
+              transform: transformStr,
+              filter: filterStr,
+              userSelect: "none",
+            }}
+            draggable={false}
+          />
+        )}
       </div>
     ) : (
       <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">
@@ -3179,6 +3195,9 @@ function Inspector({
   uploading: boolean;
   onDeselect: () => void;
 }) {
+  const [gifOpen, setGifOpen] = useState(false);
+  const [gifUrl, setGifUrl] = useState("");
+
   if (!slide) return null;
 
   if (selectedEl) {
@@ -3595,6 +3614,54 @@ function Inspector({
               {isAr ? "إدراج فيديو (يوتيوب / حصاد)" : "Embed Video (YouTube / Hasad)"}
             </span>
           </Button>
+          {/* GIF via URL */}
+          {gifOpen ? (
+            <div className="flex gap-2">
+              <Input
+                value={gifUrl}
+                onChange={(e) => setGifUrl(e.target.value)}
+                placeholder={isAr ? "رابط GIF..." : "GIF URL..."}
+                dir="ltr"
+                className="flex-1 h-9 text-xs rounded-xl"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && gifUrl.trim()) {
+                    onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 220, w: 400, h: 300, objectFit: "contain" } as SlideElement);
+                    setGifUrl("");
+                    setGifOpen(false);
+                  }
+                  if (e.key === "Escape") { setGifOpen(false); setGifUrl(""); }
+                }}
+                autoFocus
+              />
+              <Button size="sm" disabled={!gifUrl.trim() || readOnly}
+                className="shrink-0 rounded-xl"
+                style={{ background: BRAND_GREEN }}
+                onClick={() => {
+                  if (!gifUrl.trim()) return;
+                  onInsertElement({ id: `img-${Date.now()}`, kind: "image", url: gifUrl.trim(), x: 440, y: 220, w: 400, h: 300, objectFit: "contain" } as SlideElement);
+                  setGifUrl("");
+                  setGifOpen(false);
+                }}>
+                {isAr ? "إضافة" : "Add"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setGifOpen(false); setGifUrl(""); }}
+                className="shrink-0 rounded-xl px-2">
+                <XIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full justify-center gap-2 border-dashed hover:border-emerald-500 hover:bg-emerald-50/50 rounded-xl"
+              onClick={() => setGifOpen(true)}
+              disabled={readOnly}
+            >
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              <span className="font-bold text-sm text-foreground">
+                {isAr ? "إضافة GIF برابط" : "Add GIF by URL"}
+              </span>
+            </Button>
+          )}
         </div>
       </Section>
 
@@ -3769,6 +3836,123 @@ function HasadGameInspector({
    teacher can label a lesson (e.g. "مقدمة الكيمياء"). */
 /* Inspector for an "image" element — fit mode, opacity, corner radius,
    and quick-replace shortcuts (re-upload or re-search). */
+/* ── CropPanel ────────────────────────────────────────────────────────────
+   Inline mini-preview crop UI. The user drags a crop rect over a scaled
+   preview of the image; on Apply we compute cropPct (all values 0..1)
+   that the image renderer uses to zoom + offset the image. */
+type CropPct = { x: number; y: number; w: number; h: number };
+const CPREV_W = 220;
+const CPREV_H = 138;
+const CROP_MIN = 20;
+
+function CropPanel({ url, value, isAr, onApply, onCancel }: {
+  url: string;
+  value?: CropPct;
+  isAr: boolean;
+  onApply: (c: CropPct) => void;
+  onCancel: () => void;
+}) {
+  const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number }>(() =>
+    value
+      ? { x: value.x * CPREV_W, y: value.y * CPREV_H, w: value.w * CPREV_W, h: value.h * CPREV_H }
+      : { x: 8, y: 5, w: CPREV_W - 16, h: CPREV_H - 10 }
+  );
+  const dragRef = useRef<{
+    kind: "move" | "tl" | "tr" | "bl" | "br";
+    sx: number; sy: number;
+    sr: typeof rect;
+  } | null>(null);
+
+  function clamp(r: typeof rect) {
+    const x = Math.max(0, Math.min(CPREV_W - CROP_MIN, r.x));
+    const y = Math.max(0, Math.min(CPREV_H - CROP_MIN, r.y));
+    const w = Math.max(CROP_MIN, Math.min(CPREV_W - x, r.w));
+    const h = Math.max(CROP_MIN, Math.min(CPREV_H - y, r.h));
+    return { x, y, w, h };
+  }
+
+  function startDrag(kind: NonNullable<typeof dragRef.current>["kind"], e: React.PointerEvent) {
+    e.stopPropagation();
+    dragRef.current = { kind, sx: e.clientX, sy: e.clientY, sr: { ...rect } };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  }
+
+  function onMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const { kind, sx, sy, sr } = dragRef.current;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    let nr = { ...sr };
+    if      (kind === "move") nr = { ...sr, x: sr.x + dx, y: sr.y + dy };
+    else if (kind === "br")   nr = { ...sr, w: sr.w + dx, h: sr.h + dy };
+    else if (kind === "bl")   nr = { x: sr.x + dx, y: sr.y,      w: sr.w - dx, h: sr.h + dy };
+    else if (kind === "tr")   nr = { x: sr.x,      y: sr.y + dy, w: sr.w + dx, h: sr.h - dy };
+    else if (kind === "tl")   nr = { x: sr.x + dx, y: sr.y + dy, w: sr.w - dx, h: sr.h - dy };
+    setRect(clamp(nr));
+  }
+
+  const { x, y, w, h } = rect;
+  const cp = [
+    `0 0`, `${CPREV_W}px 0`, `${CPREV_W}px ${CPREV_H}px`, `0 ${CPREV_H}px`,
+    `0 ${y}px`, `${x}px ${y}px`, `${x}px ${y + h}px`,
+    `${x + w}px ${y + h}px`, `${x + w}px ${y}px`, `0 ${y}px`,
+  ].join(", ");
+
+  const handle = (kind: NonNullable<typeof dragRef.current>["kind"], style: React.CSSProperties) => (
+    <div
+      key={kind}
+      onPointerDown={(e) => startDrag(kind, e)}
+      style={{
+        position: "absolute", width: 14, height: 14,
+        background: "#fff", border: "2px solid #225739", borderRadius: 3,
+        cursor: (kind === "tl" || kind === "br") ? "nwse-resize" : "nesw-resize",
+        ...style,
+      }}
+    />
+  );
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-center text-muted-foreground">
+        {isAr ? "اسحب لتحديد منطقة القص" : "Drag to set crop area"}
+      </p>
+      <div
+        className="relative overflow-hidden rounded-lg border border-border mx-auto select-none"
+        style={{ width: CPREV_W, height: CPREV_H }}
+        onPointerMove={onMove}
+        onPointerUp={() => { dragRef.current = null; }}
+      >
+        <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+        <div className="absolute inset-0 bg-black/50 pointer-events-none"
+          style={{ clipPath: `polygon(${cp})` }} />
+        <div
+          className="absolute border-2 border-white cursor-move"
+          style={{ left: x, top: y, width: w, height: h }}
+          onPointerDown={(e) => startDrag("move", e)}
+        >
+          {handle("tl", { top: -7, left: -7 })}
+          {handle("tr", { top: -7, right: -7 })}
+          {handle("bl", { bottom: -7, left: -7 })}
+          {handle("br", { bottom: -7, right: -7 })}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button size="sm"
+          className="text-xs gap-1"
+          style={{ background: BRAND_GREEN }}
+          onClick={() => onApply({ x: x / CPREV_W, y: y / CPREV_H, w: w / CPREV_W, h: h / CPREV_H })}
+        >
+          <XIcon className="w-3 h-3 rotate-45" />
+          {isAr ? "تطبيق" : "Apply"}
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs gap-1" onClick={onCancel}>
+          <XIcon className="w-3 h-3" />
+          {isAr ? "إلغاء" : "Cancel"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ImageInspector({
   el, onUpdateEl, disabled, isAr, onPickImage, onOpenImageSearch, uploading,
 }: {
@@ -3782,6 +3966,9 @@ function ImageInspector({
 }) {
   type ImgEl = SlideElement & {
     objectFit?: string;
+    objectPositionX?: number;
+    objectPositionY?: number;
+    cropPct?: CropPct;
     imageOpacity?: number;
     imageBorderRadius?: number;
     flipH?: boolean;
@@ -3792,6 +3979,9 @@ function ImageInspector({
   };
   const imgEl = el as ImgEl;
   const fit        = imgEl.objectFit          ?? "cover";
+  const posX       = imgEl.objectPositionX    ?? 50;
+  const posY       = imgEl.objectPositionY    ?? 50;
+  const cropPct    = imgEl.cropPct;
   const opacity    = imgEl.imageOpacity       ?? 1;
   const radius     = imgEl.imageBorderRadius  ?? 0;
   const flipH      = imgEl.flipH              ?? false;
@@ -3799,6 +3989,8 @@ function ImageInspector({
   const brightness = imgEl.brightness         ?? 100;
   const contrast   = imgEl.contrast           ?? 100;
   const saturation = imgEl.saturation         ?? 100;
+
+  const [cropOpen, setCropOpen] = useState(false);
 
   const fitOptions: Array<{ value: string; labelAr: string; label: string }> = [
     { value: "cover",   labelAr: "تملأ الإطار", label: "Cover"   },
@@ -3813,13 +4005,12 @@ function ImageInspector({
   const filtersChanged = brightness !== 100 || contrast !== 100 || saturation !== 100 || opacity !== 1;
 
   return (
-    <>
-      <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: "#225739" }}>
-        {isAr ? "إعدادات الصورة" : "Image settings"}
-      </div>
-
-      {/* Fit mode */}
-      <Field label={isAr ? "ملاءمة الصورة" : "Image fit"}>
+    <div className="space-y-4">
+      {/* ── Fit mode ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "ملاءمة الصورة" : "Image fit"}
+        </Label>
         <div className="grid grid-cols-2 gap-1">
           {fitOptions.map((opt) => (
             <button
@@ -3828,136 +4019,174 @@ function ImageInspector({
               onClick={() => onUpdateEl({ objectFit: opt.value } as Partial<SlideElement>)}
               className="px-2 py-1.5 text-xs rounded-lg border transition-colors text-center"
               style={{
-                background: fit === opt.value ? "#225739" : "transparent",
+                background: fit === opt.value ? BRAND_GREEN : "transparent",
                 color: fit === opt.value ? "#fff" : "inherit",
-                borderColor: fit === opt.value ? "#225739" : undefined,
+                borderColor: fit === opt.value ? BRAND_GREEN : undefined,
               }}
             >
               {isAr ? opt.labelAr : opt.label}
             </button>
           ))}
         </div>
-      </Field>
+      </div>
 
-      {/* Flip */}
-      <Field label={isAr ? "قلب الصورة" : "Flip"}>
-        <div className="grid grid-cols-2 gap-1">
-          <button
-            disabled={disabled}
-            onClick={() => onUpdateEl({ flipH: !flipH } as Partial<SlideElement>)}
-            className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
-            style={{
-              background: flipH ? "#225739" : "transparent",
-              color: flipH ? "#fff" : "inherit",
-              borderColor: flipH ? "#225739" : undefined,
+      {/* ── Object-position (only when cover & no crop) ── */}
+      {fit === "cover" && !cropPct && (
+        <div>
+          <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+            {isAr ? "موضع الصورة داخل الإطار" : "Image position"}
+          </Label>
+          <div className="space-y-2 bg-muted/30 rounded-lg p-2">
+            <div>
+              <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5">
+                <span>{isAr ? "أفقي" : "Horizontal"}</span>
+                <span>{posX}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={1} value={posX} disabled={disabled}
+                onChange={(e) => onUpdateEl({ objectPositionX: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+                className="w-full accent-emerald-700" />
+            </div>
+            <div>
+              <div className="flex justify-between text-[11px] text-muted-foreground mb-0.5">
+                <span>{isAr ? "رأسي" : "Vertical"}</span>
+                <span>{posY}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={1} value={posY} disabled={disabled}
+                onChange={(e) => onUpdateEl({ objectPositionY: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+                className="w-full accent-emerald-700" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Crop ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "قص الصورة" : "Crop"}
+        </Label>
+        {cropOpen && el.url ? (
+          <CropPanel
+            url={el.url}
+            value={cropPct}
+            isAr={isAr}
+            onApply={(c) => {
+              onUpdateEl({ cropPct: c } as Partial<SlideElement>);
+              setCropOpen(false);
             }}
-          >
+            onCancel={() => setCropOpen(false)}
+          />
+        ) : (
+          <div className="flex gap-2">
+            <button
+              disabled={disabled}
+              onClick={() => setCropOpen(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-xl border-2 border-dashed transition-all hover:border-emerald-500 hover:bg-emerald-50/50"
+              style={cropPct
+                ? { borderColor: BRAND_GREEN, color: BRAND_GREEN, background: "#e8f4ed" }
+                : { borderColor: "var(--border)", color: "var(--muted-foreground)" }}
+            >
+              <Crop className="w-3.5 h-3.5" />
+              {cropPct
+                ? (isAr ? "✓ تعديل القص" : "✓ Edit crop")
+                : (isAr ? "قص الصورة" : "Crop image")}
+            </button>
+            {cropPct && (
+              <button
+                disabled={disabled}
+                onClick={() => onUpdateEl({ cropPct: undefined } as Partial<SlideElement>)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-dashed text-red-500 hover:bg-red-50 transition-colors"
+                title={isAr ? "إزالة القص" : "Remove crop"}
+              >
+                <XIcon className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Filters ── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <Label className="text-xs font-bold text-muted-foreground">
+            {isAr ? "تعديل الصورة" : "Adjustments"}
+          </Label>
+          {filtersChanged && (
+            <button disabled={disabled} onClick={resetFilters}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5">
+              ↺ {isAr ? "إعادة ضبط" : "Reset"}
+            </button>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Field label={`${isAr ? "الشفافية" : "Opacity"}: ${Math.round(opacity * 100)}%`}>
+            <input type="range" min={0} max={1} step={0.05} value={opacity} disabled={disabled}
+              onChange={(e) => onUpdateEl({ imageOpacity: parseFloat(e.target.value) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "السطوع" : "Brightness"}: ${brightness}%`}>
+            <input type="range" min={0} max={200} step={5} value={brightness} disabled={disabled}
+              onChange={(e) => onUpdateEl({ brightness: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "التباين" : "Contrast"}: ${contrast}%`}>
+            <input type="range" min={0} max={200} step={5} value={contrast} disabled={disabled}
+              onChange={(e) => onUpdateEl({ contrast: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+          <Field label={`${isAr ? "التشبّع" : "Saturation"}: ${saturation}%`}>
+            <input type="range" min={0} max={200} step={5} value={saturation} disabled={disabled}
+              onChange={(e) => onUpdateEl({ saturation: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
+              className="w-full accent-emerald-700" />
+          </Field>
+        </div>
+      </div>
+
+      {/* ── Flip ── */}
+      <div>
+        <Label className="text-xs font-bold text-muted-foreground block mb-1.5">
+          {isAr ? "قلب الصورة" : "Flip"}
+        </Label>
+        <div className="grid grid-cols-2 gap-1">
+          <button disabled={disabled} onClick={() => onUpdateEl({ flipH: !flipH } as Partial<SlideElement>)}
+            className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
+            style={{ background: flipH ? BRAND_GREEN : "transparent", color: flipH ? "#fff" : "inherit", borderColor: flipH ? BRAND_GREEN : undefined }}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M8 2v12M4 5l-3 3 3 3M12 5l3 3-3 3" />
             </svg>
             {isAr ? "أفقي" : "Horiz."}
           </button>
-          <button
-            disabled={disabled}
-            onClick={() => onUpdateEl({ flipV: !flipV } as Partial<SlideElement>)}
+          <button disabled={disabled} onClick={() => onUpdateEl({ flipV: !flipV } as Partial<SlideElement>)}
             className="px-2 py-1.5 text-xs rounded-lg border transition-colors flex items-center justify-center gap-1"
-            style={{
-              background: flipV ? "#225739" : "transparent",
-              color: flipV ? "#fff" : "inherit",
-              borderColor: flipV ? "#225739" : undefined,
-            }}
-          >
+            style={{ background: flipV ? BRAND_GREEN : "transparent", color: flipV ? "#fff" : "inherit", borderColor: flipV ? BRAND_GREEN : undefined }}>
             <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M2 8h12M5 4l3-3 3 3M5 12l3 3 3-3" />
             </svg>
             {isAr ? "رأسي" : "Vert."}
           </button>
         </div>
-      </Field>
+      </div>
 
-      {/* Opacity */}
-      <Field label={`${isAr ? "الشفافية" : "Opacity"}: ${Math.round(opacity * 100)}%`}>
-        <input
-          type="range" min={0} max={1} step={0.05}
-          value={opacity} disabled={disabled}
-          onChange={(e) => onUpdateEl({ imageOpacity: parseFloat(e.target.value) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Brightness */}
-      <Field label={`${isAr ? "السطوع" : "Brightness"}: ${brightness}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={brightness} disabled={disabled}
-          onChange={(e) => onUpdateEl({ brightness: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Contrast */}
-      <Field label={`${isAr ? "التباين" : "Contrast"}: ${contrast}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={contrast} disabled={disabled}
-          onChange={(e) => onUpdateEl({ contrast: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Saturation */}
-      <Field label={`${isAr ? "التشبّع" : "Saturation"}: ${saturation}%`}>
-        <input
-          type="range" min={0} max={200} step={5}
-          value={saturation} disabled={disabled}
-          onChange={(e) => onUpdateEl({ saturation: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
-      </Field>
-
-      {/* Reset filters */}
-      {filtersChanged && (
-        <button
-          disabled={disabled}
-          onClick={resetFilters}
-          className="w-full text-xs py-1 rounded border border-dashed text-foreground/60 hover:text-foreground/90 transition-colors"
-        >
-          {isAr ? "↺ إعادة ضبط المرشّحات" : "↺ Reset filters"}
-        </button>
-      )}
-
-      {/* Border radius */}
+      {/* ── Border radius ── */}
       <Field label={`${isAr ? "تدوير الزوايا" : "Corner radius"}: ${radius}px`}>
-        <input
-          type="range" min={0} max={200} step={4}
-          value={radius} disabled={disabled}
+        <input type="range" min={0} max={200} step={4} value={radius} disabled={disabled}
           onChange={(e) => onUpdateEl({ imageBorderRadius: parseInt(e.target.value, 10) } as Partial<SlideElement>)}
-          className="w-full accent-emerald-700"
-        />
+          className="w-full accent-emerald-700" />
       </Field>
 
-      {/* Replace image shortcuts */}
+      {/* ── Replace shortcuts ── */}
       <div className="flex gap-2 pt-1">
-        <Button
-          size="sm" variant="outline"
-          className="flex-1 gap-1 rounded-lg h-8 text-xs"
-          disabled={disabled || uploading}
-          onClick={onPickImage}
-        >
+        <Button size="sm" variant="outline" className="flex-1 gap-1 rounded-lg h-8 text-xs"
+          disabled={disabled || uploading} onClick={onPickImage}>
           <ImagePlus className="w-3.5 h-3.5" />
           {isAr ? "استبدال" : "Replace"}
         </Button>
-        <Button
-          size="sm" variant="outline"
-          className="flex-1 gap-1 rounded-lg h-8 text-xs"
-          disabled={disabled}
-          onClick={onOpenImageSearch}
-        >
+        <Button size="sm" variant="outline" className="flex-1 gap-1 rounded-lg h-8 text-xs"
+          disabled={disabled} onClick={onOpenImageSearch}>
           <Search className="w-3.5 h-3.5" />
           {isAr ? "من الويب" : "From web"}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
