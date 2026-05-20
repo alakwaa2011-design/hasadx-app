@@ -108,9 +108,39 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [showGameModeModal, setShowGameModeModal] = useState(false);
   const [selectedGameMode, setSelectedGameMode] = useState<"solo" | "teams" | "rocket" | "hotseat">("solo");
   const [selectedTeamCount, setSelectedTeamCount] = useState(2);
+  const [activeGamePin, setActiveGamePin] = useState<string | null>(null);
+  const [showGameFinishedBanner, setShowGameFinishedBanner] = useState(false);
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
+
+  /* Listen for game-finished broadcast from the teacher game console tab. */
+  useEffect(() => {
+    if (!activeGamePin) return;
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("hasad:presentation");
+      bc.onmessage = (ev) => {
+        if (ev.data?.type === "game-finished" && ev.data?.pin === activeGamePin) {
+          setShowGameFinishedBanner(true);
+          setActiveGamePin(null);
+          if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+          bannerTimerRef.current = setTimeout(() => setShowGameFinishedBanner(false), 7000);
+        }
+      };
+    } catch { /* BroadcastChannel not supported */ }
+    return () => { bc?.close(); };
+  }, [activeGamePin]);
+
+  /* Dismiss banner when teacher advances the slide. */
+  useEffect(() => {
+    if (showGameFinishedBanner) {
+      setShowGameFinishedBanner(false);
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
 
   const deckLang = (data?.language ?? "ar") as "ar" | "en";
   const isAr = deckLang === "ar";
@@ -305,6 +335,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
            the teacher switching windows. The teacher console still opens
            in the background tab as before. */
         setActivePin(res.pin);
+        setActiveGamePin(res.pin);
         if (gameTab) {
           gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
         } else {
@@ -351,6 +382,10 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         @keyframes slideEnter {
           from { opacity: 0; transform: translateX(var(--slide-dx, 0)); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes bannerSlideIn {
+          from { opacity: 0; transform: translateY(-20px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
@@ -443,6 +478,24 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 ? "امسح الرمز أو اكتب الرمز على hasadx.com"
                 : "Scan the code or go to hasadx.com and enter the PIN"}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game-finished banner */}
+      {showGameFinishedBanner && (
+        <div
+          className="absolute top-6 inset-x-0 flex justify-center z-50 pointer-events-none"
+          style={{ animation: "bannerSlideIn .35s ease-out" }}
+        >
+          <div
+            className="flex items-center gap-3 px-6 py-3 rounded-2xl shadow-2xl text-white font-bold text-lg"
+            style={{ background: "linear-gradient(135deg, #225739 0%, #1a4229 100%)", border: "1.5px solid #D9A52166", backdropFilter: "blur(8px)" }}
+          >
+            <span className="text-2xl">✅</span>
+            <span dir="rtl">
+              {isAr ? "النشاط انتهى — انتقل للشريحة التالية" : "Activity finished — advance to next slide"}
+            </span>
           </div>
         </div>
       )}

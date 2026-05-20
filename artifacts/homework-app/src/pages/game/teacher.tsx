@@ -352,6 +352,11 @@ export default function TeacherGame() {
       playVictoryFanfare();
       setTimeout(() => playClapSound(), 500);
       setTimeout(() => playFireworkSound(), 1000);
+      try {
+        const bc = new BroadcastChannel("hasad:presentation");
+        bc.postMessage({ type: "game-finished", pin });
+        bc.close();
+      } catch { /* BroadcastChannel not supported — ignore */ }
     });
 
     socket.on("game:replay", (data: any) => {
