@@ -1186,9 +1186,13 @@ router.post(
         deckLanguage = detectLangFromText(
           parsedSlides.map((s) => [s.title ?? "", ...s.bullets].join(" ")).join(" "),
         );
-        /* Use the first non-empty slide title as the deck name. */
+        /* Use the first non-empty slide title as the deck name.
+         * If no slide has a formal title placeholder, fall back to the first
+         * non-empty bullet of the first slide (truncated to 60 chars). */
         titleFromUrl =
-          parsedSlides.find((s) => s.title?.trim())?.title?.trim() ?? undefined;
+          parsedSlides.find((s) => s.title?.trim())?.title?.trim() ??
+          parsedSlides[0]?.bullets.find((b) => b.trim())?.trim().slice(0, 60) ??
+          undefined;
         const built = buildSlidesFromParsed(parsedSlides, deckLanguage);
         const validated = slidesSchema.safeParse(built);
         finalSlides =
