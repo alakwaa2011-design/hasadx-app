@@ -9,7 +9,7 @@ import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Play, Pencil,
   MessageSquare, HelpCircle, BarChart2, Type,
-  UploadCloud, FileText, X,
+  UploadCloud, FileText, X, Check,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -69,6 +69,11 @@ export default function NewPresentationPage() {
   const [importErrorMsg, setImportErrorMsg] = useState("");
   const [importDragOver, setImportDragOver] = useState(false);
   const [importUrl, setImportUrl] = useState("");
+
+  /* ── Inline rename state (shown after import success) ── */
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameConfirmed, setRenameConfirmed] = useState(false);
 
   useEffect(() => {
     if (mode === "pro") setProBuilderOpen(true);
@@ -237,7 +242,10 @@ export default function NewPresentationPage() {
             (isAr ? "فشل استيراد الملف" : "File import failed"),
         );
       }
-      setImportResult(j as ImportResult);
+      const result = j as ImportResult;
+      setImportResult(result);
+      setRenameValue(result.title);
+      setRenameConfirmed(false);
       setImportPhase("preview");
     } catch (err) {
       const msg = err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error";
@@ -253,7 +261,43 @@ export default function NewPresentationPage() {
     setImportErrorMsg("");
     setImportDragOver(false);
     setImportUrl("");
+    setRenameValue("");
+    setRenameSaving(false);
+    setRenameConfirmed(false);
   };
+
+  /* Save a new title for the just-imported presentation. */
+  const handleRename = useCallback(async () => {
+    if (!importResult) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed || trimmed === importResult.title) {
+      setRenameConfirmed(true);
+      return;
+    }
+    setRenameSaving(true);
+    try {
+      const r = await fetch(
+        `${API_BASE}/api/presentations/${importResult.presentationId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ title: trimmed }),
+        },
+      );
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error((e as { message?: string }).message ?? (isAr ? "فشل حفظ الاسم" : "Failed to save title"));
+      }
+      setImportResult((prev) => prev ? { ...prev, title: trimmed } : prev);
+      setRenameConfirmed(true);
+      toast.success(isAr ? "تم حفظ الاسم" : "Title saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error");
+    } finally {
+      setRenameSaving(false);
+    }
+  }, [importResult, renameValue, isAr]);
 
   /* Submit a URL (Google Slides) to the import-url endpoint. */
   const handleImportUrl = useCallback(async () => {
@@ -275,7 +319,10 @@ export default function NewPresentationPage() {
             (isAr ? "فشل استيراد الرابط" : "URL import failed"),
         );
       }
-      setImportResult(j as ImportResult);
+      const result = j as ImportResult;
+      setImportResult(result);
+      setRenameValue(result.title);
+      setRenameConfirmed(false);
       setImportPhase("preview");
     } catch (err) {
       const msg = err instanceof Error ? err.message : isAr ? "حدث خطأ" : "Error";
@@ -977,23 +1024,68 @@ export default function NewPresentationPage() {
               {isAr ? "تم الاستيراد! 🎉" : "Import complete! 🎉"}
             </h2>
 
-            {/* Result summary */}
-            <div className="inline-flex items-center gap-3 bg-muted/40 border border-border rounded-2xl px-5 py-3 mb-5">
-              <FileText className="w-5 h-5 text-blue-500 shrink-0" />
-              <div className="text-start min-w-0">
-                <p className="text-sm font-bold truncate max-w-[220px]">{importResult.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {importResult.slideCount}{" "}
-                  {isAr ? "شريحة" : "slides"}
-                  {importResult.aiGenerated && (
-                    <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                      <Sparkles className="w-3 h-3" />
-                      {isAr ? "بتحسين AI" : "AI enriched"}
-                    </span>
-                  )}
+            {/* ── Inline rename prompt ── */}
+            {!renameConfirmed ? (
+              <div className="mt-4 mb-5 bg-muted/40 border border-border rounded-2xl px-5 py-4 text-start">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">
+                  {isAr ? "اسم العرض" : "Deck title"}
+                </p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    dir="auto"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") void handleRename(); }}
+                    disabled={renameSaving}
+                    className="flex-1 min-w-0 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all disabled:opacity-60"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleRename()}
+                    disabled={renameSaving || !renameValue.trim()}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    {renameSaving
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Check className="w-4 h-4" />}
+                    {isAr ? "حفظ" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRenameConfirmed(true)}
+                    disabled={renameSaving}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted/50 disabled:opacity-40 transition-all"
+                  >
+                    {isAr ? "تخطي" : "Skip"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground/60 mt-1.5">
+                  {isAr
+                    ? "يمكنك تغيير الاسم الآن أو تخطي هذه الخطوة"
+                    : "Rename it now or skip — you can always change it later"}
                 </p>
               </div>
-            </div>
+            ) : (
+              /* After rename confirmed — show the final title */
+              <div className="inline-flex items-center gap-3 bg-muted/40 border border-border rounded-2xl px-5 py-3 mt-4 mb-5">
+                <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+                <div className="text-start min-w-0">
+                  <p className="text-sm font-bold truncate max-w-[220px]">{importResult.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {importResult.slideCount}{" "}
+                    {isAr ? "شريحة" : "slides"}
+                    {importResult.aiGenerated && (
+                      <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <Sparkles className="w-3 h-3" />
+                        {isAr ? "بتحسين AI" : "AI enriched"}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {importResult.warning === "content_extraction_failed" && (
               <div className="mb-5 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 rounded-xl px-4 py-3 text-start text-sm text-amber-700 dark:text-amber-300">
