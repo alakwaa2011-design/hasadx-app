@@ -29,6 +29,7 @@ import {
   Undo2, Redo2, Bold, CheckSquare, Pencil,
   Triangle, Diamond, Crown, Phone, Users, Flag, MapPin,
   Rocket, Swords, Dice5, Zap, Search, Crop,
+  Cloud, MessageSquare, BarChart2, Film,
 } from "lucide-react";
 import { useIsBelowLg } from "@/hooks/use-mobile";
 import * as LucideIcons from "lucide-react";
@@ -419,8 +420,9 @@ export default function PresentationEditor() {
      Compose tab opens prefilled instead of blank. */
   const [pickerInitial, setPickerInitial] = useState<{
     prompt?: string;
-    kind?: "mcq" | "true_false" | "open" | "poll";
+    kind?: "mcq" | "true_false" | "open" | "poll" | "word_cloud" | "open_wall";
   }>({});
+  const [gifLibraryOpen, setGifLibraryOpen] = useState(false);
   /* Outline indices the editor has already inserted activities for via
      the AI suggestions banner. Reported back to the banner so the
      corresponding chip is dismissed only after a real insertion (not
@@ -493,6 +495,7 @@ export default function PresentationEditor() {
     setDismissedSuggestionKeys(new Set());
     setPreviewIdx(null);
     setActivityPickerOpen(false);
+    setGifLibraryOpen(false);
   }, [id]);
 
   /* Hydrate local state once when the deck first loads — and again
@@ -1481,6 +1484,95 @@ export default function PresentationEditor() {
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
+            {/* Quick-action toolbar — desktop only (left rail is hidden on mobile). */}
+            {!readOnly && (
+              <div className="hidden lg:block mb-1 shrink-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
+                  {isAr ? "أنشطة" : "Activities"}
+                </p>
+                <div className="grid grid-cols-5 gap-1">
+                  {([
+                    { kind: "word_cloud" as const, Icon: Cloud,          labelAr: "سحابة", labelEn: "Cloud" },
+                    { kind: "open_wall"  as const, Icon: MessageSquare,  labelAr: "جدار",  labelEn: "Wall"  },
+                    { kind: "mcq"        as const, Icon: HelpCircle,     labelAr: "MCQ",   labelEn: "MCQ"   },
+                    { kind: "true_false" as const, Icon: CheckCircle2,   labelAr: "صح/خطأ",labelEn: "T/F"   },
+                    { kind: "poll"       as const, Icon: BarChart2,      labelAr: "تصويت", labelEn: "Poll"  },
+                  ]).map(({ kind, Icon, labelAr, labelEn }) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      title={isAr ? labelAr : labelEn}
+                      onClick={() => {
+                        setPickerInitial({ kind });
+                        setPendingSuggestionKey(null);
+                        setActivityPickerOpen(true);
+                      }}
+                      className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mt-2.5 mb-1.5">
+                  {isAr ? "محتوى" : "Content"}
+                </p>
+                <div className="grid grid-cols-5 gap-1">
+                  <button
+                    type="button"
+                    title={isAr ? "رفع صورة" : "Upload image"}
+                    onClick={onPickImage}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">{isAr ? "صورة" : "Image"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    title={isAr ? "بحث عن صور" : "Search images"}
+                    onClick={() => setImageSearchOpen(true)}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    title={isAr ? "مكتبة GIF" : "GIF library"}
+                    onClick={() => { setSelectedElId(null); setGifLibraryOpen(true); }}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                  >
+                    <Film className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">GIF</span>
+                  </button>
+                  <button
+                    type="button"
+                    title={isAr ? "تضمين فيديو" : "Embed video"}
+                    onClick={() => setVideoEmbedDialogOpen(true)}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">{isAr ? "فيديو" : "Video"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    title={isAr ? "إضافة نص" : "Add text"}
+                    onClick={() => insertElement({
+                      id: genId("t"), kind: "text",
+                      x: 100, y: 100, w: 800, h: 120,
+                      text: isAr ? "نص جديد" : "New text",
+                      fontSize: 32, align: "start",
+                      fontWeight: "700",
+                    } as SlideElement)}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                  >
+                    <TypeIcon className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">{isAr ? "نص" : "Text"}</span>
+                  </button>
+                </div>
+                <div className="mt-2.5 border-t border-border/60" />
+              </div>
+            )}
             {/* Slide bulk-selection row — only renders when at least one
                 slide is in the bulk set, OR shows a tiny "select all"
                 chip otherwise. Stays out of the way visually. */}
@@ -1733,6 +1825,8 @@ export default function PresentationEditor() {
                 onOpenImageSearch={() => setImageSearchOpen(true)}
                 uploading={uploading}
                 onDeselect={() => setSelectedElId(null)}
+                gifLibraryOpen={gifLibraryOpen}
+                setGifLibraryOpen={setGifLibraryOpen}
               />
             </div>
           </aside>
@@ -3322,6 +3416,7 @@ function Inspector({
   onPickImage, onInsertElement, onOpenActivityPicker, onOpenVideoEmbedDialog,
   onOpenImageSearch, uploading,
   onDeselect,
+  gifLibraryOpen, setGifLibraryOpen,
 }: {
   isAr: boolean;
   readOnly: boolean;
@@ -3343,10 +3438,11 @@ function Inspector({
   onOpenImageSearch: () => void;
   uploading: boolean;
   onDeselect: () => void;
+  gifLibraryOpen: boolean;
+  setGifLibraryOpen: (v: boolean) => void;
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
-  const [gifLibraryOpen, setGifLibraryOpen] = useState(false);
   const [gifLibraryCat, setGifLibraryCat] = useState("celebrate");
 
   if (!slide) return null;
@@ -3770,7 +3866,7 @@ function Inspector({
             <Button
               variant="outline"
               className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${gifLibraryOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
-              onClick={() => { setGifLibraryOpen(o => !o); setGifOpen(false); }}
+              onClick={() => { setGifLibraryOpen(!gifLibraryOpen); setGifOpen(false); }}
               disabled={readOnly}
             >
               <span className="text-base leading-none">🎞️</span>
@@ -6120,6 +6216,8 @@ function MobileShell({
                   onOpenImageSearch={onOpenImageSearch}
                   uploading={uploading}
                   onDeselect={() => { onSelectEl(null); }}
+                  gifLibraryOpen={false}
+                  setGifLibraryOpen={() => {}}
                 />
               )}
             </div>
