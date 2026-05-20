@@ -183,6 +183,7 @@ const textElement = baseElement.extend({
   fontSize: z.number().min(6).max(220).optional(),
   fontWeight: z.string().max(20).optional(),
   align: z.enum(["start", "center", "end", "justify"]).optional(),
+  textDirection: z.enum(["ltr", "rtl"]).optional(),
   color: colorSchema.optional(),
   bgColor: colorSchema.optional(),
 });
@@ -293,6 +294,8 @@ const slideSchema = z.object({
   background: slideBackgroundSchema.optional(),
   backgroundImage: z.string().max(2000).optional(),
   notes: z.string().max(4000).optional(),
+  dir: z.enum(["ltr", "rtl"]).optional(),
+  lang: z.enum(["ar", "en"]).optional(),
   elements: z.array(elementSchema).max(80).default([]),
 });
 

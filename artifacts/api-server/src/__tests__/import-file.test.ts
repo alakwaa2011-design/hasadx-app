@@ -386,6 +386,91 @@ describe("POST /api/presentations/import-file — DOCX", () => {
   });
 });
 
+// ─── Arabic RTL import ────────────────────────────────────────────────────────
+
+describe("POST /api/presentations/import-file — Arabic RTL", () => {
+  async function makeMinimalPptxBuffer(): Promise<Buffer> {
+    const zip = new JSZip();
+    zip.file(
+      "[Content_Types].xml",
+      `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/></Types>`,
+    );
+    zip.folder("ppt")!.folder("slides")!.file(
+      "slide1.xml",
+      `<?xml version="1.0"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>عنوان</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`,
+    );
+    return (await zip.generateAsync({ type: "nodebuffer" })) as Buffer;
+  }
+
+  it("calls buildSlidesFromParsed with 'ar' when PPTX text is predominantly Arabic", async () => {
+    const arabicParsed = [
+      { title: "عنوان الدرس الأول", bullets: ["النقطة الأولى بالعربية", "النقطة الثانية بالعربية"] },
+    ];
+    const builtSlides = [{ id: "s1", layout: "blank", background: "#ffffff", elements: [] }];
+
+    vi.mocked(parsePptx).mockResolvedValue(arabicParsed);
+    vi.mocked(buildSlidesFromParsed).mockReturnValue(builtSlides);
+    vi.mocked(generateMcqSlides).mockResolvedValue([]);
+
+    pushQueue([DECK_STUB], [ASSET_STUB]);
+
+    const pptxBuf = await makeMinimalPptxBuffer();
+    await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-file")
+      .attach("file", pptxBuf, {
+        filename: "arabic.pptx",
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+
+    expect(buildSlidesFromParsed).toHaveBeenCalledWith(arabicParsed, "ar");
+  });
+
+  it("accepts slides with dir/lang/textDirection RTL fields through slidesSchema validation", async () => {
+    const arabicParsed = [{ title: "عنوان", bullets: ["محتوى"] }];
+    const builtArabicSlides = [
+      {
+        id: "s1",
+        layout: "blank",
+        background: "#ffffff",
+        dir: "rtl",
+        lang: "ar",
+        elements: [
+          {
+            id: "s1_e1",
+            kind: "text",
+            x: 64, y: 64, w: 1152, h: 100,
+            text: "عنوان",
+            fontSize: 48,
+            fontWeight: "700",
+            align: "end",
+            textDirection: "rtl",
+            fontFamily: "'Cairo', sans-serif",
+            color: "#1a1a1a",
+          },
+        ],
+      },
+    ];
+
+    vi.mocked(parsePptx).mockResolvedValue(arabicParsed);
+    vi.mocked(buildSlidesFromParsed).mockReturnValue(builtArabicSlides);
+    vi.mocked(generateMcqSlides).mockResolvedValue([]);
+
+    pushQueue([DECK_STUB], [ASSET_STUB]);
+
+    const pptxBuf = await makeMinimalPptxBuffer();
+    const res = await request(makeApp({ teacherId: 1 }))
+      .post("/api/presentations/import-file")
+      .attach("file", pptxBuf, {
+        filename: "arabic.pptx",
+        contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+
+    /* 201 means slidesSchema accepted the RTL slide — no fallback to defaultSlides */
+    expect(res.status).toBe(201);
+    expect(res.body.slideCount).toBe(1);
+  });
+});
+
 // ─── PDF import ───────────────────────────────────────────────────────────────
 
 describe("POST /api/presentations/import-file — PDF", () => {

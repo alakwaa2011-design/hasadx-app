@@ -366,7 +366,8 @@ export function SlideRender({
   slide, theme, pattern, lang, stageMode,
 }: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
   const bg = slideBgStyle(slide, theme, pattern);
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const slideDir = (slide as unknown as { dir?: string }).dir;
+  const dir = (slideDir === "rtl" || slideDir === "ltr") ? slideDir : (lang === "ar" ? "rtl" : "ltr");
   /* Per-slide default text color is contrast-aware: a slide with a
      light custom background must NOT inherit the dark theme's white
      default (that produced the white-on-white bug teachers reported).
@@ -416,6 +417,7 @@ export function SlideRender({
           ...stageAnim,
         };
         if (el.kind === "text") {
+          const elTextDirection = (el as unknown as { textDirection?: string }).textDirection;
           return (
             <div
               key={el.id}
@@ -426,6 +428,7 @@ export function SlideRender({
                 fontSize: `${el.fontSize ?? 28}px`,
                 fontWeight: el.fontWeight ?? "400",
                 textAlign: (el.align as React.CSSProperties["textAlign"]) ?? "start",
+                direction: (elTextDirection === "rtl" || elTextDirection === "ltr") ? elTextDirection : undefined,
                 background: el.bgColor ?? undefined,
                 lineHeight: 1.2,
                 wordBreak: "break-word",

@@ -43,7 +43,6 @@ const CANVAS_H = 720;
 const MARGIN   = 64;
 const TITLE_H  = 100;
 const TITLE_FS = 48;
-const SUB_FS   = 32;
 const BODY_FS  = 26;
 
 /** Adaptive body font size — shrinks when many bullets are present. */
@@ -74,6 +73,8 @@ export function buildSlidesFromParsed(
     const elements: object[] = [];
     let elIdx = 0;
 
+    const textDirection = isRtl ? ("rtl" as const) : undefined;
+
     if (p.title?.trim()) {
       elements.push({
         id: `${slideId}_e${++elIdx}`,
@@ -86,6 +87,7 @@ export function buildSlidesFromParsed(
         fontSize: TITLE_FS,
         fontWeight: "700",
         align,
+        textDirection,
         fontFamily,
         color: "#1a1a1a",
       });
@@ -105,6 +107,7 @@ export function buildSlidesFromParsed(
         fontSize: adaptiveBodyFs(bodyLines.length),
         fontWeight: "400",
         align,
+        textDirection,
         fontFamily,
         color: "#333333",
       });
@@ -117,6 +120,7 @@ export function buildSlidesFromParsed(
           ? "title-only"
           : "blank",
       background: "#ffffff",
+      ...(isRtl ? { dir: "rtl" as const, lang: "ar" as const } : {}),
       elements,
     };
   });
