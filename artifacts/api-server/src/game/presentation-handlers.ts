@@ -56,6 +56,10 @@ interface LiveSession {
   selfPacedProgress?: Map<string, number>;
   /** Self-paced activity completions: studentKey -> count of answered activities. */
   selfPacedActivitiesCompleted?: Map<string, number>;
+  /** Self-paced word_cloud submissions: elementId -> { words, submitted }. */
+  selfPacedWordClouds?: Map<string, { words: Map<string, number>; submitted: Set<string> }>;
+  /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
+  selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
   /** word_cloud activity: tracks word frequency in memory. */
   wordCloudActivity?: {
     elementId: string;
@@ -806,12 +810,57 @@ export function setupPresentationSocket(io: Server) {
     /* Word cloud — student submits a word/short phrase. Server tracks
        frequency in memory and broadcasts the updated cloud to all
        projector/show clients. One submission per student per element. */
-    socket.on("word_cloud:submit", ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+    socket.on("word_cloud:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
       try {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
         const me = live?.participants.get(socket.id);
         if (!live || !me || me.isShow) return;
+
+        /* Self-Paced Mode: no global activity open — validate element on
+           student's current slide and persist answer to DB directly. */
+        if (live.sessionMode === "self_paced") {
+          const spSess = await loadSessionRow(sid);
+          if (!spSess) return;
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const spDeck = await loadDeckRow(spSess.presentationId);
+          const spEl = await resolveActiveElement(spDeck?.slides, studentSlideIdx, String(elementId));
+          if (!spEl) return;
+          const word = String(text ?? "").trim().slice(0, 60);
+          if (!word) return;
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: null,
+              answerText: word,
+              isCorrect: null,
+            });
+          } catch { return socket.emit("answer:already"); }
+          socket.emit("answer:accepted");
+          /* Also maintain an in-memory per-element word map so the
+             student sees an updated cloud immediately. */
+          if (!live.selfPacedWordClouds) live.selfPacedWordClouds = new Map();
+          let wc = live.selfPacedWordClouds.get(String(elementId));
+          if (!wc) { wc = { words: new Map(), submitted: new Set() }; live.selfPacedWordClouds.set(String(elementId), wc); }
+          wc.words.set(word.toLowerCase(), (wc.words.get(word.toLowerCase()) ?? 0) + 1);
+          wc.submitted.add(me.studentKey);
+          socket.emit("word_cloud:update", { elementId: String(elementId), words: Array.from(wc.words.entries()).map(([w, c]) => ({ text: w, count: c })) });
+          /* Track completion and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevWc = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevWc + 1);
+          const spSlides = Array.isArray(spDeck?.slides) ? (spDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", { studentKey: me.studentKey, name: me.name, slideIndex: studentSlideIdx, slideCount: spSlides.length, activitiesCompleted: prevWc + 1 });
+          }
+          return;
+        }
+
         /* Must be the active element */
         if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== String(elementId)) return;
         if (live.wordCloudActivity.submitted.has(me.studentKey)) {
@@ -836,12 +885,58 @@ export function setupPresentationSocket(io: Server) {
     /* Open wall — student submits a free-text response card.
        Server stores cards in memory. Teachers toggle visibility.
        One submission per student per element. */
-    socket.on("wall:submit", ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
+    socket.on("wall:submit", async ({ sessionId, elementId, text }: { sessionId: number; elementId: string; text: string }) => {
       try {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
         const me = live?.participants.get(socket.id);
         if (!live || !me || me.isShow) return;
+
+        /* Self-Paced Mode: no global open_wall activity open — validate
+           element on student's slide and persist to DB directly. */
+        if (live.sessionMode === "self_paced") {
+          const wpSess = await loadSessionRow(sid);
+          if (!wpSess) return;
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const wpDeck = await loadDeckRow(wpSess.presentationId);
+          const wpEl = await resolveActiveElement(wpDeck?.slides, studentSlideIdx, String(elementId));
+          if (!wpEl) return;
+          const cleaned = String(text ?? "").trim().slice(0, 500);
+          if (!cleaned) return;
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: null,
+              answerText: cleaned,
+              isCorrect: null,
+            });
+          } catch { return socket.emit("answer:already"); }
+          socket.emit("answer:accepted");
+          /* Maintain per-element in-memory wall so the student sees their card. */
+          if (!live.selfPacedOpenWalls) live.selfPacedOpenWalls = new Map();
+          let ow = live.selfPacedOpenWalls.get(String(elementId));
+          if (!ow) { ow = { cards: [], nextId: 1, submitted: new Set() }; live.selfPacedOpenWalls.set(String(elementId), ow); }
+          if (!ow.submitted.has(me.studentKey)) {
+            ow.cards.push({ id: String(ow.nextId++), studentKey: me.studentKey, name: me.name, text: cleaned, visible: true });
+            ow.submitted.add(me.studentKey);
+            socket.emit("wall:update", { elementId: String(elementId), cards: ow.cards });
+          }
+          /* Track completion and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevWp = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevWp + 1);
+          const wpSlides = Array.isArray(wpDeck?.slides) ? (wpDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", { studentKey: me.studentKey, name: me.name, slideIndex: studentSlideIdx, slideCount: wpSlides.length, activitiesCompleted: prevWp + 1 });
+          }
+          return;
+        }
+
         if (!live.openWallActivity || live.openWallActivity.elementId !== String(elementId)) return;
         if (live.openWallActivity.submitted.has(me.studentKey)) {
           return socket.emit("answer:already");

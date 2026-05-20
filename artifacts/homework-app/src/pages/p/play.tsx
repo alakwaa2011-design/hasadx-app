@@ -218,6 +218,10 @@ export default function PresentationPlay() {
     const onTotal = (d: any) => setTotalAnswered(d.total);
     const onAccepted = () => {
       setSubmitted(true);
+      /* Mark text-based activities (word_cloud, open_wall) as submitted here —
+         the onClick no longer optimistically sets this so we never show "sent"
+         before the server confirms. */
+      setTextSubmitted(true);
       /* In self-paced mode, count each accepted answer as a completed activity. */
       if (selfPacedInitRef.current) {
         setActivitiesCompleted((n) => n + 1);
@@ -881,7 +885,8 @@ export default function PresentationPlay() {
                           elementId: textElementId,
                           text: cleaned,
                         });
-                        setTextSubmitted(true);
+                        /* setTextSubmitted is called in onAccepted (answer:accepted)
+                           so we only show "sent" after server confirmation. */
                       }}
                       className="mt-3 w-full rounded-xl py-3 text-base font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: "#225739", color: "white" }}
