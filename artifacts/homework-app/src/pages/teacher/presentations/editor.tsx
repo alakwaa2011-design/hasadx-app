@@ -2071,6 +2071,10 @@ export default function PresentationEditor() {
               setActivityHubInitialTab("home");
               setActivityHubOpen(true);
             }}
+            onOpenActivityHub={() => {
+              setActivityHubInitialTab("hasad");
+              setActivityHubOpen(true);
+            }}
             onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
             onOpenImageSearch={() => setImageSearchOpen(true)}
             onOpenPreview={() => setPreviewIdx(activeIdx)}
@@ -6281,7 +6285,7 @@ function MobileShell({
   onRemoveEl, onDuplicateEl, onMoveZ,
   onAddSlide, onDuplicateSlide, onDeleteSlide, onMoveSlide,
   onChangeTheme, onChangePattern,
-  onPickImage, onInsertElement, onOpenActivityPicker, onOpenVideoEmbedDialog,
+  onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
   onOpenSessions, onGoLive, onExport, onBack, onUpgrade,
 }: {
@@ -6319,6 +6323,7 @@ function MobileShell({
   onPickImage: () => void;
   onInsertElement: (el: SlideElement) => void;
   onOpenActivityPicker: () => void;
+  onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
   onOpenPreview: () => void;
@@ -6537,6 +6542,7 @@ function MobileShell({
                   onAddShape={() => setSheet("shapes")}
                   onAddIcon={() => setSheet("icons")}
                   onAddActivity={() => { onOpenActivityPicker(); setSheet("none"); }}
+                  onAddHasad={() => { onOpenActivityHub(); setSheet("none"); }}
                   onOpenTheme={() => setSheet("theme")}
                   onOpenPattern={() => setSheet("pattern")}
                   onOpenNotes={() => setSheet("notes")}
@@ -6778,7 +6784,7 @@ function SlideStrip({
    grid sized for thumbs. */
 function MobileAddGrid({
   isAr, uploading, readOnly,
-  onAddText, onAddImage, onAddImageSearch, onAddShape, onAddIcon, onAddActivity,
+  onAddText, onAddImage, onAddImageSearch, onAddShape, onAddIcon, onAddActivity, onAddHasad,
   onOpenTheme, onOpenPattern, onOpenNotes,
 }: {
   isAr: boolean;
@@ -6790,6 +6796,7 @@ function MobileAddGrid({
   onAddShape: () => void;
   onAddIcon: () => void;
   onAddActivity: () => void;
+  onAddHasad: () => void;
   onOpenTheme: () => void;
   onOpenPattern: () => void;
   onOpenNotes: () => void;
@@ -6808,6 +6815,7 @@ function MobileAddGrid({
     { icon: Shapes, label: isAr ? "شكل" : "Shape", color: "#F59E0B", onClick: onAddShape },
     { icon: Smile, label: isAr ? "أيقونة" : "Icon", color: "#EC4899", onClick: onAddIcon },
     { icon: Sparkles, label: isAr ? "نشاط" : "Activity", color: BRAND_GREEN, onClick: onAddActivity },
+    { icon: Gamepad2, label: isAr ? "حصاد" : "Hasad", color: "#D97706", onClick: onAddHasad },
     { icon: Palette, label: isAr ? "ثيم" : "Theme", color: "#475569", onClick: onOpenTheme },
     { icon: Layers, label: isAr ? "نقش" : "Pattern", color: "#0891B2", onClick: onOpenPattern },
     { icon: FileText, label: isAr ? "ملاحظات" : "Notes", color: "#94A3B8", onClick: onOpenNotes },
