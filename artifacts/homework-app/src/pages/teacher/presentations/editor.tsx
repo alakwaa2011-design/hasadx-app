@@ -1012,6 +1012,10 @@ export default function PresentationEditor() {
     } else if (toolType === "video") {
       /* pendingDropPosRef stays set — consumed by insertElement via onInsert. */
       setVideoEmbedDialogOpen(true);
+    } else if (toolType === "hasad-activity") {
+      /* pendingDropPosRef stays set — consumed by insertElement inside onPickHasad. */
+      setActivityHubInitialTab("hasad");
+      setActivityHubOpen(true);
     } else if (toolType.startsWith("shape:")) {
       const sh = toolType.replace("shape:", "") as "rect" | "circle" | "line" | "arrow" | "divider";
       insertElement({
@@ -1646,7 +1650,7 @@ export default function PresentationEditor() {
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-1.5">
                   {isAr ? "أنشطة" : "Activities"}
                 </p>
-                <div className="grid grid-cols-5 gap-1">
+                <div className="grid grid-cols-6 gap-1">
                   {([
                     { kind: "word_cloud" as const, Icon: Cloud,          labelAr: "سحابة", labelEn: "Cloud" },
                     { kind: "open_wall"  as const, Icon: MessageSquare,  labelAr: "جدار",  labelEn: "Wall"  },
@@ -1674,6 +1678,24 @@ export default function PresentationEditor() {
                       <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
                     </button>
                   ))}
+                  {/* Hasad activity — drag onto slide to open ActivityHubDialog with hasad tab */}
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "copy";
+                      e.dataTransfer.setData("application/hasad-tool", "hasad-activity");
+                    }}
+                    title={(isAr ? "نشاط حصاد — اسحب على الشريحة" : "Hasad activity — drag onto slide")}
+                    onClick={() => {
+                      setActivityHubInitialTab("hasad");
+                      setActivityHubOpen(true);
+                    }}
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-amber-50 hover:text-amber-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
+                  >
+                    <Gamepad2 className="w-4 h-4" />
+                    <span className="text-[9px] font-bold leading-none">{isAr ? "حصاد" : "Hasad"}</span>
+                  </button>
                 </div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mt-2.5 mb-1.5">
                   {isAr ? "محتوى" : "Content"}
