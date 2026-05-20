@@ -98,6 +98,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 const FONT_FAMILIES: Array<{ value: string; label: string }> = [
   { value: "inherit", label: "Default" },
   { value: "'Cairo', sans-serif", label: "Cairo" },
+  { value: "'IBM Plex Sans Arabic', sans-serif", label: "IBM Plex Arabic" },
   { value: "'Tajawal', sans-serif", label: "Tajawal" },
   { value: "'Amiri', serif", label: "Amiri" },
   { value: "'Noto Naskh Arabic', serif", label: "Noto Naskh" },

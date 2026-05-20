@@ -1,10 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 import { getSocket } from "@/lib/socket";
 import { SlideStage } from "@/lib/slide-render";
 import { Loader2 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+/* ── Wameedh brand tokens ──────────────────────────────────────────── */
+const WN_BG =
+  "radial-gradient(at 15% 20%, rgba(30,40,80,0.70) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 75%, rgba(180,145,55,0.14) 0px, transparent 50%)," +
+  "linear-gradient(160deg, #060608 0%, #0d0d14 60%, #141420 100%)";
+const WN_GOLD = "#D9A521";
+const WN_GOLD_DIM = "rgba(217,165,33,0.18)";
 
 /* Projector / "show" view. Anyone with the URL can watch (no auth);
    intended for a classroom screen connected to the teacher's laptop. */
@@ -14,6 +23,9 @@ export default function PresentationShow() {
 
   const [state, setState] = useState<any>(null);
   const [live, setLive] = useState<any>(null);
+  /* Track slide key for AnimatePresence — each unique slide id triggers
+     the cross-fade transition without touching socket event logic. */
+  const slideKeyRef = useRef<string | number>(0);
 
   useEffect(() => {
     if (!Number.isFinite(sid)) return;
@@ -28,8 +40,18 @@ export default function PresentationShow() {
     const s = getSocket();
     s.emit("show:join", { sessionId: sid });
     const onSync = (st: any) => setLive(st);
-    const onSlide = ({ index, slide }: { index: number; slide: any }) =>
-      setLive((p: any) => ({ ...(p ?? {}), currentSlideIndex: index, slide, activeElementId: null, activeElement: null, revealAnswer: false, revealDistribution: false }));
+    const onSlide = ({ index, slide }: { index: number; slide: any }) => {
+      slideKeyRef.current = slide?.id ?? index;
+      setLive((p: any) => ({
+        ...(p ?? {}),
+        currentSlideIndex: index,
+        slide,
+        activeElementId: null,
+        activeElement: null,
+        revealAnswer: false,
+        revealDistribution: false,
+      }));
+    };
     const onOpened = ({ elementId, element }: any) =>
       setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element }));
     const onClosed = () =>
@@ -52,54 +74,227 @@ export default function PresentationShow() {
     };
   }, [sid]);
 
-  /* Slide always comes from socket once we've seen one (slide:changed
-     or state:sync); REST `/state` provides the *current* slide for
-     the very first paint. We never have the full deck client-side. */
   const slide = live?.slide ?? state?.deck?.currentSlide ?? null;
   const pin: string | null = live?.pin ?? state?.pin ?? null;
-
   const inLobby = (live?.status ?? state?.status) === "lobby";
   const ended = (live?.status ?? state?.status) === "ended";
+  const slideKey = slide?.id ?? live?.currentSlideIndex ?? 0;
 
+  /* ── Ended ──────────────────────────────────────────────────────── */
   if (ended) {
     return (
-      <div dir="rtl" className="fixed inset-0 bg-black flex items-center justify-center text-white text-3xl">
-        انتهت الجلسة 👋
+      <div
+        dir="rtl"
+        className="fixed inset-0 flex flex-col items-center justify-center"
+        style={{ background: WN_BG, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <div className="text-6xl mb-5">👋</div>
+          <div className="text-3xl font-black text-white mb-2">انتهت الجلسة</div>
+          <div className="text-base" style={{ color: "rgba(255,255,255,0.45)" }}>
+            شكراً لحضور الحصة
+          </div>
+        </motion.div>
       </div>
     );
   }
 
+  /* ── Loading ────────────────────────────────────────────────────── */
   if (!state) {
-    return <div className="fixed inset-0 bg-black flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: WN_BG }}
+      >
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
   }
 
   return (
-    <div dir="rtl" className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center">
-      {slide && state.deck && (
-        <SlideStage lang={state.deck.language} slide={slide} theme={state.deck.theme} pattern={state.deck.pattern} />
-      )}
-      {/* Lobby PIN badge — projector view shows the PIN large so the
-          back row of a classroom can read it. */}
-      {inLobby && pin && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-          <div className="text-center text-white">
-            <div className="text-2xl mb-3 opacity-80">للانضمام، اذهب إلى</div>
-            <div className="text-3xl font-bold mb-6 opacity-90">/p/join</div>
-            <div className="text-base mb-2 opacity-70">رمز الانضمام (PIN)</div>
-            <div className="text-[10rem] leading-none font-black tabular-nums tracking-widest" style={{ color: "#D9A521" }}>
-              {pin}
+    <div
+      dir="rtl"
+      className="fixed inset-0 overflow-hidden"
+      style={{ background: "#000" }}
+    >
+      {/* ── Slide with cross-fade transition ────────────────────── */}
+      <AnimatePresence mode="wait">
+        {slide && state.deck && (
+          <motion.div
+            key={slideKey}
+            className="absolute inset-0"
+            initial={{ opacity: 0, scale: 1.025 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.975 }}
+            transition={{ duration: 0.38, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <SlideStage
+              lang={state.deck.language}
+              slide={slide}
+              theme={state.deck.theme}
+              pattern={state.deck.pattern}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Lobby PIN screen ────────────────────────────────────── */}
+      <AnimatePresence>
+        {inLobby && pin && (
+          <motion.div
+            key="lobby"
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: WN_BG, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Subtle corner glows */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div
+                className="absolute"
+                style={{
+                  top: -120, right: -120, width: 440, height: 440,
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, ${WN_GOLD_DIM} 0%, transparent 70%)`,
+                }}
+              />
+              <div
+                className="absolute"
+                style={{
+                  bottom: -100, left: -100, width: 360, height: 360,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(30,60,120,0.25) 0%, transparent 70%)",
+                }}
+              />
             </div>
-          </div>
-        </div>
-      )}
-      {/* Per spec: PIN visible during lobby only. Once running, the
-          projector is dedicated to slide content. Late joiners get the
-          PIN from the teacher's control panel. */}
-      {live?.activeElementId && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-6 py-2 text-lg font-bold" style={{ background: "#D9A521", color: "#1c1003" }}>
-          نشاط مفتوح — أجيبوا من أجهزتكم
-        </div>
-      )}
+
+            <div className="relative z-10 flex flex-col items-center text-center px-8 w-full max-w-3xl">
+              {/* Brand wordmark */}
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.45 }}
+                className="mb-10"
+              >
+                <div
+                  className="text-2xl font-black tracking-widest uppercase"
+                  style={{ color: WN_GOLD, letterSpacing: "0.25em" }}
+                >
+                  وميض
+                </div>
+                <div
+                  className="text-xs mt-1 tracking-wider"
+                  style={{ color: "rgba(255,255,255,0.35)", letterSpacing: "0.18em" }}
+                >
+                  WAMEEDH · حصاد
+                </div>
+              </motion.div>
+
+              {/* Join instruction */}
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className="mb-3"
+              >
+                <div
+                  className="text-lg font-semibold mb-2"
+                  style={{ color: "rgba(255,255,255,0.55)" }}
+                >
+                  للانضمام إلى الحصة، افتح هاتفك واذهب إلى
+                </div>
+                <div
+                  className="inline-block px-6 py-2 rounded-xl font-black text-xl"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.9)",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  /p/join
+                </div>
+              </motion.div>
+
+              {/* PIN display */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+                className="mt-8 mb-2"
+              >
+                <div
+                  className="text-sm font-bold tracking-widest uppercase mb-3"
+                  style={{ color: "rgba(255,255,255,0.40)", letterSpacing: "0.28em" }}
+                >
+                  رمز الانضمام
+                </div>
+                {/* PIN card */}
+                <div
+                  className="px-14 py-6 rounded-3xl"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: `2px solid ${WN_GOLD}44`,
+                    boxShadow: `0 0 60px ${WN_GOLD}18, inset 0 1px 0 rgba(255,255,255,0.07)`,
+                  }}
+                >
+                  <div
+                    className="font-black tabular-nums select-all"
+                    style={{
+                      fontSize: "clamp(5rem, 14vw, 10rem)",
+                      lineHeight: 1,
+                      color: WN_GOLD,
+                      textShadow: `0 0 40px ${WN_GOLD}55, 0 0 80px ${WN_GOLD}22`,
+                      letterSpacing: "0.18em",
+                    }}
+                  >
+                    {pin}
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                className="mt-6 text-sm"
+                style={{ color: "rgba(255,255,255,0.25)" }}
+              >
+                في انتظار انضمام الطلاب…
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Active activity badge ─────────────────────────────── */}
+      <AnimatePresence>
+        {live?.activeElementId && !inLobby && (
+          <motion.div
+            key="activity-badge"
+            className="absolute bottom-5 left-1/2"
+            style={{ translateX: "-50%" }}
+            initial={{ opacity: 0, y: 12, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 8, x: "-50%" }}
+            transition={{ duration: 0.28 }}
+          >
+            <div
+              className="rounded-full px-7 py-2.5 text-base font-black"
+              style={{ background: WN_GOLD, color: "#0d0a00", boxShadow: `0 4px 24px ${WN_GOLD}55` }}
+            >
+              ✦ نشاط مفتوح — أجيبوا من أجهزتكم
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -332,14 +332,27 @@ export default function PresentationPlay() {
   const isAr = deckMeta ? deckMeta.language !== "en" : true;
   const dir = isAr ? "rtl" : "ltr";
 
-  if (!stored) return <div className="fixed inset-0 bg-emerald-950 flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+  const wameedhBg =
+    "radial-gradient(at 15% 18%, rgba(34,87,57,0.75) 0px, transparent 55%)," +
+    "radial-gradient(at 82% 80%, rgba(8,30,16,0.85) 0px, transparent 55%)," +
+    "linear-gradient(160deg, #0a1a0f 0%, #0e2118 55%, #121a14 100%)";
+
+  if (!stored) return (
+    <div className="fixed inset-0 flex items-center justify-center" style={{ background: wameedhBg }}>
+      <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+    </div>
+  );
 
   if (live?.status === "ended") {
     return (
-      <div dir={dir} className="fixed inset-0 flex flex-col items-center justify-center text-white p-4 text-center" style={{ background: "linear-gradient(135deg,#225739,#143523)" }}>
+      <div
+        dir={dir}
+        className="fixed inset-0 flex flex-col items-center justify-center text-white p-4 text-center"
+        style={{ background: wameedhBg, fontFamily: "'Cairo', 'IBM Plex Sans Arabic', sans-serif" }}
+      >
         <div className="text-5xl mb-4">👋</div>
         <h1 className="text-2xl font-black mb-2">{isAr ? "انتهت الجلسة" : "Session ended"}</h1>
-        <p className="text-white/70">{isAr ? "شكراً لمشاركتك!" : "Thanks for joining!"}</p>
+        <p style={{ color: "rgba(255,255,255,0.55)" }}>{isAr ? "شكراً لمشاركتك!" : "Thanks for joining!"}</p>
       </div>
     );
   }
@@ -401,7 +414,12 @@ export default function PresentationPlay() {
     <div
       dir={dir}
       className="min-h-screen flex flex-col items-stretch"
-      style={{ background: "linear-gradient(135deg,#225739,#143523)" }}
+      style={{
+        background:
+          "radial-gradient(at 15% 18%, rgba(34,87,57,0.75) 0px, transparent 55%)," +
+          "radial-gradient(at 82% 80%, rgba(8,30,16,0.85) 0px, transparent 55%)," +
+          "linear-gradient(160deg, #0a1a0f 0%, #0e2118 55%, #121a14 100%)",
+      }}
     >
       {/* === WATCH MODE — slide fills viewport === */}
       {!inActivity && (
