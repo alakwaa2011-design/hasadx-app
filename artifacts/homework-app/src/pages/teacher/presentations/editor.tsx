@@ -3455,6 +3455,15 @@ function Inspector({
     else _setLocalGifOpen(v);
   };
 
+  /* Auto-scroll the right panel to the GIF section whenever it opens
+     from the left-rail toolbar so the teacher sees it immediately. */
+  const gifSectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeGifOpen && gifSectionRef.current) {
+      gifSectionRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [activeGifOpen]);
+
   if (!slide) return null;
 
   if (selectedEl) {
@@ -3872,7 +3881,7 @@ function Inspector({
             </span>
           </Button>
           {/* GIF Library */}
-          <div className="space-y-2">
+          <div ref={gifSectionRef} className="space-y-2">
             <Button
               variant="outline"
               className={`w-full justify-center gap-2 border-dashed rounded-xl transition-colors ${activeGifOpen ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20" : "hover:border-emerald-500 hover:bg-emerald-50/50"}`}
