@@ -54,6 +54,8 @@ interface LiveSession {
   sessionMode?: "teacher" | "self_paced";
   /** Self-paced progress: studentKey -> current slide index (0-based). */
   selfPacedProgress?: Map<string, number>;
+  /** Self-paced activity completions: studentKey -> count of answered activities. */
+  selfPacedActivitiesCompleted?: Map<string, number>;
   /** word_cloud activity: tracks word frequency in memory. */
   wordCloudActivity?: {
     elementId: string;
@@ -666,6 +668,9 @@ export function setupPresentationSocket(io: Server) {
           sessions.set(sid, live);
         }
         live.participants.set(socket.id, { name: cleanName, studentKey: cleanKey, isShow: false, classStudentId });
+        /* Hydrate sessionMode from DB so student:slide-change works even
+           when students connect before the teacher control socket joins. */
+        if (!live.sessionMode) live.sessionMode = ((sess as any).sessionMode ?? "teacher") as "teacher" | "self_paced";
         await emitStateSync(io, socket, sid, false);
         io.to(room(sid)).emit("participants:count", { n: studentCount(live) });
         logger.info({ sid, socketId: socket.id, name: cleanName, participants: studentCount(live) }, "student:join ok");
@@ -1081,12 +1086,21 @@ export function setupPresentationSocket(io: Server) {
         if (!live.selfPacedProgress) live.selfPacedProgress = new Map();
         live.selfPacedProgress.set(me.studentKey, idx);
 
-        /* Send the requested slide back to this student. */
+        /* Send the requested slide back to this student. Include the first
+           activity element on this slide (sanitized) so the student can
+           interact with it without the teacher explicitly opening it. */
         const rawSlide = slides[idx] ?? null;
+        const rawElements: any[] = Array.isArray(rawSlide?.elements) ? rawSlide.elements : [];
+        const firstActivity = rawElements.find(
+          (e: any) => e?.kind === "activity" || e?.kind === "hasad-game",
+        ) ?? null;
+        const activitiesCompleted = live.selfPacedActivitiesCompleted?.get(me.studentKey) ?? 0;
         socket.emit("self_paced:slide", {
           slideIndex: idx,
           slide: sanitizeSlide(rawSlide),
           slideCount,
+          activeElement: firstActivity ? sanitizeElementForStudents(firstActivity) : null,
+          activitiesCompleted,
         });
 
         /* Broadcast progress to all teacher sockets. */
@@ -1096,6 +1110,7 @@ export function setupPresentationSocket(io: Server) {
             name: me.name,
             slideIndex: idx,
             slideCount,
+            activitiesCompleted,
           });
         }
       } catch (err) { logger.error({ err }, "student:slide-change failed"); }
@@ -1157,6 +1172,56 @@ export function setupPresentationSocket(io: Server) {
 
         const sess = await loadSessionRow(sid);
         if (!sess || sess.status === "ended") return socket.emit("answer:rejected", { reason: "ended" });
+
+        /* Self-Paced Mode: students answer activities from their own current
+           slide, not a globally teacher-opened element. Validate that the
+           elementId exists on the student's current slide and record the
+           answer per-student. Then notify the teacher with updated progress. */
+        if (live.sessionMode === "self_paced") {
+          const studentSlideIdx = live.selfPacedProgress?.get(me.studentKey) ?? 0;
+          const selfDeck = await loadDeckRow(sess.presentationId);
+          const selfEl = await resolveActiveElement(selfDeck?.slides, studentSlideIdx, String(elementId));
+          if (!selfEl) return socket.emit("answer:rejected", { reason: "element-not-found" });
+
+          let isCorrect: boolean | null = null;
+          if (typeof selfEl.correctIndex === "number" && typeof answerIndex === "number") {
+            isCorrect = answerIndex === selfEl.correctIndex;
+          }
+          try {
+            await db.insert(presentationResponsesTable).values({
+              sessionId: sid,
+              slideIndex: studentSlideIdx,
+              elementId: String(elementId),
+              studentKey: me.studentKey,
+              studentName: me.name,
+              classStudentId: me.classStudentId,
+              answerIndex: typeof answerIndex === "number" ? answerIndex : null,
+              answerText: typeof answerText === "string" ? answerText.slice(0, 500) : null,
+              isCorrect,
+            });
+          } catch {
+            return socket.emit("answer:already");
+          }
+          socket.emit("answer:accepted");
+
+          /* Track per-student completion count and notify teacher. */
+          if (!live.selfPacedActivitiesCompleted) live.selfPacedActivitiesCompleted = new Map();
+          const prevCount = live.selfPacedActivitiesCompleted.get(me.studentKey) ?? 0;
+          live.selfPacedActivitiesCompleted.set(me.studentKey, prevCount + 1);
+          const activitiesCompleted = prevCount + 1;
+          const selfSlides = Array.isArray(selfDeck?.slides) ? (selfDeck!.slides as any[]) : [];
+          for (const sockId of live.teacherSockets) {
+            io.to(sockId).emit("student:progress", {
+              studentKey: me.studentKey,
+              name: me.name,
+              slideIndex: studentSlideIdx,
+              slideCount: selfSlides.length,
+              activitiesCompleted,
+            });
+          }
+          return;
+        }
+
         if (sess.activeElementId !== String(elementId)) return socket.emit("answer:rejected", { reason: "not-active" });
 
         const deck = await loadDeckRow(sess.presentationId);

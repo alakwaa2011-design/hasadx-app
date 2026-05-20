@@ -105,7 +105,7 @@ export default function PresentationControl() {
   /* Self-Paced Mode — tracks session pacing and per-student progress. */
   const [sessionMode, setSessionMode] = useState<"teacher" | "self_paced">("teacher");
   const [studentProgress, setStudentProgress] = useState<
-    Record<string, { name: string; slideIndex: number; slideCount: number }>
+    Record<string, { name: string; slideIndex: number; slideCount: number; activitiesCompleted: number }>
   >({});
 
   async function loadHistory() {
@@ -181,10 +181,15 @@ export default function PresentationControl() {
     const onReconnect = () => s.emit("teacher:join-presentation", { sessionId: sid });
     const onStageChanged = ({ on }: { on: boolean }) => setStageMode(!!on);
     /* Self-Paced Mode: student sent progress update. */
-    const onStudentProgress = (p: { studentKey: string; name: string; slideIndex: number; slideCount: number }) => {
+    const onStudentProgress = (p: { studentKey: string; name: string; slideIndex: number; slideCount: number; activitiesCompleted?: number }) => {
       setStudentProgress((prev) => ({
         ...prev,
-        [p.studentKey]: { name: p.name, slideIndex: p.slideIndex, slideCount: p.slideCount },
+        [p.studentKey]: {
+          name: p.name,
+          slideIndex: p.slideIndex,
+          slideCount: p.slideCount,
+          activitiesCompleted: p.activitiesCompleted ?? prev[p.studentKey]?.activitiesCompleted ?? 0,
+        },
       }));
     };
     /* Self-Paced Mode: teacher reclaimed control — mode reverted to "teacher". */
@@ -895,10 +900,16 @@ export default function PresentationControl() {
                       <div key={key} className="space-y-0.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="truncate text-white/85 font-medium">{p.name}</span>
-                          <span className="tabular-nums text-white/50 shrink-0 ms-2">
-                            {p.slideIndex + 1} / {sc}
-                            {done && " ✓"}
-                          </span>
+                          <div className="flex items-center gap-2 shrink-0 ms-2">
+                            {p.activitiesCompleted > 0 && (
+                              <span className="text-emerald-400 font-bold tabular-nums">
+                                ✓{p.activitiesCompleted}
+                              </span>
+                            )}
+                            <span className="tabular-nums text-white/50">
+                              {p.slideIndex + 1}/{sc}{done && " 🏁"}
+                            </span>
+                          </div>
                         </div>
                         <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                           <div

@@ -60,6 +60,8 @@ export default function PresentationPlay() {
   const [selfPacedIdx, setSelfPacedIdx] = useState<number | null>(null);
   const [selfPacedCount, setSelfPacedCount] = useState(0);
   const [selfPacedSlide, setSelfPacedSlide] = useState<any>(null);
+  /** Activity element on the student's current self-paced slide (sanitized, no correctIndex). */
+  const [selfPacedActiveEl, setSelfPacedActiveEl] = useState<any>(null);
   const [activitiesCompleted, setActivitiesCompleted] = useState(0);
   const [selfPacedDone, setSelfPacedDone] = useState(false);
   /* Tracks whether we've already initialized self-paced navigation so we
@@ -222,11 +224,15 @@ export default function PresentationPlay() {
       }
     };
     const onAlready = () => setSubmitted(true);
-    /* Self-Paced Mode: server sends back the requested slide + count. */
-    const onSelfPacedSlide = ({ slideIndex, slide, slideCount }: { slideIndex: number; slide: any; slideCount: number }) => {
+    /* Self-Paced Mode: server sends back the requested slide + count + optional activity. */
+    const onSelfPacedSlide = ({ slideIndex, slide, slideCount, activeElement, activitiesCompleted: ac }: {
+      slideIndex: number; slide: any; slideCount: number; activeElement?: any; activitiesCompleted?: number;
+    }) => {
       setSelfPacedIdx(slideIndex);
       setSelfPacedCount(slideCount);
       setSelfPacedSlide(slide);
+      setSelfPacedActiveEl(activeElement ?? null);
+      if (typeof ac === "number") setActivitiesCompleted(ac);
       /* Reset per-slide activity state whenever the slide changes. */
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       setInlineActivity(null); setMySummary(null); setTextInput(""); setTextSubmitted(false);
@@ -238,6 +244,7 @@ export default function PresentationPlay() {
       setSessionMode("teacher");
       setSelfPacedIdx(null);
       setSelfPacedSlide(null);
+      setSelfPacedActiveEl(null);
       setSelfPacedDone(false);
       setLive((prev: any) => ({ ...(prev ?? {}), currentSlideIndex, slide }));
     };
@@ -451,7 +458,9 @@ export default function PresentationPlay() {
     );
   }
 
-  const el = live?.activeElement;
+  /* In self-paced mode, use the activity element bundled with the student's
+     current slide. In teacher-paced mode, use the globally opened element. */
+  const el = sessionMode === "self_paced" ? (selfPacedActiveEl ?? live?.activeElement) : live?.activeElement;
   const opts: string[] = Array.isArray(el?.options) ? el.options : [];
 
   /* English students get Latin A/B/C/D markers; Arabic students keep
