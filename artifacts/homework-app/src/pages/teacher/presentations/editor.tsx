@@ -447,6 +447,12 @@ export default function PresentationEditor() {
   /* Mirror readOnly into a ref so async/event handlers like DnD can
      bail out without a stale closure or extra re-binds. */
   const readOnlyRef = useRef(false);
+  /* Toolbar drag-and-drop: canvas-space coordinates of the last drop
+     event from the left-rail toolbar. Consumed (and cleared) by the
+     next insertElement / insertImageFromUrl / onImageChosen call so
+     the element lands where the teacher dropped it instead of the
+     default centered position. */
+  const pendingDropPosRef = useRef<{ x: number; y: number } | null>(null);
 
   /* DnD sensors — pointer + keyboard for accessible reorder. */
   const sensors = useSensors(
@@ -785,12 +791,22 @@ export default function PresentationEditor() {
 
   /* Element helpers used by the inspector toolbar. */
   const insertElement = (el: SlideElement) => {
+    /* When the element was dropped from the toolbar, re-position it so
+       the drop point becomes the element's center (clamped to canvas). */
+    let finalEl = el;
+    if (pendingDropPosRef.current) {
+      const { x: dx, y: dy } = pendingDropPosRef.current;
+      pendingDropPosRef.current = null;
+      const nx = Math.min(Math.max(0, dx - el.w / 2), Math.max(0, CANVAS_W - el.w));
+      const ny = Math.min(Math.max(0, dy - el.h / 2), Math.max(0, CANVAS_H - el.h));
+      finalEl = { ...el, x: nx, y: ny };
+    }
     mutateSlides((prev) =>
       prev.map((s, i) =>
-        i === activeIdx ? { ...s, elements: [...(s.elements ?? []), el] } : s,
+        i === activeIdx ? { ...s, elements: [...(s.elements ?? []), finalEl] } : s,
       ),
     );
-    setSelectedElId(el.id);
+    setSelectedElId(finalEl.id);
   };
 
   /* Same as `insertElement` but targets a specific slide index instead
@@ -848,6 +864,14 @@ export default function PresentationEditor() {
   const insertImageFromUrl = (url: string) => {
     const w = 480;
     const h = 320;
+    let x = (CANVAS_W - w) / 2;
+    let y = (CANVAS_H - h) / 2;
+    if (pendingDropPosRef.current) {
+      const { x: dx, y: dy } = pendingDropPosRef.current;
+      pendingDropPosRef.current = null;
+      x = Math.min(Math.max(0, dx - w / 2), Math.max(0, CANVAS_W - w));
+      y = Math.min(Math.max(0, dy - h / 2), Math.max(0, CANVAS_H - h));
+    }
     mutateSlides((prev) =>
       prev.map((s, i) =>
         i === activeIdx
@@ -858,9 +882,7 @@ export default function PresentationEditor() {
                 {
                   id: genId("i"),
                   kind: "image",
-                  x: (CANVAS_W - w) / 2,
-                  y: (CANVAS_H - h) / 2,
-                  w, h,
+                  x, y, w, h,
                   url,
                   objectFit: "cover",
                 } as SlideElement,
@@ -902,9 +924,17 @@ export default function PresentationEditor() {
         }
         queryClient.invalidateQueries({ queryKey: getGetPresentationUsageQueryKey(id) });
       }
-      // Insert image roughly centered with safe bounds.
+      // Insert image at drop position when dragged from toolbar, else centered.
       const w = 480;
       const h = 320;
+      let imgX = (CANVAS_W - w) / 2;
+      let imgY = (CANVAS_H - h) / 2;
+      if (pendingDropPosRef.current) {
+        const { x: dx, y: dy } = pendingDropPosRef.current;
+        pendingDropPosRef.current = null;
+        imgX = Math.min(Math.max(0, dx - w / 2), Math.max(0, CANVAS_W - w));
+        imgY = Math.min(Math.max(0, dy - h / 2), Math.max(0, CANVAS_H - h));
+      }
       mutateSlides((prev) =>
         prev.map((s, i) =>
           i === activeIdx
@@ -915,8 +945,8 @@ export default function PresentationEditor() {
                   {
                     id: genId("i"),
                     kind: "image",
-                    x: (CANVAS_W - w) / 2,
-                    y: (CANVAS_H - h) / 2,
+                    x: imgX,
+                    y: imgY,
                     w, h,
                     url,
                   } as SlideElement,
@@ -931,6 +961,47 @@ export default function PresentationEditor() {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  /* Called by SlideCanvas when a toolbar item is dropped onto the slide.
+     `toolType` encodes the kind: "text", "image", "image-search", "gif",
+     "video", or "activity:<activityKind>".
+     `canvasX` / `canvasY` are in the logical 1280×720 coordinate space. */
+  const handleToolDrop = (toolType: string, canvasX: number, canvasY: number) => {
+    if (readOnly) return;
+    pendingDropPosRef.current = { x: canvasX, y: canvasY };
+    if (toolType === "text") {
+      insertElement({
+        id: genId("t"), kind: "text",
+        x: 100, y: 100, w: 800, h: 120,
+        text: isAr ? "نص جديد" : "New text",
+        fontSize: 32, align: "start", fontWeight: "700",
+      } as SlideElement);
+    } else if (toolType.startsWith("activity:")) {
+      const activityKind = toolType.replace("activity:", "") as
+        "word_cloud" | "open_wall" | "poll" | "mcq" | "true_false" | "open";
+      insertElement({
+        id: genId("a"), kind: "activity", activityKind,
+        prompt: "", options: activityKind === "open" ? undefined : ["", ""],
+        correctIndex: activityKind === "mcq" ? 0 : undefined,
+        x: 140, y: 120, w: 1000, h: 480,
+      } as SlideElement);
+    } else if (toolType === "image") {
+      /* pendingDropPosRef stays set — consumed by onImageChosen. */
+      fileInputRef.current?.click();
+    } else if (toolType === "image-search") {
+      /* pendingDropPosRef stays set — consumed by insertImageFromUrl. */
+      setImageSearchOpen(true);
+    } else if (toolType === "gif") {
+      /* pendingDropPosRef stays set — consumed by insertElement (GIF library
+         calls insertElement with a fixed position which gets overridden). */
+      setGifLibraryOpen(true);
+    } else if (toolType === "video") {
+      /* pendingDropPosRef stays set — consumed by insertElement via onInsert. */
+      setVideoEmbedDialogOpen(true);
+    } else {
+      pendingDropPosRef.current = null;
     }
   };
 
@@ -1530,13 +1601,18 @@ export default function PresentationEditor() {
                     <button
                       key={kind}
                       type="button"
-                      title={isAr ? labelAr : labelEn}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = "copy";
+                        e.dataTransfer.setData("application/hasad-tool", `activity:${kind}`);
+                      }}
+                      title={(isAr ? labelAr : labelEn) + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                       onClick={() => {
                         setPickerInitial({ kind });
                         setPendingSuggestionKey(null);
                         setActivityPickerOpen(true);
                       }}
-                      className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                      className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                     >
                       <Icon className="w-4 h-4" />
                       <span className="text-[9px] font-bold leading-none">{isAr ? labelAr : labelEn}</span>
@@ -1549,43 +1625,53 @@ export default function PresentationEditor() {
                 <div className="grid grid-cols-5 gap-1">
                   <button
                     type="button"
-                    title={isAr ? "رفع صورة" : "Upload image"}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "image"); }}
+                    title={(isAr ? "رفع صورة" : "Upload image") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                     onClick={onPickImage}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                   >
                     <ImagePlus className="w-4 h-4" />
                     <span className="text-[9px] font-bold leading-none">{isAr ? "صورة" : "Image"}</span>
                   </button>
                   <button
                     type="button"
-                    title={isAr ? "بحث عن صور" : "Search images"}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "image-search"); }}
+                    title={(isAr ? "بحث عن صور" : "Search images") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                     onClick={() => setImageSearchOpen(true)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                   >
                     <Search className="w-4 h-4" />
                     <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
                   </button>
                   <button
                     type="button"
-                    title={isAr ? "مكتبة GIF" : "GIF library"}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "gif"); }}
+                    title={(isAr ? "مكتبة GIF" : "GIF library") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                     onClick={() => { setSelectedElId(null); setGifLibraryOpen(true); }}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                   >
                     <Film className="w-4 h-4" />
                     <span className="text-[9px] font-bold leading-none">GIF</span>
                   </button>
                   <button
                     type="button"
-                    title={isAr ? "تضمين فيديو" : "Embed video"}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "video"); }}
+                    title={(isAr ? "تضمين فيديو" : "Embed video") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                     onClick={() => setVideoEmbedDialogOpen(true)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                   >
                     <Video className="w-4 h-4" />
                     <span className="text-[9px] font-bold leading-none">{isAr ? "فيديو" : "Video"}</span>
                   </button>
                   <button
                     type="button"
-                    title={isAr ? "إضافة نص" : "Add text"}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("application/hasad-tool", "text"); }}
+                    title={(isAr ? "إضافة نص" : "Add text") + (isAr ? " — اسحب على الشريحة" : " — drag onto slide")}
                     onClick={() => insertElement({
                       id: genId("t"), kind: "text",
                       x: 100, y: 100, w: 800, h: 120,
@@ -1593,7 +1679,7 @@ export default function PresentationEditor() {
                       fontSize: 32, align: "start",
                       fontWeight: "700",
                     } as SlideElement)}
-                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors"
+                    className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors cursor-grab active:cursor-grabbing"
                   >
                     <TypeIcon className="w-4 h-4" />
                     <span className="text-[9px] font-bold leading-none">{isAr ? "نص" : "Text"}</span>
@@ -1818,6 +1904,7 @@ export default function PresentationEditor() {
                   onRemoveMany={removeElements}
                   theme={theme}
                   pattern={pattern}
+                  onDropTool={handleToolDrop}
                 />
                 <div className="text-[11px] font-medium text-slate-500 bg-white/70 px-3 py-1 rounded-full ring-1 ring-slate-200/70 backdrop-blur-sm tracking-wide">
                   16:9 · {isAr ? `شريحة ${activeIdx + 1} من ${slides.length}` : `Slide ${activeIdx + 1} of ${slides.length}`}
@@ -2706,7 +2793,7 @@ function SlideThumbnail({
    doesn't fight the caret. Editing exits on Escape / Enter / blur. */
 function SlideCanvas({
   slide, isAr, readOnly, selectedElId, multiSelectIds, onSelectEl, onToggleMultiSelect,
-  onUpdateEl, onRemoveEl, onRemoveMany, theme, pattern,
+  onUpdateEl, onRemoveEl, onRemoveMany, theme, pattern, onDropTool,
 }: {
   slide: Slide;
   isAr: boolean;
@@ -2720,6 +2807,10 @@ function SlideCanvas({
   onRemoveMany: (ids: string[]) => void;
   theme: string;
   pattern: string;
+  /** Called when a toolbar item is dropped onto the canvas.
+   *  toolType: "text" | "image" | "image-search" | "gif" | "video" | "activity:<kind>"
+   *  canvasX / canvasY are in the logical 1280×720 coordinate space. */
+  onDropTool?: (toolType: string, canvasX: number, canvasY: number) => void;
 }) {
   const bg = slideBgStyle(slide, theme, pattern);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2734,6 +2825,8 @@ function SlideCanvas({
      here so the EditableShell can disable its drag handler while the
      contentEditable inside owns the pointer. */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /* Visual feedback while a toolbar item hovers over the canvas. */
+  const [toolDragOver, setToolDragOver] = useState(false);
 
   /* Esc/Delete keyboard support — feels broken without it. Bulk-aware:
      when Ctrl+A (or shift-click) populated `multiSelectIds`, Delete
@@ -2790,7 +2883,57 @@ function SlideCanvas({
              selection any time the bubble reached the container. */
           if (e.target === e.currentTarget && !readOnly) onSelectEl(null);
         }}
+        /* ── Toolbar drag-and-drop drop-zone ─────────────────────────
+           We only accept drags that carry our "application/hasad-tool"
+           MIME type so random browser drags (text selection, links, etc.)
+           are ignored and don't trigger the indicator. */
+        onDragOver={(e) => {
+          if (!onDropTool || readOnly) return;
+          if (!e.dataTransfer.types.includes("application/hasad-tool")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          if (!toolDragOver) setToolDragOver(true);
+        }}
+        onDragEnter={(e) => {
+          if (!onDropTool || readOnly) return;
+          if (!e.dataTransfer.types.includes("application/hasad-tool")) return;
+          e.preventDefault();
+          setToolDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          /* Only clear when the pointer truly leaves the canvas
+             (not when moving over a child element). */
+          if (!containerRef.current) return;
+          const related = e.relatedTarget as Node | null;
+          if (related && containerRef.current.contains(related)) return;
+          setToolDragOver(false);
+        }}
+        onDrop={(e) => {
+          setToolDragOver(false);
+          if (!onDropTool || readOnly) return;
+          const toolType = e.dataTransfer.getData("application/hasad-tool");
+          if (!toolType) return;
+          e.preventDefault();
+          /* Convert client coordinates to logical canvas coordinates. */
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const canvasX = ((e.clientX - rect.left) / rect.width) * CANVAS_W;
+          const canvasY = ((e.clientY - rect.top) / rect.height) * CANVAS_H;
+          onDropTool(toolType, canvasX, canvasY);
+        }}
       >
+        {/* Drop overlay — shown while a toolbar tool hovers over the canvas */}
+        {toolDragOver && (
+          <div
+            className="pointer-events-none absolute inset-0 z-50 rounded-xl border-4 border-dashed border-emerald-500 bg-emerald-500/10 flex items-center justify-center"
+            aria-hidden
+          >
+            <div className="rounded-xl bg-emerald-600/90 px-4 py-2 text-white text-sm font-bold shadow-lg backdrop-blur-sm select-none">
+              {/* Label language mirrors the deck direction */}
+              {typeof isAr === "undefined" || isAr ? "أفلت هنا لإضافة العنصر" : "Drop here to place"}
+            </div>
+          </div>
+        )}
         {(slide.elements ?? []).map((el) => {
           const live = transform && transform.id === el.id ? transform : null;
           const lw = Math.max(20, el.w + (live?.dw ?? 0));
