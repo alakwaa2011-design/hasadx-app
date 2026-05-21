@@ -83,6 +83,33 @@ function id(seed: string, suffix: string): string {
   return `${seed}-${suffix}`;
 }
 
+function splitComparisonPoints(points: string[]): { aTitle?: string; bTitle?: string; aPoints: string[]; bPoints: string[] } {
+  const colonIndex = points.findIndex((p) => /[:：]/.test(p));
+  if (colonIndex >= 0) {
+    const aRaw = points.slice(0, colonIndex);
+    const bRaw = points.slice(colonIndex);
+    const parseSide = (items: string[]) => {
+      const [head = "", ...rest] = items;
+      const [title, first] = head.split(/[:：]/, 2).map((s) => s.trim()).filter(Boolean);
+      return {
+        title,
+        points: [first, ...rest].map((s) => s.trim()).filter(Boolean),
+      };
+    };
+    const a = parseSide(aRaw);
+    const b = parseSide(bRaw);
+    if (a.points.length > 0 && b.points.length > 0) {
+      return { aTitle: a.title, bTitle: b.title, aPoints: a.points, bPoints: b.points };
+    }
+  }
+
+  const half = Math.ceil(points.length / 2);
+  return {
+    aPoints: points.slice(0, half),
+    bPoints: points.slice(half),
+  };
+}
+
 /* Stage label shown as the eyebrow above the title. Translates the
    slide kind into a short editorial mark — much warmer than "01". */
 function kindEyebrow(kind: string, lang: Lang): string {
@@ -511,10 +538,7 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   const colW = (W - PAD * 2 - gap) / 2;
   const left = PAD;
   const right = PAD + colW + gap;
-  const points = card.talkingPoints;
-  const half = Math.ceil(points.length / 2);
-  const aPoints = points.slice(0, half);
-  const bPoints = points.slice(half);
+  const { aTitle, bTitle, aPoints, bPoints } = splitComparisonPoints(card.talkingPoints);
   const aX = isAr ? right : left;
   const bX = isAr ? left : right;
 
@@ -532,7 +556,7 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   els.push({
     id: id(seed, "ah"), kind: "text",
     x: aX + 24, y: top + 28, w: colW - 48, h: 32,
-    text: lang === "ar" ? "الجانب الأول" : "Side A",
+    text: clip(aTitle ?? (lang === "ar" ? "الجانب الأول" : "Side A"), 36, warnings, "عنوان المقارنة", lang),
     fontSize: 18, fontWeight: "700", align: alignFor(lang),
     color: theme.accent,
   });
@@ -557,7 +581,7 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   els.push({
     id: id(seed, "bh"), kind: "text",
     x: bX + 24, y: top + 28, w: colW - 48, h: 32,
-    text: lang === "ar" ? "الجانب الثاني" : "Side B",
+    text: clip(bTitle ?? (lang === "ar" ? "الجانب الثاني" : "Side B"), 36, warnings, "عنوان المقارنة", lang),
     fontSize: 18, fontWeight: "700", align: alignFor(lang),
     color: theme.muted,
   });
@@ -723,20 +747,27 @@ function tplInteractive(o: MaterializeOptions, warnings: string[]): Element[] {
     return els;
   }
 
-  /* Activity placeholder — the editor swaps this for the real
-     question. We just render a labelled prompt + 4-option scaffold. */
+  if (card.interactionHint === "quiz" || card.interactionHint === "activity") {
+    warnings.push(
+      lang === "ar"
+        ? "تم تحويل شريحة نشاط إلى سؤال مفتوح لعدم وجود خيارات حقيقية."
+        : "Converted activity slide to an open question because no real options were provided.",
+    );
+  }
+
+  /* Safe fallback: if the model failed to provide real gameQuestions,
+     never emit fake MCQ placeholders ("Option 1", "خيار 1"). Use an
+     open prompt instead so the slide remains valid without fake answers. */
   const activity: ActivityElement = {
     id: id(seed, "act"), kind: "activity",
     x: PAD, y: top, w: W - PAD * 2, h: H - top - CONTENT_BOTTOM,
     activityKind: card.interactionHint === "poll" ? "poll"
       : card.interactionHint === "discussion" ? "open"
-      : "mcq",
+      : "open",
     prompt: clip(promptText, 200, warnings, "نص النشاط", lang),
     options: card.interactionHint === "poll"
       ? [lang === "ar" ? "موافق" : "Agree", lang === "ar" ? "محايد" : "Neutral", lang === "ar" ? "معارض" : "Disagree"]
-      : card.interactionHint === "discussion"
-        ? undefined
-        : [lang === "ar" ? "خيار 1" : "Option 1", lang === "ar" ? "خيار 2" : "Option 2", lang === "ar" ? "خيار 3" : "Option 3", lang === "ar" ? "خيار 4" : "Option 4"],
+      : undefined,
     accentColor: theme.accent,
   };
   els.push(activity);

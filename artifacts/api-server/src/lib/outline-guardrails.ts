@@ -102,6 +102,28 @@ const ALLOWED_SHAPE = new Set<SanitizedVisualDirection["shape"]>([
   "rect", "circle", "line", "arrow", "divider",
 ]);
 
+function isPlaceholderText(text: string): boolean {
+  const s = text.trim().toLowerCase();
+  return (
+    /^خيار\s*\d+$/.test(s) ||
+    /^الخيار\s*\d+$/.test(s) ||
+    /^option\s*\d+$/.test(s) ||
+    /^choice\s*\d+$/.test(s) ||
+    /^answer\s*\d+$/.test(s) ||
+    /^الإجابة\s*\d+$/.test(s) ||
+    s === "شارك إجابتك بكلمة واحدة" ||
+    s === "share your answer in one word"
+  );
+}
+
+function hasInvalidMcqContent(prompt: string, options: string[]): boolean {
+  if (isPlaceholderText(prompt)) return true;
+  if (options.some(isPlaceholderText)) return true;
+  if (options.some((o) => o.trim().length < 2)) return true;
+  if (new Set(options.map((o) => o.trim().toLowerCase())).size !== options.length) return true;
+  return false;
+}
+
 /* Deterministic Fisher–Yates shuffle of an MCQ's options. The seed is
    derived from the prompt text so the same question always renders
    the same shuffle (no flicker between teacher control + student
@@ -370,6 +392,7 @@ export function sanitizeOutline(
         if (!qPrompt) continue;
         const optsIn = asArray(qr.options).map((o) => clipStr(o, 200)).filter(Boolean);
         if (optsIn.length < 2 || optsIn.length > 6) continue;
+        if (hasInvalidMcqContent(qPrompt, optsIn)) continue;
         const ci = Number(qr.correctIndex);
         if (!Number.isInteger(ci) || ci < 0 || ci >= optsIn.length) continue;
         /* Shuffle options so the correct answer doesn't always land in

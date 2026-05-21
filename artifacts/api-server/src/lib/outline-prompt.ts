@@ -729,7 +729,7 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 - title         → فقط شريحة الافتتاح. عنوان كبير + عنوان فرعي قصير.
 - objectives    → سرد أهداف الدرس (2-4 أهداف فقط) — يُرسم كشبكة بطاقات.
 - concept-card  → فكرة محورية واحدة تحتاج شرحاً سريعاً بعدة نقاط مرتبطة (تخطيط مقسوم: نص ⇄ بصري).
-- comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد، يُرسم عمودين متقابلين. ممنوع استخدامه لقائمة عادية.
+- comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد، يُرسم عمودين متقابلين. ممنوع استخدامه لقائمة عادية. لا تخلط النقيضين داخل نفس العمود: اجعل talkingPoints تبدأ بعنوان الطرف الأول متبوعاً بنقاطه، ثم عنوان الطرف الثاني متبوعاً بنقاطه. مثال: ["القلب الذاكر: طمأنينة","نور","راحة","القلب الغافل: قلق","ضيق","وحشة"].
 - steps         → عملية أو إجراء من 2-4 خطوات متتالية (تخطيط أفقي بترقيم).
 - timeline      → تطوّر زمني/تاريخي من 3-5 أحداث على محور أفقي.
 - visual-hero   → تعريف مفهوم جديد بصورة بصرية كبيرة تملأ الخلفية + نص فوقها (تخطيط Full-Background).
@@ -776,7 +776,7 @@ const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 - title         → Only the opening slide. Big title + short subtitle.
 - objectives    → Listing 2-4 lesson objectives — rendered as a card grid.
 - concept-card  → One central idea explained in a few related points (split layout: text ⇄ visual).
-- comparison    → Two sides/ideas/options/before-after, rendered as opposing columns. NOT for plain lists.
+- comparison    → Two sides/ideas/options/before-after, rendered as opposing columns. NOT for plain lists. Never mix opposites inside the same column: talkingPoints must start with side A label + its bullets, then side B label + its bullets. Example: ["Mindful heart: calm","light","comfort","Neglectful heart: anxiety","tightness","loneliness"].
 - steps         → A 2-4 step process or procedure (numbered horizontal layout).
 - timeline      → A 3-5 event chronological progression on a horizontal axis.
 - visual-hero   → Introducing a new concept with a large visual filling the background + text overlay (full-background layout).
@@ -838,8 +838,10 @@ const GAMES_RULES_AR = `قواعد إنتاج أسئلة النشاط (gameQuest
 
 شكل gameQuestions — الزامي على الشرائح التفاعلية:
 - مصفوفة من 5 إلى 8 أسئلة جاهزة للعرض الفوري (لا أقل من 5 حتى تكفي جلسة نشاط كاملة).
-- كل سؤال: { "prompt": "نص السؤال", "options": ["خ1","خ2","خ3","خ4"], "correctIndex": 0 }
-- 4 خيارات نموذجياً (أو 2 لـ صح/خطأ)، إجابة صحيحة واحدة فقط، خيارات مميّزة (لا تكرار).
+- كل سؤال: { "prompt": "سؤال واضح مرتبط بموضوع الشريحة", "options": ["خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل","خيار حقيقي كامل"], "correctIndex": 0 }
+- إذا كان السؤال اختياراً متعدداً: يجب أن يحتوي على 4 خيارات حقيقية مكتوبة بالكامل وإجابة صحيحة محددة. لا تستخدم أبداً: "خيار 1"، "خيار 2"، "خ1"، "أ"، "ب"، أو أي placeholder.
+- لا تكتب "شارك إجابتك بكلمة واحدة" أو صياغة مفتوحة داخل سؤال اختيار متعدد. إذا كان المطلوب إجابة مفتوحة، لا تنتج gameQuestions واجعل interactionHint = "discussion" أو "activity" بدون خيارات.
+- 4 خيارات نموذجياً (أو 2 لـ صح/خطأ فقط)، إجابة صحيحة واحدة فقط، خيارات مميّزة (لا تكرار).
 - صياغة عربية فصحى قصيرة وواضحة، تتدرّج من السهل إلى الأصعب، وتغطي محور الشريحة فعلاً.
 - الأسئلة تعكس محتوى الشريحة حرفياً — لا أسئلة عامة أو مستوردة من موضوع آخر.
 - لا تنتج gameQuestions على الشرائح غير التفاعلية.`;
@@ -854,8 +856,10 @@ const GAMES_RULES_EN = `Activity questions (gameQuestions) — REQUIRED on every
 
 gameQuestions shape — mandatory on interactive slides:
 - Array of 5–8 ready-to-display questions (no fewer than 5 — enough for a complete activity session).
-- Each: { "prompt": "...", "options": ["A","B","C","D"], "correctIndex": 0 }
-- Typically 4 options (or 2 for true/false), exactly one correct, distinct distractors.
+- Each: { "prompt": "clear question tied to the slide topic", "options": ["full real option","full real option","full real option","full real option"], "correctIndex": 0 }
+- For multiple choice: always provide 4 real, fully written options and one correct answer. Never use placeholders such as "Option 1", "Option 2", "A", "B", or generic labels.
+- Do not write "Share your answer in one word" or any open-answer wording inside a multiple-choice question. If it is open-ended, do not emit gameQuestions; use interactionHint = "discussion" or "activity" without options.
+- Typically 4 options (or 2 only for true/false), exactly one correct, distinct distractors.
 - Short, clear wording; increasing difficulty; questions must directly cover the slide's topic — no generic or off-topic items.
 - Do NOT emit gameQuestions on non-interactive slides.`;
 
