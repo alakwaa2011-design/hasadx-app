@@ -53,11 +53,13 @@ export function ActivityHubDialog({
     id: number;
     title?: string | null;
   } | null>(null);
+  const [assignmentSource, setAssignmentSource] = useState<"mine" | "shared">("mine");
 
-  const assignmentsQ = useListAssignments(undefined, {
+  const assignmentParams = assignmentSource === "shared" ? { include: "shared" as const } : undefined;
+  const assignmentsQ = useListAssignments(assignmentParams, {
     query: {
       enabled: open && tab === "hasad",
-      queryKey: getListAssignmentsQueryKey(),
+      queryKey: getListAssignmentsQueryKey(assignmentParams),
     },
   });
 
@@ -73,6 +75,7 @@ export function ActivityHubDialog({
       setTab(initialTab);
       setSearch("");
       setSelectedAssignment(null);
+      setAssignmentSource("mine");
     }
   }, [open, initialTab]);
 
@@ -237,13 +240,49 @@ export function ActivityHubDialog({
           {tab === "hasad" && selectedAssignment === null && (
             <div className="flex flex-col h-full">
               <div className="p-4 border-b border-border">
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignmentSource("mine");
+                      setSearch("");
+                    }}
+                    className="rounded-xl px-3 py-2 text-xs font-extrabold border transition-colors"
+                    style={{
+                      background: assignmentSource === "mine" ? `${BRAND_GREEN}10` : "white",
+                      borderColor: assignmentSource === "mine" ? BRAND_GREEN : "#e5e7eb",
+                      color: assignmentSource === "mine" ? BRAND_GREEN : "#64748b",
+                    }}
+                  >
+                    {isAr ? "واجباتي" : "My assignments"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignmentSource("shared");
+                      setSearch("");
+                    }}
+                    className="rounded-xl px-3 py-2 text-xs font-extrabold border transition-colors"
+                    style={{
+                      background: assignmentSource === "shared" ? `${BRAND_GOLD}14` : "white",
+                      borderColor: assignmentSource === "shared" ? BRAND_GOLD : "#e5e7eb",
+                      color: assignmentSource === "shared" ? "#92710a" : "#64748b",
+                    }}
+                  >
+                    {isAr ? "مكتبة الأنشطة" : "Activities library"}
+                  </button>
+                </div>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute top-2.5 start-3 text-muted-foreground pointer-events-none" />
                   <input
                     autoFocus
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder={isAr ? "ابحث في نشاطاتك…" : "Search your activities…"}
+                    placeholder={
+                      assignmentSource === "shared"
+                        ? (isAr ? "ابحث في مكتبة الأنشطة…" : "Search activities library…")
+                        : (isAr ? "ابحث في واجباتك…" : "Search your assignments…")
+                    }
                     className="w-full ps-9 pe-3 py-2 text-sm border border-border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/20 bg-white"
                   />
                 </div>
@@ -258,7 +297,11 @@ export function ActivityHubDialog({
                 {!assignmentsQ.isLoading && filtered.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                     <Gamepad2 className="w-8 h-8 opacity-30" />
-                    <p className="text-sm">{isAr ? "لا توجد نشاطات." : "No activities found."}</p>
+                    <p className="text-sm">
+                      {assignmentSource === "shared"
+                        ? (isAr ? "لا توجد أنشطة مشتركة." : "No shared activities found.")
+                        : (isAr ? "لا توجد واجبات." : "No assignments found.")}
+                    </p>
                   </div>
                 )}
                 {!assignmentsQ.isLoading && filtered.length > 0 && (

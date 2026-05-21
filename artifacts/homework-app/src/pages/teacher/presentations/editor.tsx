@@ -1342,7 +1342,7 @@ export default function PresentationEditor() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActivityHubInitialTab("home");
+                    setActivityHubInitialTab("hasad");
                     setActivityHubOpen(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"
@@ -1351,10 +1351,10 @@ export default function PresentationEditor() {
                     borderColor: hasLinkedHasadActivity ? BRAND_GREEN : `${BRAND_GREEN}40`,
                     background: hasLinkedHasadActivity ? `${BRAND_GREEN}08` : undefined,
                   }}
-                  title={isAr ? "أضف نشاطاً إلى الشريحة" : "Add an activity to this slide"}
+                  title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Add a Hasad activity to this slide"}
                 >
                   <Gamepad2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{isAr ? "إضافة نشاط" : "Add activity"}</span>
+                  <span className="hidden md:inline">{isAr ? "أضف نشاط من حصاد" : "Add Hasad activity"}</span>
                 </button>
                 {/* Badge — appears when at least one hasad-activity element exists in the deck */}
                 {hasLinkedHasadActivity && (
