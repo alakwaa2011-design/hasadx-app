@@ -43,6 +43,8 @@ export interface OutlineCard {
      `hasad-game` element so the teacher's "Start activity" button
      opens the in-Hasad Activity Runner with the full quiz ready. */
   gameQuestions?: GameQuestion[];
+  activityType?: string | null;
+  strategyStage?: string | null;
   /* Phase 4 — Per-slide design intelligence. The AI Director picks a
      theme key (from the 15-theme registry) that matches the mood of
      this specific slide's content. When set, the materializer
@@ -195,6 +197,13 @@ export interface MaterializedSlide {
       photo stays visible beneath the AI-generated text layout. */
   backgroundImage?: string;
   notes?: string;
+  activityType?: string | null;
+  gameSuggestion?: HasadGameKind | null;
+  strategyStage?: string | null;
+  linkedActivityId?: string | null;
+  linkedActivityType?: string | null;
+  linkedActivityUrl?: string | null;
+  activityCreationStatus?: "idle" | "creating" | "created" | "unsupported" | "failed" | null;
   elements: Element[];
 }
 
