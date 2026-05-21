@@ -81,6 +81,7 @@ const MUSIC_STYLES: { id: MusicStyle; icon: string; ar: string; en: string; desc
 
 class TugSoundEngine {
   private ctx: AudioContext | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private started = false;
   private bgHandle: ReturnType<typeof setTimeout> | null = null;
   private urgent = false;
@@ -103,17 +104,51 @@ class TugSoundEngine {
     return this.ctx;
   }
 
+  /** Master audio chain: dynamics compressor → destination. Prevents clipping and balances loudness. */
+  private getDest(): AudioNode {
+    const ctx = this.getCtx();
+    if (!this.compressor) {
+      this.compressor = ctx.createDynamicsCompressor();
+      this.compressor.threshold.value = -16;
+      this.compressor.knee.value     = 8;
+      this.compressor.ratio.value    = 4;
+      this.compressor.attack.value   = 0.003;
+      this.compressor.release.value  = 0.15;
+      this.compressor.connect(ctx.destination);
+    }
+    return this.compressor;
+  }
+
   private tone(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.13, delay = 0) {
     if (this.muted) return;
     try {
       const ctx = this.getCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
+      osc.connect(gain); gain.connect(this.getDest());
       osc.type = type;
       osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
       gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.01);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.007);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + dur + 0.05);
+    } catch (_) {}
+  }
+
+  /** Smooth frequency glide from startFreq → endFreq over dur seconds. */
+  private freqRamp(startFreq: number, endFreq: number, dur: number, type: OscillatorType = "sine", vol = 0.13, delay = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(this.getDest());
+      osc.type = type;
+      osc.frequency.setValueAtTime(startFreq, ctx.currentTime + delay);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(endFreq, 1), ctx.currentTime + delay + dur);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.006);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
       osc.start(ctx.currentTime + delay);
       osc.stop(ctx.currentTime + delay + dur + 0.05);
@@ -136,14 +171,33 @@ class TugSoundEngine {
     if (this.muted) return;
     try {
       const ctx = this.getCtx();
-      const bufferSize = ctx.sampleRate * dur;
+      const bufferSize = Math.ceil(ctx.sampleRate * dur);
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
       const src = ctx.createBufferSource(); src.buffer = buffer;
-      const g = ctx.createGain(); src.connect(g); g.connect(ctx.destination);
-      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
-      src.disconnect(); src.connect(hp); hp.connect(g);
+      const g = ctx.createGain();
+      const hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 6000;
+      src.connect(hp); hp.connect(g); g.connect(this.getDest());
+      g.gain.setValueAtTime(vol, ctx.currentTime + delay);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+      src.start(ctx.currentTime + delay); src.stop(ctx.currentTime + delay + dur + 0.01);
+    } catch (_) {}
+  }
+
+  /** Low-passed noise burst for soft thuds/impacts. */
+  private noiseLow(dur: number, vol: number, delay = 0) {
+    if (this.muted) return;
+    try {
+      const ctx = this.getCtx();
+      const bufferSize = Math.ceil(ctx.sampleRate * dur);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+      const src = ctx.createBufferSource(); src.buffer = buffer;
+      const g = ctx.createGain();
+      const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 400;
+      src.connect(lp); lp.connect(g); g.connect(this.getDest());
       g.gain.setValueAtTime(vol, ctx.currentTime + delay);
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
       src.start(ctx.currentTime + delay); src.stop(ctx.currentTime + delay + dur + 0.01);
@@ -316,86 +370,173 @@ class TugSoundEngine {
     this.started = false; this.urgent = false;
   }
 
+  // ── Correct answer: punchy chord stab + rising sparkle trail ─────────────
   playCorrect() {
-    this.tone(659, 0.05, "square", 0.22);
-    this.tone(880, 0.05, "square", 0.22, 0.04);
-    this.tone(1047, 0.05, "square", 0.22, 0.08);
-    this.tone(1319, 0.08, "square", 0.25, 0.12);
-    this.tone(1568, 0.12, "square", 0.2, 0.16);
-    this.tone(2093, 0.1, "sawtooth", 0.12, 0.18);
-    this.noise(0.05, 0.15, 0.16);
+    this.noise(0.012, 0.26);                              // snappy attack transient
+    this.tone(523,  0.10, "triangle", 0.36, 0.005);      // C5 root
+    this.tone(659,  0.12, "triangle", 0.30, 0.008);      // E5
+    this.tone(784,  0.14, "triangle", 0.24, 0.012);      // G5
+    this.tone(1047, 0.18, "sine",     0.22, 0.03);       // C6 sparkle
+    this.tone(1319, 0.15, "sine",     0.16, 0.07);       // E6
+    this.tone(1568, 0.12, "sine",     0.11, 0.11);       // G6
+    this.tone(2093, 0.10, "sine",     0.07, 0.14);       // C7 tip
+    this.noise(0.035, 0.08, 0.05);                        // air shimmer
   }
+
+  // ── Wrong answer: soft falling tone — emotional, not annoying ─────────────
   playWrong() {
-    this.tone(300, 0.06, "sawtooth", 0.2);
-    this.tone(220, 0.08, "sawtooth", 0.2, 0.06);
-    this.tone(160, 0.1, "sawtooth", 0.18, 0.12);
-    this.tone(100, 0.15, "sawtooth", 0.15, 0.2);
-    this.noise(0.08, 0.1);
+    this.noiseLow(0.025, 0.20);                           // muffled thud
+    this.freqRamp(440, 220, 0.25, "sine",     0.22);     // falling A4→A3
+    this.freqRamp(330, 165, 0.22, "sine",     0.15, 0.04);
+    this.tone(150, 0.30, "triangle", 0.10, 0.12);        // low soft finish
+    this.tone(175, 0.25, "triangle", 0.07, 0.18);        // subtle dissonance
   }
+
+  // ── Speed boost: rapid ascending charge + bright resolution ──────────────
   playBoost() {
     [784, 988, 1175, 1319, 1568, 1976].forEach((f, i) =>
-      this.tone(f, 0.06, "square", 0.16, i * 0.04));
-    this.noise(0.06, 0.15, 0.2);
-    this.tone(2093, 0.2, "sawtooth", 0.1, 0.24);
+      this.tone(f, 0.07, "triangle", 0.18 - i * 0.01, i * 0.032));
+    this.noise(0.04, 0.13, 0.16);
+    this.tone(2637, 0.26, "sine",     0.16, 0.2);
+    this.tone(1319, 0.25, "triangle", 0.10, 0.2);
+    this.tone(1047, 0.22, "sine",     0.07, 0.22);
   }
+
+  // ── Rope pull impact: low physical thud + tension whoosh ─────────────────
   playTugPull() {
-    this.tone(82, 0.25, "sawtooth", 0.28);
-    this.tone(65, 0.25, "triangle", 0.22, 0.12);
-    this.noise(0.06, 0.08);
+    this.freqRamp(180, 58, 0.28, "sine",     0.32);      // weighted thud
+    this.tone(62,    0.22, "triangle", 0.20, 0.04);      // sub body
+    this.noise(0.032, 0.18);                              // impact transient
+    this.freqRamp(260, 90, 0.18, "sawtooth", 0.06, 0.02); // brief rope-creak
   }
+
+  // ── Power pull: rising charge + slam impact + whoosh tail ────────────────
   playPowerPull() {
-    this.tone(55, 0.3, "sawtooth", 0.35);
-    this.tone(110, 0.25, "triangle", 0.3, 0.05);
-    this.tone(41, 0.3, "triangle", 0.28, 0.15);
-    this.noise(0.15, 0.2);
-    this.tone(440, 0.08, "square", 0.15, 0.05);
-    this.tone(880, 0.08, "square", 0.12, 0.1);
+    this.freqRamp(80,  260, 0.16, "sawtooth", 0.28);     // power charge up
+    this.freqRamp(40,  130, 0.20, "sine",     0.22, 0.02);
+    this.noise(0.11, 0.26, 0.12);                         // hard impact
+    this.tone(48,    0.38, "sine",     0.32, 0.12);      // deep bass slam
+    this.tone(96,    0.32, "triangle", 0.24, 0.14);
+    this.freqRamp(900, 180, 0.22, "sawtooth", 0.07, 0.1); // whoosh
+    this.noiseLow(0.08, 0.14, 0.28);                      // rumble tail
   }
+
+  // ── Countdown beep: escalating tension 5→1, metallic + harmonic ──────────
   playCountdownBeep(n: number) {
-    const isLast = n === 1;
-    this.tone(isLast ? 1319 : 880, 0.1, "square", 0.28);
-    this.tone(isLast ? 1568 : 1047, 0.08, "square", 0.18, 0.04);
-    this.tone(isLast ? 1976 : 1319, 0.06, "square", 0.12, 0.08);
-    this.noise(0.04, 0.12);
-    if (n <= 3) {
-      this.tone(isLast ? 2093 : 1568, 0.05, "sawtooth", 0.1, 0.1);
+    const freqs: Record<number, number> = { 5: 880, 4: 1047, 3: 1175, 2: 1319, 1: 1568 };
+    const baseFreq = freqs[n] ?? 880;
+    const isLast   = n === 1;
+    const isClose  = n <= 3;
+    const vol = isLast ? 0.40 : isClose ? 0.30 : 0.20;
+
+    this.noise(0.012, isLast ? 0.22 : 0.12);              // sharp metallic click
+    this.tone(baseFreq,       0.12, "sine", vol, 0);
+    this.tone(baseFreq * 1.5, 0.08, "sine", vol * 0.42, 0.01);
+    if (isClose) this.tone(baseFreq * 2, 0.06, "sine", vol * 0.22, 0.02);
+    if (isLast) {
+      this.tone(baseFreq * 2, 0.10, "sine", 0.18, 0.05); // extra harmonic
+      this.tone(baseFreq * 3, 0.07, "sine", 0.12, 0.08);
+      this.noise(0.014, 0.18, 0.1);
     }
   }
+
+  // ── GO! signal: rising fanfare → big bright stab ─────────────────────────
   playGoSignal() {
-    [523, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.1, "square", 0.25, i * 0.06));
-    this.tone(1568, 0.3, "sawtooth", 0.18, 0.24);
-    this.noise(0.1, 0.15, 0.24);
-    [523, 784, 1047].forEach((f, i) => this.tone(f, 0.08, "triangle", 0.12, 0.35 + i * 0.04));
+    [523, 784, 1047, 1319, 1568].forEach((f, i) =>
+      this.tone(f, 0.10, "triangle", 0.28 - i * 0.02, i * 0.052));
+    this.tone(2093, 0.38, "triangle", 0.22, 0.27);
+    this.tone(1047, 0.35, "sine",     0.16, 0.27);
+    this.noise(0.08, 0.16, 0.26);
+    this.tone(2637, 0.12, "sine",     0.08, 0.36);        // sparkle cap
   }
+
+  // ── Timer tick: sharp metallic; rises to sharp alarm in urgent mode ───────
   playTickTock(beat: number, urgency: "normal" | "urgent") {
     if (urgency === "urgent") {
-      this.tone(1047, 0.04, "square", 0.15);
-      this.tone(1568, 0.03, "square", 0.08, 0.03);
-      this.noise(0.02, 0.06);
-      if (beat % 2 === 0) this.tone(1976, 0.02, "sawtooth", 0.05, 0.05);
+      this.tone(1175, 0.022, "square", 0.22);             // cutting metallic tick
+      this.noise(0.010, 0.14);
+      this.tone(880,  0.025, "sine",  0.10, 0.018);       // tension pulse
+      if (beat % 2 === 0) this.tone(1568, 0.018, "sine", 0.08, 0.026); // high ping
     } else if (beat % 2 === 0) {
-      this.tone(740, 0.03, "square", 0.07);
+      this.tone(740, 0.022, "sine", 0.07);                 // soft normal tick
+      this.noise(0.006, 0.035);
     }
   }
+
+  // ── Crowd applause: layered noise + vocal tones + shimmer ────────────────
   playApplause() {
-    for (let i = 0; i < 20; i++) {
-      this.noise(0.15, 0.03 + Math.random() * 0.04, i * 0.03);
-      this.tone(200 + Math.random() * 2000, 0.08, "sawtooth", 0.02, i * 0.03);
+    for (let i = 0; i < 34; i++) {
+      this.noise(0.10 + Math.random() * 0.14, 0.020 + Math.random() * 0.036, i * 0.018 + Math.random() * 0.010);
+    }
+    [350, 420, 500, 580, 300, 650, 280, 450, 545, 380].forEach((f, i) => {
+      this.tone(f + Math.random() * 70, 0.18 + Math.random() * 0.14, "triangle",
+        0.012 + Math.random() * 0.006, i * 0.036 + Math.random() * 0.022);
+    });
+    for (let i = 0; i < 8; i++) {
+      this.tone(1200 + Math.random() * 900, 0.05, "sine", 0.007, i * 0.065 + Math.random() * 0.02);
     }
   }
+
+  // ── Win: fanfare stab → ascending arpeggio → triumphant chord + crowd ────
   playWin() {
-    [523, 659, 784, 1047, 784, 1047, 1319, 1568].forEach((f, i) =>
-      this.tone(f, 0.18, "square", 0.2, i * 0.12));
-    [523, 784, 1047].forEach((f, i) => this.tone(f, 0.3, "triangle", 0.12, i * 0.12));
-    setTimeout(() => this.playApplause(), 800);
-    setTimeout(() => this.playApplause(), 1200);
+    // Phase 1: Fanfare chord stab
+    [523, 659, 784, 1047].forEach((f, i) =>
+      this.tone(f, 0.26 - i * 0.02, "triangle", 0.36 - i * 0.04, i * 0.007));
+    this.noise(0.018, 0.28);
+    // Phase 2: Ascending victory arpeggio
+    [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => {
+      this.tone(f,       0.15, "square",   0.20 - i * 0.01, 0.10 + i * 0.09);
+      this.tone(f * 1.5, 0.10, "triangle", 0.06,            0.10 + i * 0.09 + 0.03);
+    });
+    // Phase 3: Triumphant sustained chord
+    setTimeout(() => {
+      this.tone(1047, 0.9, "triangle", 0.32);
+      this.tone(1319, 0.8, "triangle", 0.26, 0.04);
+      this.tone(784,  0.9, "triangle", 0.22, 0.08);
+      this.tone(523,  0.9, "triangle", 0.18, 0.12);
+      this.noise(0.06, 0.22);
+    }, 750);
+    // Phase 4: Crowd celebration
+    setTimeout(() => this.playApplause(), 900);
+    setTimeout(() => this.playApplause(), 1350);
+    setTimeout(() => this.playApplause(), 1800);
   }
+
+  // ── Lose: soft minor descent + quiet crowd disappointment (NOT comedic) ───
+  playLose() {
+    // Descending minor chords
+    this.tone(440, 0.30, "triangle", 0.18);               // A4
+    this.tone(523, 0.28, "triangle", 0.15, 0.04);         // C5 (minor 3rd)
+    this.tone(659, 0.24, "triangle", 0.11, 0.08);         // E5
+    // Falling glide pairs — the "deflation" feeling
+    this.freqRamp(440, 275, 0.42, "sine",     0.18, 0.10);
+    this.freqRamp(330, 195, 0.36, "sine",     0.12, 0.16);
+    // Low soft dissonance
+    this.tone(200, 0.50, "triangle", 0.10, 0.30);
+    this.tone(218, 0.45, "triangle", 0.07, 0.36);         // minor 2nd — uneasy
+    // Quiet crowd disappointment murmur
+    for (let i = 0; i < 16; i++) {
+      this.noiseLow(0.22, 0.011 + Math.random() * 0.014, i * 0.055 + Math.random() * 0.035);
+    }
+    [255, 280, 220, 295].forEach((f, i) =>
+      this.tone(f + Math.random() * 25, 0.4, "triangle", 0.009, i * 0.08 + 0.30 + Math.random() * 0.03));
+  }
+
+  // ── Power question reveal: rising sweep + bright stab ────────────────────
   playPowerReveal() {
     [440, 554, 659, 880, 1047, 1319].forEach((f, i) =>
-      this.tone(f, 0.12, "sawtooth", 0.14, i * 0.05));
-    this.noise(0.1, 0.1, 0.3);
+      this.tone(f, 0.12, "triangle", 0.16, i * 0.044));
+    this.freqRamp(440, 1760, 0.30, "sawtooth", 0.07, 0.06);
+    this.noise(0.08, 0.14, 0.28);
+    this.tone(2637, 0.22, "sine",     0.14, 0.30);
+    this.tone(1319, 0.20, "triangle", 0.12, 0.30);
   }
-  destroy() { this.stopBackground(); try { this.ctx?.close(); } catch (_) {} this.ctx = null; }
+  destroy() {
+    this.stopBackground();
+    try { this.ctx?.close(); } catch (_) {}
+    this.ctx = null;
+    this.compressor = null;
+  }
 }
 
 function Confetti({ color }: { color: string }) {
@@ -1107,6 +1248,8 @@ export default function TugPlay() {
 
   const [phase, setPhase] = useState<Phase>("connecting");
   const [myTeam, setMyTeam] = useState<"blue" | "red" | null>(null);
+  // ref so socket closures always see current myTeam without re-binding
+  const myTeamRef = useRef<"blue" | "red" | null>(null);
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [question, setQuestion] = useState<QuestionData | null>(null);
   const [ropePos, setRopePos] = useState(50);
@@ -1146,6 +1289,9 @@ export default function TugPlay() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const beatRef = useRef(0);
   const soundRef = useRef<TugSoundEngine | null>(null);
+
+  // Keep the ref in sync so socket closures always read current myTeam
+  useEffect(() => { myTeamRef.current = myTeam; }, [myTeam]);
 
   const getSound = useCallback((): TugSoundEngine => {
     if (!soundRef.current) {
@@ -1388,7 +1534,13 @@ export default function TugPlay() {
       setIsUrgent(false);
       setIsPaused(false);
       getSound().stopBackground();
-      getSound().playWin();
+      // Winning team (or teacher/draw) hears triumph; losing team hears defeat
+      const team = myTeamRef.current;
+      if (data.winner === "draw" || !team || team === data.winner) {
+        getSound().playWin();
+      } else {
+        getSound().playLose();
+      }
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1474,10 +1626,17 @@ export default function TugPlay() {
         setPhase("answered");
 
         if (correct) {
-          if (res.isBoost) { setShowBoost(true); setTimeout(() => setShowBoost(false), 1500); }
+          if (res.isBoost) {
+            getSound().playBoost();
+            setShowBoost(true);
+            setTimeout(() => setShowBoost(false), 1500);
+          } else {
+            getSound().playCorrect();
+          }
           const newStreak = res.streak ?? (myStreak + 1);
           setMyStreak(newStreak);
         } else {
+          getSound().playWrong();
           setMyStreak(0);
         }
       }
