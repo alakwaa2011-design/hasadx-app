@@ -218,124 +218,63 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      {/* Deep game-arena background — dark green atmosphere */}
-      <div className="min-h-screen relative overflow-hidden" dir={dir}
-        style={{ background: "linear-gradient(160deg, #071c0e 0%, #0a2e17 50%, #0c3520 100%)" }}>
+      {/* Premium dark green — clean single gradient, no overlays */}
+      <div className="min-h-screen" dir={dir}
+        style={{ background: "linear-gradient(165deg, #0e2318 0%, #122b1d 100%)" }}>
 
-        {/* Subtle stadium ceiling glow */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 90% 35% at 50% 0%, rgba(34,197,94,0.11) 0%, transparent 65%)" }} />
-        {/* Side arena glows */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 30% 60% at 0% 50%, rgba(59,130,246,0.06) 0%, transparent 70%)" }} />
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 30% 60% at 100% 50%, rgba(239,68,68,0.06) 0%, transparent 70%)" }} />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-12">
 
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-10">
+          {/* ── Hero: clean identity header ── */}
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-7 text-center">
 
-          {/* ── HERO: Team VS Banner ── */}
-          <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-3xl overflow-hidden mb-5"
-            style={{
-              background: "rgba(255,255,255,0.055)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              boxShadow: "0 4px 32px rgba(0,0,0,0.35)",
-            }}>
-            <div className="px-6 sm:px-10 py-6 flex items-center gap-4">
-
-              {/* Blue team side */}
-              <div className="flex-1 flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <motion.div
-                  animate={{ x: [0, -4, 0] }}
-                  transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
-                  style={{ background: "linear-gradient(135deg, #1d4ed8, #2563eb)", boxShadow: "0 6px 20px -4px rgba(37,99,235,0.55)" }}>
-                  💪
-                </motion.div>
-                <div className="text-center sm:text-start">
-                  <p className="text-blue-400 font-black text-base sm:text-lg leading-tight">
-                    {ar ? "الفريق الأزرق" : "Blue Team"}
-                  </p>
-                  <p className="text-white/30 text-xs">{ar ? "المنافس الأول" : "Team 1"}</p>
-                </div>
+            {/* Team VS strip */}
+            <div className="inline-flex items-center gap-4 mb-4 px-5 py-2.5 rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                <span className="text-sm font-bold text-blue-300">{ar ? "الفريق الأزرق" : "Blue"}</span>
               </div>
-
-              {/* Center rope + VS */}
-              <div className="flex flex-col items-center gap-1 shrink-0 px-2 sm:px-4">
-                <motion.div
-                  animate={{ rotate: [0, -3, 3, -2, 0] }}
-                  transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}>
-                  <span className="text-4xl sm:text-5xl">🪢</span>
-                </motion.div>
-                <div className="px-3 py-1 rounded-full text-[10px] font-black text-white/50 uppercase tracking-widest"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                  VS
-                </div>
-              </div>
-
-              {/* Red team side */}
-              <div className="flex-1 flex flex-col items-center gap-2 sm:flex-row-reverse sm:items-center sm:gap-3">
-                <motion.div
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut", delay: 0.3 }}
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
-                  style={{ background: "linear-gradient(135deg, #dc2626, #ef4444)", boxShadow: "0 6px 20px -4px rgba(239,68,68,0.55)" }}>
-                  💪
-                </motion.div>
-                <div className="text-center sm:text-end">
-                  <p className="text-red-400 font-black text-base sm:text-lg leading-tight">
-                    {ar ? "الفريق الأحمر" : "Red Team"}
-                  </p>
-                  <p className="text-white/30 text-xs">{ar ? "المنافس الثاني" : "Team 2"}</p>
-                </div>
+              <span className="text-2xl">🪢</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-red-300">{ar ? "الفريق الأحمر" : "Red"}</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
               </div>
             </div>
 
-            {/* Title bar at bottom of hero */}
-            <div className="px-6 py-4 text-center"
-              style={{ background: "rgba(0,0,0,0.20)", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">
-                {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
-              </h1>
-              <p className="text-xs sm:text-sm text-white/45 mt-0.5">
-                {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
-              </p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
+              {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+            </h1>
+            <p className="text-sm text-white/45">
+              {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
+            </p>
           </motion.div>
 
           {/* ── Two-column layout on desktop ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
 
-            {/* LEFT: Settings card */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+            {/* LEFT: Settings card — clean glass rows */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
               className="rounded-2xl overflow-hidden"
               style={{
-                background: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.11)",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.25)",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.09)",
               }}>
-
-              <div className="px-4 py-3 border-b"
-                style={{ borderColor: "rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.15)" }}>
-                <p className="text-xs font-black text-white/45 uppercase tracking-widest">
-                  {ar ? "إعدادات اللعبة" : "Game settings"}
-                </p>
-              </div>
 
               {/* Duration */}
               <div className="px-5 py-4 flex items-center gap-4">
-                <Clock className="w-5 h-5 shrink-0 text-emerald-400" />
-                <span className="text-sm font-bold text-white/80 flex-1">
+                <Clock className="w-4 h-4 shrink-0 text-white/40" />
+                <span className="text-sm font-semibold text-white/75 flex-1">
                   {ar ? "وقت السؤال" : "Time per question"}
                 </span>
-                <div className="flex gap-1.5 shrink-0 bg-black/20 rounded-xl p-1">
+                <div className="flex gap-1 shrink-0 rounded-xl p-1"
+                  style={{ background: "rgba(0,0,0,0.25)" }}>
                   {[10, 15, 20, 30].map(s => (
                     <button key={s} onClick={() => setDuration(s)}
-                      className="px-3.5 py-2 rounded-lg text-xs font-black transition-all"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
                       style={{
                         background: duration === s ? "#16a34a" : "transparent",
-                        color: duration === s ? "#fff" : "rgba(255,255,255,0.45)",
-                        boxShadow: duration === s ? "0 2px 8px rgba(22,163,74,0.4)" : "none",
+                        color: duration === s ? "#fff" : "rgba(255,255,255,0.4)",
                       }}>
                       {s}{ar ? "ث" : "s"}
                     </button>
@@ -343,24 +282,24 @@ export default function TugCreate() {
                 </div>
               </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
               {/* Auto advance */}
               <div className="px-5 py-4 flex items-center gap-4">
-                <span className="text-lg shrink-0">⏭</span>
+                <span className="text-base shrink-0 opacity-60">⏭</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white/80">
+                  <p className="text-sm font-semibold text-white/75">
                     {ar ? "التقدم التلقائي بعد كل سؤال" : "Auto-advance after each question"}
                   </p>
-                  <p className="text-[11px] text-white/35">
+                  <p className="text-[11px] text-white/35 mt-0.5">
                     {ar ? "الانتقال تلقائياً للسؤال التالي بعد الإجابة" : "Move to next question automatically"}
                   </p>
                 </div>
                 <button onClick={() => setAutoAdvance(!autoAdvance)}
-                  className="relative w-12 h-6 rounded-full transition-colors shrink-0"
-                  style={{ background: autoAdvance ? "#16a34a" : "rgba(255,255,255,0.2)" }}>
+                  className="relative w-11 h-6 rounded-full transition-colors shrink-0"
+                  style={{ background: autoAdvance ? "#16a34a" : "rgba(255,255,255,0.15)" }}>
                   <motion.div
-                    animate={{ x: autoAdvance ? (dir === "rtl" ? -20 : 20) : 2 }}
+                    animate={{ x: autoAdvance ? (dir === "rtl" ? -19 : 19) : 2 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
                     style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
@@ -368,26 +307,26 @@ export default function TugCreate() {
                 </button>
               </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
               {/* Question count */}
               <div className="px-5 py-4 flex items-center gap-4">
-                <span className="text-lg shrink-0">📋</span>
-                <span className="text-sm font-bold text-white/80 flex-1">
+                <span className="text-base shrink-0 opacity-60">📋</span>
+                <span className="text-sm font-semibold text-white/75 flex-1">
                   {ar ? "عدد الأسئلة" : "Question count"}
                 </span>
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button onClick={() => setQuestionCount(c => Math.max(1, c - 1))}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-bold text-white/70 transition-all hover:bg-white/10 active:scale-90"
-                    style={{ border: "1.5px solid rgba(255,255,255,0.18)" }}>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white/60 transition-colors hover:bg-white/10"
+                    style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
                     −
                   </button>
-                  <span className="w-10 text-center text-lg font-black text-white tabular-nums">
+                  <span className="w-9 text-center text-base font-black text-white tabular-nums">
                     {questionCount}
                   </span>
                   <button onClick={() => setQuestionCount(c => Math.min(20, c + 1))}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg font-bold text-white/70 transition-all hover:bg-white/10 active:scale-90"
-                    style={{ border: "1.5px solid rgba(255,255,255,0.18)" }}>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white/60 transition-colors hover:bg-white/10"
+                    style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
                     +
                   </button>
                 </div>
@@ -395,14 +334,14 @@ export default function TugCreate() {
 
               {gradeLevels.length > 0 && (
                 <>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
                   <div className="px-5 py-4 flex items-center gap-4 flex-wrap">
-                    <GraduationCap className="w-5 h-5 shrink-0 text-emerald-400" />
-                    <span className="text-sm font-bold text-white/80 flex-1 min-w-0">
+                    <GraduationCap className="w-4 h-4 shrink-0 text-white/40" />
+                    <span className="text-sm font-semibold text-white/75 flex-1 min-w-0">
                       {ar ? "الصف المستهدف" : "Target class"}
                     </span>
                     <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
-                      className="rounded-xl px-3 py-2 text-sm font-medium text-gray-800 bg-white/90 border-0 outline-none shrink-0"
+                      className="rounded-xl px-3 py-1.5 text-sm font-medium text-gray-800 bg-white/90 border-0 outline-none shrink-0"
                       style={{ minWidth: 140 }}>
                       <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
                       {gradeLevels.map(g => (
@@ -416,75 +355,64 @@ export default function TugCreate() {
               )}
             </motion.div>
 
-            {/* RIGHT: Source cards + status + button */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.11 }}
+            {/* RIGHT: Source + status + button */}
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
               className="flex flex-col gap-3">
 
-              {/* Source label */}
-              <p className="text-[11px] font-black text-white/40 uppercase tracking-widest px-1">
+              <p className="text-[10px] font-bold text-white/35 uppercase tracking-widest px-0.5">
                 {ar ? "مصدر الأسئلة" : "Question source"}
               </p>
 
               {/* Assignment card */}
-              <motion.button
-                whileHover={{ y: -2, boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
-                whileTap={{ scale: 0.97 }}
+              <button
                 onClick={() => setAssignOpen(true)}
-                className="flex items-center gap-4 px-5 py-5 rounded-2xl border-2 transition-colors text-start"
+                className="flex items-center gap-3.5 px-4 py-4 rounded-xl border transition-all hover:border-amber-500/40 active:scale-[0.98] text-start"
                 style={{
-                  background: selectedSource === "assignment"
-                    ? "rgba(245,158,11,0.14)"
-                    : "rgba(255,255,255,0.06)",
-                  borderColor: selectedSource === "assignment" ? "#f59e0b" : "rgba(255,255,255,0.12)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+                  background: selectedSource === "assignment" ? "rgba(245,158,11,0.10)" : "rgba(255,255,255,0.05)",
+                  borderColor: selectedSource === "assignment" ? "rgba(245,158,11,0.55)" : "rgba(255,255,255,0.09)",
                 }}>
-                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)" }}>
-                  <FileText className="w-6 h-6 text-white" />
+                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(245,158,11,0.18)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                  <FileText className="w-5 h-5" style={{ color: "#f59e0b" }} />
                   {selectedSource === "assignment" && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center bg-amber-400">
-                      <Check className="w-3.5 h-3.5 text-white" />
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-amber-500">
+                      <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-black text-white">{ar ? "من واجب" : "Assignment"}</p>
-                  <p className="text-xs text-white/45 mt-0.5">{ar ? "الأسئلة من الواجبات" : "Questions from assignments"}</p>
+                  <p className="text-sm font-bold text-white/85">{ar ? "من واجب" : "Assignment"}</p>
+                  <p className="text-[11px] text-white/40 mt-0.5">{ar ? "الأسئلة من الواجبات" : "From assignments"}</p>
                 </div>
-              </motion.button>
+              </button>
 
               {/* Bank card */}
-              <motion.button
-                whileHover={{ y: -2, boxShadow: "0 10px 30px rgba(0,0,0,0.3)" }}
-                whileTap={{ scale: 0.97 }}
+              <button
                 onClick={() => setBankOpen(true)}
-                className="flex items-center gap-4 px-5 py-5 rounded-2xl border-2 transition-colors text-start"
+                className="flex items-center gap-3.5 px-4 py-4 rounded-xl border transition-all hover:border-blue-500/40 active:scale-[0.98] text-start"
                 style={{
-                  background: selectedSource === "bank"
-                    ? "rgba(59,91,219,0.18)"
-                    : "rgba(255,255,255,0.06)",
-                  borderColor: selectedSource === "bank" ? BLUE : "rgba(255,255,255,0.12)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+                  background: selectedSource === "bank" ? "rgba(59,91,219,0.12)" : "rgba(255,255,255,0.05)",
+                  borderColor: selectedSource === "bank" ? "rgba(59,91,219,0.55)" : "rgba(255,255,255,0.09)",
                 }}>
-                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: `linear-gradient(135deg, #0ea5e9 0%, ${BLUE} 100%)` }}>
-                  <BookOpen className="w-6 h-6 text-white" />
+                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(59,91,219,0.18)", border: "1px solid rgba(59,91,219,0.25)" }}>
+                  <BookOpen className="w-5 h-5" style={{ color: "#748ffc" }} />
                   {selectedSource === "bank" && (
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
                       style={{ background: BLUE }}>
-                      <Check className="w-3.5 h-3.5 text-white" />
+                      <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-black text-white">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
-                  <p className="text-xs text-white/45 mt-0.5">
+                  <p className="text-sm font-bold text-white/85">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
+                  <p className="text-[11px] text-white/40 mt-0.5">
                     {bankQuestions.length > 0
-                      ? `${bankQuestions.length} ${ar ? "سؤال متاح" : "questions available"}`
-                      : (ar ? "الأسئلة من بنك الأسئلة" : "Questions from the bank")}
+                      ? `${bankQuestions.length} ${ar ? "سؤال متاح" : "available"}`
+                      : (ar ? "الأسئلة من بنك الأسئلة" : "From question bank")}
                   </p>
                 </div>
-              </motion.button>
+              </button>
 
               {/* Questions loaded strip */}
               <AnimatePresence>
@@ -492,19 +420,19 @@ export default function TugCreate() {
                   <motion.div
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                      style={{ background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.30)" }}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-white shrink-0"
+                    <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl"
+                      style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.22)" }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
                         style={{ background: "#16a34a" }}>
                         {questions.length}
                       </div>
-                      <p className="text-sm font-bold text-green-300 flex-1">
-                        {ar ? `${questions.length} سؤال محمّل — جاهز!` : `${questions.length} questions ready!`}
+                      <p className="text-sm font-semibold text-green-300/90 flex-1">
+                        {ar ? `${questions.length} سؤال محمّل` : `${questions.length} questions ready`}
                       </p>
                       <button
                         onClick={() => { setQuestions([]); setSelectedSource(null); setQuestionCount(10); }}
-                        className="p-1.5 rounded-lg hover:bg-red-500/20 transition-colors text-red-400 shrink-0">
-                        <Trash2 className="w-4 h-4" />
+                        className="p-1 rounded hover:bg-red-500/15 transition-colors text-red-400/70 shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </motion.div>
@@ -513,26 +441,24 @@ export default function TugCreate() {
 
               {/* Create Room button */}
               <motion.button
-                whileHover={questions.length > 0 ? { scale: 1.02 } : {}}
-                whileTap={{ scale: 0.97 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleCreate}
                 disabled={creating || questions.length === 0}
-                className="w-full py-5 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all mt-auto"
+                className="w-full py-4 rounded-xl font-black text-base text-white flex items-center justify-center gap-2.5 transition-all mt-auto"
                 style={{
                   background: questions.length > 0
                     ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)"
-                    : "rgba(255,255,255,0.09)",
-                  boxShadow: questions.length > 0 ? "0 10px 28px -6px rgba(22,163,74,0.5)" : "none",
+                    : "rgba(255,255,255,0.07)",
+                  boxShadow: questions.length > 0 ? "0 4px 16px rgba(22,163,74,0.3)" : "none",
                   cursor: questions.length > 0 ? "pointer" : "not-allowed",
                   opacity: questions.length > 0 ? 1 : 0.4,
-                  border: questions.length > 0 ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(255,255,255,0.08)",
                 }}
               >
                 {creating ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
                 ) : (
                   <>
-                    <Play className="w-5 h-5" fill="currentColor" />
+                    <Play className="w-4 h-4" fill="currentColor" />
                     {ar
                       ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} أسئلة)` : "أنشئ الغرفة"
                       : questions.length > 0 ? `Create Room · ${questions.length} Qs` : "Create Room"}
@@ -541,8 +467,8 @@ export default function TugCreate() {
               </motion.button>
 
               {questions.length === 0 && (
-                <p className="text-center text-xs text-white/28">
-                  {ar ? "اختر مصدر الأسئلة أولاً لتفعيل الزر" : "Pick a question source first"}
+                <p className="text-center text-[11px] text-white/25">
+                  {ar ? "اختر مصدر الأسئلة أولاً" : "Pick a question source first"}
                 </p>
               )}
 
