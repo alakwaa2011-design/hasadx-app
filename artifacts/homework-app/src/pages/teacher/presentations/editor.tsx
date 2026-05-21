@@ -1300,7 +1300,7 @@ export default function PresentationEditor() {
                 <button
                   type="button"
                   onClick={() => {
-                    setActivityHubInitialTab("hasad");
+                    setActivityHubInitialTab("home");
                     setActivityHubOpen(true);
                   }}
                   className="inline-flex items-center gap-1.5 px-2.5 h-9 rounded-lg border text-xs font-bold transition-colors hover:bg-emerald-50/60"

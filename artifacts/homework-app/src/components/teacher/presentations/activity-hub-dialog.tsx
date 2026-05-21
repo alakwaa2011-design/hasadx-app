@@ -21,11 +21,12 @@ function genId(prefix: string): string {
 }
 
 const HASAD_GAMES = [
-  { id: "quiz",     emoji: "🏆", nameAr: "مسابقة تفاعلية",   nameEn: "Interactive Quiz" },
-  { id: "wheel",    emoji: "🎡", nameAr: "عجلة الحظ",         nameEn: "Wheel of Fortune" },
-  { id: "million",  emoji: "💰", nameAr: "من سيربح المليون",  nameEn: "Who Wants a Million" },
-  { id: "flags",    emoji: "🚩", nameAr: "اختبار الأعلام",    nameEn: "Flag Quiz" },
-  { id: "matching", emoji: "🔗", nameAr: "مطابقة",            nameEn: "Matching" },
+  { id: "knowledge_race", emoji: "⚡", nameAr: "وميض", nameEn: "Wameeth", descAr: "لعبة مباشرة سريعة", descEn: "Fast live game" },
+  { id: "hack", emoji: "🛡️", nameAr: "لعبة الاختراق", nameEn: "Hack Mode", descAr: "تحدي وسرقة نقاط", descEn: "Hack and steal points" },
+  { id: "tug_of_war", emoji: "🪢", nameAr: "شد الحبل", nameEn: "Tug of War", descAr: "فرق تتنافس بسحب الحبل", descEn: "Team tug battle" },
+  { id: "million", emoji: "💰", nameAr: "من سيحصد المليون", nameEn: "Who Gets the Million", descAr: "سلم أسئلة متدرج", descEn: "Million ladder quiz" },
+  { id: "rocket_race", emoji: "🚀", nameAr: "سباق الصواريخ", nameEn: "Rocket Race", descAr: "سباق سريع بالإجابات", descEn: "Answer-powered race" },
+  { id: "wheel", emoji: "🎡", nameAr: "عجلة الحظ", nameEn: "Wheel of Fortune", descAr: "اختيار عشوائي ممتع", descEn: "Spin and play" },
 ] as const;
 type HasadGameId = (typeof HASAD_GAMES)[number]["id"];
 
@@ -333,12 +334,12 @@ export function ActivityHubDialog({
                 {isAr ? "اختر نوع اللعبة التعليمية" : "Choose the educational game type"}
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {HASAD_GAMES.map((game) => (
                   <button
                     key={game.id}
                     onClick={() => pickHasadWithGame(game.id)}
-                    className="flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all hover:shadow-md active:scale-[0.97] text-center"
+                    className="flex items-center gap-3 p-4 rounded-2xl border-2 transition-all hover:shadow-md active:scale-[0.98] text-start"
                     style={{ borderColor: `${BRAND_GREEN}25`, background: `${BRAND_GREEN}05` }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = BRAND_GREEN;
@@ -349,9 +350,14 @@ export function ActivityHubDialog({
                       e.currentTarget.style.background = `${BRAND_GREEN}05`;
                     }}
                   >
-                    <span className="text-3xl leading-none">{game.emoji}</span>
-                    <div className="text-xs font-bold leading-snug" style={{ color: BRAND_GREEN }}>
-                      {isAr ? game.nameAr : game.nameEn}
+                    <span className="text-3xl leading-none shrink-0">{game.emoji}</span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold leading-snug" style={{ color: BRAND_GREEN }}>
+                        {isAr ? game.nameAr : game.nameEn}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                        {isAr ? game.descAr : game.descEn}
+                      </div>
                     </div>
                   </button>
                 ))}
