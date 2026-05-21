@@ -90,6 +90,13 @@ interface ImportResult {
   pendingMcqQuestions?: McqQuestion[];
 }
 
+function inferQuickSlideCount(topic: string, subject: string, grade: string): number {
+  const text = `${topic} ${subject} ${grade}`.toLowerCase();
+  if (/وحدة|مشروع|مراجعة شاملة|اختبار|نهائي|unit|project|comprehensive|exam|final/.test(text)) return 12;
+  if (/مقدمة|تعريف|مدخل|نشاط|quick|intro|overview|starter/.test(text)) return 6;
+  return 9;
+}
+
 const IMPORT_ACCEPT = ".pdf,.pptx,.ppt,.docx,.doc,.jpg,.jpeg,.png,.webp";
 const IMPORT_ACCEPT_LABEL_AR = "PDF، PPTX، Word، صور (JPG / PNG)";
 const IMPORT_ACCEPT_LABEL_EN = "PDF, PPTX, Word, images (JPG / PNG)";
@@ -327,7 +334,6 @@ export default function NewPresentationPage() {
   const [topic, setTopic] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
-  const [slideCount, setSlideCount] = useState(10);
   const [educationalStrategy, setEducationalStrategy] = useState<EducationalStrategy>("none");
 
   const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
@@ -403,7 +409,7 @@ export default function NewPresentationPage() {
           gradeLevel: grade || "غير محدد",
           topic: topic.trim(),
           presentationKind: "quick",
-          slideCount,
+          slideCount: inferQuickSlideCount(topic.trim(), subject.trim(), grade),
           durationMinutes: 30,
           languageLevel: "medium",
           density: "balanced",
@@ -511,14 +517,13 @@ export default function NewPresentationPage() {
       setQuickPhase("error");
       toast.error(msg);
     }
-  }, [topic, grade, subject, slideCount, educationalStrategy, isAr, canGenerate]);
+  }, [topic, grade, subject, educationalStrategy, isAr, canGenerate]);
 
   const resetQuick = () => {
     setQuickPhase("form");
     setTopic("");
     setGrade("");
     setSubject("");
-    setSlideCount(10);
     setEducationalStrategy("none");
     setGeneratedPresentationId(null);
     setGeneratedSlides([]);
@@ -1043,29 +1048,6 @@ export default function NewPresentationPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
-                  {isAr
-                    ? `عدد الشرائح: ${slideCount}`
-                    : `Slides: ${slideCount}`}
-                </label>
-                <input
-                  type="range"
-                  min={5}
-                  max={15}
-                  value={slideCount}
-                  onChange={(e) =>
-                    setSlideCount(parseInt(e.target.value, 10))
-                  }
-                  className="w-full accent-primary"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>5</span>
-                  <span>10</span>
-                  <span>15</span>
-                </div>
-              </div>
-
               {/* ── Educational strategy selector ── */}
               <div>
                 <label className="block text-xs font-bold text-muted-foreground mb-1.5">
@@ -1101,13 +1083,13 @@ export default function NewPresentationPage() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-emerald-700/80 dark:text-emerald-400/80">
                   {(isAr
                     ? [
-                        `${slideCount} شريحة`,
+                        "محتوى منظم تلقائيًا",
                         "أسئلة MCQ تفاعلية",
                         "استطلاع + جدار أفكار",
                         "جاهز للإطلاق فوراً",
                       ]
                     : [
-                        `${slideCount} slides`,
+                        "Auto-structured content",
                         "MCQ interactive questions",
                         "Poll + word wall",
                         "Launch-ready instantly",
@@ -1172,8 +1154,8 @@ export default function NewPresentationPage() {
               </h2>
               <p className="text-muted-foreground text-sm mb-2">
                 {isAr
-                  ? `تم إنشاء عرض تفاعلي بـ ${slideCount} شريحة تتضمن أسئلة وأنشطة جاهزة.`
-                  : `Created an interactive ${slideCount}-slide deck with questions and ready-to-use activities.`}
+                  ? "تم إنشاء عرض تفاعلي يتضمن أسئلة وأنشطة جاهزة."
+                  : "Created an interactive deck with questions and ready-to-use activities."}
               </p>
               {educationalStrategy !== "none" && (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
@@ -1274,13 +1256,6 @@ export default function NewPresentationPage() {
                         </div>
                       );
                     })}
-                    {/* "…and more" chip when we have more slides than we display */}
-                    {slideCount > generatedSlides.length && (
-                      <div className="rounded-xl border border-dashed border-border p-3 flex items-center justify-center text-xs text-muted-foreground">
-                        +{slideCount - generatedSlides.length}{" "}
-                        {isAr ? "شريحة إضافية" : "more slides"}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -1402,8 +1377,8 @@ export default function NewPresentationPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isAr
-                    ? `الحد الأقصى للحجم 50 م.ب — ${IMPORT_ACCEPT_LABEL_AR}`
-                    : `Max 50 MB — ${IMPORT_ACCEPT_LABEL_EN}`}
+                    ? IMPORT_ACCEPT_LABEL_AR
+                    : IMPORT_ACCEPT_LABEL_EN}
                 </p>
               </div>
             </label>
@@ -1558,8 +1533,6 @@ export default function NewPresentationPage() {
                 <div className="text-start min-w-0">
                   <p className="text-sm font-bold truncate max-w-[220px]">{importResult.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {importResult.slideCount}{" "}
-                    {isAr ? "شريحة" : "slides"}
                     {importResult.aiGenerated && (
                       <span className="ms-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
                         <Sparkles className="w-3 h-3" />

@@ -1,7 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type {
   PresentationBrief,
-  PresentationAiLimits,
   PresentationBriefPresentationKind,
   PresentationBriefLanguage,
   PresentationBriefDurationMinutes,
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Lock, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
 /* ── Educational strategy — local type (not in generated API schema yet) ── */
@@ -117,7 +116,6 @@ export interface BriefFormHandle {
 }
 
 interface Props {
-  limits: PresentationAiLimits | undefined;
   loading: boolean;
   onSubmit: (brief: PresentationBrief) => void;
   initial?: Partial<PresentationBrief>;
@@ -129,6 +127,19 @@ const KIND_OPTIONS: PresentationBrief["presentationKind"][] = [
 ];
 
 const DURATIONS = [15, 30, 45, 60] as const;
+
+function smartSlideCount(
+  kind: PresentationBriefPresentationKind,
+  duration: PresentationBriefDurationMinutes,
+  density: PresentationBriefDensity,
+): number {
+  if (kind === "quick") return 6;
+  if (kind === "contest") return duration >= 45 ? 12 : 8;
+  if (kind === "interactive" || kind === "review") return duration >= 45 ? 10 : 8;
+  if (density === "detailed" || duration >= 60) return 14;
+  if (duration <= 15) return 6;
+  return 10;
+}
 
 const DEFAULT_PREFS: Required<SavedPrefs> = {
   language: "ar",
@@ -145,7 +156,7 @@ const DEFAULT_PREFS: Required<SavedPrefs> = {
 };
 
 export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
-  { limits, loading, onSubmit, initial, onValidityChange },
+  { loading, onSubmit, initial, onValidityChange },
   ref,
 ) {
   const { lang, t } = useI18n();
@@ -175,12 +186,8 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     (localPrefs.presentationKind as PresentationBriefPresentationKind) ??
     "explain",
   );
-  const maxSlidesAllowed = limits?.maxSlides ?? 10;
   const [slideCount, setSlideCount] = useState<number>(
-    Math.min(
-      initial?.slideCount ?? localPrefs.slideCount ?? 8,
-      maxSlidesAllowed,
-    ),
+    initial?.slideCount ?? localPrefs.slideCount ?? 8,
   );
   const [durationMinutes, setDurationMinutes] = useState<PresentationBriefDurationMinutes>(
     (initial?.durationMinutes as PresentationBriefDurationMinutes) ??
@@ -251,7 +258,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       setPresentationKind(serverPrefs.presentationKind as PresentationBriefPresentationKind);
     }
     if (initial?.slideCount === undefined && serverPrefs.slideCount !== undefined) {
-      setSlideCount(Math.min(serverPrefs.slideCount, maxSlidesAllowed));
+      setSlideCount(serverPrefs.slideCount);
     }
     if (!initial?.durationMinutes && serverPrefs.durationMinutes !== undefined) {
       setDurationMinutes(serverPrefs.durationMinutes as PresentationBriefDurationMinutes);
@@ -326,13 +333,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     };
   }, []);
 
-  useEffect(() => {
-    if (limits && slideCount > limits.maxSlides) setSlideCount(limits.maxSlides);
-    if (limits && !limits.allowedDensities.includes(density)) {
-      setDensity(limits.allowedDensities[0] ?? "balanced");
-    }
-  }, [limits, slideCount, density]);
-
   const handleRestoreDefaults = useCallback(() => {
     // Clear local storage first, then flag the save effect to skip one run so that
     // the state resets don't re-populate localStorage with the default values.
@@ -340,7 +340,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     skipNextSaveRef.current = true;
     setLanguage(defaultLang);
     setPresentationKind(DEFAULT_PREFS.presentationKind);
-    setSlideCount(Math.min(DEFAULT_PREFS.slideCount, maxSlidesAllowed));
+    setSlideCount(DEFAULT_PREFS.slideCount);
     setDurationMinutes(DEFAULT_PREFS.durationMinutes);
     setLanguageLevel(DEFAULT_PREFS.languageLevel);
     setDensity(DEFAULT_PREFS.density);
@@ -352,18 +352,13 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
 
     // Sync cleared prefs to server immediately
     syncToServer({ data: {} as BriefPreferences });
-  }, [defaultLang, maxSlidesAllowed, syncToServer]);
+  }, [defaultLang, syncToServer]);
 
-  const allowedDensities = limits?.allowedDensities ?? ["balanced"];
-  const isDensityLocked = (d: "minimal" | "balanced" | "detailed") =>
-    !allowedDensities.includes(d);
-
-  const remaining = limits?.remaining ?? 0;
-  const noBudget = limits ? remaining <= 0 : false;
-  const isFormValid = !!(subject.trim() && gradeLevel.trim() && topic.trim()) && !noBudget;
+  const isFormValid = !!(subject.trim() && gradeLevel.trim() && topic.trim());
 
   const submit = useCallback(() => {
     if (!subject.trim() || !gradeLevel.trim() || !topic.trim()) return;
+    const inferredSlideCount = smartSlideCount(presentationKind, durationMinutes, density);
     /* educationalStrategy is not part of the generated PresentationBrief type,
        but the backend briefSchema accepts it as an optional field.
        We merge it in and cast so the extra key reaches the API without
@@ -374,7 +369,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       gradeLevel: gradeLevel.trim(),
       topic: topic.trim(),
       presentationKind,
-      slideCount,
+      slideCount: inferredSlideCount,
       durationMinutes,
       languageLevel,
       density,
@@ -383,7 +378,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       ...(educationalStrategy !== "none" && { educationalStrategy }),
     } as PresentationBrief);
   }, [
-    subject, gradeLevel, topic, language, presentationKind, slideCount,
+    subject, gradeLevel, topic, language, presentationKind,
     durationMinutes, languageLevel, density, activities, questions, poll, quiz,
     notes, educationalStrategy, onSubmit,
   ]);
@@ -391,36 +386,14 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
   useImperativeHandle(ref, () => ({ submit }), [submit]);
 
   useEffect(() => {
-    onValidityChange?.(isFormValid, noBudget);
-  }, [isFormValid, noBudget, onValidityChange]);
+    onValidityChange?.(isFormValid, false);
+  }, [isFormValid, onValidityChange]);
 
   /* Suppress exhaustive-deps lint: loading is used by the parent button, not here. */
   void loading;
 
   return (
     <div className="space-y-5" dir={isAr ? "rtl" : "ltr"}>
-      {/* Tier / daily quota strip */}
-      {limits ? (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-xs">
-          <span className="text-muted-foreground">
-            {isAr
-              ? `الخطة: ${limits.tier === "claude" ? "Premium" : limits.tier === "pro" ? "Pro" : "Free"} · ${limits.used}/${limits.dailyOutlines} مخطط اليوم`
-              : `Plan: ${limits.tier === "claude" ? "Premium" : limits.tier === "pro" ? "Pro" : "Free"} · ${limits.used}/${limits.dailyOutlines} outlines today`}
-          </span>
-          <span className="font-medium" style={{ color: BRAND_GREEN }}>
-            {isAr ? `الحد الأقصى ${limits.maxSlides} شريحة` : `Up to ${limits.maxSlides} slides`}
-          </span>
-        </div>
-      ) : null}
-
-      {noBudget && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
-          {isAr
-            ? `وصلت للحد اليومي (${limits!.dailyOutlines}). جرّب غداً أو ارفع خطتك.`
-            : `Daily limit reached (${limits!.dailyOutlines}). Try again tomorrow or upgrade.`}
-        </div>
-      )}
-
       {/* ── Required fields ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
@@ -532,26 +505,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label>{tx.slideCount ?? (isAr ? "عدد الشرائح" : "Slide count")}</Label>
-              <span className="text-sm font-semibold" style={{ color: BRAND_GREEN }}>{slideCount}</span>
-            </div>
-            <input
-              type="range"
-              min={5}
-              max={maxSlidesAllowed}
-              step={1}
-              value={slideCount}
-              onChange={(e) => setSlideCount(Number(e.target.value))}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>5</span>
-              <span>{maxSlidesAllowed}</span>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>{tx.languageLevel ?? (isAr ? "مستوى اللغة" : "Language level")}</Label>
@@ -580,20 +533,17 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
             <Label>{tx.density ?? (isAr ? "كثافة المحتوى" : "Content density")}</Label>
             <div className="grid grid-cols-3 gap-2">
               {(["minimal", "balanced", "detailed"] as const).map((d) => {
-                const locked = isDensityLocked(d);
                 const active = density === d;
                 return (
                   <button
                     key={d}
                     type="button"
-                    disabled={locked}
-                    onClick={() => !locked && setDensity(d)}
+                    onClick={() => setDensity(d)}
                     className={`relative rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition-all text-start ${
                       active ? "border-current" : "border-muted hover:border-muted-foreground/40"
-                    } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+                    }`}
                     style={active ? { borderColor: BRAND_GREEN, color: BRAND_GREEN, background: "#22573912" } : undefined}
                   >
-                    {locked ? <Lock className="absolute top-1.5 end-1.5 h-3 w-3 text-muted-foreground" /> : null}
                     <div>{(tx.densities && tx.densities[d]) ?? d}</div>
                     <div className="text-[11px] font-normal text-muted-foreground mt-0.5">
                       {(tx.densityHints && tx.densityHints[d]) ?? ""}

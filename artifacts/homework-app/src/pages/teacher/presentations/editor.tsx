@@ -3,13 +3,11 @@ import { useRoute, useLocation } from "wouter";
 import {
   useGetPresentation,
   useUpdatePresentation,
-  useGetPresentationUsage,
   getGetPresentationQueryKey,
   getGetPresentationUsageQueryKey,
   type Presentation,
   type Slide,
   type SlideElement,
-  type PresentationTierWithUsage,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -24,7 +22,7 @@ import {
   Download, FileText, Presentation as PresentationIcon,
   AlertCircle, Type as TypeIcon, Square, Circle as CircleIcon,
   Minus, MoveUpRight, GripVertical, Smile, Palette,
-  Layers, ChevronsUp, ChevronsDown, Lock, Sparkles,
+  Layers, ChevronsUp, ChevronsDown, Sparkles,
   Radio, History, MoreVertical, Image as ImageIcon, Shapes,
   Undo2, Redo2, Bold, CheckSquare, Pencil,
   Triangle, Diamond, Crown, Phone, Users, Flag, MapPin,
@@ -312,24 +310,6 @@ function extractLimitError(err: unknown): LimitErrorInfo | null {
   return d as LimitErrorInfo;
 }
 
-function limitKindLabel(kind: LimitKind, isAr: boolean): string {
-  if (isAr) {
-    return kind === "slides" ? "الشرائح"
-      : kind === "images" ? "الصور"
-      : kind === "files" ? "الملفات"
-      : "حجم الملفات";
-  }
-  return kind === "slides" ? "slides"
-    : kind === "images" ? "images"
-    : kind === "files" ? "files"
-    : "total file size";
-}
-
-function formatLimitValue(kind: LimitKind, n: number, isAr: boolean): string {
-  if (kind === "sizeMb") return isAr ? `${n} م.ب` : `${n} MB`;
-  return String(n);
-}
-
 export default function PresentationEditor() {
   const { lang } = useI18n();
   const [, params] = useRoute("/teacher/presentations/:id");
@@ -361,20 +341,6 @@ export default function PresentationEditor() {
   });
 
   const updateMutation = useUpdatePresentation();
-
-  /* Per-deck usage + tier. Drives the visible counters and the
-     "near/at cap" lock badge. Refetched after every save and after
-     image uploads so the strip reflects the latest counts. */
-  const { data: usageData } = useGetPresentationUsage(id, {
-    query: {
-      queryKey: getGetPresentationUsageQueryKey(id),
-      enabled: Number.isFinite(id),
-      staleTime: 0,
-    },
-  });
-  const tier: PresentationTierWithUsage | undefined = usageData;
-
-  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -588,14 +554,12 @@ export default function PresentationEditor() {
           onError: (err) => {
             const lim = extractLimitError(err);
             if (lim) {
-              const resName = limitKindLabel(lim.kind, isAr);
               toast.error(
                 isAr
-                  ? `لقد تجاوزت حد ${resName} (${formatLimitValue(lim.kind, lim.current, isAr)} / ${formatLimitValue(lim.kind, lim.limit, isAr)}). رقّ إلى الباقة الاحترافية لإزالة الحدود.`
-                  : `You've exceeded the ${resName} limit (${formatLimitValue(lim.kind, lim.current, isAr)} / ${formatLimitValue(lim.kind, lim.limit, isAr)}). Upgrade to Pro to remove caps.`,
-                { duration: 6000 },
+                  ? "تعذّر حفظ هذا التغيير الآن. جرّب تبسيط المحتوى أو المحاولة لاحقاً."
+                  : "This change couldn't be saved right now. Try simplifying the content or again later.",
+                { duration: 5000 },
               );
-              setShowUpgrade(true);
               return;
             }
             toast.error(isAr ? "فشل الحفظ التلقائي" : "Autosave failed");
@@ -913,7 +877,7 @@ export default function PresentationEditor() {
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error(isAr ? "الحد الأقصى 10 ميجابايت" : "Max size 10MB");
+      toast.error(isAr ? "تعذّرت إضافة هذه الصورة. جرّب صورة أخف." : "This image couldn't be added. Try a lighter image.");
       return;
     }
     setUploading(true);
@@ -922,15 +886,12 @@ export default function PresentationEditor() {
       if (Number.isFinite(id)) {
         const reg = await registerAsset(id, url, file.size);
         if (!reg.ok && reg.limit) {
-          const lim = reg.limit;
-          const resName = limitKindLabel(lim.kind, isAr);
           toast.error(
             isAr
-              ? `لقد تجاوزت حد ${resName} (${formatLimitValue(lim.kind, lim.current, isAr)} / ${formatLimitValue(lim.kind, lim.limit, isAr)}). رقّ إلى الباقة الاحترافية لإزالة الحدود.`
-              : `You've exceeded the ${resName} limit (${formatLimitValue(lim.kind, lim.current, isAr)} / ${formatLimitValue(lim.kind, lim.limit, isAr)}). Upgrade to Pro to remove caps.`,
-            { duration: 6000 },
+              ? "تعذّرت إضافة الصورة الآن. جرّب صورة أخف أو حاول لاحقاً."
+              : "This image couldn't be added right now. Try a lighter image or again later.",
+            { duration: 5000 },
           );
-          setShowUpgrade(true);
           queryClient.invalidateQueries({ queryKey: getGetPresentationUsageQueryKey(id) });
           return;
         }
@@ -1241,17 +1202,6 @@ export default function PresentationEditor() {
                 >
                   🎛 Pro Studio
                 </span>
-                {tier && !tier.isPro && (
-                  <button
-                    onClick={() => setShowUpgrade(true)}
-                    title={isAr ? "ترقية إلى الباقة الاحترافية" : "Upgrade to Pro"}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black transition-transform hover:scale-105"
-                    style={{ background: `${BRAND_GOLD}1a`, color: BRAND_GREEN, border: `1px solid ${BRAND_GOLD}40` }}
-                  >
-                    <Lock className="w-3 h-3" />
-                    {isAr ? "مجاني" : "Free"}
-                  </button>
-                )}
               </h1>
               <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap font-medium">
                 <SaveStatus
@@ -1537,14 +1487,6 @@ export default function PresentationEditor() {
           </div>
         </div>
         )}
-
-        {/* Preview modal — constrained, non-fullscreen, light controls. */}
-        <UpgradeDialog
-          open={showUpgrade}
-          onClose={() => setShowUpgrade(false)}
-          isAr={isAr}
-          tier={tier}
-        />
 
         {goLiveOpen && (
           <GoLiveDialog
@@ -1909,7 +1851,6 @@ export default function PresentationEditor() {
             dir={dir}
             readOnly={readOnly}
             title={data.title ?? ""}
-            tier={tier}
             saving={updateMutation.isPending}
             dirty={dirty}
             savedAt={savedAt}
@@ -1991,7 +1932,6 @@ export default function PresentationEditor() {
               if (dirty) { setLeaveDialogOpen(true); return; }
               setLocation("/teacher/presentations");
             }}
-            onUpgrade={() => setShowUpgrade(true)}
           />
         )}
 
@@ -2222,61 +2162,6 @@ function SaveStatus({
   return <span className="text-muted-foreground">{isAr ? "جاهز" : "Ready"}</span>;
 }
 
-/* ── Usage strip: 4 inline counters (slides / images / files / size)
-   shown beneath the deck title. For Pro tiers limits render as "—".
-   For non-Pro tiers we surface a Lock + ترقية CTA whenever any
-   resource is at or near (≥80%) its cap. */
-function UsageStrip({
-  tier, isAr, onUpgrade,
-}: { tier: PresentationTierWithUsage; isAr: boolean; onUpgrade: () => void }) {
-  const items: Array<{ kind: LimitKind; cur: number; lim: number; label: string }> = [
-    { kind: "slides", cur: tier.usage.slides, lim: tier.limits.maxSlidesRegular, label: isAr ? "شريحة" : "slides" },
-    { kind: "images", cur: tier.usage.images, lim: tier.limits.maxImagesRegular, label: isAr ? "صورة" : "images" },
-    { kind: "files", cur: tier.usage.files, lim: tier.limits.maxFilesRegular, label: isAr ? "ملف" : "files" },
-    { kind: "sizeMb", cur: tier.usage.sizeMb, lim: tier.limits.maxSizeMbRegular, label: isAr ? "م.ب" : "MB" },
-  ];
-  const anyNear = !tier.isPro && items.some((it) => it.lim > 0 && it.cur / it.lim >= 0.8);
-  return (
-    <span className="inline-flex items-center gap-2 flex-wrap">
-      {items.map((it) => {
-        const ratio = it.lim > 0 ? it.cur / it.lim : 0;
-        const at = !tier.isPro && ratio >= 1;
-        const near = !tier.isPro && !at && ratio >= 0.8;
-        const valTxt = it.kind === "sizeMb"
-          ? `${it.cur} / ${tier.isPro ? "—" : it.lim} ${it.label}`
-          : `${it.cur} / ${tier.isPro ? "—" : it.lim} ${it.label}`;
-        return (
-          <span
-            key={it.kind}
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold"
-            style={{
-              color: at ? "#b91c1c" : near ? "#b45309" : undefined,
-              background: at ? "#fee2e2" : near ? "#fef3c7" : undefined,
-            }}
-            title={limitKindLabel(it.kind, isAr)}
-          >
-            {valTxt}
-          </span>
-        );
-      })}
-      {anyNear && (
-        <button
-          onClick={onUpgrade}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-[10px]"
-          style={{ background: BRAND_GOLD, color: BRAND_GREEN }}
-        >
-          <Lock className="w-3 h-3" />
-          {isAr ? "ترقية" : "Upgrade"}
-        </button>
-      )}
-    </span>
-  );
-}
-
-/* ── Upgrade dialog. Lightweight non-modal panel that explains the
-   Pro tier and asks the teacher to contact the platform admin. We
-   intentionally don't link to a paywall page (none exists yet) — the
-   Pro flag is provisioned by an admin via the teachers panel. */
 /* Phase 7 — explicit class picker shown when the teacher clicks
    "Go Live". Replaces the previous silent re-use of
    `getRememberedTargetClass()` from localStorage so a teacher who
@@ -2405,67 +2290,6 @@ function GoLiveDialog({
                 : (mode === "newTab" ? "Open in new tab" : "Start")}
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UpgradeDialog({
-  open, onClose, isAr, tier,
-}: { open: boolean; onClose: () => void; isAr: boolean; tier: PresentationTierWithUsage | undefined }) {
-  if (!open) return null;
-  const lim = tier?.limits;
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50"
-      onClick={onClose}
-      dir={isAr ? "rtl" : "ltr"}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          className="p-5 text-white"
-          style={{ background: `linear-gradient(135deg, ${BRAND_GREEN} 0%, #2d7050 100%)` }}
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5" style={{ color: BRAND_GOLD }} />
-            <h2 className="font-black text-lg">
-              {isAr ? "الباقة الاحترافية للعروض" : "Presentations Pro"}
-            </h2>
-          </div>
-          <p className="text-sm opacity-90 mt-1">
-            {isAr
-              ? "أزِل حدود الشرائح والصور والملفات وحجم التخزين."
-              : "Remove caps on slides, images, files, and storage."}
-          </p>
-        </div>
-        <div className="p-5 space-y-3 text-sm">
-          {lim && (
-            <div className="rounded-lg border border-border p-3 bg-muted/30">
-              <div className="font-bold mb-2 text-foreground">
-                {isAr ? "حدود الباقة المجانية الحالية" : "Current free-tier limits"}
-              </div>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• {isAr ? `الشرائح: ${lim.maxSlidesRegular}` : `Slides: ${lim.maxSlidesRegular}`}</li>
-                <li>• {isAr ? `الصور: ${lim.maxImagesRegular}` : `Images: ${lim.maxImagesRegular}`}</li>
-                <li>• {isAr ? `الملفات: ${lim.maxFilesRegular}` : `Files: ${lim.maxFilesRegular}`}</li>
-                <li>• {isAr ? `الحجم: ${lim.maxSizeMbRegular} م.ب` : `Storage: ${lim.maxSizeMbRegular} MB`}</li>
-              </ul>
-            </div>
-          )}
-          <p className="text-muted-foreground leading-relaxed">
-            {isAr
-              ? "للترقية تواصل مع مسؤول المنصة وسيقوم بتفعيل الباقة الاحترافية لحسابك."
-              : "To upgrade, contact your platform admin and they'll enable Pro on your account."}
-          </p>
-        </div>
-        <div className="px-5 pb-5 flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={onClose}>
-            {isAr ? "إغلاق" : "Close"}
-          </Button>
         </div>
       </div>
     </div>
@@ -6218,7 +6042,7 @@ function IconPicker({
    "+" FAB, and contextual bottom sheets for adding/inspecting
    elements, theme, pattern, slide actions, and the "more" menu. */
 function MobileShell({
-  isAr, dir, readOnly, title, tier, saving, dirty, savedAt,
+  isAr, dir, readOnly, title, saving, dirty, savedAt,
   slides, activeIdx, activeSlide, selectedElId, selectedEl,
   theme, pattern, uploading, sheet, setSheet,
   onSelectSlide, onSelectEl, onUpdateEl, onUpdateActiveSlide,
@@ -6227,13 +6051,12 @@ function MobileShell({
   onChangeTheme, onChangePattern,
   onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
-  onOpenSessions, onGoLive, onExport, onBack, onUpgrade,
+  onOpenSessions, onGoLive, onExport, onBack,
 }: {
   isAr: boolean;
   dir: "rtl" | "ltr";
   readOnly: boolean;
   title: string;
-  tier: PresentationTierWithUsage | undefined;
   saving: boolean;
   dirty: boolean;
   savedAt: Date | null;
@@ -6274,7 +6097,6 @@ function MobileShell({
   onGoLive: () => void;
   onExport: (kind: "pdf" | "pptx") => void;
   onBack: () => void;
-  onUpgrade: () => void;
 }) {
   const BG = "#F6F4EE";
   const BRAND_SOFT = "#EAF2EC";
@@ -6558,7 +6380,6 @@ function MobileShell({
                   dirty={dirty}
                   saving={saving}
                   savedAt={savedAt}
-                  tier={tier}
                   hasActiveSlide={!!activeSlide}
                   multipleSlides={slides.length > 1}
                   canMoveBack={activeIdx > 0}
@@ -6574,7 +6395,6 @@ function MobileShell({
                   onDeleteSlide={() => { onDeleteSlide(); setSheet("none"); }}
                   onMoveSlideBack={() => { onMoveSlide(-1); }}
                   onMoveSlideForward={() => { onMoveSlide(1); }}
-                  onUpgrade={() => { onUpgrade(); setSheet("none"); }}
                 />
               )}
 
@@ -6915,18 +6735,17 @@ function KeyboardShortcutsPanel({ isAr, onClose }: { isAr: boolean; onClose: () 
 /* Bottom-sheet "more" menu — compact button list of every secondary
    toolbar action that doesn't fit in the 52px top bar. */
 function MobileMoreMenu({
-  isAr, readOnly, dirty, saving, savedAt, tier, hasActiveSlide, multipleSlides,
+  isAr, readOnly, dirty, saving, savedAt, hasActiveSlide, multipleSlides,
   canMoveBack, canMoveForward,
   onSave, onAi, onExportPdf, onExportPptx, onSessions, onGoLive,
   onPresentFromHere, onDuplicateSlide, onDeleteSlide,
-  onMoveSlideBack, onMoveSlideForward, onUpgrade,
+  onMoveSlideBack, onMoveSlideForward,
 }: {
   isAr: boolean;
   readOnly: boolean;
   dirty: boolean;
   saving: boolean;
   savedAt: Date | null;
-  tier: PresentationTierWithUsage | undefined;
   hasActiveSlide: boolean;
   multipleSlides: boolean;
   canMoveBack: boolean;
@@ -6942,7 +6761,6 @@ function MobileMoreMenu({
   onDeleteSlide: () => void;
   onMoveSlideBack: () => void;
   onMoveSlideForward: () => void;
-  onUpgrade: () => void;
 }) {
   const Item = ({
     icon: Icon, label, onClick, disabled, danger, accent,
@@ -7029,12 +6847,6 @@ function MobileMoreMenu({
       <Item icon={FileText} label={isAr ? "تصدير PDF" : "Export PDF"} onClick={onExportPdf} />
       <Item icon={PresentationIcon} label={isAr ? "تصدير PPTX" : "Export PPTX"} onClick={onExportPptx} />
       <Item icon={History} label={isAr ? "الجلسات والنتائج" : "Sessions & results"} onClick={onSessions} />
-      {tier && !tier.isPro && (
-        <>
-          <div className="my-2 h-px bg-slate-200" />
-          <Item icon={Lock} label={isAr ? "ترقية إلى Pro" : "Upgrade to Pro"} onClick={onUpgrade} accent />
-        </>
-      )}
     </div>
   );
 }
