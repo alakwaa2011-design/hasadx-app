@@ -751,7 +751,7 @@ function StadiumBackdrop({ active }: { active: boolean }) {
         .tug-action-button { transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
         .tug-action-button:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 0 44px rgba(247,201,72,0.72), 0 22px 54px rgba(0,0,0,0.42), inset 0 2px 0 rgba(255,255,255,0.38) !important;
+          box-shadow: 0 0 24px rgba(247,201,72,0.42), 0 16px 38px rgba(0,0,0,0.36), inset 0 2px 0 rgba(255,255,255,0.34) !important;
           filter: saturate(1.06);
         }
         .tug-action-button:active:not(:disabled) { transform: translateY(1px) scale(.95); }
@@ -928,27 +928,27 @@ function TeamScoreCard({
   const isBlue = team === "blue";
   return (
     <div
-      className={`rounded-[20px] border p-4 text-white backdrop-blur-md ${isBlue ? "border-blue-300/45" : "border-red-300/45"}`}
+      className={`rounded-[20px] border px-3.5 py-3 text-white backdrop-blur-md ${isBlue ? "border-blue-300/40" : "border-red-300/40"}`}
       style={{
         background: isBlue
           ? "linear-gradient(145deg, rgba(7,42,113,0.96), rgba(29,78,216,0.82))"
           : "linear-gradient(145deg, rgba(127,29,29,0.96), rgba(220,38,38,0.82))",
         boxShadow: isBlue
-          ? "0 16px 42px rgba(29,78,216,0.34), 0 0 26px rgba(59,130,246,0.2), inset 0 1px 0 rgba(255,255,255,0.2)"
-          : "0 16px 42px rgba(220,38,38,0.34), 0 0 26px rgba(248,113,113,0.2), inset 0 1px 0 rgba(255,255,255,0.2)",
+          ? "0 12px 32px rgba(29,78,216,0.28), 0 0 18px rgba(59,130,246,0.16), inset 0 1px 0 rgba(255,255,255,0.18)"
+          : "0 12px 32px rgba(220,38,38,0.28), 0 0 18px rgba(248,113,113,0.16), inset 0 1px 0 rgba(255,255,255,0.18)",
       }}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-black text-white/85 sm:text-sm">👥 {label}</p>
-        <span className="rounded-full bg-white/14 px-2 py-0.5 text-[10px] font-black text-white/80">{playersCount}</span>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-black text-white/82 sm:text-xs">👥 {label}</p>
+        <span className="rounded-full bg-white/12 px-2 py-0.5 text-[9px] font-black text-white/75">{playersCount}</span>
       </div>
       <p
-        className="rounded-2xl bg-black/24 px-3 py-2 text-center text-4xl font-black leading-none tracking-tight sm:text-5xl"
-        style={{ textShadow: "0 3px 14px rgba(0,0,0,0.45)", fontVariantNumeric: "tabular-nums" }}
+        className="rounded-xl bg-black/20 px-3 py-1.5 text-center text-3xl font-black leading-none tracking-tight sm:text-4xl"
+        style={{ textShadow: "0 2px 10px rgba(0,0,0,0.38)", fontVariantNumeric: "tabular-nums" }}
       >
         {score}
       </p>
-      <p className="mt-2 text-center text-[11px] font-bold text-white/70">
+      <p className="mt-1.5 text-center text-[10px] font-bold text-white/64">
         {playersCount > 0
           ? (lang === "ar" ? "نقاط القوة" : "Power points")
           : (lang === "ar" ? "بانتظار اللاعبين" : "Waiting for players")}
@@ -970,15 +970,15 @@ function TugActionButton({
     <motion.button
       onClick={onClick}
       disabled={disabled || !onClick}
-      className="tug-action-button relative mx-auto flex min-h-[66px] w-full max-w-sm items-center justify-center rounded-[2rem] px-8 text-2xl font-black text-white disabled:cursor-default disabled:opacity-80"
+      className="tug-action-button relative mx-auto flex min-h-[58px] w-full max-w-sm items-center justify-center rounded-[1.6rem] px-8 text-xl font-black text-white disabled:cursor-default disabled:opacity-80"
       style={{
         background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
         color: "#fff7ed",
-        boxShadow: "0 0 34px rgba(247,201,72,0.58), 0 18px 45px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.34)",
+        boxShadow: "0 0 20px rgba(247,201,72,0.34), 0 14px 34px rgba(0,0,0,0.32), inset 0 2px 0 rgba(255,255,255,0.3)",
         textShadow: "0 2px 10px rgba(90,43,6,0.55)",
       }}
     >
-      <span className="absolute inset-1 rounded-[1.7rem] border border-white/25" />
+      <span className="absolute inset-1 rounded-[1.35rem] border border-white/20" />
       <span className="relative z-10">⚡ {label}</span>
     </motion.button>
   );
