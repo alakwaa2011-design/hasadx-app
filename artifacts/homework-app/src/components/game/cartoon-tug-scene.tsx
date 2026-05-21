@@ -71,7 +71,9 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
 
   const baseLean = isPulling
     ? (isWinning ? -45 : isTired ? -24 - fatigue * 9 : -36) + sin1 * 2.5
-    : isCelebrating && isWinnerSide ? -5 : -3;
+    : isCelebrating && isWinnerSide ? -5
+    : isCelebrating && isLosingSide ? 16   // defeated slump forward
+    : -3;
   const tiredSlump = isTired && isPulling ? fatigue * 12 : 0;
   const leanDeg = baseLean + tiredSlump;
   const leanRad = (leanDeg * Math.PI) / 180;
@@ -150,12 +152,18 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
       />
 
       <motion.g
-        animate={{
-          y: celebJump + bounce,
-          x: pullShake * dir,
-          rotate: isPulling ? [0, -1.4 * dir, 0.9 * dir, 0] : 0,
-        }}
-        transition={{ repeat: isPulling ? Infinity : 0, duration: 0.55, ease: "easeInOut" }}
+        animate={
+          isCelebrating && isWinnerSide
+            ? { y: [0, -22, -8, -18, 0], rotate: [0, -2.5 * dir, 1.8 * dir, -1.2 * dir, 0] }
+            : isCelebrating && isLosingSide
+              ? { y: [0, 3, 1, 3, 0], x: [0, 0.6 * dir, -0.4 * dir, 0.6 * dir, 0] }
+              : { y: celebJump + bounce, x: pullShake * dir, rotate: isPulling ? [0, -1.4 * dir, 0.9 * dir, 0] : 0 }
+        }
+        transition={
+          isCelebrating
+            ? { repeat: Infinity, duration: isWinnerSide ? 0.85 : 2.8, ease: "easeInOut" }
+            : { repeat: isPulling ? Infinity : 0, duration: 0.55, ease: "easeInOut" }
+        }
         style={{ transformOrigin: `${cx}px ${feetY}px` }}
       >
         <path
@@ -216,6 +224,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
 
         {isCelebrating && isWinnerSide ? (
           <>
+            {/* Victory arms raised */}
             <path d={`M${leftShoulderX},${shoulderY}
                       Q${leftShoulderX - 15 * dir},${shoulderY - 25}
                        ${leftShoulderX - 22 * dir},${shoulderY - 45}`}
@@ -226,6 +235,28 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
                        ${rightShoulderX + 18 * dir},${shoulderY - 40}`}
               stroke={skin} strokeWidth={8} strokeLinecap="round" fill="none" />
             <circle cx={rightShoulderX + 18 * dir} cy={shoulderY - 43} r={6} fill={skin} />
+          </>
+        ) : isCelebrating && isLosingSide ? (
+          <>
+            {/* Defeated arms hanging down at sides */}
+            <path d={`M${leftShoulderX},${shoulderY}
+                      Q${leftShoulderX - 8 * dir},${shoulderY + 20}
+                       ${leftShoulderX - 10 * dir},${shoulderY + 42}`}
+              stroke={palette.jerseyDark} strokeWidth={11} strokeLinecap="round" fill="none" />
+            <path d={`M${leftShoulderX - 2 * dir},${shoulderY + 3}
+                      Q${leftShoulderX - 6 * dir},${shoulderY + 22}
+                       ${leftShoulderX - 8 * dir},${shoulderY + 43}`}
+              stroke={skin} strokeWidth={7} strokeLinecap="round" fill="none" />
+            <circle cx={leftShoulderX - 8 * dir} cy={shoulderY + 46} r={5.5} fill={skin} />
+            <path d={`M${rightShoulderX},${shoulderY}
+                      Q${rightShoulderX + 8 * dir},${shoulderY + 20}
+                       ${rightShoulderX + 10 * dir},${shoulderY + 42}`}
+              stroke={palette.jerseyDark} strokeWidth={11} strokeLinecap="round" fill="none" />
+            <path d={`M${rightShoulderX + 2 * dir},${shoulderY + 3}
+                      Q${rightShoulderX + 6 * dir},${shoulderY + 22}
+                       ${rightShoulderX + 8 * dir},${shoulderY + 43}`}
+              stroke={skin} strokeWidth={7} strokeLinecap="round" fill="none" />
+            <circle cx={rightShoulderX + 8 * dir} cy={shoulderY + 46} r={5.5} fill={skin} />
           </>
         ) : (
           <>
@@ -502,14 +533,16 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
   }
 
   const twistCount = 20;
-  const twistAmp = 5;
+  // Slow, subtle braid — not snake-like; freeze when celebrating
+  const twistAmp = 2.8;
+  const twistPhase = isCelebrating ? 0 : pullCycle * 0.45;
   const strand1Points: [number, number][] = [];
   const strand2Points: [number, number][] = [];
 
   for (let i = 0; i <= twistCount; i++) {
     const t = i / twistCount;
     const [px, py] = getPoint(t);
-    const twist = Math.sin(t * Math.PI * 10 + pullCycle * 2) * twistAmp;
+    const twist = Math.sin(t * Math.PI * 8 + twistPhase) * twistAmp;
     strand1Points.push([px, py + twist]);
     strand2Points.push([px, py - twist]);
   }
