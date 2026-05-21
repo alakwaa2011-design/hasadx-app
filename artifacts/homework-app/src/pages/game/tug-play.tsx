@@ -970,15 +970,15 @@ function TugActionButton({
     <motion.button
       onClick={onClick}
       disabled={disabled || !onClick}
-      className="tug-action-button relative mx-auto flex min-h-[58px] w-full max-w-sm items-center justify-center rounded-[1.6rem] px-8 text-xl font-black text-white disabled:cursor-default disabled:opacity-80"
+      className="tug-action-button relative mx-auto flex min-h-[50px] w-full max-w-xs items-center justify-center rounded-[1.35rem] px-6 text-lg font-black text-white disabled:cursor-default disabled:opacity-80"
       style={{
         background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
         color: "#fff7ed",
-        boxShadow: "0 0 20px rgba(247,201,72,0.34), 0 14px 34px rgba(0,0,0,0.32), inset 0 2px 0 rgba(255,255,255,0.3)",
+        boxShadow: "0 0 14px rgba(247,201,72,0.26), 0 10px 24px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.28)",
         textShadow: "0 2px 10px rgba(90,43,6,0.55)",
       }}
     >
-      <span className="absolute inset-1 rounded-[1.35rem] border border-white/20" />
+      <span className="absolute inset-1 rounded-[1.1rem] border border-white/18" />
       <span className="relative z-10">⚡ {label}</span>
     </motion.button>
   );
@@ -1014,10 +1014,10 @@ function TugArena({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-5 pt-3 shadow-[0_22px_70px_rgba(0,0,0,0.35)] sm:px-5">
+    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-3 pt-2 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
       <StadiumBackdrop active={isPulling} />
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="min-h-[330px] sm:min-h-[430px] lg:min-h-[500px]">
+        <div className="min-h-[285px] sm:min-h-[360px] lg:min-h-[430px]">
           <TugCharacters
             ropePos={ropePos}
             isPulling={isPulling}
@@ -1028,7 +1028,7 @@ function TugArena({
         </div>
         <div className="grid items-end gap-2 lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-3">
           <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
-          <div className="space-y-3">
+          <div className="space-y-2">
             <TugPowerMeter position={ropePos} />
             {children}
           </div>
@@ -1745,7 +1745,7 @@ export default function TugPlay() {
             )}
           </TugArena>
 
-          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full">
+          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-1">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
@@ -1814,11 +1814,11 @@ export default function TugPlay() {
               )}
 
               {phase === "countdown" && (
-                <motion.div key="countdown" className="px-4 py-6 text-center">
+                <motion.div key="countdown" className="px-4 py-4 text-center">
                   {isPowerQ && (
                     <motion.div initial={{ scale: 0 }} animate={{ scale: [1, 1.1, 1] }}
                       transition={{ repeat: Infinity, duration: 0.8 }}
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black px-5 py-2 rounded-2xl shadow-xl text-lg mb-3"
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black px-4 py-1.5 rounded-2xl shadow-lg text-base mb-2"
                     >
                       ⚡ {lang === "ar" ? "سؤال القوة! نقاط مضاعفة!" : "POWER QUESTION! 2x Points!"}
                     </motion.div>
@@ -1828,8 +1828,8 @@ export default function TugPlay() {
               )}
 
               {(phase === "question" || phase === "answered" || phase === "round-end") && question && (
-                <motion.div key="question" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-3 lg:px-4 pt-2 pb-3 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
+                <motion.div key="question" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-3 lg:px-4 pt-1 pb-2 flex-1 flex flex-col">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-sm lg:text-base font-black px-3 py-1 rounded-xl text-white"
                         style={{
@@ -1857,7 +1857,7 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`rounded-2xl p-4 lg:p-5 mb-3 text-center border-2 text-white ${
+                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-3 lg:p-4 mb-2 text-center border text-white shadow-md ${
                     phase === "round-end" && roundData
                       ? "border-[#D9A521]/60"
                       : isPowerQ
@@ -1877,7 +1877,7 @@ export default function TugPlay() {
                         ⚡ {lang === "ar" ? "سؤال القوة — نقاط مضاعفة!" : "POWER — 2x!"}
                       </motion.div>
                     )}
-                    <p className="text-xl sm:text-2xl lg:text-3xl font-black leading-relaxed">{question.text}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-black leading-relaxed">{question.text}</p>
                     {phase === "round-end" && roundData && (
                       <p className="text-green-600 dark:text-green-300 text-sm lg:text-base font-bold mt-2">
                         ✅ {question.options[roundData.correctIndex]}
@@ -1885,13 +1885,13 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className="relative grid grid-cols-2 gap-3 lg:gap-4 flex-1">
+                  <div className="relative grid grid-cols-2 gap-2.5 lg:gap-3 flex-1">
                     {question.options.map((opt, idx) => {
                       const os = optionStyle(idx);
                       return (
                         <button key={idx}
                           onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null || phase === "round-end"}
-                          className={`relative flex items-center justify-center gap-3 p-4 lg:p-5 rounded-2xl text-center font-bold text-base sm:text-lg lg:text-xl border-2 overflow-hidden min-h-[70px] lg:min-h-[90px] shadow-lg touch-manipulation select-none transition-colors duration-150 ${os.className}`}
+                          className={`relative flex items-center justify-center gap-2.5 p-3 lg:p-4 rounded-2xl text-center font-bold text-sm sm:text-base lg:text-lg border-2 overflow-hidden min-h-[58px] lg:min-h-[74px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
                           style={{ background: os.bg, borderColor: os.border }}
                         >
                           {os.crossed && (
@@ -1907,7 +1907,7 @@ export default function TugPlay() {
                   </div>
 
                   {phase === "answered" && (
-                    <div className="text-center py-2 px-4 rounded-xl mt-3 font-bold text-base text-white"
+                    <div className="text-center py-1.5 px-4 rounded-xl mt-2 font-bold text-sm text-white"
                       style={{
                         background: answerCorrect ? "rgba(34,87,57,0.55)" : "rgba(122,28,28,0.55)",
                         border: `1.5px solid ${answerCorrect ? "#D9A521" : "#e05555"}`,
@@ -1920,7 +1920,7 @@ export default function TugPlay() {
 
                   {phase === "round-end" && isCreator && (
                     <motion.button whileTap={{ scale: 0.96 }} onClick={handleNext}
-                      className="w-full mt-3 py-3 lg:py-4 rounded-2xl font-black text-lg lg:text-xl shadow-xl text-white"
+                      className="w-full mt-2 py-2.5 lg:py-3 rounded-2xl font-black text-base lg:text-lg shadow-lg text-white"
                       style={{ background: "#D9A521", color: "#1a2e1a" }}
                     >
                       {roundData?.isLast
@@ -1937,21 +1937,21 @@ export default function TugPlay() {
                   initial={{ opacity: 0, y: 18, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="relative px-4 py-6 text-center text-white"
+                  className="relative px-4 py-3 text-center text-white"
                 >
-                  <div className="pointer-events-none absolute inset-x-4 top-2 h-48 rounded-full blur-3xl" style={{ background: "rgba(217,165,33,0.16)" }} />
+                  <div className="pointer-events-none absolute inset-x-4 -top-2 h-40 rounded-full blur-3xl" style={{ background: "rgba(217,165,33,0.14)" }} />
                   {gameEnd.winner === "draw" ? (
                     <>
-                      <div className="relative mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/35 bg-white/8 text-5xl shadow-[0_0_32px_rgba(217,165,33,0.22)] backdrop-blur-md">🤝</div>
-                      <h2 className="text-4xl lg:text-5xl font-black mb-2 text-white">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
-                      <p className="font-bold text-sm mb-5" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
+                      <div className="relative mx-auto mb-2 flex h-20 w-20 items-center justify-center rounded-[1.6rem] border border-amber-300/30 bg-white/8 text-4xl shadow-[0_0_24px_rgba(217,165,33,0.18)] backdrop-blur-md">🤝</div>
+                      <h2 className="text-3xl lg:text-4xl font-black mb-1.5 text-white">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
+                      <p className="font-bold text-sm mb-3" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
                     </>
                   ) : (
                     <>
                       <motion.div
                         animate={{ y: [0, -6, 0], scale: [1, 1.04, 1] }}
                         transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-                        className="relative mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-[2rem] border border-amber-300/40 bg-white/10 text-6xl shadow-[0_0_34px_rgba(217,165,33,0.34),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-md"
+                        className="relative mx-auto mb-2.5 flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-[2rem] border border-amber-300/36 bg-white/10 text-7xl shadow-[0_0_28px_rgba(217,165,33,0.26),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-md"
                       >
                         🏆
                       </motion.div>
@@ -1959,7 +1959,7 @@ export default function TugPlay() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.08, duration: 0.35 }}
-                        className={`text-4xl lg:text-6xl font-black mb-2 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-200" : "text-red-200"}`}
+                        className={`text-3xl lg:text-5xl font-black mb-1.5 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-200" : "text-red-200"}`}
                       >
                         {teamLabel(gameEnd.winner)} {lang === "ar" ? "يفوز!" : "Wins!"}
                       </motion.h2>
@@ -1967,25 +1967,25 @@ export default function TugPlay() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.16, duration: 0.35 }}
-                        className="mb-4 text-sm lg:text-base font-bold text-amber-100/85"
+                        className="mb-2.5 text-sm lg:text-base font-bold text-amber-100/85"
                       >
                         {lang === "ar" ? "أحسنتم! لقد سيطرتم على الحبل" : "Well done! You controlled the rope"}
                       </motion.p>
                       {myTeam === gameEnd.winner && (
                         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 0.9 }}
-                          className="text-amber-300 font-black text-lg lg:text-xl mb-3">
+                          className="text-amber-300 font-black text-base lg:text-lg mb-2">
                           🎉 {lang === "ar" ? "أنت في الفريق الفائز!" : "You're on the winning team!"}
                         </motion.div>
                       )}
                     </>
                   )}
 
-                  <div className="relative rounded-3xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-white shadow-xl"
+                  <div className="relative rounded-3xl p-3 lg:p-4 mb-3 text-start max-h-64 overflow-y-auto text-white shadow-xl"
                     style={{ background: "rgba(3,27,18,0.74)", border: "1.5px solid rgba(217,165,33,0.24)", boxShadow: "0 22px 50px rgba(0,0,0,0.28)" }}>
-                    <h3 className="text-sm lg:text-base font-black text-amber-200 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
-                    <div className="grid grid-cols-2 gap-3 mb-3">
+                    <h3 className="text-sm lg:text-base font-black text-amber-200 mb-2">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
+                    <div className="grid grid-cols-2 gap-2.5 mb-2.5">
                       <div
-                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "blue" ? "p-4 scale-[1.02] border-2 border-amber-300/55" : "p-3 scale-[0.97] border border-blue-200/18 opacity-70"}`}
+                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "blue" ? "p-3 scale-[1.015] border-2 border-amber-300/55" : "p-2.5 scale-[0.97] border border-blue-200/18 opacity-70"}`}
                         style={{
                           background: gameEnd.winner === "blue" ? "linear-gradient(145deg, rgba(29,78,216,0.42), rgba(15,47,122,0.72))" : "rgba(29,78,216,0.14)",
                           boxShadow: gameEnd.winner === "blue" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(59,130,246,0.18)" : "none",
@@ -1997,7 +1997,7 @@ export default function TugPlay() {
                         </p>
                       </div>
                       <div
-                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "red" ? "p-4 scale-[1.02] border-2 border-amber-300/55" : "p-3 scale-[0.97] border border-red-200/18 opacity-70"}`}
+                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "red" ? "p-3 scale-[1.015] border-2 border-amber-300/55" : "p-2.5 scale-[0.97] border border-red-200/18 opacity-70"}`}
                         style={{
                           background: gameEnd.winner === "red" ? "linear-gradient(145deg, rgba(220,38,38,0.42), rgba(127,29,29,0.72))" : "rgba(220,38,38,0.14)",
                           boxShadow: gameEnd.winner === "red" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(248,113,113,0.18)" : "none",
@@ -2012,7 +2012,7 @@ export default function TugPlay() {
                     {[...gameEnd.players].sort((a, b) => b.score - a.score).map((p, i) => (
                       <motion.div key={p.name}
                         initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: i * 0.06 }}
-                        className="flex items-center gap-2.5 py-2.5 px-3 border border-white/10 last:border rounded-xl mb-2 last:mb-0 bg-white/6 hover:bg-white/10"
+                        className="flex items-center gap-2.5 py-2 px-3 border border-white/10 last:border rounded-xl mb-1.5 last:mb-0 bg-white/6 hover:bg-white/10"
                       >
                         <span className={`w-7 text-center font-black text-base lg:text-lg ${i === 0 ? "text-amber-600" : i === 1 ? "text-slate-600" : i === 2 ? "text-orange-600" : "text-slate-500"}`}>
                           {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
