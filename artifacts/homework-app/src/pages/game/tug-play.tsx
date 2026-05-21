@@ -857,13 +857,6 @@ function TugCharacters({
         isCelebrating={isCelebrating}
         winnerSide={winnerSide}
       />
-      <div
-        className={`pointer-events-none absolute left-[11%] right-[11%] top-[52%] h-5 rounded-full opacity-90 shadow-[0_8px_18px_rgba(0,0,0,0.4)] ${isPulling ? "tug-rope-tension" : ""}`}
-        style={{
-          background: "linear-gradient(180deg, #d8a35c 0%, #9a5f27 42%, #6f3f1c 62%, #c88a42 100%)",
-          clipPath: "polygon(0 46%, 10% 39%, 22% 43%, 34% 38%, 48% 47%, 62% 38%, 76% 43%, 90% 39%, 100% 46%, 100% 72%, 0 72%)",
-        }}
-      />
       <div className="pointer-events-none absolute left-1/2 top-[50.5%] z-20 h-12 w-5 -translate-x-1/2 rounded-md bg-red-600 shadow-[0_0_18px_rgba(239,68,68,0.75)]" />
       <div className="pointer-events-none absolute left-1/2 top-[76%] h-24 w-1 -translate-x-1/2 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.8)]" />
       {isPulling && (
