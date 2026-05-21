@@ -305,31 +305,47 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
 
         {/* ─── Hero Banner ─────────────────────────────────────── */}
         <div
-          className="relative overflow-hidden rounded-3xl mb-8"
-          style={{ background: "linear-gradient(135deg, #092b16 0%, #14532d 55%, #1a6638 100%)" }}
+          className="relative overflow-hidden rounded-3xl mb-6"
+          style={{ background: "linear-gradient(135deg, #071f0f 0%, #0f3d21 40%, #14532d 75%, #195e34 100%)" }}
         >
-          {/* Ambient glow orbs */}
-          <div className="pointer-events-none absolute -top-20 -end-20 w-80 h-80 rounded-full opacity-[0.11]"
-               style={{ background: "radial-gradient(circle, #4ade80, transparent 65%)" }} />
-          <div className="pointer-events-none absolute -bottom-14 -start-10 w-60 h-60 rounded-full opacity-[0.07]"
-               style={{ background: "radial-gradient(circle, #fbbf24, transparent 65%)" }} />
-          {/* Dot grid texture */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
-               style={{ backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+          {/* Radial glow — top-end */}
+          <div className="pointer-events-none absolute -top-16 -end-16 w-72 h-72 rounded-full opacity-[0.16]"
+               style={{ background: "radial-gradient(circle, #4ade80, transparent 60%)" }} />
+          {/* Radial glow — bottom-start */}
+          <div className="pointer-events-none absolute -bottom-10 -start-8 w-52 h-52 rounded-full opacity-[0.09]"
+               style={{ background: "radial-gradient(circle, #fbbf24, transparent 60%)" }} />
+          {/* Centre soft elliptical highlight */}
+          <div className="pointer-events-none absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-24 opacity-[0.04]"
+               style={{ background: "radial-gradient(ellipse, #ffffff, transparent 70%)" }} />
+          {/* Dot grid */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.025]"
+               style={{ backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          {/* Top sheen */}
+          <div className="pointer-events-none absolute top-0 inset-x-0 h-px"
+               style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 50%, transparent)" }} />
+          {/* Floating micro-particles */}
+          <div className="pointer-events-none absolute top-[22%] start-[28%] w-1 h-1 rounded-full bg-green-300 opacity-30" />
+          <div className="pointer-events-none absolute top-[65%] start-[18%] w-1.5 h-1.5 rounded-full bg-amber-300 opacity-20" />
+          <div className="pointer-events-none absolute top-[42%] end-[38%] w-1 h-1 rounded-full bg-green-200 opacity-25" />
+          <div className="pointer-events-none absolute bottom-[28%] end-[22%] w-[3px] h-[3px] rounded-full bg-white opacity-15" />
 
-          <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="relative z-10 px-6 py-6 sm:px-10 sm:py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
             {/* Left: title + meta */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(255,255,255,0.13)", backdropFilter: "blur(8px)" }}
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: "rgba(255,255,255,0.13)",
+                    backdropFilter: "blur(8px)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.25)",
+                  }}
                 >
-                  <Monitor className="w-6 h-6 text-white" />
+                  <Monitor className="w-5 h-5 text-white" />
                 </div>
                 {showLock && tier && (
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold"
                     style={{ background: "rgba(217,151,6,0.2)", color: "#fde68a", border: "1px solid rgba(251,191,36,0.25)" }}
                     title={isAr
                       ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
@@ -340,16 +356,16 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight">
+              <h1 className="text-2xl sm:text-[28px] font-black text-white mb-1.5 leading-tight tracking-tight">
                 {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
               </h1>
-              <p className="text-sm sm:text-[15px] text-white/60 mb-5 leading-relaxed max-w-md">
+              <p className="text-[13px] sm:text-sm text-white/55 mb-4 leading-relaxed max-w-sm">
                 {isAr
                   ? "أنشئ عروضاً تفاعلية احترافية بالذكاء الاصطناعي"
                   : "Build professional interactive lessons powered by AI"}
               </p>
               {!isLoading && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {[
                     { icon: <Layers className="w-3 h-3" />, label: isAr ? `${counts.recent} عرض` : `${counts.recent} decks` },
                     { icon: <Globe className="w-3 h-3" />, label: isAr ? `${counts.published} منشور` : `${counts.published} published` },
@@ -357,8 +373,8 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                   ].map((s, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-                      style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold"
+                      style={{ background: "rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
                     >
                       {s.icon}
                       {s.label}
@@ -368,33 +384,64 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               )}
             </div>
 
-            {/* Right: CTAs — عرض جديد · توليد بالذكاء · استيراد ملف */}
-            <div className="flex flex-row sm:flex-col gap-3 w-full sm:w-auto shrink-0">
+            {/* Right: CTAs */}
+            <div className="flex flex-row sm:flex-col gap-2.5 w-full sm:w-auto shrink-0">
+              {/* Primary — عرض جديد */}
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm transition-all duration-200 hover:scale-[1.03] hover:shadow-xl active:scale-[0.97] select-none"
-                style={{ background: "white", color: "#0a4d26", padding: "14px 28px", minWidth: 152 }}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] select-none"
+                style={{
+                  background: "linear-gradient(135deg, #ffffff 0%, #e8f5ec 100%)",
+                  color: "#0a4d26",
+                  padding: "13px 26px",
+                  minWidth: 148,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 6px 28px rgba(0,0,0,0.25), 0 0 18px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.6)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6)";
+                }}
               >
                 <Plus className="w-4 h-4 shrink-0" />
                 {isAr ? "عرض جديد" : "New deck"}
               </button>
+              {/* Secondary — توليد بالذكاء */}
               <button
                 type="button"
                 onClick={() => setLocation("/teacher/presentations/new")}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm border-2 transition-all duration-200 hover:scale-[1.03] hover:bg-amber-400/20 active:scale-[0.97] select-none"
-                style={{ borderColor: "#d97706", color: "#fde68a", background: "rgba(217,119,6,0.14)", padding: "14px 28px", minWidth: 152 }}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm border-2 transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] select-none"
+                style={{
+                  borderColor: "#d97706",
+                  color: "#fde68a",
+                  background: "linear-gradient(135deg, rgba(217,119,6,0.2) 0%, rgba(245,158,11,0.12) 100%)",
+                  padding: "13px 26px",
+                  minWidth: 148,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 6px 24px rgba(0,0,0,0.18), 0 0 18px rgba(245,158,11,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.15)";
+                }}
               >
                 <Sparkles className="w-4 h-4 shrink-0" />
                 {isAr ? "توليد بالذكاء" : "AI generate"}
               </button>
+              {/* Tertiary — استيراد ملف */}
               <button
                 type="button"
                 onClick={() => setShowImport(true)}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold border transition-all duration-200 hover:scale-[1.02] hover:bg-white/15 active:scale-[0.98] select-none"
-                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.07)", padding: "10px 20px", minWidth: 152 }}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl text-[13px] font-medium border transition-all duration-200 hover:scale-[1.02] hover:bg-white/12 active:scale-[0.98] select-none"
+                style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.58)", background: "rgba(255,255,255,0.06)", padding: "9px 18px", minWidth: 148 }}
               >
-                <Upload className="w-4 h-4 shrink-0" />
+                <Upload className="w-3.5 h-3.5 shrink-0" />
                 {isAr ? "استيراد ملف" : "Import file"}
               </button>
             </div>
@@ -429,8 +476,8 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
         </div>
 
         {/* ─── Tabs + Search ───────────────────────────────────── */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-muted/30 border border-border/50 w-full sm:w-fit overflow-x-auto">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-0.5 p-1 rounded-2xl bg-muted/25 border border-border/40 w-full sm:w-fit overflow-x-auto">
             {(
               [
                 { id: "recent", label: isAr ? "الكل" : "All", icon: Clock, count: counts.recent },
@@ -444,18 +491,18 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
                     active
                       ? "text-white shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   }`}
-                  style={active ? { background: BRAND_GREEN } : undefined}
+                  style={active ? { background: BRAND_GREEN, boxShadow: "0 2px 8px rgba(0,0,0,0.15)" } : undefined}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {t.label}
                   <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      active ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                      active ? "bg-white/20 text-white" : "bg-muted/70 text-muted-foreground"
                     }`}
                   >
                     {t.count}
@@ -464,16 +511,16 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               );
             })}
           </div>
-          <div className="relative flex-1 lg:max-w-xs">
+          <div className="relative flex-1 lg:max-w-64">
             <Search
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
+              className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60 pointer-events-none"
               style={{ [isAr ? "right" : "left"]: 12 } as React.CSSProperties}
             />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={isAr ? "ابحث عن عرض..." : "Search presentations..."}
-              className={`${isAr ? "pr-9" : "pl-9"} rounded-2xl bg-card/80 h-10`}
+              className={`${isAr ? "pr-9" : "pl-9"} rounded-2xl bg-background h-10 border-border/40 text-sm shadow-sm`}
             />
           </div>
         </div>
@@ -621,12 +668,12 @@ function PresentationCard({
   for (let i = 0; i < p.title.length; i++) _h = (_h * 31 + p.title.charCodeAt(i)) >>> 0;
 
   const COVER_PALETTES = [
-    { bg: "linear-gradient(135deg, #0a4d26 0%, #166534 55%, #15803d 100%)", accent: "#4ade80", shape: "circles" },
-    { bg: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #3b82f6 100%)", accent: "#93c5fd", shape: "bars"    },
-    { bg: "linear-gradient(135deg, #4a1d96 0%, #5b21b6 55%, #7c3aed 100%)", accent: "#c4b5fd", shape: "dots"    },
-    { bg: "linear-gradient(135deg, #7c2d12 0%, #b45309 55%, #d97706 100%)", accent: "#fde68a", shape: "waves"   },
-    { bg: "linear-gradient(135deg, #134e4a 0%, #0f766e 55%, #0d9488 100%)", accent: "#5eead4", shape: "grid"    },
-    { bg: "linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%)", accent: "#94a3b8", shape: "rects"   },
+    { bg: "linear-gradient(140deg, #064e3b 0%, #065f46 40%, #047857 100%)",  accent: "#6ee7b7", shape: "circles" },
+    { bg: "linear-gradient(125deg, #1e3a8a 0%, #1e40af 45%, #2563eb 100%)",  accent: "#93c5fd", shape: "bars"    },
+    { bg: "linear-gradient(150deg, #3b0764 0%, #4c1d95 45%, #6d28d9 100%)",  accent: "#d8b4fe", shape: "dots"    },
+    { bg: "linear-gradient(130deg, #7c2d12 0%, #9a3412 40%, #b45309 100%)",  accent: "#fcd34d", shape: "waves"   },
+    { bg: "linear-gradient(145deg, #134e4a 0%, #0e5f5a 45%, #0f766e 100%)",  accent: "#5eead4", shape: "grid"    },
+    { bg: "linear-gradient(138deg, #111827 0%, #1e2d3d 45%, #1e3a5f 100%)",  accent: "#93c5fd", shape: "rects"   },
   ];
   const cover = COVER_PALETTES[_h % 6];
   const [editing, setEditing] = useState(false);
@@ -654,90 +701,98 @@ function PresentationCard({
   return (
     <div
       onClick={editing ? undefined : onOpen}
-      className="group relative flex flex-col rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
+      className="group relative flex flex-col rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-2"
       style={{
         background: "var(--card)",
         border: "1px solid rgba(0,0,0,0.07)",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04)",
         cursor: editing ? "default" : "pointer",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow =
-          `0 24px 64px rgba(0,0,0,0.12), 0 0 0 1px ${cover.accent}50`;
+          `0 20px 56px rgba(0,0,0,0.13), 0 4px 16px rgba(0,0,0,0.06), 0 0 0 1.5px ${cover.accent}45`;
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow =
+          "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04)";
       }}
     >
       {/* ── Vibrant cover ─────────────────────────────────── */}
       <div
         className="relative overflow-hidden shrink-0"
-        style={{ height: 168, background: cover.bg }}
+        style={{
+          height: 168,
+          background: cover.bg,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
       >
-        {/* Large background circle */}
+        {/* Main radial glow — top-end */}
         <div
-          className="absolute -top-12 -end-12 w-40 h-40 rounded-full opacity-[0.18]"
-          style={{ background: cover.accent }}
+          className="pointer-events-none absolute -top-10 -end-10 w-44 h-44 rounded-full"
+          style={{ background: `radial-gradient(circle, ${cover.accent}60, transparent 65%)` }}
         />
-        {/* Small secondary circle */}
+        {/* Secondary radial glow — bottom-start */}
         <div
-          className="absolute top-5 start-4 w-5 h-5 rounded-full opacity-[0.14]"
-          style={{ background: cover.accent }}
+          className="pointer-events-none absolute -bottom-8 -start-6 w-32 h-32 rounded-full"
+          style={{ background: `radial-gradient(circle, ${cover.accent}40, transparent 65%)` }}
         />
+        {/* Top sheen line */}
+        <div className="pointer-events-none absolute top-0 inset-x-0 h-px"
+             style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }} />
 
-        {/* Abstract slide-content lines (top area) */}
-        <div className="absolute top-7 start-5 end-20 space-y-2 opacity-[0.22]">
-          <div className="h-2.5 rounded-full" style={{ background: cover.accent, width: "72%" }} />
-          <div className="h-1.5 rounded-full" style={{ background: cover.accent, width: "50%" }} />
+        {/* Mock slide-content lines */}
+        <div className="absolute top-6 start-4 end-20 space-y-2 opacity-[0.32]">
+          <div className="h-2.5 rounded-full" style={{ background: cover.accent, width: "68%" }} />
+          <div className="h-1.5 rounded-full" style={{ background: cover.accent, width: "46%" }} />
         </div>
 
         {/* Decorative element — varies per shape type */}
         {cover.shape === "bars" && (
-          <div className="absolute bottom-10 end-5 flex items-end gap-1 opacity-[0.22]">
+          <div className="absolute bottom-10 end-5 flex items-end gap-1 opacity-[0.30]">
             {[42, 68, 52, 78, 58, 70].map((h, i) => (
               <div key={i} className="w-2.5 rounded-t-sm" style={{ height: h * 0.38, background: cover.accent }} />
             ))}
           </div>
         )}
         {cover.shape === "circles" && (
-          <div className="absolute bottom-8 end-5 opacity-[0.18]">
+          <div className="absolute bottom-8 end-5 opacity-[0.26]">
             <div className="w-14 h-14 rounded-full border-[3px]" style={{ borderColor: cover.accent }} />
             <div className="w-7 h-7 rounded-full border-2 absolute top-[15%] start-[15%]" style={{ borderColor: cover.accent }} />
           </div>
         )}
         {cover.shape === "dots" && (
-          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1.5 opacity-[0.22]">
+          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1.5 opacity-[0.30]">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="w-3 h-3 rounded-full" style={{ background: cover.accent }} />
             ))}
           </div>
         )}
         {cover.shape === "waves" && (
-          <div className="absolute bottom-9 end-4 start-4 space-y-1.5 opacity-[0.2]">
+          <div className="absolute bottom-9 end-4 start-4 space-y-1.5 opacity-[0.28]">
             {[100, 78, 60].map((w, i) => (
               <div key={i} className="h-1.5 rounded-full" style={{ width: `${w}%`, background: cover.accent }} />
             ))}
           </div>
         )}
         {cover.shape === "grid" && (
-          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1 opacity-[0.18]">
+          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1 opacity-[0.26]">
             {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="w-3 h-3 rounded-sm" style={{ background: cover.accent }} />
             ))}
           </div>
         )}
         {cover.shape === "rects" && (
-          <div className="absolute bottom-8 end-5 flex gap-2 opacity-[0.18]">
+          <div className="absolute bottom-8 end-5 flex gap-2 opacity-[0.26]">
             {[{ w: 28, h: 20 }, { w: 18, h: 28 }, { w: 22, h: 14 }].map((r, i) => (
               <div key={i} className="rounded-md" style={{ width: r.w, height: r.h, background: cover.accent }} />
             ))}
           </div>
         )}
 
-        {/* Title overlay — bottom gradient strip */}
-        <div className="absolute bottom-0 inset-x-0 px-3.5 pt-6 pb-2.5"
-             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)" }}>
-          <p className="text-white text-[11px] font-bold leading-tight line-clamp-2 opacity-90" dir="auto">
+        {/* Title overlay — deep gradient strip */}
+        <div className="absolute bottom-0 inset-x-0 px-3.5 pt-8 pb-3"
+             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.28) 55%, transparent 100%)" }}>
+          <p className="text-white text-xs font-bold leading-tight line-clamp-2" dir="auto">
             {p.title}
           </p>
         </div>
@@ -775,9 +830,9 @@ function PresentationCard({
       </div>
 
       {/* ── Body ─────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 p-4">
+      <div className="flex flex-col flex-1 p-4 pt-3.5">
         {/* Title + menu */}
-        <div className="flex items-start gap-1.5 mb-3">
+        <div className="flex items-start gap-1.5 mb-2.5">
           {editing ? (
             <input
               ref={inputRef}
@@ -796,7 +851,7 @@ function PresentationCard({
             />
           ) : (
             <h3
-              className={`flex-1 text-sm font-bold text-foreground line-clamp-2 leading-snug${isOwner ? " cursor-text select-none" : ""}`}
+              className={`flex-1 text-[14px] font-semibold text-foreground line-clamp-2 leading-[1.4]${isOwner ? " cursor-text select-none" : ""}`}
               onDoubleClick={isOwner ? startEdit : undefined}
               title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
@@ -873,7 +928,11 @@ function PresentationCard({
               onClick={(e) => { e.stopPropagation(); onGoLive(); }}
               disabled={goLiveLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 hover:scale-[1.04] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: `${BRAND_GOLD}1c`, color: "#b45309" }}
+              style={{
+                background: "rgba(234,179,8,0.1)",
+                color: "#92400e",
+                border: "1px solid rgba(234,179,8,0.22)",
+              }}
             >
               {goLiveLoading
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -883,7 +942,7 @@ function PresentationCard({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onResults(); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-muted hover:scale-[1.04] active:scale-[0.97]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground/70 transition-all duration-150 hover:text-foreground hover:bg-muted/70 hover:scale-[1.04] active:scale-[0.97]"
             >
               <BarChart3 className="w-3.5 h-3.5" />
               {isAr ? "نتائج" : "Results"}
@@ -892,17 +951,17 @@ function PresentationCard({
         )}
 
         {/* Footer */}
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto pt-2.5 border-t border-border/40">
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70 mt-auto pt-2.5 border-t border-border/30">
           <span className="inline-flex items-center gap-1 font-medium">
-            <FileText className="w-3 h-3" />
+            <FileText className="w-3 h-3 opacity-60" />
             {p.slideCount} {isAr ? "شريحة" : "slides"}
           </span>
           <span className="inline-flex items-center gap-1 ms-auto font-medium">
-            <Clock className="w-3 h-3" />
+            <Clock className="w-3 h-3 opacity-60" />
             {formatRelative(p.updatedAt, isAr)}
           </span>
           {!isOwner && p.ownerName && (
-            <span className="truncate max-w-[80px] opacity-70" title={p.ownerName}>
+            <span className="truncate max-w-[80px] opacity-60" title={p.ownerName}>
               {p.ownerName}
             </span>
           )}
