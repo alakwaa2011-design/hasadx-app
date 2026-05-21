@@ -885,8 +885,16 @@ function TugPowerMeter({ position }: { position: number }) {
         style={{ boxShadow: "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)" }}
       >
         <div className="relative h-full overflow-hidden rounded-2xl">
-          <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-[#082f8f] via-[#1d4ed8] to-[#60a5fa]" />
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#7f1d1d] via-[#dc2626] to-[#fb7185]" />
+          {/* Blue fills left — shrinks as red wins, grows as blue wins */}
+          <div
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#082f8f] via-[#1d4ed8] to-[#60a5fa]"
+            style={{ width: `${100 - pos}%`, transition: "width 0.55s cubic-bezier(0.25,0.46,0.45,0.94)" }}
+          />
+          {/* Red fills right — shrinks as blue wins, grows as red wins */}
+          <div
+            className="absolute inset-y-0 right-0 bg-gradient-to-l from-[#7f1d1d] via-[#dc2626] to-[#fb7185]"
+            style={{ width: `${pos}%`, transition: "width 0.55s cubic-bezier(0.25,0.46,0.45,0.94)" }}
+          />
           <div className="absolute inset-0 opacity-20"
             style={{ backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.85) 0 8px, transparent 8px 18px)" }}
           />
@@ -1741,11 +1749,17 @@ export default function TugPlay() {
               </div>
             )}
             {(phase === "question" || phase === "answered") && (
-              <TugActionButton label={lang === "ar" ? "اضغط الآن!" : "Press Now!"} disabled />
+              <div className="flex justify-center py-0.5">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-bold text-white/55 backdrop-blur-sm">
+                  {phase === "answered"
+                    ? (lang === "ar" ? "✓ تم الإجابة" : "✓ Answered")
+                    : (lang === "ar" ? "⚡ اضغط الآن" : "⚡ Press Now")}
+                </span>
+              </div>
             )}
           </TugArena>
 
-          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-2">
+          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-3">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
