@@ -311,6 +311,236 @@ Strict order: K → W → content → L.`,
 Mandatory order: E1 → E2 → E3 → E4 → E5.`,
 };
 
+/* ────────────────────────────────────────────────────────────────────────
+   HASAD ACTIVITY VOCABULARY
+   Each interactive slide may carry activityType + gameSuggestion + strategyStage.
+   Use ONLY the values listed here — do NOT invent new types.
+   ──────────────────────────────────────────────────────────────────────── */
+const HASAD_ACTIVITY_VOCAB_AR = `جدول أنواع أنشطة حصاد (استخدم القيم كما هي بالضبط):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+activityType           │ gameSuggestion │ interactionHint │ الوصف
+─────────────────────────────────────────────────────────────────
+"word_cloud"           │ null           │ "activity"      │ سحابة كلمات — الطلاب يكتبون كلمة واحدة
+"discussion_wall"      │ null           │ "discussion"    │ جدار نقاش — ردود مفتوحة
+"live_poll"            │ null           │ "poll"          │ تصويت مباشر بخيارات محدودة
+"quick_quiz"           │ null           │ "quiz"          │ اختبار MCQ بدون لعبة خاصة
+"tug_war"              │ "tug"          │ "quiz"          │ شد الحبل — منافسة فريقين
+"wheel_spin"           │ "wheel"        │ "activity"      │ عجلة عشوائية للتنشيط
+"rocket_race"          │ "rocket"       │ "quiz"          │ سباق صواريخ — MCQ تنافسي سريع
+"millionaire_quiz"     │ "millionaire"  │ "quiz"          │ من سيربح المليون — مراجعة عميقة
+"hack_challenge"       │ "hack"         │ "quiz"          │ تحدي الاختراق — MCQ خاطف
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ استثناء حصري: لهذا العرض يُسمح بتعيين gameSuggestion من القائمة أعلاه — هذا يتجاوز قاعدة "gameSuggestion: null دائمًا" لهذا العرض فقط.`;
+
+const HASAD_ACTIVITY_VOCAB_EN = `Hasad Activity Types — use ONLY these exact values:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+activityType           │ gameSuggestion │ interactionHint │ Description
+─────────────────────────────────────────────────────────────────
+"word_cloud"           │ null           │ "activity"      │ Word cloud — students each submit one word
+"discussion_wall"      │ null           │ "discussion"    │ Discussion wall — open-ended responses
+"live_poll"            │ null           │ "poll"          │ Live poll — limited choice vote
+"quick_quiz"           │ null           │ "quiz"          │ Plain MCQ, no special game launcher
+"tug_war"              │ "tug"          │ "quiz"          │ Tug of war — two-team competition
+"wheel_spin"           │ "wheel"        │ "activity"      │ Spin wheel — random selection/activation
+"rocket_race"          │ "rocket"       │ "quiz"          │ Rocket race — fast competitive MCQ
+"millionaire_quiz"     │ "millionaire"  │ "quiz"          │ Millionaire — deep review quiz
+"hack_challenge"       │ "hack"         │ "quiz"          │ Hack challenge — rapid-fire MCQ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ Special exception: gameSuggestion MAY be set from the list above for this deck — overrides the "gameSuggestion: null always" rule for this deck only.`;
+
+/* Per-strategy activity maps — compact assignment tables for each interactive slide. */
+const STRATEGY_ACTIVITY_MAPS_AR: Partial<Record<EducationalStrategy, string>> = {
+  active_learning:
+`خريطة أنشطة التعلم النشط:
+  [تنشيط أولي]   activityType: "word_cloud",   gameSuggestion: null,     strategyStage: "activation"
+  [تحقق منتصف]  activityType: "tug_war",       gameSuggestion: "tug",    strategyStage: "check"
+  [ختام تنافسي]  activityType: "rocket_race",   gameSuggestion: "rocket", strategyStage: "closure"`,
+
+  cooperative_learning:
+`خريطة أنشطة التعلم التعاوني:
+  [نشاط مجموعات]   activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "group_work"
+  [تحدي جماعي]     activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "challenge"`,
+
+  flipped_classroom:
+`خريطة أنشطة الصف المقلوب:
+  [تشخيص مسبق]   activityType: "live_poll",   gameSuggestion: null,     strategyStage: "diagnosis"
+  [تطبيق صفي]    activityType: "tug_war",     gameSuggestion: "tug",    strategyStage: "application"
+  [ختام]         activityType: "rocket_race", gameSuggestion: "rocket", strategyStage: "closure"`,
+
+  brainstorming:
+`خريطة أنشطة العصف الذهني:
+  [توليد الأفكار]  activityType: "word_cloud",      gameSuggestion: null, strategyStage: "generate"
+  [مشاركة الأفكار] activityType: "discussion_wall", gameSuggestion: null, strategyStage: "discuss"
+  [تقييم الأفكار]  activityType: "live_poll",        gameSuggestion: null, strategyStage: "evaluate"`,
+
+  think_pair_share:
+`خريطة أنشطة فكر-زاوج-شارك (الترتيب إلزامي في كل دورة):
+  [فكر]  activityType: "word_cloud",      gameSuggestion: null,  interactionHint: "activity",   strategyStage: "think"
+  [زاوج] activityType: "discussion_wall", gameSuggestion: null,  interactionHint: "discussion", strategyStage: "pair"
+  [شارك] activityType: "tug_war",         gameSuggestion: "tug", interactionHint: "quiz",       strategyStage: "share"`,
+
+  problem_based:
+`خريطة أنشطة التعلم بالمشكلات:
+  [فرضيات]       activityType: "discussion_wall", gameSuggestion: null,   strategyStage: "hypothesis"
+  [حل مقترح]     activityType: "live_poll",        gameSuggestion: null,   strategyStage: "solution"
+  [تقييم ختامي]  activityType: "hack_challenge",   gameSuggestion: "hack", strategyStage: "evaluation"`,
+
+  project_based:
+`خريطة أنشطة التعلم بالمشاريع:
+  [نشاط إبداعي]   activityType: "discussion_wall", gameSuggestion: null, strategyStage: "creative"
+  [تقييم المشروع] activityType: "quick_quiz",       gameSuggestion: null, strategyStage: "evaluation"`,
+
+  inquiry:
+`خريطة أنشطة التعلم الاستقصائي:
+  [سؤال استفزازي]  activityType: "word_cloud",      gameSuggestion: null, strategyStage: "question"
+  [فرضيات]        activityType: "discussion_wall",  gameSuggestion: null, strategyStage: "hypothesis"
+  [استنتاجات]     activityType: "quick_quiz",        gameSuggestion: null, strategyStage: "conclusion"`,
+
+  scamper:
+`خريطة أنشطة SCAMPER:
+  [S استبدل][A عدّل][P استخدم][R اعكس]  activityType: "word_cloud",      gameSuggestion: null
+  [C اجمع][M عدّل][E احذف]              activityType: "discussion_wall", gameSuggestion: null
+  ضع strategyStage = رمز الخطوة الحرفي: "S"|"C"|"A"|"M"|"P"|"E"|"R"`,
+
+  six_thinking_hats:
+`خريطة أنشطة قبعات التفكير الست:
+  [⬜أبيض][💛صفراء][💚خضراء][💙زرقاء][⬛سوداء]  activityType: "discussion_wall", gameSuggestion: null
+  [❤️حمراء]                                     activityType: "word_cloud",      gameSuggestion: null
+  ضع strategyStage = لون القبعة: "white"|"yellow"|"green"|"blue"|"black"|"red"`,
+
+  "21st_century_skills":
+`خريطة أنشطة مهارات القرن 21:
+  [تفكير نقدي]   activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "critical_thinking"
+  [إبداع]        activityType: "word_cloud",      gameSuggestion: null,  strategyStage: "creativity"
+  [تقييم تنافسي] activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "evaluation"`,
+
+  gamification:
+`خريطة أنشطة التلعيب (≥40% شرائح تفاعلية مع ألعاب حصاد — إلزامي):
+  [تحدي افتتاحي]  activityType: "tug_war",         gameSuggestion: "tug",         strategyStage: "opening_challenge"
+  [جولة منتصف]    activityType: "rocket_race",      gameSuggestion: "rocket",      strategyStage: "mid_round"
+  [دوامة التنشيط] activityType: "wheel_spin",       gameSuggestion: "wheel",       strategyStage: "wheel_challenge"
+  [جولة ختامية]   activityType: "millionaire_quiz", gameSuggestion: "millionaire", strategyStage: "final_round"`,
+
+  differentiated:
+`خريطة أنشطة التعليم المتمايز:
+  [تشخيص مستوى] activityType: "live_poll",  gameSuggestion: null, strategyStage: "diagnosis"
+  [تقييم ختامي]  activityType: "quick_quiz", gameSuggestion: null, strategyStage: "assessment"`,
+
+  concept_maps:
+`خريطة أنشطة خرائط المفاهيم:
+  [ربط المفاهيم]    activityType: "live_poll",  gameSuggestion: null, strategyStage: "connect"
+  [تقييم العلاقات]  activityType: "quick_quiz", gameSuggestion: null, strategyStage: "evaluate"`,
+
+  kwl:
+`خريطة أنشطة KWL (الترتيب إلزامي):
+  [K — ماذا أعرف؟]     activityType: "word_cloud",      gameSuggestion: null,  strategyStage: "know"
+  [W — ماذا أريد؟]     activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "want"
+  [L — ماذا تعلمت؟]    activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "learned"`,
+
+  "5e_model":
+`خريطة أنشطة نموذج 5E (الترتيب إلزامي):
+  [E1 إثارة]   activityType: "word_cloud",      gameSuggestion: null,     strategyStage: "engage"
+  [E2 استكشاف] activityType: "discussion_wall", gameSuggestion: null,     strategyStage: "explore"
+  [E4 تعمق]    activityType: "tug_war",         gameSuggestion: "tug",    strategyStage: "elaborate"
+  [E5 تقييم]   activityType: "rocket_race",     gameSuggestion: "rocket", strategyStage: "evaluate"`,
+};
+
+const STRATEGY_ACTIVITY_MAPS_EN: Partial<Record<EducationalStrategy, string>> = {
+  active_learning:
+`Active Learning Activity Map:
+  [Activation]  activityType: "word_cloud",   gameSuggestion: null,     strategyStage: "activation"
+  [Mid-check]   activityType: "tug_war",       gameSuggestion: "tug",    strategyStage: "check"
+  [Closure]     activityType: "rocket_race",   gameSuggestion: "rocket", strategyStage: "closure"`,
+
+  cooperative_learning:
+`Cooperative Learning Activity Map:
+  [Group work]      activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "group_work"
+  [Team challenge]  activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "challenge"`,
+
+  flipped_classroom:
+`Flipped Classroom Activity Map:
+  [Pre-diagnosis]  activityType: "live_poll",   gameSuggestion: null,     strategyStage: "diagnosis"
+  [Application]    activityType: "tug_war",     gameSuggestion: "tug",    strategyStage: "application"
+  [Closure]        activityType: "rocket_race", gameSuggestion: "rocket", strategyStage: "closure"`,
+
+  brainstorming:
+`Brainstorming Activity Map:
+  [Generate ideas]  activityType: "word_cloud",      gameSuggestion: null, strategyStage: "generate"
+  [Share ideas]     activityType: "discussion_wall", gameSuggestion: null, strategyStage: "discuss"
+  [Evaluate ideas]  activityType: "live_poll",        gameSuggestion: null, strategyStage: "evaluate"`,
+
+  think_pair_share:
+`Think-Pair-Share Activity Map (mandatory order per cycle):
+  [Think] activityType: "word_cloud",      gameSuggestion: null,  interactionHint: "activity",   strategyStage: "think"
+  [Pair]  activityType: "discussion_wall", gameSuggestion: null,  interactionHint: "discussion", strategyStage: "pair"
+  [Share] activityType: "tug_war",         gameSuggestion: "tug", interactionHint: "quiz",       strategyStage: "share"`,
+
+  problem_based:
+`Problem-Based Learning Activity Map:
+  [Hypotheses]   activityType: "discussion_wall", gameSuggestion: null,   strategyStage: "hypothesis"
+  [Solution]     activityType: "live_poll",        gameSuggestion: null,   strategyStage: "solution"
+  [Evaluation]   activityType: "hack_challenge",   gameSuggestion: "hack", strategyStage: "evaluation"`,
+
+  project_based:
+`Project-Based Learning Activity Map:
+  [Creative activity]  activityType: "discussion_wall", gameSuggestion: null, strategyStage: "creative"
+  [Project evaluation] activityType: "quick_quiz",      gameSuggestion: null, strategyStage: "evaluation"`,
+
+  inquiry:
+`Inquiry-Based Learning Activity Map:
+  [Provocative question]  activityType: "word_cloud",      gameSuggestion: null, strategyStage: "question"
+  [Hypotheses]            activityType: "discussion_wall", gameSuggestion: null, strategyStage: "hypothesis"
+  [Conclusions]           activityType: "quick_quiz",       gameSuggestion: null, strategyStage: "conclusion"`,
+
+  scamper:
+`SCAMPER Activity Map:
+  [S Substitute][A Adapt][P Put to use][R Reverse]  activityType: "word_cloud",      gameSuggestion: null
+  [C Combine][M Modify][E Eliminate]                activityType: "discussion_wall", gameSuggestion: null
+  Set strategyStage = the step letter: "S"|"C"|"A"|"M"|"P"|"E"|"R"`,
+
+  six_thinking_hats:
+`Six Thinking Hats Activity Map:
+  [⬜White][💛Yellow][💚Green][💙Blue][⬛Black]  activityType: "discussion_wall", gameSuggestion: null
+  [❤️Red]                                       activityType: "word_cloud",      gameSuggestion: null
+  Set strategyStage = hat color: "white"|"yellow"|"green"|"blue"|"black"|"red"`,
+
+  "21st_century_skills":
+`21st Century Skills Activity Map:
+  [Critical thinking]  activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "critical_thinking"
+  [Creativity]         activityType: "word_cloud",      gameSuggestion: null,  strategyStage: "creativity"
+  [Competitive eval]   activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "evaluation"`,
+
+  gamification:
+`Gamification Activity Map (≥40% interactive slides with Hasad games — MANDATORY):
+  [Opening challenge]  activityType: "tug_war",         gameSuggestion: "tug",         strategyStage: "opening_challenge"
+  [Mid round]          activityType: "rocket_race",      gameSuggestion: "rocket",      strategyStage: "mid_round"
+  [Wheel challenge]    activityType: "wheel_spin",       gameSuggestion: "wheel",       strategyStage: "wheel_challenge"
+  [Final round]        activityType: "millionaire_quiz", gameSuggestion: "millionaire", strategyStage: "final_round"`,
+
+  differentiated:
+`Differentiated Instruction Activity Map:
+  [Level diagnosis]  activityType: "live_poll",  gameSuggestion: null, strategyStage: "diagnosis"
+  [Final assessment] activityType: "quick_quiz", gameSuggestion: null, strategyStage: "assessment"`,
+
+  concept_maps:
+`Concept Maps Activity Map:
+  [Connect concepts]   activityType: "live_poll",  gameSuggestion: null, strategyStage: "connect"
+  [Evaluate relations] activityType: "quick_quiz", gameSuggestion: null, strategyStage: "evaluate"`,
+
+  kwl:
+`KWL Activity Map (mandatory order):
+  [K — What I Know]     activityType: "word_cloud",      gameSuggestion: null,  strategyStage: "know"
+  [W — What I Want]     activityType: "discussion_wall", gameSuggestion: null,  strategyStage: "want"
+  [L — What I Learned]  activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "learned"`,
+
+  "5e_model":
+`5E Model Activity Map (mandatory order):
+  [E1 Engage]    activityType: "word_cloud",      gameSuggestion: null,     strategyStage: "engage"
+  [E2 Explore]   activityType: "discussion_wall", gameSuggestion: null,     strategyStage: "explore"
+  [E4 Elaborate] activityType: "tug_war",         gameSuggestion: "tug",    strategyStage: "elaborate"
+  [E5 Evaluate]  activityType: "rocket_race",     gameSuggestion: "rocket", strategyStage: "evaluate"`,
+};
+
 export function strategyBlockFor(strategy: EducationalStrategy | undefined, lang: OutlineLanguage): string | null {
   if (!strategy || strategy === "none") return null;
   const label = lang === "ar" ? STRATEGY_LABELS_AR[strategy] : STRATEGY_LABELS_EN[strategy];
@@ -318,9 +548,24 @@ export function strategyBlockFor(strategy: EducationalStrategy | undefined, lang
     ? STRATEGY_INSTRUCTIONS_AR[strategy]
     : STRATEGY_INSTRUCTIONS_EN[strategy];
   if (!instructions) return null;
-  return lang === "ar"
-    ? `🎯 الاستراتيجية التعليمية المختارة: ${label}\n\n${instructions}\n\n⚠️ التزام إلزامي: يجب أن تعكس بنية الشرائح وأنواعها وأنشطتها الاستراتيجية أعلاه بشكل واضح وليس مجرد ذكرها.`
-    : `🎯 Selected Educational Strategy: ${label}\n\n${instructions}\n\n⚠️ MANDATORY COMPLIANCE: The slide structure, kinds, and activities MUST visibly reflect the strategy above — not merely mention it.`;
+
+  const vocab = lang === "ar" ? HASAD_ACTIVITY_VOCAB_AR : HASAD_ACTIVITY_VOCAB_EN;
+  const activityMap = lang === "ar"
+    ? STRATEGY_ACTIVITY_MAPS_AR[strategy]
+    : STRATEGY_ACTIVITY_MAPS_EN[strategy];
+
+  const mandatory = lang === "ar"
+    ? `⚠️ إلزامي: عيّن activityType وgameSuggestion وstrategyStage على كل شريحة تفاعلية (kind: interactive) في هذا العرض بالضبط كما هو محدد في خريطة الأنشطة أعلاه. لا تتركها null إذا حددت الخريطة قيمة.`
+    : `⚠️ MANDATORY: Set activityType, gameSuggestion, and strategyStage on every interactive slide (kind: interactive) exactly as specified in the activity map above. Do NOT leave them null if the map specifies a value.`;
+
+  const parts = [
+    lang === "ar" ? `🎯 الاستراتيجية التعليمية: ${label}` : `🎯 Educational Strategy: ${label}`,
+    vocab,
+    instructions,
+    ...(activityMap ? [activityMap] : []),
+    mandatory,
+  ];
+  return parts.join("\n\n");
 }
 
 export interface OutlineToggles {
@@ -745,7 +990,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       ${lim.allowSubtitle ? '"subtitle": "...",\n      ' : ""}"purpose": "...",
       "talkingPoints": ["...", "..."],
       "interactionHint": "poll|quiz|discussion|activity|null",
-      "gameSuggestion": null,
+      "gameSuggestion": "tug|rocket|wheel|millionaire|hack|kahoot|null",
+      "activityType": "word_cloud|discussion_wall|live_poll|quick_quiz|tug_war|wheel_spin|rocket_race|millionaire_quiz|hack_challenge|null",
+      "strategyStage": "...|null",
       "gameQuestions": [
         { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 0 },
         { "prompt": "...", "options": ["...","...","...","..."], "correctIndex": 2 },

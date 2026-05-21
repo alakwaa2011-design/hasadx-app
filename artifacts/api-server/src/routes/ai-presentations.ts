@@ -155,6 +155,8 @@ const outlineSlideCardSchema = z.object({
     layoutHint: z.string().max(200).optional(),
   }),
   source: z.string().max(200).optional(),
+  activityType: z.string().max(40).nullable().optional(),
+  strategyStage: z.string().max(60).nullable().optional(),
 });
 
 const outlineSchema = z.object({

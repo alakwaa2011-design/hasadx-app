@@ -24,6 +24,8 @@ import {
   Plus,
   X,
   Sparkles,
+  Gamepad2,
+  Tag,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
@@ -126,6 +128,22 @@ export function OutlineCard({ slide, onChange, onDelete, allowSubtitle, maxPoint
                   style={{ background: `${BRAND_GOLD}20`, color: BRAND_GOLD }}
                 >
                   <Sparkles className="h-2.5 w-2.5" /> {slide.interactionHint}
+                </span>
+              ) : null}
+              {slide.activityType && slide.activityType !== "null" ? (
+                <span
+                  className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"
+                  style={{ background: "#0ea5e920", color: "#0ea5e9" }}
+                >
+                  <Gamepad2 className="h-2.5 w-2.5" /> {slide.activityType.replace(/_/g, " ")}
+                </span>
+              ) : null}
+              {slide.strategyStage && slide.strategyStage !== "null" ? (
+                <span
+                  className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1"
+                  style={{ background: "#a855f720", color: "#a855f7" }}
+                >
+                  <Tag className="h-2.5 w-2.5" /> {slide.strategyStage.replace(/_/g, " ")}
                 </span>
               ) : null}
             </div>
