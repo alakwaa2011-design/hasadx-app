@@ -1101,6 +1101,10 @@ export interface OutlineSlideCard {
   visualDirection: OutlineVisualDirection;
   /** @maxLength 200 */
   source?: string;
+  /** @maxLength 40 */
+  activityType?: string | null;
+  /** @maxLength 60 */
+  strategyStage?: string | null;
 }
 
 export type OutlineTeachingFlowStageStage =
