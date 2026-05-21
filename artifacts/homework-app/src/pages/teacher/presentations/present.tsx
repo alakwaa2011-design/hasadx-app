@@ -429,6 +429,58 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             pattern={data.pattern}
           />
         )}
+
+        {/* Activity launch button — overlaid at the top corner of the slide
+            so it feels attached to the activity card, not a distant toolbar. */}
+        {(activeGameEl || activeActivityEl) && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              top: 14,
+              [isAr ? "left" : "right"]: 12,
+              zIndex: 25,
+              opacity: showControls ? 1 : 0,
+              transition: "opacity 0.3s",
+            }}
+          >
+            {activeGameEl && (
+              <button
+                type="button"
+                onClick={() => launchActivityRunner(activeGameEl, data.theme)}
+                className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: "rgba(34,87,57,0.92)",
+                  border: "1.5px solid rgba(217,165,33,0.55)",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                <Play className="w-4 h-4 fill-white" />
+                {isAr ? "إطلاق اللعبة الآن" : "Launch game"}
+              </button>
+            )}
+            {activeActivityEl && (
+              <button
+                type="button"
+                onClick={activeActivityEl.gameType ? launchSelectedHasadGame : launchHasadActivity}
+                disabled={isLaunchingActivity}
+                className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{
+                  background: "rgba(217,165,33,0.95)",
+                  color: "#1f2937",
+                  border: "1.5px solid rgba(255,255,255,0.3)",
+                  boxShadow: "0 6px 20px rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(10px)",
+                }}
+              >
+                {isLaunchingActivity
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Rocket className="w-4 h-4" />}
+                {isAr ? "إطلاق اللعبة الآن" : "Launch activity"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -744,39 +796,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {activeGameEl && (
-              <button
-                onClick={() => launchActivityRunner(activeGameEl, data.theme)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95"
-                style={{ background: "#225739", border: "1px solid #D9A52166" }}
-                title={isAr ? "تشغيل النشاط التفاعلي" : "Launch activity"}
-              >
-                <Play className="w-4 h-4 fill-white" />
-                {isAr
-                  ? `نشاط · ${activeGameEl.questions?.length ?? 0} سؤال`
-                  : `Activity · ${activeGameEl.questions?.length ?? 0} Q`}
-              </button>
-            )}
-            {activeActivityEl && (
-              <button
-                onClick={activeActivityEl.gameType ? launchSelectedHasadGame : launchHasadActivity}
-                disabled={isLaunchingActivity}
-                className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{ background: "#D9A521", border: "1px solid #ffffff33", color: "#1f2937" }}
-                title={isAr ? "تشغيل نشاط حصاد" : "Launch Hasad activity"}
-              >
-                {isLaunchingActivity
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : <Rocket className="w-4 h-4" />}
-                {isAr
-                  ? (activeActivityEl.assignmentTitle
-                      ? `تشغيل · ${activeActivityEl.assignmentTitle}`
-                      : "تشغيل النشاط")
-                  : (activeActivityEl.assignmentTitle
-                      ? `Launch · ${activeActivityEl.assignmentTitle}`
-                      : "Launch Activity")}
-              </button>
-            )}
             <button
               onClick={toggleFullscreen}
               className="rounded-full bg-white/10 hover:bg-white/20 text-white p-2"

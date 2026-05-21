@@ -121,6 +121,16 @@ export default function ActivityRunner() {
       className="min-h-screen w-full flex flex-col items-stretch"
       style={bg.cssBackground ? { background: bg.cssBackground, color: textColor } : { color: textColor }}
     >
+      <style>{`
+        @keyframes goldPulse {
+          0%   { box-shadow: 0 0 0 0 rgba(217,165,33,0.55); }
+          60%  { box-shadow: 0 0 0 8px rgba(217,165,33,0); }
+          100% { box-shadow: 0 0 0 0 rgba(217,165,33,0); }
+        }
+        .btn-reveal-ready {
+          animation: goldPulse 1.4s ease-out 1;
+        }
+      `}</style>
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: `${textColor}20` }}>
         <div className="flex items-center gap-3 min-w-0">
@@ -193,14 +203,28 @@ export default function ActivityRunner() {
                 const base = bg.textOnLight ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.08)";
                 const border = bg.textOnLight ? "rgba(31,41,55,0.18)" : "rgba(255,255,255,0.20)";
                 let style: React.CSSProperties = { background: base, borderColor: border, color: textColor };
-                if (showAsCorrect) style = { background: "#16a34a", borderColor: "#16a34a", color: "white" };
-                else if (showAsWrong) style = { background: "#b91c1c", borderColor: "#b91c1c", color: "white" };
+                if (showAsCorrect) style = {
+                  background: "#16a34a", borderColor: "#16a34a", color: "white",
+                  boxShadow: "0 0 18px rgba(22,163,74,0.45)",
+                };
+                else if (showAsWrong) style = {
+                  background: bg.textOnLight ? "rgba(185,28,28,0.12)" : "rgba(185,28,28,0.25)",
+                  borderColor: "rgba(185,28,28,0.4)",
+                  color: textColor,
+                  opacity: 0.45,
+                  filter: "saturate(0.5)",
+                };
+                else if (revealed) style = {
+                  background: base, borderColor: border, color: textColor,
+                  opacity: 0.45,
+                  filter: "saturate(0.5)",
+                };
                 return (
                   <button
                     key={i}
                     onClick={() => pick(i)}
                     disabled={revealed}
-                    className="text-start rounded-xl px-4 py-4 border-2 flex items-center gap-3 transition-all hover:scale-[1.01] disabled:cursor-default disabled:hover:scale-100"
+                    className="text-start rounded-xl px-4 py-4 border-2 flex items-center gap-3 transition-all duration-300 hover:scale-[1.01] disabled:cursor-default disabled:hover:scale-100"
                     style={style}
                   >
                     <span
@@ -226,7 +250,11 @@ export default function ActivityRunner() {
                   اختر إجابة لكشف الصحيحة
                 </div>
               ) : (
-                <Button onClick={next} style={{ background: accent, color: "#1c1003" }} className="font-bold">
+                <Button
+                  onClick={next}
+                  style={{ background: accent, color: "#1c1003" }}
+                  className="font-bold btn-reveal-ready"
+                >
                   {isLast ? "إنهاء النشاط" : "السؤال التالي"}
                   <ChevronLeft className="w-4 h-4 ms-1" />
                 </Button>
