@@ -95,6 +95,14 @@ const briefSchema = z.object({
     quiz: z.boolean().default(false),
   }).default({ activities: false, questions: false, poll: false, quiz: false }),
   notes: z.string().trim().max(200).optional(),
+  /* Optional educational strategy — defaults to "none" so existing clients
+     that omit the field continue working exactly as before. */
+  educationalStrategy: z.enum([
+    "none", "active_learning", "cooperative_learning", "flipped_classroom",
+    "brainstorming", "think_pair_share", "problem_based", "project_based",
+    "inquiry", "scamper", "six_thinking_hats", "21st_century_skills",
+    "gamification", "differentiated", "concept_maps", "kwl", "5e_model",
+  ]).default("none"),
 });
 
 /* ── Outline schema (matches the OpenAPI types and the prompt's JSON
