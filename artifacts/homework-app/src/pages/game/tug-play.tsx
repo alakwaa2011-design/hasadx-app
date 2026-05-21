@@ -1217,8 +1217,8 @@ export default function TugPlay() {
 
   return (
     <Layout>
-      <div className="min-h-screen flex flex-col select-none text-gray-900 dark:text-white"
-        style={{ direction: dir, background: "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)" }}
+        <div className="min-h-screen flex flex-col select-none text-gray-900"
+        style={{ direction: dir, background: phase === "finished" ? "linear-gradient(135deg, #f8fafc 0%, #eef6f1 52%, #fff7ed 100%)" : "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)" }}
       >
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
         {countdownNum !== null && <CountdownOverlay count={countdownNum} />}
@@ -1267,79 +1267,6 @@ export default function TugPlay() {
           />
         )}
 
-        <div
-          className="fixed top-2 left-2 z-40 flex items-center gap-2"
-          style={{ direction: "ltr" }}
-        >
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={handleToggleMute}
-            aria-label={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
-            title={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
-            className={`h-12 rounded-2xl flex items-center gap-2 px-3 border-2 shadow-2xl transition-all backdrop-blur-md ${
-              isMuted
-                ? "bg-red-600 hover:bg-red-500 border-red-200 text-white"
-                : "bg-white hover:bg-amber-50 border-amber-300 text-slate-900"
-            }`}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-            <span className="hidden sm:inline text-xs font-black whitespace-nowrap">
-              {isMuted
-                ? (lang === "ar" ? "الصوت مكتوم" : "Muted")
-                : (lang === "ar" ? "الصوت يعمل" : "Sound on")}
-            </span>
-          </motion.button>
-          <div className="relative">
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={() => setShowMusicPicker(!showMusicPicker)}
-              aria-label={lang === "ar" ? "اختيار الموسيقى" : "Music style"}
-              title={lang === "ar" ? "اختيار الموسيقى" : "Music style"}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border-2 shadow-xl transition-all ${
-                isMuted
-                  ? "bg-slate-300 hover:bg-slate-200 border-slate-100 text-slate-500"
-                  : "bg-white hover:bg-amber-50 border-amber-200 text-amber-700"
-              }`}
-            >
-              🎵
-            </motion.button>
-            <AnimatePresence>
-              {showMusicPicker && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowMusicPicker(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: -5 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: -5 }}
-                    className="absolute top-14 left-0 z-50 w-56 bg-slate-800 border border-white/15 rounded-xl shadow-2xl overflow-hidden"
-                    style={{ direction: dir }}
-                  >
-                    <div className="p-1.5 space-y-0.5">
-                      {MUSIC_STYLES.map((s) => (
-                        <button key={s.id}
-                          onClick={() => { handleMusicStyleChange(s.id); setShowMusicPicker(false); }}
-                          className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all ${
-                            musicStyle === s.id && !isMuted
-                              ? "bg-amber-500/30 border border-amber-400/50 text-white"
-                              : "hover:bg-slate-700/50 text-white/80"
-                          }`}
-                        >
-                          <span className="text-base">{s.icon}</span>
-                          <div className="text-start">
-                            <div className="font-black">{lang === "ar" ? s.ar : s.en}</div>
-                            <div className="text-[9px] opacity-60">{lang === "ar" ? s.descAr : s.descEn}</div>
-                          </div>
-                          {musicStyle === s.id && !isMuted && <span className="ms-auto text-amber-300">✓</span>}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
         <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/50 dark:border-white/10 bg-black/20 dark:bg-black/20">
           <div className="flex items-center gap-2">
             <div className="text-xs font-black text-white/60 uppercase tracking-wide">
@@ -1355,6 +1282,76 @@ export default function TugPlay() {
             </motion.button>
           </div>
           <div className="flex items-center gap-2">
+            {/* زر الصوت واضح في أعلى اللعبة لكل من المعلم والطالب */}
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={handleToggleMute}
+              aria-label={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
+              title={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
+              className={`h-10 rounded-xl flex items-center gap-2 px-3 border shadow-lg transition-all ${
+                isMuted
+                  ? "bg-red-600 border-red-300 text-white hover:bg-red-500"
+                  : "bg-white border-amber-300 text-slate-900 hover:bg-amber-50"
+              }`}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              <span className="hidden sm:inline text-xs font-black whitespace-nowrap">
+                {isMuted
+                  ? (lang === "ar" ? "مكتوم" : "Muted")
+                  : (lang === "ar" ? "الصوت" : "Sound")}
+              </span>
+            </motion.button>
+
+            <div className="relative">
+              <motion.button
+                whileTap={{ scale: 0.92 }}
+                onClick={() => setShowMusicPicker(!showMusicPicker)}
+                aria-label={lang === "ar" ? "اختيار الموسيقى" : "Music style"}
+                title={lang === "ar" ? "اختيار الموسيقى" : "Music style"}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border shadow-lg transition-all ${
+                  isMuted
+                    ? "bg-slate-300 border-slate-100 text-slate-500 hover:bg-slate-200"
+                    : "bg-white border-amber-200 text-amber-700 hover:bg-amber-50"
+                }`}
+              >
+                🎵
+              </motion.button>
+              <AnimatePresence>
+                {showMusicPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMusicPicker(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                      className="absolute top-12 end-0 z-50 w-56 bg-slate-800 border border-white/15 rounded-xl shadow-2xl overflow-hidden"
+                      style={{ direction: dir }}
+                    >
+                      <div className="p-1.5 space-y-0.5">
+                        {MUSIC_STYLES.map((s) => (
+                          <button key={s.id}
+                            onClick={() => { handleMusicStyleChange(s.id); setShowMusicPicker(false); }}
+                            className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs transition-all ${
+                              musicStyle === s.id && !isMuted
+                                ? "bg-amber-500/30 border border-amber-400/50 text-white"
+                                : "hover:bg-slate-700/50 text-white/80"
+                            }`}
+                          >
+                            <span className="text-base">{s.icon}</span>
+                            <div className="text-start">
+                              <div className="font-black">{lang === "ar" ? s.ar : s.en}</div>
+                              <div className="text-[9px] opacity-60">{lang === "ar" ? s.descAr : s.descEn}</div>
+                            </div>
+                            {musicStyle === s.id && !isMuted && <span className="ms-auto text-amber-300">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             {myTeam && (
               <motion.div
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -1600,38 +1597,38 @@ export default function TugPlay() {
                   {gameEnd.winner === "draw" ? (
                     <>
                       <div className="text-7xl mb-2">🤝</div>
-                      <h2 className="text-3xl lg:text-4xl font-black mb-1 text-white">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
+                      <h2 className="text-3xl lg:text-4xl font-black mb-1 text-slate-900">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
                       <p className="font-bold text-sm mb-4" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
                     </>
                   ) : (
                     <>
                       <motion.div animate={{ scale: [1, 1.25, 1], rotate: [0, 8, -8, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}
                         className="text-8xl mb-2 inline-block">🏆</motion.div>
-                      <h2 className={`text-3xl lg:text-4xl font-black mb-1 ${gameEnd.winner === "blue" ? "text-blue-600 dark:text-blue-300" : "text-red-600 dark:text-red-300"}`}>
+                      <h2 className={`text-3xl lg:text-4xl font-black mb-1 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-700" : "text-red-700"}`}>
                         {teamLabel(gameEnd.winner)} {lang === "ar" ? "يفوز!" : "Wins!"}
                       </h2>
                       {myTeam === gameEnd.winner && (
                         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 0.9 }}
-                          className="text-amber-600 dark:text-amber-300 font-black text-lg lg:text-xl mb-2">
+                          className="text-amber-700 font-black text-lg lg:text-xl mb-2">
                           🎉 {lang === "ar" ? "أنت في الفريق الفائز!" : "You're on the winning team!"}
                         </motion.div>
                       )}
                     </>
                   )}
 
-                  <div className="rounded-2xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-white"
-                    style={{ background: "rgba(255,255,255,0.08)", border: "1.5px solid rgba(217,165,33,0.3)" }}>
-                    <h3 className="text-sm lg:text-base font-black text-slate-400 dark:text-white/50 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
+                  <div className="rounded-3xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-slate-900 shadow-xl"
+                    style={{ background: "rgba(255,255,255,0.96)", border: "1.5px solid rgba(148,163,184,0.35)" }}>
+                    <h3 className="text-sm lg:text-base font-black text-slate-700 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="bg-blue-500/15 rounded-xl p-3 border border-blue-400/20 text-center">
-                        <p className="text-blue-600 dark:text-blue-300 text-xs lg:text-sm font-black mb-1">{teamLabel("blue")}</p>
-                        <p className="text-2xl lg:text-3xl font-black text-blue-700 dark:text-blue-200">
+                      <div className="rounded-2xl p-3 border-2 border-blue-200 text-center shadow-sm" style={{ background: "#eff6ff" }}>
+                        <p className="text-blue-800 text-xs lg:text-sm font-black mb-1">{teamLabel("blue")}</p>
+                        <p className="text-2xl lg:text-3xl font-black text-blue-900">
                           {[...gameEnd.players].filter(p => p.team === "blue").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
-                      <div className="bg-red-500/15 rounded-xl p-3 border border-red-400/20 text-center">
-                        <p className="text-red-600 dark:text-red-300 text-xs lg:text-sm font-black mb-1">{teamLabel("red")}</p>
-                        <p className="text-2xl lg:text-3xl font-black text-red-700 dark:text-red-200">
+                      <div className="rounded-2xl p-3 border-2 border-red-200 text-center shadow-sm" style={{ background: "#fef2f2" }}>
+                        <p className="text-red-800 text-xs lg:text-sm font-black mb-1">{teamLabel("red")}</p>
+                        <p className="text-2xl lg:text-3xl font-black text-red-900">
                           {[...gameEnd.players].filter(p => p.team === "red").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
@@ -1639,25 +1636,25 @@ export default function TugPlay() {
                     {[...gameEnd.players].sort((a, b) => b.score - a.score).map((p, i) => (
                       <motion.div key={p.name}
                         initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: i * 0.06 }}
-                        className="flex items-center gap-2.5 py-2.5 px-3 border-b border-slate-600/30 dark:border-white/10 last:border-0 rounded-lg hover:bg-slate-700/20 dark:hover:bg-white/5"
+                        className="flex items-center gap-2.5 py-2.5 px-3 border border-slate-200 last:border rounded-xl mb-2 last:mb-0 hover:bg-slate-50"
                       >
-                        <span className={`w-7 text-center font-black text-base lg:text-lg ${i === 0 ? "text-amber-500 dark:text-amber-300" : i === 1 ? "text-slate-500 dark:text-slate-300" : i === 2 ? "text-orange-500 dark:text-orange-400" : "text-slate-500 dark:text-white/30"}`}>
+                        <span className={`w-7 text-center font-black text-base lg:text-lg ${i === 0 ? "text-amber-600" : i === 1 ? "text-slate-600" : i === 2 ? "text-orange-600" : "text-slate-500"}`}>
                           {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
                         </span>
                         <AvatarDisplay avatar={p.avatar} size="3xl" />
-                        <span className={`flex-1 font-bold text-sm lg:text-base ${p.team === "blue" ? "text-blue-700 dark:text-blue-200" : "text-red-700 dark:text-red-200"}`}>{p.name}</span>
-                        <span className={`text-xs lg:text-sm font-bold px-2 py-1 rounded-lg ${p.team === "blue" ? "bg-blue-500/25 text-blue-600 dark:text-blue-300" : "bg-red-500/25 text-red-600 dark:text-red-300"}`}>
+                        <span className={`flex-1 font-bold text-sm lg:text-base ${p.team === "blue" ? "text-blue-900" : "text-red-900"}`}>{p.name}</span>
+                        <span className={`text-xs lg:text-sm font-bold px-2 py-1 rounded-lg border ${p.team === "blue" ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-red-50 text-red-800 border-red-200"}`}>
                           {p.team === "blue" ? (lang === "ar" ? "أزرق" : "Blue") : (lang === "ar" ? "أحمر" : "Red")}
                         </span>
-                        <span className="font-black text-amber-600 dark:text-amber-300 text-base lg:text-lg">{p.score}</span>
+                        <span className="font-black text-amber-700 text-base lg:text-lg">{p.score}</span>
                       </motion.div>
                     ))}
                   </div>
 
                   <div className="flex gap-3">
                     <button onClick={() => setLocation("/")}
-                      className="flex-1 py-3 rounded-xl font-bold text-sm text-white transition-colors"
-                      style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                      className="flex-1 py-3 rounded-xl font-bold text-sm text-slate-800 transition-colors"
+                      style={{ background: "#ffffff", border: "1px solid rgba(148,163,184,0.45)" }}>
                       {lang === "ar" ? "الرئيسية" : "Home"}
                     </button>
                     {isCreator ? (
