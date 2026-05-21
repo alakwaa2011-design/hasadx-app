@@ -309,10 +309,11 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
             </>
           ) : isTired && isPulling ? (
             <>
-              <line x1={headCx - 14} y1={headCenterY - 7} x2={headCx - 4} y2={headCenterY - 4}
-                stroke="#1F2937" strokeWidth={3} strokeLinecap="round" />
-              <line x1={headCx + 4} y1={headCenterY - 4} x2={headCx + 14} y2={headCenterY - 7}
-                stroke="#1F2937" strokeWidth={3} strokeLinecap="round" />
+              {/* Sad/defeated eyebrows — angle inward at top (inner corners raised) */}
+              <line x1={headCx - 14} y1={headCenterY - 5} x2={headCx - 4} y2={headCenterY - 10}
+                stroke="#1F2937" strokeWidth={3.5} strokeLinecap="round" />
+              <line x1={headCx + 4} y1={headCenterY - 10} x2={headCx + 14} y2={headCenterY - 5}
+                stroke="#1F2937" strokeWidth={3.5} strokeLinecap="round" />
               <ellipse cx={headCx - 8 + dir} cy={headCenterY + 1} rx={3.8} ry={3.2} fill={isBlue ? "#2563EB" : "#DC2626"} />
               <ellipse cx={headCx + 8 + dir} cy={headCenterY + 1} rx={3.8} ry={3.2} fill={isBlue ? "#2563EB" : "#DC2626"} />
               <ellipse cx={headCx - 8 + dir} cy={headCenterY + 1.5} rx={2.2} ry={1.8} fill="#111827" />
@@ -320,8 +321,9 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
               {mouthOpen ? (
                 <ellipse cx={headCx} cy={headCenterY + 12} rx={7} ry={5.5} fill="#7F1D1D" />
               ) : (
-                <path d={`M${headCx - 6},${headCenterY + 13} Q${headCx},${headCenterY + 9} ${headCx + 6},${headCenterY + 13}`}
-                  stroke="#1F2937" strokeWidth={2.4} fill="none" strokeLinecap="round" />
+                /* Deeper frown for losing team */
+                <path d={`M${headCx - 7},${headCenterY + 15} Q${headCx},${headCenterY + 8} ${headCx + 7},${headCenterY + 15}`}
+                  stroke="#1F2937" strokeWidth={2.8} fill="none" strokeLinecap="round" />
               )}
               <circle cx={headCx - 14} cy={headCenterY + 4} r={5} fill="#FF9999" opacity={0.35} />
               <circle cx={headCx + 14} cy={headCenterY + 4} r={5} fill="#FF9999" opacity={0.35} />
@@ -368,7 +370,37 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
           )}
         </g>
 
-        <SweatDrops cx={headCx} cy={headCenterY} active={isPulling && (isUrgent || isTired || fatigue > 0.15)} pullCycle={pullCycle} index={index} />
+        <SweatDrops cx={headCx} cy={headCenterY} active={isPulling && !isLosingSide && (isUrgent || isTired || fatigue > 0.15)} pullCycle={pullCycle} index={index} />
+
+        {/* Losing team: watery eyes + falling tears */}
+        {isLosingSide && isPulling && (
+          <g>
+            {/* Blue watery tint over eyes */}
+            <ellipse cx={headCx - 8} cy={headCenterY} rx={5.5} ry={6.2} fill="#93C5FD" opacity={0.25} />
+            <ellipse cx={headCx + 8} cy={headCenterY} rx={5.5} ry={6.2} fill="#93C5FD" opacity={0.25} />
+            {/* Animated tear drops driven by pullCycle */}
+            {[
+              { dx: -7, phase: 0 },
+              { dx: 7, phase: 1.1 },
+            ].map(({ dx, phase }) => {
+              const t = ((pullCycle * 1.1 + phase) % 2.8);
+              const dropY = headCenterY + 7 + t * 7;
+              const opacity = t < 2.2 ? 0.75 - t * 0.2 : 0;
+              if (opacity <= 0) return null;
+              return (
+                <ellipse
+                  key={dx}
+                  cx={headCx + dx}
+                  cy={dropY}
+                  rx={1.6}
+                  ry={2.2}
+                  fill="#93C5FD"
+                  opacity={opacity}
+                />
+              );
+            })}
+          </g>
+        )}
 
         {isUrgent && isPulling && !isTired && (
           <motion.g animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: stagger }}>
@@ -425,9 +457,9 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
   const leftEnd = blue1hand - overhang;
   const rightEnd = red1hand + overhang;
 
-  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.55 : 0;
+  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.18 : 0;
   const tension = Math.abs(slideX) / 80;
-  const sag = isPulling ? 1.4 + (1 - tension) * 2.2 : 3.8;
+  const sag = isPulling ? 0.6 + (1 - tension) * 0.9 : 2.2;
 
   const ropeLen = rightEnd - leftEnd;
   const seg = 30;
