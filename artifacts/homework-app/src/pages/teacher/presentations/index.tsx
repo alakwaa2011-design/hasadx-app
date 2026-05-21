@@ -871,7 +871,7 @@ function PresentationCard({
               {goLiveLoading
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 : <Radio className="w-3.5 h-3.5" />}
-              {isAr ? "مباشر" : "Go live"}
+              {isAr ? "بدء جلسة تفاعلية" : "Start interactive session"}
             </button>
             <button
               type="button"
