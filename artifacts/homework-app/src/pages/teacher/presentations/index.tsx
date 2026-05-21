@@ -390,21 +390,21 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
             </div>
 
             {/* Right: CTAs */}
-            <div className="flex flex-col gap-2 w-full sm:w-auto shrink-0">
+            <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:flex sm:flex-col shrink-0">
               {/* Primary — عرض جديد */}
               <button
                 type="button"
                 onClick={() => setShowCreate(true)}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl font-bold text-sm transition-all duration-200 sm:hover:scale-[1.03] active:scale-[0.98] select-none bg-[#225739] text-white shadow-sm sm:text-[#0a4d26] sm:[background:linear-gradient(135deg,#ffffff_0%,#e8f5ec_100%)] sm:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.6)] px-5 py-3 sm:px-[26px] sm:py-[13px] sm:min-w-[148px]"
+                className="w-full sm:w-auto inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-2xl font-bold text-[11px] sm:text-sm transition-all duration-200 sm:hover:scale-[1.03] active:scale-[0.98] select-none bg-[#225739] text-white shadow-sm sm:text-[#0a4d26] sm:[background:linear-gradient(135deg,#ffffff_0%,#e8f5ec_100%)] sm:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.6)] px-2 py-2.5 sm:px-[26px] sm:py-[13px] sm:min-w-[148px]"
               >
-                <Plus className="w-4 h-4 shrink-0" />
+                <Plus className="w-4 h-4 sm:w-4 sm:h-4 shrink-0" />
                 {isAr ? "عرض جديد" : "New deck"}
               </button>
               {/* Secondary — توليد بالذكاء */}
               <button
                 type="button"
                 onClick={() => setLocation("/teacher/presentations/new")}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl font-bold text-sm border transition-all duration-200 sm:hover:scale-[1.03] active:scale-[0.98] select-none bg-white text-[#225739] border-[#225739]/20 shadow-none sm:border-2 sm:border-[#d97706] sm:text-[#fde68a] sm:[background:linear-gradient(135deg,rgba(217,119,6,0.2)_0%,rgba(245,158,11,0.12)_100%)] sm:shadow-[0_4px_16px_rgba(0,0,0,0.15)] px-5 py-2.5 sm:px-[26px] sm:py-[13px] sm:min-w-[148px]"
+                className="w-full sm:w-auto inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-2xl font-bold text-[11px] sm:text-sm border transition-all duration-200 sm:hover:scale-[1.03] active:scale-[0.98] select-none bg-white text-[#225739] border-[#225739]/20 shadow-none sm:border-2 sm:border-[#d97706] sm:text-[#fde68a] sm:[background:linear-gradient(135deg,rgba(217,119,6,0.2)_0%,rgba(245,158,11,0.12)_100%)] sm:shadow-[0_4px_16px_rgba(0,0,0,0.15)] px-2 py-2.5 sm:px-[26px] sm:py-[13px] sm:min-w-[148px]"
               >
                 <Sparkles className="w-4 h-4 shrink-0" />
                 {isAr ? "توليد بالذكاء" : "AI generate"}
@@ -413,8 +413,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               <button
                 type="button"
                 onClick={() => setShowImport(true)}
-                className="hidden sm:inline-flex sm:flex-none items-center justify-center gap-2 rounded-xl text-[13px] font-medium border transition-all duration-200 hover:scale-[1.02] hover:bg-white/12 active:scale-[0.98] select-none"
-                style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.58)", background: "rgba(255,255,255,0.06)", padding: "9px 18px", minWidth: 148 }}
+                className="inline-flex flex-col sm:flex-row sm:flex-none items-center justify-center gap-1 sm:gap-2 rounded-2xl sm:rounded-xl text-[11px] sm:text-[13px] font-bold sm:font-medium border transition-all duration-200 sm:hover:scale-[1.02] sm:hover:bg-white/12 active:scale-[0.98] select-none bg-white text-[#225739] border-[#225739]/20 px-2 py-2.5 sm:px-[18px] sm:py-[9px] sm:min-w-[148px] sm:bg-white/[0.06] sm:text-white/60 sm:border-white/[0.15]"
               >
                 <Upload className="w-3.5 h-3.5 shrink-0" />
                 {isAr ? "استيراد ملف" : "Import file"}
@@ -649,7 +648,7 @@ function PresentationCard({
   return (
     <div
       onClick={editing ? undefined : onOpen}
-      className="group relative flex flex-col rounded-[20px] sm:rounded-3xl overflow-hidden transition-all duration-300 sm:hover:-translate-y-2"
+      className="group relative flex h-[206px] sm:h-auto flex-col rounded-[20px] sm:rounded-3xl overflow-hidden transition-all duration-300 sm:hover:-translate-y-2"
       style={{
         background: "var(--card)",
         border: "1px solid rgba(0,0,0,0.07)",
@@ -669,7 +668,7 @@ function PresentationCard({
     >
       {/* ── Vibrant cover ─────────────────────────────────── */}
       <div
-        className="relative h-[132px] sm:h-[168px] overflow-hidden shrink-0"
+        className="relative h-[110px] sm:h-[168px] overflow-hidden shrink-0"
         style={{
           background: cover.bg,
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
@@ -690,9 +689,9 @@ function PresentationCard({
              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }} />
 
         {/* Mock slide-content lines */}
-        <div className="absolute top-5 sm:top-6 start-4 end-20 space-y-2 opacity-[0.22] sm:opacity-[0.32]">
-          <div className="h-2.5 rounded-full" style={{ background: cover.accent, width: "68%" }} />
-          <div className="h-1.5 rounded-full" style={{ background: cover.accent, width: "46%" }} />
+        <div className="absolute top-4 sm:top-6 start-4 end-20 space-y-1.5 sm:space-y-2 opacity-[0.20] sm:opacity-[0.32]">
+          <div className="h-2 sm:h-2.5 rounded-full" style={{ background: cover.accent, width: "68%" }} />
+          <div className="h-1 sm:h-1.5 rounded-full" style={{ background: cover.accent, width: "46%" }} />
         </div>
 
         {/* Decorative element — varies per shape type */}
@@ -750,14 +749,14 @@ function PresentationCard({
         <div className="absolute inset-x-0 top-0 flex items-start justify-between px-3 pt-2.5">
           {isPublished ? (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-bold shadow-sm"
+              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-bold shadow-sm"
               style={{ background: "rgba(255,255,255,0.92)", color: BRAND_GREEN }}
             >
               <Globe className="w-2.5 h-2.5" />
               {isAr ? "منشور" : "Published"}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-black/25 text-white/85">
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-black/25 text-white/85">
               {isAr ? "مسودة" : "Draft"}
             </span>
           )}
@@ -779,9 +778,9 @@ function PresentationCard({
       </div>
 
       {/* ── Body ─────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 px-3.5 py-3 sm:p-4 sm:pt-3.5">
+      <div className="flex min-h-0 flex-col flex-1 px-3 py-2.5 sm:p-4 sm:pt-3.5">
         {/* Title + menu */}
-        <div className="flex items-start gap-1.5 mb-2">
+        <div className="flex items-start gap-1.5 mb-1">
           {editing ? (
             <input
               ref={inputRef}
@@ -800,7 +799,7 @@ function PresentationCard({
             />
           ) : (
             <h3
-              className={`flex-1 text-[14px] font-semibold text-foreground line-clamp-1 sm:line-clamp-2 leading-[1.35] sm:leading-[1.4]${isOwner ? " cursor-text select-none" : ""}`}
+              className={`flex-1 text-[13px] sm:text-[14px] font-semibold text-foreground line-clamp-1 sm:line-clamp-2 leading-[1.25] sm:leading-[1.4]${isOwner ? " cursor-text select-none" : ""}`}
               onDoubleClick={isOwner ? startEdit : undefined}
               title={isOwner ? (isAr ? "انقر مرتين لتغيير الاسم" : "Double-click to rename") : undefined}
             >
@@ -812,7 +811,7 @@ function PresentationCard({
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-0.5"
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-0.5"
                   aria-label={isAr ? "إجراءات" : "Actions"}
                 >
                   <MoreVertical className="w-3.5 h-3.5" />
@@ -872,9 +871,9 @@ function PresentationCard({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpen(); }}
-          className="sm:hidden mb-2 inline-flex w-fit items-center gap-1.5 rounded-xl border border-[#225739]/12 bg-[#f1f7f3] px-2.5 py-1 text-[11px] font-bold text-[#225739]"
+          className="sm:hidden mb-1.5 inline-flex w-fit items-center gap-1 rounded-lg border border-[#225739]/12 bg-[#f1f7f3] px-2 py-0.5 text-[10px] font-bold text-[#225739]"
         >
-          <Pencil className="w-3 h-3" />
+          <Pencil className="w-2.5 h-2.5" />
           {isAr ? "فتح المحرر" : "Open editor"}
         </button>
 
@@ -909,17 +908,26 @@ function PresentationCard({
         )}
 
         {/* Footer */}
-        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-muted-foreground/70 mt-auto pt-2 border-t border-border/20 sm:pt-2.5 sm:border-border/30">
-          <span className="inline-flex items-center gap-1 font-medium">
-            <FileText className="w-3 h-3 opacity-60" />
+        <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] text-muted-foreground/70 mt-auto pt-1.5 border-t border-border/20 sm:gap-2 sm:pt-2.5 sm:border-border/30">
+          <span className="inline-flex items-center gap-0.5 sm:gap-1 font-medium">
+            <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-60" />
             {p.slideCount} {isAr ? "شريحة" : "slides"}
           </span>
-          <span className="inline-flex items-center gap-1 ms-auto font-medium">
-            <Clock className="w-3 h-3 opacity-60" />
+          <span className="inline-flex items-center gap-0.5 sm:gap-1 ms-auto font-medium">
+            <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-60" />
             {formatRelative(p.updatedAt, isAr)}
           </span>
+          <span
+            className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold sm:hidden"
+            style={{
+              background: isPublished ? "#edf7f1" : "#f4f4f5",
+              color: isPublished ? BRAND_GREEN : "#71717a",
+            }}
+          >
+            {isPublished ? (isAr ? "منشور" : "Live") : (isAr ? "مسودة" : "Draft")}
+          </span>
           {!isOwner && p.ownerName && (
-            <span className="truncate max-w-[80px] opacity-60" title={p.ownerName}>
+            <span className="hidden sm:inline truncate max-w-[80px] opacity-60" title={p.ownerName}>
               {p.ownerName}
             </span>
           )}
