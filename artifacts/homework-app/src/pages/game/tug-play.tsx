@@ -401,16 +401,16 @@ class TugSoundEngine {
 function Confetti({ color }: { color: string }) {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
-      {Array.from({ length: 100 }, (_, i) => (
+      {Array.from({ length: 42 }, (_, i) => (
         <motion.div key={i}
-          initial={{ y: -30, x: `${Math.random() * 100}vw`, opacity: 1, rotate: 0 }}
-          animate={{ y: "115vh", rotate: Math.random() * 900 - 450, opacity: [1, 1, 1, 0] }}
-          transition={{ duration: 3 + Math.random() * 3, delay: Math.random() * 1.5, ease: "easeIn" }}
+          initial={{ y: -24, x: `${Math.random() * 100}vw`, opacity: 0.85, rotate: 0 }}
+          animate={{ y: "105vh", rotate: Math.random() * 420 - 210, opacity: [0.85, 0.75, 0] }}
+          transition={{ duration: 3.2 + Math.random() * 1.6, delay: Math.random() * 1.1, ease: "easeIn" }}
           style={{
             position: "absolute",
-            width: 8 + Math.random() * 10, height: 8 + Math.random() * 10,
+            width: 5 + Math.random() * 7, height: 5 + Math.random() * 7,
             borderRadius: Math.random() > 0.4 ? "50%" : "2px",
-            backgroundColor: [color, "#fbbf24", "#f9fafb", "#a78bfa", "#34d399", "#f472b6"][i % 6],
+            backgroundColor: [color, "#D9A521", "#fef3c7", "#34d399"][i % 4],
           }}
         />
       ))}
@@ -1547,7 +1547,12 @@ export default function TugPlay() {
   return (
     <Layout>
         <div className="min-h-screen flex flex-col select-none text-gray-900"
-        style={{ direction: dir, background: phase === "finished" ? "linear-gradient(135deg, #f8fafc 0%, #eef6f1 52%, #fff7ed 100%)" : "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)" }}
+        style={{
+          direction: dir,
+          background: phase === "finished"
+            ? "radial-gradient(circle at 50% 8%, rgba(217,165,33,0.22), transparent 34%), linear-gradient(135deg, #031b12 0%, #062d1b 54%, #0a4d26 100%)"
+            : "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)",
+        }}
       >
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
         {countdownNum !== null && <CountdownOverlay count={countdownNum} />}
@@ -1927,42 +1932,79 @@ export default function TugPlay() {
               )}
 
               {phase === "finished" && gameEnd && (
-                <motion.div key="finished" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="px-4 py-6 text-center">
+                <motion.div
+                  key="finished"
+                  initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                  className="relative px-4 py-6 text-center text-white"
+                >
+                  <div className="pointer-events-none absolute inset-x-4 top-2 h-48 rounded-full blur-3xl" style={{ background: "rgba(217,165,33,0.16)" }} />
                   {gameEnd.winner === "draw" ? (
                     <>
-                      <div className="text-7xl mb-2">🤝</div>
-                      <h2 className="text-3xl lg:text-4xl font-black mb-1 text-slate-900">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
-                      <p className="font-bold text-sm mb-4" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
+                      <div className="relative mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] border border-amber-300/35 bg-white/8 text-5xl shadow-[0_0_32px_rgba(217,165,33,0.22)] backdrop-blur-md">🤝</div>
+                      <h2 className="text-4xl lg:text-5xl font-black mb-2 text-white">{lang === "ar" ? "تعادل رائع!" : "Great Draw!"}</h2>
+                      <p className="font-bold text-sm mb-5" style={{ color: "#D9A521" }}>{lang === "ar" ? "الفريقان متكافئان!" : "Both teams are equal!"}</p>
                     </>
                   ) : (
                     <>
-                      <motion.div animate={{ scale: [1, 1.25, 1], rotate: [0, 8, -8, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}
-                        className="text-8xl mb-2 inline-block">🏆</motion.div>
-                      <h2 className={`text-3xl lg:text-4xl font-black mb-1 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-700" : "text-red-700"}`}>
+                      <motion.div
+                        animate={{ y: [0, -6, 0], scale: [1, 1.04, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                        className="relative mx-auto mb-4 flex h-28 w-28 items-center justify-center rounded-[2rem] border border-amber-300/40 bg-white/10 text-6xl shadow-[0_0_34px_rgba(217,165,33,0.34),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-md"
+                      >
+                        🏆
+                      </motion.div>
+                      <motion.h2
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08, duration: 0.35 }}
+                        className={`text-4xl lg:text-6xl font-black mb-2 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-200" : "text-red-200"}`}
+                      >
                         {teamLabel(gameEnd.winner)} {lang === "ar" ? "يفوز!" : "Wins!"}
-                      </h2>
+                      </motion.h2>
+                      <motion.p
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.16, duration: 0.35 }}
+                        className="mb-4 text-sm lg:text-base font-bold text-amber-100/85"
+                      >
+                        {lang === "ar" ? "أحسنتم! لقد سيطرتم على الحبل" : "Well done! You controlled the rope"}
+                      </motion.p>
                       {myTeam === gameEnd.winner && (
                         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 0.9 }}
-                          className="text-amber-700 font-black text-lg lg:text-xl mb-2">
+                          className="text-amber-300 font-black text-lg lg:text-xl mb-3">
                           🎉 {lang === "ar" ? "أنت في الفريق الفائز!" : "You're on the winning team!"}
                         </motion.div>
                       )}
                     </>
                   )}
 
-                  <div className="rounded-3xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-slate-900 shadow-xl"
-                    style={{ background: "rgba(255,255,255,0.96)", border: "1.5px solid rgba(148,163,184,0.35)" }}>
-                    <h3 className="text-sm lg:text-base font-black text-slate-700 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
+                  <div className="relative rounded-3xl p-4 lg:p-5 mb-5 text-start max-h-72 overflow-y-auto text-white shadow-xl"
+                    style={{ background: "rgba(3,27,18,0.74)", border: "1.5px solid rgba(217,165,33,0.24)", boxShadow: "0 22px 50px rgba(0,0,0,0.28)" }}>
+                    <h3 className="text-sm lg:text-base font-black text-amber-200 mb-3">{lang === "ar" ? "🏅 الترتيب النهائي" : "🏅 Final Rankings"}</h3>
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="rounded-2xl p-3 border-2 border-blue-200 text-center shadow-sm" style={{ background: "#eff6ff" }}>
-                        <p className="text-blue-800 text-xs lg:text-sm font-black mb-1">{teamLabel("blue")}</p>
-                        <p className="text-2xl lg:text-3xl font-black text-blue-900">
+                      <div
+                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "blue" ? "p-4 scale-[1.02] border-2 border-amber-300/55" : "p-3 scale-[0.97] border border-blue-200/18 opacity-70"}`}
+                        style={{
+                          background: gameEnd.winner === "blue" ? "linear-gradient(145deg, rgba(29,78,216,0.42), rgba(15,47,122,0.72))" : "rgba(29,78,216,0.14)",
+                          boxShadow: gameEnd.winner === "blue" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(59,130,246,0.18)" : "none",
+                        }}
+                      >
+                        <p className="text-blue-100 text-xs lg:text-sm font-black mb-1">{teamLabel("blue")}</p>
+                        <p className="text-2xl lg:text-4xl font-black text-white">
                           {[...gameEnd.players].filter(p => p.team === "blue").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
-                      <div className="rounded-2xl p-3 border-2 border-red-200 text-center shadow-sm" style={{ background: "#fef2f2" }}>
-                        <p className="text-red-800 text-xs lg:text-sm font-black mb-1">{teamLabel("red")}</p>
-                        <p className="text-2xl lg:text-3xl font-black text-red-900">
+                      <div
+                        className={`rounded-2xl text-center transition-all ${gameEnd.winner === "red" ? "p-4 scale-[1.02] border-2 border-amber-300/55" : "p-3 scale-[0.97] border border-red-200/18 opacity-70"}`}
+                        style={{
+                          background: gameEnd.winner === "red" ? "linear-gradient(145deg, rgba(220,38,38,0.42), rgba(127,29,29,0.72))" : "rgba(220,38,38,0.14)",
+                          boxShadow: gameEnd.winner === "red" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(248,113,113,0.18)" : "none",
+                        }}
+                      >
+                        <p className="text-red-100 text-xs lg:text-sm font-black mb-1">{teamLabel("red")}</p>
+                        <p className="text-2xl lg:text-4xl font-black text-white">
                           {[...gameEnd.players].filter(p => p.team === "red").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
@@ -1970,17 +2012,17 @@ export default function TugPlay() {
                     {[...gameEnd.players].sort((a, b) => b.score - a.score).map((p, i) => (
                       <motion.div key={p.name}
                         initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: i * 0.06 }}
-                        className="flex items-center gap-2.5 py-2.5 px-3 border border-slate-200 last:border rounded-xl mb-2 last:mb-0 hover:bg-slate-50"
+                        className="flex items-center gap-2.5 py-2.5 px-3 border border-white/10 last:border rounded-xl mb-2 last:mb-0 bg-white/6 hover:bg-white/10"
                       >
                         <span className={`w-7 text-center font-black text-base lg:text-lg ${i === 0 ? "text-amber-600" : i === 1 ? "text-slate-600" : i === 2 ? "text-orange-600" : "text-slate-500"}`}>
                           {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
                         </span>
                         <AvatarDisplay avatar={p.avatar} size="3xl" />
-                        <span className={`flex-1 font-bold text-sm lg:text-base ${p.team === "blue" ? "text-blue-900" : "text-red-900"}`}>{p.name}</span>
-                        <span className={`text-xs lg:text-sm font-bold px-2 py-1 rounded-lg border ${p.team === "blue" ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-red-50 text-red-800 border-red-200"}`}>
+                        <span className={`flex-1 font-bold text-sm lg:text-base ${p.team === "blue" ? "text-blue-100" : "text-red-100"}`}>{p.name}</span>
+                        <span className={`text-xs lg:text-sm font-bold px-2 py-1 rounded-lg border ${p.team === "blue" ? "bg-blue-500/18 text-blue-100 border-blue-200/20" : "bg-red-500/18 text-red-100 border-red-200/20"}`}>
                           {p.team === "blue" ? (lang === "ar" ? "أزرق" : "Blue") : (lang === "ar" ? "أحمر" : "Red")}
                         </span>
-                        <span className="font-black text-amber-700 text-base lg:text-lg">{p.score}</span>
+                        <span className="font-black text-amber-300 text-base lg:text-lg">{p.score}</span>
                       </motion.div>
                     ))}
                   </div>
