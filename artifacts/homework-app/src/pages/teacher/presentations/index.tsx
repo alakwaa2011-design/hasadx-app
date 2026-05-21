@@ -74,6 +74,8 @@ import {
   Radio,
   Upload,
   FileUp,
+  Layers,
+  BookOpen,
 } from "lucide-react";
 
 const BRAND_GREEN = "#225739";
@@ -301,111 +303,170 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
   const presentationsInner = (
     <>
     <div className={embedded ? "py-4" : "container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-6xl"} dir={isAr ? "rtl" : "ltr"}>
-        {/* Header — معلوماتي فقط، بدون أزرار إجراء */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${BRAND_GREEN}10`, color: BRAND_GREEN }}
-            >
-              <Monitor className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-foreground leading-tight flex items-center gap-2 flex-wrap">
-                {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
+
+        {/* ─── Hero Banner ─────────────────────────────────────── */}
+        <div
+          className="relative overflow-hidden rounded-3xl mb-8"
+          style={{ background: "linear-gradient(135deg, #092b16 0%, #14532d 55%, #1a6638 100%)" }}
+        >
+          {/* Ambient glow orbs */}
+          <div className="pointer-events-none absolute -top-20 -end-20 w-80 h-80 rounded-full opacity-[0.11]"
+               style={{ background: "radial-gradient(circle, #4ade80, transparent 65%)" }} />
+          <div className="pointer-events-none absolute -bottom-14 -start-10 w-60 h-60 rounded-full opacity-[0.07]"
+               style={{ background: "radial-gradient(circle, #fbbf24, transparent 65%)" }} />
+          {/* Dot grid texture */}
+          <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
+               style={{ backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
+
+          <div className="relative z-10 px-6 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            {/* Left: title + meta */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ background: "rgba(255,255,255,0.13)", backdropFilter: "blur(8px)" }}
+                >
+                  <Monitor className="w-6 h-6 text-white" />
+                </div>
                 {showLock && tier && (
                   <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border"
-                    style={{ color: BRAND_GREEN, borderColor: `${BRAND_GOLD}80`, background: `${BRAND_GOLD}10` }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                    style={{ background: "rgba(217,151,6,0.2)", color: "#fde68a", border: "1px solid rgba(251,191,36,0.25)" }}
                     title={isAr
                       ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
                       : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`}
                   >
-                    <Lock className="w-2.5 h-2.5" />
-                    {isAr ? "مجاني" : "Free"}
+                    <Lock className="w-3 h-3" />
+                    {isAr ? "باقة مجانية" : "Free plan"}
                   </span>
                 )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight">
+                {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {!isLoading && (
-                  <>
-                    <span className="font-semibold text-foreground">{counts.recent}</span>
-                    {" "}{isAr ? `عرض · ${counts.published} منشور · ${counts.drafts} مسودة` : `deck${counts.recent !== 1 ? "s" : ""} · ${counts.published} published · ${counts.drafts} draft${counts.drafts !== 1 ? "s" : ""}`}
-                  </>
-                )}
+              <p className="text-sm sm:text-[15px] text-white/60 mb-5 leading-relaxed max-w-md">
+                {isAr
+                  ? "أنشئ عروضاً تفاعلية احترافية بالذكاء الاصطناعي"
+                  : "Build professional interactive lessons powered by AI"}
               </p>
+              {!isLoading && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { icon: <Layers className="w-3 h-3" />, label: isAr ? `${counts.recent} عرض` : `${counts.recent} decks` },
+                    { icon: <Globe className="w-3 h-3" />, label: isAr ? `${counts.published} منشور` : `${counts.published} published` },
+                    { icon: <FileText className="w-3 h-3" />, label: isAr ? `${counts.drafts} مسودة` : `${counts.drafts} drafts` },
+                  ].map((s, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
+                    >
+                      {s.icon}
+                      {s.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right: primary CTAs */}
+            <div className="flex flex-row sm:flex-col gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm transition-all duration-200 hover:scale-[1.03] hover:shadow-xl active:scale-[0.97] select-none"
+                style={{ background: "white", color: "#0a4d26", padding: "14px 28px", minWidth: 152 }}
+              >
+                <Plus className="w-4 h-4 shrink-0" />
+                {isAr ? "عرض جديد" : "New deck"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocation("/teacher/presentations/new")}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 rounded-2xl font-bold text-sm border-2 transition-all duration-200 hover:scale-[1.03] hover:bg-amber-400/20 active:scale-[0.97] select-none"
+                style={{ borderColor: "#d97706", color: "#fde68a", background: "rgba(217,119,6,0.14)", padding: "14px 28px", minWidth: 152 }}
+              >
+                <Sparkles className="w-4 h-4 shrink-0" />
+                {isAr ? "توليد بالذكاء" : "AI generate"}
+              </button>
             </div>
           </div>
         </div>
 
-        {/* ── ابدأ بسرعة ─────────────────────────────────── */}
+        {/* ─── Quick Actions ───────────────────────────────────── */}
         <div className="mb-8">
-          <h2 className="text-sm font-bold text-muted-foreground mb-3 tracking-wide">
+          <h2 className="text-[11px] font-bold text-muted-foreground mb-3 tracking-[0.12em] uppercase ps-1">
             {isAr ? "ابدأ بسرعة" : "Quick start"}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* عرض جديد */}
-            <button
-              type="button"
-              onClick={() => setShowCreate(true)}
-              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-[#225739]/40 hover:bg-[#225739]/[0.03] hover:shadow-sm active:scale-[0.99]"
-            >
-              <span
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-105"
-                style={{ background: `${BRAND_GREEN}12`, color: BRAND_GREEN }}
-              >
-                <Plus className="w-5 h-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground leading-tight">
-                  {isAr ? "عرض جديد" : "New deck"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {isAr ? "ابنِ شرائحك يدوياً من الصفر" : "Build slides manually from scratch"}
-                </p>
-              </div>
-            </button>
-
-            {/* توليد بالذكاء */}
-            <button
-              type="button"
-              onClick={() => setLocation("/teacher/presentations/new")}
-              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-amber-400/50 hover:bg-amber-50/40 hover:shadow-sm active:scale-[0.99]"
-            >
-              <span
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-105"
-                style={{ background: `${BRAND_GOLD}18`, color: "#a16207" }}
-              >
-                <Sparkles className="w-5 h-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground leading-tight">
-                  {isAr ? "توليد بالذكاء" : "AI Generate"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {isAr ? "الذكاء يبني الحصة كاملةً تلقائياً" : "AI builds a complete lesson for you"}
-                </p>
-              </div>
-            </button>
-
-            {/* استيراد ملف */}
-            <button
-              type="button"
-              onClick={() => setShowImport(true)}
-              className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-4 text-start transition-all hover:border-blue-400/40 hover:bg-blue-50/40 hover:shadow-sm active:scale-[0.99]"
-            >
-              <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-blue-600 bg-blue-50 transition-all group-hover:scale-105">
-                <Upload className="w-5 h-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground leading-tight">
-                  {isAr ? "استيراد ملف" : "Import file"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                  {isAr ? "PDF، Word، PPTX، أو صور" : "PDF, Word, PPTX, or images"}
-                </p>
-              </div>
-            </button>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {(
+              [
+                {
+                  icon: Upload,
+                  label: isAr ? "استيراد ملف" : "Import file",
+                  sub: isAr ? "PDF، PPTX، صور" : "PDF, PPTX, images",
+                  onClick: () => setShowImport(true),
+                  iconColor: "#0ea5e9",
+                  bg: "#f0f9ff",
+                  border: "#bae6fd",
+                  textColor: "#075985",
+                },
+                {
+                  icon: BookOpen,
+                  label: isAr ? "من واجب" : "From homework",
+                  sub: isAr ? "حوّل واجباً لعرض" : "Turn homework into a deck",
+                  onClick: () => setLocation("/teacher"),
+                  iconColor: "#7c3aed",
+                  bg: "#f5f3ff",
+                  border: "#ddd6fe",
+                  textColor: "#4c1d95",
+                },
+                {
+                  icon: Layers,
+                  label: isAr ? "بنك الشرائح" : "Slide bank",
+                  sub: isAr ? "شرائح جاهزة للتخصيص" : "Ready-made slides",
+                  onClick: () => setLocation("/teacher/presentations/new"),
+                  iconColor: "#0891b2",
+                  bg: "#ecfeff",
+                  border: "#a5f3fc",
+                  textColor: "#164e63",
+                },
+                {
+                  icon: Sparkles,
+                  label: isAr ? "قوالب جاهزة" : "Templates",
+                  sub: isAr ? "قوالب احترافية" : "Professional templates",
+                  onClick: () => setShowCreate(true),
+                  iconColor: "#d97706",
+                  bg: "#fffbeb",
+                  border: "#fde68a",
+                  textColor: "#92400e",
+                },
+              ] as const
+            ).map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.onClick}
+                  className="group text-start flex flex-col gap-2.5 p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+                  style={{ background: item.bg, borderColor: item.border }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110"
+                    style={{ background: `${item.iconColor}22`, color: item.iconColor }}
+                  >
+                    <Icon className="w-[18px] h-[18px]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold leading-tight" style={{ color: item.textColor }}>
+                      {item.label}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{item.sub}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -414,37 +475,36 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
           <Button
             onClick={() => setShowImport(true)}
             variant="outline"
-            className="gap-2 font-bold shadow-xl py-6 bg-background"
+            className="w-12 h-12 p-0 rounded-2xl shadow-xl bg-background"
           >
             <Upload className="w-5 h-5" />
           </Button>
           <Button
             onClick={() => setLocation("/teacher/presentations/new")}
             variant="outline"
-            className="gap-2 font-bold shadow-xl py-6 bg-background border-2"
+            className="w-12 h-12 p-0 rounded-2xl shadow-xl bg-background border-2"
             style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}
           >
             <Sparkles className="w-5 h-5" />
-            <span className="sr-only">{isAr ? "توليد بالذكاء" : "AI Generate"}</span>
           </Button>
           <Button
             onClick={() => setShowCreate(true)}
-            className="flex-1 gap-2 font-bold shadow-xl py-6"
+            className="flex-1 gap-2 font-bold shadow-xl h-12 rounded-2xl"
             style={{ background: BRAND_GREEN, color: "white" }}
           >
             <Plus className="w-5 h-5" />
-            {isAr ? "عرض جديد" : "New presentation"}
+            {isAr ? "عرض جديد" : "New"}
           </Button>
         </div>
 
-        {/* Tabs + search */}
+        {/* ─── Tabs + Search ───────────────────────────────────── */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-1 p-1 rounded-2xl bg-muted/40 border border-border w-full sm:w-fit overflow-x-auto">
+          <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-muted/30 border border-border/50 w-full sm:w-fit overflow-x-auto">
             {(
               [
-                { id: "recent", label: isAr ? "الأحدث" : "Recent", icon: Clock },
-                { id: "published", label: isAr ? "المنشورة" : "Published", icon: CheckCircle2 },
-                { id: "drafts", label: isAr ? "المسودات" : "Drafts", icon: FileText },
+                { id: "recent", label: isAr ? "الكل" : "All", icon: Clock, count: counts.recent },
+                { id: "published", label: isAr ? "المنشورة" : "Published", icon: CheckCircle2, count: counts.published },
+                { id: "drafts", label: isAr ? "المسودات" : "Drafts", icon: FileText, count: counts.drafts },
               ] as const
             ).map((t) => {
               const Icon = t.icon;
@@ -455,38 +515,62 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                   onClick={() => setTab(t.id)}
                   className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
                     active
-                      ? "bg-white shadow-sm text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
-                  style={active ? { color: BRAND_GREEN } : undefined}
+                  style={active ? { background: BRAND_GREEN } : undefined}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {t.label}
-                  <span className="text-[10px] font-bold opacity-70">
-                    {counts[t.id]}
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      active ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {t.count}
                   </span>
                 </button>
               );
             })}
           </div>
-          <div className="relative flex-1 lg:max-w-sm">
-            <Search className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+          <div className="relative flex-1 lg:max-w-xs">
+            <Search
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
               style={{ [isAr ? "right" : "left"]: 12 } as React.CSSProperties}
             />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={isAr ? "ابحث عن عرض..." : "Search presentations..."}
-              className={`${isAr ? "pr-9" : "pl-9"} rounded-2xl bg-card`}
+              className={`${isAr ? "pr-9" : "pl-9"} rounded-2xl bg-card/80 h-10`}
             />
           </div>
         </div>
 
-        {/* Grid */}
+        {/* ─── Grid ────────────────────────────────────────────── */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-64 rounded-3xl border border-border bg-card animate-pulse" />
+              <div
+                key={i}
+                className="rounded-3xl overflow-hidden"
+                style={{ border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}
+              >
+                <div className="h-[156px] animate-pulse" style={{ background: "#f0fdf4" }} />
+                <div className="p-4 space-y-3 bg-card">
+                  <div className="h-4 w-3/4 rounded-full animate-pulse bg-muted" />
+                  <div className="h-3 w-1/2 rounded-full animate-pulse bg-muted/60" />
+                  <div className="flex gap-2 pt-1">
+                    <div className="h-7 w-20 rounded-xl animate-pulse bg-muted/50" />
+                    <div className="h-7 w-16 rounded-xl animate-pulse bg-muted/50" />
+                  </div>
+                  <div className="h-px bg-border/40" />
+                  <div className="flex justify-between">
+                    <div className="h-3 w-16 rounded-full animate-pulse bg-muted/50" />
+                    <div className="h-3 w-20 rounded-full animate-pulse bg-muted/50" />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -804,56 +888,71 @@ function PresentationCard({
   return (
     <div
       onClick={editing ? undefined : onOpen}
-      className="group relative flex flex-col rounded-2xl border border-border/70 bg-card overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-black/8 hover:-translate-y-px hover:border-border"
-      style={{ cursor: editing ? "default" : "pointer" }}
+      className="group relative flex flex-col rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
+      style={{
+        background: "var(--card)",
+        border: "1px solid rgba(0,0,0,0.06)",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
+        cursor: editing ? "default" : "pointer",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow =
+          `0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px ${theme.bar}28`;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05)";
+      }}
     >
-      {/* ── Slide pseudo-preview ──────────────────────────── */}
+      {/* ── Cover preview ────────────────────────────────── */}
       <div
         className="relative overflow-hidden shrink-0"
-        style={{ height: 128, background: theme.bg, color: theme.text }}
+        style={{ height: 160, background: theme.bg, color: theme.text }}
       >
+        {/* Subject accent bar */}
+        <div
+          className="absolute inset-y-0 start-0 w-[3px] opacity-60"
+          style={{ background: theme.bar }}
+        />
         <div className="absolute inset-0">
           <SmartPreview />
         </div>
 
-        {/* شريط علوي شفاف مع badges */}
-        <div className="absolute inset-x-0 top-0 flex items-center justify-between px-3 pt-2.5 pb-1">
-          {/* حالة النشر */}
+        {/* Badges */}
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between px-3 pt-2.5">
           {isPublished ? (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/80 backdrop-blur-sm shadow-sm"
-              style={{ color: BRAND_GREEN }}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm"
+              style={{ background: "rgba(255,255,255,0.92)", color: BRAND_GREEN }}
             >
               <Globe className="w-2.5 h-2.5" />
               {isAr ? "منشور" : "Published"}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/70 text-muted-foreground backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/75 text-muted-foreground">
               {isAr ? "مسودة" : "Draft"}
             </span>
           )}
-          {/* لغة العرض */}
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/60 text-muted-foreground backdrop-blur-sm">
+          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/10 text-white/90">
             {p.language === "ar" ? "AR" : "EN"}
           </span>
         </div>
 
-        {/* زر فتح يظهر عند hover */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/8">
+        {/* Hover overlay with "Open editor" */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/[0.07]">
           <span
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white shadow-md text-foreground"
-            style={{ color: theme.text }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white shadow-lg translate-y-1 group-hover:translate-y-0 transition-transform duration-200"
+            style={{ color: theme.bar }}
           >
-            <Pencil className="w-3 h-3" />
+            <Pencil className="w-3.5 h-3.5" />
             {isAr ? "فتح المحرر" : "Open editor"}
           </span>
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 px-3.5 pt-3 pb-3">
-        {/* العنوان + قائمة الإجراءات */}
-        <div className="flex items-start gap-1.5 mb-2.5">
+      {/* ── Body ─────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 p-4">
+        {/* Title + menu */}
+        <div className="flex items-start gap-1.5 mb-3">
           {editing ? (
             <input
               ref={inputRef}
@@ -867,7 +966,7 @@ function PresentationCard({
               onClick={(e) => e.stopPropagation()}
               maxLength={200}
               dir={isAr ? "rtl" : "ltr"}
-              className="flex-1 text-sm font-bold text-foreground bg-muted/50 border border-border rounded-lg px-2.5 py-1 outline-none min-w-0"
+              className="flex-1 text-sm font-bold text-foreground bg-muted/50 border border-border rounded-xl px-3 py-1.5 outline-none min-w-0"
               style={{ boxShadow: `0 0 0 2px ${BRAND_GREEN}40` }}
             />
           ) : (
@@ -884,7 +983,7 @@ function PresentationCard({
               <DropdownMenuTrigger asChild>
                 <button
                   onClick={(e) => e.stopPropagation()}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-0.5"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors flex-shrink-0 -mt-0.5"
                   aria-label={isAr ? "إجراءات" : "Actions"}
                 >
                   <MoreVertical className="w-3.5 h-3.5" />
@@ -941,18 +1040,44 @@ function PresentationCard({
           )}
         </div>
 
-        {/* ── Footer: المعلومات ────────────────────────────── */}
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto pt-1 border-t border-border/50">
-          <span className="inline-flex items-center gap-1">
+        {/* Visible quick-action buttons */}
+        {isOwner && !editing && (
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onGoLive(); }}
+              disabled={goLiveLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 hover:scale-[1.04] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: `${BRAND_GOLD}1c`, color: "#b45309" }}
+            >
+              {goLiveLoading
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Radio className="w-3.5 h-3.5" />}
+              {isAr ? "مباشر" : "Go live"}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onResults(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-muted hover:scale-[1.04] active:scale-[0.97]"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              {isAr ? "نتائج" : "Results"}
+            </button>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-auto pt-2.5 border-t border-border/40">
+          <span className="inline-flex items-center gap-1 font-medium">
             <FileText className="w-3 h-3" />
             {p.slideCount} {isAr ? "شريحة" : "slides"}
           </span>
-          <span className="inline-flex items-center gap-1 ms-auto">
+          <span className="inline-flex items-center gap-1 ms-auto font-medium">
             <Clock className="w-3 h-3" />
             {formatRelative(p.updatedAt, isAr)}
           </span>
           {!isOwner && p.ownerName && (
-            <span className="truncate max-w-[80px]" title={p.ownerName}>
+            <span className="truncate max-w-[80px] opacity-70" title={p.ownerName}>
               {p.ownerName}
             </span>
           )}
@@ -978,10 +1103,18 @@ function EmptyState({
 }) {
   if (hasSearch) {
     return (
-      <div className="text-center py-16 px-6 rounded-3xl border border-border/70 bg-card text-muted-foreground">
-        <Search className="w-10 h-10 mx-auto mb-3 opacity-35" />
-        <p className="text-sm font-medium">
+      <div className="text-center py-20 px-6 rounded-3xl border border-dashed border-border/40 bg-card/50">
+        <div
+          className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center"
+          style={{ background: "#f1f5f9" }}
+        >
+          <Search className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-semibold text-muted-foreground">
           {isAr ? "لا توجد نتائج مطابقة" : "No matching results"}
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          {isAr ? "جرّب كلمات مختلفة" : "Try different keywords"}
         </p>
       </div>
     );
@@ -999,20 +1132,26 @@ function EmptyState({
           ? "ابدأ بإنشاء أول عرض تفاعلي لك"
           : "Create your first interactive presentation";
   return (
-    <div className="text-center py-16 px-6 rounded-3xl border border-dashed border-border bg-card">
+    <div
+      className="text-center py-20 px-6 rounded-3xl"
+      style={{
+        background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 60%, #f0fdf4 100%)",
+        border: "2px dashed #86efac",
+      }}
+    >
       <div
-        className="w-16 h-16 mx-auto mb-4 rounded-3xl flex items-center justify-center"
-        style={{ background: `${BRAND_GREEN}15`, color: BRAND_GREEN }}
+        className="w-20 h-20 rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-lg"
+        style={{ background: `linear-gradient(135deg, ${BRAND_GREEN}, #16a34a)` }}
       >
-        <Sparkles className="w-8 h-8" />
+        <Sparkles className="w-10 h-10 text-white" />
       </div>
-      <h3 className="text-lg font-black text-foreground mb-2">
-        {isAr ? "ابدأ هنا" : "Get started"}
+      <h3 className="text-xl font-black text-foreground mb-2">
+        {isAr ? "ابدأ إبداعك هنا" : "Start creating"}
       </h3>
-      <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">{msg}</p>
+      <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto leading-relaxed">{msg}</p>
       <Button
         onClick={onCreate}
-        className="gap-2 font-bold rounded-2xl"
+        className="gap-2 font-bold rounded-2xl px-6 h-auto py-2.5"
         style={{ background: BRAND_GREEN, color: "white" }}
       >
         <Plus className="w-4 h-4" />
