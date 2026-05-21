@@ -70,7 +70,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
   const isTired = isLosingSide || fatigue > 0.3;
 
   const baseLean = isPulling
-    ? (isWinning ? -32 : isTired ? -8 - fatigue * 10 : -16) + sin1 * 4
+    ? (isWinning ? -40 : isTired ? -16 - fatigue * 10 : -26) + sin1 * 3
     : isCelebrating && isWinnerSide ? -5 : -3;
   const tiredSlump = isTired && isPulling ? fatigue * 12 : 0;
   const leanDeg = baseLean + tiredSlump;
@@ -118,14 +118,14 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
   const hand1X = shoulderCx + 35 * dir;
   const hand2X = shoulderCx + 28 * dir;
 
-  const legSpread = 24;
+  const legSpread = isPulling ? 29 : 24;
   const tiredLegExtra = isTired ? fatigue * 8 : 0;
-  const frontFootX = cx + (legSpread + tiredLegExtra) * dir + (isPulling ? sin1 * 10 * dir : 0);
-  const backFootX = cx - (legSpread + tiredLegExtra) * dir + (isPulling ? -cos1 * 7 * dir : 0);
-  const frontKneeX = (frontFootX + hipCx) / 2 + (isPulling ? 6 * dir : 0);
-  const frontKneeY = hipY + 25 + (isPulling ? sin1 * 4 : 0) + (isTired ? fatigue * 5 : 0);
-  const backKneeX = (backFootX + hipCx) / 2 - (isPulling ? 4 * dir : 0);
-  const backKneeY = hipY + 27 + (isPulling ? -cos1 * 4 : 0) + (isTired ? fatigue * 5 : 0);
+  const frontFootX = cx + (legSpread + tiredLegExtra) * dir + (isPulling ? (sin1 * 7 + 4) * dir : 0);
+  const backFootX = cx - (legSpread + tiredLegExtra) * dir + (isPulling ? (-cos1 * 5 - 4) * dir : 0);
+  const frontKneeX = (frontFootX + hipCx) / 2 + (isPulling ? 10 * dir : 0);
+  const frontKneeY = hipY + 31 + (isPulling ? sin1 * 3 : 0) + (isTired ? fatigue * 5 : 0);
+  const backKneeX = (backFootX + hipCx) / 2 - (isPulling ? 9 * dir : 0);
+  const backKneeY = hipY + 33 + (isPulling ? -cos1 * 3 : 0) + (isTired ? fatigue * 5 : 0);
 
   const celebJump = isCelebrating && isWinnerSide
     ? Math.abs(Math.sin(cycle * 3)) * -28
@@ -160,7 +160,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
       >
         <path
           d={`M${hipCx - 4 * dir},${hipY} L${backKneeX},${backKneeY} L${backFootX},${feetY}`}
-          stroke={palette.shorts} strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" fill="none"
+          stroke={palette.shorts} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
         />
         <path d={`M${backFootX - 12},${feetY - 2} Q${backFootX},${feetY - 10} ${backFootX + 14},${feetY - 2} Q${backFootX + 10},${feetY + 5} ${backFootX - 10},${feetY + 4} Z`}
           fill={palette.shoe} />
@@ -168,7 +168,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
 
         <path
           d={`M${hipCx + 4 * dir},${hipY} L${frontKneeX},${frontKneeY} L${frontFootX},${feetY}`}
-          stroke={palette.shorts} strokeWidth={14} strokeLinecap="round" strokeLinejoin="round" fill="none"
+          stroke={palette.shorts} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
         />
         <path d={`M${frontFootX - 12},${feetY - 2} Q${frontFootX},${feetY - 10} ${frontFootX + 15},${feetY - 2} Q${frontFootX + 11},${feetY + 5} ${frontFootX - 10},${feetY + 4} Z`}
           fill={palette.shoe} />
@@ -224,22 +224,22 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
             <path d={`M${rightShoulderX},${shoulderY}
                       Q${rightShoulderX + 15 * dir},${shoulderY + 10}
                        ${hand1X},${ropeGripY}`}
-              stroke={palette.jerseyDark} strokeWidth={12} strokeLinecap="round" fill="none" />
+              stroke={palette.jerseyDark} strokeWidth={13.5} strokeLinecap="round" fill="none" />
             <path d={`M${rightShoulderX + 3 * dir},${shoulderY + 2}
                       Q${rightShoulderX + 14 * dir},${shoulderY + 12}
                        ${hand1X},${ropeGripY + 2}`}
-              stroke={skin} strokeWidth={8.5} strokeLinecap="round" fill="none" />
+              stroke={skin} strokeWidth={9.5} strokeLinecap="round" fill="none" />
             <circle cx={hand1X} cy={ropeGripY} r={7} fill={skin} />
             <circle cx={hand1X} cy={ropeGripY} r={7} fill={skinD} opacity={0.14} />
 
             <path d={`M${leftShoulderX},${shoulderY}
                       Q${leftShoulderX + 10 * dir},${shoulderY + 12}
                        ${hand2X},${ropeGripY + 6}`}
-              stroke={palette.jerseyDark} strokeWidth={12} strokeLinecap="round" fill="none" />
+              stroke={palette.jerseyDark} strokeWidth={13.5} strokeLinecap="round" fill="none" />
             <path d={`M${leftShoulderX + 2 * dir},${shoulderY + 2}
                       Q${leftShoulderX + 9 * dir},${shoulderY + 14}
                        ${hand2X},${ropeGripY + 8}`}
-              stroke={skin} strokeWidth={8.5} strokeLinecap="round" fill="none" />
+              stroke={skin} strokeWidth={9.5} strokeLinecap="round" fill="none" />
             <circle cx={hand2X} cy={ropeGripY + 6} r={7} fill={skin} />
             <circle cx={hand2X} cy={ropeGripY + 6} r={7} fill={skinD} opacity={0.14} />
           </>
@@ -270,8 +270,10 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
             : `M${headCx + 22},${headCenterY - 12} L${headCx + 30},${headCenterY - 4} L${headCx + 26},${headCenterY}`
           } fill={palette.bandTail} opacity={0.65} />
 
-          <ellipse cx={headCx - 8} cy={headCenterY} rx={4.7} ry={5.4} fill="white" />
-          <ellipse cx={headCx + 8} cy={headCenterY} rx={4.7} ry={5.4} fill="white" />
+          <ellipse cx={headCx - 8} cy={headCenterY} rx={5.1} ry={5.7} fill="white" />
+          <ellipse cx={headCx + 8} cy={headCenterY} rx={5.1} ry={5.7} fill="white" />
+          <path d={`M${headCx - 15},${headCenterY - 8} L${headCx - 5},${headCenterY - 11}`} stroke="#111827" strokeWidth={3} strokeLinecap="round" />
+          <path d={`M${headCx + 5},${headCenterY - 11} L${headCx + 15},${headCenterY - 8}`} stroke="#111827" strokeWidth={3} strokeLinecap="round" />
 
           {isCelebrating && isWinnerSide ? (
             <>
@@ -284,9 +286,9 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
             </>
           ) : isTired && isPulling ? (
             <>
-              <line x1={headCx - 13} y1={headCenterY - 6} x2={headCx - 4} y2={headCenterY - 3}
+              <line x1={headCx - 14} y1={headCenterY - 7} x2={headCx - 4} y2={headCenterY - 4}
                 stroke="#1F2937" strokeWidth={3} strokeLinecap="round" />
-              <line x1={headCx + 4} y1={headCenterY - 3} x2={headCx + 13} y2={headCenterY - 6}
+              <line x1={headCx + 4} y1={headCenterY - 4} x2={headCx + 14} y2={headCenterY - 7}
                 stroke="#1F2937" strokeWidth={3} strokeLinecap="round" />
               <ellipse cx={headCx - 8 + dir} cy={headCenterY + 1} rx={2.5} ry={3.2} fill="#1F2937" />
               <ellipse cx={headCx + 8 + dir} cy={headCenterY + 1} rx={2.5} ry={3.2} fill="#1F2937" />
@@ -307,9 +309,9 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
               <circle cx={headCx + 9 + dir} cy={headCenterY - 1} r={0.9} fill="white" />
               {isUrgent && (
                 <>
-                  <line x1={headCx - 13} y1={headCenterY - 7} x2={headCx - 4} y2={headCenterY - 5}
+                  <line x1={headCx - 15} y1={headCenterY - 8} x2={headCx - 4} y2={headCenterY - 5}
                     stroke="#1F2937" strokeWidth={2.7} strokeLinecap="round" />
-                  <line x1={headCx + 13} y1={headCenterY - 7} x2={headCx + 4} y2={headCenterY - 5}
+                  <line x1={headCx + 15} y1={headCenterY - 8} x2={headCx + 4} y2={headCenterY - 5}
                     stroke="#1F2937" strokeWidth={2.7} strokeLinecap="round" />
                 </>
               )}
@@ -389,9 +391,9 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
   const leftEnd = blue1hand - overhang;
   const rightEnd = red1hand + overhang;
 
-  const wobble = isPulling ? Math.sin(pullCycle * 4) * 1.2 : 0;
+  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.55 : 0;
   const tension = Math.abs(slideX) / 80;
-  const sag = isPulling ? 3 + (1 - tension) * 5 : 8;
+  const sag = isPulling ? 1.4 + (1 - tension) * 2.2 : 3.8;
 
   const ropeLen = rightEnd - leftEnd;
   const seg = 30;
@@ -482,6 +484,7 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
         animate={{ y: fallenY - ropeGripY }}
         transition={{ duration: 0.6, ease: "easeIn" }}
       >
+        <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={10} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
         <path d={mainPath} stroke="#3E2723" strokeWidth={9} fill="none" strokeLinecap="round" opacity={0.15} />
         <path d={mainPath} stroke="#8D6E3C" strokeWidth={7} fill="none" strokeLinecap="round" />
         <path d={s1Path} stroke="#C9A54A" strokeWidth={2.5} fill="none" strokeLinecap="round" opacity={0.7} />
@@ -496,6 +499,17 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
 
   return (
     <g>
+      <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={10} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
+      <motion.path
+        d={mainPath}
+        stroke="#FCD34D"
+        strokeWidth={2}
+        fill="none"
+        strokeLinecap="round"
+        opacity={isPulling ? 0.18 : 0}
+        animate={isPulling ? { opacity: [0.08, 0.22, 0.08] } : { opacity: 0 }}
+        transition={{ repeat: Infinity, duration: 0.5 }}
+      />
       <path d={mainPath} stroke="#3E2723" strokeWidth={9} fill="none" strokeLinecap="round" opacity={0.15} />
 
       <path d={mainPath} stroke="#8D6E3C" strokeWidth={7} fill="none" strokeLinecap="round" />
@@ -542,14 +556,14 @@ function CenterLine() {
   return (
     <g>
       {/* Ground center line - horizontal white stripe on the dirt */}
-      <rect x={CENTER_X - 4} y={GROUND_Y - 2} width={8} height={24} rx={2} fill="white" opacity={0.9} />
-      <rect x={CENTER_X - 22} y={GROUND_Y + 2} width={44} height={6} rx={3} fill="white" opacity={0.7} />
-      <rect x={CENTER_X - 14} y={GROUND_Y + 10} width={28} height={4} rx={2} fill="white" opacity={0.4} />
+      <rect x={CENTER_X - 3} y={GROUND_Y - 2} width={6} height={18} rx={2} fill="white" opacity={0.45} />
+      <rect x={CENTER_X - 16} y={GROUND_Y + 2} width={32} height={4} rx={2} fill="white" opacity={0.38} />
+      <rect x={CENTER_X - 10} y={GROUND_Y + 9} width={20} height={3} rx={2} fill="white" opacity={0.24} />
       {/* Small flag post at ground */}
-      <line x1={CENTER_X} y1={GROUND_Y - 2} x2={CENTER_X} y2={GROUND_Y - 28}
-        stroke="white" strokeWidth={2.5} opacity={0.8} />
-      <polygon points={`${CENTER_X},${GROUND_Y - 28} ${CENTER_X},${GROUND_Y - 16} ${CENTER_X + 16},${GROUND_Y - 22}`}
-        fill="#ef4444" opacity={0.95} />
+      <line x1={CENTER_X} y1={GROUND_Y - 2} x2={CENTER_X} y2={GROUND_Y - 22}
+        stroke="white" strokeWidth={2} opacity={0.42} />
+      <polygon points={`${CENTER_X},${GROUND_Y - 22} ${CENTER_X},${GROUND_Y - 13} ${CENTER_X + 12},${GROUND_Y - 18}`}
+        fill="#ef4444" opacity={0.72} />
     </g>
   );
 }
@@ -574,6 +588,40 @@ function Arena() {
         </linearGradient>
       </defs>
       <rect x={0} y={0} width={1000} height={GROUND_Y} fill="url(#skyG)" />
+      <rect x={0} y={118} width={1000} height={52} fill="rgba(12,38,70,0.16)" />
+      {Array.from({ length: 34 }).map((_, i) => {
+        const x = 28 + i * 29;
+        const y = 129 + (i % 3) * 10;
+        const fill = i % 4 === 0 ? "#E0F2FE" : i % 4 === 1 ? "#BFDBFE" : i % 4 === 2 ? "#FECACA" : "#DCFCE7";
+        return (
+          <g key={`crowd-${i}`} opacity={0.18}>
+            <circle cx={x} cy={y} r={3.2} fill={fill} />
+            <rect x={x - 4} y={y + 4} width={8} height={7} rx={3} fill={fill} />
+          </g>
+        );
+      })}
+      {[150, 315, 670, 835].map((x, i) => (
+        <g key={`flag-${i}`} opacity={0.46}>
+          <line x1={x} y1={88} x2={x} y2={134} stroke="rgba(255,255,255,0.55)" strokeWidth={2} />
+          <path
+            d={`M${x},${92} Q${x + 20},${86 + (i % 2) * 5} ${x + 42},${94} L${x + 42},${115} Q${x + 20},${106 - (i % 2) * 3} ${x},${114} Z`}
+            fill={i % 2 === 0 ? "#2563EB" : "#DC2626"}
+          />
+          <path d={`M${x + 8},${98} Q${x + 22},${95} ${x + 36},${100}`} stroke="rgba(255,255,255,0.45)" strokeWidth={2} fill="none" />
+        </g>
+      ))}
+      {[210, 430, 585, 760].map((x, i) => (
+        <motion.circle
+          key={`sky-particle-${i}`}
+          cx={x}
+          cy={64 + (i % 2) * 36}
+          r={1.8}
+          fill="white"
+          opacity={0.34}
+          animate={{ y: [0, -8, 0], opacity: [0.18, 0.42, 0.18] }}
+          transition={{ repeat: Infinity, duration: 3 + i * 0.4, delay: i * 0.3 }}
+        />
+      ))}
       <circle cx={900} cy={50} r={40} fill="#FFF9C4" opacity={0.3} />
       <circle cx={900} cy={50} r={20} fill="#FFF9C4" />
       {[0, 45, 90, 135, 180, 225, 270, 315].map((a, i) => (
