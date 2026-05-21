@@ -715,18 +715,73 @@ function TimerRing({ timeLeft, total, isUrgent }: { timeLeft: number; total: num
 function StadiumBackdrop({ active }: { active: boolean }) {
   return (
     <div className="absolute inset-0 overflow-hidden rounded-b-[2rem]">
+      <style>{`
+        @keyframes tugLightSweep {
+          0%, 100% { transform: translateX(-8%) rotate(-18deg); opacity: .58; }
+          50% { transform: translateX(6%) rotate(-14deg); opacity: .82; }
+        }
+        @keyframes tugLightSweepRight {
+          0%, 100% { transform: translateX(8%) rotate(18deg); opacity: .58; }
+          50% { transform: translateX(-6%) rotate(14deg); opacity: .82; }
+        }
+        @keyframes tugParticleFloat {
+          0% { transform: translate3d(0, 18px, 0) scale(.65); opacity: 0; }
+          25% { opacity: .55; }
+          100% { transform: translate3d(var(--particle-x, 12px), -58px, 0) scale(1); opacity: 0; }
+        }
+        @keyframes tugMeterShine {
+          0% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+          35% { opacity: .65; }
+          100% { transform: translateX(230%) skewX(-18deg); opacity: 0; }
+        }
+        @keyframes tugIdleFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes tugRopeTension {
+          0%, 100% { transform: scaleX(1); opacity: .94; }
+          50% { transform: scaleX(1.018); opacity: 1; }
+        }
+        .tug-light-left { animation: tugLightSweep 5.5s ease-in-out infinite; }
+        .tug-light-right { animation: tugLightSweepRight 5.8s ease-in-out infinite; }
+        .tug-particle { animation: tugParticleFloat var(--particle-duration, 5s) ease-in-out infinite; animation-delay: var(--particle-delay, 0s); }
+        .tug-meter-shine { animation: tugMeterShine 2.9s ease-in-out infinite; }
+        .tug-idle-float { animation: tugIdleFloat 2.8s ease-in-out infinite; }
+        .tug-rope-tension { animation: tugRopeTension .58s ease-in-out infinite; transform-origin: center; }
+        .tug-action-button { transition: transform .18s ease, box-shadow .18s ease, filter .18s ease; }
+        .tug-action-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 0 44px rgba(247,201,72,0.72), 0 22px 54px rgba(0,0,0,0.42), inset 0 2px 0 rgba(255,255,255,0.38) !important;
+          filter: saturate(1.06);
+        }
+        .tug-action-button:active:not(:disabled) { transform: translateY(1px) scale(.95); }
+      `}</style>
       <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #031b12 0%, #062d1b 52%, #0a4d26 100%)" }} />
       <div className="absolute inset-x-0 top-0 h-44 opacity-55"
         style={{ background: "radial-gradient(ellipse at center, rgba(10,20,18,0.2), rgba(0,0,0,0.75))" }}
       />
       <div className="absolute -left-10 top-8 h-72 w-72 rounded-full blur-3xl opacity-50" style={{ background: "rgba(59,130,246,0.45)" }} />
       <div className="absolute -right-10 top-8 h-72 w-72 rounded-full blur-3xl opacity-50" style={{ background: "rgba(239,68,68,0.45)" }} />
-      <div className="absolute left-8 top-12 h-56 w-40 rotate-[-18deg] opacity-75"
+      <div className="tug-light-left absolute left-8 top-12 h-56 w-40 opacity-75"
         style={{ background: "radial-gradient(ellipse at top, rgba(219,234,254,0.9), rgba(147,197,253,0.18) 42%, transparent 74%)" }}
       />
-      <div className="absolute right-8 top-12 h-56 w-40 rotate-[18deg] opacity-75"
+      <div className="tug-light-right absolute right-8 top-12 h-56 w-40 opacity-75"
         style={{ background: "radial-gradient(ellipse at top, rgba(254,226,226,0.9), rgba(248,113,113,0.18) 42%, transparent 74%)" }}
       />
+      {[10, 22, 36, 48, 62, 74, 88].map((left, i) => (
+        <span
+          key={`particle-${left}`}
+          className="tug-particle absolute h-1.5 w-1.5 rounded-full bg-white/45"
+          style={{
+            left: `${left}%`,
+            bottom: `${18 + (i % 3) * 12}%`,
+            ["--particle-x" as string]: `${i % 2 === 0 ? 16 : -16}px`,
+            ["--particle-duration" as string]: `${4.2 + i * 0.35}s`,
+            ["--particle-delay" as string]: `${i * 0.45}s`,
+            boxShadow: "0 0 10px rgba(255,255,255,0.45)",
+          }}
+        />
+      ))}
 
       <div className="absolute inset-x-0 top-20 h-24 opacity-60">
         <svg width="100%" height="100%" preserveAspectRatio="none">
@@ -791,9 +846,9 @@ function TugCharacters({
 }) {
   return (
     <motion.div
-      animate={isPulling ? { scaleX: [1, 1.012, 1], x: [0, ropePos < 50 ? -4 : 4, 0] } : { scaleX: 1, x: 0 }}
+      animate={isPulling ? { scale: [1.2, 1.215, 1.2], x: [0, ropePos < 50 ? -5 : 5, 0] } : { scale: 1.2, x: 0 }}
       transition={{ repeat: isPulling ? Infinity : 0, duration: 0.58 }}
-      className="relative mx-auto w-full max-w-5xl origin-center"
+      className="tug-idle-float relative mx-auto w-full max-w-5xl origin-center drop-shadow-[0_24px_22px_rgba(0,0,0,0.45)]"
     >
       <CartoonTugScene
         ropePos={ropePos}
@@ -802,6 +857,14 @@ function TugCharacters({
         isCelebrating={isCelebrating}
         winnerSide={winnerSide}
       />
+      <div
+        className={`pointer-events-none absolute left-[11%] right-[11%] top-[52%] h-5 rounded-full opacity-90 shadow-[0_8px_18px_rgba(0,0,0,0.4)] ${isPulling ? "tug-rope-tension" : ""}`}
+        style={{
+          background: "linear-gradient(180deg, #d8a35c 0%, #9a5f27 42%, #6f3f1c 62%, #c88a42 100%)",
+          clipPath: "polygon(0 46%, 10% 39%, 22% 43%, 34% 38%, 48% 47%, 62% 38%, 76% 43%, 90% 39%, 100% 46%, 100% 72%, 0 72%)",
+        }}
+      />
+      <div className="pointer-events-none absolute left-1/2 top-[50.5%] z-20 h-12 w-5 -translate-x-1/2 rounded-md bg-red-600 shadow-[0_0_18px_rgba(239,68,68,0.75)]" />
       <div className="pointer-events-none absolute left-1/2 top-[76%] h-24 w-1 -translate-x-1/2 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.8)]" />
       {isPulling && (
         <>
@@ -824,13 +887,18 @@ function TugPowerMeter({ position }: { position: number }) {
   const inDanger = pos < 20 || pos > 80;
   return (
     <div className="relative mx-auto w-full max-w-3xl px-2">
-      <div className="relative h-16 rounded-[1.4rem] border border-white/20 bg-black/35 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+      <div
+        className="relative h-16 rounded-[1.4rem] border border-white/25 bg-black/35 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        style={{ boxShadow: "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)" }}
+      >
         <div className="relative h-full overflow-hidden rounded-2xl">
           <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-[#082f8f] via-[#1d4ed8] to-[#60a5fa]" />
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#7f1d1d] via-[#dc2626] to-[#fb7185]" />
           <div className="absolute inset-0 opacity-20"
             style={{ backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.85) 0 8px, transparent 8px 18px)" }}
           />
+          <div className="tug-meter-shine absolute inset-y-0 w-24 bg-white/35 blur-sm" />
+          <div className="absolute inset-0 shadow-[inset_0_2px_7px_rgba(255,255,255,0.28),inset_0_-8px_16px_rgba(0,0,0,0.35)]" />
           <div className="absolute inset-y-0 left-0 w-12 bg-blue-300/35 blur-lg" />
           <div className="absolute inset-y-0 right-0 w-12 bg-red-300/35 blur-lg" />
         </div>
@@ -838,10 +906,13 @@ function TugPowerMeter({ position }: { position: number }) {
         <motion.div
           animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
           transition={{ type: "spring", stiffness: 95, damping: 16 }}
-          className="absolute top-1/2 z-20 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-amber-200 shadow-[0_0_28px_rgba(247,201,72,0.85)]"
-          style={{ background: "radial-gradient(circle at 35% 28%, #fde68a, #f59e0b 54%, #92400e)" }}
+          className="absolute top-1/2 z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_18px_rgba(247,201,72,0.65)]"
+          style={{
+            background: "radial-gradient(circle at 32% 24%, #fff7cc 0%, #f7c948 28%, #d97706 62%, #7c3f09 100%)",
+            boxShadow: "0 0 18px rgba(247,201,72,0.62), inset 0 2px 5px rgba(255,255,255,0.58), inset 0 -5px 10px rgba(95,45,8,0.5)",
+          }}
         >
-          <div className="flex h-full w-full items-center justify-center text-2xl">🪢</div>
+          <div className="flex h-full w-full items-center justify-center text-xl drop-shadow-sm">🪢</div>
         </motion.div>
       </div>
     </div>
@@ -864,21 +935,26 @@ function TeamScoreCard({
   const isBlue = team === "blue";
   return (
     <div
-      className={`rounded-[20px] border p-4 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur-md ${isBlue ? "border-blue-300/45" : "border-red-300/45"}`}
+      className={`rounded-[20px] border p-4 text-white backdrop-blur-md ${isBlue ? "border-blue-300/45" : "border-red-300/45"}`}
       style={{
         background: isBlue
           ? "linear-gradient(145deg, rgba(7,42,113,0.96), rgba(29,78,216,0.82))"
           : "linear-gradient(145deg, rgba(127,29,29,0.96), rgba(220,38,38,0.82))",
         boxShadow: isBlue
-          ? "0 18px 45px rgba(29,78,216,0.28), inset 0 1px 0 rgba(255,255,255,0.18)"
-          : "0 18px 45px rgba(220,38,38,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
+          ? "0 16px 42px rgba(29,78,216,0.34), 0 0 26px rgba(59,130,246,0.2), inset 0 1px 0 rgba(255,255,255,0.2)"
+          : "0 16px 42px rgba(220,38,38,0.34), 0 0 26px rgba(248,113,113,0.2), inset 0 1px 0 rgba(255,255,255,0.2)",
       }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-black text-white/85 sm:text-sm">👥 {label}</p>
         <span className="rounded-full bg-white/14 px-2 py-0.5 text-[10px] font-black text-white/80">{playersCount}</span>
       </div>
-      <p className="rounded-2xl bg-black/24 px-3 py-2 text-center text-4xl font-black leading-none sm:text-5xl">{score}</p>
+      <p
+        className="rounded-2xl bg-black/24 px-3 py-2 text-center text-4xl font-black leading-none tracking-tight sm:text-5xl"
+        style={{ textShadow: "0 3px 14px rgba(0,0,0,0.45)", fontVariantNumeric: "tabular-nums" }}
+      >
+        {score}
+      </p>
       <p className="mt-2 text-center text-[11px] font-bold text-white/70">
         {playersCount > 0
           ? (lang === "ar" ? "نقاط القوة" : "Power points")
@@ -899,10 +975,9 @@ function TugActionButton({
 }) {
   return (
     <motion.button
-      whileTap={!disabled && onClick ? { scale: 0.94, rotate: [-1, 1, -1, 0] } : undefined}
       onClick={onClick}
       disabled={disabled || !onClick}
-      className="relative mx-auto flex min-h-[76px] w-full max-w-sm items-center justify-center rounded-[2rem] px-8 text-2xl font-black text-white transition disabled:cursor-default disabled:opacity-80"
+      className="tug-action-button relative mx-auto flex min-h-[66px] w-full max-w-sm items-center justify-center rounded-[2rem] px-8 text-2xl font-black text-white disabled:cursor-default disabled:opacity-80"
       style={{
         background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
         color: "#fff7ed",
@@ -958,9 +1033,9 @@ function TugArena({
             winnerSide={winnerSide}
           />
         </div>
-        <div className="grid items-end gap-3 lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-5">
+        <div className="grid items-end gap-2 lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-3">
           <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
-          <div className="space-y-4">
+          <div className="space-y-3">
             <TugPowerMeter position={ropePos} />
             {children}
           </div>
