@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, gameHistoryTable, studentsTable, assignmentsTable, presentationSessionsTable } from "@workspace/db";
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc, and, ne, sql } from "drizzle-orm";
 import type { Game, GamePlayer, GameQuestion } from "../game/manager.js";
 import { getGame, findActiveGameByTeacher } from "../game/manager.js";
 
@@ -359,6 +359,18 @@ router.get("/pin-lookup/:pin", async (req, res) => {
     ))
     .limit(1);
   if (presSession) { res.json({ gameType: "presentation" }); return; }
+
+  // 11. Private assignment access code
+  const normalizedPin = pin.trim().toUpperCase();
+  const [assignment] = await db
+    .select({ id: assignmentsTable.id })
+    .from(assignmentsTable)
+    .where(sql`upper(${assignmentsTable.accessCode}) = ${normalizedPin}`)
+    .limit(1);
+  if (assignment) {
+    res.json({ gameType: "assignment", assignmentId: assignment.id });
+    return;
+  }
 
   res.json({ gameType: "unknown" });
 });

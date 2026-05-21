@@ -221,40 +221,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     };
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center text-white">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-  if (error || !data) {
-    /* Drafts return 404 from the public endpoint — show a friendly
-       message rather than a raw error. */
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center text-white p-6 text-center" dir={dir}>
-        <div>
-          <div className="text-6xl mb-4">😕</div>
-          <h1 className="text-2xl font-bold mb-2">
-            {uiLang === "ar" ? "تعذّر فتح العرض" : "Could not open presentation"}
-          </h1>
-          <p className="text-white/70">
-            {uiLang === "ar"
-              ? "العرض غير موجود أو لم يُنشر بعد."
-              : "This presentation does not exist or has not been published yet."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-  if (total === 0) {
-    return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center text-white" dir={dir}>
-        {isAr ? "لا توجد شرائح" : "No slides"}
-      </div>
-    );
-  }
-
   const current = slides[Math.min(idx, total - 1)];
   const progress = total > 1 ? ((idx + 1) / total) * 100 : 100;
 
@@ -397,6 +363,40 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       },
     );
   }, [activeActivityEl, isLaunchingActivity, selectedGameMode, selectedTeamCount, isAr, setLocation]);
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center text-white">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+  if (error || !data) {
+    /* Drafts return 404 from the public endpoint — show a friendly
+       message rather than a raw error. */
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center text-white p-6 text-center" dir={dir}>
+        <div>
+          <div className="text-6xl mb-4">😕</div>
+          <h1 className="text-2xl font-bold mb-2">
+            {uiLang === "ar" ? "تعذّر فتح العرض" : "Could not open presentation"}
+          </h1>
+          <p className="text-white/70">
+            {uiLang === "ar"
+              ? "العرض غير موجود أو لم يُنشر بعد."
+              : "This presentation does not exist or has not been published yet."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (total === 0) {
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center text-white" dir={dir}>
+        {isAr ? "لا توجد شرائح" : "No slides"}
+      </div>
+    );
+  }
 
   return (
     <div

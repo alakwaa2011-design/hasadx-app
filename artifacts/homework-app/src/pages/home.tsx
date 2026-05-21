@@ -1400,7 +1400,7 @@ export default function Home() {
     try {
       const r = await fetch(`${API_BASE}/api/pin-lookup/${trimmed}`);
       if (r.ok) {
-        const data: { gameType: string } = await r.json();
+        const data: { gameType: string; assignmentId?: number } = await r.json();
         switch (data.gameType) {
           case "tug":          setLocation(`/game/tug/join/${trimmed}`); return;
           case "rocket":       setLocation(`/game/rocket/join/${trimmed}`); return;
@@ -1412,6 +1412,12 @@ export default function Home() {
           case "flags":        setLocation(`/game/flags/join/${trimmed}`); return;
           case "capitals":     setLocation(`/game/capitals/join/${trimmed}`); return;
           case "presentation": setLocation(`/p/join#pin=${trimmed}`); return;
+          case "assignment":
+            if (typeof data.assignmentId === "number") {
+              setLocation(`/solve/${data.assignmentId}?code=${encodeURIComponent(trimmed)}`);
+              return;
+            }
+            break;
           default: break; // unknown — fall through to generic join
         }
       }

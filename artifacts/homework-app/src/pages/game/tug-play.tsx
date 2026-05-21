@@ -7,6 +7,7 @@ import { getTugSocket } from "@/lib/tug-socket";
 import { CartoonTugScene } from "@/components/game/cartoon-tug-scene";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { QRModalButton } from "@/components/game-qr-code";
+import { Volume2, VolumeX } from "lucide-react";
 
 type Phase =
   | "connecting"
@@ -1275,13 +1276,18 @@ export default function TugPlay() {
             onClick={handleToggleMute}
             aria-label={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
             title={lang === "ar" ? (isMuted ? "تشغيل الصوت" : "كتم الصوت") : (isMuted ? "Unmute" : "Mute")}
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border-2 shadow-xl transition-all ${
+            className={`h-12 rounded-2xl flex items-center gap-2 px-3 border-2 shadow-2xl transition-all backdrop-blur-md ${
               isMuted
-                ? "bg-red-500 hover:bg-red-400 border-red-200 text-white"
-                : "bg-amber-400 hover:bg-amber-300 border-amber-100 text-black"
+                ? "bg-red-600 hover:bg-red-500 border-red-200 text-white"
+                : "bg-white hover:bg-amber-50 border-amber-300 text-slate-900"
             }`}
           >
-            {isMuted ? "🔇" : "🔊"}
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            <span className="hidden sm:inline text-xs font-black whitespace-nowrap">
+              {isMuted
+                ? (lang === "ar" ? "الصوت مكتوم" : "Muted")
+                : (lang === "ar" ? "الصوت يعمل" : "Sound on")}
+            </span>
           </motion.button>
           <div className="relative">
             <motion.button
