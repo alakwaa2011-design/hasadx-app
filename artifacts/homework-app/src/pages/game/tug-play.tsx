@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { useParams, useSearch, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
@@ -712,6 +712,265 @@ function TimerRing({ timeLeft, total, isUrgent }: { timeLeft: number; total: num
   );
 }
 
+function StadiumBackdrop({ active }: { active: boolean }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden rounded-b-[2rem]">
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #031b12 0%, #062d1b 52%, #0a4d26 100%)" }} />
+      <div className="absolute inset-x-0 top-0 h-44 opacity-55"
+        style={{ background: "radial-gradient(ellipse at center, rgba(10,20,18,0.2), rgba(0,0,0,0.75))" }}
+      />
+      <div className="absolute -left-10 top-8 h-72 w-72 rounded-full blur-3xl opacity-50" style={{ background: "rgba(59,130,246,0.45)" }} />
+      <div className="absolute -right-10 top-8 h-72 w-72 rounded-full blur-3xl opacity-50" style={{ background: "rgba(239,68,68,0.45)" }} />
+      <div className="absolute left-8 top-12 h-56 w-40 rotate-[-18deg] opacity-75"
+        style={{ background: "radial-gradient(ellipse at top, rgba(219,234,254,0.9), rgba(147,197,253,0.18) 42%, transparent 74%)" }}
+      />
+      <div className="absolute right-8 top-12 h-56 w-40 rotate-[18deg] opacity-75"
+        style={{ background: "radial-gradient(ellipse at top, rgba(254,226,226,0.9), rgba(248,113,113,0.18) 42%, transparent 74%)" }}
+      />
+
+      <div className="absolute inset-x-0 top-20 h-24 opacity-60">
+        <svg width="100%" height="100%" preserveAspectRatio="none">
+          <defs>
+            <pattern id="tug-crowd" width="28" height="22" patternUnits="userSpaceOnUse">
+              <circle cx="6" cy="8" r="3" fill="rgba(255,255,255,0.26)" />
+              <circle cx="18" cy="7" r="3" fill="rgba(96,165,250,0.28)" />
+              <circle cx="25" cy="13" r="2.6" fill="rgba(248,113,113,0.26)" />
+              <rect x="3" y="12" width="8" height="7" rx="3" fill="rgba(255,255,255,0.12)" />
+              <rect x="15" y="11" width="8" height="7" rx="3" fill="rgba(255,255,255,0.1)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#tug-crowd)" />
+        </svg>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 h-[48%]"
+        style={{ background: "linear-gradient(180deg, rgba(7,54,31,0.05), rgba(10,77,38,0.9) 35%, rgba(3,27,18,0.98))" }}
+      />
+      <div className="absolute inset-x-0 bottom-0 h-28 opacity-60"
+        style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 54px)" }}
+      />
+
+      {active && (
+        <>
+          <motion.div className="absolute left-10 bottom-24 h-20 w-48 rounded-full blur-2xl"
+            animate={{ opacity: [0.16, 0.32, 0.16], x: [0, 12, 0] }}
+            transition={{ repeat: Infinity, duration: 3 }}
+            style={{ background: "rgba(203,213,225,0.45)" }}
+          />
+          <motion.div className="absolute right-10 bottom-24 h-20 w-48 rounded-full blur-2xl"
+            animate={{ opacity: [0.14, 0.3, 0.14], x: [0, -12, 0] }}
+            transition={{ repeat: Infinity, duration: 3.4 }}
+            style={{ background: "rgba(203,213,225,0.42)" }}
+          />
+          {[12, 31, 68, 84].map((left, i) => (
+            <motion.span key={left}
+              className="absolute h-1.5 w-1.5 rounded-full bg-amber-300"
+              style={{ left: `${left}%`, top: `${34 + (i % 2) * 18}%`, boxShadow: "0 0 12px rgba(251,191,36,0.9)" }}
+              animate={{ opacity: [0, 1, 0], y: [0, -12, -24], scale: [0.8, 1.25, 0.6] }}
+              transition={{ repeat: Infinity, duration: 1.8 + i * 0.25, delay: i * 0.35 }}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+function TugCharacters({
+  ropePos,
+  isPulling,
+  isUrgent,
+  isCelebrating,
+  winnerSide,
+}: {
+  ropePos: number;
+  isPulling: boolean;
+  isUrgent: boolean;
+  isCelebrating: boolean;
+  winnerSide: "blue" | "red" | null;
+}) {
+  return (
+    <motion.div
+      animate={isPulling ? { scaleX: [1, 1.012, 1], x: [0, ropePos < 50 ? -4 : 4, 0] } : { scaleX: 1, x: 0 }}
+      transition={{ repeat: isPulling ? Infinity : 0, duration: 0.58 }}
+      className="relative mx-auto w-full max-w-5xl origin-center"
+    >
+      <CartoonTugScene
+        ropePos={ropePos}
+        isPulling={isPulling}
+        isUrgent={isUrgent}
+        isCelebrating={isCelebrating}
+        winnerSide={winnerSide}
+      />
+      <div className="pointer-events-none absolute left-1/2 top-[76%] h-24 w-1 -translate-x-1/2 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.8)]" />
+      {isPulling && (
+        <>
+          <motion.div className="absolute left-[20%] bottom-[18%] h-8 w-28 rounded-full bg-slate-200/25 blur-md"
+            animate={{ opacity: [0.1, 0.35, 0.1], scaleX: [0.8, 1.15, 0.8] }}
+            transition={{ repeat: Infinity, duration: 0.7 }}
+          />
+          <motion.div className="absolute right-[20%] bottom-[18%] h-8 w-28 rounded-full bg-slate-200/25 blur-md"
+            animate={{ opacity: [0.1, 0.35, 0.1], scaleX: [0.8, 1.15, 0.8] }}
+            transition={{ repeat: Infinity, duration: 0.7, delay: 0.15 }}
+          />
+        </>
+      )}
+    </motion.div>
+  );
+}
+
+function TugPowerMeter({ position }: { position: number }) {
+  const pos = Math.max(7, Math.min(93, position));
+  const inDanger = pos < 20 || pos > 80;
+  return (
+    <div className="relative mx-auto w-full max-w-3xl px-2">
+      <div className="relative h-16 rounded-[1.4rem] border border-white/20 bg-black/35 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+        <div className="relative h-full overflow-hidden rounded-2xl">
+          <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-[#082f8f] via-[#1d4ed8] to-[#60a5fa]" />
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-[#7f1d1d] via-[#dc2626] to-[#fb7185]" />
+          <div className="absolute inset-0 opacity-20"
+            style={{ backgroundImage: "repeating-linear-gradient(135deg, rgba(255,255,255,0.85) 0 8px, transparent 8px 18px)" }}
+          />
+          <div className="absolute inset-y-0 left-0 w-12 bg-blue-300/35 blur-lg" />
+          <div className="absolute inset-y-0 right-0 w-12 bg-red-300/35 blur-lg" />
+        </div>
+        <div className="absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 bg-white/70" />
+        <motion.div
+          animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
+          transition={{ type: "spring", stiffness: 95, damping: 16 }}
+          className="absolute top-1/2 z-20 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-amber-200 shadow-[0_0_28px_rgba(247,201,72,0.85)]"
+          style={{ background: "radial-gradient(circle at 35% 28%, #fde68a, #f59e0b 54%, #92400e)" }}
+        >
+          <div className="flex h-full w-full items-center justify-center text-2xl">🪢</div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function TeamScoreCard({
+  team,
+  label,
+  score,
+  playersCount,
+  lang,
+}: {
+  team: "blue" | "red";
+  label: string;
+  score: number;
+  playersCount: number;
+  lang: string;
+}) {
+  const isBlue = team === "blue";
+  return (
+    <div
+      className={`rounded-[20px] border p-4 text-white shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur-md ${isBlue ? "border-blue-300/45" : "border-red-300/45"}`}
+      style={{
+        background: isBlue
+          ? "linear-gradient(145deg, rgba(7,42,113,0.96), rgba(29,78,216,0.82))"
+          : "linear-gradient(145deg, rgba(127,29,29,0.96), rgba(220,38,38,0.82))",
+        boxShadow: isBlue
+          ? "0 18px 45px rgba(29,78,216,0.28), inset 0 1px 0 rgba(255,255,255,0.18)"
+          : "0 18px 45px rgba(220,38,38,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
+      }}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-black text-white/85 sm:text-sm">👥 {label}</p>
+        <span className="rounded-full bg-white/14 px-2 py-0.5 text-[10px] font-black text-white/80">{playersCount}</span>
+      </div>
+      <p className="rounded-2xl bg-black/24 px-3 py-2 text-center text-4xl font-black leading-none sm:text-5xl">{score}</p>
+      <p className="mt-2 text-center text-[11px] font-bold text-white/70">
+        {playersCount > 0
+          ? (lang === "ar" ? "نقاط القوة" : "Power points")
+          : (lang === "ar" ? "بانتظار اللاعبين" : "Waiting for players")}
+      </p>
+    </div>
+  );
+}
+
+function TugActionButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.button
+      whileTap={!disabled && onClick ? { scale: 0.94, rotate: [-1, 1, -1, 0] } : undefined}
+      onClick={onClick}
+      disabled={disabled || !onClick}
+      className="relative mx-auto flex min-h-[76px] w-full max-w-sm items-center justify-center rounded-[2rem] px-8 text-2xl font-black text-white transition disabled:cursor-default disabled:opacity-80"
+      style={{
+        background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
+        color: "#fff7ed",
+        boxShadow: "0 0 34px rgba(247,201,72,0.58), 0 18px 45px rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.34)",
+        textShadow: "0 2px 10px rgba(90,43,6,0.55)",
+      }}
+    >
+      <span className="absolute inset-1 rounded-[1.7rem] border border-white/25" />
+      <span className="relative z-10">⚡ {label}</span>
+    </motion.button>
+  );
+}
+
+function TugArena({
+  ropePos,
+  blueScore,
+  redScore,
+  blueCount,
+  redCount,
+  blueLabel,
+  redLabel,
+  lang,
+  isPulling,
+  isUrgent,
+  isCelebrating,
+  winnerSide,
+  children,
+}: {
+  ropePos: number;
+  blueScore: number;
+  redScore: number;
+  blueCount: number;
+  redCount: number;
+  blueLabel: string;
+  redLabel: string;
+  lang: string;
+  isPulling: boolean;
+  isUrgent: boolean;
+  isCelebrating: boolean;
+  winnerSide: "blue" | "red" | null;
+  children?: ReactNode;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-5 pt-3 shadow-[0_22px_70px_rgba(0,0,0,0.35)] sm:px-5">
+      <StadiumBackdrop active={isPulling} />
+      <div className="relative z-10 mx-auto max-w-6xl">
+        <div className="min-h-[330px] sm:min-h-[430px] lg:min-h-[500px]">
+          <TugCharacters
+            ropePos={ropePos}
+            isPulling={isPulling}
+            isUrgent={isUrgent}
+            isCelebrating={isCelebrating}
+            winnerSide={winnerSide}
+          />
+        </div>
+        <div className="grid items-end gap-3 lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-5">
+          <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
+          <div className="space-y-4">
+            <TugPowerMeter position={ropePos} />
+            {children}
+          </div>
+          <TeamScoreCard team="red" label={redLabel} score={redScore} playersCount={redCount} lang={lang} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function TugPlay() {
   const { pin } = useParams<{ pin: string }>();
   const searchStr = useSearch();
@@ -1156,6 +1415,8 @@ export default function TugPlay() {
 
   const blueTeam = players.filter((p) => p.team === "blue");
   const redTeam = players.filter((p) => p.team === "red");
+  const blueTotal = blueTeam.reduce((sum, player) => sum + player.score, 0);
+  const redTotal = redTeam.reduce((sum, player) => sum + player.score, 0);
   const isPulling = phase === "question" || phase === "answered";
   const KAHOOT_SHAPES = ["▲", "◆", "●", "■"];
   // Same gradients as وميض game (play.tsx OPTION_COLORS)
@@ -1378,24 +1639,40 @@ export default function TugPlay() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+        <div className="flex-1 flex flex-col mx-auto w-full">
 
-          <div className="px-2 pt-1 pb-0 shrink-0">
-            <div className="mx-auto">
-              <CartoonTugScene
-                ropePos={ropePos}
-                isPulling={isPulling}
-                isUrgent={isUrgent}
-                isCelebrating={phase === "finished"}
-                winnerSide={gameEnd?.winner === "draw" ? null : gameEnd?.winner ?? null}
+          <TugArena
+            ropePos={ropePos}
+            blueScore={blueTotal}
+            redScore={redTotal}
+            blueCount={blueTeam.length}
+            redCount={redTeam.length}
+            blueLabel={teamLabel("blue")}
+            redLabel={teamLabel("red")}
+            lang={lang}
+            isPulling={isPulling}
+            isUrgent={isUrgent}
+            isCelebrating={phase === "finished"}
+            winnerSide={gameEnd?.winner === "draw" ? null : gameEnd?.winner ?? null}
+          >
+            {phase === "lobby" && isCreator && (
+              <TugActionButton
+                label={startingGame ? "..." : (lang === "ar" ? "ابدأ اللعبة!" : "Start Game!")}
+                onClick={handleStart}
+                disabled={startingGame || players.length < 1}
               />
-              <div className="mt-1">
-                <RopeBar position={ropePos} lang={lang} />
+            )}
+            {phase === "lobby" && !isCreator && (
+              <div className="text-center">
+                <TugActionButton label={lang === "ar" ? "انتظر المعلم" : "Waiting for host"} disabled />
               </div>
-            </div>
-          </div>
+            )}
+            {(phase === "question" || phase === "answered") && (
+              <TugActionButton label={lang === "ar" ? "اضغط الآن!" : "Press Now!"} disabled />
+            )}
+          </TugArena>
 
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
@@ -1457,20 +1734,9 @@ export default function TugPlay() {
                     </div>
                   </div>
 
-                  {isCreator ? (
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={handleStart}
-                      disabled={startingGame || players.length < 1}
-                      className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xl disabled:opacity-40 transition-all shadow-xl"
-                    >
-                      {startingGame ? "..." : (lang === "ar" ? "🪢 ابدأ اللعبة!" : "🪢 Start!")}
-                    </motion.button>
-                  ) : (
-                    <div className="text-center py-4">
-                      <motion.div animate={{ scale: [1, 1.12, 1], rotate: [-5, 5, -5] }} transition={{ repeat: Infinity, duration: 1.4 }}
-                        className="text-5xl mb-2 inline-block">🪢</motion.div>
-                      <p className="text-white/60 text-sm">{lang === "ar" ? "انتظر المعلم ليبدأ..." : "Waiting for host..."}</p>
-                    </div>
-                  )}
+                  <div className="text-center py-2">
+                    <p className="text-white/70 text-sm font-bold">{lang === "ar" ? "استعدوا للمنافسة داخل الملعب" : "Get ready for the arena battle"}</p>
+                  </div>
                 </motion.div>
               )}
 
