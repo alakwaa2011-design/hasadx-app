@@ -210,182 +210,190 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      {/* pb-28 to leave room for sticky button */}
-      <div className="min-h-screen py-8 px-4 pb-28" dir={dir}
-        style={{ background: "linear-gradient(180deg, #eff6ff 0%, #eef2ff 100%)" }}>
-        <div className="max-w-2xl mx-auto">
+      {/* Dark game-themed background matching arena identity */}
+      <div className="min-h-screen px-4 py-5" dir={dir}
+        style={{ background: "linear-gradient(160deg, #041a0c 0%, #063520 50%, #0c3e26 100%)" }}>
+        <div className="max-w-xl mx-auto space-y-3.5">
 
-          {/* Hero */}
-          <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4"
-              style={{ background: `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`, boxShadow: `0 12px 32px -8px ${BLUE}66` }}>
-              <span className="text-4xl">🪢</span>
+          {/* ── Compact horizontal header ── */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 pt-1">
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`, boxShadow: `0 6px 18px -4px ${BLUE}70` }}>
+              <span className="text-xl">🪢</span>
             </div>
-            <h1 className="text-3xl font-black mb-1" style={{ color: BLUE }}>
-              {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
-            </h1>
-            <p className="text-sm text-gray-500">
-              {ar ? "فريقان يتنافسان بالإجابة على الأسئلة!" : "Two teams compete by answering questions!"}
-            </p>
+            <div>
+              <h1 className="text-lg font-black text-white leading-tight">
+                {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+              </h1>
+              <p className="text-[11px] text-white/45">
+                {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
+              </p>
+            </div>
           </motion.div>
 
-          {/* Duration */}
-          <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
-            <Clock className="w-5 h-5 shrink-0" style={{ color: BLUE }} />
-            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
-              {ar ? "وقت كل سؤال" : "Time per question"}
-            </span>
-            <div className="flex gap-2 flex-wrap">
-              {[10, 15, 20, 30].map(s => (
-                <button key={s} onClick={() => setDuration(s)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-bold transition-all border"
-                  style={{
-                    background: duration === s ? BLUE : "#fff",
-                    color: duration === s ? "#fff" : "#374151",
-                    borderColor: duration === s ? BLUE : "#d1d5db",
-                  }}>
-                  {s}{ar ? "ث" : "s"}
-                </button>
-              ))}
-            </div>
-          </Card>
+          {/* ── Unified settings card ── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
 
-          {/* Auto advance */}
-          <Card className="p-4 mb-3 flex items-center gap-4">
-            <span className="text-xl shrink-0">⏭</span>
-            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
-              {ar ? "تقدم تلقائي بعد كل سؤال" : "Auto-advance after each question"}
-            </span>
-            <button onClick={() => setAutoAdvance(!autoAdvance)}
-              className="relative w-12 h-7 rounded-full transition-colors flex-shrink-0"
-              style={{ background: autoAdvance ? "#16a34a" : "#d1d5db" }}>
-              <motion.div
-                animate={{ x: autoAdvance ? (dir === "rtl" ? -20 : 20) : 2 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="absolute top-1 w-5 h-5 rounded-full bg-white shadow"
-                style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
-              />
-            </button>
-          </Card>
-
-          {/* Target class */}
-          {gradeLevels.length > 0 && (
-            <Card className="p-4 mb-3 flex items-center gap-4 flex-wrap">
-              <GraduationCap className="w-5 h-5 shrink-0" style={{ color: "#10b981" }} />
-              <span className="font-bold text-sm text-gray-800 dark:text-gray-200 flex-1">
-                {ar ? "الصف المستهدف" : "Target class"}
+            {/* Duration row */}
+            <div className="px-4 py-3 flex items-center gap-3">
+              <Clock className="w-4 h-4 shrink-0 text-blue-400" />
+              <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
+                {ar ? "وقت كل سؤال" : "Time per question"}
               </span>
-              <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
-                className="min-w-[160px] max-w-[260px] rounded-lg border bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
-                style={{ borderColor: "#d1d5db" }}>
-                <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
-                {gradeLevels.map(g => (
-                  <option key={g.gradeLevel} value={g.gradeLevel}>
-                    {g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})
-                  </option>
+              <div className="flex gap-1.5 shrink-0">
+                {[10, 15, 20, 30].map(s => (
+                  <button key={s} onClick={() => setDuration(s)}
+                    className="w-10 h-8 rounded-lg text-[11px] font-black transition-all"
+                    style={{
+                      background: duration === s ? BLUE : "rgba(255,255,255,0.09)",
+                      color: duration === s ? "#fff" : "rgba(255,255,255,0.50)",
+                      border: `1.5px solid ${duration === s ? BLUE : "transparent"}`,
+                    }}>
+                    {s}{ar ? "ث" : "s"}
+                  </button>
                 ))}
-              </select>
-            </Card>
-          )}
+              </div>
+            </div>
 
-          {/* Questions counter */}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+
+            {/* Auto-advance row */}
+            <div className="px-4 py-3 flex items-center gap-3">
+              <span className="text-sm shrink-0">⏭</span>
+              <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
+                {ar ? "تقدم تلقائي بعد كل سؤال" : "Auto-advance after each question"}
+              </span>
+              <button onClick={() => setAutoAdvance(!autoAdvance)}
+                className="relative w-11 h-6 rounded-full transition-colors shrink-0"
+                style={{ background: autoAdvance ? "#16a34a" : "rgba(255,255,255,0.18)" }}>
+                <motion.div
+                  animate={{ x: autoAdvance ? (dir === "rtl" ? -19 : 19) : 2 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="absolute top-1 w-4 h-4 rounded-full bg-white shadow"
+                  style={{ [dir === "rtl" ? "right" : "left"]: 2 }}
+                />
+              </button>
+            </div>
+
+            {/* Target class row — only when grades exist */}
+            {gradeLevels.length > 0 && (
+              <>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+                <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+                  <GraduationCap className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
+                    {ar ? "الصف المستهدف" : "Target class"}
+                  </span>
+                  <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-800 bg-white/90 border-0 outline-none shrink-0"
+                    style={{ minWidth: 130 }}>
+                    <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
+                    {gradeLevels.map(g => (
+                      <option key={g.gradeLevel} value={g.gradeLevel}>
+                        {g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </motion.div>
+
+          {/* ── Source selection — compact side-by-side ── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
+            className="grid grid-cols-2 gap-2.5">
+
+            <button onClick={() => setBankOpen(true)}
+              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border transition-all hover:border-blue-400/50 active:scale-[0.97]"
+              style={{ background: "rgba(14,165,233,0.10)", borderColor: "rgba(14,165,233,0.22)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, #0ea5e9, #3b82f6)" }}>
+                <BookOpen className="w-4 h-4 text-white" />
+              </div>
+              <div className="text-start min-w-0">
+                <p className="text-sm font-black text-white truncate">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
+                {bankQuestions.length > 0
+                  ? <p className="text-[10px] text-blue-300">{bankQuestions.length} {ar ? "سؤال" : "questions"}</p>
+                  : <p className="text-[10px] text-white/35">{ar ? "اضغط للتصفح" : "Tap to browse"}</p>}
+              </div>
+            </button>
+
+            <button onClick={() => setAssignOpen(true)}
+              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border transition-all hover:border-amber-400/50 active:scale-[0.97]"
+              style={{ background: "rgba(245,158,11,0.10)", borderColor: "rgba(245,158,11,0.22)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
+                <FileText className="w-4 h-4 text-white" />
+              </div>
+              <div className="text-start min-w-0">
+                <p className="text-sm font-black text-white truncate">{ar ? "من واجب" : "Assignment"}</p>
+                <p className="text-[10px] text-white/35">{ar ? "اضغط للتصفح" : "Tap to browse"}</p>
+              </div>
+            </button>
+          </motion.div>
+
+          {/* ── Questions loaded strip ── */}
           <AnimatePresence>
             {questions.length > 0 && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-                <Card className="p-4 mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black text-white"
-                      style={{ background: BLUE }}>
-                      {questions.length}
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-gray-800 dark:text-gray-200">
-                        {ar ? "سؤال محمّل" : "questions loaded"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {ar ? "جاهز للانطلاق!" : "Ready to go!"}
-                      </p>
-                    </div>
-                  </div>
-                  <button onClick={() => setQuestions([])}
-                    className="p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    title={ar ? "مسح الأسئلة" : "Clear"}>
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </Card>
+              <motion.div
+                initial={{ opacity: 0, y: -6, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl overflow-hidden"
+                style={{ background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.28)" }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+                  style={{ background: "#16a34a" }}>
+                  {questions.length}
+                </div>
+                <p className="text-sm font-bold text-green-300 flex-1">
+                  {ar ? `${questions.length} سؤال محمّل — جاهز للانطلاق!` : `${questions.length} questions ready!`}
+                </p>
+                <button onClick={() => setQuestions([])}
+                  className="p-1 rounded-lg hover:bg-red-500/20 transition-colors text-red-400 shrink-0"
+                  title={ar ? "مسح الأسئلة" : "Clear"}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Import buttons */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <button onClick={() => setBankOpen(true)}
-              className="py-5 rounded-2xl text-white font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
-              style={{ background: `linear-gradient(135deg, #0ea5e9, #3b82f6)`, boxShadow: "0 8px 20px -6px rgba(59,130,246,0.5)" }}>
-              <BookOpen className="w-6 h-6" />
-              <span>{ar ? "بنك الأسئلة" : "Question Bank"}</span>
-              {bankQuestions.length > 0 && (
-                <span className="text-xs opacity-80">({bankQuestions.length})</span>
-              )}
-            </button>
-            <button onClick={() => setAssignOpen(true)}
-              className="py-5 rounded-2xl text-white font-bold text-sm flex flex-col items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
-              style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)", boxShadow: "0 8px 20px -6px rgba(245,158,11,0.5)" }}>
-              <FileText className="w-6 h-6" />
-              <span>{ar ? "من واجب" : "From Assignment"}</span>
-            </button>
-          </div>
-
-          {questions.length === 0 && (
-            <p className="text-center text-sm text-gray-400 mt-2">
-              {ar ? "اختر مصدر الأسئلة أولاً ثم أنشئ الغرفة" : "Pick a question source, then create room"}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* ── Sticky floating "Create Room" button ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          padding: "12px 16px",
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(12px)",
-          borderTop: "1.5px solid rgba(59,130,246,0.15)",
-          boxShadow: "0 -8px 24px -4px rgba(59,130,246,0.15)",
-        }}
-        dir={dir}
-      >
-        <div className="max-w-2xl mx-auto">
+          {/* ── Create Room button — inline, no sticky ── */}
           <motion.button
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
             whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: 1.01 }}
+            whileHover={{ scale: questions.length > 0 ? 1.01 : 1 }}
             onClick={handleCreate}
             disabled={creating || questions.length === 0}
-            className="w-full py-4 rounded-2xl font-black text-lg text-white flex items-center justify-center gap-3 transition-all"
+            className="w-full py-3.5 rounded-2xl font-black text-[15px] text-white flex items-center justify-center gap-2.5 transition-all"
             style={{
               background: questions.length > 0
                 ? `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`
-                : "#d1d5db",
-              boxShadow: questions.length > 0 ? `0 12px 28px -8px ${BLUE}80` : "none",
+                : "rgba(255,255,255,0.08)",
+              boxShadow: questions.length > 0 ? `0 8px 24px -6px ${BLUE}80` : "none",
               cursor: questions.length > 0 ? "pointer" : "not-allowed",
+              opacity: questions.length > 0 ? 1 : 0.45,
             }}
           >
             {creating ? (
-              <><Loader2 className="w-5 h-5 animate-spin" />{ar ? "جاري الإنشاء..." : "Creating..."}</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
             ) : (
               <>
-                <Play className="w-6 h-6" fill="currentColor" />
+                <Play className="w-4 h-4" fill="currentColor" />
                 {ar
-                  ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} سؤال)` : "أنشئ الغرفة"
-                  : questions.length > 0 ? `Create Room (${questions.length} Qs)` : "Create Room"}
+                  ? questions.length > 0 ? `أنشئ الغرفة · ${questions.length} سؤال` : "أنشئ الغرفة"
+                  : questions.length > 0 ? `Create Room · ${questions.length} Qs` : "Create Room"}
               </>
             )}
           </motion.button>
+
+          {questions.length === 0 && (
+            <p className="text-center text-[11px] text-white/30 pb-2">
+              {ar ? "اختر مصدر الأسئلة أولاً لتفعيل الزر" : "Pick a question source first to enable"}
+            </p>
+          )}
+
         </div>
       </div>
 
