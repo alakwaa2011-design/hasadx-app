@@ -1615,12 +1615,11 @@ export default function TugPlay() {
               {lang === "ar" ? "شد الحبل" : "Tug of War"}
             </div>
             <div className="text-sm font-mono font-black bg-white/20 text-white px-2.5 py-0.5 rounded-lg">#{pin}</div>
-            <QRModalButton url={joinUrl} pin={pin ?? ""} variant="dark" label="" />
             <motion.button whileTap={{ scale: 0.9 }}
               onClick={() => { navigator.clipboard.writeText(joinUrl); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${linkCopied ? "bg-green-500 text-white" : "bg-slate-700/80 dark:bg-white/15 text-slate-200 dark:text-white/70 hover:bg-slate-600/80 dark:hover:bg-white/25"}`}
             >
-              {linkCopied ? "✓" : "📋"} {linkCopied ? (lang === "ar" ? "تم!" : "Done!") : (lang === "ar" ? "نسخ" : "Copy")}
+              {linkCopied ? "✓" : "📋"} {linkCopied ? (lang === "ar" ? "تم!" : "Done!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}
             </motion.button>
           </div>
           <div className="flex items-center gap-2">
@@ -1697,15 +1696,19 @@ export default function TugPlay() {
             {myTeam && (
               <motion.div
                 initial={{ scale: 0 }} animate={{ scale: 1 }}
-                className="flex items-center gap-1.5 font-black px-3 py-1 rounded-xl text-sm shadow-lg"
+                className="flex items-center gap-1.5 font-black px-2.5 py-1 rounded-xl shadow-lg shrink-0"
                 style={{
-                  background: "#ffffff",
-                  color: myTeam === "blue" ? "#1D4ED8" : "#DC2626",
-                  border: `2px solid ${myTeam === "blue" ? "#3b82f6" : "#ef4444"}`,
+                  background: myTeam === "blue" ? "#1D4ED8" : "#DC2626",
+                  color: "#ffffff",
+                  border: `2px solid ${myTeam === "blue" ? "#93c5fd" : "#fca5a5"}`,
                 }}
               >
-                <span className={`w-2.5 h-2.5 rounded-full ${myTeam === "blue" ? "bg-blue-500" : "bg-red-500"}`} />
-                {teamLabel(myTeam)}
+                <span className="w-2 h-2 rounded-full bg-white/80 shrink-0" />
+                <span className="text-[10px] sm:text-xs whitespace-nowrap">
+                  {lang === "ar"
+                    ? `أنت في ${teamLabel(myTeam)}`
+                    : `You're on ${teamLabel(myTeam)}`}
+                </span>
                 {myStreak >= 3 && <StreakBadge streak={myStreak} />}
               </motion.div>
             )}
@@ -1765,27 +1768,27 @@ export default function TugPlay() {
               {phase === "lobby" && (
                 <motion.div key="lobby" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-4 py-4">
 
-                  {/* Team grids with assignment control for teacher */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    {/* Blue Team */}
-                    <div className="rounded-2xl border-2 border-blue-500 overflow-hidden" style={{ background: "#ffffff" }}>
-                      <div className="px-3 py-2 flex items-center justify-between" style={{ background: "#1d4ed8" }}>
-                        <span className="text-white font-black text-sm">
-                          {teamLabel("blue")} ({blueTeam.length})
+                  {/* Team grids — Red left, Blue right, fixed LTR so position is always consistent */}
+                  <div className="grid grid-cols-2 gap-2 mb-3" style={{ direction: "ltr" }}>
+                    {/* Red Team — left panel */}
+                    <div className="rounded-xl border-2 border-red-500 overflow-hidden" style={{ background: "#ffffff" }}>
+                      <div className="px-2.5 py-1.5 flex items-center justify-between" style={{ background: "#dc2626" }}>
+                        <span className="text-white font-black text-xs" style={{ direction: lang === "ar" ? "rtl" : "ltr" }}>
+                          🔴 {teamLabel("red")} ({redTeam.length})
                         </span>
                       </div>
-                      <div className="p-3 space-y-1.5">
-                        {blueTeam.length === 0
-                          ? <p className="text-blue-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
-                          : blueTeam.map((p) => (
-                            <motion.div key={p.name} initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl border border-blue-200" style={{ background: "#eff6ff" }}>
+                      <div className="p-2 space-y-1 max-h-40 overflow-y-auto" style={{ direction: lang === "ar" ? "rtl" : "ltr" }}>
+                        {redTeam.length === 0
+                          ? <p className="text-red-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
+                          : redTeam.map((p) => (
+                            <motion.div key={p.name} initial={{ x: 10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                              className="flex items-center gap-1 py-1 px-1.5 rounded-lg border border-red-200" style={{ background: "#fef2f2" }}>
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-blue-900 font-bold text-xs flex-1 truncate">{p.name}</span>
+                              <span className="text-red-900 font-bold text-[11px] flex-1 truncate">{p.name}</span>
                               {isCreator && (
-                                <button onClick={() => handleMovePlayer(p.name, "red")}
-                                  className="text-red-700 hover:text-red-900 text-[10px] font-black px-1.5 py-0.5 rounded transition-colors shrink-0" style={{ background: "#fee2e2" }}>
-                                  →🔴
+                                <button onClick={() => handleMovePlayer(p.name, "blue")}
+                                  className="text-blue-700 hover:text-blue-900 text-[9px] font-black px-1 py-0.5 rounded transition-colors shrink-0" style={{ background: "#dbeafe" }}>
+                                  🔵
                                 </button>
                               )}
                             </motion.div>
@@ -1793,25 +1796,25 @@ export default function TugPlay() {
                         }
                       </div>
                     </div>
-                    {/* Red Team */}
-                    <div className="rounded-2xl border-2 border-red-500 overflow-hidden" style={{ background: "#ffffff" }}>
-                      <div className="px-3 py-2 flex items-center justify-between" style={{ background: "#dc2626" }}>
-                        <span className="text-white font-black text-sm">
-                          {teamLabel("red")} ({redTeam.length})
+                    {/* Blue Team — right panel */}
+                    <div className="rounded-xl border-2 border-blue-500 overflow-hidden" style={{ background: "#ffffff" }}>
+                      <div className="px-2.5 py-1.5 flex items-center justify-between" style={{ background: "#1d4ed8" }}>
+                        <span className="text-white font-black text-xs" style={{ direction: lang === "ar" ? "rtl" : "ltr" }}>
+                          🔵 {teamLabel("blue")} ({blueTeam.length})
                         </span>
                       </div>
-                      <div className="p-3 space-y-1.5">
-                        {redTeam.length === 0
-                          ? <p className="text-red-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
-                          : redTeam.map((p) => (
-                            <motion.div key={p.name} initial={{ x: 10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
-                              className="flex items-center gap-1.5 py-1.5 px-2 rounded-xl border border-red-200" style={{ background: "#fef2f2" }}>
+                      <div className="p-2 space-y-1 max-h-40 overflow-y-auto" style={{ direction: lang === "ar" ? "rtl" : "ltr" }}>
+                        {blueTeam.length === 0
+                          ? <p className="text-blue-400 text-xs text-center py-2">{lang === "ar" ? "انتظار..." : "Waiting..."}</p>
+                          : blueTeam.map((p) => (
+                            <motion.div key={p.name} initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                              className="flex items-center gap-1 py-1 px-1.5 rounded-lg border border-blue-200" style={{ background: "#eff6ff" }}>
                               <AvatarDisplay avatar={p.avatar} size="2xl" />
-                              <span className="text-red-900 font-bold text-xs flex-1 truncate">{p.name}</span>
+                              <span className="text-blue-900 font-bold text-[11px] flex-1 truncate">{p.name}</span>
                               {isCreator && (
-                                <button onClick={() => handleMovePlayer(p.name, "blue")}
-                                  className="text-blue-700 hover:text-blue-900 text-[10px] font-black px-1.5 py-0.5 rounded transition-colors shrink-0" style={{ background: "#dbeafe" }}>
-                                  🔵←
+                                <button onClick={() => handleMovePlayer(p.name, "red")}
+                                  className="text-red-700 hover:text-red-900 text-[9px] font-black px-1 py-0.5 rounded transition-colors shrink-0" style={{ background: "#fee2e2" }}>
+                                  🔴
                                 </button>
                               )}
                             </motion.div>
