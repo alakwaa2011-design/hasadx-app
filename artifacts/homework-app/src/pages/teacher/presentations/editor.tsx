@@ -1548,10 +1548,11 @@ export default function PresentationEditor() {
               size="sm"
               onClick={() => setGoLiveOpen({ mode: "newTab" })}
               className="h-9 px-3 sm:px-4 gap-2 rounded-lg font-bold shadow-sm border-0 bg-[#D9A521] text-[#1c1003] hover:brightness-110"
-              title={isAr ? "بدء عرض مباشر بـ PIN للطلاب" : "Start live session"}
+              title={isAr ? "ابدأ جلسة تفاعلية مباشرة مع المشاركين عبر QR والكود" : "Start an interactive live session with participants via QR and join code"}
+              aria-label={isAr ? "بدء جلسة تفاعلية" : "Start interactive session"}
             >
               <Radio className="w-4 h-4" />
-              <span className="hidden sm:inline">{isAr ? "بدء مباشر" : "Go Live"}</span>
+              <span className="hidden sm:inline">{isAr ? "بدء جلسة تفاعلية" : "Start Interactive Session"}</span>
             </Button>
             {/* Single Sessions entry point — replaces the previous separate
                 "Past results" and "Compare" toolbar buttons. Compare is one
@@ -2297,13 +2298,19 @@ function GoLiveDialog({
           <div className="flex items-center gap-2">
             <Radio className="w-5 h-5" style={{ color: BRAND_GOLD }} />
             <h2 className="font-black text-lg">
-              {isAr ? "بدء عرض مباشر" : "Start live session"}
+              {isAr ? "بدء جلسة تفاعلية" : "Start Interactive Session"}
             </h2>
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-black"
+              style={{ background: "rgba(217,165,33,0.2)", color: "#fff7d6", border: "1px solid rgba(217,165,33,0.35)" }}
+            >
+              {isAr ? "حي" : "Live"}
+            </span>
           </div>
           <p className="text-sm opacity-90 mt-1">
             {isAr
-              ? "يمكنك اختيار صف (اختياري) حتى يظهر الطلاب بأسمائهم، أو اتركه فارغاً للوضع الحر."
-              : "Optionally pick a class so students join by name, or leave empty for guest mode."}
+              ? "ابدأ جلسة تفاعلية مباشرة: يظهر QR وكود الانضمام ويدخل المشاركون للتفاعل لحظياً."
+              : "Start a real-time interactive session: participants join with a QR code or PIN and interact live."}
           </p>
         </div>
         <div className="p-5 space-y-4" style={{ overflow: "visible" }}>
@@ -2386,8 +2393,8 @@ function GoLiveDialog({
             >
               <Radio className="w-4 h-4" />
               {isAr
-                ? (mode === "newTab" ? "بدء في نافذة جديدة" : "بدء")
-                : (mode === "newTab" ? "Open in new tab" : "Start")}
+                ? (mode === "newTab" ? "بدء الجلسة في نافذة جديدة" : "بدء الجلسة")
+                : (mode === "newTab" ? "Start session in new tab" : "Start session")}
             </Button>
           </div>
         </div>
@@ -7022,7 +7029,7 @@ function MobileMoreMenu({
       />
       <Item
         icon={Radio}
-        label={isAr ? "بدء جلسة مباشرة" : "Go live"}
+        label={isAr ? "بدء جلسة تفاعلية" : "Start interactive session"}
         onClick={onGoLive}
         disabled={readOnly}
       />
