@@ -881,7 +881,7 @@ function TugPowerMeter({ position }: { position: number }) {
   return (
     <div className="relative mx-auto w-full max-w-3xl px-2">
       <div
-        className="relative h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        className="relative h-8 sm:h-10 lg:h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-1 sm:p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
         style={{ boxShadow: "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)" }}
       >
         <div className="relative h-full overflow-hidden rounded-2xl">
@@ -907,13 +907,13 @@ function TugPowerMeter({ position }: { position: number }) {
         <motion.div
           animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
           transition={{ type: "spring", stiffness: 95, damping: 16 }}
-          className="absolute top-1/2 z-20 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
+          className="absolute top-1/2 z-20 h-6 w-6 sm:h-8 sm:w-8 lg:h-9 lg:w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
           style={{
             background: "radial-gradient(circle at 32% 24%, #fff7cc 0%, #f7c948 28%, #d97706 62%, #7c3f09 100%)",
             boxShadow: "0 0 18px rgba(247,201,72,0.62), inset 0 2px 5px rgba(255,255,255,0.58), inset 0 -5px 10px rgba(95,45,8,0.5)",
           }}
         >
-          <div className="flex h-full w-full items-center justify-center text-base drop-shadow-sm">🪢</div>
+          <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm lg:text-base drop-shadow-sm">🪢</div>
         </motion.div>
       </div>
     </div>
@@ -992,6 +992,47 @@ function TugActionButton({
   );
 }
 
+/** Compact team status row shown on mobile/tablet (hidden lg+) replacing the large TeamScoreCards */
+function MobileTeamStatusRow({
+  blueScore,
+  redScore,
+  blueLabel,
+  redLabel,
+}: {
+  blueScore: number;
+  redScore: number;
+  blueLabel: string;
+  redLabel: string;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-1.5 lg:hidden"
+      style={{ direction: "ltr" }}
+    >
+      {/* Blue score pill — physical left */}
+      <div
+        className="flex items-center justify-center gap-2 rounded-full px-3 py-1.5 flex-1 min-w-0"
+        style={{ background: "rgba(29,78,216,0.25)", border: "1px solid rgba(59,130,246,0.4)" }}
+      >
+        <span className="text-base leading-none">🔵</span>
+        <span className="text-white font-black text-base tabular-nums">{blueScore}</span>
+        <span className="text-blue-200/60 text-[10px] font-bold truncate hidden sm:inline">{blueLabel}</span>
+      </div>
+      {/* Center rope icon */}
+      <span className="text-2xl shrink-0 leading-none">🪢</span>
+      {/* Red score pill — physical right */}
+      <div
+        className="flex items-center justify-center gap-2 rounded-full px-3 py-1.5 flex-1 min-w-0"
+        style={{ background: "rgba(220,38,38,0.25)", border: "1px solid rgba(248,113,113,0.4)" }}
+      >
+        <span className="text-red-200/60 text-[10px] font-bold truncate hidden sm:inline">{redLabel}</span>
+        <span className="text-white font-black text-base tabular-nums">{redScore}</span>
+        <span className="text-base leading-none">🔴</span>
+      </div>
+    </div>
+  );
+}
+
 function TugArena({
   ropePos,
   blueScore,
@@ -1022,10 +1063,10 @@ function TugArena({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-2 pt-1 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
+    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-1 sm:pb-2 pt-1 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
       <StadiumBackdrop active={isPulling} />
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="min-h-[220px] sm:min-h-[290px] lg:min-h-[360px]">
+        <div className="min-h-[185px] sm:min-h-[290px] lg:min-h-[360px]">
           <TugCharacters
             ropePos={ropePos}
             isPulling={isPulling}
@@ -1035,12 +1076,17 @@ function TugArena({
           />
         </div>
         <div className="grid items-end gap-1.5 lg:grid-cols-[170px_minmax(0,1fr)_170px] lg:gap-2">
-          <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
-          <div className="space-y-1.5">
+          {/* Hidden on mobile/tablet — replaced by MobileTeamStatusRow below the arena */}
+          <div className="hidden lg:block">
+            <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
+          </div>
+          <div className="space-y-1 sm:space-y-1.5">
             <TugPowerMeter position={ropePos} />
             {children}
           </div>
-          <TeamScoreCard team="red" label={redLabel} score={redScore} playersCount={redCount} lang={lang} />
+          <div className="hidden lg:block">
+            <TeamScoreCard team="red" label={redLabel} score={redScore} playersCount={redCount} lang={lang} />
+          </div>
         </div>
       </div>
     </section>
@@ -1762,7 +1808,17 @@ export default function TugPlay() {
             )}
           </TugArena>
 
-          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-3">
+          {/* Mobile/tablet compact team status row — replaces the large TeamScoreCards hidden below lg */}
+          <MobileTeamStatusRow
+            blueScore={blueTotal}
+            redScore={redTotal}
+            blueLabel={teamLabel("blue")}
+            redLabel={teamLabel("red")}
+          />
+
+          {/* On desktop lg+, keep the slight overlap with the arena (-mt-3).
+              On mobile, the status row sits between; no overlap needed. */}
+          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full lg:-mt-3">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
@@ -1845,8 +1901,8 @@ export default function TugPlay() {
               )}
 
               {(phase === "question" || phase === "answered" || phase === "round-end") && question && (
-                <motion.div key="question" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-2 lg:px-3 pt-1 pb-1 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-1">
+                <motion.div key="question" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-2 lg:px-3 pt-0.5 lg:pt-1 pb-1 flex-1 flex flex-col">
+                  <div className="flex items-center justify-between mb-0.5 lg:mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm lg:text-base font-black px-3 py-1 rounded-xl text-white"
                         style={{
@@ -1874,7 +1930,7 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-2.5 lg:p-3 mb-1.5 text-center border text-white shadow-md ${
+                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-2 lg:p-3 mb-1 lg:mb-1.5 text-center border text-white shadow-md ${
                     phase === "round-end" && roundData
                       ? "border-[#D9A521]/60"
                       : isPowerQ
@@ -1908,7 +1964,7 @@ export default function TugPlay() {
                       return (
                         <button key={idx}
                           onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null || phase === "round-end"}
-                          className={`relative flex items-center justify-center gap-2 p-2.5 lg:p-3 rounded-2xl text-center font-bold text-sm sm:text-sm lg:text-base border-2 overflow-hidden min-h-[52px] lg:min-h-[62px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
+                          className={`relative flex items-center justify-center gap-2 p-2 lg:p-3 rounded-2xl text-center font-bold text-sm lg:text-base border-2 overflow-hidden min-h-[48px] lg:min-h-[62px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
                           style={{ background: os.bg, borderColor: os.border }}
                         >
                           {os.crossed && (
