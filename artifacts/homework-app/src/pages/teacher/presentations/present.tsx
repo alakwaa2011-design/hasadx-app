@@ -25,7 +25,7 @@ import { getSocket, disconnectSocket } from "@/lib/socket";
 
 type GameQuestion = { prompt: string; options: string[]; correctIndex: number };
 type HasadGameEl = SlideElement & { questions?: GameQuestion[]; prompt?: string; topic?: string; gameKind?: string; accentColor?: string };
-type HasadActivityEl = SlideElement & { assignmentId?: number; assignmentTitle?: string };
+type HasadActivityEl = SlideElement & { assignmentId?: number; assignmentTitle?: string; gameType?: string };
 
 /** Write activity payload to localStorage then open the runner in a new tab. */
 function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined) {
@@ -284,6 +284,59 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setSelectedTeamCount(2);
     setShowGameModeModal(true);
   }, [activeActivityEl, isLaunchingActivity]);
+
+  const createWameethSession = useCallback((assignmentId: number, hackMode = false) => {
+    const gameTab = window.open("", "_blank", "noopener");
+    setIsLaunchingActivity(true);
+    const socket = getSocket();
+    socket.emit(
+      "teacher:create-game",
+      { assignmentId, gameMode: "solo", hackMode: hackMode || undefined },
+      (res: { pin?: string; error?: string }) => {
+        setIsLaunchingActivity(false);
+        if (res.error || !res.pin) {
+          gameTab?.close();
+          disconnectSocket();
+          alert(isAr ? "تعذّر إنشاء اللعبة. حاول مرة أخرى." : "Could not create game session. Please try again.");
+          return;
+        }
+        setActivePin(res.pin);
+        setActiveGamePin(res.pin);
+        if (gameTab) {
+          gameTab.location.href = `/teacher/game/${encodeURIComponent(res.pin)}`;
+        } else {
+          setLocation(`/teacher/game/${encodeURIComponent(res.pin)}`);
+        }
+      },
+    );
+  }, [isAr, setLocation]);
+
+  /** If the editor already stored a game type, launch it directly. */
+  const launchSelectedHasadGame = useCallback(() => {
+    if (!activeActivityEl?.assignmentId || isLaunchingActivity) return;
+    const assignmentId = activeActivityEl.assignmentId;
+    const gameType = activeActivityEl.gameType ?? "knowledge_race";
+
+    if (gameType === "rocket_race") {
+      window.open(`/game/rocket/create?assignmentId=${assignmentId}`, "_blank", "noopener");
+      return;
+    }
+    if (gameType === "tug_of_war") {
+      window.open(`/game/tug/create?assignmentId=${assignmentId}`, "_blank", "noopener");
+      return;
+    }
+    if (gameType === "million") {
+      window.open(`/game/million?assignmentId=${assignmentId}`, "_blank", "noopener");
+      return;
+    }
+    if (gameType === "hack") {
+      createWameethSession(assignmentId, true);
+      return;
+    }
+    /* wheel currently runs through Wameeth-compatible questions until a
+       dedicated wheel route exists for presentation launch. */
+    createWameethSession(assignmentId, false);
+  }, [activeActivityEl, createWameethSession, isLaunchingActivity]);
 
   /** Confirm the game-mode selection and launch the appropriate game session.
    *
@@ -706,7 +759,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             )}
             {activeActivityEl && (
               <button
-                onClick={launchHasadActivity}
+                onClick={activeActivityEl.gameType ? launchSelectedHasadGame : launchHasadActivity}
                 disabled={isLaunchingActivity}
                 className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ background: "#D9A521", border: "1px solid #ffffff33", color: "#1f2937" }}
