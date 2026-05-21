@@ -218,63 +218,158 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      {/* Premium dark green — clean single gradient, no overlays */}
-      <div className="min-h-screen" dir={dir}
-        style={{ background: "linear-gradient(165deg, #0e2318 0%, #122b1d 100%)" }}>
+      {/* ── Light premium background with subtle green tint ── */}
+      <div className="min-h-screen" dir={dir} style={{ background: "#f4fbf7" }}>
 
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-12">
+        {/* ══════════════════════════════════════════════════════
+            HERO SECTION
+        ══════════════════════════════════════════════════════ */}
+        <div className="relative overflow-hidden"
+          style={{ background: "linear-gradient(180deg, #c8e8d4 0%, #daeee3 40%, #eef8f3 100%)" }}>
 
-          {/* ── Hero: clean identity header ── */}
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-7 text-center">
+          {/* Stadium spotlight glares — top corners, very subtle */}
+          <div className="absolute top-0 left-0 w-72 h-72 pointer-events-none"
+            style={{ background: "radial-gradient(circle at top left, rgba(255,255,255,0.55) 0%, transparent 60%)" }} />
+          <div className="absolute top-0 right-0 w-72 h-72 pointer-events-none"
+            style={{ background: "radial-gradient(circle at top right, rgba(255,255,255,0.55) 0%, transparent 60%)" }} />
 
-            {/* Team VS strip */}
-            <div className="inline-flex items-center gap-4 mb-4 px-5 py-2.5 rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
-                <span className="text-sm font-bold text-blue-300">{ar ? "الفريق الأزرق" : "Blue"}</span>
-              </div>
-              <span className="text-2xl">🪢</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-red-300">{ar ? "الفريق الأحمر" : "Red"}</span>
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
-              </div>
+          {/* Tug-of-war crowd silhouettes — left side */}
+          <svg className="absolute left-0 bottom-0 h-20 opacity-[0.08] pointer-events-none hidden sm:block"
+            viewBox="0 0 280 80" style={{ width: 280 }}>
+            {[0, 55, 110, 165].map((x) => (
+              <g key={x} fill="#166534" transform={`translate(${x}, 0)`}>
+                <circle cx={22} cy={12} r={9} />
+                <rect x={14} y={22} width={16} height={22} rx={4} />
+                <line x1={30} y1={28} x2={52} y2={32} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={8} y1={28} x2={0} y2={34} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={18} y1={44} x2={14} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={26} y1={44} x2={30} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+              </g>
+            ))}
+          </svg>
+
+          {/* Tug-of-war crowd silhouettes — right side (mirrored) */}
+          <svg className="absolute right-0 bottom-0 h-20 opacity-[0.08] pointer-events-none hidden sm:block"
+            viewBox="0 0 280 80" style={{ width: 280, transform: "scaleX(-1)" }}>
+            {[0, 55, 110, 165].map((x) => (
+              <g key={x} fill="#166534" transform={`translate(${x}, 0)`}>
+                <circle cx={22} cy={12} r={9} />
+                <rect x={14} y={22} width={16} height={22} rx={4} />
+                <line x1={30} y1={28} x2={52} y2={32} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={8} y1={28} x2={0} y2={34} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={18} y1={44} x2={14} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+                <line x1={26} y1={44} x2={30} y2={70} stroke="#166534" strokeWidth="3" strokeLinecap="round" />
+              </g>
+            ))}
+          </svg>
+
+          {/* Rope curve — left edge decoration */}
+          <svg className="absolute left-0 inset-y-0 h-full w-20 opacity-[0.07] pointer-events-none hidden lg:block"
+            viewBox="0 0 80 200" preserveAspectRatio="none">
+            <path d="M80,10 Q-10,60 20,100 Q-10,140 80,190" stroke="#166534" strokeWidth="5" fill="none" strokeLinecap="round" />
+          </svg>
+          {/* Rope curve — right edge */}
+          <svg className="absolute right-0 inset-y-0 h-full w-20 opacity-[0.07] pointer-events-none hidden lg:block"
+            viewBox="0 0 80 200" preserveAspectRatio="none">
+            <path d="M0,10 Q90,60 60,100 Q90,140 0,190" stroke="#166534" strokeWidth="5" fill="none" strokeLinecap="round" />
+          </svg>
+
+          {/* Hero content */}
+          <div className="relative max-w-[1100px] mx-auto px-4 sm:px-8 pt-8 pb-8">
+
+            {/* Team blocks + rope — direction:ltr to fix physical positions regardless of page RTL */}
+            <div className="flex items-center justify-between mb-5" style={{ direction: "ltr" }}>
+
+              {/* Red team — physical LEFT */}
+              <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}
+                className="flex items-center gap-3">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                    boxShadow: "0 4px 14px rgba(220,38,38,0.25)",
+                  }}>
+                  💪
+                </div>
+                <div style={{ direction: dir }}>
+                  <p className="font-black text-red-700 text-sm sm:text-base leading-tight">
+                    {ar ? "الفريق الأحمر" : "Red Team"}
+                  </p>
+                  <p className="text-red-400 text-xs mt-0.5">{ar ? "المنافس الثاني" : "Team 2"}</p>
+                </div>
+              </motion.div>
+
+              {/* Center: rope knot + title */}
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center flex-1 px-4">
+                {/* Rope lines extending from knot */}
+                <div className="flex items-center mb-3 w-full max-w-xs">
+                  <div className="flex-1 h-0.5 rounded-full"
+                    style={{ background: "linear-gradient(to left, rgba(22,163,74,0.35), transparent)" }} />
+                  <span className="text-5xl sm:text-6xl mx-3">🪢</span>
+                  <div className="flex-1 h-0.5 rounded-full"
+                    style={{ background: "linear-gradient(to right, rgba(22,163,74,0.35), transparent)" }} />
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-gray-900 text-center leading-tight mb-1"
+                  style={{ direction: dir }}>
+                  {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+                </h1>
+                <p className="text-sm text-gray-500 text-center" style={{ direction: dir }}>
+                  {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
+                </p>
+              </motion.div>
+
+              {/* Blue team — physical RIGHT */}
+              <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }}
+                className="flex items-center gap-3 flex-row-reverse">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-3xl shrink-0"
+                  style={{
+                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    boxShadow: "0 4px 14px rgba(59,130,246,0.25)",
+                  }}>
+                  💪
+                </div>
+                <div style={{ direction: dir }} className="text-end">
+                  <p className="font-black text-blue-700 text-sm sm:text-base leading-tight">
+                    {ar ? "الفريق الأزرق" : "Blue Team"}
+                  </p>
+                  <p className="text-blue-400 text-xs mt-0.5">{ar ? "المنافس الأول" : "Team 1"}</p>
+                </div>
+              </motion.div>
             </div>
+          </div>
+        </div>
+        {/* ══════════════════════════════════════════════════════
+            MAIN CONTENT
+        ══════════════════════════════════════════════════════ */}
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 pb-8">
 
-            <h1 className="text-2xl sm:text-3xl font-black text-white mb-2">
-              {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
-            </h1>
-            <p className="text-sm text-white/45">
-              {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
-            </p>
-          </motion.div>
+          {/* Two-column grid.
+              In RTL: first child → physical RIGHT (Settings), second → physical LEFT (Source).
+              This matches the reference image layout. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
-          {/* ── Two-column layout on desktop ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
+            {/* ── SETTINGS CARD — first child (RIGHT in RTL) ── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+              className="bg-white rounded-3xl p-6 sm:p-7"
+              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
 
-            {/* LEFT: Settings card — clean glass rows */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.09)",
-              }}>
+              <h2 className="text-base font-black text-gray-800 mb-5">
+                {ar ? "إعدادات اللعبة" : "Game Settings"}
+              </h2>
 
-              {/* Duration */}
-              <div className="px-5 py-4 flex items-center gap-4">
-                <Clock className="w-4 h-4 shrink-0 text-white/40" />
-                <span className="text-sm font-semibold text-white/75 flex-1">
-                  {ar ? "وقت السؤال" : "Time per question"}
-                </span>
-                <div className="flex gap-1 shrink-0 rounded-xl p-1"
-                  style={{ background: "rgba(0,0,0,0.25)" }}>
+              {/* Duration row */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2 shrink-0">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-bold text-gray-700">{ar ? "وقت السؤال" : "Time per question"}</span>
+                </div>
+                <div className="flex gap-1 bg-gray-100 rounded-xl p-1 ms-3">
                   {[10, 15, 20, 30].map(s => (
                     <button key={s} onClick={() => setDuration(s)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
                       style={{
                         background: duration === s ? "#16a34a" : "transparent",
-                        color: duration === s ? "#fff" : "rgba(255,255,255,0.4)",
+                        color: duration === s ? "#fff" : "#6b7280",
                       }}>
                       {s}{ar ? "ث" : "s"}
                     </button>
@@ -282,22 +377,19 @@ export default function TugCreate() {
                 </div>
               </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-
-              {/* Auto advance */}
-              <div className="px-5 py-4 flex items-center gap-4">
-                <span className="text-base shrink-0 opacity-60">⏭</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white/75">
+              {/* Auto advance row */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex-1 min-w-0 me-4">
+                  <p className="text-sm font-bold text-gray-700">
                     {ar ? "التقدم التلقائي بعد كل سؤال" : "Auto-advance after each question"}
                   </p>
-                  <p className="text-[11px] text-white/35 mt-0.5">
+                  <p className="text-xs text-gray-400 mt-0.5">
                     {ar ? "الانتقال تلقائياً للسؤال التالي بعد الإجابة" : "Move to next question automatically"}
                   </p>
                 </div>
                 <button onClick={() => setAutoAdvance(!autoAdvance)}
                   className="relative w-11 h-6 rounded-full transition-colors shrink-0"
-                  style={{ background: autoAdvance ? "#16a34a" : "rgba(255,255,255,0.15)" }}>
+                  style={{ background: autoAdvance ? "#16a34a" : "#d1d5db" }}>
                   <motion.div
                     animate={{ x: autoAdvance ? (dir === "rtl" ? -19 : 19) : 2 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -307,73 +399,68 @@ export default function TugCreate() {
                 </button>
               </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-
-              {/* Question count */}
-              <div className="px-5 py-4 flex items-center gap-4">
-                <span className="text-base shrink-0 opacity-60">📋</span>
-                <span className="text-sm font-semibold text-white/75 flex-1">
-                  {ar ? "عدد الأسئلة" : "Question count"}
-                </span>
-                <div className="flex items-center gap-2.5 shrink-0">
+              {/* Question count row */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📋</span>
+                  <span className="text-sm font-bold text-gray-700">{ar ? "عدد الأسئلة" : "Question count"}</span>
+                </div>
+                <div className="flex items-center gap-3">
                   <button onClick={() => setQuestionCount(c => Math.max(1, c - 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white/60 transition-colors hover:bg-white/10"
-                    style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold text-gray-600 transition-colors hover:bg-gray-100"
+                    style={{ border: "1.5px solid #d1d5db" }}>
                     −
                   </button>
-                  <span className="w-9 text-center text-base font-black text-white tabular-nums">
-                    {questionCount}
-                  </span>
+                  <span className="w-9 text-center text-lg font-black text-gray-900 tabular-nums">{questionCount}</span>
                   <button onClick={() => setQuestionCount(c => Math.min(20, c + 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white/60 transition-colors hover:bg-white/10"
-                    style={{ border: "1px solid rgba(255,255,255,0.14)" }}>
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-base font-bold text-gray-600 transition-colors hover:bg-gray-100"
+                    style={{ border: "1.5px solid #d1d5db" }}>
                     +
                   </button>
                 </div>
               </div>
 
+              {/* Target class — only when grades exist */}
               {gradeLevels.length > 0 && (
-                <>
-                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-                  <div className="px-5 py-4 flex items-center gap-4 flex-wrap">
-                    <GraduationCap className="w-4 h-4 shrink-0 text-white/40" />
-                    <span className="text-sm font-semibold text-white/75 flex-1 min-w-0">
-                      {ar ? "الصف المستهدف" : "Target class"}
-                    </span>
-                    <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
-                      className="rounded-xl px-3 py-1.5 text-sm font-medium text-gray-800 bg-white/90 border-0 outline-none shrink-0"
-                      style={{ minWidth: 140 }}>
-                      <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
-                      {gradeLevels.map(g => (
-                        <option key={g.gradeLevel} value={g.gradeLevel}>
-                          {g.gradeLevel} ({g.count} {ar ? "طالب" : "students"})
-                        </option>
-                      ))}
-                    </select>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm font-bold text-gray-700">{ar ? "الصف المستهدف" : "Target class"}</span>
                   </div>
-                </>
+                  <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 outline-none ms-3"
+                    style={{ minWidth: 130 }}>
+                    <option value="">{ar ? "— جميع الصفوف —" : "— All —"}</option>
+                    {gradeLevels.map(g => (
+                      <option key={g.gradeLevel} value={g.gradeLevel}>
+                        {g.gradeLevel} ({g.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
             </motion.div>
 
-            {/* RIGHT: Source + status + button */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
-              className="flex flex-col gap-3">
+            {/* ── SOURCE CARD — second child (LEFT in RTL) ── */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 flex flex-col"
+              style={{ border: "1.5px solid #e5eee9", boxShadow: "0 2px 14px rgba(0,0,0,0.06)" }}>
 
-              <p className="text-[10px] font-bold text-white/35 uppercase tracking-widest px-0.5">
-                {ar ? "مصدر الأسئلة" : "Question source"}
-              </p>
+              <h2 className="text-base font-black text-gray-800 mb-4">
+                {ar ? "اختر مصدر الأسئلة" : "Question Source"}
+              </h2>
 
-              {/* Assignment card */}
-              <button
-                onClick={() => setAssignOpen(true)}
-                className="flex items-center gap-3.5 px-4 py-4 rounded-xl border transition-all hover:border-amber-500/40 active:scale-[0.98] text-start"
+              {/* Assignment source card */}
+              <button onClick={() => setAssignOpen(true)}
+                className="w-full flex items-center gap-4 p-4 rounded-[18px] mb-3 border-2 text-start transition-all hover:shadow-md active:scale-[0.98]"
                 style={{
-                  background: selectedSource === "assignment" ? "rgba(245,158,11,0.10)" : "rgba(255,255,255,0.05)",
-                  borderColor: selectedSource === "assignment" ? "rgba(245,158,11,0.55)" : "rgba(255,255,255,0.09)",
+                  background: selectedSource === "assignment" ? "#fffbeb" : "#fffdf7",
+                  borderColor: selectedSource === "assignment" ? "#f59e0b" : "#fde8b4",
+                  minHeight: 110,
                 }}>
-                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(245,158,11,0.18)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                  <FileText className="w-5 h-5" style={{ color: "#f59e0b" }} />
+                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ background: "linear-gradient(135deg, #fef3c7, #fde68a)" }}>
+                  <FileText className="w-7 h-7" style={{ color: "#d97706" }} />
                   {selectedSource === "assignment" && (
                     <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-amber-500">
                       <Check className="w-3 h-3 text-white" />
@@ -381,36 +468,47 @@ export default function TugCreate() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white/85">{ar ? "من واجب" : "Assignment"}</p>
-                  <p className="text-[11px] text-white/40 mt-0.5">{ar ? "الأسئلة من الواجبات" : "From assignments"}</p>
+                  <p className="text-sm font-black text-gray-800">{ar ? "من واجب" : "From Assignment"}</p>
+                  <p className="text-xs text-gray-400 mt-1">{ar ? "الأسئلة من الواجبات" : "Questions from assignments"}</p>
+                </div>
+                <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                  style={{ borderColor: selectedSource === "assignment" ? "#f59e0b" : "#d1d5db" }}>
+                  {selectedSource === "assignment" && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  )}
                 </div>
               </button>
 
-              {/* Bank card */}
-              <button
-                onClick={() => setBankOpen(true)}
-                className="flex items-center gap-3.5 px-4 py-4 rounded-xl border transition-all hover:border-blue-500/40 active:scale-[0.98] text-start"
+              {/* Bank source card */}
+              <button onClick={() => setBankOpen(true)}
+                className="w-full flex items-center gap-4 p-4 rounded-[18px] mb-4 border-2 text-start transition-all hover:shadow-md active:scale-[0.98]"
                 style={{
-                  background: selectedSource === "bank" ? "rgba(59,91,219,0.12)" : "rgba(255,255,255,0.05)",
-                  borderColor: selectedSource === "bank" ? "rgba(59,91,219,0.55)" : "rgba(255,255,255,0.09)",
+                  background: selectedSource === "bank" ? "#eff6ff" : "#f8fbff",
+                  borderColor: selectedSource === "bank" ? "#3b82f6" : "#bfdbfe",
+                  minHeight: 110,
                 }}>
-                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(59,91,219,0.18)", border: "1px solid rgba(59,91,219,0.25)" }}>
-                  <BookOpen className="w-5 h-5" style={{ color: "#748ffc" }} />
+                <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                  style={{ background: "linear-gradient(135deg, #dbeafe, #bfdbfe)" }}>
+                  <BookOpen className="w-7 h-7" style={{ color: "#2563eb" }} />
                   {selectedSource === "bank" && (
-                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-                      style={{ background: BLUE }}>
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-blue-600">
                       <Check className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white/85">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
-                  <p className="text-[11px] text-white/40 mt-0.5">
+                  <p className="text-sm font-black text-gray-800">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
+                  <p className="text-xs text-gray-400 mt-1">
                     {bankQuestions.length > 0
                       ? `${bankQuestions.length} ${ar ? "سؤال متاح" : "available"}`
-                      : (ar ? "الأسئلة من بنك الأسئلة" : "From question bank")}
+                      : (ar ? "الأسئلة من بنك الأسئلة" : "Questions from the bank")}
                   </p>
+                </div>
+                <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                  style={{ borderColor: selectedSource === "bank" ? "#3b82f6" : "#d1d5db" }}>
+                  {selectedSource === "bank" && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                  )}
                 </div>
               </button>
 
@@ -419,60 +517,83 @@ export default function TugCreate() {
                 {questions.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl"
-                      style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.22)" }}>
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-auto">
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                      style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0" }}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0"
                         style={{ background: "#16a34a" }}>
                         {questions.length}
                       </div>
-                      <p className="text-sm font-semibold text-green-300/90 flex-1">
-                        {ar ? `${questions.length} سؤال محمّل` : `${questions.length} questions ready`}
+                      <p className="text-sm font-bold text-green-700 flex-1">
+                        {ar ? `${questions.length} سؤال محمّل جاهز للانطلاق!` : `${questions.length} questions ready!`}
                       </p>
                       <button
                         onClick={() => { setQuestions([]); setSelectedSource(null); setQuestionCount(10); }}
-                        className="p-1 rounded hover:bg-red-500/15 transition-colors text-red-400/70 shrink-0">
-                        <Trash2 className="w-3.5 h-3.5" />
+                        className="p-1.5 rounded-lg hover:bg-red-100 transition-colors text-red-400 shrink-0">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Create Room button */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={handleCreate}
-                disabled={creating || questions.length === 0}
-                className="w-full py-4 rounded-xl font-black text-base text-white flex items-center justify-center gap-2.5 transition-all mt-auto"
-                style={{
-                  background: questions.length > 0
-                    ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)"
-                    : "rgba(255,255,255,0.07)",
-                  boxShadow: questions.length > 0 ? "0 4px 16px rgba(22,163,74,0.3)" : "none",
-                  cursor: questions.length > 0 ? "pointer" : "not-allowed",
-                  opacity: questions.length > 0 ? 1 : 0.4,
-                }}
-              >
-                {creating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4" fill="currentColor" />
-                    {ar
-                      ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} أسئلة)` : "أنشئ الغرفة"
-                      : questions.length > 0 ? `Create Room · ${questions.length} Qs` : "Create Room"}
-                  </>
-                )}
-              </motion.button>
-
               {questions.length === 0 && (
-                <p className="text-center text-[11px] text-white/25">
-                  {ar ? "اختر مصدر الأسئلة أولاً" : "Pick a question source first"}
+                <p className="text-xs text-gray-400 text-center mt-auto pt-2">
+                  {ar ? "اختر مصدر الأسئلة أولاً لتفعيل الزر" : "Pick a source first"}
                 </p>
               )}
-
             </motion.div>
+          </div>
+
+          {/* ── CREATE ROOM BUTTON — wide, centered ── */}
+          <div className="flex justify-center mb-5">
+            <motion.button
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={handleCreate}
+              disabled={creating || questions.length === 0}
+              className="flex items-center justify-center gap-3 font-black text-lg text-white transition-all"
+              style={{
+                width: "min(820px, 100%)",
+                height: 64,
+                borderRadius: 18,
+                background: questions.length > 0
+                  ? "linear-gradient(135deg, #22c55e 0%, #16a34a 55%, #047857 100%)"
+                  : "#d1d5db",
+                boxShadow: questions.length > 0 ? "0 6px 20px rgba(22,163,74,0.32)" : "none",
+                cursor: questions.length > 0 ? "pointer" : "not-allowed",
+              }}
+            >
+              {creating ? (
+                <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جاري الإنشاء..." : "Creating..."}</>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" fill="currentColor" />
+                  {ar
+                    ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} أسئلة)` : "أنشئ الغرفة"
+                    : questions.length > 0 ? `Create Room (${questions.length} Qs)` : "Create Room"}
+                </>
+              )}
+            </motion.button>
+          </div>
+
+          {/* ── BOTTOM INFO STRIP ── */}
+          <div className="flex flex-wrap justify-center gap-3">
+            {[
+              { icon: "🔒", text: ar ? "اللعبة خاصة بالغرفة" : "Private room" },
+              { icon: "🏆", text: ar ? "يفوز الفريق الذي يصل أولاً للنهاية" : "First team to finish wins" },
+              { icon: "🔗", text: ar ? "يمكنك مشاركة رابط الغرفة مع الطلاب" : "Share room link with students" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl"
+                style={{
+                  background: "#ffffff",
+                  border: "1.5px solid #e5eee9",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                }}>
+                <span className="text-base">{item.icon}</span>
+                <span className="text-xs font-medium text-gray-500">{item.text}</span>
+              </div>
+            ))}
           </div>
 
         </div>
