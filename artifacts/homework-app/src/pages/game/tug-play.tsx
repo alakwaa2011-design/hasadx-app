@@ -881,7 +881,7 @@ function TugPowerMeter({ position }: { position: number }) {
   return (
     <div className="relative mx-auto w-full max-w-3xl px-2">
       <div
-        className="relative h-16 rounded-[1.4rem] border border-white/25 bg-black/35 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+        className="relative h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
         style={{ boxShadow: "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)" }}
       >
         <div className="relative h-full overflow-hidden rounded-2xl">
@@ -899,13 +899,13 @@ function TugPowerMeter({ position }: { position: number }) {
         <motion.div
           animate={{ left: `${pos}%`, scale: inDanger ? [1, 1.08, 1] : 1 }}
           transition={{ type: "spring", stiffness: 95, damping: 16 }}
-          className="absolute top-1/2 z-20 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_18px_rgba(247,201,72,0.65)]"
+          className="absolute top-1/2 z-20 h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-200/80 shadow-[0_0_14px_rgba(247,201,72,0.65)]"
           style={{
             background: "radial-gradient(circle at 32% 24%, #fff7cc 0%, #f7c948 28%, #d97706 62%, #7c3f09 100%)",
             boxShadow: "0 0 18px rgba(247,201,72,0.62), inset 0 2px 5px rgba(255,255,255,0.58), inset 0 -5px 10px rgba(95,45,8,0.5)",
           }}
         >
-          <div className="flex h-full w-full items-center justify-center text-xl drop-shadow-sm">🪢</div>
+          <div className="flex h-full w-full items-center justify-center text-base drop-shadow-sm">🪢</div>
         </motion.div>
       </div>
     </div>
@@ -928,7 +928,7 @@ function TeamScoreCard({
   const isBlue = team === "blue";
   return (
     <div
-      className={`rounded-[20px] border px-3.5 py-3 text-white backdrop-blur-md ${isBlue ? "border-blue-300/40" : "border-red-300/40"}`}
+      className={`rounded-[18px] border px-3 py-2 text-white backdrop-blur-md ${isBlue ? "border-blue-300/40" : "border-red-300/40"}`}
       style={{
         background: isBlue
           ? "linear-gradient(145deg, rgba(7,42,113,0.96), rgba(29,78,216,0.82))"
@@ -938,17 +938,17 @@ function TeamScoreCard({
           : "0 12px 32px rgba(220,38,38,0.28), 0 0 18px rgba(248,113,113,0.16), inset 0 1px 0 rgba(255,255,255,0.18)",
       }}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="text-[11px] font-black text-white/82 sm:text-xs">👥 {label}</p>
-        <span className="rounded-full bg-white/12 px-2 py-0.5 text-[9px] font-black text-white/75">{playersCount}</span>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-black text-white/82 sm:text-[11px]">👥 {label}</p>
+        <span className="rounded-full bg-white/12 px-1.5 py-0.5 text-[9px] font-black text-white/75">{playersCount}</span>
       </div>
       <p
-        className="rounded-xl bg-black/20 px-3 py-1.5 text-center text-3xl font-black leading-none tracking-tight sm:text-4xl"
+        className="rounded-xl bg-black/20 px-2 py-1 text-center text-2xl font-black leading-none tracking-tight sm:text-3xl"
         style={{ textShadow: "0 2px 10px rgba(0,0,0,0.38)", fontVariantNumeric: "tabular-nums" }}
       >
         {score}
       </p>
-      <p className="mt-1.5 text-center text-[10px] font-bold text-white/64">
+      <p className="mt-1 text-center text-[9px] font-bold text-white/64">
         {playersCount > 0
           ? (lang === "ar" ? "نقاط القوة" : "Power points")
           : (lang === "ar" ? "بانتظار اللاعبين" : "Waiting for players")}
@@ -970,11 +970,11 @@ function TugActionButton({
     <motion.button
       onClick={onClick}
       disabled={disabled || !onClick}
-      className="tug-action-button relative mx-auto flex min-h-[50px] w-full max-w-xs items-center justify-center rounded-[1.35rem] px-6 text-lg font-black text-white disabled:cursor-default disabled:opacity-80"
+      className="tug-action-button relative mx-auto flex min-h-[42px] w-full max-w-xs items-center justify-center rounded-[1.1rem] px-5 text-base font-black text-white disabled:cursor-default disabled:opacity-80"
       style={{
         background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
         color: "#fff7ed",
-        boxShadow: "0 0 14px rgba(247,201,72,0.26), 0 10px 24px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.28)",
+        boxShadow: "0 0 10px rgba(247,201,72,0.22), 0 8px 18px rgba(0,0,0,0.28), inset 0 2px 0 rgba(255,255,255,0.28)",
         textShadow: "0 2px 10px rgba(90,43,6,0.55)",
       }}
     >
@@ -1014,10 +1014,10 @@ function TugArena({
   children?: ReactNode;
 }) {
   return (
-    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-3 pt-2 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
+    <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-2 pt-1 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
       <StadiumBackdrop active={isPulling} />
       <div className="relative z-10 mx-auto max-w-6xl">
-        <div className="min-h-[285px] sm:min-h-[360px] lg:min-h-[430px]">
+        <div className="min-h-[220px] sm:min-h-[290px] lg:min-h-[360px]">
           <TugCharacters
             ropePos={ropePos}
             isPulling={isPulling}
@@ -1026,9 +1026,9 @@ function TugArena({
             winnerSide={winnerSide}
           />
         </div>
-        <div className="grid items-end gap-2 lg:grid-cols-[190px_minmax(0,1fr)_190px] lg:gap-3">
+        <div className="grid items-end gap-1.5 lg:grid-cols-[170px_minmax(0,1fr)_170px] lg:gap-2">
           <TeamScoreCard team="blue" label={blueLabel} score={blueScore} playersCount={blueCount} lang={lang} />
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <TugPowerMeter position={ropePos} />
             {children}
           </div>
@@ -1745,7 +1745,7 @@ export default function TugPlay() {
             )}
           </TugArena>
 
-          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-1">
+          <div className="flex-1 flex flex-col min-w-0 max-w-4xl mx-auto w-full -mt-2">
             <AnimatePresence mode="wait">
 
               {phase === "lobby" && (
@@ -1828,8 +1828,8 @@ export default function TugPlay() {
               )}
 
               {(phase === "question" || phase === "answered" || phase === "round-end") && question && (
-                <motion.div key="question" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-3 lg:px-4 pt-1 pb-2 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-1.5">
+                <motion.div key="question" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="px-2 lg:px-3 pt-1 pb-1 flex-1 flex flex-col">
+                  <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm lg:text-base font-black px-3 py-1 rounded-xl text-white"
                         style={{
@@ -1857,7 +1857,7 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-3 lg:p-4 mb-2 text-center border text-white shadow-md ${
+                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-2.5 lg:p-3 mb-1.5 text-center border text-white shadow-md ${
                     phase === "round-end" && roundData
                       ? "border-[#D9A521]/60"
                       : isPowerQ
@@ -1877,7 +1877,7 @@ export default function TugPlay() {
                         ⚡ {lang === "ar" ? "سؤال القوة — نقاط مضاعفة!" : "POWER — 2x!"}
                       </motion.div>
                     )}
-                    <p className="text-lg sm:text-xl lg:text-2xl font-black leading-relaxed">{question.text}</p>
+                    <p className="text-base sm:text-lg lg:text-xl font-black leading-snug">{question.text}</p>
                     {phase === "round-end" && roundData && (
                       <p className="text-green-600 dark:text-green-300 text-sm lg:text-base font-bold mt-2">
                         ✅ {question.options[roundData.correctIndex]}
@@ -1885,13 +1885,13 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className="relative grid grid-cols-2 gap-2.5 lg:gap-3 flex-1">
+                  <div className="relative grid grid-cols-2 gap-2 flex-1">
                     {question.options.map((opt, idx) => {
                       const os = optionStyle(idx);
                       return (
                         <button key={idx}
                           onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null || phase === "round-end"}
-                          className={`relative flex items-center justify-center gap-2.5 p-3 lg:p-4 rounded-2xl text-center font-bold text-sm sm:text-base lg:text-lg border-2 overflow-hidden min-h-[58px] lg:min-h-[74px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
+                          className={`relative flex items-center justify-center gap-2 p-2.5 lg:p-3 rounded-2xl text-center font-bold text-sm sm:text-sm lg:text-base border-2 overflow-hidden min-h-[52px] lg:min-h-[62px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
                           style={{ background: os.bg, borderColor: os.border }}
                         >
                           {os.crossed && (
@@ -1907,7 +1907,7 @@ export default function TugPlay() {
                   </div>
 
                   {phase === "answered" && (
-                    <div className="text-center py-1.5 px-4 rounded-xl mt-2 font-bold text-sm text-white"
+                    <div className="text-center py-1 px-3 rounded-xl mt-1.5 font-bold text-sm text-white"
                       style={{
                         background: answerCorrect ? "rgba(34,87,57,0.55)" : "rgba(122,28,28,0.55)",
                         border: `1.5px solid ${answerCorrect ? "#D9A521" : "#e05555"}`,
@@ -1920,7 +1920,7 @@ export default function TugPlay() {
 
                   {phase === "round-end" && isCreator && (
                     <motion.button whileTap={{ scale: 0.96 }} onClick={handleNext}
-                      className="w-full mt-2 py-2.5 lg:py-3 rounded-2xl font-black text-base lg:text-lg shadow-lg text-white"
+                      className="w-full mt-1.5 py-2 lg:py-2.5 rounded-2xl font-black text-base shadow-lg text-white"
                       style={{ background: "#D9A521", color: "#1a2e1a" }}
                     >
                       {roundData?.isLast
