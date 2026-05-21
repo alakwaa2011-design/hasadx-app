@@ -998,7 +998,51 @@ function TugCharacters({
         isCelebrating={isCelebrating}
         winnerSide={winnerSide}
       />
-      <div className="pointer-events-none absolute left-1/2 top-[50.5%] z-20 h-12 w-5 -translate-x-1/2 rounded-md bg-red-600 shadow-[0_0_18px_rgba(239,68,68,0.75)]" />
+      {/* ── Cloth ribbon marker — small fabric strip tied around the centre of the rope ── */}
+      <motion.div
+        className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2"
+        style={{ top: "49.5%", transformOrigin: "50% 6px" }}
+        animate={{ rotate: isPulling ? [-18, 14, -16, 18, -18] : [-5, 5, -5] }}
+        transition={{ repeat: Infinity, duration: isPulling ? 0.85 : 2.8, ease: "easeInOut" }}
+      >
+        <svg width="18" height="30" viewBox="0 0 18 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            {/* Horizontal fabric shading — left edge darker, centre lighter, right edge darkest */}
+            <linearGradient id="ribFace" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0"    stopColor="#991b1b"/>
+              <stop offset="0.3"  stopColor="#dc2626"/>
+              <stop offset="0.58" stopColor="#b91c1c"/>
+              <stop offset="1"    stopColor="#7f1d1d"/>
+            </linearGradient>
+            {/* Knot top-lit gradient */}
+            <linearGradient id="ribKnot" x1="0.5" y1="0" x2="0.5" y2="1">
+              <stop offset="0"   stopColor="#ef4444"/>
+              <stop offset="1"   stopColor="#991b1b"/>
+            </linearGradient>
+          </defs>
+
+          {/* ── Knot: where the ribbon wraps around the rope ── */}
+          <ellipse cx="9" cy="4.5" rx="6" ry="3.5" fill="url(#ribKnot)" stroke="#7f1d1d" strokeWidth="0.5"/>
+          <ellipse cx="9" cy="3.8" rx="3.8" ry="2.2" fill="#dc2626"/>
+          {/* Top catch-light on knot */}
+          <path d="M5,3 Q9,1.5 13,3" stroke="rgba(255,200,200,0.45)" strokeWidth="0.8" fill="none"/>
+
+          {/* ── Left ribbon tail ── */}
+          <path d="M4.5,7 C4,12 3.5,17 4,24 Q4.2,26 5,25.5 L6.5,24 C6,17 6.5,12 7,7 Z" fill="url(#ribFace)"/>
+          {/* Left fabric creases */}
+          <path d="M5,9.5 C4.8,15 4.7,19 5,23"   stroke="#fca5a5" strokeWidth="0.35" opacity="0.28"/>
+          <path d="M6,9 C5.8,15 5.9,19 6.2,22.5" stroke="#7f1d1d"  strokeWidth="0.3"  opacity="0.38"/>
+
+          {/* ── Right ribbon tail ── */}
+          <path d="M13.5,7 C14,12 14.5,17 14,24 Q13.8,26 13,25.5 L11.5,24 C12,17 11.5,12 11,7 Z" fill="url(#ribFace)"/>
+          {/* Right fabric creases */}
+          <path d="M13,9.5 C13.2,15 13.3,19 13,23"   stroke="#fca5a5" strokeWidth="0.35" opacity="0.28"/>
+          <path d="M12,9 C12.2,15 12.1,19 11.8,22.5" stroke="#7f1d1d"  strokeWidth="0.3"  opacity="0.38"/>
+
+          {/* ── Shadow gap between the two tails (depth cue) ── */}
+          <path d="M7.5,7.5 L8,24 Q8.5,25.5 9,24 L9.5,7.5 Z" fill="#7f1d1d" opacity="0.22"/>
+        </svg>
+      </motion.div>
       <div className="pointer-events-none absolute left-1/2 top-[76%] h-24 w-1 -translate-x-1/2 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.8)]" />
       {isPulling && (
         <>
