@@ -15,6 +15,55 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_GREEN = "#225739";
 
+/* ── Educational strategy data ─────────────────────────────────────── */
+type EducationalStrategy =
+  | "none"
+  | "active_learning"
+  | "cooperative_learning"
+  | "flipped_classroom"
+  | "brainstorming"
+  | "think_pair_share"
+  | "problem_based"
+  | "project_based"
+  | "inquiry"
+  | "scamper"
+  | "six_thinking_hats"
+  | "21st_century_skills"
+  | "gamification"
+  | "differentiated"
+  | "concept_maps"
+  | "kwl"
+  | "5e_model";
+
+interface StrategyMeta { label: string; desc: string }
+
+const STRATEGIES_AR: Record<EducationalStrategy, StrategyMeta> = {
+  none:                  { label: "بدون استراتيجية محددة",          desc: "الذكاء الاصطناعي يختار البنية المناسبة بحرية." },
+  active_learning:       { label: "التعلم النشط",                    desc: "إشراك الطلاب بأسئلة وأنشطة قصيرة ومتنوعة أثناء العرض." },
+  cooperative_learning:  { label: "التعلم التعاوني",                  desc: "أنشطة جماعية ونقاش بين المجموعات مع تقييم مشترك." },
+  flipped_classroom:     { label: "الصف المقلوب",                    desc: "التطبيق في الفصل — المحتوى للمنزل. أغلب الشرائح تفاعلية." },
+  brainstorming:         { label: "العصف الذهني",                    desc: "توليد أفكار إبداعية عبر أسئلة مفتوحة وتصنيف الأفكار." },
+  think_pair_share:      { label: "فكر - زاوج - شارك",               desc: "دورات ثلاثية: سؤال فردي → نقاش ثنائي → مشاركة جماعية." },
+  problem_based:         { label: "التعلم القائم على المشكلات",       desc: "يبدأ العرض بمشكلة واقعية: تحليل → فرضيات → حل → تقييم." },
+  project_based:         { label: "التعلم القائم على المشاريع",       desc: "تعريف مشروع → خطة → بحث → نشاط إبداعي → عرض النتائج." },
+  inquiry:               { label: "الاستقصاء",                       desc: "يثير الفضول بسؤال → ملاحظة أدلة → فرضيات → استنتاجات." },
+  scamper:               { label: "سكامبر SCAMPER",                  desc: "يساعد الطلاب على توليد أفكار عبر: استبدل، اجمع، عدّل، استخدم، احذف، اعكس." },
+  six_thinking_hats:     { label: "قبعات التفكير الست",               desc: "ست زوايا تفكير: حقائق، مشاعر، نقد، إيجابيات، إبداع، تلخيص." },
+  "21st_century_skills": { label: "مهارات القرن 21",                  desc: "التفكير النقدي والإبداع والتواصل والتعاون مدمجة في الأنشطة." },
+  gamification:          { label: "التلعيب",                         desc: "تحديات، نقاط، جولات تنافسية، وأسئلة سريعة — ≥40% تفاعلي." },
+  differentiated:        { label: "التعليم المتمايز",                 desc: "تشخيص مسبق + مستويات متعددة للمحتوى وأنشطة متدرجة." },
+  concept_maps:          { label: "خرائط المفاهيم",                  desc: "تنظيم المعرفة بصريًا: مفهوم رئيسي → علاقات → تطبيق." },
+  kwl:                   { label: "KWL",                             desc: "ماذا أعرف؟ → ماذا أريد أن أعرف؟ → محتوى → ماذا تعلمت؟" },
+  "5e_model":            { label: "نموذج 5E",                        desc: "Engage → Explore → Explain → Elaborate → Evaluate (دورة كاملة)." },
+};
+
+const STRATEGY_ORDER: EducationalStrategy[] = [
+  "none", "active_learning", "cooperative_learning", "flipped_classroom",
+  "brainstorming", "think_pair_share", "problem_based", "project_based",
+  "inquiry", "scamper", "six_thinking_hats", "21st_century_skills",
+  "gamification", "differentiated", "concept_maps", "kwl", "5e_model",
+];
+
 const GRADES = [
   "الصف الأول", "الصف الثاني", "الصف الثالث", "الصف الرابع",
   "الصف الخامس", "الصف السادس", "الصف السابع", "الصف الثامن",
@@ -279,6 +328,7 @@ export default function NewPresentationPage() {
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
   const [slideCount, setSlideCount] = useState(10);
+  const [educationalStrategy, setEducationalStrategy] = useState<EducationalStrategy>("none");
 
   const [generatedPresentationId, setGeneratedPresentationId] = useState<number | null>(null);
   const [generatedSlides, setGeneratedSlides] = useState<
@@ -358,6 +408,7 @@ export default function NewPresentationPage() {
           languageLevel: "medium",
           density: "balanced",
           toggles: { activities: true, questions: true, poll: true, quiz: true },
+          educationalStrategy,
         }),
       });
       if (!r1.ok) {
@@ -460,7 +511,7 @@ export default function NewPresentationPage() {
       setQuickPhase("error");
       toast.error(msg);
     }
-  }, [topic, grade, subject, slideCount, isAr, canGenerate]);
+  }, [topic, grade, subject, slideCount, educationalStrategy, isAr, canGenerate]);
 
   const resetQuick = () => {
     setQuickPhase("form");
@@ -468,6 +519,7 @@ export default function NewPresentationPage() {
     setGrade("");
     setSubject("");
     setSlideCount(10);
+    setEducationalStrategy("none");
     setGeneratedPresentationId(null);
     setGeneratedSlides([]);
     setErrorMsg("");
@@ -1014,6 +1066,33 @@ export default function NewPresentationPage() {
                 </div>
               </div>
 
+              {/* ── Educational strategy selector ── */}
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1.5">
+                  {isAr ? "الاستراتيجية التعليمية (اختياري)" : "Educational strategy (optional)"}
+                </label>
+                <select
+                  value={educationalStrategy}
+                  onChange={(e) => setEducationalStrategy(e.target.value as EducationalStrategy)}
+                  className="w-full px-4 py-3 border border-border rounded-xl bg-card outline-none focus:ring-2 focus:ring-primary/30 text-sm"
+                  dir={isAr ? "rtl" : "ltr"}
+                >
+                  {STRATEGY_ORDER.map((key) => (
+                    <option key={key} value={key}>
+                      {STRATEGIES_AR[key].label}
+                    </option>
+                  ))}
+                </select>
+                {educationalStrategy !== "none" && (
+                  <div className="mt-2 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200/50 dark:border-emerald-800/40">
+                    <span className="mt-0.5 text-emerald-600 dark:text-emerald-400 text-base leading-none shrink-0">🎯</span>
+                    <p className="text-[12px] text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                      {STRATEGIES_AR[educationalStrategy].desc}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* What you'll get */}
               <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 rounded-2xl p-4">
                 <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mb-2">
@@ -1096,6 +1175,12 @@ export default function NewPresentationPage() {
                   ? `تم إنشاء عرض تفاعلي بـ ${slideCount} شريحة تتضمن أسئلة وأنشطة جاهزة.`
                   : `Created an interactive ${slideCount}-slide deck with questions and ready-to-use activities.`}
               </p>
+              {educationalStrategy !== "none" && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
+                     style={{ background: "rgba(34,87,57,0.1)", color: BRAND_GREEN }}>
+                  🎯 {STRATEGIES_AR[educationalStrategy].label}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground/70 mb-4">
                 {isAr
                   ? "يمكنك إطلاق الحصة مباشرةً أو تعديلها في المحرر المتقدم"

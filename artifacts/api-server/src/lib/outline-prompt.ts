@@ -17,6 +17,312 @@ export type PresentationKind =
   | "contest";
 export type LanguageLevel = "simple" | "medium" | "advanced";
 
+/* ── Educational strategy ──────────────────────────────────────────────
+   When set (anything other than "none"), the prompt injects a dedicated
+   strategy block that instructs the model to structure slides, activities,
+   and questions according to the chosen pedagogical approach.
+   Backward-compatible: defaults to "none" so existing generation paths
+   are unaffected. ─────────────────────────────────────────────────── */
+export type EducationalStrategy =
+  | "none"
+  | "active_learning"
+  | "cooperative_learning"
+  | "flipped_classroom"
+  | "brainstorming"
+  | "think_pair_share"
+  | "problem_based"
+  | "project_based"
+  | "inquiry"
+  | "scamper"
+  | "six_thinking_hats"
+  | "21st_century_skills"
+  | "gamification"
+  | "differentiated"
+  | "concept_maps"
+  | "kwl"
+  | "5e_model";
+
+export const STRATEGY_LABELS_AR: Record<EducationalStrategy, string> = {
+  none:                  "بدون استراتيجية محددة",
+  active_learning:       "التعلم النشط",
+  cooperative_learning:  "التعلم التعاوني",
+  flipped_classroom:     "الصف المقلوب",
+  brainstorming:         "العصف الذهني",
+  think_pair_share:      "فكر - زاوج - شارك",
+  problem_based:         "التعلم القائم على المشكلات",
+  project_based:         "التعلم القائم على المشاريع",
+  inquiry:               "الاستقصاء",
+  scamper:               "سكامبر SCAMPER",
+  six_thinking_hats:     "قبعات التفكير الست",
+  "21st_century_skills": "مهارات القرن 21",
+  gamification:          "التلعيب",
+  differentiated:        "التعليم المتمايز",
+  concept_maps:          "خرائط المفاهيم",
+  kwl:                   "KWL",
+  "5e_model":            "نموذج 5E",
+};
+
+export const STRATEGY_LABELS_EN: Record<EducationalStrategy, string> = {
+  none:                  "No specific strategy",
+  active_learning:       "Active Learning",
+  cooperative_learning:  "Cooperative Learning",
+  flipped_classroom:     "Flipped Classroom",
+  brainstorming:         "Brainstorming",
+  think_pair_share:      "Think-Pair-Share",
+  problem_based:         "Problem-Based Learning",
+  project_based:         "Project-Based Learning",
+  inquiry:               "Inquiry-Based Learning",
+  scamper:               "SCAMPER",
+  six_thinking_hats:     "Six Thinking Hats",
+  "21st_century_skills": "21st Century Skills",
+  gamification:          "Gamification",
+  differentiated:        "Differentiated Instruction",
+  concept_maps:          "Concept Mapping",
+  kwl:                   "KWL Chart",
+  "5e_model":            "5E Instructional Model",
+};
+
+/* Per-strategy slide-structure instructions injected into the prompt.
+   Each value is plain text (no JSON) appended after the main rules block.
+   "none" is intentionally absent — no injection needed. */
+const STRATEGY_INSTRUCTIONS_AR: Partial<Record<EducationalStrategy, string>> = {
+  active_learning: `التعلم النشط — إشراك الطلاب بشكل مستمر:
+- بعد كل شريحتين من المحتوى، أضف شريحة تفاعلية (kind: interactive).
+- نوّع interactionHint: activity، poll، quiz، discussion.
+- ≥ 35% من الشرائح يجب أن تكون تفاعلية (interactionHint != null).
+- كل شريحة تفاعلية: حقل purpose يوضّح هدف النشاط بوضوح.`,
+
+  cooperative_learning: `التعلم التعاوني — مبني على العمل الجماعي:
+- أضف 2-3 شرائح نقاش جماعي (kind: interactive, interactionHint: "discussion").
+- كل شريحة نشاط: purpose يتضمن تعليمة للمعلم "اطلب من كل مجموعة ...".
+- أنهِ بتقييم جماعي (kind: interactive, interactionHint: "quiz") مع gameQuestions.`,
+
+  flipped_classroom: `الصف المقلوب — التطبيق في الفصل بدلاً من الشرح:
+- الشرائح الأولى: مقدمة موجزة + سؤال استكشافي (kind: interactive, interactionHint: "poll").
+- الجزء الأكبر: أنشطة تطبيقية (kind: interactive, interactionHint: "quiz" أو "activity") مع gameQuestions.
+- قلّل شرائح الشرح النظري — ≥ 50% من الشرائح تفاعلية.`,
+
+  brainstorming: `العصف الذهني — توليد الأفكار الإبداعية:
+- ابدأ بسؤال مفتوح استفزازي (kind: interactive, interactionHint: "activity"). talkingPoints[0] = نص السؤال الاستفزازي. لا gameQuestions.
+- أضف شريحة callout لقواعد العصف الذهني.
+- استخدم discussion لمشاركة الأفكار.
+- الختام: شريحة تصنيف الأفكار أو تقييمها (kind: interactive, interactionHint: "poll") مع gameQuestions.`,
+
+  think_pair_share: `فكر - زاوج - شارك — ثلاث مراحل متكررة:
+كرّر هذه الدورة 1-2 مرة خلال العرض بين شرائح المحتوى:
+  [فكر] kind: interactive, interactionHint: "activity" — سؤال للتفكير الفردي. talkingPoints[0] = "فكّر بمفردك: ...". لا gameQuestions.
+  [زاوج] kind: interactive, interactionHint: "discussion" — نشاط ثنائي. talkingPoints[0] = "ناقش إجابتك مع زميلك ...". لا gameQuestions.
+  [شارك] kind: interactive, interactionHint: "poll" أو "quiz" — مشاركة جماعية. gameQuestions مطلوبة (5 أسئلة على الأقل).`,
+
+  problem_based: `التعلم القائم على المشكلات — التعلم عبر حل مشكلة واقعية:
+[1] المشكلة: kind: callout أو visual-hero — عرض مشكلة أو سيناريو واقعي مثير. لا تبدأ بشرح نظري.
+[2] تحليل المشكلة: kind: concept-card أو steps — عناصر المشكلة وأبعادها.
+[3] الفرضيات: kind: interactive, interactionHint: "discussion" — الطلاب يقترحون حلولاً. لا gameQuestions.
+[4] المحتوى: شرائح تعليمية تبني المعرفة اللازمة للحل.
+[5] الحل: kind: steps أو concept-card — تقديم الحل المنطقي.
+[6] التقييم: kind: interactive, interactionHint: "quiz" مع gameQuestions (5-8 أسئلة).`,
+
+  project_based: `التعلم القائم على المشاريع:
+[1] تعريف المشروع: kind: visual-hero أو concept-card — وصف المشروع وهدفه.
+[2] خطة المشروع: kind: steps — خطوات التنفيذ الواضحة.
+[3] المحتوى والبحث: 2-3 شرائح تعليمية متنوعة.
+[4] النشاط الإبداعي: kind: interactive, interactionHint: "discussion". لا gameQuestions.
+[5] التقييم والعرض: kind: interactive, interactionHint: "quiz" مع gameQuestions.`,
+
+  inquiry: `الاستقصاء — بناء المعرفة عبر التساؤل:
+- ابدأ بسؤال استفزازي (kind: interactive, interactionHint: "activity") يثير التساؤل. لا gameQuestions.
+- أضف شريحة أدلة وملاحظات (kind: concept-card أو stat).
+- أضف شريحة فرضيات (kind: interactive, interactionHint: "discussion"). لا gameQuestions.
+- الختام: شريحة استنتاجات (kind: interactive, interactionHint: "quiz") مع gameQuestions.`,
+
+  scamper: `سكامبر SCAMPER — الإبداع عبر 7 محاور (الترتيب إلزامي):
+أضف 7 شرائح تفاعلية بهذا الترتيب بعد شريحة المقدمة:
+[S استبدل] kind: interactive, interactionHint: "activity" — talkingPoints[0] = "استبدل ... بـ ..."
+[C اجمع]   kind: interactive, interactionHint: "discussion" — talkingPoints[0] = "اجمع بين ... و..."
+[A عدّل]   kind: interactive, interactionHint: "activity" — talkingPoints[0] = "عدّل ... لتصبح ..."
+[M استخدم] kind: interactive, interactionHint: "discussion" — talkingPoints[0] = "كيف تستخدم ... بطريقة مختلفة؟"
+[P احذف]   kind: interactive, interactionHint: "activity" — talkingPoints[0] = "ماذا يحدث لو حذفنا ...؟"
+[E وسّع]   kind: interactive, interactionHint: "discussion" — talkingPoints[0] = "كيف يمكن توسيع فكرة ...؟"
+[R اعكس]   kind: interactive, interactionHint: "activity" — talkingPoints[0] = "اعكس ترتيب ..."
+لا gameQuestions على شرائح SCAMPER — هي أنشطة مفتوحة.`,
+
+  six_thinking_hats: `قبعات التفكير الست — ست زوايا تفكير مختلفة:
+أضف 6 شرائح تفاعلية (kind: interactive, interactionHint: "discussion") بهذا الترتيب:
+[⬜ أبيض] "ما الحقائق والمعلومات المتاحة عن ...؟"
+[❤️ أحمر] "كيف تشعر تجاه ...؟ ما انطباعك الأول؟"
+[⬛ أسود] "ما مخاطر وسلبيات ...؟"
+[💛 أصفر] "ما فوائد وإيجابيات ...؟"
+[💚 أخضر] "ما الأفكار الإبداعية البديلة حول ...؟"
+[💙 أزرق]  "ما خلاصة تفكيرنا؟ ما القرار المناسب؟"
+لا gameQuestions على هذه الشرائح.`,
+
+  "21st_century_skills": `مهارات القرن 21 — التفكير النقدي والإبداع والتعاون:
+- ضمّن أنشطة تطوّر: التفكير النقدي، الإبداع، التواصل، التعاون.
+- أضف شريحة تحليل نقدي (kind: callout أو concept-card) بوجهات نظر متعددة.
+- أضف شريحة نشاط إبداعي (kind: interactive, interactionHint: "discussion"). لا gameQuestions.
+- أضف شريحة تقييم (kind: interactive, interactionHint: "quiz") مع gameQuestions تقيس مهارات التفكير العليا (تحليل، تقييم، إبداع — لا حفظًا فقط).`,
+
+  gamification: `التلعيب — تحويل التعلم إلى تجربة تنافسية:
+- ≥ 40% من الشرائح تفاعلية.
+- ابدأ بتحدٍّ سريع (kind: interactive, interactionHint: "quiz") مع gameQuestions.
+- استخدم callout للإعلان عن قواعد التحدي والمكافآت.
+- وزّع 2-3 جولات اختبار سريع خلال العرض.
+- أنهِ بجولة نهائية تنافسية (kind: interactive, interactionHint: "quiz") مع 8 أسئلة متدرجة الصعوبة.`,
+
+  differentiated: `التعليم المتمايز — مراعاة الفروق الفردية:
+- افتح بتشخيص مسبق (kind: interactive, interactionHint: "poll") بسؤال يقيس المستوى الحالي.
+- قدّم المحتوى بمستويات في callout: "للمبتدئين: ..." و"للمتقدمين: ...".
+- أضف تطبيقاً بسيطاً وآخر متقدماً (شريحتا interactive).
+- أنهِ بتقييم ختامي (kind: interactive, interactionHint: "quiz") بأسئلة متنوعة الصعوبة.`,
+
+  concept_maps: `خرائط المفاهيم — تنظيم المعرفة بصريًا:
+- ابدأ بالمفهوم الرئيسي (kind: visual-hero أو concept-card).
+- استخدم comparison لعرض العلاقات والمقارنات بين المفاهيم.
+- استخدم steps للمفاهيم المترابطة تسلسليًا.
+- استخدم callout للمفاهيم الجوهرية الأساسية.
+- أنهِ بتقييم (kind: interactive, interactionHint: "quiz") يختبر فهم العلاقات بين المفاهيم، مع gameQuestions.`,
+
+  kwl: `استراتيجية KWL — ثلاث مراحل للتعلم (الترتيب إلزامي):
+[K — ماذا أعرف؟] شريحة أولى بعد title: kind: interactive, interactionHint: "activity". talkingPoints[0] = "اكتب كل ما تعرفه عن [الموضوع]". لا gameQuestions.
+[W — ماذا أريد أن أعرف؟] شريحة ثانية: kind: interactive, interactionHint: "discussion". talkingPoints[0] = "ما الأسئلة التي تريد إجابتها؟". لا gameQuestions.
+[المحتوى] شرائح تعليمية متنوعة تجيب على أسئلة [W] بشكل مباشر.
+[L — ماذا تعلمت؟] شريحة ختامية: kind: interactive, interactionHint: "quiz" مع gameQuestions (5-8 أسئلة تعكس ما تعلموه فعليًا).
+احرص على ترتيب K → W → محتوى → L بشكل واضح لا يُخلّ.`,
+
+  "5e_model": `نموذج 5E — دورة التعلم الاستكشافي (الترتيب إلزامي):
+[E1 الإثارة Engage] أول شريحة بعد title: kind: interactive, interactionHint: "activity" أو "poll". سؤال أو موقف يثير فضول الطلاب. لا gameQuestions.
+[E2 الاستكشاف Explore] شريحة نشاط استكشافي: kind: interactive, interactionHint: "discussion". لا gameQuestions.
+[E3 الشرح Explain] 2-4 شرائح محتوى تعليمي (concept-card, steps, formula, visual-hero, stat…).
+[E4 التعمق Elaborate] شريحة تطبيق وتوسيع: kind: interactive, interactionHint: "quiz" مع gameQuestions (5+ أسئلة).
+[E5 التقييم Evaluate] شريحة تقييم ختامية: kind: interactive, interactionHint: "poll" مع gameQuestions.
+الترتيب الإلزامي: E1 → E2 → E3 → E4 → E5.`,
+};
+
+const STRATEGY_INSTRUCTIONS_EN: Partial<Record<EducationalStrategy, string>> = {
+  active_learning: `Active Learning — continuous student engagement:
+- After every 2 content slides, add an interactive slide (kind: interactive).
+- Vary interactionHint: activity, poll, quiz, discussion.
+- ≥ 35% of slides must be interactive (interactionHint != null).
+- Every interactive slide: purpose field explains the activity goal clearly.`,
+
+  cooperative_learning: `Cooperative Learning — group-work centered:
+- Add 2-3 group discussion slides (kind: interactive, interactionHint: "discussion").
+- Each activity slide: purpose includes teacher instruction "Ask each group to …".
+- End with group assessment (kind: interactive, interactionHint: "quiz") with gameQuestions.`,
+
+  flipped_classroom: `Flipped Classroom — application in class, content at home:
+- First slides: brief intro + exploratory poll (kind: interactive, interactionHint: "poll").
+- Majority: application activities (kind: interactive, interactionHint: "quiz" or "activity") with gameQuestions.
+- Minimize lecture slides — ≥ 50% interactive.`,
+
+  brainstorming: `Brainstorming — creative idea generation:
+- Open with a provocative open question (kind: interactive, interactionHint: "activity"). No gameQuestions.
+- Add a callout slide with brainstorming rules.
+- Use discussion slides for idea sharing.
+- Close with evaluation (kind: interactive, interactionHint: "poll") with gameQuestions.`,
+
+  think_pair_share: `Think-Pair-Share — three-phase repeated cycle:
+Repeat this cycle 1-2 times amid content slides:
+  [Think] kind: interactive, interactionHint: "activity" — individual thinking question. No gameQuestions.
+  [Pair]  kind: interactive, interactionHint: "discussion" — pair discussion. No gameQuestions.
+  [Share] kind: interactive, interactionHint: "poll" or "quiz" — whole-class sharing. gameQuestions required (≥5).`,
+
+  problem_based: `Problem-Based Learning — learning by solving a real problem:
+[1] Problem: kind: callout or visual-hero — present a compelling real-world problem. Don't start with theory.
+[2] Analysis: kind: concept-card or steps — break down the problem.
+[3] Hypotheses: kind: interactive, interactionHint: "discussion". No gameQuestions.
+[4] Content: educational slides building needed knowledge.
+[5] Solution: kind: steps or concept-card.
+[6] Assessment: kind: interactive, interactionHint: "quiz" with gameQuestions.`,
+
+  project_based: `Project-Based Learning:
+[1] Project intro: kind: visual-hero or concept-card.
+[2] Project plan: kind: steps.
+[3] Research content: 2-3 varied educational slides.
+[4] Creative activity: kind: interactive, interactionHint: "discussion". No gameQuestions.
+[5] Assessment: kind: interactive, interactionHint: "quiz" with gameQuestions.`,
+
+  inquiry: `Inquiry-Based Learning — building knowledge through questioning:
+- Open with a provocative question (kind: interactive, interactionHint: "activity"). No gameQuestions.
+- Add evidence/observation slide (kind: concept-card or stat).
+- Add hypothesis slide (kind: interactive, interactionHint: "discussion"). No gameQuestions.
+- Close with conclusions (kind: interactive, interactionHint: "quiz") with gameQuestions.`,
+
+  scamper: `SCAMPER — creativity via 7 lenses (order is mandatory):
+Add 7 interactive slides after the intro slide:
+[S Substitute] kind: interactive, interactionHint: "activity" — "Substitute ... with ..."
+[C Combine]    kind: interactive, interactionHint: "discussion" — "Combine ... and ..."
+[A Adapt]      kind: interactive, interactionHint: "activity" — "Adapt ... to become ..."
+[M Modify]     kind: interactive, interactionHint: "discussion" — "How can you modify ...?"
+[P Put to use] kind: interactive, interactionHint: "activity" — "Put ... to a different use"
+[E Eliminate]  kind: interactive, interactionHint: "discussion" — "What if we remove ...?"
+[R Reverse]    kind: interactive, interactionHint: "activity" — "Reverse the order of ..."
+No gameQuestions on SCAMPER slides — they are open activities.`,
+
+  six_thinking_hats: `Six Thinking Hats — six distinct thinking perspectives:
+Add 6 discussion slides (kind: interactive, interactionHint: "discussion") in order:
+[⬜ White] "What facts and data do we have about ...?"
+[❤️ Red]   "How do you feel about ...? What is your gut reaction?"
+[⬛ Black] "What are the risks and downsides of ...?"
+[💛 Yellow] "What are the benefits and advantages of ...?"
+[💚 Green] "What creative alternatives exist for ...?"
+[💙 Blue]  "What is our conclusion? What decision do we make?"
+No gameQuestions on these slides.`,
+
+  "21st_century_skills": `21st Century Skills — critical thinking, creativity, communication, collaboration:
+- Include activities developing all 4 Cs.
+- Add a critical analysis slide (kind: callout or concept-card) with multiple perspectives.
+- Add a creative activity (kind: interactive, interactionHint: "discussion"). No gameQuestions.
+- Add an assessment (kind: interactive, interactionHint: "quiz") with gameQuestions that test higher-order thinking (analyze, evaluate, create — not just recall).`,
+
+  gamification: `Gamification — turning learning into a competitive experience:
+- ≥ 40% of slides must be interactive.
+- Open with a quick challenge (kind: interactive, interactionHint: "quiz") with gameQuestions.
+- Use callout to announce challenge rules and rewards.
+- Distribute 2-3 quick quiz rounds across the deck.
+- End with a final competitive round (kind: interactive, interactionHint: "quiz") with 8 difficulty-graded questions.`,
+
+  differentiated: `Differentiated Instruction — addressing individual differences:
+- Open with a diagnostic poll (kind: interactive, interactionHint: "poll").
+- Present content at two levels using callout: "For beginners: ..." and "For advanced: ...".
+- Add both a simple and an advanced activity (two interactive slides).
+- End with a varied-difficulty assessment (kind: interactive, interactionHint: "quiz") with gameQuestions.`,
+
+  concept_maps: `Concept Mapping — visual knowledge organization:
+- Start with the central concept (kind: visual-hero or concept-card).
+- Use comparison for relationships and contrasts between concepts.
+- Use steps for sequentially linked concepts.
+- Use callout for core foundational concepts.
+- End with assessment (kind: interactive, interactionHint: "quiz") testing understanding of concept relationships, with gameQuestions.`,
+
+  kwl: `KWL Chart — three learning phases (order is mandatory):
+[K — What I Know] First slide after title: kind: interactive, interactionHint: "activity". No gameQuestions.
+[W — What I Want to Know] Second slide: kind: interactive, interactionHint: "discussion". No gameQuestions.
+[Content] Educational slides that directly answer the [W] questions.
+[L — What I Learned] Final slide: kind: interactive, interactionHint: "quiz" with gameQuestions (5-8 questions reflecting what was learned).
+Strict order: K → W → content → L.`,
+
+  "5e_model": `5E Instructional Model — inquiry learning cycle (order is mandatory):
+[E1 Engage] First slide after title: kind: interactive, interactionHint: "activity" or "poll". Sparks curiosity. No gameQuestions.
+[E2 Explore] Exploratory activity: kind: interactive, interactionHint: "discussion". No gameQuestions.
+[E3 Explain] 2-4 content slides (concept-card, steps, formula, visual-hero, stat…).
+[E4 Elaborate] Application slide: kind: interactive, interactionHint: "quiz" with gameQuestions (≥5).
+[E5 Evaluate] Final assessment: kind: interactive, interactionHint: "poll" with gameQuestions.
+Mandatory order: E1 → E2 → E3 → E4 → E5.`,
+};
+
+export function strategyBlockFor(strategy: EducationalStrategy | undefined, lang: OutlineLanguage): string | null {
+  if (!strategy || strategy === "none") return null;
+  const label = lang === "ar" ? STRATEGY_LABELS_AR[strategy] : STRATEGY_LABELS_EN[strategy];
+  const instructions = lang === "ar"
+    ? STRATEGY_INSTRUCTIONS_AR[strategy]
+    : STRATEGY_INSTRUCTIONS_EN[strategy];
+  if (!instructions) return null;
+  return lang === "ar"
+    ? `🎯 الاستراتيجية التعليمية المختارة: ${label}\n\n${instructions}\n\n⚠️ التزام إلزامي: يجب أن تعكس بنية الشرائح وأنواعها وأنشطتها الاستراتيجية أعلاه بشكل واضح وليس مجرد ذكرها.`
+    : `🎯 Selected Educational Strategy: ${label}\n\n${instructions}\n\n⚠️ MANDATORY COMPLIANCE: The slide structure, kinds, and activities MUST visibly reflect the strategy above — not merely mention it.`;
+}
+
 export interface OutlineToggles {
   activities: boolean;
   questions: boolean;
@@ -36,6 +342,8 @@ export interface OutlineBrief {
   density: OutlineDensity;
   toggles: OutlineToggles;
   notes?: string;
+  /* Optional — defaults to "none" (no change to existing behaviour). */
+  educationalStrategy?: EducationalStrategy;
 }
 
 /* Banned AI-speak. Lowercased + normalized whitespace before checking
@@ -406,6 +714,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const quickModeRules = brief.presentationKind === "quick"
     ? (ar ? QUICK_MODE_RULES_AR : QUICK_MODE_RULES_EN)
     : null;
+  const strategyBlock = strategyBlockFor(brief.educationalStrategy, brief.language);
 
   const togglesAr: string[] = [];
   const togglesEn: string[] = [];
@@ -529,6 +838,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     designRules,
     ...(quickModeRules
       ? ["", ar ? "⚡ وضع الإنشاء السريع" : "⚡ QUICK MODE", quickModeRules]
+      : []),
+    ...(strategyBlock
+      ? ["", ar ? "الاستراتيجية التعليمية" : "EDUCATIONAL STRATEGY", strategyBlock]
       : []),
     "",
     ar ? "القواعد" : "RULES",

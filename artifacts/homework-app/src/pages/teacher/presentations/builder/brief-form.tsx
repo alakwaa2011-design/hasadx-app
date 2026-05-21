@@ -27,6 +27,48 @@ import { Switch } from "@/components/ui/switch";
 import { Lock, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
+/* ── Educational strategy — local type (not in generated API schema yet) ── */
+type EducationalStrategy =
+  | "none"
+  | "active_learning"
+  | "cooperative_learning"
+  | "flipped_classroom"
+  | "brainstorming"
+  | "think_pair_share"
+  | "problem_based"
+  | "project_based"
+  | "inquiry"
+  | "scamper"
+  | "six_thinking_hats"
+  | "21st_century_skills"
+  | "gamification"
+  | "differentiated"
+  | "concept_maps"
+  | "kwl"
+  | "5e_model";
+
+interface StrategyOption { value: EducationalStrategy; label: string; desc: string }
+
+const STRATEGY_OPTIONS: StrategyOption[] = [
+  { value: "none",                  label: "بدون استراتيجية محددة",          desc: "" },
+  { value: "active_learning",       label: "التعلم النشط",                    desc: "يشرك الطلاب بأسئلة وأنشطة متنوعة بعد كل شريحتين." },
+  { value: "cooperative_learning",  label: "التعلم التعاوني",                  desc: "أنشطة جماعية ونقاش بين المجموعات مع تقييم مشترك." },
+  { value: "think_pair_share",      label: "فكر - زاوج - شارك",               desc: "دورات ثلاثية: سؤال فردي → نقاش ثنائي → مشاركة جماعية." },
+  { value: "flipped_classroom",     label: "الصف المقلوب",                    desc: "التطبيق في الفصل — ≥ 50% شرائح تفاعلية." },
+  { value: "problem_based",         label: "التعلم القائم على المشكلات",       desc: "يبدأ بمشكلة واقعية: تحليل → فرضيات → حل → تقييم." },
+  { value: "project_based",         label: "التعلم القائم على المشاريع",       desc: "تعريف مشروع → خطة → بحث → نشاط إبداعي → عرض النتائج." },
+  { value: "brainstorming",         label: "العصف الذهني",                    desc: "أسئلة مفتوحة لتوليد الأفكار ثم تصنيفها وتقييمها." },
+  { value: "inquiry",               label: "الاستقصاء",                       desc: "سؤال استفزازي → ملاحظة → فرضيات → استنتاجات." },
+  { value: "scamper",               label: "سكامبر SCAMPER",                  desc: "7 محاور إبداعية: استبدل، اجمع، عدّل، استخدم، احذف، وسّع، اعكس." },
+  { value: "six_thinking_hats",     label: "قبعات التفكير الست",               desc: "ست زوايا تفكير: حقائق، مشاعر، نقد، إيجابيات، إبداع، تلخيص." },
+  { value: "kwl",                   label: "KWL",                             desc: "ماذا أعرف؟ → ماذا أريد أن أعرف؟ → محتوى → ماذا تعلمت؟" },
+  { value: "5e_model",              label: "نموذج 5E",                        desc: "Engage → Explore → Explain → Elaborate → Evaluate." },
+  { value: "gamification",          label: "التلعيب",                         desc: "تحديات وجولات تنافسية — ≥ 40% شرائح تفاعلية." },
+  { value: "differentiated",        label: "التعليم المتمايز",                 desc: "تشخيص مسبق + مستويات متعددة للمحتوى وأنشطة متدرجة." },
+  { value: "concept_maps",          label: "خرائط المفاهيم",                  desc: "تنظيم المعرفة: مفهوم رئيسي → علاقات → تطبيق." },
+  { value: "21st_century_skills",   label: "مهارات القرن 21",                  desc: "التفكير النقدي والإبداع والتواصل والتعاون في كل نشاط." },
+];
+
 const BRAND_GREEN = "#225739";
 const PREFS_KEY = "hasad:brief:prefs";
 const DEBOUNCE_MS = 1500;
@@ -170,6 +212,9 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
   const [notes, setNotes] = useState(
     initial?.notes ?? localPrefs.notes ?? "",
   );
+  /* educationalStrategy is session-local — not persisted to prefs intentionally,
+     since each lesson typically calls for a different pedagogical approach. */
+  const [educationalStrategy, setEducationalStrategy] = useState<EducationalStrategy>("none");
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Track whether the server prefs have been applied yet (one-time hydration)
@@ -319,6 +364,10 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
 
   const submit = useCallback(() => {
     if (!subject.trim() || !gradeLevel.trim() || !topic.trim()) return;
+    /* educationalStrategy is not part of the generated PresentationBrief type,
+       but the backend briefSchema accepts it as an optional field.
+       We merge it in and cast so the extra key reaches the API without
+       TypeScript errors and without touching the generated types. */
     onSubmit({
       language,
       subject: subject.trim(),
@@ -331,10 +380,12 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       density,
       toggles: { activities, questions, poll, quiz },
       notes: notes.trim() || undefined,
-    });
+      ...(educationalStrategy !== "none" && { educationalStrategy }),
+    } as PresentationBrief);
   }, [
     subject, gradeLevel, topic, language, presentationKind, slideCount,
-    durationMinutes, languageLevel, density, activities, questions, poll, quiz, notes, onSubmit,
+    durationMinutes, languageLevel, density, activities, questions, poll, quiz,
+    notes, educationalStrategy, onSubmit,
   ]);
 
   useImperativeHandle(ref, () => ({ submit }), [submit]);
@@ -385,6 +436,42 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       <div className="space-y-1.5">
         <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")} <span className="text-destructive">*</span></Label>
         <Input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={120} />
+      </div>
+
+      {/* ── Educational strategy ── */}
+      <div className="space-y-1.5">
+        <Label className="flex items-center gap-2">
+          {isAr ? "الاستراتيجية التعليمية" : "Educational strategy"}
+          {educationalStrategy !== "none" && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+              style={{ background: "#22573915", color: "#225739" }}
+            >
+              🎯 {STRATEGY_OPTIONS.find((s) => s.value === educationalStrategy)?.label}
+            </span>
+          )}
+        </Label>
+        <Select value={educationalStrategy} onValueChange={(v) => setEducationalStrategy(v as EducationalStrategy)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STRATEGY_OPTIONS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {educationalStrategy !== "none" && (() => {
+          const meta = STRATEGY_OPTIONS.find((s) => s.value === educationalStrategy);
+          return meta?.desc ? (
+            <p className="text-[12px] leading-relaxed px-3 py-2 rounded-xl"
+               style={{ background: "#22573910", color: "#1a4731" }}>
+              🎯 {meta.desc}
+            </p>
+          ) : null;
+        })()}
       </div>
 
       {/* ── Advanced options toggle ── */}
