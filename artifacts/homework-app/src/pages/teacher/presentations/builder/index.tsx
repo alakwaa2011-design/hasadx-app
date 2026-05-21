@@ -13,9 +13,7 @@ import { toast } from "@/components/ui/sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import {
   useGeneratePresentationOutline,
-  useGetPresentationAiLimits,
   useUpdatePresentationDraft,
-  getGetPresentationAiLimitsQueryKey,
   getListPresentationDraftsQueryKey,
   type PresentationBrief,
   type PresentationDraft,
@@ -68,10 +66,6 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
     }
   }, [open, initialDraft]);
 
-  const { data: limits } = useGetPresentationAiLimits({
-    query: { queryKey: getGetPresentationAiLimitsQueryKey(), enabled: open },
-  });
-
   const generate = useGeneratePresentationOutline({
     mutation: {
       onSuccess: (data: PresentationDraftWithGuardrails) => {
@@ -79,7 +73,6 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
         setDraft(rest as PresentationDraft);
         setGuardrailFeedback(guardrails?.feedback ?? []);
         setStep("outline");
-        qc.invalidateQueries({ queryKey: getGetPresentationAiLimitsQueryKey() });
         qc.invalidateQueries({ queryKey: getListPresentationDraftsQueryKey() });
       },
       onError: (err: unknown) => {
@@ -168,7 +161,6 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
             {step === "brief" ? (
               <BriefForm
                 ref={briefRef}
-                limits={limits}
                 loading={generate.isPending}
                 onSubmit={submitBrief}
                 initial={lastBrief ?? (initialDraft?.brief as PresentationBrief | undefined)}

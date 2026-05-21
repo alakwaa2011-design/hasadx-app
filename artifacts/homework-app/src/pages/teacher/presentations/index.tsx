@@ -10,10 +10,8 @@ import {
   useUnpublishPresentation,
   useDuplicatePresentation,
   useGetCurrentTeacher,
-  useGetPresentationsLimits,
   getListPresentationsQueryKey,
   getGetCurrentTeacherQueryKey,
-  getGetPresentationsLimitsQueryKey,
   type PresentationSummary,
 } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -69,7 +67,6 @@ import {
   Clock,
   CheckCircle2,
   FileText,
-  Lock,
   BarChart3,
   Radio,
   Upload,
@@ -151,14 +148,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
   });
   const { data, isLoading } = useListPresentations();
   const list: PresentationSummary[] = Array.isArray(data) ? data : [];
-
-  /* Tier badge in the header — non-Pro teachers see a Lock + Free
-     badge that explains the per-deck limits. Per-deck "X / Y"
-     counters live inside the editor (see editor.tsx UsageStrip). */
-  const { data: tier } = useGetPresentationsLimits({
-    query: { queryKey: getGetPresentationsLimitsQueryKey(), retry: false },
-  });
-  const showLock = !!tier && !tier.isPro;
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: getListPresentationsQueryKey() });
@@ -349,18 +338,6 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 >
                   <Monitor className="w-4 h-4 sm:w-5 sm:h-5 text-[#225739] sm:text-white" />
                 </div>
-                {showLock && tier && (
-                  <span
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                    style={{ background: "rgba(217,151,6,0.2)", color: "#fde68a", border: "1px solid rgba(251,191,36,0.25)" }}
-                    title={isAr
-                      ? `الباقة المجانية — حتى ${tier.limits.maxSlidesRegular} شريحة و${tier.limits.maxImagesRegular} صورة لكل عرض`
-                      : `Free tier — up to ${tier.limits.maxSlidesRegular} slides and ${tier.limits.maxImagesRegular} images per deck`}
-                  >
-                    <Lock className="w-3 h-3" />
-                    {isAr ? "باقة مجانية" : "Free plan"}
-                  </span>
-                )}
               </div>
               <h1 className="text-xl sm:text-[28px] font-black text-[#173d2a] sm:text-white mb-1 sm:mb-1.5 leading-tight tracking-tight">
                 {isAr ? "العروض التفاعلية" : "Interactive Presentations"}
@@ -539,8 +516,8 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
         isAr={isAr}
         loading={importLoading}
         onImport={handleImport}
-        maxMb={tier?.limits.maxSizeMbRegular ?? 50}
-        maxImages={tier?.isPro ? 10 : 5}
+        maxMb={50}
+        maxImages={10}
       />
 
 
@@ -1081,13 +1058,13 @@ function ImportModal({
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-2">
           {isAr
-            ? `يمكنك رفع ملف واحد (PDF، PPTX، Word، Excel) أو حتى ${maxImages} صور دفعةً واحدة. الحجم الأقصى: ${maxMb} م.ب.`
-            : `Upload one document (PDF, PPTX, Word, Excel) or up to ${maxImages} images at once. Max size: ${maxMb} MB.`}
+            ? "ارفع ملفًا أو صورًا وسنحوّلها إلى عرض قابل للتعديل."
+            : "Upload a file or images and we'll turn them into an editable deck."}
         </p>
         <div className="flex flex-wrap gap-2 -mt-1">
           {(isAr
-            ? ["PDF", "Word (.docx)", "Excel (.xlsx)", `صور (حتى ${maxImages})`]
-            : ["PDF", "Word (.docx)", "Excel (.xlsx)", `Images (up to ${maxImages})`]
+            ? ["PDF", "Word (.docx)", "Excel (.xlsx)", "صور"]
+            : ["PDF", "Word (.docx)", "Excel (.xlsx)", "Images"]
           ).map((label) => (
             <span
               key={label}
@@ -1135,14 +1112,14 @@ function ImportModal({
               </p>
               {bigFile && (
                 <p className="text-xs text-destructive font-semibold">
-                  {isAr ? `"${bigFile.name}" أكبر من ${maxMb} م.ب` : `"${bigFile.name}" exceeds ${maxMb} MB`}
+                  {isAr ? "تعذر رفع هذا الملف. جرّب ملفًا أخف." : "This file could not be uploaded. Try a lighter file."}
                 </p>
               )}
               {tooManyImages && (
                 <p className="text-xs text-destructive font-semibold">
                   {isAr
-                    ? `يمكنك رفع ${maxImages} صور كحد أقصى في هذه الباقة`
-                    : `Your plan allows up to ${maxImages} images per import`}
+                    ? "قلّل عدد الصور ثم حاول مرة أخرى."
+                    : "Use fewer images and try again."}
                 </p>
               )}
             </div>
