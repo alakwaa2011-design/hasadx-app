@@ -27,7 +27,7 @@ import {
   Undo2, Redo2, Bold, CheckSquare, Pencil,
   Triangle, Diamond, Crown, Phone, Users, Flag, MapPin,
   Rocket, Swords, Dice5, Zap, Search, Crop,
-  Cloud, MessageSquare, BarChart2, Film, Gamepad2,
+  Cloud, MessageSquare, BarChart2, Film, Gamepad2, ExternalLink,
 } from "lucide-react";
 import { useIsBelowLg } from "@/hooks/use-mobile";
 import * as LucideIcons from "lucide-react";
@@ -65,6 +65,13 @@ import { VideoEmbedDialog } from "@/components/teacher/presentations/video-embed
 import { ImageSearchDialog } from "@/components/teacher/presentations/image-search-dialog";
 import { AiPresentationBuilder } from "./builder";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
+import {
+  canCreateHasadActivityFromSlide,
+  createHasadActivityFromSlide,
+  unsupportedHasadActivityLabel,
+  ACTIVITY_TYPE_LABELS,
+} from "@/lib/presentation-hasad-activities";
+import { getSocket } from "@/lib/socket";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -362,6 +369,8 @@ export default function PresentationEditor() {
   const [videoEmbedDialogOpen, setVideoEmbedDialogOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [creatingSlideActivity, setCreatingSlideActivity] = useState(false);
+  const [launchingWameeth, setLaunchingWameeth] = useState(false);
   /* Phase 7 — Go-Live class picker. Opening a live session now
      prompts the teacher with an explicit class dropdown (same
      ClassSelector used by every game-setup page) instead of silently
@@ -640,6 +649,89 @@ export default function PresentationEditor() {
       setDirty(true);
     }
   };
+
+  const handleCreateSlideHasadActivity = useCallback(async () => {
+    if (!activeSlide || readOnlyRef.current || creatingSlideActivity) return;
+    if (!canCreateHasadActivityFromSlide(activeSlide)) {
+      mutateSlides((prev) =>
+        prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "unsupported" } : s),
+      );
+      return;
+    }
+
+    setCreatingSlideActivity(true);
+    mutateSlides((prev) =>
+      prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "creating" } : s),
+    );
+    try {
+      const created = await createHasadActivityFromSlide(activeSlide);
+      const hasadElement: SlideElement = {
+        id: genId("ha"),
+        kind: "hasad-activity",
+        assignmentId: created.assignmentId,
+        assignmentTitle: created.title,
+        gameType: created.gameType,
+        x: 100,
+        y: 100,
+        w: 1000,
+        h: 480,
+      } as unknown as SlideElement;
+
+      mutateSlides((prev) =>
+        prev.map((s, i) => {
+          if (i !== activeIdx) return s;
+          const existing = (s.elements ?? []).some(
+            (el) => el.kind === "hasad-activity" && (el as { assignmentId?: number }).assignmentId === created.assignmentId,
+          );
+          return {
+            ...s,
+            linkedActivityId: String(created.assignmentId),
+            linkedActivityType: created.activityType,
+            linkedActivityUrl: created.url,
+            activityCreationStatus: "created",
+            elements: existing ? s.elements : [...(s.elements ?? []), hasadElement],
+          };
+        }),
+      );
+      toast.success(isAr ? "تم إنشاء نشاط حصاد وربطه بالشريحة" : "Hasad activity created and linked");
+    } catch (err) {
+      mutateSlides((prev) =>
+        prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "failed" } : s),
+      );
+      const msg = err instanceof Error && err.message === "NO_ACTIVITY_QUESTIONS"
+        ? (isAr ? "لا توجد أسئلة كافية لإنشاء النشاط" : "Not enough questions to create this activity")
+        : (isAr ? "تعذّر إنشاء النشاط" : "Could not create activity");
+      toast.error(msg);
+    } finally {
+      setCreatingSlideActivity(false);
+    }
+  }, [activeIdx, activeSlide, creatingSlideActivity, isAr]);
+
+  /** Launch Wameeth live game via socket for an already-created assignment. */
+  const handleLaunchWameeth = useCallback((assignmentId: number) => {
+    if (launchingWameeth) return;
+    setLaunchingWameeth(true);
+    const gameTab = window.open("", "_blank", "noopener");
+    const socket = getSocket();
+    socket.emit(
+      "teacher:create-game",
+      { assignmentId, gameMode: "solo" },
+      (res: { pin?: string; error?: string }) => {
+        setLaunchingWameeth(false);
+        if (res.error || !res.pin) {
+          gameTab?.close();
+          toast.error(res.error ?? (isAr ? "تعذّر بدء وميض" : "Could not start Wameeth"));
+          return;
+        }
+        const target = `/teacher/game/${res.pin}`;
+        if (gameTab) {
+          gameTab.location.href = target;
+        } else {
+          window.open(target, "_blank", "noopener");
+        }
+      },
+    );
+  }, [isAr, launchingWameeth]);
 
   const undo = useCallback(() => {
     const h = historyRef.current;
@@ -1823,6 +1915,10 @@ export default function PresentationEditor() {
                   setActivityHubInitialTab("home");
                   setActivityHubOpen(true);
                 }}
+                onCreateSlideHasadActivity={handleCreateSlideHasadActivity}
+                creatingSlideActivity={creatingSlideActivity}
+                onLaunchWameeth={handleLaunchWameeth}
+                launchingWameeth={launchingWameeth}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
                 uploading={uploading}
@@ -1890,6 +1986,10 @@ export default function PresentationEditor() {
             onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
             onOpenImageSearch={() => setImageSearchOpen(true)}
             onOpenPreview={() => setPreviewIdx(activeIdx)}
+            onCreateSlideHasadActivity={handleCreateSlideHasadActivity}
+            creatingSlideActivity={creatingSlideActivity}
+            onLaunchWameeth={handleLaunchWameeth}
+            launchingWameeth={launchingWameeth}
             onPresent={(fromCurrent) => {
               /* Mobile browsers block `window.open` for non-direct
                  user gestures (and especially after any async work),
@@ -3403,6 +3503,10 @@ function Inspector({
   onDeselect,
   gifLibraryOpen, setGifLibraryOpen,
   onOpenActivityPickerWithKind,
+  onCreateSlideHasadActivity,
+  creatingSlideActivity,
+  onLaunchWameeth,
+  launchingWameeth,
 }: {
   isAr: boolean;
   readOnly: boolean;
@@ -3428,6 +3532,10 @@ function Inspector({
   gifLibraryOpen?: boolean;
   setGifLibraryOpen?: (v: boolean) => void;
   onOpenActivityPickerWithKind?: (kind: string) => void;
+  onCreateSlideHasadActivity?: () => void;
+  creatingSlideActivity?: boolean;
+  onLaunchWameeth?: (assignmentId: number) => void;
+  launchingWameeth?: boolean;
 }) {
   const [gifOpen, setGifOpen] = useState(false);
   const [gifUrl, setGifUrl] = useState("");
@@ -3777,6 +3885,103 @@ function Inspector({
 
   return (
     <div className="space-y-1">
+      {(slide.activityType || slide.gameSuggestion) && (() => {
+        /* Display label for the detected activity type */
+        const actKey = slide.activityType ?? "";
+        const actLabel = ACTIVITY_TYPE_LABELS[actKey];
+        const actDisplayAr = actLabel?.ar ?? actKey.replace(/_/g, " ");
+        const actDisplayEn = actLabel?.en ?? actKey.replace(/_/g, " ");
+        const actEmoji    = actLabel?.emoji ?? "🎮";
+
+        /* Linked activity state */
+        const linkedId = slide.linkedActivityId ? Number(slide.linkedActivityId) : null;
+        const isWameeth = slide.linkedActivityType === "quick_quiz";
+        const isTug     = slide.linkedActivityType === "tug_war";
+
+        return (
+          <Section
+            title={isAr ? "نشاط مقترح من الذكاء" : "AI Suggested Activity"}
+            icon={<Gamepad2 className="w-4 h-4" />}
+            defaultOpen
+          >
+            <div className="space-y-2.5">
+              {/* Badges row */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {slide.activityType && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    style={{ background: `${BRAND_GREEN}12`, color: BRAND_GREEN }}
+                  >
+                    <span>{actEmoji}</span>
+                    {isAr ? actDisplayAr : actDisplayEn}
+                  </span>
+                )}
+                {slide.strategyStage && (
+                  <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                    {slide.strategyStage.replace(/_/g, " ")}
+                  </span>
+                )}
+              </div>
+
+              {/* ── State: activity already created ── */}
+              {linkedId && isWameeth ? (
+                /* Wameeth: launch via socket */
+                <button
+                  type="button"
+                  onClick={() => onLaunchWameeth?.(linkedId)}
+                  disabled={launchingWameeth}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+                  style={{ background: "#b45309" }}
+                >
+                  {launchingWameeth
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Zap className="w-3.5 h-3.5" />}
+                  {launchingWameeth
+                    ? (isAr ? "جارٍ التشغيل..." : "Starting…")
+                    : (isAr ? "⚡ تشغيل وميض الآن" : "⚡ Start Wameeth now")}
+                </button>
+              ) : linkedId && isTug && slide.linkedActivityUrl ? (
+                /* Tug of War: open setup page */
+                <button
+                  type="button"
+                  onClick={() => window.open(slide.linkedActivityUrl ?? undefined, "_blank", "noopener")}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white"
+                  style={{ background: BRAND_GREEN }}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {isAr ? "🪢 فتح إعداد شد الحبل" : "🪢 Open Tug setup"}
+                </button>
+
+              /* ── State: unsupported type ── */
+              ) : unsupportedHasadActivityLabel(slide, isAr) ? (
+                <div className="rounded-xl border border-dashed border-border bg-muted/30 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+                  {unsupportedHasadActivityLabel(slide, isAr)}
+                </div>
+
+              /* ── State: supported but not yet created ── */
+              ) : (
+                <button
+                  type="button"
+                  onClick={onCreateSlideHasadActivity}
+                  disabled={readOnly || creatingSlideActivity || !onCreateSlideHasadActivity}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ background: BRAND_GREEN }}
+                >
+                  {creatingSlideActivity
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Plus className="w-3.5 h-3.5" />}
+                  {creatingSlideActivity
+                    ? (isAr ? "جارٍ الإنشاء..." : "Creating…")
+                    : (isAr
+                        ? `إنشاء نشاط ${actDisplayAr}`
+                        : `Create ${actDisplayEn} activity`)}
+                </button>
+              )}
+            </div>
+          </Section>
+        );
+      })()}
+
       {/* ── Quick-add elements — mirrors what was in the slide rail ── */}
       <Section title={isAr ? "إضافة عناصر" : "Add Elements"} icon={<Plus className="w-4 h-4" />} defaultOpen>
         <div className="space-y-2.5">
@@ -6052,6 +6257,8 @@ function MobileShell({
   onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
   onOpenImageSearch, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
   onOpenSessions, onGoLive, onExport, onBack,
+  onCreateSlideHasadActivity, creatingSlideActivity,
+  onLaunchWameeth, launchingWameeth,
 }: {
   isAr: boolean;
   dir: "rtl" | "ltr";
@@ -6097,6 +6304,10 @@ function MobileShell({
   onGoLive: () => void;
   onExport: (kind: "pdf" | "pptx") => void;
   onBack: () => void;
+  onCreateSlideHasadActivity: () => void;
+  creatingSlideActivity: boolean;
+  onLaunchWameeth: (assignmentId: number) => void;
+  launchingWameeth: boolean;
 }) {
   const BG = "#F6F4EE";
   const BRAND_SOFT = "#EAF2EC";
@@ -6421,6 +6632,10 @@ function MobileShell({
                   onOpenImageSearch={onOpenImageSearch}
                   uploading={uploading}
                   onDeselect={() => { onSelectEl(null); }}
+                  onCreateSlideHasadActivity={onCreateSlideHasadActivity}
+                  creatingSlideActivity={creatingSlideActivity}
+                  onLaunchWameeth={onLaunchWameeth}
+                  launchingWameeth={launchingWameeth}
                 />
               )}
             </div>

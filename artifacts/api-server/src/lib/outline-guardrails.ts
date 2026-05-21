@@ -52,6 +52,8 @@ export interface SanitizedSlide {
      gameSuggestion. Sanitized to MCQ-shape (2–6 options, valid
      correctIndex). Cleared when no gameSuggestion is set. */
   gameQuestions?: SanitizedGameQuestion[];
+  activityType?: string;
+  strategyStage?: string;
   /* Phase 4 — per-slide design intelligence. AI-picked theme key from
      the 15-theme registry. Validated against `isKnownThemeKey`;
      unknown values fall through to the deck's default theme. */
@@ -91,6 +93,10 @@ const ALLOWED_INTERACTION = new Set(["poll", "quiz", "discussion", "activity"]);
 const ALLOWED_GAMES = new Set<NonNullable<SanitizedGameSuggestion>>([
   "kahoot", "wheel", "millionaire", "flag-quiz", "capitals",
   "letrly", "rocket", "tug", "maraqui", "hack",
+]);
+const ALLOWED_ACTIVITY_TYPES = new Set([
+  "word_cloud", "discussion_wall", "live_poll", "quick_quiz",
+  "tug_war", "wheel_spin", "rocket_race", "millionaire_quiz", "hack_challenge",
 ]);
 const ALLOWED_SHAPE = new Set<SanitizedVisualDirection["shape"]>([
   "rect", "circle", "line", "arrow", "divider",
@@ -407,6 +413,10 @@ export function sanitizeOutline(
     if (sourceField) out.source = sourceField;
     if (slideTheme) out.slideTheme = slideTheme;
     if (gameQuestions && gameQuestions.length > 0) out.gameQuestions = gameQuestions;
+    const rawActivityType = clipStr((slide as RawRecord).activityType, 40);
+    if (rawActivityType && ALLOWED_ACTIVITY_TYPES.has(rawActivityType)) out.activityType = rawActivityType;
+    const rawStrategyStage = clipStr((slide as RawRecord).strategyStage, 60);
+    if (rawStrategyStage) out.strategyStage = rawStrategyStage;
     return out;
   });
 

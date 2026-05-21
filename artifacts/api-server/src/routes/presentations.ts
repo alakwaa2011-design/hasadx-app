@@ -309,6 +309,13 @@ const slideSchema = z.object({
   notes: z.string().max(4000).optional(),
   dir: z.enum(["ltr", "rtl"]).optional(),
   lang: z.enum(["ar", "en"]).optional(),
+  activityType: z.string().max(40).nullable().optional(),
+  gameSuggestion: z.string().max(40).nullable().optional(),
+  strategyStage: z.string().max(60).nullable().optional(),
+  linkedActivityId: z.string().max(80).nullable().optional(),
+  linkedActivityType: z.string().max(40).nullable().optional(),
+  linkedActivityUrl: z.string().max(500).nullable().optional(),
+  activityCreationStatus: z.enum(["idle", "creating", "created", "unsupported", "failed"]).nullable().optional(),
   elements: z.array(elementSchema).max(80).default([]),
 });
 

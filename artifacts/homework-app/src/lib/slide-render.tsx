@@ -308,6 +308,8 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
    displays a clear "will launch here" indicator so teachers know where
    the activity sits on the slide. */
 const HASAD_GAME_META: Record<string, { emoji: string; nameAr: string; nameEn: string }> = {
+  knowledge_race: { emoji: "⚡", nameAr: "وميض", nameEn: "Wameeth" },
+  tug_of_war: { emoji: "🪢", nameAr: "شد الحبل", nameEn: "Tug of War" },
   quiz:     { emoji: "🏆", nameAr: "مسابقة تفاعلية",   nameEn: "Interactive Quiz" },
   wheel:    { emoji: "🎡", nameAr: "عجلة الحظ",         nameEn: "Wheel of Fortune" },
   million:  { emoji: "💰", nameAr: "من سيربح المليون",  nameEn: "Who Wants a Million" },
