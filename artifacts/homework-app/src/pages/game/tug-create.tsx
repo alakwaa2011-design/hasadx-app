@@ -59,6 +59,8 @@ export default function TugCreate() {
   const [creating, setCreating] = useState(false);
   const [gradeLevels, setGradeLevels] = useState<{ gradeLevel: string; count: number }[]>([]);
   const [targetClass, setTargetClass] = useState("");
+  const [questionCount, setQuestionCount] = useState(10);
+  const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
 
   // Bank
   const [bankOpen, setBankOpen] = useState(false);
@@ -147,7 +149,10 @@ export default function TugCreate() {
   const importBankSelected = () => {
     const selected = bankQuestions.filter(q => bankSelected.has(q.id));
     if (selected.length === 0) return;
-    setQuestions(prev => [...prev, ...selected.map(bankToTug)].slice(0, 20));
+    const merged = [...questions, ...selected.map(bankToTug)].slice(0, 20);
+    setQuestions(merged);
+    setQuestionCount(merged.length);
+    setSelectedSource("bank");
     setBankOpen(false);
     toast.success(ar ? `تم استيراد ${selected.length} سؤال!` : `Imported ${selected.length} questions!`);
   };
@@ -188,7 +193,10 @@ export default function TugCreate() {
           correctAnswer: q.correctAnswer, points: q.points || 1, tags: null,
         } as BankQuestion));
       if (qs.length === 0) { toast.error(ar ? "لا توجد أسئلة اختيار متعدد في هذا الواجب" : "No MCQ questions found"); return; }
-      setQuestions(qs.slice(0, 20));
+      const sliced = qs.slice(0, 20);
+      setQuestions(sliced);
+      setQuestionCount(sliced.length);
+      setSelectedSource("assignment");
       setAssignOpen(false);
       toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
     } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
@@ -210,47 +218,48 @@ export default function TugCreate() {
 
   return (
     <Layout>
-      {/* Dark game-themed background matching arena identity */}
-      <div className="min-h-screen px-4 py-5" dir={dir}
-        style={{ background: "linear-gradient(160deg, #041a0c 0%, #063520 50%, #0c3e26 100%)" }}>
-        <div className="max-w-xl mx-auto space-y-3.5">
+      {/* Calm light background with subtle green tint */}
+      <div className="min-h-screen px-4 py-6 pb-10" dir={dir}
+        style={{ background: "linear-gradient(175deg, #f0fdf4 0%, #f5fbff 60%, #f0fdf8 100%)" }}>
+        <div className="max-w-md mx-auto">
 
-          {/* ── Compact horizontal header ── */}
+          {/* ── Centered header ── */}
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 pt-1">
-            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
-              style={{ background: `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`, boxShadow: `0 6px 18px -4px ${BLUE}70` }}>
-              <span className="text-xl">🪢</span>
+            className="text-center mb-5">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
+              style={{
+                background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                boxShadow: "0 8px 22px -6px rgba(22,163,74,0.38)",
+              }}>
+              <span className="text-2xl">🪢</span>
             </div>
-            <div>
-              <h1 className="text-lg font-black text-white leading-tight">
-                {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
-              </h1>
-              <p className="text-[11px] text-white/45">
-                {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
-              </p>
-            </div>
+            <h1 className="text-2xl font-black text-gray-900 mb-1">
+              {ar ? "أنشئ لعبة شد الحبل" : "Create Tug of War"}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {ar ? "فريقان يتنافسان بالإجابة على الأسئلة" : "Two teams compete by answering questions"}
+            </p>
           </motion.div>
 
           {/* ── Unified settings card ── */}
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}
-            className="rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
+            className="bg-white rounded-2xl mb-4 overflow-hidden"
+            style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)" }}>
 
             {/* Duration row */}
-            <div className="px-4 py-3 flex items-center gap-3">
-              <Clock className="w-4 h-4 shrink-0 text-blue-400" />
-              <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
-                {ar ? "وقت كل سؤال" : "Time per question"}
+            <div className="px-5 py-3.5 flex items-center gap-3">
+              <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+              <span className="text-sm font-bold text-gray-700 flex-1">
+                {ar ? "وقت السؤال" : "Time per question"}
               </span>
-              <div className="flex gap-1.5 shrink-0">
+              <div className="flex gap-1 bg-gray-100 rounded-xl p-1 shrink-0">
                 {[10, 15, 20, 30].map(s => (
                   <button key={s} onClick={() => setDuration(s)}
-                    className="w-10 h-8 rounded-lg text-[11px] font-black transition-all"
+                    className="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
                     style={{
-                      background: duration === s ? BLUE : "rgba(255,255,255,0.09)",
-                      color: duration === s ? "#fff" : "rgba(255,255,255,0.50)",
-                      border: `1.5px solid ${duration === s ? BLUE : "transparent"}`,
+                      background: duration === s ? "#16a34a" : "transparent",
+                      color: duration === s ? "#fff" : "#6b7280",
+                      boxShadow: duration === s ? "0 2px 6px rgba(22,163,74,0.3)" : "none",
                     }}>
                     {s}{ar ? "ث" : "s"}
                   </button>
@@ -258,17 +267,22 @@ export default function TugCreate() {
               </div>
             </div>
 
-            <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+            <div className="mx-5 border-t border-gray-100" />
 
             {/* Auto-advance row */}
-            <div className="px-4 py-3 flex items-center gap-3">
-              <span className="text-sm shrink-0">⏭</span>
-              <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
-                {ar ? "تقدم تلقائي بعد كل سؤال" : "Auto-advance after each question"}
-              </span>
+            <div className="px-5 py-3.5 flex items-center gap-3">
+              <span className="text-base shrink-0">⏭</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-700">
+                  {ar ? "التقدم التلقائي بعد كل سؤال" : "Auto-advance after each question"}
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  {ar ? "الانتقال تلقائياً للسؤال التالي بعد الإجابة" : "Move to next question automatically"}
+                </p>
+              </div>
               <button onClick={() => setAutoAdvance(!autoAdvance)}
                 className="relative w-11 h-6 rounded-full transition-colors shrink-0"
-                style={{ background: autoAdvance ? "#16a34a" : "rgba(255,255,255,0.18)" }}>
+                style={{ background: autoAdvance ? "#16a34a" : "#d1d5db" }}>
                 <motion.div
                   animate={{ x: autoAdvance ? (dir === "rtl" ? -19 : 19) : 2 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -278,17 +292,42 @@ export default function TugCreate() {
               </button>
             </div>
 
+            <div className="mx-5 border-t border-gray-100" />
+
+            {/* Question count row */}
+            <div className="px-5 py-3.5 flex items-center gap-3">
+              <span className="text-base shrink-0">📋</span>
+              <span className="text-sm font-bold text-gray-700 flex-1">
+                {ar ? "عدد الأسئلة" : "Question count"}
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setQuestionCount(c => Math.max(1, c - 1))}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-base font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+                  −
+                </button>
+                <span className="w-9 text-center text-sm font-black text-gray-900 tabular-nums">
+                  {questionCount}
+                </span>
+                <button
+                  onClick={() => setQuestionCount(c => Math.min(20, c + 1))}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-base font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+                  +
+                </button>
+              </div>
+            </div>
+
             {/* Target class row — only when grades exist */}
             {gradeLevels.length > 0 && (
               <>
-                <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
-                <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
-                  <GraduationCap className="w-4 h-4 shrink-0 text-emerald-400" />
-                  <span className="text-sm font-bold text-white/75 flex-1 min-w-0">
+                <div className="mx-5 border-t border-gray-100" />
+                <div className="px-5 py-3.5 flex items-center gap-3 flex-wrap">
+                  <GraduationCap className="w-4 h-4 text-gray-400 shrink-0" />
+                  <span className="text-sm font-bold text-gray-700 flex-1 min-w-0">
                     {ar ? "الصف المستهدف" : "Target class"}
                   </span>
                   <select value={targetClass} onChange={e => setTargetClass(e.target.value)}
-                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-800 bg-white/90 border-0 outline-none shrink-0"
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 outline-none shrink-0"
                     style={{ minWidth: 130 }}>
                     <option value="">{ar ? "— جميع الصفوف —" : "— All classes —"}</option>
                     {gradeLevels.map(g => (
@@ -302,78 +341,104 @@ export default function TugCreate() {
             )}
           </motion.div>
 
-          {/* ── Source selection — compact side-by-side ── */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}
-            className="grid grid-cols-2 gap-2.5">
+          {/* ── Question source section ── */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.10 }}>
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2.5 px-1">
+              {ar ? "اختر مصدر الأسئلة" : "Question source"}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
 
-            <button onClick={() => setBankOpen(true)}
-              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border transition-all hover:border-blue-400/50 active:scale-[0.97]"
-              style={{ background: "rgba(14,165,233,0.10)", borderColor: "rgba(14,165,233,0.22)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg, #0ea5e9, #3b82f6)" }}>
-                <BookOpen className="w-4 h-4 text-white" />
-              </div>
-              <div className="text-start min-w-0">
-                <p className="text-sm font-black text-white truncate">{ar ? "بنك الأسئلة" : "Question Bank"}</p>
-                {bankQuestions.length > 0
-                  ? <p className="text-[10px] text-blue-300">{bankQuestions.length} {ar ? "سؤال" : "questions"}</p>
-                  : <p className="text-[10px] text-white/35">{ar ? "اضغط للتصفح" : "Tap to browse"}</p>}
-              </div>
-            </button>
+              {/* Assignment card */}
+              <button onClick={() => setAssignOpen(true)}
+                className="bg-white rounded-2xl p-4 flex flex-col items-center gap-2.5 transition-all hover:shadow-md active:scale-[0.97] border-2"
+                style={{
+                  boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+                  borderColor: selectedSource === "assignment" ? "#f59e0b" : "#e5e7eb",
+                }}>
+                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%)" }}>
+                  <FileText className="w-5 h-5" style={{ color: "#f59e0b" }} />
+                  {selectedSource === "assignment" && (
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ background: "#f59e0b" }}>
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-black text-gray-800">{ar ? "من واجب" : "Assignment"}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{ar ? "الأسئلة من الواجبات" : "Questions from assignments"}</p>
+                </div>
+              </button>
 
-            <button onClick={() => setAssignOpen(true)}
-              className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl border transition-all hover:border-amber-400/50 active:scale-[0.97]"
-              style={{ background: "rgba(245,158,11,0.10)", borderColor: "rgba(245,158,11,0.22)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)" }}>
-                <FileText className="w-4 h-4 text-white" />
-              </div>
-              <div className="text-start min-w-0">
-                <p className="text-sm font-black text-white truncate">{ar ? "من واجب" : "Assignment"}</p>
-                <p className="text-[10px] text-white/35">{ar ? "اضغط للتصفح" : "Tap to browse"}</p>
-              </div>
-            </button>
+              {/* Bank card */}
+              <button onClick={() => setBankOpen(true)}
+                className="bg-white rounded-2xl p-4 flex flex-col items-center gap-2.5 transition-all hover:shadow-md active:scale-[0.97] border-2"
+                style={{
+                  boxShadow: "0 1px 8px rgba(0,0,0,0.06)",
+                  borderColor: selectedSource === "bank" ? BLUE : "#e5e7eb",
+                }}>
+                <div className="relative w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)" }}>
+                  <BookOpen className="w-5 h-5" style={{ color: BLUE }} />
+                  {selectedSource === "bank" && (
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ background: BLUE }}>
+                      <Check className="w-3 h-3 text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-black text-gray-800" style={{ color: selectedSource === "bank" ? BLUE : undefined }}>
+                    {ar ? "بنك الأسئلة" : "Question Bank"}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {bankQuestions.length > 0
+                      ? `${bankQuestions.length} ${ar ? "سؤال متاح" : "questions"}`
+                      : (ar ? "الأسئلة من بنك الأسئلة" : "Questions from the bank")}
+                  </p>
+                </div>
+              </button>
+            </div>
           </motion.div>
 
-          {/* ── Questions loaded strip ── */}
+          {/* ── Questions loaded indicator ── */}
           <AnimatePresence>
             {questions.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, y: -6, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl overflow-hidden"
-                style={{ background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.28)" }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
-                  style={{ background: "#16a34a" }}>
-                  {questions.length}
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }} className="mt-3 overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-green-50 border border-green-200">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0"
+                    style={{ background: "#16a34a" }}>
+                    {questions.length}
+                  </div>
+                  <p className="text-sm font-bold text-green-700 flex-1">
+                    {ar ? `${questions.length} سؤال محمّل — جاهز للانطلاق!` : `${questions.length} questions ready!`}
+                  </p>
+                  <button
+                    onClick={() => { setQuestions([]); setSelectedSource(null); setQuestionCount(10); }}
+                    className="p-1 rounded hover:bg-red-100 transition-colors text-red-400 shrink-0">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <p className="text-sm font-bold text-green-300 flex-1">
-                  {ar ? `${questions.length} سؤال محمّل — جاهز للانطلاق!` : `${questions.length} questions ready!`}
-                </p>
-                <button onClick={() => setQuestions([])}
-                  className="p-1 rounded-lg hover:bg-red-500/20 transition-colors text-red-400 shrink-0"
-                  title={ar ? "مسح الأسئلة" : "Clear"}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* ── Create Room button — inline, no sticky ── */}
+          {/* ── Create Room button ── */}
           <motion.button
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-            whileTap={{ scale: 0.97 }}
-            whileHover={{ scale: questions.length > 0 ? 1.01 : 1 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleCreate}
             disabled={creating || questions.length === 0}
-            className="w-full py-3.5 rounded-2xl font-black text-[15px] text-white flex items-center justify-center gap-2.5 transition-all"
+            className="w-full mt-4 py-4 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2.5 transition-all"
             style={{
               background: questions.length > 0
-                ? `linear-gradient(135deg, ${BLUE} 0%, ${INDIGO} 100%)`
-                : "rgba(255,255,255,0.08)",
-              boxShadow: questions.length > 0 ? `0 8px 24px -6px ${BLUE}80` : "none",
+                ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)"
+                : "#d1d5db",
+              boxShadow: questions.length > 0 ? "0 8px 24px -6px rgba(22,163,74,0.45)" : "none",
               cursor: questions.length > 0 ? "pointer" : "not-allowed",
-              opacity: questions.length > 0 ? 1 : 0.45,
             }}
           >
             {creating ? (
@@ -382,14 +447,14 @@ export default function TugCreate() {
               <>
                 <Play className="w-4 h-4" fill="currentColor" />
                 {ar
-                  ? questions.length > 0 ? `أنشئ الغرفة · ${questions.length} سؤال` : "أنشئ الغرفة"
-                  : questions.length > 0 ? `Create Room · ${questions.length} Qs` : "Create Room"}
+                  ? questions.length > 0 ? `أنشئ الغرفة (${questions.length} أسئلة)` : "أنشئ الغرفة"
+                  : questions.length > 0 ? `Create Room (${questions.length} Qs)` : "Create Room"}
               </>
             )}
           </motion.button>
 
           {questions.length === 0 && (
-            <p className="text-center text-[11px] text-white/30 pb-2">
+            <p className="text-center text-xs text-gray-400 mt-2 pb-2">
               {ar ? "اختر مصدر الأسئلة أولاً لتفعيل الزر" : "Pick a question source first to enable"}
             </p>
           )}
