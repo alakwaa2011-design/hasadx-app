@@ -75,7 +75,6 @@ import {
   Upload,
   FileUp,
   Layers,
-  BookOpen,
 } from "lucide-react";
 
 const BRAND_GREEN = "#225739";
@@ -369,7 +368,7 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
               )}
             </div>
 
-            {/* Right: primary CTAs */}
+            {/* Right: CTAs — عرض جديد · توليد بالذكاء · استيراد ملف */}
             <div className="flex flex-row sm:flex-col gap-3 w-full sm:w-auto shrink-0">
               <button
                 type="button"
@@ -389,84 +388,16 @@ export default function PresentationsIndex({ embedded }: { embedded?: boolean } 
                 <Sparkles className="w-4 h-4 shrink-0" />
                 {isAr ? "توليد بالذكاء" : "AI generate"}
               </button>
+              <button
+                type="button"
+                onClick={() => setShowImport(true)}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold border transition-all duration-200 hover:scale-[1.02] hover:bg-white/15 active:scale-[0.98] select-none"
+                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.07)", padding: "10px 20px", minWidth: 152 }}
+              >
+                <Upload className="w-4 h-4 shrink-0" />
+                {isAr ? "استيراد ملف" : "Import file"}
+              </button>
             </div>
-          </div>
-        </div>
-
-        {/* ─── Quick Actions ───────────────────────────────────── */}
-        <div className="mb-8">
-          <h2 className="text-[11px] font-bold text-muted-foreground mb-3 tracking-[0.12em] uppercase ps-1">
-            {isAr ? "ابدأ بسرعة" : "Quick start"}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(
-              [
-                {
-                  icon: Upload,
-                  label: isAr ? "استيراد ملف" : "Import file",
-                  sub: isAr ? "PDF، PPTX، صور" : "PDF, PPTX, images",
-                  onClick: () => setShowImport(true),
-                  iconColor: "#0ea5e9",
-                  bg: "#f0f9ff",
-                  border: "#bae6fd",
-                  textColor: "#075985",
-                },
-                {
-                  icon: BookOpen,
-                  label: isAr ? "من واجب" : "From homework",
-                  sub: isAr ? "حوّل واجباً لعرض" : "Turn homework into a deck",
-                  onClick: () => setLocation("/teacher"),
-                  iconColor: "#7c3aed",
-                  bg: "#f5f3ff",
-                  border: "#ddd6fe",
-                  textColor: "#4c1d95",
-                },
-                {
-                  icon: Layers,
-                  label: isAr ? "بنك الشرائح" : "Slide bank",
-                  sub: isAr ? "شرائح جاهزة للتخصيص" : "Ready-made slides",
-                  onClick: () => setLocation("/teacher/presentations/new"),
-                  iconColor: "#0891b2",
-                  bg: "#ecfeff",
-                  border: "#a5f3fc",
-                  textColor: "#164e63",
-                },
-                {
-                  icon: Sparkles,
-                  label: isAr ? "قوالب جاهزة" : "Templates",
-                  sub: isAr ? "قوالب احترافية" : "Professional templates",
-                  onClick: () => setShowCreate(true),
-                  iconColor: "#d97706",
-                  bg: "#fffbeb",
-                  border: "#fde68a",
-                  textColor: "#92400e",
-                },
-              ] as const
-            ).map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.onClick}
-                  className="group text-start flex flex-col gap-2.5 p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
-                  style={{ background: item.bg, borderColor: item.border }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110"
-                    style={{ background: `${item.iconColor}22`, color: item.iconColor }}
-                  >
-                    <Icon className="w-[18px] h-[18px]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold leading-tight" style={{ color: item.textColor }}>
-                      {item.label}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{item.sub}</p>
-                  </div>
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -684,12 +615,20 @@ function PresentationCard({
   isOwner: boolean;
 }) {
   const isPublished = p.status === "published";
-  const kind = detectContentKind(p.title);
-  const theme = KIND_THEME[kind];
-  // hash بسيط للتنويع داخل نفس النوع
+
+  // Deterministic color palette based on title hash — 6 vibrant options
   let _h = 0;
   for (let i = 0; i < p.title.length; i++) _h = (_h * 31 + p.title.charCodeAt(i)) >>> 0;
-  const variant = _h % 3; // 0, 1, 2 داخل كل نوع
+
+  const COVER_PALETTES = [
+    { bg: "linear-gradient(135deg, #0a4d26 0%, #166534 55%, #15803d 100%)", accent: "#4ade80", shape: "circles" },
+    { bg: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 55%, #3b82f6 100%)", accent: "#93c5fd", shape: "bars"    },
+    { bg: "linear-gradient(135deg, #4a1d96 0%, #5b21b6 55%, #7c3aed 100%)", accent: "#c4b5fd", shape: "dots"    },
+    { bg: "linear-gradient(135deg, #7c2d12 0%, #b45309 55%, #d97706 100%)", accent: "#fde68a", shape: "waves"   },
+    { bg: "linear-gradient(135deg, #134e4a 0%, #0f766e 55%, #0d9488 100%)", accent: "#5eead4", shape: "grid"    },
+    { bg: "linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%)", accent: "#94a3b8", shape: "rects"   },
+  ];
+  const cover = COVER_PALETTES[_h % 6];
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(p.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -712,209 +651,95 @@ function PresentationCard({
     setEditValue(p.title);
   }, [p.title]);
 
-  // ── معاينة ذكية حسب نوع المحتوى ─────────────────────
-  const SmartPreview = () => {
-    const b = theme.bar;
-    const d = theme.dim;
-
-    if (kind === "islamic") {
-      // هوية إسلامية: قوس هادئ + خطوط نص عربي
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-5 relative overflow-hidden">
-          {/* قوس ديكوري */}
-          <svg className="absolute top-0 inset-x-0 w-full opacity-10" viewBox="0 0 200 60" preserveAspectRatio="none">
-            <path d="M0 60 Q50 0 100 20 Q150 40 200 0 L200 60Z" fill={b} />
-          </svg>
-          <div className="relative z-10 flex flex-col items-center gap-2 w-full">
-            {/* زخرفة دائرية */}
-            <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center" style={{ borderColor: b, opacity: 0.45 }}>
-              <div className="w-3 h-3 rounded-full" style={{ background: b, opacity: 0.6 }} />
-            </div>
-            <div className="h-1.5 rounded-full w-1/2" style={{ background: b, opacity: 0.6 }} />
-            <div className="h-1 rounded-full w-2/5" style={{ background: b, opacity: 0.3 }} />
-          </div>
-          {/* نقاط زخرفية */}
-          <div className="absolute bottom-3 flex gap-1.5">
-            {[0.25, 0.4, 0.25].map((op, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: b, opacity: op }} />
-            ))}
-          </div>
-        </div>
-      );
-    }
-
-    if (kind === "math") {
-      // رياضيات: شبكة + رموز معادلات
-      return (
-        <div className="w-full h-full relative overflow-hidden">
-          {/* شبكة خلفية */}
-          <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id={`grid-${variant}`} width="16" height="16" patternUnits="userSpaceOnUse">
-                <path d="M 16 0 L 0 0 0 16" fill="none" stroke={b} strokeWidth="0.8" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill={`url(#grid-${variant})`} />
-          </svg>
-          <div className="relative z-10 flex flex-col p-4 gap-2 h-full">
-            <div className="h-2 rounded w-3/5" style={{ background: b, opacity: 0.7 }} />
-            <div className="flex-1 flex items-center justify-center">
-              {variant === 0 && (
-                <div className="flex items-center gap-2 opacity-30" style={{ color: b }}>
-                  <div className="w-7 h-5 rounded border-2" style={{ borderColor: d }} />
-                  <span className="text-base font-black" style={{ color: d }}>+</span>
-                  <div className="w-5 h-5 rounded border-2" style={{ borderColor: d }} />
-                  <span className="text-base font-black" style={{ color: d }}>=</span>
-                  <div className="w-6 h-5 rounded" style={{ background: d, opacity: 0.25 }} />
-                </div>
-              )}
-              {variant === 1 && (
-                <div className="flex gap-1.5 items-end opacity-50" style={{ color: d }}>
-                  {[60, 90, 70, 100, 55, 80].map((h, i) => (
-                    <div key={i} className="w-3 rounded-t" style={{ height: h * 0.35, background: d, opacity: 0.5 + i * 0.08 }} />
-                  ))}
-                </div>
-              )}
-              {variant === 2 && (
-                <div className="text-center opacity-25" style={{ color: d }}>
-                  <div className="text-lg font-black tracking-wider" style={{ fontFamily: "serif" }}>∑ · ∫ · π</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (kind === "science") {
-      // علوم: عناصر دائرية (ذرة / خلية)
-      return (
-        <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
-          {variant === 0 && (
-            /* نموذج ذرة مبسط */
-            <svg viewBox="0 0 100 80" className="w-24 opacity-20" style={{ color: d }}>
-              <circle cx="50" cy="40" r="6" fill={b} opacity="0.7" />
-              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.5" />
-              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.4" transform="rotate(60 50 40)" />
-              <ellipse cx="50" cy="40" rx="30" ry="12" fill="none" stroke={b} strokeWidth="1.5" opacity="0.4" transform="rotate(-60 50 40)" />
-            </svg>
-          )}
-          {variant === 1 && (
-            /* خلايا شبكية */
-            <div className="grid grid-cols-3 gap-1.5 p-5 w-full h-full">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="rounded-full border" style={{ borderColor: b, opacity: 0.15 + (i % 3) * 0.08 }} />
-              ))}
-            </div>
-          )}
-          {variant === 2 && (
-            /* مخطط مراحل */
-            <div className="flex items-center gap-1.5 px-4">
-              {[1, 2, 3, 4].map((n, i) => (
-                <div key={n} className="flex items-center gap-1.5">
-                  <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[9px] font-bold"
-                    style={{ borderColor: b, color: b, opacity: 0.45 + i * 0.12 }}>
-                    {n}
-                  </div>
-                  {i < 3 && <div className="w-3 h-px" style={{ background: b, opacity: 0.3 }} />}
-                </div>
-              ))}
-            </div>
-          )}
-          {/* عنوان */}
-          <div className="absolute bottom-3 inset-x-0 px-4">
-            <div className="h-1.5 rounded-full w-1/2" style={{ background: b, opacity: 0.45 }} />
-          </div>
-        </div>
-      );
-    }
-
-    if (kind === "arabic-lang") {
-      // لغة عربية: typography واضح + خطوط نصية
-      return (
-        <div className="w-full h-full flex flex-col p-4 gap-2 relative overflow-hidden" dir="rtl">
-          {/* زخرفة نقطية */}
-          <div className="absolute top-3 left-3 w-6 h-6 rounded-full opacity-8" style={{ background: b }} />
-          <div className="h-2.5 rounded w-3/4" style={{ background: b, opacity: 0.65 }} />
-          <div className="h-px w-1/3 mt-0.5" style={{ background: b, opacity: 0.35 }} />
-          <div className="flex-1 flex flex-col justify-center gap-1.5">
-            {[0.13, 0.09, 0.11, 0.07].map((op, i) => (
-              <div key={i} className="h-1 rounded-full" style={{ background: b, opacity: op, width: `${85 - i * 12}%` }} />
-            ))}
-          </div>
-          {/* علامة تشكيل ديكورية */}
-          <div className="absolute bottom-3 end-4 text-base font-black opacity-15" style={{ color: b }}>ـ</div>
-        </div>
-      );
-    }
-
-    if (kind === "history") {
-      // تاريخ: timeline أفقي
-      return (
-        <div className="w-full h-full flex flex-col p-4 gap-3 relative overflow-hidden">
-          <div className="h-2 rounded-full w-2/3" style={{ background: b, opacity: 0.7 }} />
-          <div className="flex-1 flex items-center">
-            <div className="relative flex-1">
-              {/* خط الزمن */}
-              <div className="absolute top-1/2 inset-x-0 h-px" style={{ background: b, opacity: 0.25 }} />
-              <div className="relative flex justify-between items-center">
-                {[0.5, 0.35, 0.55, 0.3, 0.45].map((op, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <div className="w-2 h-2 rounded-full border-2" style={{ borderColor: b, opacity: op, background: i === 2 ? b : "transparent" }} />
-                    <div className="w-4 h-0.5 rounded" style={{ background: b, opacity: op * 0.7 }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // general — نمط نظيف بدون تصميم مفرط
-    return (
-      <div className="w-full h-full flex flex-col p-4 gap-2.5">
-        <div className="h-2 rounded-full" style={{ background: b, opacity: 0.6, width: variant === 0 ? "60%" : variant === 1 ? "75%" : "55%" }} />
-        <div className="h-1.5 rounded-full w-2/5" style={{ background: b, opacity: 0.25 }} />
-        <div className="flex-1 flex flex-col justify-end gap-1.5">
-          {[0.09, 0.07, 0.06].map((op, i) => (
-            <div key={i} className="h-1 rounded-full bg-current" style={{ opacity: op, width: `${90 - i * 15}%` }} />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div
       onClick={editing ? undefined : onOpen}
       className="group relative flex flex-col rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5"
       style={{
         background: "var(--card)",
-        border: "1px solid rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.07)",
         boxShadow: "0 2px 16px rgba(0,0,0,0.05)",
         cursor: editing ? "default" : "pointer",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow =
-          `0 20px 60px rgba(0,0,0,0.1), 0 0 0 1px ${theme.bar}28`;
+          `0 24px 64px rgba(0,0,0,0.12), 0 0 0 1px ${cover.accent}50`;
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05)";
       }}
     >
-      {/* ── Cover preview ────────────────────────────────── */}
+      {/* ── Vibrant cover ─────────────────────────────────── */}
       <div
         className="relative overflow-hidden shrink-0"
-        style={{ height: 160, background: theme.bg, color: theme.text }}
+        style={{ height: 168, background: cover.bg }}
       >
-        {/* Subject accent bar */}
+        {/* Large background circle */}
         <div
-          className="absolute inset-y-0 start-0 w-[3px] opacity-60"
-          style={{ background: theme.bar }}
+          className="absolute -top-12 -end-12 w-40 h-40 rounded-full opacity-[0.18]"
+          style={{ background: cover.accent }}
         />
-        <div className="absolute inset-0">
-          <SmartPreview />
+        {/* Small secondary circle */}
+        <div
+          className="absolute top-5 start-4 w-5 h-5 rounded-full opacity-[0.14]"
+          style={{ background: cover.accent }}
+        />
+
+        {/* Abstract slide-content lines (top area) */}
+        <div className="absolute top-7 start-5 end-20 space-y-2 opacity-[0.22]">
+          <div className="h-2.5 rounded-full" style={{ background: cover.accent, width: "72%" }} />
+          <div className="h-1.5 rounded-full" style={{ background: cover.accent, width: "50%" }} />
+        </div>
+
+        {/* Decorative element — varies per shape type */}
+        {cover.shape === "bars" && (
+          <div className="absolute bottom-10 end-5 flex items-end gap-1 opacity-[0.22]">
+            {[42, 68, 52, 78, 58, 70].map((h, i) => (
+              <div key={i} className="w-2.5 rounded-t-sm" style={{ height: h * 0.38, background: cover.accent }} />
+            ))}
+          </div>
+        )}
+        {cover.shape === "circles" && (
+          <div className="absolute bottom-8 end-5 opacity-[0.18]">
+            <div className="w-14 h-14 rounded-full border-[3px]" style={{ borderColor: cover.accent }} />
+            <div className="w-7 h-7 rounded-full border-2 absolute top-[15%] start-[15%]" style={{ borderColor: cover.accent }} />
+          </div>
+        )}
+        {cover.shape === "dots" && (
+          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1.5 opacity-[0.22]">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="w-3 h-3 rounded-full" style={{ background: cover.accent }} />
+            ))}
+          </div>
+        )}
+        {cover.shape === "waves" && (
+          <div className="absolute bottom-9 end-4 start-4 space-y-1.5 opacity-[0.2]">
+            {[100, 78, 60].map((w, i) => (
+              <div key={i} className="h-1.5 rounded-full" style={{ width: `${w}%`, background: cover.accent }} />
+            ))}
+          </div>
+        )}
+        {cover.shape === "grid" && (
+          <div className="absolute bottom-8 end-5 grid grid-cols-3 gap-1 opacity-[0.18]">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="w-3 h-3 rounded-sm" style={{ background: cover.accent }} />
+            ))}
+          </div>
+        )}
+        {cover.shape === "rects" && (
+          <div className="absolute bottom-8 end-5 flex gap-2 opacity-[0.18]">
+            {[{ w: 28, h: 20 }, { w: 18, h: 28 }, { w: 22, h: 14 }].map((r, i) => (
+              <div key={i} className="rounded-md" style={{ width: r.w, height: r.h, background: cover.accent }} />
+            ))}
+          </div>
+        )}
+
+        {/* Title overlay — bottom gradient strip */}
+        <div className="absolute bottom-0 inset-x-0 px-3.5 pt-6 pb-2.5"
+             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)" }}>
+          <p className="text-white text-[11px] font-bold leading-tight line-clamp-2 opacity-90" dir="auto">
+            {p.title}
+          </p>
         </div>
 
         {/* Badges */}
@@ -928,20 +753,20 @@ function PresentationCard({
               {isAr ? "منشور" : "Published"}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/75 text-muted-foreground">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-black/25 text-white/85">
               {isAr ? "مسودة" : "Draft"}
             </span>
           )}
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/10 text-white/90">
+          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-black/20 text-white/80">
             {p.language === "ar" ? "AR" : "EN"}
           </span>
         </div>
 
-        {/* Hover overlay with "Open editor" */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/[0.07]">
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-black/20">
           <span
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white shadow-lg translate-y-1 group-hover:translate-y-0 transition-transform duration-200"
-            style={{ color: theme.bar }}
+            style={{ color: "#0a4d26" }}
           >
             <Pencil className="w-3.5 h-3.5" />
             {isAr ? "فتح المحرر" : "Open editor"}
