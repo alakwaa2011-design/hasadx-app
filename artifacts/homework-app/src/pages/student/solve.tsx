@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, useSearch } from "wouter";
 import { useGetAssignment, useSubmitAssignment, useSubmitAssignmentImage, useStartExamSession, useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "@/components/ui/sonner";
 import { Gamepad2 } from "lucide-react";
@@ -339,6 +339,11 @@ function ScoreStars({ score }: { score: number }) {
 export default function StudentSolve() {
   const [, params] = useRoute("/solve/:id");
   const id = parseInt(params?.id || "0");
+  const searchStr = useSearch();
+  const urlAccessCode = useMemo(() => {
+    const sp = new URLSearchParams(searchStr);
+    return (sp.get("code") || sp.get("accessCode") || "").trim();
+  }, [searchStr]);
   const { t, lang } = useI18n();
   const locale = lang === "ar" ? "ar-EG" : "en-US";
   const BackIcon = lang === "ar" ? ChevronLeft : ChevronRight;
@@ -349,6 +354,7 @@ export default function StudentSolve() {
   const accessCodeStorageKey = `hw_access_code_${id}`;
   const [verifiedAccessCode, setVerifiedAccessCode] = useState<string>(() => {
     if (typeof window === "undefined" || !id) return "";
+    if (urlAccessCode) return urlAccessCode;
     try { return sessionStorage.getItem(accessCodeStorageKey) || ""; } catch { return ""; }
   });
   const { data: assignment, isLoading, error: assignmentError, refetch: refetchAssignment } = useGetAssignment(id, {
@@ -410,6 +416,13 @@ export default function StudentSolve() {
   const [studentId, setStudentId] = useState<number | null>(null);
   const [classStudents, setClassStudents] = useState<{ id: number; name: string; gradeLevel: string }[]>([]);
   const [accessCode, setAccessCode] = useState(verifiedAccessCode || "");
+  useEffect(() => {
+    if (!urlAccessCode) return;
+    try { sessionStorage.setItem(accessCodeStorageKey, urlAccessCode); } catch {}
+    setVerifiedAccessCode(urlAccessCode);
+    setAccessCode(urlAccessCode);
+    setPendingAccessCode(urlAccessCode);
+  }, [accessCodeStorageKey, urlAccessCode]);
   // Keep the legacy `accessCode` field in sync after the student verifies the
   // code through the gate prompt so the eventual submit/start-exam payload
   // includes it without re-typing.
