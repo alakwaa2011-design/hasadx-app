@@ -22,6 +22,15 @@ export const CANVAS_W = 1280;
 export const CANVAS_H = 720;
 
 type IconCmp = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+export type PresentActivityState = {
+  elementId: string | null;
+  questionIndex: number;
+  selectedIndex: number | null;
+};
+export type PresentActivityHandlers = {
+  onSelectAnswer?: (elementId: string, answerIndex: number) => void;
+  onNextQuestion?: (elementId: string) => void;
+};
 
 export function getLucideIcon(name: string | null | undefined): IconCmp {
   if (!name) return Square as unknown as IconCmp;
@@ -92,7 +101,16 @@ function ShapeRenderer({ el }: { el: SlideElement }) {
  * interactive answering runtime ships in Phase 2B; for now we render
  * a styled brand card so the slide is presentable + exports cleanly.
  * Falls back gracefully when `prompt` is missing (e.g. mid-edit). */
-function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideElement; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
+function ActivityRenderer({
+  el, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers,
+}: {
+  el: SlideElement;
+  lang?: "ar" | "en";
+  stageMode?: boolean;
+  revealAnswers?: boolean;
+  presentActivityState?: PresentActivityState;
+  presentActivityHandlers?: PresentActivityHandlers;
+}) {
   if (el.kind !== "activity") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -115,6 +133,10 @@ function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideEle
   const tfOpts = el.activityKind === "true_false" && opts.length === 0
     ? (isAr ? ["صح", "خطأ"] : ["True", "False"])
     : opts;
+  const interactiveState = presentActivityState?.elementId === el.id ? presentActivityState : undefined;
+  const selectedIndex = interactiveState?.selectedIndex ?? null;
+  const answered = selectedIndex !== null;
+  const showFeedback = answered || !!revealAnswers;
   const optionPalette = [
     { bg: "#ef4444", fg: "#ffffff", soft: "#fee2e2" },
     { bg: "#2563eb", fg: "#ffffff", soft: "#dbeafe" },
@@ -209,23 +231,41 @@ function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideEle
               ? (i === 0 ? { bg: "#16a34a", fg: "#ffffff", soft: "#dcfce7" } : { bg: "#dc2626", fg: "#ffffff", soft: "#fee2e2" })
               : optionPalette[i % optionPalette.length];
             const isCorrect = typeof el.correctIndex === "number" && i === el.correctIndex;
-            const revealedCorrect = !!revealAnswers && isCorrect;
+            const isSelected = selectedIndex === i;
+            const revealedCorrect = showFeedback && isCorrect;
+            const revealedWrong = answered && isSelected && !isCorrect;
             return (
-              <div key={i} style={{
-                border: `2.5px solid ${revealedCorrect ? "#16a34a" : color.bg}`,
+              <button
+                key={i}
+                type="button"
+                disabled={answered || !presentActivityHandlers?.onSelectAnswer}
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  presentActivityHandlers?.onSelectAnswer?.(el.id, i);
+                }}
+                style={{
+                border: `2.5px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
                 borderRadius: 18,
                 padding: "14px 16px",
                 fontSize: 22,
                 color: "#0f172a",
-                background: revealedCorrect ? "#dcfce7" : color.soft,
+                background: revealedCorrect ? "#dcfce7" : revealedWrong ? "#fee2e2" : color.soft,
                 fontWeight: 900,
                 minHeight: 72,
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
-                boxShadow: revealedCorrect ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 26px rgba(22,163,74,0.42)" : `0 10px 20px ${color.bg}22`,
-                animation: revealedCorrect ? "_answerReveal 0.75s ease-out both" : (stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined),
-              }}>
+                width: "100%",
+                textAlign: "start",
+                cursor: answered || !presentActivityHandlers?.onSelectAnswer ? "default" : "pointer",
+                boxShadow: revealedCorrect
+                  ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 26px rgba(22,163,74,0.42)"
+                  : revealedWrong
+                    ? "0 0 0 4px rgba(220,38,38,0.14), 0 0 20px rgba(220,38,38,0.28)"
+                    : `0 10px 20px ${color.bg}22`,
+                animation: (revealedCorrect || revealedWrong) ? "_answerReveal 0.75s ease-out both" : (stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined),
+              }}
+              >
                 <span style={{
                   flex: "none",
                   width: 38,
@@ -245,9 +285,30 @@ function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideEle
                 {revealedCorrect ? (
                   <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
                 ) : null}
-              </div>
+                {revealedWrong ? (
+                  <span style={{ marginInlineStart: "auto", color: "#dc2626", fontWeight: 950, fontSize: 24 }}>✕</span>
+                ) : null}
+              </button>
             );
           })}
+        </div>
+      )}
+      {answered && typeof el.correctIndex === "number" && (
+        <div style={{
+          marginTop: 2,
+          borderRadius: 16,
+          padding: "12px 14px",
+          background: selectedIndex === el.correctIndex ? "#dcfce7" : "#fff7ed",
+          border: `2px solid ${selectedIndex === el.correctIndex ? "#16a34a" : "#fb923c"}`,
+          color: selectedIndex === el.correctIndex ? "#166534" : "#9a3412",
+          fontSize: 17,
+          fontWeight: 950,
+          textAlign: "center",
+          animation: "_answerReveal 0.55s ease-out both",
+        }}>
+          {selectedIndex === el.correctIndex
+            ? (isAr ? "إجابة صحيحة" : "Correct answer")
+            : (isAr ? "إجابة غير صحيحة - ظهرت الإجابة الصحيحة" : "Not correct - the correct answer is shown")}
         </div>
       )}
       {activityKind === "open" && renderTextAnswerCard(
@@ -277,7 +338,15 @@ function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideEle
    rest are listed compactly so the teacher can see what's coming.
    The correct answer is highlighted on the slide itself — this is
    the teacher's projector view, not the student device. */
-export function HasadGameRenderer({ el, lang, revealAnswers }: { el: SlideElement; lang?: "ar" | "en"; revealAnswers?: boolean }) {
+export function HasadGameRenderer({
+  el, lang, revealAnswers, presentActivityState, presentActivityHandlers,
+}: {
+  el: SlideElement;
+  lang?: "ar" | "en";
+  revealAnswers?: boolean;
+  presentActivityState?: PresentActivityState;
+  presentActivityHandlers?: PresentActivityHandlers;
+}) {
   if (el.kind !== "hasad-game") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -285,8 +354,13 @@ export function HasadGameRenderer({ el, lang, revealAnswers }: { el: SlideElemen
   const questions = Array.isArray(el.questions) ? el.questions : [];
   const total = questions.length;
   const headTitle = el.topic || el.prompt || (isAr ? "نشاط الصف" : "Class activity");
-  const first = questions[0];
-  const rest = questions.slice(1);
+  const interactiveState = presentActivityState?.elementId === el.id ? presentActivityState : undefined;
+  const questionIndex = Math.max(0, Math.min(interactiveState?.questionIndex ?? 0, Math.max(0, total - 1)));
+  const first = questions[questionIndex];
+  const remainingCount = Math.max(0, total - questionIndex - 1);
+  const selectedIndex = interactiveState?.selectedIndex ?? null;
+  const answered = selectedIndex !== null;
+  const showFeedback = answered || !!revealAnswers;
   const letters = isAr ? ["أ", "ب", "ج", "د", "هـ", "و"] : ["A", "B", "C", "D", "E", "F"];
   const optionPalette = [
     { bg: "#ef4444", fg: "#ffffff", soft: "#fee2e2" },
@@ -330,27 +404,42 @@ export function HasadGameRenderer({ el, lang, revealAnswers }: { el: SlideElemen
       {first ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0 }}>
           <div style={{ color: "#0f172a", fontWeight: 950, fontSize: 32, lineHeight: 1.22, wordBreak: "break-word" }}>
-            {total > 1 ? <span style={{ color: accent, marginInlineEnd: 8 }}>{isAr ? "س1." : "Q1."}</span> : null}
+            {total > 1 ? <span style={{ color: accent, marginInlineEnd: 8 }}>{isAr ? `س${questionIndex + 1}.` : `Q${questionIndex + 1}.`}</span> : null}
             {first.prompt}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: first.options.length > 2 ? "1fr 1fr" : "1fr", gap: 12 }}>
             {first.options.map((opt, i) => {
               const isCorrect = i === first.correctIndex;
-              const revealedCorrect = !!revealAnswers && isCorrect;
+              const isSelected = selectedIndex === i;
+              const revealedCorrect = showFeedback && isCorrect;
+              const revealedWrong = answered && isSelected && !isCorrect;
               const color = optionPalette[i % optionPalette.length];
               return (
-                <div
+                <button
                   key={i}
+                  type="button"
+                  disabled={answered || !presentActivityHandlers?.onSelectAnswer}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    presentActivityHandlers?.onSelectAnswer?.(el.id, i);
+                  }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "14px 16px",
-                    background: revealedCorrect ? "#dcfce7" : color.soft,
-                    border: `2.5px solid ${revealedCorrect ? "#16a34a" : color.bg}`,
+                    background: revealedCorrect ? "#dcfce7" : revealedWrong ? "#fee2e2" : color.soft,
+                    border: `2.5px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
                     borderRadius: 18,
                     color: "#0f172a", fontSize: 22, fontWeight: 900,
                     minWidth: 0,
-                    boxShadow: revealedCorrect ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 28px rgba(22,163,74,0.44)" : `0 10px 22px ${color.bg}22`,
-                    animation: revealedCorrect ? "_answerReveal 0.75s ease-out both" : undefined,
+                    width: "100%",
+                    textAlign: "start",
+                    cursor: answered || !presentActivityHandlers?.onSelectAnswer ? "default" : "pointer",
+                    boxShadow: revealedCorrect
+                      ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 28px rgba(22,163,74,0.44)"
+                      : revealedWrong
+                        ? "0 0 0 4px rgba(220,38,38,0.14), 0 0 20px rgba(220,38,38,0.28)"
+                        : `0 10px 22px ${color.bg}22`,
+                    animation: (revealedCorrect || revealedWrong) ? "_answerReveal 0.75s ease-out both" : undefined,
                   }}
                 >
                   <span style={{
@@ -364,19 +453,63 @@ export function HasadGameRenderer({ el, lang, revealAnswers }: { el: SlideElemen
                   {revealedCorrect ? (
                     <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
                   ) : null}
-                </div>
+                  {revealedWrong ? (
+                    <span style={{ marginInlineStart: "auto", color: "#dc2626", fontWeight: 950, fontSize: 24 }}>✕</span>
+                  ) : null}
+                </button>
               );
             })}
           </div>
-          {rest.length > 0 ? (
+          {answered ? (
+            <div style={{
+              marginTop: 2,
+              borderRadius: 16,
+              padding: "12px 14px",
+              background: selectedIndex === first.correctIndex ? "#dcfce7" : "#fff7ed",
+              border: `2px solid ${selectedIndex === first.correctIndex ? "#16a34a" : "#fb923c"}`,
+              color: selectedIndex === first.correctIndex ? "#166534" : "#9a3412",
+              fontSize: 17,
+              fontWeight: 950,
+              textAlign: "center",
+              animation: "_answerReveal 0.55s ease-out both",
+            }}>
+              {selectedIndex === first.correctIndex
+                ? (isAr ? "إجابة صحيحة" : "Correct answer")
+                : (isAr ? "إجابة غير صحيحة - ظهرت الإجابة الصحيحة" : "Not correct - the correct answer is shown")}
+            </div>
+          ) : null}
+          {remainingCount > 0 ? (
             <div style={{
               marginTop: 4, padding: "8px 12px",
-              background: "#f1f5f9", borderRadius: 10,
+              background: "#f1f5f9", borderRadius: 12,
               color: "#475569", fontSize: 13, fontWeight: 600,
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
             }}>
-              {isAr
-                ? `+ ${rest.length} ${rest.length === 1 ? "سؤال إضافي" : "أسئلة إضافية"}`
-                : `+ ${rest.length} more question${rest.length === 1 ? "" : "s"}`}
+              <span>
+                {isAr
+                  ? `+ ${remainingCount} ${remainingCount === 1 ? "سؤال إضافي" : "أسئلة إضافية"}`
+                  : `+ ${remainingCount} more question${remainingCount === 1 ? "" : "s"}`}
+              </span>
+              {answered && presentActivityHandlers?.onNextQuestion ? (
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    presentActivityHandlers.onNextQuestion?.(el.id);
+                  }}
+                  style={{
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "7px 12px",
+                    background: accent,
+                    color: "white",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {isAr ? "السؤال التالي" : "Next question"}
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -566,8 +699,17 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * coordinates so it scales letterboxed inside any container.
  */
 export function SlideRender({
-  slide, theme, pattern, lang, stageMode, revealAnswers,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
+  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers,
+}: {
+  slide: Slide;
+  theme: string;
+  pattern: string;
+  lang?: "ar" | "en";
+  stageMode?: boolean;
+  revealAnswers?: boolean;
+  presentActivityState?: PresentActivityState;
+  presentActivityHandlers?: PresentActivityHandlers;
+}) {
   const bg = slideBgStyle(slide, theme, pattern);
   const slideDir = (slide as unknown as { dir?: string }).dir;
   const dir = (slideDir === "rtl" || slideDir === "ltr") ? slideDir : (lang === "ar" ? "rtl" : "ltr");
@@ -712,10 +854,10 @@ export function SlideRender({
           );
         }
         if (el.kind === "activity") {
-          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} /></div>;
+          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} presentActivityState={presentActivityState} presentActivityHandlers={presentActivityHandlers} /></div>;
         }
         if (el.kind === "hasad-game") {
-          return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} revealAnswers={revealAnswers} /></div>;
+          return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} revealAnswers={revealAnswers} presentActivityState={presentActivityState} presentActivityHandlers={presentActivityHandlers} /></div>;
         }
         if (el.kind === "hasad-activity") {
           return <div key={el.id} style={style}><HasadActivityRenderer el={el} lang={lang} /></div>;
@@ -735,8 +877,17 @@ export function SlideRender({
  * mode and the public viewer.
  */
 export function SlideStage({
-  slide, theme, pattern, lang, stageMode, revealAnswers,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
+  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers,
+}: {
+  slide: Slide;
+  theme: string;
+  pattern: string;
+  lang?: "ar" | "en";
+  stageMode?: boolean;
+  revealAnswers?: boolean;
+  presentActivityState?: PresentActivityState;
+  presentActivityHandlers?: PresentActivityHandlers;
+}) {
   /* Letterbox a 16:9 stage inside any parent (full-screen present
      mode OR a constrained modal). We render the inner frame at its
      canonical pixel size (1280×720) and use a JS-driven `transform:
@@ -786,7 +937,7 @@ export function SlideStage({
         }}
         data-slide-stage-frame=""
       >
-        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} />
+        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} presentActivityState={presentActivityState} presentActivityHandlers={presentActivityHandlers} />
       </div>
     </div>
   );

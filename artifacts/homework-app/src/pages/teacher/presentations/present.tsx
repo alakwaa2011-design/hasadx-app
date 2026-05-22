@@ -18,7 +18,7 @@ import {
   User, UsersRound, Gamepad2, Flame,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { SlideStage } from "@/lib/slide-render";
+import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket, disconnectSocket } from "@/lib/socket";
@@ -102,6 +102,11 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const [idx, setIdx] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [revealAnswers, setRevealAnswers] = useState(false);
+  const [presentActivityState, setPresentActivityState] = useState<PresentActivityState>({
+    elementId: null,
+    questionIndex: 0,
+    selectedIndex: null,
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
@@ -168,12 +173,30 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     }
     setDirection("next");
     setRevealAnswers(false);
+    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null });
     setIdx((i) => Math.min(i + 1, total - 1));
   }, [currentHasRevealableAnswer, revealAnswers, total]);
   const goPrev = useCallback(() => {
     setDirection("prev");
     setRevealAnswers(false);
+    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null });
     setIdx((i) => Math.max(i - 1, 0));
+  }, []);
+  const handlePresentAnswerSelect = useCallback((elementId: string, answerIndex: number) => {
+    setRevealAnswers(true);
+    setPresentActivityState((prev) => ({
+      elementId,
+      questionIndex: prev.elementId === elementId ? prev.questionIndex : 0,
+      selectedIndex: answerIndex,
+    }));
+  }, []);
+  const handlePresentNextQuestion = useCallback((elementId: string) => {
+    setRevealAnswers(false);
+    setPresentActivityState((prev) => ({
+      elementId,
+      questionIndex: prev.elementId === elementId ? prev.questionIndex + 1 : 0,
+      selectedIndex: null,
+    }));
   }, []);
   const exit = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -434,6 +457,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         key={current?.id ?? idx}
         className="absolute inset-0 flex items-center justify-center motion-safe:animate-[slideEnter_.32s_ease-out]"
         style={{
+          zIndex: 10,
           /* CSS var consumed by the keyframe; sign flipped for RTL so
              "next" always animates in from the leading edge. */
           ["--slide-dx" as string]:
@@ -448,6 +472,11 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             theme={data.theme}
             pattern={data.pattern}
             revealAnswers={revealAnswers}
+            presentActivityState={presentActivityState}
+            presentActivityHandlers={{
+              onSelectAnswer: handlePresentAnswerSelect,
+              onNextQuestion: handlePresentNextQuestion,
+            }}
           />
         )}
 
@@ -650,12 +679,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         aria-label={isAr ? "السابق" : "Previous"}
         onClick={goPrev}
         className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`}
+        style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
       />
       <button
         type="button"
         aria-label={isAr ? "التالي" : "Next"}
         onClick={goNext}
         className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "left-0 cursor-w-resize" : "right-0 cursor-e-resize"}`}
+        style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
       />
 
       {/* Game mode picker modal */}
