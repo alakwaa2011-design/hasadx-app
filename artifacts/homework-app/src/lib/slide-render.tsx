@@ -114,18 +114,66 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
   const tfOpts = el.activityKind === "true_false" && opts.length === 0
     ? (isAr ? ["صح", "خطأ"] : ["True", "False"])
     : opts;
+  const optionPalette = [
+    { bg: "#ef4444", fg: "#ffffff", soft: "#fee2e2" },
+    { bg: "#2563eb", fg: "#ffffff", soft: "#dbeafe" },
+    { bg: "#f59e0b", fg: "#1f2937", soft: "#fef3c7" },
+    { bg: "#16a34a", fg: "#ffffff", soft: "#dcfce7" },
+    { bg: "#7c3aed", fg: "#ffffff", soft: "#ede9fe" },
+    { bg: "#0891b2", fg: "#ffffff", soft: "#cffafe" },
+  ];
+  const renderTextAnswerCard = (labelText: string, helper: string, icon: string) => (
+    <div style={{
+      flex: 1,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 0,
+    }}>
+      <div style={{
+        flex: 1,
+        minHeight: 92,
+        border: `2.5px dashed ${accent}55`,
+        borderRadius: 18,
+        background: `linear-gradient(135deg, ${accent}0f 0%, #ffffff 70%)`,
+        color: "#64748b",
+        fontSize: 18,
+        fontWeight: 800,
+        padding: "18px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+      }}>
+        <span style={{ fontSize: 30, marginInlineEnd: 10 }}>{icon}</span>
+        {labelText}
+      </div>
+      <div style={{
+        borderRadius: 14,
+        background: "#f8fafc",
+        border: "1.5px solid #e2e8f0",
+        padding: "10px 14px",
+        color: "#64748b",
+        fontSize: 14,
+        fontWeight: 700,
+        textAlign: "center",
+      }}>
+        {helper}
+      </div>
+    </div>
+  );
   return (
     <div
       style={{
         width: "100%", height: "100%",
-        background: "#ffffff",
+        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 68%, #fff7db 100%)",
         border: `3px solid ${accent}`,
-        borderRadius: 16,
-        boxShadow: "0 6px 18px rgba(34,87,57,0.08)",
-        padding: "18px 22px",
+        borderRadius: 22,
+        boxShadow: "0 14px 34px rgba(34,87,57,0.16)",
+        padding: "22px 26px",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
+        gap: 16,
         overflow: "hidden",
       }}
     >
@@ -146,43 +194,70 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
       </div>
       {/* Stage Mode: title appears first (0.15 s), then options stagger at 200 ms intervals. */}
       <div style={{
-        color: "#0f172a", fontWeight: 700, fontSize: 22, lineHeight: 1.35,
+        color: "#0f172a", fontWeight: 900, fontSize: 30, lineHeight: 1.25,
         wordBreak: "break-word",
         animation: stageMode ? "_stageElIn 0.4s ease-out 0.15s both" : undefined,
       }}>
         {el.prompt || (isAr ? "نص السؤال…" : "Question text…")}
       </div>
       {showOpts && tfOpts.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: tfOpts.length > 2 ? "1fr 1fr" : "1fr 1fr", gap: 8, marginTop: 4 }}>
-          {tfOpts.map((opt, i) => (
-            <div key={i} style={{
-              border: `1.5px solid ${accent}33`,
-              borderRadius: 10,
-              padding: "8px 12px",
-              fontSize: 16,
-              color: "#1f2937",
-              background: "#f8fafc",
-              animation: stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined,
-            }}>
-              <span style={{ color: accent, fontWeight: 700, marginInlineEnd: 8 }}>
-                {String.fromCharCode(65 + i)}.
-              </span>
-              {opt}
-            </div>
-          ))}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 2 }}>
+          {tfOpts.map((opt, i) => {
+            const isTf = el.activityKind === "true_false";
+            const color = isTf
+              ? (i === 0 ? { bg: "#16a34a", fg: "#ffffff", soft: "#dcfce7" } : { bg: "#dc2626", fg: "#ffffff", soft: "#fee2e2" })
+              : optionPalette[i % optionPalette.length];
+            return (
+              <div key={i} style={{
+                border: `2.5px solid ${color.bg}`,
+                borderRadius: 18,
+                padding: "14px 16px",
+                fontSize: 22,
+                color: "#0f172a",
+                background: color.soft,
+                fontWeight: 900,
+                minHeight: 72,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                boxShadow: `0 10px 20px ${color.bg}22`,
+                animation: stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined,
+              }}>
+                <span style={{
+                  flex: "none",
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: color.bg,
+                  color: color.fg,
+                  fontSize: 18,
+                  fontWeight: 950,
+                }}>
+                  {isTf ? (i === 0 ? "✓" : "✕") : (isAr ? ["أ", "ب", "ج", "د", "هـ", "و"][i] : String.fromCharCode(65 + i))}
+                </span>
+                <span style={{ minWidth: 0, wordBreak: "break-word" }}>{opt}</span>
+              </div>
+            );
+          })}
         </div>
       )}
-      {el.activityKind === "open" && (
-        <div style={{
-          flex: 1, minHeight: 40,
-          border: `1.5px dashed ${accent}55`,
-          borderRadius: 10,
-          background: "#f8fafc",
-          color: "#94a3b8", fontSize: 13,
-          padding: "8px 12px",
-        }}>
-          {isAr ? "مساحة للإجابة" : "Answer space"}
-        </div>
+      {el.activityKind === "open" && renderTextAnswerCard(
+        isAr ? "مساحة كتابة إجابة الطالب" : "Student answer writing space",
+        isAr ? "إجابة مفتوحة للشرح أو النقاش داخل الصف" : "Open answer for class discussion or explanation",
+        "✍️",
+      )}
+      {el.activityKind === "word_cloud" && renderTextAnswerCard(
+        isAr ? "كل طالب يكتب كلمة أو عبارة قصيرة" : "Each student writes one word or short phrase",
+        isAr ? "تظهر الكلمات المتكررة أكبر في الجلسة التفاعلية" : "Repeated words grow larger in an interactive session",
+        "☁️",
+      )}
+      {el.activityKind === "open_wall" && renderTextAnswerCard(
+        isAr ? "ردود الطلاب تظهر كبطاقات" : "Student responses appear as cards",
+        isAr ? "مناسب للمشاركة الجماعية والنقاش" : "Best for shared reflection and discussion",
+        "💬",
       )}
     </div>
   );
@@ -207,15 +282,23 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
   const first = questions[0];
   const rest = questions.slice(1);
   const letters = isAr ? ["أ", "ب", "ج", "د", "هـ", "و"] : ["A", "B", "C", "D", "E", "F"];
+  const optionPalette = [
+    { bg: "#ef4444", fg: "#ffffff", soft: "#fee2e2" },
+    { bg: "#2563eb", fg: "#ffffff", soft: "#dbeafe" },
+    { bg: "#f59e0b", fg: "#1f2937", soft: "#fef3c7" },
+    { bg: "#16a34a", fg: "#ffffff", soft: "#dcfce7" },
+    { bg: "#7c3aed", fg: "#ffffff", soft: "#ede9fe" },
+    { bg: "#0891b2", fg: "#ffffff", soft: "#cffafe" },
+  ];
   return (
     <div
       style={{
         width: "100%", height: "100%",
-        background: "#ffffff",
+        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 58%, #fff7db 100%)",
         border: `3px solid ${accent}`,
-        borderRadius: 18,
-        boxShadow: "0 8px 24px rgba(34,87,57,0.10)",
-        padding: "20px 26px",
+        borderRadius: 24,
+        boxShadow: "0 16px 40px rgba(34,87,57,0.18)",
+        padding: "24px 30px",
         display: "flex", flexDirection: "column", gap: 14,
         overflow: "hidden",
       }}
@@ -234,42 +317,44 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
         ) : null}
       </div>
 
-      <div style={{ color: accent, fontWeight: 900, fontSize: 22, lineHeight: 1.25, wordBreak: "break-word" }}>
+      <div style={{ color: accent, fontWeight: 950, fontSize: 24, lineHeight: 1.2, wordBreak: "break-word" }}>
         {headTitle}
       </div>
 
       {first ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0 }}>
-          <div style={{ color: "#0f172a", fontWeight: 800, fontSize: 26, lineHeight: 1.3, wordBreak: "break-word" }}>
+          <div style={{ color: "#0f172a", fontWeight: 950, fontSize: 32, lineHeight: 1.22, wordBreak: "break-word" }}>
             {total > 1 ? <span style={{ color: accent, marginInlineEnd: 8 }}>{isAr ? "س1." : "Q1."}</span> : null}
             {first.prompt}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: first.options.length > 2 ? "1fr 1fr" : "1fr", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: first.options.length > 2 ? "1fr 1fr" : "1fr", gap: 12 }}>
             {first.options.map((opt, i) => {
               const isCorrect = i === first.correctIndex;
+              const color = optionPalette[i % optionPalette.length];
               return (
                 <div
                   key={i}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px",
-                    background: isCorrect ? `${accent}14` : "#f8fafc",
-                    border: `2px solid ${isCorrect ? accent : "#e2e8f0"}`,
-                    borderRadius: 12,
-                    color: "#0f172a", fontSize: 17, fontWeight: isCorrect ? 800 : 600,
+                    padding: "14px 16px",
+                    background: isCorrect ? `${accent}18` : color.soft,
+                    border: `2.5px solid ${isCorrect ? accent : color.bg}`,
+                    borderRadius: 18,
+                    color: "#0f172a", fontSize: 22, fontWeight: 900,
                     minWidth: 0,
+                    boxShadow: `0 10px 22px ${(isCorrect ? accent : color.bg)}22`,
                   }}
                 >
                   <span style={{
                     flex: "none",
-                    width: 26, height: 26, borderRadius: 8,
+                    width: 38, height: 38, borderRadius: 12,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    background: isCorrect ? accent : "#cbd5e1",
-                    color: "white", fontWeight: 900, fontSize: 13,
+                    background: isCorrect ? accent : color.bg,
+                    color: isCorrect ? "white" : color.fg, fontWeight: 950, fontSize: 18,
                   }}>{letters[i] ?? String(i + 1)}</span>
                   <span style={{ wordBreak: "break-word", minWidth: 0 }}>{opt}</span>
                   {isCorrect ? (
-                    <span style={{ marginInlineStart: "auto", color: accent, fontWeight: 900, fontSize: 18 }}>✓</span>
+                    <span style={{ marginInlineStart: "auto", color: accent, fontWeight: 950, fontSize: 24 }}>✓</span>
                   ) : null}
                 </div>
               );
