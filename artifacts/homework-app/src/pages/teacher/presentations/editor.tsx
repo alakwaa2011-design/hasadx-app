@@ -1048,8 +1048,13 @@ export default function PresentationEditor() {
         "word_cloud" | "open_wall" | "poll" | "mcq" | "true_false" | "open";
       insertElement({
         id: genId("a"), kind: "activity", activityKind,
-        prompt: "", options: activityKind === "open" ? undefined : ["", ""],
-        correctIndex: activityKind === "mcq" ? 0 : undefined,
+        prompt: "",
+        options: activityKind === "open" || activityKind === "word_cloud" || activityKind === "open_wall"
+          ? undefined
+          : activityKind === "true_false"
+            ? (isAr ? ["صح", "خطأ"] : ["True", "False"])
+            : ["", ""],
+        correctIndex: activityKind === "mcq" || activityKind === "true_false" ? 0 : undefined,
         x: 140, y: 120, w: 1000, h: 480,
       } as SlideElement);
     } else if (toolType === "image") {
@@ -5766,7 +5771,11 @@ function ActivityInspector({
   isAr: boolean;
 }) {
   const kind = (el.activityKind ?? "open") as "mcq" | "true_false" | "open" | "poll";
-  const opts = (el.options as string[] | undefined) ?? [];
+  const opts = kind === "true_false"
+    ? (((el.options as string[] | undefined) ?? []).length > 0
+        ? ((el.options as string[] | undefined) ?? [])
+        : (isAr ? ["صح", "خطأ"] : ["True", "False"]))
+    : ((el.options as string[] | undefined) ?? []);
   const correctIndex = (el.correctIndex as number | undefined) ?? -1;
   const labelMap: Record<string, string> = {
     mcq: isAr ? "اختيار من متعدد" : "Multiple choice",
