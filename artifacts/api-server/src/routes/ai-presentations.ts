@@ -723,7 +723,7 @@ function pickAiDeckTheme(brief: { subject?: string; topic?: string; language?: L
     ["sand", "royal", "linen", "pine", "wameedh_amber"],
     ["clay", "linen", "rose", "mist", "sunset"],
     ["midnight", "ocean", "obsidian", "mist", "royal"],
-    ["sunset", "rose", "wameedh_dawn", "harvest", "midnight"],
+    ["sunset", "rose", "wameedh_dawn", "midnight", "ocean"],
   ];
   const religious = /(قرآن|قران|حديث|فقه|إسلام|اسلام|سيرة|توحيد|quran|hadith|fiqh|islam)/i.test(text);
   const science = /(علوم|فيزياء|كيمياء|أحياء|احياء|science|physics|chemistry|biology)/i.test(text);
@@ -775,11 +775,10 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
       return;
     }
     const body = buildBody.parse(req.body ?? {});
-    /* Theme/pattern/coverEmoji are optional — we honour what the
-       teacher selected in the brief or fall back to the deck-default
-       harvest palette. Unknown theme keys are rejected silently
-       (logged) and replaced with the default rather than failing the
-       whole build for a presentation-layer config glitch. */
+    /* Theme/pattern/coverEmoji are optional. For AI-generated decks,
+       legacy "harvest" is treated as an old placeholder rather than a
+       deliberate choice, so the server can pick a subject-fit visual
+       identity instead of forcing every deck back to Hasad green. */
     const requestedTheme = body.theme && isAllowedTheme(body.theme) && body.theme !== "harvest" ? body.theme : null;
     if (body.theme && !isAllowedTheme(body.theme)) {
       req.log.warn({ themeKey: body.theme }, "Unknown theme requested for build; using AI visual theme");
