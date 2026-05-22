@@ -321,6 +321,7 @@ export default function PresentationShow() {
 
   const [state, setState] = useState<any>(null);
   const [live, setLive] = useState<any>(null);
+  const liveRef = useRef<any>(null);
   const [wordCloudWords, setWordCloudWords] = useState<CloudWord[]>([]);
   const [wallCards, setWallCards] = useState<WallCard[]>([]);
   /* Track slide key for AnimatePresence — each unique slide id triggers
@@ -363,6 +364,7 @@ export default function PresentationShow() {
     s.emit("show:join", { sessionId: sid });
 
     const onSync = (st: any) => {
+      liveRef.current = st;
       setLive(st);
       /* Restore stage mode from state:sync so the projector auto-applies
          the correct visual mode when reconnecting. */
@@ -383,7 +385,8 @@ export default function PresentationShow() {
 
     const onSlide = ({ index, slide }: { index: number; slide: any }) => {
       slideKeyRef.current = slide?.id ?? index;
-      setLive((p: any) => ({
+      setLive((p: any) => {
+        const next = {
         ...(p ?? {}),
         currentSlideIndex: index,
         slide,
@@ -391,7 +394,10 @@ export default function PresentationShow() {
         activeElement: null,
         revealAnswer: false,
         revealDistribution: false,
-      }));
+        };
+        liveRef.current = next;
+        return next;
+      });
       setWordCloudWords([]);
       setWallCards([]);
       clearReveal();
@@ -399,8 +405,16 @@ export default function PresentationShow() {
     };
 
     const onOpened = ({ elementId, element, openedAt }: any) => {
-      setLive((p: any) => ({ ...(p ?? {}), activeElementId: elementId, activeElement: element }));
-      setWordCloudWords([]);
+      setLive((p: any) => {
+        const next = { ...(p ?? {}), activeElementId: elementId, activeElement: element };
+        liveRef.current = next;
+        return next;
+      });
+      if (element?.activityKind === "word_cloud") {
+        setWordCloudWords((prev) => prev);
+      } else {
+        setWordCloudWords([]);
+      }
       setWallCards([]);
       clearReveal();
       /* Use the server-provided timestamp (or fall back to now) so the
@@ -417,7 +431,10 @@ export default function PresentationShow() {
     };
 
     const onEnded = () => setLive((p: any) => ({ ...(p ?? {}), status: "ended" }));
-    const onWordCloud = ({ words }: { words: CloudWord[] }) => setWordCloudWords(words);
+    const onWordCloud = ({ elementId, words }: { elementId?: string; words: CloudWord[] }) => {
+      if (elementId && liveRef.current?.activeElementId && String(liveRef.current.activeElementId) !== String(elementId)) return;
+      setWordCloudWords(words);
+    };
     const onWall = ({ cards }: { cards: WallCard[] }) => setWallCards(cards);
     const onReconnect = () => s.emit("show:join", { sessionId: sid });
 

@@ -815,7 +815,7 @@ export function setupPresentationSocket(io: Server) {
         const sid = Number(sessionId);
         const live = sessions.get(sid);
         const me = live?.participants.get(socket.id);
-        if (!live || !me || me.isShow) return;
+        if (!live || !me || me.isShow) return socket.emit("answer:rejected", { reason: "not-joined" });
 
         /* Self-Paced Mode: no global activity open — validate element on
            student's current slide and persist answer to DB directly. */
@@ -861,13 +861,37 @@ export function setupPresentationSocket(io: Server) {
           return;
         }
 
-        /* Must be the active element */
-        if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== String(elementId)) return;
+        const sess = await loadSessionRow(sid);
+        if (!sess || sess.status === "ended") return socket.emit("answer:rejected", { reason: "ended" });
+
+        const submittedElementId = String(elementId || "");
+        const activeElementId = String(sess.activeElementId || "");
+        if (!submittedElementId || submittedElementId !== activeElementId) {
+          return socket.emit("answer:rejected", { reason: "not-active" });
+        }
+
+        /* Must be the active word-cloud element. If the activity was opened
+           before this server process initialized in-memory tracking, rebuild
+           the tracking state from the persisted active element instead of
+           dropping student submissions silently. */
+        if (!live.wordCloudActivity || live.wordCloudActivity.elementId !== submittedElementId) {
+          const deck = await loadDeckRow(sess.presentationId);
+          const activeEl = await resolveActiveElement(deck?.slides, sess.currentSlideIndex, activeElementId);
+          if (!activeEl || (activeEl as any).activityKind !== "word_cloud") {
+            return socket.emit("answer:rejected", { reason: "not-word-cloud" });
+          }
+          live.wordCloudActivity = {
+            elementId: submittedElementId,
+            words: new Map(),
+            submitted: new Set(),
+          };
+          io.to(room(sid)).emit("word_cloud:update", { elementId: submittedElementId, words: [] });
+        }
         if (live.wordCloudActivity.submitted.has(me.studentKey)) {
           return socket.emit("answer:already");
         }
         const word = String(text ?? "").trim().slice(0, 60);
-        if (!word) return;
+        if (!word) return socket.emit("answer:rejected", { reason: "empty" });
         const key = word.toLowerCase();
         const cur = live.wordCloudActivity.words.get(key) ?? 0;
         live.wordCloudActivity.words.set(key, cur + 1);
