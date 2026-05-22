@@ -234,6 +234,7 @@ function ActivityRenderer({
             const isSelected = selectedIndex === i;
             const revealedCorrect = showFeedback && isCorrect;
             const revealedWrong = answered && isSelected && !isCorrect;
+            const dimmedAfterAnswer = showFeedback && !isCorrect;
             return (
               <button
                 key={i}
@@ -244,11 +245,11 @@ function ActivityRenderer({
                   presentActivityHandlers?.onSelectAnswer?.(el.id, i);
                 }}
                 style={{
-                border: `2.5px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
+                border: `${revealedCorrect ? 4 : 2.5}px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
                 borderRadius: 18,
                 padding: "14px 16px",
                 fontSize: 22,
-                color: "#0f172a",
+                color: dimmedAfterAnswer ? "#94a3b8" : "#0f172a",
                 background: revealedCorrect ? "#dcfce7" : revealedWrong ? "#fee2e2" : color.soft,
                 fontWeight: 900,
                 minHeight: 72,
@@ -258,8 +259,10 @@ function ActivityRenderer({
                 width: "100%",
                 textAlign: "start",
                 cursor: answered || !presentActivityHandlers?.onSelectAnswer ? "default" : "pointer",
+                opacity: dimmedAfterAnswer ? 0.38 : 1,
+                filter: dimmedAfterAnswer ? "grayscale(0.75) saturate(0.35)" : undefined,
                 boxShadow: revealedCorrect
-                  ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 26px rgba(22,163,74,0.42)"
+                  ? "0 0 0 5px rgba(22,163,74,0.24), 0 0 34px rgba(22,163,74,0.56)"
                   : revealedWrong
                     ? "0 0 0 4px rgba(220,38,38,0.14), 0 0 20px rgba(220,38,38,0.28)"
                     : `0 10px 20px ${color.bg}22`,
@@ -283,7 +286,20 @@ function ActivityRenderer({
                 </span>
                 <span style={{ minWidth: 0, wordBreak: "break-word" }}>{opt}</span>
                 {revealedCorrect ? (
-                  <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
+                  <span style={{
+                    marginInlineStart: "auto",
+                    width: 44,
+                    height: 44,
+                    borderRadius: 999,
+                    background: "#16a34a",
+                    color: "white",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 950,
+                    fontSize: 30,
+                    boxShadow: "0 10px 22px rgba(22,163,74,0.34)",
+                  }}>✓</span>
                 ) : null}
                 {revealedWrong ? (
                   <span style={{ marginInlineStart: "auto", color: "#dc2626", fontWeight: 950, fontSize: 24 }}>✕</span>
@@ -413,6 +429,7 @@ export function HasadGameRenderer({
               const isSelected = selectedIndex === i;
               const revealedCorrect = showFeedback && isCorrect;
               const revealedWrong = answered && isSelected && !isCorrect;
+              const dimmedAfterAnswer = showFeedback && !isCorrect;
               const color = optionPalette[i % optionPalette.length];
               return (
                 <button
@@ -427,15 +444,17 @@ export function HasadGameRenderer({
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "14px 16px",
                     background: revealedCorrect ? "#dcfce7" : revealedWrong ? "#fee2e2" : color.soft,
-                    border: `2.5px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
+                    border: `${revealedCorrect ? 4 : 2.5}px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
                     borderRadius: 18,
-                    color: "#0f172a", fontSize: 22, fontWeight: 900,
+                    color: dimmedAfterAnswer ? "#94a3b8" : "#0f172a", fontSize: 22, fontWeight: 900,
                     minWidth: 0,
                     width: "100%",
                     textAlign: "start",
                     cursor: answered || !presentActivityHandlers?.onSelectAnswer ? "default" : "pointer",
+                    opacity: dimmedAfterAnswer ? 0.38 : 1,
+                    filter: dimmedAfterAnswer ? "grayscale(0.75) saturate(0.35)" : undefined,
                     boxShadow: revealedCorrect
-                      ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 28px rgba(22,163,74,0.44)"
+                      ? "0 0 0 5px rgba(22,163,74,0.24), 0 0 34px rgba(22,163,74,0.56)"
                       : revealedWrong
                         ? "0 0 0 4px rgba(220,38,38,0.14), 0 0 20px rgba(220,38,38,0.28)"
                         : `0 10px 22px ${color.bg}22`,
@@ -451,7 +470,20 @@ export function HasadGameRenderer({
                   }}>{letters[i] ?? String(i + 1)}</span>
                   <span style={{ wordBreak: "break-word", minWidth: 0 }}>{opt}</span>
                   {revealedCorrect ? (
-                    <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
+                    <span style={{
+                      marginInlineStart: "auto",
+                      width: 44,
+                      height: 44,
+                      borderRadius: 999,
+                      background: "#16a34a",
+                      color: "white",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 950,
+                      fontSize: 30,
+                      boxShadow: "0 10px 22px rgba(22,163,74,0.34)",
+                    }}>✓</span>
                   ) : null}
                   {revealedWrong ? (
                     <span style={{ marginInlineStart: "auto", color: "#dc2626", fontWeight: 950, fontSize: 24 }}>✕</span>
