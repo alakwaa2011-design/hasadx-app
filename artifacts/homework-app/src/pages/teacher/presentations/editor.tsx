@@ -3992,17 +3992,6 @@ function Inspector({
       {/* ── Quick-add elements — mirrors what was in the slide rail ── */}
       <Section title={isAr ? "إضافة عناصر" : "Add Elements"} icon={<Plus className="w-4 h-4" />} defaultOpen>
         <div className="space-y-2.5">
-          {/* Primary Add Activity button — opens ActivityHubDialog (hasad + presentation) */}
-          <button
-            type="button"
-            onClick={onOpenActivityHub}
-            disabled={readOnly}
-            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-bold text-xs transition-colors hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
-            style={{ background: BRAND_GREEN, color: "white" }}
-          >
-            <Gamepad2 className="w-3.5 h-3.5" />
-            {isAr ? "إضافة نشاط" : "Add Activity"}
-          </button>
           {/* Activity type quick-grid */}
           <div className="grid grid-cols-5 gap-1">
             {([
