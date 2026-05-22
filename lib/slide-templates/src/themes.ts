@@ -81,6 +81,26 @@ const meshInk =
   "radial-gradient(at 18% 22%, rgba(201,184,122,0.18) 0px, transparent 55%)," +
   "radial-gradient(at 82% 78%, rgba(74,74,85,0.55) 0px, transparent 55%)," +
   "linear-gradient(155deg, #0c0c0e 0%, #1a1a1d 50%, #2c2c33 100%)";
+const meshWameedhNight =
+  "radial-gradient(at 15% 20%, rgba(30,40,80,0.70) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 75%, rgba(180,145,55,0.14) 0px, transparent 50%)," +
+  "radial-gradient(at 50% 95%, rgba(10,10,18,0.90) 0px, transparent 55%)," +
+  "linear-gradient(160deg, #060608 0%, #0d0d14 50%, #141420 100%)";
+const meshWameedhDawn =
+  "radial-gradient(at 12% 88%, rgba(217,165,32,0.55) 0px, transparent 55%)," +
+  "radial-gradient(at 80% 15%, rgba(30,58,100,0.75) 0px, transparent 50%)," +
+  "radial-gradient(at 55% 52%, rgba(130,80,30,0.30) 0px, transparent 55%)," +
+  "linear-gradient(155deg, #080d1e 0%, #0f1a35 45%, #2a1a08 100%)";
+const meshWameedhSteel =
+  "radial-gradient(at 18% 22%, rgba(100,130,165,0.45) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 78%, rgba(40,60,90,0.65) 0px, transparent 55%)," +
+  "radial-gradient(at 50% 10%, rgba(160,185,210,0.18) 0px, transparent 50%)," +
+  "linear-gradient(155deg, #111b28 0%, #1a2a3e 50%, #243348 100%)";
+const meshWameedhAmber =
+  "radial-gradient(at 18% 22%, rgba(200,140,40,0.50) 0px, transparent 55%)," +
+  "radial-gradient(at 82% 78%, rgba(120,70,15,0.65) 0px, transparent 55%)," +
+  "radial-gradient(at 50% 95%, rgba(60,30,5,0.80) 0px, transparent 55%)," +
+  "linear-gradient(155deg, #1a0d02 0%, #2e1a05 50%, #3f2508 100%)";
 
 const THEMES: Record<string, ThemeRow> = {
   harvest:  { accent: "#d4af37", textOnLight: false, cssGrad: meshHarvest },
@@ -99,6 +119,10 @@ const THEMES: Record<string, ThemeRow> = {
   clay:     { accent: "#7a4a3a", textOnLight: true,  cssGrad: meshClay },
   pine:     { accent: "#d9c79a", textOnLight: false, cssGrad: meshPine },
   ink:      { accent: "#c9b87a", textOnLight: false, cssGrad: meshInk },
+  wameedh_night: { accent: "#d9a521", textOnLight: false, cssGrad: meshWameedhNight },
+  wameedh_dawn:  { accent: "#d9a521", textOnLight: false, cssGrad: meshWameedhDawn },
+  wameedh_steel: { accent: "#8ab4d4", textOnLight: false, cssGrad: meshWameedhSteel },
+  wameedh_amber: { accent: "#d9a521", textOnLight: false, cssGrad: meshWameedhAmber },
 };
 
 /** Allowed theme keys mirrored for runtime validation in guardrails &

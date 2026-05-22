@@ -61,6 +61,47 @@ const IMG_GUTTER = 32;
    better than an inline column. */
 const HERO_KINDS = new Set(["visual-hero", "title", "stat", "quote"]);
 
+const SLIDE_THEME_ROTATION = [
+  "mist", "linen", "ocean", "midnight", "clay", "pine", "sunset", "ink",
+  "rose", "sand", "obsidian", "sage", "royal",
+] as const;
+
+const KIND_THEME_HINTS: Record<string, readonly string[]> = {
+  title: ["midnight", "ocean", "sunset", "pine", "ink"],
+  quote: ["noor", "ink", "royal", "linen", "pine"],
+  stat: ["ocean", "sunset", "midnight", "obsidian"],
+  "visual-hero": ["ocean", "sunset", "midnight", "rose", "pine"],
+  timeline: ["sand", "linen", "royal", "pine"],
+  formula: ["midnight", "ocean", "mist", "obsidian"],
+  callout: ["clay", "sunset", "rose", "linen"],
+  comparison: ["mist", "royal", "sand", "obsidian"],
+  interactive: ["harvest", "ocean", "rose", "midnight"],
+  closure: ["pine", "ink", "noor", "royal"],
+};
+
+function hashText(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function themeForCard(card: OutlineCard, deckThemeKey: string | null | undefined): string {
+  if (card.slideTheme) return card.slideTheme;
+  const themedByKind = KIND_THEME_HINTS[card.kind];
+  const pool = themedByKind && themedByKind.length > 0 ? themedByKind : SLIDE_THEME_ROTATION;
+  const seed = hashText(`${deckThemeKey ?? ""}|${card.index}|${card.kind}|${card.title}|${card.purpose}`);
+  const picked = pool[(seed + card.index) % pool.length];
+  /* Avoid every slide inheriting the same deck palette when the selected
+     pool happens to pick it. Shift once through the global rotation. */
+  if (picked === deckThemeKey && SLIDE_THEME_ROTATION.length > 1) {
+    return SLIDE_THEME_ROTATION[(SLIDE_THEME_ROTATION.indexOf(picked as typeof SLIDE_THEME_ROTATION[number]) + 1) % SLIDE_THEME_ROTATION.length];
+  }
+  return picked;
+}
+
 /* Bump small body fonts so 30-something readers in a classroom can
    actually skim a slide from the back row. Anything ≤ 24 pt gets
    roughly +3, capped at +4, to avoid blowing up titles that are
@@ -127,7 +168,8 @@ function avoidColumn(
 
 export function buildOneSlide(input: BuildOneInput): BuildOneResult {
   const deckPalette = paletteForTheme(input.themeKey);
-  const palette = deckPalette;
+  const slideThemeKey = themeForCard(input.card, input.themeKey);
+  const palette = paletteForTheme(slideThemeKey) ?? deckPalette;
   /* Effective placement. If the AI didn't pick one we default to "side"
      for everyday content and "background" for hero/stat/quote/title
      where a single dominant visual reads better. */
@@ -147,6 +189,9 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
       density: input.density,
       lang: input.lang,
     });
+    if (palette.cssGrad) {
+      out.slide.background = palette.cssGrad;
+    }
 
     if (placement === "background" && input.backgroundImageUrl) {
       /* Full-bleed photo + readability overlay. Dark themes get a dark

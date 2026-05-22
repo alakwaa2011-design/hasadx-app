@@ -83,6 +83,45 @@ function id(seed: string, suffix: string): string {
   return `${seed}-${suffix}`;
 }
 
+type VisualVariant = "classic" | "poster" | "editorial" | "staggered";
+
+function hashText(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function variantFor(card: OutlineCard): VisualVariant {
+  const variants: VisualVariant[] = ["classic", "poster", "editorial", "staggered"];
+  const seed = hashText(`${card.index}|${card.kind}|${card.title}|${card.purpose}|${card.visualDirection.layoutHint ?? ""}`);
+  return variants[seed % variants.length];
+}
+
+function addAtmosphere(seed: string, els: Element[], palette: ThemePalette, variant: VisualVariant): void {
+  if (variant === "classic") return;
+  if (variant === "poster") {
+    els.unshift(
+      { id: id(seed, "atm-band"), kind: "shape", shape: "rect", x: 0, y: H - 128, w: W, h: 128, bgColor: palette.accentSoft },
+      { id: id(seed, "atm-dot"), kind: "shape", shape: "circle", x: W - 220, y: 76, w: 170, h: 170, bgColor: palette.surface },
+    );
+    return;
+  }
+  if (variant === "editorial") {
+    els.unshift(
+      { id: id(seed, "atm-panel"), kind: "shape", shape: "rect", x: 0, y: 0, w: 260, h: H, bgColor: palette.surface },
+      { id: id(seed, "atm-rule"), kind: "shape", shape: "rect", x: 260, y: 0, w: 6, h: H, bgColor: palette.accentSoft },
+    );
+    return;
+  }
+  els.unshift(
+    { id: id(seed, "atm-orb-a"), kind: "shape", shape: "circle", x: -90, y: 440, w: 260, h: 260, bgColor: palette.accentSoft },
+    { id: id(seed, "atm-orb-b"), kind: "shape", shape: "circle", x: W - 150, y: -70, w: 220, h: 220, bgColor: palette.surface },
+  );
+}
+
 function splitComparisonPoints(points: string[]): { aTitle?: string; bTitle?: string; aPoints: string[]; bPoints: string[] } {
   const colonIndex = points.findIndex((p) => /[:：]/.test(p));
   if (colonIndex >= 0) {
@@ -329,7 +368,53 @@ function tplTitle(o: MaterializeOptions, warnings: string[]): Element[] {
   const { card, theme, lang } = o;
   const seed = o.idSeed ?? `s${card.index}`;
   const isAr = lang === "ar";
+  const variant = variantFor(card);
   const els: Element[] = [];
+
+  if (variant !== "classic") {
+    addAtmosphere(seed, els, theme, variant);
+    const panel = variant === "poster";
+    const titleFont = panel ? 82 : variant === "editorial" ? 64 : 76;
+    const titleX = panel ? PAD : (variant === "editorial" ? 320 : PAD + 40);
+    const titleY = panel ? 188 : (variant === "editorial" ? 178 : 232);
+    const titleW = panel ? W - PAD * 2 : (variant === "editorial" ? W - 400 : W - PAD * 2 - 80);
+    els.push({
+      id: id(seed, "kicker"),
+      kind: "text",
+      x: titleX, y: titleY - 48, w: titleW, h: 30,
+      text: isAr ? "بداية مختلفة" : "FRESH START",
+      fontSize: 18,
+      fontWeight: "800",
+      align: alignFor(lang),
+      color: theme.accent,
+    });
+    els.push({
+      id: id(seed, "title"),
+      kind: "text",
+      x: titleX, y: titleY, w: titleW, h: titleFont * 1.75,
+      text: clip(card.title, 86, warnings, "العنوان", lang),
+      fontSize: titleFont,
+      fontWeight: "900",
+      align: panel ? "center" : alignFor(lang),
+      color: theme.fg,
+    });
+    if (card.subtitle) {
+      els.push({
+        id: id(seed, "subtitle"),
+        kind: "text",
+        x: titleX, y: titleY + titleFont * 1.65 + 10, w: titleW, h: 72,
+        text: clip(card.subtitle, 110, warnings, "العنوان الفرعي", lang),
+        fontSize: 27,
+        fontWeight: "600",
+        align: panel ? "center" : alignFor(lang),
+        color: theme.muted,
+      });
+    }
+    const iconName = card.visualDirection.icon ? resolveIcon(card.visualDirection.icon) : defaultIconForKind("title");
+    const iconCx = variant === "editorial" ? 140 : (isAr ? PAD + 80 : W - PAD - 80);
+    buildHaloIcon(seed, { cx: iconCx, cy: variant === "poster" ? 540 : 520, size: 92, iconName, palette: theme, haloFactor: 2.05 }).forEach((e) => els.push(e));
+    return els;
+  }
 
   /* Side accent panel: a tall tinted column on the leading edge with
      a thin solid bar at its inner edge. Anchors the eye and reads as
@@ -411,7 +496,10 @@ function tplObjectives(o: MaterializeOptions, warnings: string[]): Element[] {
   const { card, theme, density, lang } = o;
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
-  const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
+  const variant = variantFor(card);
+  const els: Element[] = [];
+  addAtmosphere(seed, els, theme, variant);
+  els.push(...buildHeader({ seed, card, cfg, lang, palette: theme, warnings }));
   els.push(...buildCornerAccent(seed, theme, lang));
 
   /* Each talking point is rendered as a tinted card with a number
@@ -426,17 +514,23 @@ function tplObjectives(o: MaterializeOptions, warnings: string[]): Element[] {
   const badge = 56;
 
   items.forEach((raw, i) => {
-    const y = startY + i * (cardH + gap);
+    const grid = variant === "poster" || variant === "staggered";
+    const row = Math.floor(i / 2);
+    const col = i % 2;
+    const itemW = grid ? (cardW - gap) / 2 : cardW;
+    const itemH = grid ? Math.min(132, Math.floor((available - gap) / 2)) : cardH;
+    const x = grid ? PAD + col * (itemW + gap) : PAD;
+    const y = grid ? startY + row * (itemH + gap) + (variant === "staggered" && col === 1 ? 22 : 0) : startY + i * (cardH + gap);
     /* Tinted card */
     els.push({
       id: id(seed, `card${i}`),
       kind: "shape", shape: "rect",
-      x: PAD, y, w: cardW, h: cardH,
+      x, y, w: itemW, h: itemH,
       bgColor: theme.accentSoft,
     });
     /* Number badge */
-    const badgeX = isAr ? PAD + cardW - 24 - badge : PAD + 24;
-    const badgeY = y + (cardH - badge) / 2;
+    const badgeX = isAr ? x + itemW - 24 - badge : x + 24;
+    const badgeY = y + (itemH - badge) / 2;
     els.push({
       id: id(seed, `n${i}`),
       kind: "shape", shape: "circle",
@@ -456,10 +550,10 @@ function tplObjectives(o: MaterializeOptions, warnings: string[]): Element[] {
     els.push({
       id: id(seed, `t${i}`),
       kind: "text",
-      x: isAr ? PAD + 24 : PAD + textPad,
+      x: isAr ? x + 24 : x + textPad,
       y: y + 14,
-      w: cardW - textPad - 24,
-      h: cardH - 28,
+      w: itemW - textPad - 24,
+      h: itemH - 28,
       text: clip(raw, cfg.maxBulletChars, warnings, `هدف ${i + 1}`, lang),
       fontSize: cfg.bulletFont,
       fontWeight: "600",
@@ -476,14 +570,17 @@ function tplConceptCard(o: MaterializeOptions, warnings: string[]): Element[] {
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
   const isAr = lang === "ar";
-  const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
+  const variant = variantFor(card);
+  const els: Element[] = [];
+  addAtmosphere(seed, els, theme, variant);
+  els.push(...buildHeader({ seed, card, cfg, lang, palette: theme, warnings }));
 
   /* Big concept callout: tinted rectangle with a thick accent bar on
      the leading edge, bullets stacked inside with check-style markers. */
-  const cardX = PAD;
-  const cardY = CONTENT_TOP;
-  const cardW = W - PAD * 2;
-  const cardH = H - cardY - CONTENT_BOTTOM;
+  const cardX = variant === "editorial" ? PAD + 210 : PAD;
+  const cardY = variant === "poster" ? CONTENT_TOP - 8 : CONTENT_TOP;
+  const cardW = variant === "editorial" ? W - PAD * 2 - 210 : W - PAD * 2;
+  const cardH = variant === "staggered" ? H - cardY - CONTENT_BOTTOM - 42 : H - cardY - CONTENT_BOTTOM;
   els.push({
     id: id(seed, "card"),
     kind: "shape", shape: "rect",
@@ -504,10 +601,10 @@ function tplConceptCard(o: MaterializeOptions, warnings: string[]): Element[] {
   const iconName = card.visualDirection.icon
     ? resolveIcon(card.visualDirection.icon)
     : defaultIconForKind("concept-card");
-  const iconSize = 96;
-  const iconCx = isAr ? cardX + 80 : cardX + cardW - 80;
-  const iconCy = cardY + cardH - 80;
-  buildHaloIcon(seed, { cx: iconCx, cy: iconCy, size: iconSize, iconName, palette: theme }).forEach((e) => els.push(e));
+  const iconSize = variant === "poster" ? 132 : 96;
+  const iconCx = variant === "poster" ? W / 2 : (isAr ? cardX + 80 : cardX + cardW - 80);
+  const iconCy = variant === "poster" ? cardY + cardH - 76 : cardY + cardH - 80;
+  buildHaloIcon(seed, { cx: iconCx, cy: iconCy, size: iconSize, iconName, palette: theme, haloFactor: variant === "poster" ? 1.35 : 1.7 }).forEach((e) => els.push(e));
 
   /* Bullets (with ✓ markers — concept cards usually enumerate facts). */
   const bullets = buildBullets({
@@ -515,7 +612,7 @@ function tplConceptCard(o: MaterializeOptions, warnings: string[]): Element[] {
     items: card.talkingPoints,
     x: cardX + 40 + (isAr ? 0 : barW),
     y: cardY + 40,
-    w: cardW - 80 - barW - iconSize - 32,
+    w: variant === "poster" ? cardW - 80 : cardW - 80 - barW - iconSize - 32,
     cfg, lang, palette: theme, warnings,
     marker: "✓",
   });
@@ -526,13 +623,16 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   const { card, theme, density, lang } = o;
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
-  const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
+  const variant = variantFor(card);
+  const els: Element[] = [];
+  addAtmosphere(seed, els, theme, variant);
+  els.push(...buildHeader({ seed, card, cfg, lang, palette: theme, warnings }));
 
   /* Two side-by-side panels with a VS divider in the middle. RTL
      ordering: the first item lives on the right (reading order). */
   const isAr = lang === "ar";
-  const top = CONTENT_TOP;
-  const colH = H - top - CONTENT_BOTTOM;
+  const top = variant === "staggered" ? CONTENT_TOP - 8 : CONTENT_TOP;
+  const colH = H - top - CONTENT_BOTTOM - (variant === "staggered" ? 28 : 0);
   const vsBadge = 56;
   const gap = 32 + vsBadge;
   const colW = (W - PAD * 2 - gap) / 2;
@@ -541,28 +641,30 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   const { aTitle, bTitle, aPoints, bPoints } = splitComparisonPoints(card.talkingPoints);
   const aX = isAr ? right : left;
   const bX = isAr ? left : right;
+  const aY = top;
+  const bY = variant === "staggered" ? top + 36 : top;
 
   /* Panel A — primary: filled with accentSoft for emphasis. */
   els.push({
     id: id(seed, "pa-bg"), kind: "shape", shape: "rect",
-    x: aX, y: top, w: colW, h: colH,
+    x: aX, y: aY, w: colW, h: colH,
     bgColor: theme.accentSoft,
   });
   els.push({
     id: id(seed, "pa-bar"), kind: "shape", shape: "rect",
-    x: aX, y: top, w: colW, h: 6,
+    x: aX, y: aY, w: colW, h: 6,
     bgColor: theme.accent,
   });
   els.push({
     id: id(seed, "ah"), kind: "text",
-    x: aX + 24, y: top + 28, w: colW - 48, h: 32,
+    x: aX + 24, y: aY + 28, w: colW - 48, h: 32,
     text: clip(aTitle ?? (lang === "ar" ? "الجانب الأول" : "Side A"), 36, warnings, "عنوان المقارنة", lang),
     fontSize: 18, fontWeight: "700", align: alignFor(lang),
     color: theme.accent,
   });
   buildBullets({
     seed: id(seed, "a"), items: aPoints,
-    x: aX + 24, y: top + 76, w: colW - 48,
+    x: aX + 24, y: aY + 76, w: colW - 48,
     cfg, lang, palette: theme, warnings,
     marker: "▸",
   }).forEach((el) => els.push(el));
@@ -570,24 +672,24 @@ function tplComparison(o: MaterializeOptions, warnings: string[]): Element[] {
   /* Panel B — secondary: outlined only, no fill. */
   els.push({
     id: id(seed, "pb-bg"), kind: "shape", shape: "rect",
-    x: bX, y: top, w: colW, h: colH,
+    x: bX, y: bY, w: colW, h: colH,
     bgColor: theme.surface, borderColor: theme.divider, borderWidth: 1,
   });
   els.push({
     id: id(seed, "pb-bar"), kind: "shape", shape: "rect",
-    x: bX, y: top, w: colW, h: 6,
+    x: bX, y: bY, w: colW, h: 6,
     bgColor: theme.divider,
   });
   els.push({
     id: id(seed, "bh"), kind: "text",
-    x: bX + 24, y: top + 28, w: colW - 48, h: 32,
+    x: bX + 24, y: bY + 28, w: colW - 48, h: 32,
     text: clip(bTitle ?? (lang === "ar" ? "الجانب الثاني" : "Side B"), 36, warnings, "عنوان المقارنة", lang),
     fontSize: 18, fontWeight: "700", align: alignFor(lang),
     color: theme.muted,
   });
   buildBullets({
     seed: id(seed, "b"), items: bPoints,
-    x: bX + 24, y: top + 76, w: colW - 48,
+    x: bX + 24, y: bY + 76, w: colW - 48,
     cfg, lang, palette: theme, warnings,
     marker: "▸",
   }).forEach((el) => els.push(el));
@@ -616,7 +718,10 @@ function tplVisualHero(o: MaterializeOptions, warnings: string[]): Element[] {
   const { card, theme, density, lang } = o;
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
-  const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
+  const variant = variantFor(card);
+  const els: Element[] = [];
+  addAtmosphere(seed, els, theme, variant);
+  els.push(...buildHeader({ seed, card, cfg, lang, palette: theme, warnings }));
 
   /* Big halo'd icon on one side, bullets on the other. Side flips
      for RTL so the icon reads as the visual subject. */
@@ -625,9 +730,9 @@ function tplVisualHero(o: MaterializeOptions, warnings: string[]): Element[] {
     ? resolveIcon(card.visualDirection.icon)
     : defaultIconForKind("visual-hero");
   const top = CONTENT_TOP + 8;
-  const iconSize = 200;
-  const heroBoxSize = 360;
-  const heroCx = isAr ? PAD + heroBoxSize / 2 : W - PAD - heroBoxSize / 2;
+  const iconSize = variant === "poster" ? 260 : 200;
+  const heroBoxSize = variant === "editorial" ? 300 : 360;
+  const heroCx = variant === "poster" ? W / 2 : (isAr ? PAD + heroBoxSize / 2 : W - PAD - heroBoxSize / 2);
   const heroCy = top + heroBoxSize / 2;
   buildHaloIcon(seed, {
     cx: heroCx, cy: heroCy, size: iconSize, iconName, palette: theme,
@@ -635,11 +740,11 @@ function tplVisualHero(o: MaterializeOptions, warnings: string[]): Element[] {
   }).forEach((e) => els.push(e));
 
   /* Bullet column on the opposite side. */
-  const bulletX = isAr ? PAD + heroBoxSize + 48 : PAD;
-  const bulletW = W - PAD * 2 - heroBoxSize - 48;
+  const bulletX = variant === "poster" ? PAD : (isAr ? PAD + heroBoxSize + 48 : PAD);
+  const bulletW = variant === "poster" ? W - PAD * 2 : W - PAD * 2 - heroBoxSize - 48;
   buildBullets({
     seed, items: card.talkingPoints,
-    x: bulletX, y: top + 24, w: bulletW,
+    x: bulletX, y: variant === "poster" ? top + heroBoxSize + 10 : top + 24, w: bulletW,
     cfg, lang, palette: theme, warnings,
     marker: "◆",
   }).forEach((el) => els.push(el));
@@ -650,7 +755,10 @@ function tplSteps(o: MaterializeOptions, warnings: string[]): Element[] {
   const { card, theme, density, lang } = o;
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
-  const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
+  const variant = variantFor(card);
+  const els: Element[] = [];
+  addAtmosphere(seed, els, theme, variant);
+  els.push(...buildHeader({ seed, card, cfg, lang, palette: theme, warnings }));
 
   /* Numbered cards arranged horizontally with a connecting line
      behind them so the eye reads them as a single flow. */
@@ -660,7 +768,7 @@ function tplSteps(o: MaterializeOptions, warnings: string[]): Element[] {
   const gap = 24;
   const totalW = W - PAD * 2;
   const cardW = (totalW - gap * (items.length - 1)) / Math.max(items.length, 1);
-  const cardH = 300;
+  const cardH = variant === "staggered" ? 260 : 300;
   const badge = 60;
 
   /* Connecting line behind cards (under the badges row). */
@@ -680,21 +788,22 @@ function tplSteps(o: MaterializeOptions, warnings: string[]): Element[] {
   items.forEach((raw, i) => {
     const orderIndex = isAr ? items.length - 1 - i : i;
     const x = PAD + orderIndex * (cardW + gap);
+    const yOffset = variant === "staggered" && i % 2 === 1 ? 46 : 0;
     /* Card body (tinted, no border — softer than the old white card). */
     els.push({
       id: id(seed, `c${i}`), kind: "shape", shape: "rect",
-      x, y: top + 44, w: cardW, h: cardH,
+      x, y: top + 44 + yOffset, w: cardW, h: cardH,
       bgColor: theme.accentSoft,
     });
     /* Number badge straddles the top edge. */
     els.push({
       id: id(seed, `cn${i}`), kind: "shape", shape: "circle",
-      x: x + cardW / 2 - badge / 2, y: top + 16, w: badge, h: badge,
+      x: x + cardW / 2 - badge / 2, y: top + 16 + yOffset, w: badge, h: badge,
       bgColor: theme.accent,
     });
     els.push({
       id: id(seed, `cnl${i}`), kind: "text",
-      x: x + cardW / 2 - badge / 2, y: top + 28, w: badge, h: 36,
+      x: x + cardW / 2 - badge / 2, y: top + 28 + yOffset, w: badge, h: 36,
       text: String(i + 1),
       fontSize: 28, fontWeight: "800", align: "center",
       color: theme.textOnLight ? "#ffffff" : "#0a0a0a",
@@ -702,7 +811,7 @@ function tplSteps(o: MaterializeOptions, warnings: string[]): Element[] {
     /* Step body text. */
     els.push({
       id: id(seed, `ct${i}`), kind: "text",
-      x: x + 20, y: top + 44 + badge + 12, w: cardW - 40, h: cardH - badge - 24,
+      x: x + 20, y: top + 44 + yOffset + badge + 12, w: cardW - 40, h: cardH - badge - 24,
       text: clip(raw, 84, warnings, `خطوة ${i + 1}`, lang),
       fontSize: 20, fontWeight: "600", align: "center",
       color: theme.fg,

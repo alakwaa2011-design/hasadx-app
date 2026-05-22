@@ -701,10 +701,42 @@ router.delete("/presentations/drafts/:id", requireTeacher, async (req, res) => {
 const ALLOWED_THEME_KEYS = [
   "harvest","ocean","sunset","midnight","rose","royal","noor","sage",
   "sand","obsidian","linen","mist","clay","pine","ink",
+  "wameedh_night","wameedh_dawn","wameedh_steel","wameedh_amber",
 ] as const;
 type ThemeKey = (typeof ALLOWED_THEME_KEYS)[number];
 function isAllowedTheme(s: string): s is ThemeKey {
   return (ALLOWED_THEME_KEYS as readonly string[]).includes(s);
+}
+function hashText(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function pickAiDeckTheme(brief: { subject?: string; topic?: string; language?: Lang }): ThemeKey {
+  const text = `${brief.subject ?? ""} ${brief.topic ?? ""}`.toLowerCase();
+  const pools: ThemeKey[][] = [
+    ["noor", "linen", "sand", "pine", "royal"],
+    ["ocean", "midnight", "mist", "obsidian", "wameedh_steel"],
+    ["sand", "royal", "linen", "pine", "wameedh_amber"],
+    ["clay", "linen", "rose", "mist", "sunset"],
+    ["midnight", "ocean", "obsidian", "mist", "royal"],
+    ["sunset", "rose", "wameedh_dawn", "harvest", "midnight"],
+  ];
+  const religious = /(قرآن|قران|حديث|فقه|إسلام|اسلام|سيرة|توحيد|quran|hadith|fiqh|islam)/i.test(text);
+  const science = /(علوم|فيزياء|كيمياء|أحياء|احياء|science|physics|chemistry|biology)/i.test(text);
+  const history = /(تاريخ|حضارة|سيرة|غزوة|history|civilization|biography)/i.test(text);
+  const language = /(عربي|لغة|نحو|بلاغة|أدب|ادب|english|grammar|literature|language)/i.test(text);
+  const math = /(رياضيات|جبر|هندسة|حساب|math|algebra|geometry)/i.test(text);
+  const pool = religious ? pools[0]
+    : science ? pools[1]
+      : history ? pools[2]
+        : language ? pools[3]
+          : math ? pools[4]
+            : pools[5];
+  return pool[hashText(text || "deck") % pool.length];
 }
 /* Mirrors the SLIDE_PATTERNS registry on the frontend. Anything outside
    this set is silently coerced to "solid" by the build endpoint. */
@@ -748,9 +780,9 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
        harvest palette. Unknown theme keys are rejected silently
        (logged) and replaced with the default rather than failing the
        whole build for a presentation-layer config glitch. */
-    const requestedTheme = body.theme && isAllowedTheme(body.theme) ? body.theme : "harvest";
+    const requestedTheme = body.theme && isAllowedTheme(body.theme) ? body.theme : null;
     if (body.theme && !isAllowedTheme(body.theme)) {
-      req.log.warn({ themeKey: body.theme }, "Unknown theme requested for build; falling back to harvest");
+      req.log.warn({ themeKey: body.theme }, "Unknown theme requested for build; using AI visual theme");
     }
     /* Allowlist patterns to keep the editor's renderer happy and to
        prevent arbitrary/long strings from leaking into the stored
@@ -824,7 +856,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
       topic: string;
     };
 
-    const themeKey = requestedTheme;
+    const themeKey = requestedTheme ?? pickAiDeckTheme(brief);
     const validSlides: unknown[] = [];
     const warnings: string[] = [];
     const skipped: number[] = [];
