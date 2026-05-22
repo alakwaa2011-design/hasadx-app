@@ -169,6 +169,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     elementId: null,
     questionIndex: 0,
     selectedIndex: null,
+    completed: false,
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -230,30 +231,39 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   }, [current]);
 
   const goNext = useCallback(() => {
+    if (presentActivityState.completed) {
+      setDirection("next");
+      setRevealAnswers(false);
+      setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
+      setIdx((i) => Math.min(i + 1, total - 1));
+      return;
+    }
     if (currentHasRevealableAnswer && !revealAnswers) {
       setRevealAnswers(true);
       return;
     }
     setDirection("next");
     setRevealAnswers(false);
-    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null });
+    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.min(i + 1, total - 1));
-  }, [currentHasRevealableAnswer, revealAnswers, total]);
+  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total]);
   const goPrev = useCallback(() => {
     setDirection("prev");
     setRevealAnswers(false);
-    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null });
+    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.max(i - 1, 0));
   }, []);
   const handlePresentAnswerSelect = useCallback((elementId: string, answerIndex: number) => {
     const activeElement = (current?.elements ?? []).find((el: SlideElement) => el.id === elementId);
     let correctIndex: number | undefined;
+    let isLastQuestion = true;
     if (activeElement?.kind === "activity") {
       correctIndex = typeof activeElement.correctIndex === "number" ? activeElement.correctIndex : undefined;
     } else if (activeElement?.kind === "hasad-game") {
       const questions: GameQuestion[] = Array.isArray((activeElement as HasadGameEl).questions) ? ((activeElement as HasadGameEl).questions ?? []) : [];
       const qIndex = presentActivityState.elementId === elementId ? presentActivityState.questionIndex : 0;
       correctIndex = questions[qIndex]?.correctIndex;
+      isLastQuestion = qIndex >= questions.length - 1;
     }
     if (typeof correctIndex === "number") {
       playPresentAnswerSound(answerIndex === correctIndex ? "correct" : "wrong");
@@ -263,6 +273,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       elementId,
       questionIndex: prev.elementId === elementId ? prev.questionIndex : 0,
       selectedIndex: answerIndex,
+      completed: isLastQuestion,
     }));
   }, [current, presentActivityState.elementId, presentActivityState.questionIndex]);
   const handlePresentNextQuestion = useCallback((elementId: string) => {
@@ -271,8 +282,15 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       elementId,
       questionIndex: prev.elementId === elementId ? prev.questionIndex + 1 : 0,
       selectedIndex: null,
+      completed: false,
     }));
   }, []);
+  const handlePresentFinishActivity = useCallback(() => {
+    setDirection("next");
+    setRevealAnswers(false);
+    setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
+    setIdx((i) => Math.min(i + 1, total - 1));
+  }, [total]);
   const exit = useCallback(() => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     if (isPublic) {
@@ -312,8 +330,8 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         case " ":
         case "PageDown":   e.preventDefault(); goNext(); break;
         case "PageUp":     e.preventDefault(); goPrev(); break;
-        case "Home":       e.preventDefault(); setRevealAnswers(false); setIdx(0); break;
-        case "End":        e.preventDefault(); setRevealAnswers(false); setIdx(Math.max(0, total - 1)); break;
+        case "Home":       e.preventDefault(); setRevealAnswers(false); setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false }); setIdx(0); break;
+        case "End":        e.preventDefault(); setRevealAnswers(false); setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false }); setIdx(Math.max(0, total - 1)); break;
         case "Escape":     e.preventDefault(); exit(); break;
         case "f":
         case "F":          e.preventDefault(); void toggleFullscreen(); break;
@@ -551,6 +569,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             presentActivityHandlers={{
               onSelectAnswer: handlePresentAnswerSelect,
               onNextQuestion: handlePresentNextQuestion,
+              onFinishActivity: handlePresentFinishActivity,
             }}
           />
         )}
@@ -752,7 +771,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       <button
         type="button"
         aria-label={isAr ? "السابق" : "Previous"}
-        onClick={goPrev}
+        onClick={presentActivityState.completed ? goNext : goPrev}
         className={`absolute top-12 bottom-20 w-1/3 ${isAr ? "right-0 cursor-e-resize" : "left-0 cursor-w-resize"}`}
         style={{ zIndex: currentHasRevealableAnswer ? 5 : 20 }}
       />
