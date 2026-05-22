@@ -27,6 +27,50 @@ type GameQuestion = { prompt: string; options: string[]; correctIndex: number };
 type HasadGameEl = SlideElement & { questions?: GameQuestion[]; prompt?: string; topic?: string; gameKind?: string; accentColor?: string };
 type HasadActivityEl = SlideElement & { assignmentId?: number; assignmentTitle?: string; gameType?: string };
 
+let presentAudioCtx: AudioContext | null = null;
+
+function getPresentAudioCtx(): AudioContext | null {
+  try {
+    const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    if (!presentAudioCtx) presentAudioCtx = new Ctor();
+    if (presentAudioCtx.state === "suspended") presentAudioCtx.resume().catch(() => {});
+    return presentAudioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function playPresentAnswerSound(kind: "correct" | "wrong") {
+  const ctx = getPresentAudioCtx();
+  if (!ctx) return;
+  try {
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, ctx.currentTime);
+    master.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.22 : 0.16, ctx.currentTime + 0.012);
+    master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (kind === "correct" ? 0.42 : 0.3));
+    master.connect(ctx.destination);
+
+    const notes = kind === "correct" ? [659.25, 783.99, 1046.5] : [220, 174.61];
+    notes.forEach((freq, i) => {
+      const t = ctx.currentTime + i * (kind === "correct" ? 0.075 : 0.095);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = kind === "correct" ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.7 : 0.55, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + (kind === "correct" ? 0.22 : 0.18));
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start(t);
+      osc.stop(t + (kind === "correct" ? 0.26 : 0.22));
+    });
+  } catch {
+    // Audio feedback should never block presenting.
+  }
+}
+
 /** Write activity payload to localStorage then open the runner in a new tab. */
 function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined) {
   const seedId = el.id ?? `run-${Date.now()}`;
@@ -183,13 +227,25 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setIdx((i) => Math.max(i - 1, 0));
   }, []);
   const handlePresentAnswerSelect = useCallback((elementId: string, answerIndex: number) => {
+    const activeElement = (current?.elements ?? []).find((el: SlideElement) => el.id === elementId);
+    let correctIndex: number | undefined;
+    if (activeElement?.kind === "activity") {
+      correctIndex = typeof activeElement.correctIndex === "number" ? activeElement.correctIndex : undefined;
+    } else if (activeElement?.kind === "hasad-game") {
+      const questions: GameQuestion[] = Array.isArray((activeElement as HasadGameEl).questions) ? ((activeElement as HasadGameEl).questions ?? []) : [];
+      const qIndex = presentActivityState.elementId === elementId ? presentActivityState.questionIndex : 0;
+      correctIndex = questions[qIndex]?.correctIndex;
+    }
+    if (typeof correctIndex === "number") {
+      playPresentAnswerSound(answerIndex === correctIndex ? "correct" : "wrong");
+    }
     setRevealAnswers(true);
     setPresentActivityState((prev) => ({
       elementId,
       questionIndex: prev.elementId === elementId ? prev.questionIndex : 0,
       selectedIndex: answerIndex,
     }));
-  }, []);
+  }, [current, presentActivityState.elementId, presentActivityState.questionIndex]);
   const handlePresentNextQuestion = useCallback((elementId: string) => {
     setRevealAnswers(false);
     setPresentActivityState((prev) => ({
