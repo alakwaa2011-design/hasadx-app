@@ -780,7 +780,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
        harvest palette. Unknown theme keys are rejected silently
        (logged) and replaced with the default rather than failing the
        whole build for a presentation-layer config glitch. */
-    const requestedTheme = body.theme && isAllowedTheme(body.theme) ? body.theme : null;
+    const requestedTheme = body.theme && isAllowedTheme(body.theme) && body.theme !== "harvest" ? body.theme : null;
     if (body.theme && !isAllowedTheme(body.theme)) {
       req.log.warn({ themeKey: body.theme }, "Unknown theme requested for build; using AI visual theme");
     }

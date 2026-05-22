@@ -442,7 +442,7 @@ export default function NewPresentationPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ theme: "harvest", coverEmoji: "📚" }),
+        body: JSON.stringify({ coverEmoji: "📚" }),
       });
       if (!r3.ok) {
         const e = await r3.json().catch(() => ({}));
