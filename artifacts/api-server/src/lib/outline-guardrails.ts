@@ -208,6 +208,16 @@ export function similarity(a: string, b: string): number {
 }
 
 const SIMILARITY_THRESHOLD = 0.8;
+const GENERIC_TITLES_AR = new Set([
+  "مقدمة", "الأهداف", "أهداف الدرس", "أهمية الموضوع", "الأهمية",
+  "مقارنة", "خطوات", "الخطوات", "الخلاصة", "خلاصة", "الختام",
+  "تطبيق", "نشاط", "مراجعة", "تعريف", "المفهوم",
+]);
+const GENERIC_TITLES_EN = new Set([
+  "introduction", "objectives", "lesson objectives", "importance",
+  "comparison", "steps", "summary", "conclusion", "closure",
+  "application", "activity", "review", "definition", "concept",
+]);
 
 function dedupeBySimilarity(
   items: string[],
@@ -240,6 +250,18 @@ function containsBanned(s: string, lang: OutlineLanguage): string | null {
 function hasDigit(s: string): boolean {
   // ASCII + Arabic-Indic digits.
   return /[0-9\u0660-\u0669\u06F0-\u06F9]/.test(s);
+}
+
+function isGenericTitle(title: string, lang: OutlineLanguage): boolean {
+  const normalized = title.toLowerCase().replace(/[؟?!:：\-–—]/g, "").replace(/\s+/g, " ").trim();
+  return lang === "ar" ? GENERIC_TITLES_AR.has(normalized) : GENERIC_TITLES_EN.has(normalized);
+}
+
+function minDistinctKinds(slideCount: number): number {
+  if (slideCount >= 10) return 6;
+  if (slideCount >= 8) return 5;
+  if (slideCount >= 6) return 4;
+  return Math.min(3, slideCount);
 }
 
 export function sanitizeOutline(
@@ -284,6 +306,9 @@ export function sanitizeOutline(
     if (titleSeen.has(title.toLowerCase())) {
       title = `${title} (${i + 1})`;
       feedback.push(`Slide ${i + 1} title duplicated → suffixed.`);
+    }
+    if (isGenericTitle(title, brief.language)) {
+      feedback.push(`Slide ${i + 1}: generic slide title "${title}" — make it topic-specific and informative.`);
     }
     titleSeen.add(title.toLowerCase());
 
@@ -443,6 +468,31 @@ export function sanitizeOutline(
     return out;
   });
 
+  /* Deck-level structure quality. These checks deliberately do not
+     rewrite slide kinds, because changing a kind after generation can
+     mismatch the content. Instead they feed the corrective retry so the
+     model rebuilds the deck with a fresher structure. */
+  const kinds = slides.map((s) => s.kind);
+  const distinctKinds = new Set(kinds);
+  const minKinds = minDistinctKinds(slides.length);
+  if (slides.length >= 5 && distinctKinds.size < minKinds) {
+    feedback.push(`Deck structure too repetitive: ${distinctKinds.size} distinct slide kinds; needs at least ${minKinds}. Choose a topic-specific mix of layouts.`);
+  }
+  for (let i = 2; i < kinds.length; i++) {
+    if (kinds[i] === kinds[i - 1] && kinds[i] === kinds[i - 2]) {
+      feedback.push(`Slides ${i - 1}-${i + 1}: same kind repeated three times ("${kinds[i]}"). Vary the slide kind and layout.`);
+      break;
+    }
+  }
+  const conceptCount = kinds.filter((k) => k === "concept-card").length;
+  if (slides.length >= 6 && conceptCount > 2) {
+    feedback.push(`Too many concept-card slides (${conceptCount}). Replace some with quote, callout, visual-hero, timeline, formula, stat, steps, comparison, or interactive based on the topic.`);
+  }
+  const objectivesCount = kinds.filter((k) => k === "objectives").length;
+  if (objectivesCount > 1) {
+    feedback.push("Objectives slide used more than once. Use it only when genuinely necessary.");
+  }
+
   /* Teaching flow — must cover every slide index exactly once across
      the 4 fixed stages. Rebuilt from defaults if malformed. */
   const flowIn = asArray(r.teachingFlow);
@@ -536,9 +586,9 @@ export function defaultTeachingFlow(
 export function buildRetryMessage(report: GuardrailReport, lang: OutlineLanguage): string {
   if (report.feedback.length === 0) return "";
   const header = lang === "ar"
-    ? "أعد توليد المخطط مع تصحيح المشكلات التالية فقط، مع المحافظة على نفس صيغة JSON والطول المطلوب:"
-    : "Regenerate the outline correcting the issues below ONLY, keeping the same JSON shape and requested length:";
-  return [header, ...report.feedback.slice(0, 8).map((f) => `- ${f}`)].join("\n");
+    ? "أعد توليد المخطط من جديد مع تصحيح المشكلات التالية، مع المحافظة على نفس صيغة JSON والطول المطلوب. إذا كانت المشكلة تتعلق بتكرار البنية أو أنواع الشرائح، لا تعدّل شريحة واحدة فقط؛ غيّر منطق العرض كاملاً واجعل البنية مناسبة للموضوع:"
+    : "Regenerate the outline from scratch correcting the issues below, keeping the same JSON shape and requested length. If the issue is structural repetition or slide-kind variety, do not patch one slide only; change the deck's whole narrative logic so it fits the topic:";
+  return [header, ...report.feedback.slice(0, 10).map((f) => `- ${f}`)].join("\n");
 }
 
 export type OutlineDensityName = OutlineDensity;

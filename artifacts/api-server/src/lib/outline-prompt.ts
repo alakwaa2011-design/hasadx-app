@@ -727,7 +727,7 @@ export function systemPromptFor(lang: OutlineLanguage): string {
    concept-card for everything and the deck looks monotonous. */
 const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) — اقرأها قبل كل شريحة:
 - title         → فقط شريحة الافتتاح. عنوان كبير + عنوان فرعي قصير.
-- objectives    → سرد أهداف الدرس (2-4 أهداف فقط) — يُرسم كشبكة بطاقات.
+- objectives    → عند الحاجة فقط لسرد أهداف واضحة (2-4 أهداف) — لا تستخدمها تلقائياً في كل عرض.
 - concept-card  → فكرة محورية واحدة تحتاج شرحاً سريعاً بعدة نقاط مرتبطة (تخطيط مقسوم: نص ⇄ بصري).
 - comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد، يُرسم عمودين متقابلين. ممنوع استخدامه لقائمة عادية. لا تخلط النقيضين داخل نفس العمود: اجعل talkingPoints تبدأ بعنوان الطرف الأول متبوعاً بنقاطه، ثم عنوان الطرف الثاني متبوعاً بنقاطه. مثال: ["القلب الذاكر: طمأنينة","نور","راحة","القلب الغافل: قلق","ضيق","وحشة"].
 - steps         → عملية أو إجراء من 2-4 خطوات متتالية (تخطيط أفقي بترقيم).
@@ -739,6 +739,18 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 - callout       → ملاحظة مهمة جداً يجب لفت الانتباه إليها (تنبيه، نصيحة، خطر شائع).
 - interactive   → سؤال/استطلاع/نشاط. talkingPoints[0] = نص السؤال.
 - closure       → الشريحة الأخيرة فقط. ملخص نهائي مختصر.
+
+⚠️ لا توجد وصفة ثابتة لترتيب الشرائح. ممنوع استخدام تسلسل مكرر مثل: title → objectives → concept-card → comparison → steps → interactive → closure إلا إذا كان الموضوع يتطلبه فعلاً.
+ابدأ باختيار "قصة/منطق العرض" المناسب للموضوع، ثم اختر kind لكل شريحة بناءً على دورها في هذه القصة.
+
+أنماط سرد مقترحة تختار منها أو تبتكر غيرها حسب الموضوع:
+- قصة واقعية/موقف: موقف محير → تحليل → قاعدة/مفهوم → تطبيق → تحقق فهم.
+- استكشاف علمي: ظاهرة → توقع → تجربة/خطوات → تفسير → تطبيق.
+- رحلة تاريخية: مشهد افتتاحي → خط زمني → شخصية/حدث → سبب/نتيجة → أثر.
+- درس لغوي: مثال حي → اكتشاف القاعدة → خطأ شائع → تدريب → إنتاج.
+- فقه/قيم: موقف حياتي → دليل/نص → فهم الحكم/المعنى → تطبيقات → تأمل.
+- مراجعة تنافسية: تحدي افتتاحي → محطات قصيرة مختلفة → نشاط → تثبيت.
+لا تكتب أسماء هذه الأنماط في العناوين؛ استخدمها داخلياً لتوليد بنية مختلفة.
 
 أنماط التخطيط المرئية المتاحة (كل kind يستخدم نمطاً مختلفاً، فاختر بتنوّع):
 1. تخطيط مقسوم (Split): نص جانب + بصري جانب — لـ concept-card.
@@ -759,14 +771,18 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 - ديني / قرآني / حديث / سيرة / فقه:
   استخدم بكثرة: quote (للآيات والأحاديث) ، callout (للتدبّر والوقفات) ، concept-card (لشرح المعاني).
   تجنّب: stat ، comparison (إلا لمقارنة فقهية واضحة) ، formula.
+  لا تجعل كل درس ديني: عنوان → معنى → حكم → خطوات → خلاصة. ابدأ أحياناً بموقف حياتي، أو نص مؤثر، أو سؤال تدبري.
 - علوم (فيزياء/كيمياء/أحياء/علوم عامة):
   استخدم بكثرة: visual-hero (للظواهر) ، formula (للقوانين) ، steps (للتجارب) ، stat (للأرقام والحقائق) ، concept-card (للمفاهيم).
   أضف interactive لتجارب أو تنبؤات.
+  لا تبدأ دائماً بتعريف. ابدأ أحياناً بظاهرة أو سؤال "لماذا يحدث...؟".
 - تاريخ / سيرة / حضارة:
   استخدم بكثرة: timeline (للأحداث) ، quote (لأقوال الشخصيات) ، concept-card (للشخصيات والمواقع) ، comparison (سبب/نتيجة، قبل/بعد).
   تجنّب: formula.
+  لا تحوّل التاريخ إلى نقاط عامة؛ اجعله مشاهد وقرارات وأسباب ونتائج.
 - لغة / أدب / نحو / بلاغة:
   استخدم بكثرة: concept-card (للقواعد والمفردات) ، quote (للأمثلة الأدبية والشواهد) ، comparison (الفروق اللغوية) ، callout (للاستثناءات) ، interactive (للتطبيق).
+  ابدأ من مثال أو جملة حية ثم استخرج القاعدة، وليس من تعريف جامد دائماً.
 - رياضيات:
   استخدم بكثرة: formula (للقواعد) ، steps (لحل المسائل خطوة بخطوة) ، concept-card (للمفاهيم) ، interactive (للتمارين) ، callout (للأخطاء الشائعة).
   تجنّب: quote ، timeline.
@@ -774,7 +790,7 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 
 const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 - title         → Only the opening slide. Big title + short subtitle.
-- objectives    → Listing 2-4 lesson objectives — rendered as a card grid.
+- objectives    → Only when explicit objectives are genuinely useful (2-4 objectives). Do not add it automatically to every deck.
 - concept-card  → One central idea explained in a few related points (split layout: text ⇄ visual).
 - comparison    → Two sides/ideas/options/before-after, rendered as opposing columns. NOT for plain lists. Never mix opposites inside the same column: talkingPoints must start with side A label + its bullets, then side B label + its bullets. Example: ["Mindful heart: calm","light","comfort","Neglectful heart: anxiety","tightness","loneliness"].
 - steps         → A 2-4 step process or procedure (numbered horizontal layout).
@@ -786,6 +802,18 @@ const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
 - callout       → A high-importance note (warning, key tip, common pitfall).
 - interactive   → Question/poll/activity. talkingPoints[0] = the question text.
 - closure       → Only the final slide. Concise final recap.
+
+⚠️ There is NO fixed recipe for slide order. Do not reuse a repeated sequence such as title → objectives → concept-card → comparison → steps → interactive → closure unless the topic truly requires it.
+First choose the deck's narrative logic, then choose each slide kind based on that role.
+
+Possible narrative patterns — choose one, combine them, or invent a better one for the topic:
+- Real-life case: puzzling situation → analysis → rule/concept → application → check.
+- Scientific inquiry: phenomenon → prediction → experiment/steps → explanation → application.
+- Historical journey: opening scene → timeline → figure/event → cause/effect → legacy.
+- Language lesson: live example → discover the rule → common mistake → practice → produce.
+- Values/Islamic studies: life situation → text/evidence → meaning/ruling → applications → reflection.
+- Competitive review: opening challenge → varied short stations → activity → consolidation.
+Do not write these pattern names in slide titles; use them internally to make the deck structurally different.
 
 Available visual layout patterns (each kind uses a DIFFERENT pattern — vary your picks):
 1. Split layout: text on one side, visual on the other — for concept-card.
@@ -806,14 +834,18 @@ Kind selection by topic category (MANDATORY — analyze the topic first, then ch
 - Religious / Quran / Hadith / Islamic studies:
   Favor: quote (for verses & hadith), callout (for reflection points), concept-card (for explanations).
   Avoid: stat, comparison (unless a clear jurisprudential contrast), formula.
+  Do not make every Islamic deck title → meaning → ruling → steps → summary. Sometimes open with a life situation, a powerful text, or a reflective question.
 - Science (physics/chemistry/biology/general science):
   Favor: visual-hero (for phenomena), formula (for laws), steps (for experiments), stat (for facts/figures), concept-card (for concepts).
   Add interactive for predictions or labs.
+  Do not always begin with a definition. Sometimes begin with a phenomenon or "why does this happen?" question.
 - History / biography / civilization:
   Favor: timeline (for events), quote (for figures' sayings), concept-card (for figures & places), comparison (cause/effect, before/after).
   Avoid: formula.
+  Do not reduce history to generic bullets; make it scenes, decisions, causes, consequences, and legacy.
 - Language / literature / grammar / rhetoric:
   Favor: concept-card (for rules and vocabulary), quote (for literary examples), comparison (for linguistic distinctions), callout (for exceptions), interactive (for practice).
+  Start from a living example when possible, then extract the rule, instead of always starting from a static definition.
 - Mathematics:
   Favor: formula (for rules), steps (for step-by-step problem solving), concept-card (for concepts), interactive (for practice), callout (for common mistakes).
   Avoid: quote, timeline.
@@ -902,51 +934,43 @@ Mandatory: slideTheme = null on every single slide. No exceptions.`;
    across the deck instead of clustering all content slides
    together. Arabic and English variants kept in sync with the
    rest of the prompt style. ────────────────────────────────── */
-const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — بنية الشرائح الإلزامية (التزام حرفي):
-هذا العرض يجب أن يكون حصةً تفاعليةً كاملة جاهزة في أقل من دقيقة.
-اتبع هذه البنية بالترتيب المحدد تماماً:
+const QUICK_MODE_RULES_AR = `⚡ وضع الإنشاء السريع — حصة سريعة متنوعة وليست قالباً ثابتاً:
+هذا العرض يجب أن يكون جاهزاً بسرعة، لكن لا يعني ذلك تكرار نفس البنية في كل مرة.
 
-المرحلة أ — المقدمة:
-  [1] شريحة عنوان (kind: title) — اسم الموضوع مباشرةً.
-  [2] شريحة سحابة كلمات (kind: interactive, interactionHint: "activity") — اسأل الطلاب عن كلمة/فكرة واحدة لتفعيل المعرفة السابقة. talkingPoints[0] = نص الطلب ("أكتب كلمة واحدة تصف …"). لا gameQuestions على هذه الشريحة.
+اختر بنية مختصرة تناسب الموضوع من البداية:
+- إن كان الموضوع مفهوماً جديداً: ابدأ بسؤال/ظاهرة ثم اشرح ثم طبّق.
+- إن كان مراجعة: ابدأ بتحدٍّ سريع ثم محطات قصيرة متنوعة.
+- إن كان قيمة/فقه/نص: ابدأ بموقف أو نص مؤثر ثم تأمل وتطبيق.
+- إن كان مهارة لغوية/رياضية: ابدأ بمثال ثم استخرج القاعدة ثم تدريب.
 
-المرحلة ب — المحتوى:
-  [3..N-3] شرائح محتوى تعليمي متنوعة (concept-card, visual-hero, steps, stat, comparison, …)
-  منها 2-3 شرائح تقييمية (kind: interactive, interactionHint: "quiz") كل منها يحتوي على 5-8 أسئلة MCQ جاهزة (gameQuestions مطلوبة).
+⚠️ ممنوع الالتزام بتسلسل ثابت مثل: عنوان → سحابة كلمات → محتوى → اختبار → تصويت → جدار ردود → ختام.
 
-المرحلة ج — الختام:
-  [N-2] شريحة تصويت ختامي (kind: interactive, interactionHint: "poll") — سؤال واحد متعدد الخيارات يقيس الفهم. gameQuestions مطلوبة (5 أسئلة).
-  [N-1] شريحة جدار الردود (kind: interactive, interactionHint: "discussion") — سؤال مفتوح يدعو الطلاب لمشاركة تأملاتهم. talkingPoints[0] = نص السؤال المفتوح. لا gameQuestions على هذه الشريحة.
-  [N]   شريحة ختام (kind: closure) — 3-4 نقاط رئيسية.
-
-⚠️ القواعد الإضافية الإلزامية:
+قواعد إلزامية:
+- ابدأ بـ title وأنهِ بـ closure فقط؛ ما بينهما اختَر بحرية حسب الموضوع.
+- استخدم 1-3 شرائح تفاعلية فقط في العرض القصير، موزعة في أماكن منطقية.
 - كل شريحة interactionHint="quiz" أو interactionHint="poll" يجب أن تحتوي على gameQuestions (5-8 أسئلة).
-- شرائح interactionHint="activity" و"discussion" لا تحتوي على gameQuestions.
-- إجمالي الشرائح التفاعلية يجب أن يكون ≥ 4 من إجمالي الشرائح.
-- لا تضع أكثر من 2 شريحة interactive متتالية — وزّع بينها شرائح محتوى.`;
+- شرائح interactionHint="activity" و"discussion" المفتوحة لا تحتوي على gameQuestions.
+- لا تضع أكثر من 2 شريحة interactive متتالية.
+- لا تستخدم objectives إلا إذا كانت ضرورية فعلاً.`;
 
-const QUICK_MODE_RULES_EN = `⚡ Quick Mode — MANDATORY slide structure (strict compliance):
-This deck must be a complete interactive lesson ready to launch in under a minute.
-Follow this structure in exact order:
+const QUICK_MODE_RULES_EN = `⚡ Quick Mode — fast varied lesson, NOT a fixed template:
+This deck should be ready quickly, but that must not mean repeating the same structure every time.
 
-Phase A — Opener:
-  [1] title slide (kind: title) — named directly after the topic.
-  [2] Word cloud slide (kind: interactive, interactionHint: "activity") — ask students for one word/idea to activate prior knowledge. talkingPoints[0] = the prompt ("Write one word that describes …"). No gameQuestions on this slide.
+Choose a short structure that fits the topic:
+- New concept: open with a question/phenomenon, explain, then apply.
+- Review: open with a quick challenge, then varied short stations.
+- Values/Islamic/text lesson: open with a life situation or powerful text, then reflection and application.
+- Language/math skill: open with an example, extract the rule, then practice.
 
-Phase B — Content:
-  [3..N-3] Varied educational content slides (concept-card, visual-hero, steps, stat, comparison, …)
-  Among them 2-3 assessment slides (kind: interactive, interactionHint: "quiz"), each with 5-8 ready MCQ questions (gameQuestions required).
+⚠️ Do NOT follow a fixed sequence like: title → word cloud → content → quiz → poll → wall → closure.
 
-Phase C — Closure:
-  [N-2] Closing vote slide (kind: interactive, interactionHint: "poll") — one multiple-choice question measuring understanding. gameQuestions required (5 questions).
-  [N-1] Open wall slide (kind: interactive, interactionHint: "discussion") — open-ended question inviting students to share reflections. talkingPoints[0] = the open question text. No gameQuestions on this slide.
-  [N]   closure slide (kind: closure) — 3-4 key takeaways.
-
-⚠️ Additional mandatory rules:
+Mandatory rules:
+- Start with title and end with closure only; choose the middle freely based on the topic.
+- Use only 1-3 interactive slides in a short deck, placed where they make sense.
 - Every slide with interactionHint="quiz" or interactionHint="poll" MUST include gameQuestions (5-8 questions).
-- Slides with interactionHint="activity" or "discussion" do NOT include gameQuestions.
-- Total interactive slides must be ≥ 4 out of the full deck.
-- Never place more than 2 interactive slides in a row — intersperse content slides between activities.`;
+- Open activity/discussion slides do NOT include gameQuestions.
+- Never place more than 2 interactive slides in a row.
+- Do not use objectives unless truly useful.`;
 
 /* Build the user-message prompt for one outline-generation call. */
 export function buildOutlinePrompt(brief: OutlineBrief): string {
@@ -1034,8 +1058,10 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `اللغة: العربية الفصحى المبسّطة، أسلوب طبيعي للمعلم العربي (ليس ترجمة من الإنجليزية)، مستوى لغوي ${levelLabel}.`,
         densityRule,
         ...designerPrinciples,
-        `قسّم العرض إلى 4 مراحل: opener (1-2 شرائح) → concept (الجزء الأكبر) → practice (1-3 شرائح) → closure (1 شريحة). كل index لشريحة يجب أن يظهر في exactly one stage.`,
+        `قسّم العرض إلى 4 مراحل وظيفية حسب منطق الموضوع، وليس قالباً ثابتاً. استخدم مفاتيح stage التقنية نفسها فقط: opener, concept, practice, closure، لكن اجعل توزيع الشرائح يعكس بنية العرض التي اخترتها. كل index لشريحة يجب أن يظهر في exactly one stage.`,
         `كل شريحة لها purpose واحد فقط. ممنوع تكرار العنوان عبر الشرائح.`,
+        `ممنوع أن تكون عناوين الشرائح عامة ومتوقعة مثل: مقدمة، أهمية، خطوات، مقارنة، خلاصة. اكتب عناوين موضوعية تحمل معلومة أو سؤالاً محدداً.`,
+        `المحتوى يجب أن يكون عميقاً بما يكفي للدرس: أمثلة، تفاصيل دقيقة، حالات تطبيق، أخطاء شائعة، أو أدلة مناسبة حسب المادة. لا تكتفِ بنقاط عامة سطحية.`,
         `إذا ذكرت رقماً أو إحصائية، أضف حقل source يقترح المرجع. وإلا اترك source فارغاً.`,
         togglesLine,
         `ممنوع استخدام العبارات التالية: ${banned.map((p) => `"${p}"`).join("، ")}.`,
@@ -1046,8 +1072,10 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `Language: ${brief.language === "en" ? "natural classroom English" : "Arabic"}, language level ${levelLabel}.`,
         densityRule,
         ...designerPrinciples,
-        `Split the deck into 4 stages: opener (1-2 slides) → concept (largest) → practice (1-3 slides) → closure (1 slide). Every slide index appears in exactly one stage.`,
+        `Split the deck into 4 functional stages based on the topic's logic, not a fixed template. Use the same technical stage keys only: opener, concept, practice, closure, but distribute slides according to the narrative structure you chose. Every slide index appears in exactly one stage.`,
         `Each slide has exactly one purpose. Never repeat a title across slides.`,
+        `Avoid generic predictable slide titles like: Introduction, Importance, Steps, Comparison, Summary. Write topic-specific titles that carry a concrete idea or question.`,
+        `Content must be deep enough for the lesson: examples, precise details, application cases, common mistakes, or evidence as appropriate. Do not settle for shallow generic points.`,
         `If you cite a number/fact, add a "source" field suggesting a reference. Otherwise leave it empty.`,
         togglesLine,
         `NEVER use these phrases: ${banned.map((p) => `"${p}"`).join(", ")}.`,
