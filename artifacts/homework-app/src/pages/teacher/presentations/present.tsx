@@ -45,27 +45,46 @@ function playPresentAnswerSound(kind: "correct" | "wrong") {
   const ctx = getPresentAudioCtx();
   if (!ctx) return;
   try {
+    const now = ctx.currentTime;
     const master = ctx.createGain();
-    master.gain.setValueAtTime(0.0001, ctx.currentTime);
-    master.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.22 : 0.16, ctx.currentTime + 0.012);
-    master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (kind === "correct" ? 0.42 : 0.3));
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.26 : 0.18, now + 0.012);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + (kind === "correct" ? 0.62 : 0.38));
     master.connect(ctx.destination);
 
-    const notes = kind === "correct" ? [659.25, 783.99, 1046.5] : [220, 174.61];
+    const notes = kind === "correct"
+      ? [523.25, 659.25, 783.99, 1046.5]
+      : [246.94, 196];
     notes.forEach((freq, i) => {
-      const t = ctx.currentTime + i * (kind === "correct" ? 0.075 : 0.095);
+      const t = now + i * (kind === "correct" ? 0.075 : 0.105);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = kind === "correct" ? "triangle" : "sine";
       osc.frequency.setValueAtTime(freq, t);
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.7 : 0.55, t + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + (kind === "correct" ? 0.22 : 0.18));
+      gain.gain.exponentialRampToValueAtTime(kind === "correct" ? 0.58 : 0.5, t + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + (kind === "correct" ? 0.24 : 0.2));
       osc.connect(gain);
       gain.connect(master);
       osc.start(t);
-      osc.stop(t + (kind === "correct" ? 0.26 : 0.22));
+      osc.stop(t + (kind === "correct" ? 0.28 : 0.24));
     });
+    if (kind === "correct") {
+      [1318.51, 1567.98].forEach((freq, i) => {
+        const t = now + 0.24 + i * 0.055;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.32, t + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start(t);
+        osc.stop(t + 0.38);
+      });
+    }
   } catch {
     // Audio feedback should never block presenting.
   }
