@@ -12,6 +12,8 @@ export interface OutlineCard {
     interactionHint: InteractionHint;
     gameSuggestion?: HasadGameKind | null;
     gameQuestions?: GameQuestion[];
+    activityType?: string | null;
+    strategyStage?: string | null;
     slideTheme?: string | null;
     visualDirection: {
         icon?: string;
@@ -129,6 +131,13 @@ export interface MaterializedSlide {
         photo stays visible beneath the AI-generated text layout. */
     backgroundImage?: string;
     notes?: string;
+    activityType?: string | null;
+    gameSuggestion?: HasadGameKind | null;
+    strategyStage?: string | null;
+    linkedActivityId?: string | null;
+    linkedActivityType?: string | null;
+    linkedActivityUrl?: string | null;
+    activityCreationStatus?: "idle" | "creating" | "created" | "unsupported" | "failed" | null;
     elements: Element[];
 }
 export interface MaterializeResult {

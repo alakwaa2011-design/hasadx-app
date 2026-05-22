@@ -92,7 +92,7 @@ function ShapeRenderer({ el }: { el: SlideElement }) {
  * interactive answering runtime ships in Phase 2B; for now we render
  * a styled brand card so the slide is presentable + exports cleanly.
  * Falls back gracefully when `prompt` is missing (e.g. mid-edit). */
-function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "ar" | "en"; stageMode?: boolean }) {
+function ActivityRenderer({ el, lang, stageMode, revealAnswers }: { el: SlideElement; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
   if (el.kind !== "activity") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -106,6 +106,7 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
     open_wall: { ar: "جدار الردود", en: "Response Wall" },
   };
   const label = (kindLabel[el.activityKind ?? "open"] ?? { ar: "نشاط", en: "Activity" })[isAr ? "ar" : "en"];
+  const activityKind = el.activityKind as string | undefined;
   const opts = (el.options ?? []).slice(0, 8);
   const showOpts =
     el.activityKind === "mcq" ||
@@ -207,21 +208,23 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
             const color = isTf
               ? (i === 0 ? { bg: "#16a34a", fg: "#ffffff", soft: "#dcfce7" } : { bg: "#dc2626", fg: "#ffffff", soft: "#fee2e2" })
               : optionPalette[i % optionPalette.length];
+            const isCorrect = typeof el.correctIndex === "number" && i === el.correctIndex;
+            const revealedCorrect = !!revealAnswers && isCorrect;
             return (
               <div key={i} style={{
-                border: `2.5px solid ${color.bg}`,
+                border: `2.5px solid ${revealedCorrect ? "#16a34a" : color.bg}`,
                 borderRadius: 18,
                 padding: "14px 16px",
                 fontSize: 22,
                 color: "#0f172a",
-                background: color.soft,
+                background: revealedCorrect ? "#dcfce7" : color.soft,
                 fontWeight: 900,
                 minHeight: 72,
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
-                boxShadow: `0 10px 20px ${color.bg}22`,
-                animation: stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined,
+                boxShadow: revealedCorrect ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 26px rgba(22,163,74,0.42)" : `0 10px 20px ${color.bg}22`,
+                animation: revealedCorrect ? "_answerReveal 0.75s ease-out both" : (stageMode ? `_stageElIn 0.35s ease-out ${0.35 + i * 0.2}s both` : undefined),
               }}>
                 <span style={{
                   flex: "none",
@@ -239,22 +242,25 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
                   {isTf ? (i === 0 ? "✓" : "✕") : (isAr ? ["أ", "ب", "ج", "د", "هـ", "و"][i] : String.fromCharCode(65 + i))}
                 </span>
                 <span style={{ minWidth: 0, wordBreak: "break-word" }}>{opt}</span>
+                {revealedCorrect ? (
+                  <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
+                ) : null}
               </div>
             );
           })}
         </div>
       )}
-      {el.activityKind === "open" && renderTextAnswerCard(
+      {activityKind === "open" && renderTextAnswerCard(
         isAr ? "مساحة كتابة إجابة الطالب" : "Student answer writing space",
         isAr ? "إجابة مفتوحة للشرح أو النقاش داخل الصف" : "Open answer for class discussion or explanation",
         "✍️",
       )}
-      {el.activityKind === "word_cloud" && renderTextAnswerCard(
+      {activityKind === "word_cloud" && renderTextAnswerCard(
         isAr ? "كل طالب يكتب كلمة أو عبارة قصيرة" : "Each student writes one word or short phrase",
         isAr ? "تظهر الكلمات المتكررة أكبر في الجلسة التفاعلية" : "Repeated words grow larger in an interactive session",
         "☁️",
       )}
-      {el.activityKind === "open_wall" && renderTextAnswerCard(
+      {activityKind === "open_wall" && renderTextAnswerCard(
         isAr ? "ردود الطلاب تظهر كبطاقات" : "Student responses appear as cards",
         isAr ? "مناسب للمشاركة الجماعية والنقاش" : "Best for shared reflection and discussion",
         "💬",
@@ -271,7 +277,7 @@ function ActivityRenderer({ el, lang, stageMode }: { el: SlideElement; lang?: "a
    rest are listed compactly so the teacher can see what's coming.
    The correct answer is highlighted on the slide itself — this is
    the teacher's projector view, not the student device. */
-export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" | "en" }) {
+export function HasadGameRenderer({ el, lang, revealAnswers }: { el: SlideElement; lang?: "ar" | "en"; revealAnswers?: boolean }) {
   if (el.kind !== "hasad-game") return null;
   const isAr = lang !== "en";
   const accent = el.accentColor ?? "#225739";
@@ -330,6 +336,7 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
           <div style={{ display: "grid", gridTemplateColumns: first.options.length > 2 ? "1fr 1fr" : "1fr", gap: 12 }}>
             {first.options.map((opt, i) => {
               const isCorrect = i === first.correctIndex;
+              const revealedCorrect = !!revealAnswers && isCorrect;
               const color = optionPalette[i % optionPalette.length];
               return (
                 <div
@@ -337,24 +344,25 @@ export function HasadGameRenderer({ el, lang }: { el: SlideElement; lang?: "ar" 
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "14px 16px",
-                    background: isCorrect ? `${accent}18` : color.soft,
-                    border: `2.5px solid ${isCorrect ? accent : color.bg}`,
+                    background: revealedCorrect ? "#dcfce7" : color.soft,
+                    border: `2.5px solid ${revealedCorrect ? "#16a34a" : color.bg}`,
                     borderRadius: 18,
                     color: "#0f172a", fontSize: 22, fontWeight: 900,
                     minWidth: 0,
-                    boxShadow: `0 10px 22px ${(isCorrect ? accent : color.bg)}22`,
+                    boxShadow: revealedCorrect ? "0 0 0 4px rgba(22,163,74,0.16), 0 0 28px rgba(22,163,74,0.44)" : `0 10px 22px ${color.bg}22`,
+                    animation: revealedCorrect ? "_answerReveal 0.75s ease-out both" : undefined,
                   }}
                 >
                   <span style={{
                     flex: "none",
                     width: 38, height: 38, borderRadius: 12,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    background: isCorrect ? accent : color.bg,
-                    color: isCorrect ? "white" : color.fg, fontWeight: 950, fontSize: 18,
+                    background: revealedCorrect ? "#16a34a" : color.bg,
+                    color: revealedCorrect ? "white" : color.fg, fontWeight: 950, fontSize: 18,
                   }}>{letters[i] ?? String(i + 1)}</span>
                   <span style={{ wordBreak: "break-word", minWidth: 0 }}>{opt}</span>
-                  {isCorrect ? (
-                    <span style={{ marginInlineStart: "auto", color: accent, fontWeight: 950, fontSize: 24 }}>✓</span>
+                  {revealedCorrect ? (
+                    <span style={{ marginInlineStart: "auto", color: "#16a34a", fontWeight: 950, fontSize: 24 }}>✓</span>
                   ) : null}
                 </div>
               );
@@ -558,8 +566,8 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * coordinates so it scales letterboxed inside any container.
  */
 export function SlideRender({
-  slide, theme, pattern, lang, stageMode,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
+  slide, theme, pattern, lang, stageMode, revealAnswers,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
   const bg = slideBgStyle(slide, theme, pattern);
   const slideDir = (slide as unknown as { dir?: string }).dir;
   const dir = (slideDir === "rtl" || slideDir === "ltr") ? slideDir : (lang === "ar" ? "rtl" : "ltr");
@@ -595,8 +603,8 @@ export function SlideRender({
       {/* Stage Mode: inject keyframe for element stagger animation.
           Using a <style> tag is the simplest way to define @keyframes
           without adding a motion library dependency to this utility. */}
-      {stageMode && (
-        <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
+      {(stageMode || revealAnswers) && (
+        <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes _answerReveal{0%{transform:scale(.98);filter:saturate(.8)}45%{transform:scale(1.025);filter:saturate(1.25)}100%{transform:scale(1);filter:saturate(1)}}`}</style>
       )}
       {(slide.elements ?? []).map((el: SlideElement, i: number) => {
         const left = `${(el.x / CANVAS_W) * 100}%`;
@@ -704,10 +712,10 @@ export function SlideRender({
           );
         }
         if (el.kind === "activity") {
-          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} /></div>;
+          return <div key={el.id} style={style}><ActivityRenderer el={el} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} /></div>;
         }
         if (el.kind === "hasad-game") {
-          return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} /></div>;
+          return <div key={el.id} style={style}><HasadGameRenderer el={el} lang={lang} revealAnswers={revealAnswers} /></div>;
         }
         if (el.kind === "hasad-activity") {
           return <div key={el.id} style={style}><HasadActivityRenderer el={el} lang={lang} /></div>;
@@ -727,8 +735,8 @@ export function SlideRender({
  * mode and the public viewer.
  */
 export function SlideStage({
-  slide, theme, pattern, lang, stageMode,
-}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean }) {
+  slide, theme, pattern, lang, stageMode, revealAnswers,
+}: { slide: Slide; theme: string; pattern: string; lang?: "ar" | "en"; stageMode?: boolean; revealAnswers?: boolean }) {
   /* Letterbox a 16:9 stage inside any parent (full-screen present
      mode OR a constrained modal). We render the inner frame at its
      canonical pixel size (1280×720) and use a JS-driven `transform:
@@ -778,7 +786,7 @@ export function SlideStage({
         }}
         data-slide-stage-frame=""
       >
-        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} />
+        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} />
       </div>
     </div>
   );

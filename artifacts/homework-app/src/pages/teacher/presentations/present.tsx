@@ -101,6 +101,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
 
   const [idx, setIdx] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
+  const [revealAnswers, setRevealAnswers] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLaunchingActivity, setIsLaunchingActivity] = useState(false);
@@ -145,13 +146,33 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const deckLang = (data?.language ?? "ar") as "ar" | "en";
   const isAr = deckLang === "ar";
   const dir = isAr ? "rtl" : "ltr";
+  const current = slides[Math.min(idx, total - 1)];
+  const currentHasRevealableAnswer = useMemo(() => {
+    const elements = current?.elements ?? [];
+    return elements.some((el: SlideElement) => {
+      if (el.kind === "activity") {
+        return (el.activityKind === "mcq" || el.activityKind === "true_false") && typeof el.correctIndex === "number";
+      }
+      if (el.kind === "hasad-game") {
+        const questions: GameQuestion[] = Array.isArray((el as HasadGameEl).questions) ? ((el as HasadGameEl).questions ?? []) : [];
+        return typeof questions[0]?.correctIndex === "number";
+      }
+      return false;
+    });
+  }, [current]);
 
   const goNext = useCallback(() => {
+    if (currentHasRevealableAnswer && !revealAnswers) {
+      setRevealAnswers(true);
+      return;
+    }
     setDirection("next");
+    setRevealAnswers(false);
     setIdx((i) => Math.min(i + 1, total - 1));
-  }, [total]);
+  }, [currentHasRevealableAnswer, revealAnswers, total]);
   const goPrev = useCallback(() => {
     setDirection("prev");
+    setRevealAnswers(false);
     setIdx((i) => Math.max(i - 1, 0));
   }, []);
   const exit = useCallback(() => {
@@ -193,8 +214,8 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         case " ":
         case "PageDown":   e.preventDefault(); goNext(); break;
         case "PageUp":     e.preventDefault(); goPrev(); break;
-        case "Home":       e.preventDefault(); setIdx(0); break;
-        case "End":        e.preventDefault(); setIdx(Math.max(0, total - 1)); break;
+        case "Home":       e.preventDefault(); setRevealAnswers(false); setIdx(0); break;
+        case "End":        e.preventDefault(); setRevealAnswers(false); setIdx(Math.max(0, total - 1)); break;
         case "Escape":     e.preventDefault(); exit(); break;
         case "f":
         case "F":          e.preventDefault(); void toggleFullscreen(); break;
@@ -221,7 +242,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     };
   }, []);
 
-  const current = slides[Math.min(idx, total - 1)];
   const progress = total > 1 ? ((idx + 1) / total) * 100 : 100;
 
   /* Detect if the current slide has a hasad-game element with questions
@@ -427,6 +447,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             slide={current}
             theme={data.theme}
             pattern={data.pattern}
+            revealAnswers={revealAnswers}
           />
         )}
 

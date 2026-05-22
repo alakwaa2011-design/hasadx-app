@@ -194,15 +194,15 @@ export declare const videoSubmissionsTable: import("drizzle-orm/pg-core").PgTabl
     dialect: "pg";
 }>;
 export declare const insertVideoSubmissionSchema: z.ZodObject<{
-    videoLessonId: z.ZodInt;
-    studentName: z.ZodString;
+    totalPoints: z.ZodOptional<z.ZodNumber>;
     studentClass: z.ZodOptional<z.ZodString>;
+    studentName: z.ZodString;
     studentId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     score: z.ZodNumber;
-    earnedPoints: z.ZodOptional<z.ZodNumber>;
-    totalPoints: z.ZodOptional<z.ZodNumber>;
     totalQuestions: z.ZodInt;
     correctAnswers: z.ZodInt;
+    earnedPoints: z.ZodOptional<z.ZodNumber>;
+    videoLessonId: z.ZodInt;
 }, {
     out: {};
     in: {};
