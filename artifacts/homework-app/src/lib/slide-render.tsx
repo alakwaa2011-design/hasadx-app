@@ -26,10 +26,12 @@ export type PresentActivityState = {
   elementId: string | null;
   questionIndex: number;
   selectedIndex: number | null;
+  completed?: boolean;
 };
 export type PresentActivityHandlers = {
   onSelectAnswer?: (elementId: string, answerIndex: number) => void;
   onNextQuestion?: (elementId: string) => void;
+  onFinishActivity?: (elementId: string) => void;
 };
 
 export function getLucideIcon(name: string | null | undefined): IconCmp {
@@ -136,6 +138,7 @@ function ActivityRenderer({
   const interactiveState = presentActivityState?.elementId === el.id ? presentActivityState : undefined;
   const selectedIndex = interactiveState?.selectedIndex ?? null;
   const answered = selectedIndex !== null;
+  const completed = !!interactiveState?.completed;
   const showFeedback = answered || !!revealAnswers;
   const optionPalette = [
     { bg: "#ef4444", fg: "#ffffff", soft: "#fee2e2" },
@@ -327,6 +330,30 @@ function ActivityRenderer({
             : (isAr ? "إجابة غير صحيحة - ظهرت الإجابة الصحيحة" : "Not correct - the correct answer is shown")}
         </div>
       )}
+      {completed ? (
+        <button
+          type="button"
+          onClick={(ev) => {
+            ev.stopPropagation();
+            presentActivityHandlers?.onFinishActivity?.(el.id);
+          }}
+          style={{
+            marginTop: 2,
+            border: "none",
+            borderRadius: 18,
+            padding: "13px 16px",
+            background: "linear-gradient(135deg, #225739 0%, #16a34a 100%)",
+            color: "white",
+            fontSize: 17,
+            fontWeight: 950,
+            cursor: "pointer",
+            boxShadow: "0 12px 26px rgba(34,87,57,0.24)",
+            animation: "_answerReveal 0.55s ease-out both",
+          }}
+        >
+          {isAr ? "انتهى النشاط - انتقل للشريحة التالية" : "Activity complete - next slide"}
+        </button>
+      ) : null}
       {activityKind === "open" && renderTextAnswerCard(
         isAr ? "مساحة كتابة إجابة الطالب" : "Student answer writing space",
         isAr ? "إجابة مفتوحة للشرح أو النقاش داخل الصف" : "Open answer for class discussion or explanation",
@@ -376,6 +403,7 @@ export function HasadGameRenderer({
   const remainingCount = Math.max(0, total - questionIndex - 1);
   const selectedIndex = interactiveState?.selectedIndex ?? null;
   const answered = selectedIndex !== null;
+  const completed = !!interactiveState?.completed;
   const showFeedback = answered || !!revealAnswers;
   const letters = isAr ? ["أ", "ب", "ج", "د", "هـ", "و"] : ["A", "B", "C", "D", "E", "F"];
   const optionPalette = [
@@ -510,19 +538,44 @@ export function HasadGameRenderer({
                 : (isAr ? "إجابة غير صحيحة - ظهرت الإجابة الصحيحة" : "Not correct - the correct answer is shown")}
             </div>
           ) : null}
-          {remainingCount > 0 ? (
+          {remainingCount > 0 || completed ? (
             <div style={{
               marginTop: 4, padding: "8px 12px",
-              background: "#f1f5f9", borderRadius: 12,
-              color: "#475569", fontSize: 13, fontWeight: 600,
+              background: completed ? "linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)" : "#f1f5f9",
+              border: completed ? "2px solid #16a34a" : "none",
+              borderRadius: 12,
+              color: completed ? "#166534" : "#475569", fontSize: 13, fontWeight: 800,
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+              boxShadow: completed ? "0 10px 24px rgba(22,163,74,0.18)" : undefined,
+              animation: completed ? "_answerReveal 0.55s ease-out both" : undefined,
             }}>
               <span>
-                {isAr
-                  ? `+ ${remainingCount} ${remainingCount === 1 ? "سؤال إضافي" : "أسئلة إضافية"}`
-                  : `+ ${remainingCount} more question${remainingCount === 1 ? "" : "s"}`}
+                {completed
+                  ? (isAr ? "انتهى النشاط - انتقل للشريحة التالية" : "Activity complete - move to next slide")
+                  : isAr
+                    ? `+ ${remainingCount} ${remainingCount === 1 ? "سؤال إضافي" : "أسئلة إضافية"}`
+                    : `+ ${remainingCount} more question${remainingCount === 1 ? "" : "s"}`}
               </span>
-              {answered && presentActivityHandlers?.onNextQuestion ? (
+              {completed && presentActivityHandlers?.onFinishActivity ? (
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    presentActivityHandlers.onFinishActivity?.(el.id);
+                  }}
+                  style={{
+                    border: "none",
+                    borderRadius: 999,
+                    padding: "7px 12px",
+                    background: "#16a34a",
+                    color: "white",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {isAr ? "التالي" : "Next"}
+                </button>
+              ) : answered && presentActivityHandlers?.onNextQuestion ? (
                 <button
                   type="button"
                   onClick={(ev) => {
