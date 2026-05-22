@@ -239,6 +239,10 @@ export default function PresentationPlay() {
       }
     };
     const onAlready = () => setSubmitted(true);
+    const onRejected = () => {
+      setSubmitted(false);
+      setTextSubmitted(false);
+    };
     /* Self-Paced Mode: server sends back the requested slide + count + optional activity. */
     const onSelfPacedSlide = ({ slideIndex, slide, slideCount, activeElement, activitiesCompleted: ac }: {
       slideIndex: number; slide: any; slideCount: number; activeElement?: any; activitiesCompleted?: number;
@@ -284,6 +288,7 @@ export default function PresentationPlay() {
     s.on("results:total", onTotal);
     s.on("answer:accepted", onAccepted);
     s.on("answer:already", onAlready);
+    s.on("answer:rejected", onRejected);
     s.on("session:ended", onEnded);
     s.on("game:launch", onGameLaunch);
     s.on("connect", onReconnect);
@@ -361,6 +366,7 @@ export default function PresentationPlay() {
       s.off("results:total", onTotal);
       s.off("answer:accepted", onAccepted);
       s.off("answer:already", onAlready);
+      s.off("answer:rejected", onRejected);
       s.off("session:ended", onEnded);
       s.off("game:launch", onGameLaunch);
       s.off("activity:state", onInlineState);
@@ -893,14 +899,16 @@ export default function PresentationPlay() {
                 </p>
               </div>
             </div>
-          ) : el && (el.activityKind === "word_cloud" || el.activityKind === "open_wall") ? (
-            /* ── Word cloud / open wall — text input card ── */
+          ) : el && (el.activityKind === "word_cloud" || el.activityKind === "open_wall" || el.activityKind === "open") ? (
+            /* ── Text activities — word cloud / wall / open answer ── */
             <div className="flex-1 flex flex-col p-4">
               <div className="rounded-2xl bg-white/95 shadow-xl p-5 mb-4">
                 <div className="text-xs uppercase tracking-wider mb-2" style={{ color: el.activityKind === "word_cloud" ? "#7ec8e3" : "#D9A521" }}>
                   {el.activityKind === "word_cloud"
                     ? (isAr ? "☁ سحابة الكلمات" : "☁ Word Cloud")
-                    : (isAr ? "💬 جدار الردود" : "💬 Response Wall")}
+                    : el.activityKind === "open_wall"
+                      ? (isAr ? "💬 جدار الردود" : "💬 Response Wall")
+                      : (isAr ? "✍️ إجابة مفتوحة" : "✍️ Open Answer")}
                 </div>
                 <h2 className="text-xl font-bold text-slate-900 mb-4">
                   {el.prompt || (isAr ? "أرسل ردك" : "Send your response")}
@@ -915,7 +923,9 @@ export default function PresentationPlay() {
                     <div className="text-sm text-slate-500">
                       {el.activityKind === "word_cloud"
                         ? (isAr ? "شاهد الكلمات تظهر على الشاشة" : "Watch the words appear on screen")
-                        : (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")}
+                        : el.activityKind === "open_wall"
+                          ? (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")
+                          : (isAr ? "تم حفظ إجابتك المفتوحة" : "Your open answer was saved")}
                     </div>
                   </div>
                 ) : (
@@ -928,7 +938,7 @@ export default function PresentationPlay() {
                       placeholder={
                         el.activityKind === "word_cloud"
                           ? (isAr ? "اكتب كلمة أو عبارة قصيرة…" : "Type a word or short phrase…")
-                          : (isAr ? "اكتب ردك هنا…" : "Type your response here…")
+                          : (isAr ? "اكتب إجابتك هنا…" : "Type your answer here…")
                       }
                       dir={isAr ? "rtl" : "ltr"}
                     />
@@ -937,14 +947,25 @@ export default function PresentationPlay() {
                       onClick={() => {
                         const cleaned = textInput.trim();
                         if (!cleaned) return;
-                        const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
                         /* Self-paced: use the slide-bundled activity id; teacher-paced: global id. */
-                        const textElementId = sessionMode === "self_paced" ? selfPacedActiveEl?.id : live?.activeElementId;
-                        getSocket().emit(event, {
-                          sessionId: sid,
-                          elementId: textElementId,
-                          text: cleaned,
-                        });
+                        const textElementId = sessionMode === "self_paced"
+                          ? (selfPacedActiveEl?.id ?? el.id)
+                          : (live?.activeElementId ?? el.id);
+                        if (!textElementId) return;
+                        if (el.activityKind === "open") {
+                          getSocket().emit("student:answer", {
+                            sessionId: sid,
+                            elementId: textElementId,
+                            answerText: cleaned,
+                          });
+                        } else {
+                          const event = el.activityKind === "word_cloud" ? "word_cloud:submit" : "wall:submit";
+                          getSocket().emit(event, {
+                            sessionId: sid,
+                            elementId: textElementId,
+                            text: cleaned,
+                          });
+                        }
                         /* setTextSubmitted is called in onAccepted (answer:accepted)
                            so we only show "sent" after server confirmation. */
                       }}
