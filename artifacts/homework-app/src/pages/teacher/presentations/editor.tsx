@@ -4088,23 +4088,6 @@ function Inspector({
       <Section title={isAr ? "العناصر" : "Elements"} icon={<Square className="w-4 h-4" />}>
         <div className="space-y-4">
           <div>
-            <Button
-              size="sm"
-              className="w-full justify-center gap-2 font-extrabold shadow-sm text-white"
-              disabled={readOnly}
-              onClick={onOpenActivityHub}
-              style={{ background: BRAND_GREEN, borderColor: BRAND_GREEN }}
-            >
-              <Gamepad2 className="w-4 h-4" />
-              {isAr ? "إضافة نشاط" : "Add Activity"}
-            </Button>
-            <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed text-center">
-              {isAr
-                ? "نشاط من حصاد · سحابة كلمات · اختيار من متعدد · وأكثر"
-                : "Hasad activity · Word cloud · MCQ · and more"}
-            </p>
-          </div>
-          <div>
             <Label className="text-xs font-bold text-muted-foreground block mb-2">
               {isAr ? "الأشكال" : "Shapes"}
             </Label>
