@@ -330,22 +330,22 @@ export declare const videoLessonsTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertVideoLessonSchema: z.ZodObject<{
+    teacherId: z.ZodInt;
     title: z.ZodString;
     subject: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    videoUrl: z.ZodString;
-    videoType: z.ZodOptional<z.ZodString>;
-    targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    teacherId: z.ZodInt;
-    teacherClassId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     accessMode: z.ZodOptional<z.ZodString>;
     accessCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    isPublished: z.ZodOptional<z.ZodBoolean>;
+    targetClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     isShared: z.ZodOptional<z.ZodBoolean>;
     hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
     hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
     hiddenById: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     hideReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    videoUrl: z.ZodString;
+    videoType: z.ZodOptional<z.ZodString>;
+    teacherClassId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    isPublished: z.ZodOptional<z.ZodBoolean>;
     skipSegments: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};

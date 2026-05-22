@@ -92,8 +92,8 @@ export declare const conversations: import("drizzle-orm/pg-core").PgTableWithCol
     dialect: "pg";
 }>;
 export declare const insertConversationSchema: z.ZodObject<{
-    title: z.ZodString;
     teacherId: z.ZodInt;
+    title: z.ZodString;
 }, {
     out: {};
     in: {};

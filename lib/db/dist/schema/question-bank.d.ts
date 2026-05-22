@@ -381,8 +381,8 @@ export declare const questionBankTable: import("drizzle-orm/pg-core").PgTableWit
     dialect: "pg";
 }>;
 export declare const insertQuestionBankSchema: z.ZodObject<{
-    subject: z.ZodString;
     teacherId: z.ZodInt;
+    subject: z.ZodString;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     isShared: z.ZodOptional<z.ZodBoolean>;
     hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
