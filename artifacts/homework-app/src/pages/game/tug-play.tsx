@@ -376,151 +376,20 @@ class TugSoundEngine {
     this.started = false; this.urgent = false;
   }
 
-  playCorrect() {
-    // Clean ascending 3-note chime: C5 → E5 → G5
-    this.tone(523, 0.14, "sine", 0.30, 0.00);
-    this.tone(659, 0.14, "sine", 0.26, 0.10);
-    this.tone(784, 0.22, "sine", 0.22, 0.20);
-    this.tone(784, 0.18, "triangle", 0.10, 0.21);
-  }
-
-  playWrong() {
-    // Short low descending two-tone (soft game-show buzzer)
-    this.tone(300, 0.08, "square", 0.12, 0.00);
-    this.freqRamp(260, 140, 0.22, "sine", 0.18, 0.05);
-  }
-
-  playBoost() { /* disabled */ }
-
-  // ── Rope pull impact: low physical thud + tension whoosh ─────────────────
-  playTugPull() {
-    this.freqRamp(180, 58, 0.28, "sine",     0.32);      // weighted thud
-    this.tone(62,    0.22, "triangle", 0.20, 0.04);      // sub body
-    this.noise(0.032, 0.18);                              // impact transient
-    this.freqRamp(260, 90, 0.18, "sawtooth", 0.06, 0.02); // brief rope-creak
-  }
-
-  // ── Power pull: rising charge + slam impact + whoosh tail ────────────────
-  playPowerPull() {
-    this.freqRamp(80,  260, 0.16, "sawtooth", 0.28);     // power charge up
-    this.freqRamp(40,  130, 0.20, "sine",     0.22, 0.02);
-    this.noise(0.11, 0.26, 0.12);                         // hard impact
-    this.tone(48,    0.38, "sine",     0.32, 0.12);      // deep bass slam
-    this.tone(96,    0.32, "triangle", 0.24, 0.14);
-    this.freqRamp(900, 180, 0.22, "sawtooth", 0.07, 0.1); // whoosh
-    this.noiseLow(0.08, 0.14, 0.28);                      // rumble tail
-  }
-
-  // ── Countdown beep: escalating tension 5→1, metallic + harmonic ──────────
-  playCountdownBeep(n: number) {
-    const freqs: Record<number, number> = { 5: 880, 4: 1047, 3: 1175, 2: 1319, 1: 1568 };
-    const baseFreq = freqs[n] ?? 880;
-    const isLast   = n === 1;
-    const isClose  = n <= 3;
-    const vol = isLast ? 0.40 : isClose ? 0.30 : 0.20;
-
-    this.noise(0.012, isLast ? 0.22 : 0.12);              // sharp metallic click
-    this.tone(baseFreq,       0.12, "sine", vol, 0);
-    this.tone(baseFreq * 1.5, 0.08, "sine", vol * 0.42, 0.01);
-    if (isClose) this.tone(baseFreq * 2, 0.06, "sine", vol * 0.22, 0.02);
-    if (isLast) {
-      this.tone(baseFreq * 2, 0.10, "sine", 0.18, 0.05); // extra harmonic
-      this.tone(baseFreq * 3, 0.07, "sine", 0.12, 0.08);
-      this.noise(0.014, 0.18, 0.1);
-    }
-  }
-
-  // ── GO! signal: rising fanfare → big bright stab ─────────────────────────
-  playGoSignal() {
-    [523, 784, 1047, 1319, 1568].forEach((f, i) =>
-      this.tone(f, 0.10, "triangle", 0.28 - i * 0.02, i * 0.052));
-    this.tone(2093, 0.38, "triangle", 0.22, 0.27);
-    this.tone(1047, 0.35, "sine",     0.16, 0.27);
-    this.noise(0.08, 0.16, 0.26);
-    this.tone(2637, 0.12, "sine",     0.08, 0.36);        // sparkle cap
-  }
-
-  // ── Timer tick: sharp metallic; rises to sharp alarm in urgent mode ───────
-  playTickTock(beat: number, urgency: "normal" | "urgent") {
-    if (urgency === "urgent") {
-      this.tone(1175, 0.022, "square", 0.22);             // cutting metallic tick
-      this.noise(0.010, 0.14);
-      this.tone(880,  0.025, "sine",  0.10, 0.018);       // tension pulse
-      if (beat % 2 === 0) this.tone(1568, 0.018, "sine", 0.08, 0.026); // high ping
-    } else if (beat % 2 === 0) {
-      this.tone(740, 0.022, "sine", 0.07);                 // soft normal tick
-      this.noise(0.006, 0.035);
-    }
-  }
-
-  // ── Crowd applause: layered noise + vocal tones + shimmer ────────────────
-  playApplause() {
-    for (let i = 0; i < 34; i++) {
-      this.noise(0.10 + Math.random() * 0.14, 0.020 + Math.random() * 0.036, i * 0.018 + Math.random() * 0.010);
-    }
-    [350, 420, 500, 580, 300, 650, 280, 450, 545, 380].forEach((f, i) => {
-      this.tone(f + Math.random() * 70, 0.18 + Math.random() * 0.14, "triangle",
-        0.012 + Math.random() * 0.006, i * 0.036 + Math.random() * 0.022);
-    });
-    for (let i = 0; i < 8; i++) {
-      this.tone(1200 + Math.random() * 900, 0.05, "sine", 0.007, i * 0.065 + Math.random() * 0.02);
-    }
-  }
-
-  // ── Win: fanfare stab → ascending arpeggio → triumphant chord + crowd ────
-  playWin() {
-    // Phase 1: Fanfare chord stab
-    [523, 659, 784, 1047].forEach((f, i) =>
-      this.tone(f, 0.26 - i * 0.02, "triangle", 0.36 - i * 0.04, i * 0.007));
-    this.noise(0.018, 0.28);
-    // Phase 2: Ascending victory arpeggio
-    [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => {
-      this.tone(f,       0.15, "square",   0.20 - i * 0.01, 0.10 + i * 0.09);
-      this.tone(f * 1.5, 0.10, "triangle", 0.06,            0.10 + i * 0.09 + 0.03);
-    });
-    // Phase 3: Triumphant sustained chord
-    setTimeout(() => {
-      this.tone(1047, 0.9, "triangle", 0.32);
-      this.tone(1319, 0.8, "triangle", 0.26, 0.04);
-      this.tone(784,  0.9, "triangle", 0.22, 0.08);
-      this.tone(523,  0.9, "triangle", 0.18, 0.12);
-      this.noise(0.06, 0.22);
-    }, 750);
-    // Phase 4: Crowd celebration
-    setTimeout(() => this.playApplause(), 900);
-    setTimeout(() => this.playApplause(), 1350);
-    setTimeout(() => this.playApplause(), 1800);
-  }
-
-  // ── Lose: soft minor descent + quiet crowd disappointment (NOT comedic) ───
-  playLose() {
-    // Descending minor chords
-    this.tone(440, 0.30, "triangle", 0.18);               // A4
-    this.tone(523, 0.28, "triangle", 0.15, 0.04);         // C5 (minor 3rd)
-    this.tone(659, 0.24, "triangle", 0.11, 0.08);         // E5
-    // Falling glide pairs — the "deflation" feeling
-    this.freqRamp(440, 275, 0.42, "sine",     0.18, 0.10);
-    this.freqRamp(330, 195, 0.36, "sine",     0.12, 0.16);
-    // Low soft dissonance
-    this.tone(200, 0.50, "triangle", 0.10, 0.30);
-    this.tone(218, 0.45, "triangle", 0.07, 0.36);         // minor 2nd — uneasy
-    // Quiet crowd disappointment murmur
-    for (let i = 0; i < 16; i++) {
-      this.noiseLow(0.22, 0.011 + Math.random() * 0.014, i * 0.055 + Math.random() * 0.035);
-    }
-    [255, 280, 220, 295].forEach((f, i) =>
-      this.tone(f + Math.random() * 25, 0.4, "triangle", 0.009, i * 0.08 + 0.30 + Math.random() * 0.03));
-  }
-
-  // ── Power question reveal: rising sweep + bright stab ────────────────────
-  playPowerReveal() {
-    [440, 554, 659, 880, 1047, 1319].forEach((f, i) =>
-      this.tone(f, 0.12, "triangle", 0.16, i * 0.044));
-    this.freqRamp(440, 1760, 0.30, "sawtooth", 0.07, 0.06);
-    this.noise(0.08, 0.14, 0.28);
-    this.tone(2637, 0.22, "sine",     0.14, 0.30);
-    this.tone(1319, 0.20, "triangle", 0.12, 0.30);
-  }
+  playCorrect()              { /* all sounds disabled */ }
+  playWrong()                { /* all sounds disabled */ }
+  playBoost()                { /* all sounds disabled */ }
+  playTugPull()              { /* all sounds disabled */ }
+  playPowerPull()            { /* all sounds disabled */ }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  playCountdownBeep(_n: number) { /* all sounds disabled */ }
+  playGoSignal()             { /* all sounds disabled */ }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  playTickTock(_beat: number, _urgency: "normal" | "urgent") { /* all sounds disabled */ }
+  playApplause()             { /* all sounds disabled */ }
+  playWin()                  { /* all sounds disabled */ }
+  playLose()                 { /* all sounds disabled */ }
+  playPowerReveal()          { /* all sounds disabled */ }
   destroy() {
     this.stopBackground();
     try { this.ctx?.close(); } catch (_) {}
