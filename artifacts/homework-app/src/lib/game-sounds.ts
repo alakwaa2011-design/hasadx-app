@@ -297,20 +297,22 @@ export function playVictoryFanfare() {
     const master = getMaster();
     const now = ctx.currentTime;
 
-    // ── helpers ──────────────────────────────────────────────────────────
+    // Warm sine note with smooth attack/release — no harsh edges
     function note(freq: number, t: number, dur: number, vol: number, type: OscillatorType = "sine") {
       try {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(master);
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass"; hp.frequency.value = 80; // cut sub-bass to avoid boom
+        osc.connect(hp); hp.connect(gain); gain.connect(master);
         osc.type = type;
         osc.frequency.value = freq;
         const at = now + t;
         gain.gain.setValueAtTime(0, at);
-        gain.gain.linearRampToValueAtTime(vol, at + 0.025);
-        gain.gain.setValueAtTime(vol, at + Math.max(dur - 0.07, 0.01));
+        gain.gain.linearRampToValueAtTime(vol, at + 0.03);
+        gain.gain.setValueAtTime(vol, at + Math.max(dur - 0.10, 0.02));
         gain.gain.exponentialRampToValueAtTime(0.001, at + dur);
-        osc.start(at); osc.stop(at + dur + 0.02);
+        osc.start(at); osc.stop(at + dur + 0.03);
       } catch {}
     }
 
@@ -318,74 +320,68 @@ export function playVictoryFanfare() {
       freqs.forEach(f => note(f, t, dur, vol, type));
     }
 
-    function kick(t: number) {
+    // Light sparkle tick — replaces all heavy drums
+    function tick(t: number, vol = 0.10) {
       try {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.connect(g); g.connect(master);
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(145, now + t);
-        osc.frequency.exponentialRampToValueAtTime(42, now + t + 0.10);
-        g.gain.setValueAtTime(0.40, now + t);
-        g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.22);
-        osc.start(now + t); osc.stop(now + t + 0.25);
-      } catch {}
-    }
-
-    function softClap(t: number) {
-      try {
-        const bufSize = Math.ceil(ctx.sampleRate * 0.09);
+        const bufSize = Math.ceil(ctx.sampleRate * 0.04);
         const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
         const d = buf.getChannelData(0);
         for (let i = 0; i < bufSize; i++)
-          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2.5);
-        const src = ctx.createBufferSource();
-        src.buffer = buf;
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 5);
+        const src = ctx.createBufferSource(); src.buffer = buf;
         const bp = ctx.createBiquadFilter();
-        bp.type = "bandpass"; bp.frequency.value = 1800; bp.Q.value = 0.9;
+        bp.type = "bandpass"; bp.frequency.value = 3500; bp.Q.value = 1.0;
         const g = ctx.createGain();
         src.connect(bp); bp.connect(g); g.connect(master);
-        g.gain.setValueAtTime(0.20, now + t);
-        g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.10);
-        src.start(now + t); src.stop(now + t + 0.12);
+        g.gain.setValueAtTime(vol, now + t);
+        g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.05);
+        src.start(now + t); src.stop(now + t + 0.06);
       } catch {}
     }
 
-    // ── PHASE 1: Power chord stab (0 – 0.6s) ───────────────────────────
-    chord([262, 330, 392, 523],  0.00, 0.42, 0.24, "triangle");
-    chord([523, 659, 784, 1047], 0.00, 0.42, 0.20, "sine");
-    kick(0.00);
+    // ── PHASE 1: Joyful 4-note fanfare stab (0 – 0.9s) ──────────────────
+    // C5 → E5 → G5 → C6  (classic "ta-ta-ta-TAAA!" shape)
+    note(523,  0.00, 0.20, 0.30, "sine"); // C5
+    note(659,  0.22, 0.20, 0.30, "sine"); // E5
+    note(784,  0.44, 0.20, 0.32, "sine"); // G5
+    note(1047, 0.66, 0.60, 0.34, "sine"); // C6 — held with warmth
 
-    // ── PHASE 2: Rising celebratory arpeggio (0.6 – 1.8s) ──────────────
-    // C5–D5–E5–G5–A5–B5–C6–E6
-    [523, 587, 659, 784, 880, 988, 1047, 1319].forEach((f, i) => {
-      note(f,         0.62 + i * 0.14, 0.22, 0.34 + i * 0.009, "sine");
-      note(f * 1.501, 0.62 + i * 0.14, 0.14, 0.07, "triangle");
+    // Soft harmony under the held C6
+    chord([659, 784], 0.66, 0.60, 0.10, "triangle");
+
+    tick(0.00, 0.09); tick(0.22, 0.08); tick(0.44, 0.08); tick(0.66, 0.11);
+
+    // ── PHASE 2: Happy rising cascade (1.35 – 2.55s) ─────────────────────
+    // Duolingo/Kahoot-style: quick bright arpeggio up the scale
+    const cascade = [523, 587, 659, 784, 880, 988, 1047, 1175, 1319, 1568];
+    cascade.forEach((f, i) => {
+      note(f, 1.35 + i * 0.11, 0.20, 0.24 + i * 0.004, "sine");
     });
-    kick(0.62); kick(1.12);
-    softClap(0.88); softClap(1.38);
+    // Subtle octave shimmer alongside each note
+    cascade.forEach((f, i) => {
+      note(f * 2, 1.35 + i * 0.11, 0.12, 0.05, "sine");
+    });
 
-    // ── PHASE 3: Triumphant sustained chord + melody (2.0 – 4.2s) ───────
-    chord([262, 330, 392, 523, 659], 2.00, 2.10, 0.16, "triangle");
-    chord([523, 659, 784, 1047],     2.00, 2.10, 0.13, "sine");
+    tick(1.35, 0.09); tick(1.80, 0.09); tick(2.25, 0.10);
 
-    // Melodic riff crowning the chord
-    note(1319, 2.00, 0.22, 0.42, "sine");
-    note(1047, 2.25, 0.22, 0.38, "sine");
-    note(1175, 2.50, 0.22, 0.38, "sine");
-    note(1319, 2.75, 0.28, 0.44, "sine");
-    note(1568, 3.06, 1.10, 0.40, "sine");   // long high finish
+    // ── PHASE 3: Warm victory chord + heroic melody (2.65 – 4.5s) ────────
+    // Full warm C-major chord — triangle for softness, no harsh square waves
+    chord([330, 392, 523, 659], 2.65, 1.75, 0.13, "triangle");
+    chord([523, 659, 784],      2.65, 1.75, 0.11, "sine");
 
-    note(784, 2.75, 0.28, 0.14, "triangle");
-    note(988, 3.06, 1.00, 0.12, "triangle");
+    // Heroic 5-note melody riding over the chord
+    note(1047, 2.65, 0.22, 0.30, "sine"); // C6
+    note(880,  2.90, 0.20, 0.27, "sine"); // A5
+    note(988,  3.13, 0.20, 0.27, "sine"); // B5
+    note(1047, 3.36, 0.28, 0.31, "sine"); // C6
+    note(1319, 3.67, 1.05, 0.29, "sine"); // E6 — long bright final note, fades naturally
 
-    kick(2.00); kick(2.50); kick(3.00); kick(3.50);
-    softClap(2.25); softClap(2.75); softClap(3.25); softClap(3.75);
+    tick(2.65, 0.10); tick(3.10, 0.09); tick(3.67, 0.11);
 
-    // ── SHIMMER BELLS throughout ────────────────────────────────────────
-    [0.00, 0.62, 1.30, 2.00, 2.75, 3.06].forEach(t => {
-      note(2093 + Math.random() * 400, t,        0.26, 0.08, "sine");
-      note(2637 + Math.random() * 300, t + 0.05, 0.20, 0.05, "sine");
+    // ── BELLS / SPARKLE sprinkled throughout ─────────────────────────────
+    [0.66, 1.35, 2.25, 2.65, 3.36, 3.67].forEach(t => {
+      note(2093 + Math.random() * 350, t,        0.22, 0.06, "sine");
+      note(2637 + Math.random() * 250, t + 0.07, 0.16, 0.04, "sine");
     });
   } catch {}
 }
