@@ -204,192 +204,257 @@ class TugSoundEngine {
     } catch (_) {}
   }
 
+  // ── BACKGROUND MUSIC ─────────────────────────────────────────────────────
+  // Sports-arena competitive track — 4/4, 8th-note steps
+  // Key: G minor  |  Normal: 126 BPM  |  Urgent: 152 BPM
+  // Layers: kick · snare · hi-hats · bass · chord stabs · lead melody
   startBackground() {
-    // Background music disabled
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _startBackgroundUnused() {
     if (this.started) return;
     this.started = true;
     let step = 0;
-    const penta = [262, 294, 330, 392, 440, 523, 587, 659, 784, 880];
-    const playBeat = () => {
+
+    const play = () => {
       if (!this.started) return;
       try {
-        const style = this.musicStyle;
-        const baseBpm = style === "energetic" ? 170 : style === "electronic" ? 160 : style === "epic" ? 145 : style === "challenge" ? 138 : 125;
-        const urgBpm  = style === "energetic" ? 210 : style === "electronic" ? 200 : style === "epic" ? 185 : style === "challenge" ? 172 : 155;
-        const bpm = this.urgent ? urgBpm : baseBpm;
-        const beat = 60 / bpm;
-        const b = step % 8;
+        const bpm = this.urgent ? 152 : 126;
+        const t8  = (60 / bpm) / 2;           // one 8th-note in seconds
+        const b   = step % 8;
         const bar = Math.floor(step / 8);
 
-        if (style === "energetic") {
-          if (b % 2 === 0) {
-            this.tone(this.urgent ? 110 : 82, 0.15, "sine", 0.28);
-            this.tone(this.urgent ? 55 : 41, 0.2, "sine", 0.2, 0.02);
-          }
-          this.noise(0.03, b % 2 === 1 ? 0.14 : 0.06);
-          if (b % 4 === 2) this.noise(0.06, 0.16);
-          const bassArr = [131, 165, 147, 196];
-          this.tone(bassArr[bar % 4], beat * 0.6, "sawtooth", 0.18);
-          if (b % 2 === 1) this.tone(bassArr[bar % 4] * 2, beat * 0.3, "sawtooth", 0.08);
-          const mi = (bar * 3 + b) % penta.length;
-          const note = penta[mi] * 2;
-          this.tone(note, beat * 0.5, "square", this.urgent ? 0.11 : 0.08);
-          if (b % 2 === 0) {
-            this.tone(note * 1.5, beat * 0.35, "square", 0.05, beat * 0.12);
-            this.tone(note * 0.75, beat * 0.3, "triangle", 0.04, beat * 0.06);
-          }
-          if (b === 0) {
-            const ch = penta[(bar * 2) % penta.length];
-            this.tone(ch, beat * 2.5, "sawtooth", 0.06);
-            this.tone(ch * 1.25, beat * 2.5, "sawtooth", 0.05, 0.03);
-            this.tone(ch * 1.5, beat * 2.5, "sawtooth", 0.04, 0.06);
-          }
-          if (b === 6 || b === 7) {
-            this.noise(0.04, 0.12);
-            this.tone(this.urgent ? 150 : 120, 0.1, "sine", 0.15);
-          }
-        } else if (style === "electronic") {
-          if (b % 4 === 0) {
-            this.tone(this.urgent ? 100 : 80, 0.15, "square", 0.2);
-            this.tone(this.urgent ? 50 : 40, 0.2, "square", 0.14, 0.01);
-          }
-          if (b % 2 === 1) this.noise(0.02, 0.08);
-          if (b % 4 === 2) this.noise(0.05, 0.12);
-          const chipNotes = [523, 659, 784, 988, 1047, 1319, 1568, 1976];
-          const ci = (bar * 2 + Math.floor(b / 2)) % chipNotes.length;
-          this.tone(chipNotes[ci], beat * 0.5, "square", this.urgent ? 0.08 : 0.06);
-          if (b % 2 === 0) {
-            this.tone(chipNotes[ci] / 2, beat * 0.7, "square", 0.05, beat * 0.2);
-          }
-          const chipBass = [131, 165, 196, 262];
-          if (b % 2 === 0) this.tone(chipBass[bar % 4], beat * 1.2, "square", 0.1);
-          if (b === 0 && bar % 2 === 0) {
-            [1, 1.25, 1.5].forEach((m, i) =>
-              this.tone(chipNotes[ci] * m, beat * 2, "square", 0.03, i * 0.04));
-          }
-        } else if (style === "epic") {
-          if (b % 4 === 0) {
-            this.tone(this.urgent ? 90 : 65, 0.4, "sine", 0.25);
-            this.tone(this.urgent ? 45 : 33, 0.5, "sine", 0.18, 0.03);
-            this.noise(0.08, 0.08, 0.02);
-          }
-          if (b % 4 === 2) {
-            this.noise(0.1, 0.14);
-            this.tone(200, 0.08, "sine", 0.06);
-          }
-          if (b % 2 === 1) this.noise(0.03, 0.05);
-          const epicNotes = [196, 220, 262, 294, 330, 392, 440, 523];
-          const ei = (bar + Math.floor(b / 4)) % epicNotes.length;
-          if (b % 4 === 0) {
-            const n = epicNotes[ei];
-            this.tone(n, beat * 3, "triangle", 0.08);
-            this.tone(n * 1.25, beat * 3, "triangle", 0.06, 0.05);
-            this.tone(n * 1.5, beat * 3, "triangle", 0.05, 0.1);
-          }
-          if (b === 0) {
-            this.tone(epicNotes[ei] * 2, beat * 1.5, "sawtooth", 0.06);
-          }
-          const epicBass = [65, 82, 98, 110];
-          if (b % 2 === 0) this.tone(epicBass[bar % 4], beat * 1.5, "triangle", 0.12);
-        } else if (style === "chill") {
-          if (b % 4 === 0) {
-            this.tone(this.urgent ? 110 : 82, 0.3, "sine", 0.18);
-            this.tone(this.urgent ? 55 : 41, 0.35, "sine", 0.12, 0.02);
-          }
-          if (b % 4 === 2) this.noise(0.04, 0.06);
-          const bassNotes = [131, 147, 165, 196];
-          if (b % 2 === 0) this.tone(bassNotes[bar % 4], beat * 1.2, "triangle", 0.1);
-          const mi = (bar * 2 + Math.floor(b / 2)) % penta.length;
-          if (b % 2 === 0) {
-            const note = penta[mi];
-            const vol = this.urgent ? 0.07 : 0.05;
-            this.tone(note, beat * 1.6, "sine", vol);
-            this.tone(note * 1.5, beat * 1.2, "sine", vol * 0.5, beat * 0.3);
-          }
-          if (b === 0 && bar % 2 === 0) {
-            const ch = penta[mi];
-            this.tone(ch, beat * 2, "triangle", 0.03);
-            this.tone(ch * 1.25, beat * 2, "triangle", 0.025, 0.05);
-            this.tone(ch * 1.5, beat * 2, "triangle", 0.02, 0.1);
-          }
-        } else if (style === "challenge") {
-          // ── تحدي مشوق: sine/triangle فقط — ناعم للطلاب ──────────────────
-          // Soft kick — sine waves, no harsh noise
-          if (b % 4 === 0) {
-            this.tone(this.urgent ? 88 : 68, 0.22, "sine", 0.42);
-            this.tone(this.urgent ? 44 : 34, 0.28, "sine", 0.30, 0.01);
-          }
-          if (b === 2 || b === 6) this.tone(60, 0.12, "sine", 0.18); // ghost beat
+        // ── KICK: beats 1 & 3 (steps 0 & 4) ──────────────────────
+        if (b === 0 || b === 4) {
+          this.freqRamp(115, 38, 0.11, "sine", 0.52);
+          this.noiseLow(0.013, 0.20);
+          this.noise(0.007, 0.18);
+        }
+        // ghost kick for urgency
+        if (this.urgent && b === 3) {
+          this.freqRamp(88, 34, 0.07, "sine", 0.28, t8 * 0.5);
+        }
 
-          // Soft clap — mid-freq sine (no noise)
-          if (b % 4 === 2) {
-            this.tone(320, 0.07, "sine", 0.11);
-            this.tone(280, 0.06, "sine", 0.08, 0.012);
-          }
+        // ── SNARE: beats 2 & 4 (steps 2 & 6) ─────────────────────
+        if (b === 2 || b === 6) {
+          this.noise(0.080, 0.20);
+          this.tone(190, 0.07, "triangle", 0.17);
+          this.tone(242, 0.05, "sine",     0.09, 0.007);
+        }
 
-          // Warm bass — G major pentatonic (sine)
-          // G2=196 A2=220 B2=247 D3=294 E3=330
-          const challengeBass = [196, 196, 220, 220, 247, 196, 220, 247];
-          this.tone(challengeBass[b], beat * 1.5, "sine", 0.26);
+        // ── HI-HATS ───────────────────────────────────────────────
+        if (b % 2 === 0) {
+          this.noise(0.026, 0.042);           // closed — on-beat
+        } else {
+          this.noise(0.072, 0.027);           // open — off-beat
+        }
+        if (this.urgent && b % 2 === 0) {    // 16th subdivisions when urgent
+          setTimeout(() => { if (this.started) this.noise(0.016, 0.022); }, t8 * 500);
+        }
 
-          // Pad chords — triangle waves, one per bar
-          if (b === 0) {
-            const padChords = [[392, 494, 587], [330, 415, 494], [294, 370, 440], [440, 554, 659]];
-            const chord = padChords[bar % 4];
-            chord.forEach((f, i) => this.tone(f, beat * 7.5, "triangle", 0.05, i * 0.018));
-          }
+        // ── BASS LINE (Gm pentatonic) ─────────────────────────────
+        // G2=98 A2=110 Bb2=117 C3=131 D3=147 Eb3=156 F3=175 G3=196
+        const bassGrid = [
+          [ 98,   0,  98, 117, 131, 117,  98,   0],  // bar 0 – Gm
+          [131,   0, 131, 147, 156, 147, 131, 117],  // bar 1 – Cm
+          [117,   0, 117, 131, 147, 131, 117,   0],  // bar 2 – Bb
+          [147,   0, 147, 156, 175, 156, 147,  98],  // bar 3 – Dm cadence
+        ];
+        const bn = bassGrid[bar % 4][b];
+        if (bn > 0) {
+          this.tone(bn,       t8 * 0.85, "sawtooth", 0.17);
+          this.tone(bn * 0.5, t8 * 0.90, "sine",     0.09);
+        }
 
-          // Xylophone melody — G major pentatonic
-          // G4=392 A4=440 B4=494 D5=587 E5=659 G5=784 A5=880
-          const melSeqs = [
-            [587, 659, 784,   0, 880,   0, 784, 659],
-            [587,   0, 659, 587, 494,   0, 587,   0],
-            [392, 494, 587, 659, 784,   0, 659, 587],
-            [  0, 880,   0,1047,   0, 880, 784,   0],
+        // ── CHORD STABS (beat 1 of each bar) ─────────────────────
+        if (b === 0) {
+          const chords = [
+            [196, 233, 294],   // Gm  G3–Bb3–D4
+            [131, 156, 196],   // Cm  C3–Eb3–G3
+            [117, 147, 175],   // Bb  Bb2–D3–F3
+            [147, 175, 220],   // Dm  D3–F3–A3
           ];
-          const mel = melSeqs[bar % 4][b];
-          if (mel) {
-            this.tone(mel, beat * 1.4, "sine", this.urgent ? 0.16 : 0.13);
-            this.tone(mel * 2, beat * 0.6, "triangle", 0.04, 0.008); // shimmer harmonic
-          }
+          chords[bar % 4].forEach((f, i) =>
+            this.tone(f, t8 * 3.0, "triangle", 0.055, i * 0.007));
+        }
+        // Extra accent on beat 3 for bars 1–2
+        if (b === 4 && (bar % 4 === 1 || bar % 4 === 2)) {
+          const acc = [[156, 196, 247], [131, 156, 196]];
+          acc[(bar % 4) - 1].forEach((f, i) =>
+            this.tone(f, t8 * 1.6, "triangle", 0.040, i * 0.006));
+        }
 
-          // Sparkle high note on off-beats every other bar
-          if (bar % 2 === 1 && (b === 1 || b === 3 || b === 5 || b === 7)) {
-            this.tone(1319, 0.08, "sine", 0.035);
+        // ── LEAD MELODY (bars 0–1 of every 4-bar phrase) ─────────
+        // G minor: G4=392 A4=440 Bb4=466 C5=523 D5=587 Eb5=622 F5=698
+        const hooks = [
+          [0, 466, 0, 587, 622, 587, 523,   0],  // bar 0: Bb–D–Eb–D–C
+          [466, 0, 523, 0, 440, 392,   0,   0],  // bar 1: Bb–C–A–G
+        ];
+        if (bar % 4 < 2) {
+          const n = hooks[bar % 2][b];
+          if (n > 0) {
+            this.tone(n,         t8 * 0.80, "square",   0.060);
+            this.tone(n * 1.007, t8 * 0.76, "triangle", 0.028, 0.005);
           }
         }
 
-        step += 1;
-        this.bgHandle = setTimeout(playBeat, beat * 1000);
-      } catch (_) { this.bgHandle = setTimeout(playBeat, 500); }
+        // ── COUNTER-MELODY / FILL (bar 3) ─────────────────────────
+        if (bar % 4 === 3) {
+          const fill = [0, 0, 784, 0, 698, 622, 587, 523];
+          const fn = fill[b];
+          if (fn > 0) this.tone(fn, t8 * 0.65, "triangle", 0.042);
+        }
+
+        step++;
+        this.bgHandle = setTimeout(play, t8 * 1000);
+      } catch (_) { this.bgHandle = setTimeout(play, 400); }
     };
-    playBeat();
+
+    play();
   }
 
   stopBackground() {
-    // no-op (background music disabled)
     if (this.bgHandle !== null) { clearTimeout(this.bgHandle); this.bgHandle = null; }
-    this.started = false; this.urgent = false;
+    this.started = false;
+    this.urgent  = false;
   }
 
-  playCorrect()              { /* all sounds disabled */ }
-  playWrong()                { /* all sounds disabled */ }
-  playBoost()                { /* all sounds disabled */ }
-  playTugPull()              { /* all sounds disabled */ }
-  playPowerPull()            { /* all sounds disabled */ }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  playCountdownBeep(_n: number) { /* all sounds disabled */ }
-  playGoSignal()             { /* all sounds disabled */ }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  playTickTock(_beat: number, _urgency: "normal" | "urgent") { /* all sounds disabled */ }
-  playApplause()             { /* all sounds disabled */ }
-  playWin()                  { /* all sounds disabled */ }
-  playLose()                 { /* all sounds disabled */ }
-  playPowerReveal()          { /* all sounds disabled */ }
+  // ── CORRECT ANSWER: bright ascending chime C5–E5–G5–C6 ───────────────────
+  playCorrect() {
+    [[523, 0.00], [659, 0.09], [784, 0.18], [1047, 0.27]].forEach(([f, d]) => {
+      this.tone(f,         0.38, "sine",     0.28, d);
+      this.tone(f * 1.501, 0.22, "triangle", 0.06, d + 0.008);
+    });
+    this.tone(2093, 0.18, "sine", 0.10, 0.30);  // sparkle tip
+    this.tone(2637, 0.13, "sine", 0.06, 0.35);
+    this.noise(0.016, 0.12, 0.012);
+  }
+
+  // ── WRONG ANSWER: short descending buzzer ─────────────────────────────────
+  playWrong() {
+    this.noiseLow(0.018, 0.24);
+    this.freqRamp(300, 148, 0.22, "sine",     0.24);
+    this.tone(165, 0.20, "square",   0.14, 0.04);
+    this.tone(180, 0.17, "triangle", 0.08, 0.06);
+  }
+
+  // ── SPEED BOOST ───────────────────────────────────────────────────────────
+  playBoost() {
+    [784, 988, 1175, 1319, 1568].forEach((f, i) =>
+      this.tone(f, 0.08, "triangle", 0.17 - i * 0.01, i * 0.030));
+    this.noise(0.032, 0.12, 0.12);
+    this.tone(2093, 0.28, "sine", 0.13, 0.16);
+  }
+
+  // ── ROPE PULL IMPACT ──────────────────────────────────────────────────────
+  playTugPull() {
+    this.freqRamp(155, 44, 0.18, "sine",     0.48);
+    this.noiseLow(0.016, 0.22);
+    this.noise(0.020, 0.14);
+    this.tone(52, 0.26, "triangle", 0.16, 0.03);
+  }
+
+  // ── POWER PULL: rising charge → massive slam ──────────────────────────────
+  playPowerPull() {
+    this.freqRamp(85,  265, 0.14, "sawtooth", 0.30);
+    this.freqRamp(42,  130, 0.18, "sine",     0.24, 0.02);
+    this.noise(0.09, 0.28, 0.10);
+    this.noiseLow(0.07, 0.20, 0.11);
+    this.tone(48, 0.42, "sine",     0.34, 0.10);
+    this.freqRamp(820, 155, 0.24, "sawtooth", 0.07, 0.09);
+  }
+
+  // ── COUNTDOWN BEEP: escalating pitch 5→1 ─────────────────────────────────
+  playCountdownBeep(n: number) {
+    const baseFreq: Record<number, number> = { 5: 523, 4: 622, 3: 740, 2: 880, 1: 1047 };
+    const f    = baseFreq[n] ?? 523;
+    const vol  = n === 1 ? 0.42 : n <= 3 ? 0.30 : 0.20;
+    const last = n === 1;
+    this.tone(f,       0.12, "sine", vol,        0);
+    this.tone(f * 1.5, 0.09, "sine", vol * 0.38, 0.008);
+    if (n <= 3) this.tone(f * 2, 0.06, "sine", vol * 0.18, 0.014);
+    if (last) {
+      this.tone(f * 1.26, 0.11, "triangle", 0.22, 0.02);
+      this.tone(f * 1.5,  0.14, "sine",     0.16, 0.04);
+      this.noise(0.010, 0.18, 0.010);
+    }
+  }
+
+  // ── GO! SIGNAL: rising fanfare → bright stab ──────────────────────────────
+  playGoSignal() {
+    [392, 523, 659, 784, 1047, 1319].forEach((f, i) =>
+      this.tone(f, 0.11, "triangle", 0.28 - i * 0.02, i * 0.046));
+    this.tone(1568, 0.52, "triangle", 0.26, 0.23);
+    this.tone(784,  0.50, "sine",     0.18, 0.24);
+    this.noise(0.055, 0.18, 0.21);
+    this.tone(2093, 0.16, "sine", 0.08, 0.38);
+  }
+
+  // ── TIMER TICK ────────────────────────────────────────────────────────────
+  playTickTock(beat: number, urgency: "normal" | "urgent") {
+    if (urgency === "urgent") {
+      this.tone(1047, 0.022, "square", 0.26);
+      this.noise(0.009, 0.15);
+      this.tone(880,  0.024, "sine",   0.10, 0.016);
+      if (beat % 2 === 0) this.tone(1568, 0.016, "sine", 0.09, 0.022);
+    } else if (beat % 2 === 0) {
+      this.tone(784, 0.024, "sine", 0.09);
+      this.noise(0.006, 0.036);
+    }
+  }
+
+  // ── CROWD APPLAUSE ────────────────────────────────────────────────────────
+  playApplause() {
+    for (let i = 0; i < 28; i++) {
+      this.noise(0.10 + Math.random() * 0.13, 0.016 + Math.random() * 0.028,
+                 i * 0.022 + Math.random() * 0.012);
+    }
+    [340, 400, 480, 560, 290, 625, 270, 430].forEach((f, i) =>
+      this.tone(f + Math.random() * 55, 0.20 + Math.random() * 0.12, "triangle",
+                0.010 + Math.random() * 0.005, i * 0.042 + Math.random() * 0.020));
+    for (let i = 0; i < 6; i++)
+      this.tone(1200 + Math.random() * 800, 0.06, "sine",
+                0.006, i * 0.072 + Math.random() * 0.020);
+  }
+
+  // ── WIN FANFARE: chord stab → rising arpeggio → triumph → crowd ──────────
+  playWin() {
+    [523, 659, 784, 1047].forEach((f, i) =>
+      this.tone(f, 0.35 - i * 0.02, "triangle", 0.38 - i * 0.04, i * 0.006));
+    this.noise(0.014, 0.26);
+    [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => {
+      this.tone(f,        0.16, "triangle", 0.22 - i * 0.01, 0.12 + i * 0.09);
+      this.tone(f * 1.26, 0.10, "sine",     0.07,            0.12 + i * 0.09 + 0.018);
+    });
+    setTimeout(() => {
+      [523, 659, 784, 1047, 1319].forEach((f, i) =>
+        this.tone(f, 1.5, "triangle", 0.28 - i * 0.03, i * 0.010));
+      this.noise(0.034, 0.18);
+    }, 780);
+    setTimeout(() => this.playApplause(), 920);
+    setTimeout(() => this.playApplause(), 1320);
+    setTimeout(() => this.playApplause(), 1720);
+  }
+
+  // ── LOSE: dignified minor descent ─────────────────────────────────────────
+  playLose() {
+    this.tone(440, 0.38, "triangle", 0.20);
+    this.tone(523, 0.34, "triangle", 0.16, 0.02);
+    this.tone(622, 0.30, "triangle", 0.12, 0.05);        // Eb — minor colour
+    this.freqRamp(440, 220, 0.55, "sine",     0.22, 0.12);
+    this.freqRamp(330, 165, 0.48, "sine",     0.14, 0.18);
+    this.tone(196, 0.72, "triangle", 0.16, 0.46);
+    this.tone(220, 0.68, "triangle", 0.09, 0.52);
+    for (let i = 0; i < 10; i++)
+      this.noiseLow(0.24, 0.010 + Math.random() * 0.012, i * 0.068);
+  }
+
+  // ── POWER QUESTION REVEAL ─────────────────────────────────────────────────
+  playPowerReveal() {
+    [440, 554, 659, 880, 1047, 1319].forEach((f, i) =>
+      this.tone(f, 0.12, "triangle", 0.16, i * 0.044));
+    this.freqRamp(440, 1760, 0.30, "sawtooth", 0.07, 0.06);
+    this.noise(0.072, 0.14, 0.27);
+    this.tone(2637, 0.22, "sine",     0.14, 0.30);
+    this.tone(1319, 0.20, "triangle", 0.12, 0.30);
+  }
   destroy() {
     this.stopBackground();
     try { this.ctx?.close(); } catch (_) {}
