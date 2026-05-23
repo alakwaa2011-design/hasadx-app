@@ -205,6 +205,11 @@ class TugSoundEngine {
   }
 
   startBackground() {
+    // Background music disabled
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _startBackgroundUnused() {
     if (this.started) return;
     this.started = true;
     let step = 0;
@@ -366,6 +371,7 @@ class TugSoundEngine {
   }
 
   stopBackground() {
+    // no-op (background music disabled)
     if (this.bgHandle !== null) { clearTimeout(this.bgHandle); this.bgHandle = null; }
     this.started = false; this.urgent = false;
   }
