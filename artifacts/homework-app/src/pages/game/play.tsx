@@ -2164,7 +2164,7 @@ export default function GamePlay() {
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-8"
               >
-                <span className="text-gray-500 dark:text-white/50 font-bold text-lg">
+                <span className="text-amber-300 font-bold text-lg tracking-widest drop-shadow-md">
                   {(info.index ?? 0) + 1} / {info.total}
                 </span>
               </motion.div>
@@ -2224,7 +2224,7 @@ export default function GamePlay() {
               {answerResult?.correct ? "✅" : "❌"}
             </motion.div>
             <p
-              className={`font-black text-2xl mb-2 ${answerResult?.correct ? "text-green-400" : "text-red-400"}`}
+              className={`font-black text-2xl mb-2 ${answerResult?.correct ? "text-green-400" : "text-amber-100"}`}
             >
               {answerResult?.correct
                 ? lang === "ar"
@@ -2274,7 +2274,7 @@ export default function GamePlay() {
               {answerResult?.correct ? "✅" : "❌"}
             </div>
             <p
-              className={`font-black text-2xl mb-2 ${answerResult?.correct ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+              className={`font-black text-2xl mb-2 ${answerResult?.correct ? "text-green-600 dark:text-green-400" : "text-amber-100"}`}
             >
               {answerResult?.correct
                 ? lang === "ar"
@@ -2292,7 +2292,7 @@ export default function GamePlay() {
             <motion.p
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ repeat: Infinity, duration: 1.5 }}
-              className="text-gray-500 dark:text-white/40 text-sm font-bold"
+              className="text-white/80 text-sm font-bold"
             >
               {lang === "ar"
                 ? "انتظار اللاعبين الآخرين..."
