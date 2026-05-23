@@ -292,145 +292,102 @@ export function playStealSound() {
 
 export function playVictoryFanfare() {
   if (isMuted) return;
-  const ctx = getCtx();
-  const master = getMaster();
-  const now = ctx.currentTime;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
 
-  function note(freq: number, t: number, dur: number, vol: number, type: OscillatorType = "sine") {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(master);
-    osc.type = type;
-    osc.frequency.value = freq;
-    const at = now + t;
-    gain.gain.setValueAtTime(0, at);
-    gain.gain.linearRampToValueAtTime(vol, at + 0.03);
-    gain.gain.setValueAtTime(vol, at + dur - 0.06);
-    gain.gain.exponentialRampToValueAtTime(0.001, at + dur);
-    osc.start(at);
-    osc.stop(at + dur + 0.02);
-  }
+    // ── helpers ──────────────────────────────────────────────────────────
+    function note(freq: number, t: number, dur: number, vol: number, type: OscillatorType = "sine") {
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(master);
+        osc.type = type;
+        osc.frequency.value = freq;
+        const at = now + t;
+        gain.gain.setValueAtTime(0, at);
+        gain.gain.linearRampToValueAtTime(vol, at + 0.025);
+        gain.gain.setValueAtTime(vol, at + Math.max(dur - 0.07, 0.01));
+        gain.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        osc.start(at); osc.stop(at + dur + 0.02);
+      } catch {}
+    }
 
-  function chord(freqs: number[], t: number, dur: number, vol: number, type: OscillatorType = "triangle") {
-    freqs.forEach(f => note(f, t, dur, vol, type));
-  }
+    function chord(freqs: number[], t: number, dur: number, vol: number, type: OscillatorType = "sine") {
+      freqs.forEach(f => note(f, t, dur, vol, type));
+    }
 
-  function kick(t: number) {
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.connect(g); g.connect(master);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(160, now + t);
-    osc.frequency.exponentialRampToValueAtTime(40, now + t + 0.12);
-    g.gain.setValueAtTime(0.35, now + t);
-    g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.18);
-    osc.start(now + t); osc.stop(now + t + 0.2);
-  }
+    function kick(t: number) {
+      try {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.connect(g); g.connect(master);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(145, now + t);
+        osc.frequency.exponentialRampToValueAtTime(42, now + t + 0.10);
+        g.gain.setValueAtTime(0.40, now + t);
+        g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.22);
+        osc.start(now + t); osc.stop(now + t + 0.25);
+      } catch {}
+    }
 
-  function snare(t: number) {
-    const bufSize = ctx.sampleRate * 0.12;
-    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 3);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const bpf = ctx.createBiquadFilter();
-    bpf.type = "bandpass"; bpf.frequency.value = 2200; bpf.Q.value = 0.7;
-    const g = ctx.createGain();
-    src.connect(bpf); bpf.connect(g); g.connect(master);
-    g.gain.setValueAtTime(0.28, now + t);
-    g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.14);
-    src.start(now + t); src.stop(now + t + 0.15);
-  }
+    function softClap(t: number) {
+      try {
+        const bufSize = Math.ceil(ctx.sampleRate * 0.09);
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++)
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2.5);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass"; bp.frequency.value = 1800; bp.Q.value = 0.9;
+        const g = ctx.createGain();
+        src.connect(bp); bp.connect(g); g.connect(master);
+        g.gain.setValueAtTime(0.20, now + t);
+        g.gain.exponentialRampToValueAtTime(0.001, now + t + 0.10);
+        src.start(now + t); src.stop(now + t + 0.12);
+      } catch {}
+    }
 
-  function hihat(t: number, vol = 0.08) {
-    const bufSize = ctx.sampleRate * 0.04;
-    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 4);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const hpf = ctx.createBiquadFilter();
-    hpf.type = "highpass"; hpf.frequency.value = 7000;
-    const g = ctx.createGain();
-    src.connect(hpf); hpf.connect(g); g.connect(master);
-    g.gain.value = vol;
-    src.start(now + t); src.stop(now + t + 0.05);
-  }
+    // ── PHASE 1: Power chord stab (0 – 0.6s) ───────────────────────────
+    chord([262, 330, 392, 523],  0.00, 0.42, 0.24, "triangle");
+    chord([523, 659, 784, 1047], 0.00, 0.42, 0.20, "sine");
+    kick(0.00);
 
-  // === PHASE 1: Fanfare intro (0 - 1.5s) ===
-  note(523, 0.0, 0.18, 0.42, "sine");
-  note(659, 0.18, 0.18, 0.42, "sine");
-  note(784, 0.36, 0.18, 0.42, "sine");
-  note(1047, 0.55, 0.6, 0.5, "sine");
-  note(784, 1.2, 0.12, 0.35, "sine");
-  note(1047, 1.35, 0.08, 0.35, "sine");
-  note(1319, 1.45, 0.65, 0.55, "sine");
+    // ── PHASE 2: Rising celebratory arpeggio (0.6 – 1.8s) ──────────────
+    // C5–D5–E5–G5–A5–B5–C6–E6
+    [523, 587, 659, 784, 880, 988, 1047, 1319].forEach((f, i) => {
+      note(f,         0.62 + i * 0.14, 0.22, 0.34 + i * 0.009, "sine");
+      note(f * 1.501, 0.62 + i * 0.14, 0.14, 0.07, "triangle");
+    });
+    kick(0.62); kick(1.12);
+    softClap(0.88); softClap(1.38);
 
-  // Harmony layer
-  chord([330, 415, 523], 0.55, 0.6, 0.14, "triangle");
-  chord([392, 494, 659], 1.45, 0.65, 0.16, "triangle");
+    // ── PHASE 3: Triumphant sustained chord + melody (2.0 – 4.2s) ───────
+    chord([262, 330, 392, 523, 659], 2.00, 2.10, 0.16, "triangle");
+    chord([523, 659, 784, 1047],     2.00, 2.10, 0.13, "sine");
 
-  // Kick on beat 1
-  kick(0.0); kick(0.5); kick(1.0);
-  hihat(0.25); hihat(0.5); hihat(0.75); hihat(1.0); hihat(1.25);
-  snare(0.5); snare(1.0);
+    // Melodic riff crowning the chord
+    note(1319, 2.00, 0.22, 0.42, "sine");
+    note(1047, 2.25, 0.22, 0.38, "sine");
+    note(1175, 2.50, 0.22, 0.38, "sine");
+    note(1319, 2.75, 0.28, 0.44, "sine");
+    note(1568, 3.06, 1.10, 0.40, "sine");   // long high finish
 
-  // === PHASE 2: Main theme (2.1 - 4.5s) ===
-  const melody2 = [
-    { f: 1047, t: 2.1, d: 0.3 },
-    { f: 988,  t: 2.45, d: 0.2 },
-    { f: 880,  t: 2.68, d: 0.2 },
-    { f: 784,  t: 2.9, d: 0.45 },
-    { f: 659,  t: 3.38, d: 0.18 },
-    { f: 784,  t: 3.58, d: 0.18 },
-    { f: 880,  t: 3.78, d: 0.18 },
-    { f: 1047, t: 4.0, d: 0.65 },
-  ];
-  melody2.forEach(({ f, t, d }) => note(f, t, d, 0.48, "sine"));
+    note(784, 2.75, 0.28, 0.14, "triangle");
+    note(988, 3.06, 1.00, 0.12, "triangle");
 
-  // Bass line
-  const bass = [
-    { f: 130, t: 2.1, d: 0.8 }, { f: 98, t: 2.9, d: 0.8 },
-    { f: 110, t: 3.7, d: 0.5 }, { f: 130, t: 4.2, d: 0.5 },
-  ];
-  bass.forEach(({ f, t, d }) => note(f, t, d, 0.22, "sine"));
+    kick(2.00); kick(2.50); kick(3.00); kick(3.50);
+    softClap(2.25); softClap(2.75); softClap(3.25); softClap(3.75);
 
-  // Chords
-  chord([523, 659, 784], 2.1, 0.78, 0.15, "triangle");
-  chord([392, 523, 659], 2.9, 0.78, 0.15, "triangle");
-  chord([440, 554, 659], 3.7, 0.48, 0.14, "triangle");
-  chord([523, 659, 784], 4.2, 0.48, 0.16, "triangle");
-
-  // Drums in phase 2
-  [2.1, 2.6, 3.1, 3.6, 4.1].forEach(t => kick(t));
-  [2.35, 2.6, 2.85, 3.1, 3.35, 3.6, 3.85, 4.1, 4.35].forEach(t => hihat(t));
-  [2.6, 3.1, 3.6, 4.1].forEach(t => snare(t));
-
-  // === PHASE 3: Rising finale (4.7 - 7.5s) ===
-  const scale = [523, 587, 659, 698, 784, 880, 988, 1047, 1175, 1319];
-  scale.forEach((f, i) => note(f, 4.7 + i * 0.15, 0.22, 0.35 + i * 0.015, "sine"));
-
-  // Big final chord (6.2s)
-  chord([523, 659, 784, 1047], 6.2, 1.4, 0.22, "triangle");
-  chord([262, 330, 392, 523], 6.2, 1.4, 0.2, "sine");
-
-  // Final melody riff over chord
-  note(1319, 6.2, 0.2, 0.5, "sine");
-  note(1047, 6.42, 0.2, 0.48, "sine");
-  note(1175, 6.65, 0.2, 0.48, "sine");
-  note(1319, 6.88, 0.8, 0.55, "sine");
-
-  // Drums build to finale
-  [4.7, 4.95, 5.2, 5.45, 5.7, 5.95].forEach(t => kick(t));
-  [5.7, 5.82, 5.94, 6.06, 6.18].forEach(t => { kick(t); hihat(t, 0.12); });
-  [4.95, 5.45, 5.95, 6.2].forEach(t => snare(t));
-
-  // Fireworks bells throughout
-  [0.55, 1.45, 2.1, 2.9, 4.65, 6.2, 6.88].forEach(t => {
-    note(2093 + Math.random() * 500, t, 0.3, 0.12, "sine");
-  });
+    // ── SHIMMER BELLS throughout ────────────────────────────────────────
+    [0.00, 0.62, 1.30, 2.00, 2.75, 3.06].forEach(t => {
+      note(2093 + Math.random() * 400, t,        0.26, 0.08, "sine");
+      note(2637 + Math.random() * 300, t + 0.05, 0.20, 0.05, "sine");
+    });
+  } catch {}
 }
 
 export function playHackerVictory() {
