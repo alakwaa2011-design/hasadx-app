@@ -9,7 +9,6 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Crown,
   Medal,
   Award,
   Flame,
@@ -27,7 +26,6 @@ import {
   Pause,
   Bell,
   Music2,
-  Crown,
 } from "lucide-react";
 import RaceTrack from "@/components/race-track";
 import {
@@ -4372,9 +4370,15 @@ export default function GamePlay() {
                       animate={{ y: 0, opacity: 1, scale: 1 }}
                       transition={{ delay: 0.72, type: "spring", stiffness: 200 }}
                       className="mb-2"
-                      style={{ color: "#E8B84B", filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}
+                      style={{ filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}
                     >
-                      <Crown className="w-9 h-9" />
+                      <svg width="36" height="28" viewBox="0 0 36 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 24L7 10L14 17L18 4L22 17L29 10L33 24H3Z" fill="#E8B84B" stroke="#C9930A" strokeWidth="1.5" strokeLinejoin="round"/>
+                        <rect x="3" y="24" width="30" height="3" rx="1.5" fill="#C9930A"/>
+                        <circle cx="18" cy="4" r="2.5" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                        <circle cx="7" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                        <circle cx="29" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                      </svg>
                     </motion.div>
 
                     {/* Winner card with float */}
@@ -4520,8 +4524,14 @@ export default function GamePlay() {
                       transition={{ delay: 0.4, type: "spring" }}
                     >
                       <motion.div initial={{ y: -12, opacity: 0, scale: 0.7 }} animate={{ y: 0, opacity: 1, scale: 1 }} transition={{ delay: 0.72, type: "spring" }} className="mb-2"
-                        style={{ color: "#E8B84B", filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}>
-                        <Crown className="w-9 h-9" />
+                        style={{ filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}>
+                        <svg width="36" height="28" viewBox="0 0 36 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 24L7 10L14 17L18 4L22 17L29 10L33 24H3Z" fill="#E8B84B" stroke="#C9930A" strokeWidth="1.5" strokeLinejoin="round"/>
+                          <rect x="3" y="24" width="30" height="3" rx="1.5" fill="#C9930A"/>
+                          <circle cx="18" cy="4" r="2.5" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                          <circle cx="7" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                          <circle cx="29" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
+                        </svg>
                       </motion.div>
                       <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 4.0, ease: "easeInOut" }}
                         className="w-full rounded-2xl p-5 flex flex-col items-center"
