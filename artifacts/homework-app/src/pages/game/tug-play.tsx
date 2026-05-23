@@ -376,37 +376,21 @@ class TugSoundEngine {
     this.started = false; this.urgent = false;
   }
 
-  // ── Correct answer: punchy chord stab + rising sparkle trail ─────────────
   playCorrect() {
-    this.noise(0.012, 0.26);                              // snappy attack transient
-    this.tone(523,  0.10, "triangle", 0.36, 0.005);      // C5 root
-    this.tone(659,  0.12, "triangle", 0.30, 0.008);      // E5
-    this.tone(784,  0.14, "triangle", 0.24, 0.012);      // G5
-    this.tone(1047, 0.18, "sine",     0.22, 0.03);       // C6 sparkle
-    this.tone(1319, 0.15, "sine",     0.16, 0.07);       // E6
-    this.tone(1568, 0.12, "sine",     0.11, 0.11);       // G6
-    this.tone(2093, 0.10, "sine",     0.07, 0.14);       // C7 tip
-    this.noise(0.035, 0.08, 0.05);                        // air shimmer
+    // Clean ascending 3-note chime: C5 → E5 → G5
+    this.tone(523, 0.14, "sine", 0.30, 0.00);
+    this.tone(659, 0.14, "sine", 0.26, 0.10);
+    this.tone(784, 0.22, "sine", 0.22, 0.20);
+    this.tone(784, 0.18, "triangle", 0.10, 0.21);
   }
 
-  // ── Wrong answer: soft falling tone — emotional, not annoying ─────────────
   playWrong() {
-    this.noiseLow(0.025, 0.20);                           // muffled thud
-    this.freqRamp(440, 220, 0.25, "sine",     0.22);     // falling A4→A3
-    this.freqRamp(330, 165, 0.22, "sine",     0.15, 0.04);
-    this.tone(150, 0.30, "triangle", 0.10, 0.12);        // low soft finish
-    this.tone(175, 0.25, "triangle", 0.07, 0.18);        // subtle dissonance
+    // Short low descending two-tone (soft game-show buzzer)
+    this.tone(300, 0.08, "square", 0.12, 0.00);
+    this.freqRamp(260, 140, 0.22, "sine", 0.18, 0.05);
   }
 
-  // ── Speed boost: rapid ascending charge + bright resolution ──────────────
-  playBoost() {
-    [784, 988, 1175, 1319, 1568, 1976].forEach((f, i) =>
-      this.tone(f, 0.07, "triangle", 0.18 - i * 0.01, i * 0.032));
-    this.noise(0.04, 0.13, 0.16);
-    this.tone(2637, 0.26, "sine",     0.16, 0.2);
-    this.tone(1319, 0.25, "triangle", 0.10, 0.2);
-    this.tone(1047, 0.22, "sine",     0.07, 0.22);
-  }
+  playBoost() { /* disabled */ }
 
   // ── Rope pull impact: low physical thud + tension whoosh ─────────────────
   playTugPull() {
@@ -1822,8 +1806,8 @@ export default function TugPlay() {
         style={{
           direction: dir,
           background: phase === "finished"
-            ? "radial-gradient(circle at 50% 8%, rgba(217,165,33,0.22), transparent 34%), linear-gradient(135deg, #031b12 0%, #062d1b 54%, #0a4d26 100%)"
-            : "linear-gradient(135deg, #0f2318 0%, #1a3a28 50%, #0f2318 100%)",
+            ? "radial-gradient(ellipse at 50% 0%, rgba(251,191,36,0.28) 0%, transparent 45%), radial-gradient(ellipse at 20% 100%, rgba(59,130,246,0.18) 0%, transparent 50%), radial-gradient(ellipse at 80% 100%, rgba(239,68,68,0.18) 0%, transparent 50%), linear-gradient(160deg, #0d1b3e 0%, #1e1040 50%, #0d1b3e 100%)"
+            : "radial-gradient(ellipse at 50% -10%, rgba(251,191,36,0.15) 0%, transparent 55%), radial-gradient(ellipse at 15% 100%, rgba(59,130,246,0.14) 0%, transparent 55%), radial-gradient(ellipse at 85% 100%, rgba(239,68,68,0.14) 0%, transparent 55%), linear-gradient(160deg, #0d1b3e 0%, #1a1050 50%, #0d1b3e 100%)",
         }}
       >
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
