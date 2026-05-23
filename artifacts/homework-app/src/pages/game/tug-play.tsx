@@ -2191,7 +2191,7 @@ export default function TugPlay() {
                     })}
                   </div>
 
-                  {phase === "answered" && (
+                  {phase === "answered" && answerCorrect !== null && (
                     <div className="text-center py-1 px-3 rounded-xl mt-1.5 font-bold text-sm text-white"
                       style={{
                         background: answerCorrect ? "rgba(34,87,57,0.55)" : "rgba(122,28,28,0.55)",
