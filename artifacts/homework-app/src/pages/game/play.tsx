@@ -64,6 +64,11 @@ import {
   playHackVictoryFanfare,
   playNotificationSoundByType,
   type NotificationSoundType,
+  playMysteryBoxReveal,
+  playPowerUpFreeze,
+  playPowerUpShield,
+  playPowerUpMystery,
+  playPowerUpSteal,
 } from "@/lib/game-sounds";
 import { useI18n } from "@/lib/i18n";
 import { AvatarDisplay } from "@/components/avatar-display";
@@ -1493,6 +1498,7 @@ export default function GamePlay() {
     });
 
     socket.on("game:mystery-boxes", () => {
+      playMysteryBoxReveal();
       setShowMysteryBoxes(true);
       setOpenedBoxIndex(null);
       setBoxResult(null);
@@ -3496,6 +3502,12 @@ export default function GamePlay() {
 
   if (phase === "gift-round") {
     const giftRoundSelectGift = (type: GiftType) => {
+      // Play a distinct sound for each power-up button
+      if (type === "freeze")  playPowerUpFreeze();
+      else if (type === "shield")  playPowerUpShield();
+      else if (type === "mystery") playPowerUpMystery();
+      else if (type === "steal")   playPowerUpSteal();
+
       setChosenGiftType(type);
       if (type === "mystery" || type === "shield") {
         const socket = getSocket();

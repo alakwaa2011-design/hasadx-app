@@ -1174,6 +1174,177 @@ export function playBoxSelect() {
   } catch {}
 }
 
+// ───── Mystery box reveal (صندوق المفاجآت يظهر) ─────────────────────────────
+export function playMysteryBoxReveal() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
+
+    function note(freq: number, t: number, dur: number, vol: number) {
+      try {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.connect(g); g.connect(master);
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        const at = now + t;
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        osc.start(at); osc.stop(at + dur + 0.02);
+      } catch {}
+    }
+
+    // Magical 4-note ascending shimmer: D5→F#5→A5→D6
+    note(587,  0.00, 0.22, 0.28);
+    note(740,  0.16, 0.22, 0.28);
+    note(880,  0.32, 0.22, 0.30);
+    note(1175, 0.50, 0.60, 0.32);
+
+    // Soft harmony
+    note(880,  0.50, 0.55, 0.10);
+    note(1047, 0.50, 0.55, 0.08);
+
+    // Sparkle bells
+    [0.00, 0.16, 0.32, 0.50, 0.68].forEach(t => {
+      note(2349 + Math.random() * 300, t, 0.18, 0.06);
+      note(2793 + Math.random() * 200, t + 0.04, 0.14, 0.04);
+    });
+  } catch {}
+}
+
+// ───── Power-up button sounds (4 distinct tones) ─────────────────────────────
+
+/** freeze 🥶 — icy descending tinkle */
+export function playPowerUpFreeze() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
+    const freqs = [1319, 1047, 880, 698]; // E6→C6→A5→F5
+    freqs.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(master);
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const at = now + i * 0.11;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.24, at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.20);
+      osc.start(at); osc.stop(at + 0.22);
+    });
+    // Cold shimmer
+    [0, 0.11, 0.22, 0.33].forEach(t => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(master);
+      osc.type = "sine";
+      osc.frequency.value = 2637 + Math.random() * 400;
+      const at = now + t;
+      g.gain.setValueAtTime(0.06, at);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.12);
+      osc.start(at); osc.stop(at + 0.14);
+    });
+  } catch {}
+}
+
+/** shield 🛡️ — solid protective thunk + metallic ring */
+export function playPowerUpShield() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
+    // Firm mid thunk
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g); g.connect(master);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(260, now + 0.15);
+    g.gain.setValueAtTime(0.30, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.30);
+    osc.start(now); osc.stop(now + 0.32);
+    // Metallic ring above
+    const ring = ctx.createOscillator();
+    const rg = ctx.createGain();
+    ring.connect(rg); rg.connect(master);
+    ring.type = "sine";
+    ring.frequency.value = 1760; // A6
+    rg.gain.setValueAtTime(0, now + 0.05);
+    rg.gain.linearRampToValueAtTime(0.18, now + 0.08);
+    rg.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    ring.start(now + 0.05); ring.stop(now + 0.57);
+  } catch {}
+}
+
+/** mystery 🎁 — curious rising 3-note chime */
+export function playPowerUpMystery() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
+    // G5→B5→D6 (G major triad ascending)
+    [784, 988, 1175].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(master);
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const at = now + i * 0.14;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.26, at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.28);
+      osc.start(at); osc.stop(at + 0.30);
+    });
+    // Soft sparkle at the top
+    const sp = ctx.createOscillator();
+    const sg = ctx.createGain();
+    sp.connect(sg); sg.connect(master);
+    sp.type = "sine"; sp.frequency.value = 2349;
+    sg.gain.setValueAtTime(0, now + 0.42);
+    sg.gain.linearRampToValueAtTime(0.08, now + 0.45);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+    sp.start(now + 0.42); sp.stop(now + 0.67);
+  } catch {}
+}
+
+/** steal 💰 — sneaky quick descending staccato */
+export function playPowerUpSteal() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const now = ctx.currentTime;
+    // Quick playful descending: C6→A5→G5→E5
+    [1047, 880, 784, 659].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(master);
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const at = now + i * 0.09;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(0.22, at + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, at + 0.14);
+      osc.start(at); osc.stop(at + 0.16);
+    });
+    // Sneaky low pluck accent
+    const pluck = ctx.createOscillator();
+    const pg = ctx.createGain();
+    pluck.connect(pg); pg.connect(master);
+    pluck.type = "triangle"; pluck.frequency.value = 330;
+    pg.gain.setValueAtTime(0.18, now + 0.36);
+    pg.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    pluck.start(now + 0.36); pluck.stop(now + 0.57);
+  } catch {}
+}
+
 // ===== Hack mode (energetic electro/synth) =====
 let hackLoopIntervalId: ReturnType<typeof setInterval> | null = null;
 let hackLoopGain: GainNode | null = null;
