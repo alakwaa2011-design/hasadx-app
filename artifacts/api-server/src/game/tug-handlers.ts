@@ -613,7 +613,7 @@ export function setupTugSocket(io: Server) {
 
     socket.on(
       "tug:answer",
-      (data: { pin: string; answerIndex: number }, cb: (r: object) => void) => {
+      (data: { pin: string; answerIndex: number; answerText?: string }, cb: (r: object) => void) => {
         try {
           const game = tugGames.get(data.pin);
           if (!game) return cb({ error: "الغرفة غير موجودة." });
@@ -625,7 +625,9 @@ export function setupTugSocket(io: Server) {
 
           const q = game.questions[game.currentQuestionIndex];
           const timeMs = Date.now() - (game.questionStartTime ?? Date.now());
-          const correct = data.answerIndex === q.correct;
+          const submittedText = typeof data.answerText === "string" ? data.answerText.trim() : "";
+          const correctText = q.options[q.correct]?.trim() ?? "";
+          const correct = data.answerIndex === q.correct || (!!submittedText && submittedText === correctText);
           const isBoost = correct && timeMs < q.duration * 1000 * 0.25;
           const power = isPowerQuestion(game.currentQuestionIndex);
 
