@@ -1859,12 +1859,12 @@ export default function GamePlay() {
     <>
       <button
         onClick={handleToggleMute}
-        className={`fixed top-4 ${lang === "ar" ? "left-4" : "right-4"} z-50 p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors`}
+        className={`fixed top-4 ${lang === "ar" ? "left-4" : "right-4"} z-50 p-3 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 border border-white/20 transition-colors`}
       >
         {muted ? (
-          <VolumeX className="w-5 h-5 text-gray-500 dark:text-white/70" />
+          <VolumeX className="w-5 h-5 text-white/60" />
         ) : (
-          <Volume2 className="w-5 h-5 text-gray-700 dark:text-white" />
+          <Volume2 className="w-5 h-5 text-white" />
         )}
       </button>
       {hackMode && (
@@ -1882,10 +1882,10 @@ export default function GamePlay() {
           aria-label={
             lang === "ar" ? "كتم/تشغيل موسيقى الاختراق" : "Toggle hack music"
           }
-          className={`fixed top-28 ${lang === "ar" ? "left-4" : "right-4"} z-50 p-3 rounded-full backdrop-blur-sm transition-colors relative ${hackMusicMuted ? "bg-black/40 hover:bg-black/50" : "bg-green-500/20 hover:bg-green-500/30"}`}
+          className={`fixed top-28 ${lang === "ar" ? "left-4" : "right-4"} z-50 p-3 rounded-full backdrop-blur-sm border border-white/20 transition-colors relative ${hackMusicMuted ? "bg-black/40 hover:bg-black/50" : "bg-green-500/30 hover:bg-green-500/45"}`}
         >
           <Music2
-            className={`w-5 h-5 ${hackMusicMuted ? "text-gray-500" : "text-green-300"}`}
+            className={`w-5 h-5 ${hackMusicMuted ? "text-white/50" : "text-green-300"}`}
           />
           {hackMusicMuted && (
             <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -1903,10 +1903,10 @@ export default function GamePlay() {
     >
       <button
         onClick={() => setShowSoundPicker((v) => !v)}
-        className="p-3 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+        className="p-3 rounded-full bg-black/30 backdrop-blur-sm hover:bg-black/50 border border-white/20 transition-colors"
         title={lang === "ar" ? "صوت الإشعار" : "Notification sound"}
       >
-        <Bell className="w-5 h-5 text-gray-700 dark:text-white" />
+        <Bell className="w-5 h-5 text-white" />
       </button>
       <AnimatePresence>
         {showSoundPicker && (
@@ -1974,7 +1974,7 @@ export default function GamePlay() {
             </h1>
             <button
               onClick={() => setLocation("/game/join")}
-              className="mt-4 px-6 py-3 bg-white/10 text-gray-700 dark:text-white rounded-xl font-bold hover:bg-white/20 transition-colors"
+              className="mt-4 px-6 py-3 bg-white/10 text-white rounded-xl font-bold hover:bg-white/20 transition-colors"
             >
               {t.gamePlay.goBack}
             </button>
@@ -2660,7 +2660,7 @@ export default function GamePlay() {
                       <p className="text-gray-300 font-black text-2xl">
                         {lang === "ar" ? "لا شيء!" : "Nothing!"}
                       </p>
-                      <p className="text-gray-500 text-sm mt-2">
+                      <p className="text-white/60 text-sm mt-2">
                         {lang === "ar"
                           ? "صندوق فارغ — حظ أوفر"
                           : "Empty box — better luck next time"}
@@ -3570,7 +3570,7 @@ export default function GamePlay() {
               {hackMode ? "[BONUS_POWER]" : "صندوق المفاجآت!"}
             </h2>
             <p
-              className={`font-bold ${hackMode ? "text-green-700 font-mono" : "text-gray-600 dark:text-white/60"}`}
+              className={`font-bold ${hackMode ? "text-green-700 font-mono" : "text-white/75"}`}
             >
               {hackMode ? "> SELECT_UPGRADE" : "اختر قوتك الخاصة"}
             </p>
@@ -3597,7 +3597,7 @@ export default function GamePlay() {
                   {giftResult}
                 </p>
               )}
-              <p className="text-gray-500 dark:text-white/50 mt-4 font-bold">
+              <p className="text-white/70 mt-4 font-bold">
                 انتظر بقية اللاعبين...
               </p>
             </motion.div>
@@ -3625,7 +3625,7 @@ export default function GamePlay() {
                   setGiftStep("choose");
                   setChosenGiftType(null);
                 }}
-                className="w-full mt-3 p-2 text-gray-400 dark:text-white/50 font-bold text-sm"
+                className="w-full mt-3 p-2 text-white/65 font-bold text-sm"
               >
                 رجوع
               </button>
@@ -3662,7 +3662,7 @@ export default function GamePlay() {
                     setChosenGiftType(null);
                   }
                 }}
-                className="w-full mt-3 p-2 text-gray-400 dark:text-white/50 font-bold text-sm"
+                className="w-full mt-3 p-2 text-white/65 font-bold text-sm"
               >
                 رجوع
               </button>
@@ -3865,7 +3865,7 @@ export default function GamePlay() {
                     <p className="text-gray-300 font-black text-2xl">
                       {lang === "ar" ? "لا شيء!" : "Nothing!"}
                     </p>
-                    <p className="text-gray-500 text-sm mt-2">
+                    <p className="text-white/60 text-sm mt-2">
                       {lang === "ar"
                         ? "صندوق فارغ — حظ أوفر"
                         : "Empty box — better luck next time"}
@@ -4143,7 +4143,7 @@ export default function GamePlay() {
                   key={team.teamName}
                   className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${team.teamName === myTeam ? "bg-yellow-500/20 border border-yellow-500/40" : "bg-black/5 dark:bg-white/5"}`}
                 >
-                  <span className="text-xl font-black text-gray-500 dark:text-white/60 w-6 text-center">
+                  <span className="text-xl font-black text-white/70 w-6 text-center">
                     {i + 1}
                   </span>
                   <span className="flex-1 font-black text-white">
