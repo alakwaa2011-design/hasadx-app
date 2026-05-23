@@ -1357,7 +1357,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <button
                   type="button"
                   onClick={onCopyLink}
-                  className="mt-1 flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-3 text-sm font-black transition-all active:scale-95"
+                  className="mt-1 flex items-center justify-center gap-2.5 rounded-2xl px-6 py-3 text-sm font-black transition-all active:scale-95"
                   style={{
                     background: linkCopied
                       ? "linear-gradient(135deg,#16a34a,#15803d)"
