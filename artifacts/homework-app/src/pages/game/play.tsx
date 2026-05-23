@@ -4170,551 +4170,538 @@ export default function GamePlay() {
     const winner = top3[0];
     const second = top3[1];
     const third = top3[2];
-    const rest = leaderboard.slice(3);
-
-    const MEDAL = {
-      1: {
-        podiumBg:  "linear-gradient(180deg, #C9930A 0%, #8B6200 55%, #4A3000 100%)",
-        topFace:   "rgba(255,210,80,0.30)",
-        border:    "rgba(232,184,75,0.60)",
-        glow:      "rgba(232,184,75,0.45)",
-        glowColor: "#E8B84B",
-        text:      "#E8B84B",
-        cardBg:    "rgba(232,184,75,0.08)",
-        height:    190,
-      },
-      2: {
-        podiumBg:  "linear-gradient(180deg, #7A8E9A 0%, #4A5E6A 55%, #222E36 100%)",
-        topFace:   "rgba(200,220,230,0.22)",
-        border:    "rgba(170,192,210,0.55)",
-        glow:      "rgba(170,192,210,0.32)",
-        glowColor: "#9AAABB",
-        text:      "#B0C8D8",
-        cardBg:    "rgba(170,192,210,0.07)",
-        height:    130,
-      },
-      3: {
-        podiumBg:  "linear-gradient(180deg, #9A6030 0%, #6A3A18 55%, #2A1206 100%)",
-        topFace:   "rgba(200,140,80,0.22)",
-        border:    "rgba(176,120,72,0.55)",
-        glow:      "rgba(176,120,72,0.32)",
-        glowColor: "#B07848",
-        text:      "#C89060",
-        cardBg:    "rgba(176,120,72,0.07)",
-        height:    90,
-      },
-    } as const;
 
     return (
       <>
         {reconnectBanner}
-        <div
-          className="min-h-screen flex flex-col items-center pb-16 overflow-x-hidden relative"
-          style={{ background: "linear-gradient(170deg, #040C07 0%, #080F0A 50%, #040C07 100%)" }}
-          dir={dir}
-        >
-          <MuteButton />
-          <SoundPickerButton />
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden"
+        style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+        dir={dir}
+      >
+        <MuteButton />
+        <SoundPickerButton />
 
-          {/* ── Multi-layer atmosphere ── */}
-          <div className="fixed inset-0 pointer-events-none z-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[560px]"
-              style={{ background: "radial-gradient(ellipse 65% 50% at 50% -5%, rgba(232,184,75,0.13) 0%, transparent 70%)" }} />
-            <div className="absolute top-[8%] left-1/2 -translate-x-1/2 w-[700px] h-[400px]"
-              style={{ background: "radial-gradient(ellipse 55% 45% at 50% 0%, rgba(180,130,40,0.07) 0%, transparent 70%)" }} />
-            <div className="absolute top-[25%] -left-[8%] w-[550px] h-[550px]"
-              style={{ background: "radial-gradient(circle, rgba(34,197,94,0.04) 0%, transparent 70%)" }} />
-            <div className="absolute top-[25%] -right-[8%] w-[550px] h-[550px]"
-              style={{ background: "radial-gradient(circle, rgba(16,185,129,0.04) 0%, transparent 70%)" }} />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[220px]"
-              style={{ background: "radial-gradient(ellipse 80% 100% at 50% 100%, rgba(232,184,75,0.05) 0%, transparent 70%)" }} />
-            {/* Drifting particles upward */}
-            {Array.from({ length: 20 }).map((_, i) => (
-              <motion.div
-                key={`fp-${i}`}
-                initial={{ y: (typeof window !== "undefined" ? window.innerHeight : 900) + 20, x: (i / 20) * (typeof window !== "undefined" ? window.innerWidth : 1200), opacity: 0 }}
-                animate={{ y: -20, opacity: [0, 0.45, 0.45, 0] }}
-                transition={{ duration: 9 + Math.random() * 7, delay: Math.random() * 9, repeat: Infinity, ease: "linear" }}
-                className="absolute rounded-full"
-                style={{ width: 1.5 + Math.random() * 2, height: 1.5 + Math.random() * 2, backgroundColor: i % 3 === 0 ? "#E8B84B" : i % 3 === 1 ? "rgba(255,255,255,0.65)" : "#94C48A" }}
-              />
-            ))}
-          </div>
-
-          {/* ── Header ── */}
-          <motion.div
-            initial={{ opacity: 0, y: -36 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center relative z-10 pt-12 pb-6 w-full max-w-5xl px-6"
-          >
+        <div className="fixed inset-0 pointer-events-none overflow-hidden">
+          {Array.from({ length: 30 }).map((_, i) => (
             <motion.div
-              animate={{ filter: ["drop-shadow(0 0 10px rgba(232,184,75,0.28))", "drop-shadow(0 0 30px rgba(232,184,75,0.62))", "drop-shadow(0 0 10px rgba(232,184,75,0.28))"] }}
-              transition={{ repeat: Infinity, duration: 3.2 }}
-              className="inline-block mb-5"
-            >
-              <Trophy className="w-16 h-16" style={{ color: "#E8B84B" }} />
-            </motion.div>
-            <h1 className="text-5xl sm:text-6xl font-black text-white mb-3 tracking-tight leading-none">
-              {lang === "ar" ? "انتهت اللعبة" : "Game Over"}
-            </h1>
-            <p className="text-sm sm:text-base font-medium tracking-wide" style={{ color: "rgba(232,184,75,0.60)" }}>
-              {lang === "ar" ? "مبروك للفائزين — أنتم الأبطال" : "Congratulations to the winners"}
-            </p>
-          </motion.div>
-
-          {/* ── Personal score ── */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.28, duration: 0.5 }}
-            className="relative z-10 mb-10"
-          >
-            <div
-              className="flex items-center gap-7 px-8 py-3.5 rounded-2xl"
-              style={{
-                background: "rgba(232,184,75,0.055)",
-                border: "1px solid rgba(232,184,75,0.18)",
-                backdropFilter: "blur(18px)",
-                boxShadow: "0 4px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+              key={`confetti-${i}`}
+              initial={{
+                y: -20,
+                x:
+                  Math.random() *
+                  (typeof window !== "undefined" ? window.innerWidth : 500),
+                opacity: 1,
               }}
-            >
-              <div className="text-center">
-                <div className="text-[10px] font-bold uppercase tracking-[0.22em] mb-1.5" style={{ color: "rgba(255,255,255,0.36)" }}>
-                  {lang === "ar" ? "نقاطك" : "Score"}
-                </div>
-                <div className="text-3xl font-black" style={{ color: "#E8B84B" }}>{myScore}</div>
-              </div>
-              {myRank > 0 && (
-                <>
-                  <div className="w-px h-12 rounded-full" style={{ background: "rgba(255,255,255,0.09)" }} />
-                  <div className="text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.22em] mb-1.5" style={{ color: "rgba(255,255,255,0.36)" }}>
-                      {lang === "ar" ? "المركز" : "Rank"}
-                    </div>
-                    <div className="text-3xl font-black text-white">#{myRank}</div>
-                  </div>
-                </>
-              )}
-            </div>
-          </motion.div>
-
-          {/* ── Individual Podium ── */}
-          {gameMode !== "teams" && top3.length > 0 && (
-            <div className="relative z-10 w-full max-w-3xl px-5 mb-10">
-              <div className="flex items-end justify-center gap-4 sm:gap-7">
-
-                {/* 2nd — left */}
-                {second ? (
-                  <motion.div
-                    className="flex flex-col items-center"
-                    style={{ flex: "0 0 28%" }}
-                    initial={{ y: 90, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.9, type: "spring", stiffness: 130, damping: 22 }}
-                  >
-                    <div className="w-full rounded-2xl p-4 flex flex-col items-center"
-                      style={{
-                        background: MEDAL[2].cardBg,
-                        border: `1px solid ${MEDAL[2].border}`,
-                        backdropFilter: "blur(18px)",
-                        boxShadow: `0 14px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04), 0 4px 24px ${MEDAL[2].glow}`,
-                      }}
-                    >
-                      <div className="relative mb-3">
-                        <div className="rounded-full p-[2px]"
-                          style={{ background: `linear-gradient(140deg, ${MEDAL[2].glowColor} 0%, transparent 60%)` }}>
-                          <AvatarDisplay avatar={second.avatar} size="3xl" />
-                        </div>
-                        <div className="absolute -bottom-2 -end-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white border"
-                          style={{ background: MEDAL[2].podiumBg, borderColor: MEDAL[2].border, boxShadow: `0 2px 10px ${MEDAL[2].glow}` }}>
-                          2
-                        </div>
-                      </div>
-                      <span className="font-black text-sm text-center w-full truncate mt-0.5"
-                        style={{ color: second.name === myName ? MEDAL[2].text : "rgba(255,255,255,0.92)" }}>
-                        {second.name}
-                      </span>
-                      <span className="font-black text-xl mt-1" style={{ color: MEDAL[2].text }}>{second.score}</span>
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.18em] mt-0.5" style={{ color: "rgba(255,255,255,0.32)" }}>
-                        {lang === "ar" ? "نقطة" : "pts"}
-                      </span>
-                    </div>
-                    <div className="w-full relative overflow-hidden rounded-t-lg"
-                      style={{
-                        height: MEDAL[2].height,
-                        background: MEDAL[2].podiumBg,
-                        border: `1px solid ${MEDAL[2].border}`,
-                        borderBottom: "none",
-                        boxShadow: `0 -6px 32px ${MEDAL[2].glow}, inset 0 1px 0 ${MEDAL[2].topFace}, 0 10px 40px rgba(0,0,0,0.5)`,
-                      }}
-                    >
-                      <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 h-1/4 bg-gradient-to-t from-black/35 to-transparent" />
-                    </div>
-                  </motion.div>
-                ) : <div style={{ flex: "0 0 28%" }} />}
-
-                {/* 1st — center, hero */}
-                {winner && (
-                  <motion.div
-                    className="flex flex-col items-center"
-                    style={{ flex: "0 0 40%" }}
-                    initial={{ y: 110, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.4, type: "spring", stiffness: 120, damping: 20 }}
-                  >
-                    {/* Crown */}
-                    <motion.div
-                      initial={{ y: -12, opacity: 0, scale: 0.7 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.72, type: "spring", stiffness: 200 }}
-                      className="mb-2"
-                      style={{ filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}
-                    >
-                      <svg width="36" height="28" viewBox="0 0 36 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 24L7 10L14 17L18 4L22 17L29 10L33 24H3Z" fill="#E8B84B" stroke="#C9930A" strokeWidth="1.5" strokeLinejoin="round"/>
-                        <rect x="3" y="24" width="30" height="3" rx="1.5" fill="#C9930A"/>
-                        <circle cx="18" cy="4" r="2.5" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                        <circle cx="7" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                        <circle cx="29" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                      </svg>
-                    </motion.div>
-
-                    {/* Winner card with float */}
-                    <motion.div
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ repeat: Infinity, duration: 4.0, ease: "easeInOut" }}
-                      className="w-full rounded-2xl p-5 flex flex-col items-center"
-                      style={{
-                        background: MEDAL[1].cardBg,
-                        border: `1px solid ${MEDAL[1].border}`,
-                        backdropFilter: "blur(20px)",
-                        boxShadow: `0 20px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(232,184,75,0.07), 0 0 50px ${MEDAL[1].glow}`,
-                      }}
-                    >
-                      <div className="relative mb-3">
-                        {/* Ambient glow ring */}
-                        <motion.div
-                          animate={{ opacity: [0.4, 0.8, 0.4] }}
-                          transition={{ repeat: Infinity, duration: 2.8 }}
-                          className="absolute inset-0 rounded-full"
-                          style={{ background: `radial-gradient(circle, ${MEDAL[1].glow} 0%, transparent 72%)`, transform: "scale(1.5)" }}
-                        />
-                        <div className="rounded-full p-[3px] relative z-10"
-                          style={{ background: `linear-gradient(140deg, ${MEDAL[1].glowColor}, rgba(232,184,75,0.35), ${MEDAL[1].glowColor})` }}>
-                          <AvatarDisplay avatar={winner.avatar} size="4xl" />
-                        </div>
-                        <div className="absolute -bottom-2 -end-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-white border-2 z-10"
-                          style={{ background: MEDAL[1].podiumBg, borderColor: MEDAL[1].glowColor, boxShadow: `0 2px 14px ${MEDAL[1].glow}` }}>
-                          1
-                        </div>
-                      </div>
-                      <span className="font-black text-lg text-center w-full truncate mt-1"
-                        style={{ color: winner.name === myName ? MEDAL[1].text : "white" }}>
-                        {winner.name}
-                      </span>
-                      <span className="font-black text-4xl mt-2" style={{ color: MEDAL[1].text, filter: `drop-shadow(0 0 14px ${MEDAL[1].glow})` }}>
-                        {winner.score}
-                      </span>
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.2em] mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-                        {lang === "ar" ? "نقطة" : "pts"}
-                      </span>
-                    </motion.div>
-
-                    {/* 1st platform */}
-                    <div className="w-full relative overflow-hidden rounded-t-lg"
-                      style={{
-                        height: MEDAL[1].height,
-                        background: MEDAL[1].podiumBg,
-                        border: `1px solid ${MEDAL[1].border}`,
-                        borderBottom: "none",
-                        boxShadow: `0 -10px 50px ${MEDAL[1].glow}, inset 0 1px 0 ${MEDAL[1].topFace}, 0 10px 60px rgba(0,0,0,0.65)`,
-                      }}
-                    >
-                      <div className="absolute top-0 inset-x-0 h-2/5 bg-gradient-to-b from-white/14 to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-black/45 to-transparent" />
-                      <div className="absolute inset-x-0 top-[48%] h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* 3rd — right */}
-                {third ? (
-                  <motion.div
-                    className="flex flex-col items-center"
-                    style={{ flex: "0 0 28%" }}
-                    initial={{ y: 70, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 1.15, type: "spring", stiffness: 130, damping: 22 }}
-                  >
-                    <div className="w-full rounded-2xl p-4 flex flex-col items-center"
-                      style={{
-                        background: MEDAL[3].cardBg,
-                        border: `1px solid ${MEDAL[3].border}`,
-                        backdropFilter: "blur(18px)",
-                        boxShadow: `0 14px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04), 0 4px 20px ${MEDAL[3].glow}`,
-                      }}
-                    >
-                      <div className="relative mb-3">
-                        <div className="rounded-full p-[2px]"
-                          style={{ background: `linear-gradient(140deg, ${MEDAL[3].glowColor} 0%, transparent 60%)` }}>
-                          <AvatarDisplay avatar={third.avatar} size="3xl" />
-                        </div>
-                        <div className="absolute -bottom-2 -end-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white border"
-                          style={{ background: MEDAL[3].podiumBg, borderColor: MEDAL[3].border, boxShadow: `0 2px 10px ${MEDAL[3].glow}` }}>
-                          3
-                        </div>
-                      </div>
-                      <span className="font-black text-sm text-center w-full truncate mt-0.5"
-                        style={{ color: third.name === myName ? MEDAL[3].text : "rgba(255,255,255,0.92)" }}>
-                        {third.name}
-                      </span>
-                      <span className="font-black text-xl mt-1" style={{ color: MEDAL[3].text }}>{third.score}</span>
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.18em] mt-0.5" style={{ color: "rgba(255,255,255,0.32)" }}>
-                        {lang === "ar" ? "نقطة" : "pts"}
-                      </span>
-                    </div>
-                    <div className="w-full relative overflow-hidden rounded-t-lg"
-                      style={{
-                        height: MEDAL[3].height,
-                        background: MEDAL[3].podiumBg,
-                        border: `1px solid ${MEDAL[3].border}`,
-                        borderBottom: "none",
-                        boxShadow: `0 -5px 26px ${MEDAL[3].glow}, inset 0 1px 0 ${MEDAL[3].topFace}, 0 10px 36px rgba(0,0,0,0.5)`,
-                      }}
-                    >
-                      <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent" />
-                      <div className="absolute bottom-0 inset-x-0 h-1/4 bg-gradient-to-t from-black/35 to-transparent" />
-                    </div>
-                  </motion.div>
-                ) : <div style={{ flex: "0 0 28%" }} />}
-              </div>
-            </div>
-          )}
-
-          {/* ── Teams podium ── */}
-          {gameMode === "teams" && teamLeaderboard.length > 0 && (() => {
-            const tf = teamLeaderboard[0];
-            const ts = teamLeaderboard[1];
-            const tt = teamLeaderboard[2];
-            return (
-              <div className="relative z-10 w-full max-w-3xl px-5 mb-10">
-                <div className="flex items-end justify-center gap-4 sm:gap-7">
-                  {ts ? (
-                    <motion.div className="flex flex-col items-center" style={{ flex: "0 0 28%" }}
-                      initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.9, type: "spring" }}
-                    >
-                      <div className="w-full rounded-2xl p-4 flex flex-col items-center"
-                        style={{ background: MEDAL[2].cardBg, border: `1px solid ${MEDAL[2].border}`, backdropFilter: "blur(18px)", boxShadow: `0 14px 48px rgba(0,0,0,0.4), 0 4px 24px ${MEDAL[2].glow}` }}>
-                        <span className="font-black text-sm text-center w-full truncate" style={{ color: ts.teamName === myTeam ? MEDAL[2].text : "rgba(255,255,255,0.92)" }} title={ts.teamName}>{ts.teamName}</span>
-                        <span className="font-black text-xl mt-1" style={{ color: MEDAL[2].text }}>{ts.totalScore}</span>
-                      </div>
-                      <div className="w-full relative overflow-hidden rounded-t-lg"
-                        style={{ height: MEDAL[2].height, background: MEDAL[2].podiumBg, border: `1px solid ${MEDAL[2].border}`, borderBottom: "none", boxShadow: `0 -6px 32px ${MEDAL[2].glow}` }}>
-                        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent" />
-                      </div>
-                    </motion.div>
-                  ) : <div style={{ flex: "0 0 28%" }} />}
-
-                  {tf && (
-                    <motion.div className="flex flex-col items-center" style={{ flex: "0 0 40%" }}
-                      initial={{ y: 110, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4, type: "spring" }}
-                    >
-                      <motion.div initial={{ y: -12, opacity: 0, scale: 0.7 }} animate={{ y: 0, opacity: 1, scale: 1 }} transition={{ delay: 0.72, type: "spring" }} className="mb-2"
-                        style={{ filter: "drop-shadow(0 3px 10px rgba(232,184,75,0.55))" }}>
-                        <svg width="36" height="28" viewBox="0 0 36 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 24L7 10L14 17L18 4L22 17L29 10L33 24H3Z" fill="#E8B84B" stroke="#C9930A" strokeWidth="1.5" strokeLinejoin="round"/>
-                          <rect x="3" y="24" width="30" height="3" rx="1.5" fill="#C9930A"/>
-                          <circle cx="18" cy="4" r="2.5" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                          <circle cx="7" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                          <circle cx="29" cy="10" r="2" fill="#FFF3C0" stroke="#E8B84B" strokeWidth="1"/>
-                        </svg>
-                      </motion.div>
-                      <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 4.0, ease: "easeInOut" }}
-                        className="w-full rounded-2xl p-5 flex flex-col items-center"
-                        style={{ background: MEDAL[1].cardBg, border: `1px solid ${MEDAL[1].border}`, backdropFilter: "blur(20px)", boxShadow: `0 20px 70px rgba(0,0,0,0.55), 0 0 50px ${MEDAL[1].glow}` }}>
-                        <span className="font-black text-lg text-center w-full truncate mt-1" style={{ color: tf.teamName === myTeam ? MEDAL[1].text : "white" }} title={tf.teamName}>{tf.teamName}</span>
-                        <span className="font-black text-4xl mt-2" style={{ color: MEDAL[1].text, filter: `drop-shadow(0 0 14px ${MEDAL[1].glow})` }}>{tf.totalScore}</span>
-                      </motion.div>
-                      <div className="w-full relative overflow-hidden rounded-t-lg"
-                        style={{ height: MEDAL[1].height, background: MEDAL[1].podiumBg, border: `1px solid ${MEDAL[1].border}`, borderBottom: "none", boxShadow: `0 -10px 50px ${MEDAL[1].glow}` }}>
-                        <div className="absolute top-0 inset-x-0 h-2/5 bg-gradient-to-b from-white/14 to-transparent" />
-                        <div className="absolute bottom-0 inset-x-0 h-1/3 bg-gradient-to-t from-black/45 to-transparent" />
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {tt ? (
-                    <motion.div className="flex flex-col items-center" style={{ flex: "0 0 28%" }}
-                      initial={{ y: 70, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 1.15, type: "spring" }}
-                    >
-                      <div className="w-full rounded-2xl p-4 flex flex-col items-center"
-                        style={{ background: MEDAL[3].cardBg, border: `1px solid ${MEDAL[3].border}`, backdropFilter: "blur(18px)", boxShadow: `0 14px 48px rgba(0,0,0,0.4), 0 4px 20px ${MEDAL[3].glow}` }}>
-                        <span className="font-black text-sm text-center w-full truncate" style={{ color: tt.teamName === myTeam ? MEDAL[3].text : "rgba(255,255,255,0.92)" }} title={tt.teamName}>{tt.teamName}</span>
-                        <span className="font-black text-xl mt-1" style={{ color: MEDAL[3].text }}>{tt.totalScore}</span>
-                      </div>
-                      <div className="w-full relative overflow-hidden rounded-t-lg"
-                        style={{ height: MEDAL[3].height, background: MEDAL[3].podiumBg, border: `1px solid ${MEDAL[3].border}`, borderBottom: "none", boxShadow: `0 -5px 26px ${MEDAL[3].glow}` }}>
-                        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent" />
-                      </div>
-                    </motion.div>
-                  ) : <div style={{ flex: "0 0 28%" }} />}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── Leaderboard ── */}
-          {(gameMode !== "teams" ? rest : teamLeaderboard.slice(3)).length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.65 }}
-              className="relative z-10 w-full max-w-3xl px-5 mb-6"
-            >
-              <div className="rounded-2xl overflow-hidden"
-                style={{
-                  background: "rgba(255,255,255,0.028)",
-                  border: "1px solid rgba(255,255,255,0.065)",
-                  backdropFilter: "blur(20px)",
-                  boxShadow: "0 8px 48px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.04)",
-                }}
-              >
-                <div className="flex items-center justify-between px-6 py-4"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.048)" }}>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "rgba(232,184,75,0.58)" }}>
-                    {lang === "ar" ? "ترتيب المشاركين" : "Leaderboard"}
-                  </span>
-                  <span className="text-[11px] font-medium" style={{ color: "rgba(255,255,255,0.28)" }}>
-                    {lang === "ar" ? `${leaderboard.length} مشارك` : `${leaderboard.length} players`}
-                  </span>
-                </div>
-                <div className="max-h-52 overflow-y-auto">
-                  {gameMode !== "teams"
-                    ? rest.map((entry, i) => (
-                      <motion.div
-                        key={entry.name}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 1.75 + i * 0.055 }}
-                        className="group flex items-center gap-4 px-6 py-3 transition-colors duration-200 cursor-default"
-                        style={i > 0 ? { borderTop: "1px solid rgba(255,255,255,0.038)" } : undefined}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.032)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; }}
-                      >
-                        <span className="w-7 text-center text-sm font-black shrink-0" style={{ color: "rgba(255,255,255,0.26)" }}>{i + 4}</span>
-                        <AvatarDisplay avatar={entry.avatar} size="lg" />
-                        <span className="flex-1 font-semibold text-sm truncate"
-                          style={{ color: entry.name === myName ? "#E8B84B" : "rgba(255,255,255,0.88)" }}>
-                          {entry.name}
-                        </span>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="font-black text-sm tabular-nums" style={{ color: "rgba(255,255,255,0.52)" }}>
-                            {entry.score}
-                          </span>
-                          {entry.streak >= 2 && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                              style={{ background: "rgba(251,146,60,0.12)", color: "#FB923C", border: "1px solid rgba(251,146,60,0.22)" }}>
-                              {entry.streak}×
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))
-                    : teamLeaderboard.slice(3).map((team, i) => (
-                      <div key={team.teamName}
-                        className="flex items-center gap-4 px-6 py-3"
-                        style={i > 0 ? { borderTop: "1px solid rgba(255,255,255,0.038)" } : undefined}
-                      >
-                        <span className="w-7 text-center text-sm font-black shrink-0" style={{ color: "rgba(255,255,255,0.26)" }}>{i + 4}</span>
-                        <span className="flex-1 font-semibold text-sm truncate"
-                          style={{ color: team.teamName === myTeam ? "#E8B84B" : "rgba(255,255,255,0.88)" }}>
-                          {team.teamName}
-                        </span>
-                        <span className="font-black text-sm tabular-nums shrink-0" style={{ color: "rgba(255,255,255,0.52)" }}>{team.totalScore}</span>
-                      </div>
-                    ))
-                  }
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Share ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.0 }}
-            className="relative z-10 w-full max-w-2xl px-5 mb-5"
-          >
-            <div className="rounded-2xl p-5"
-              style={{
-                background: "rgba(255,255,255,0.028)",
-                border: "1px solid rgba(255,255,255,0.065)",
-                backdropFilter: "blur(20px)",
-                boxShadow: "0 8px 36px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)",
+              animate={{
+                y:
+                  (typeof window !== "undefined" ? window.innerHeight : 800) +
+                  20,
+                opacity: 0,
+                rotate: Math.random() * 720,
               }}
-            >
-              <p className="text-xs text-center mb-4 font-medium tracking-wide" style={{ color: "rgba(255,255,255,0.36)" }}>
-                {lang === "ar" ? "شارك رابط اللعبة" : "Share the game link"}
-              </p>
-              <div className={`flex items-center gap-2 rounded-xl px-4 py-2.5 mb-4 ${lang === "ar" ? "flex-row-reverse" : ""}`}
-                style={{ background: "rgba(0,0,0,0.32)", border: "1px solid rgba(255,255,255,0.055)" }}>
-                <span className="text-xs flex-1 truncate font-mono" style={{ color: "rgba(255,255,255,0.42)" }} dir="ltr">
-                  {`${window.location.origin}/game/join/${pin}`}
-                </span>
-              </div>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/game/join/${pin}`)
-                      .then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2000); });
+              transition={{
+                duration: 3 + Math.random() * 2,
+                delay: Math.random() * 2,
+                repeat: Infinity,
+              }}
+              className="absolute w-2.5 h-2.5 rounded-full"
+              style={{
+                backgroundColor: [
+                  "#fbbf24",
+                  "#f59e0b",
+                  "#fcd34d",
+                  "#fde68a",
+                  "#d946ef",
+                  "#a855f7",
+                ][i % 6],
+              }}
+            />
+          ))}
+          {Array.from({ length: 6 }).map((_, burstIdx) => {
+            const cx = 15 + Math.random() * 70;
+            const cy = 10 + Math.random() * 50;
+            const colors = [
+              "#ef4444",
+              "#f59e0b",
+              "#10b981",
+              "#3b82f6",
+              "#8b5cf6",
+              "#ec4899",
+            ];
+            return Array.from({ length: 12 }).map((_, j) => {
+              const angle = (j / 12) * Math.PI * 2;
+              const dist = 60 + Math.random() * 80;
+              return (
+                <motion.div
+                  key={`fw-${burstIdx}-${j}`}
+                  initial={{ x: `${cx}%`, y: `${cy}%`, scale: 0, opacity: 1 }}
+                  animate={{
+                    x: `calc(${cx}% + ${Math.cos(angle) * dist}px)`,
+                    y: `calc(${cy}% + ${Math.sin(angle) * dist}px)`,
+                    scale: [0, 1.5, 0],
+                    opacity: [0, 1, 0],
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #173022, #2A5A3A)", boxShadow: "0 2px 16px rgba(0,0,0,0.35)" }}
-                >
-                  {shareCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {shareCopied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : (lang === "ar" ? "نسخ الرابط" : "Copy Link")}
-                </button>
-                {typeof navigator.share === "function" && (
-                  <button
-                    onClick={() => navigator.share({ title: lang === "ar" ? "انضم إلى المسابقة!" : "Join the game!", text: lang === "ar" ? `انضم باستخدام الرمز: ${pin}` : `Join with PIN: ${pin}`, url: `${window.location.origin}/game/join/${pin}` }).catch(() => {})}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, #9A6000, #C89018)", boxShadow: "0 2px 16px rgba(0,0,0,0.35)" }}
-                  >
-                    <Share2 className="w-4 h-4" />
-                    {lang === "ar" ? "مشاركة" : "Share"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </motion.div>
+                  transition={{
+                    duration: 1.2,
+                    delay: burstIdx * 0.5 + 0.5,
+                    repeat: Infinity,
+                    repeatDelay: 3 + Math.random() * 2,
+                  }}
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: colors[(burstIdx + j) % colors.length],
+                    boxShadow: `0 0 6px ${colors[(burstIdx + j) % colors.length]}`,
+                  }}
+                />
+              );
+            });
+          })}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <motion.div
+              key={`glow-${i}`}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 0.6, 0], scale: [0, 1, 0] }}
+              transition={{
+                duration: 1.5,
+                delay: i * 0.7 + 0.3,
+                repeat: Infinity,
+                repeatDelay: 3,
+              }}
+              className="absolute rounded-full"
+              style={{
+                left: `${15 + Math.random() * 70}%`,
+                top: `${10 + Math.random() * 50}%`,
+                width: 120,
+                height: 120,
+                background: `radial-gradient(circle, ${["rgba(251,191,36,0.4)", "rgba(236,72,153,0.4)", "rgba(139,92,246,0.4)", "rgba(16,185,129,0.4)"][i]} 0%, transparent 70%)`,
+              }}
+            />
+          ))}
+        </div>
 
-          {/* ── Footer ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-6 relative z-10"
+        >
+          <motion.div
+            animate={{ rotate: [0, -5, 5, 0], scale: [1, 1.1, 1] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+          >
+            <Trophy className="w-14 h-14 mx-auto mb-3" style={{ color: "#E8B84B", filter: "drop-shadow(0 0 18px rgba(232,184,75,0.5))" }} />
+          </motion.div>
+          <p className="text-lg" style={{ color: "rgba(255,255,255,0.85)" }}>
+            {t.gamePlay.yourScore}{" "}
+            <span className="font-black text-2xl" style={{ color: "#E8B84B" }}>
+              {myScore}
+            </span>
+            {myRank > 0 && (
+              <>
+                {" "}
+                — {t.gamePlay.rank}{" "}
+                <span className="font-black text-2xl text-white">
+                  {myRank}
+                </span>
+              </>
+            )}
+          </p>
+        </motion.div>
+
+        {gameMode !== "teams" && top3.length > 0 && (
+          <div className="flex items-end justify-center gap-3 sm:gap-5 mb-8 relative z-10 w-full max-w-lg">
+            {second && (
+              <motion.div
+                initial={{ y: 80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 1, type: "spring", bounce: 0.4 }}
+                className="flex flex-col items-center flex-1"
+              >
+                <AvatarDisplay avatar={second.avatar} size="4xl" className="mb-1" />
+                <span className="text-white font-bold text-sm mb-1 max-w-[90px] truncate">
+                  {second.name}
+                </span>
+                <span className="font-black text-lg mb-2" style={{ color: "rgba(255,255,255,0.85)" }}>
+                  {second.score}
+                </span>
+                <div className="w-full h-28 bg-gradient-to-t from-gray-600 to-gray-400 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-gray-500/30 border-t-4 border-gray-300 relative">
+                  <span className="text-6xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] leading-none">
+                    2
+                  </span>
+                </div>
+              </motion.div>
+            )}
+            {winner && (
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5, type: "spring", bounce: 0.4 }}
+                className="flex flex-col items-center flex-1 -mt-4"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5 }}
+                  className="relative"
+                >
+                  <AvatarDisplay avatar={winner.avatar} size="4xl" className="drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]" />
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 3,
+                      ease: "linear",
+                    }}
+                    className={`absolute -top-3 ${lang === "ar" ? "-left-3" : "-right-3"}`}
+                  >
+                    <span className="text-2xl">👑</span>
+                  </motion.div>
+                </motion.div>
+                <span className="text-white font-black text-base mt-1 mb-0.5 max-w-[100px] truncate">
+                  {winner.name}
+                </span>
+                <span className="font-black text-2xl mb-2" style={{ color: "#E8B84B", filter: "drop-shadow(0 0 10px rgba(232,184,75,0.5))" }}>
+                  {winner.score}
+                </span>
+                <div className="w-full h-40 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-2xl flex flex-col items-center justify-center shadow-xl shadow-yellow-500/40 border-t-4 border-yellow-300 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
+                  <span className="text-7xl font-black text-white relative z-10 drop-shadow-[0_0_14px_rgba(255,255,255,0.6)] leading-none">
+                    1
+                  </span>
+                </div>
+              </motion.div>
+            )}
+            {third && (
+              <motion.div
+                initial={{ y: 60, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 1.3, type: "spring", bounce: 0.4 }}
+                className="flex flex-col items-center flex-1"
+              >
+                <AvatarDisplay avatar={third.avatar} size="4xl" className="mb-1" />
+                <span className="text-white font-bold text-sm mb-1 max-w-[90px] truncate">
+                  {third.name}
+                </span>
+                <span className="font-black text-lg mb-2" style={{ color: "#D9A961" }}>
+                  {third.score}
+                </span>
+                <div className="w-full h-20 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-amber-700/30 border-t-4 border-amber-500 relative">
+                  <span className="text-5xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] leading-none">
+                    3
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {leaderboard.length > 3 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 2.3 }}
-            className="relative z-10 flex flex-col items-center gap-3 px-4"
+            transition={{ delay: 2 }}
+            className="relative z-10 w-full max-w-md mb-6"
           >
-            <p className="text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.30)" }}>
-              {lang === "ar" ? "انتظر المعلم لإعادة اللعبة..." : "Waiting for teacher to replay..."}
-            </p>
-            <button
-              onClick={() => setLocation("/")}
-              className="px-8 py-3 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
-              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.58)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.82)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.58)"; }}
+            <div
+              className="rounded-2xl p-4 max-h-[150px] overflow-y-auto"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              {t.gamePlay.backToHome}
-            </button>
+              {leaderboard.slice(3).map((entry, i) => (
+                <div
+                  key={entry.name}
+                  className="flex items-center gap-3 py-2"
+                  style={i > 0 ? { borderTop: "1px solid rgba(255,255,255,0.08)" } : undefined}
+                >
+                  <span className="font-black text-sm w-6 text-center" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {i + 4}
+                  </span>
+                  <AvatarDisplay avatar={entry.avatar} size="lg" />
+                  <span
+                    className="font-bold flex-1 truncate text-sm"
+                    style={{ color: entry.name === myName ? "#E8B84B" : "rgba(255,255,255,0.85)" }}
+                  >
+                    {entry.name}
+                  </span>
+                  <span className="font-bold text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                    {entry.score}
+                  </span>
+                </div>
+              ))}
+            </div>
           </motion.div>
-        </div>
+        )}
+
+        {gameMode === "teams" &&
+          teamLeaderboard.length > 0 &&
+          (() => {
+            const teamFirst = teamLeaderboard[0];
+            const teamSecond = teamLeaderboard[1];
+            const teamThird = teamLeaderboard[2];
+            return (
+              <>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring" }}
+                  className="relative z-10 w-full max-w-md mb-6"
+                >
+                  <div
+                    className="rounded-2xl p-5 text-center"
+                    style={{
+                      background: "rgba(232,184,75,0.12)",
+                      border: "1px solid rgba(232,184,75,0.4)",
+                      boxShadow: "0 0 24px rgba(232,184,75,0.15)",
+                    }}
+                  >
+                    <Trophy className="w-9 h-9 mx-auto mb-1" style={{ color: "#E8B84B" }} />
+                    <h3 className="text-white font-black text-base">
+                      🏆 {t.teacherGame.winningTeam}
+                    </h3>
+                    <p className="font-black text-3xl mt-1" style={{ color: "#E8B84B" }}>
+                      {teamFirst?.teamName}
+                    </p>
+                    <p className="font-bold text-sm mt-1" style={{ color: "rgba(255,255,255,0.85)" }}>
+                      {teamFirst?.totalScore} {t.teacherGame.pointsLabel}
+                    </p>
+                  </div>
+                </motion.div>
+
+                <div className="flex items-end justify-center gap-3 sm:gap-5 mb-6 relative z-10 w-full max-w-lg">
+                  {teamSecond && (
+                    <motion.div
+                      initial={{ y: 80, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 1, type: "spring", bounce: 0.4 }}
+                      className="flex flex-col items-center flex-1"
+                    >
+                      <span
+                        className="font-black text-sm mb-1 max-w-full truncate text-center"
+                        style={{ color: teamSecond.teamName === myTeam ? "#E8B84B" : "white" }}
+                        title={teamSecond.teamName}
+                      >
+                        {teamSecond.teamName}
+                      </span>
+                      <span className="font-black text-lg mb-2" style={{ color: "rgba(255,255,255,0.85)" }}>
+                        {teamSecond.totalScore}
+                      </span>
+                      <div className="w-full h-28 bg-gradient-to-t from-gray-600 to-gray-400 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-gray-500/30 border-t-4 border-gray-300">
+                        <span className="text-6xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] leading-none">
+                          2
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                  {teamFirst && (
+                    <motion.div
+                      initial={{ y: 100, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.5, type: "spring", bounce: 0.4 }}
+                      className="flex flex-col items-center flex-1 -mt-4"
+                    >
+                      <motion.div
+                        animate={{ rotate: [0, -5, 5, 0] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="relative mb-1"
+                      >
+                        <Trophy className="w-10 h-10 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]" />
+                      </motion.div>
+                      <span
+                        className="font-black text-base mt-1 mb-0.5 max-w-full truncate text-center"
+                        style={{ color: teamFirst.teamName === myTeam ? "#E8B84B" : "white" }}
+                        title={teamFirst.teamName}
+                      >
+                        {teamFirst.teamName}
+                      </span>
+                      <span className="font-black text-2xl mb-2" style={{ color: "#E8B84B", filter: "drop-shadow(0 0 10px rgba(232,184,75,0.5))" }}>
+                        {teamFirst.totalScore}
+                      </span>
+                      <div className="w-full h-40 bg-gradient-to-t from-yellow-600 via-yellow-500 to-yellow-400 rounded-t-2xl flex flex-col items-center justify-center shadow-xl shadow-yellow-500/40 border-t-4 border-yellow-300 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
+                        <span className="text-7xl font-black text-white relative z-10 drop-shadow-[0_0_14px_rgba(255,255,255,0.6)] leading-none">
+                          1
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                  {teamThird && (
+                    <motion.div
+                      initial={{ y: 60, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 1.3, type: "spring", bounce: 0.4 }}
+                      className="flex flex-col items-center flex-1"
+                    >
+                      <span
+                        className="font-black text-sm mb-1 max-w-full truncate text-center"
+                        style={{ color: teamThird.teamName === myTeam ? "#E8B84B" : "white" }}
+                        title={teamThird.teamName}
+                      >
+                        {teamThird.teamName}
+                      </span>
+                      <span className="font-black text-lg mb-2" style={{ color: "#D9A961" }}>
+                        {teamThird.totalScore}
+                      </span>
+                      <div className="w-full h-20 bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-2xl flex flex-col items-center justify-center shadow-lg shadow-amber-700/30 border-t-4 border-amber-500">
+                        <span className="text-5xl font-black text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] leading-none">
+                          3
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                {teamLeaderboard.length > 3 && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.8 }}
+                    className="relative z-10 w-full max-w-md mb-6"
+                  >
+                    <div
+                      className="rounded-2xl p-4"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    >
+                      <div className="space-y-2">
+                        {teamLeaderboard.slice(3).map((team, i) => (
+                          <div
+                            key={team.teamName}
+                            className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                            style={
+                              team.teamName === myTeam
+                                ? { background: "rgba(232,184,75,0.15)", border: "1px solid rgba(232,184,75,0.4)" }
+                                : { background: "rgba(255,255,255,0.04)" }
+                            }
+                          >
+                            <span className="font-black w-6 text-center" style={{ color: "rgba(255,255,255,0.6)" }}>
+                              {i + 4}
+                            </span>
+                            <span className="flex-1 font-bold truncate text-white">
+                              {team.teamName}
+                            </span>
+                            <span className="font-black" style={{ color: "#E8B84B" }}>
+                              {team.totalScore}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </>
+            );
+          })()}
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.2 }}
+          className="relative z-10 w-full max-w-md mb-4"
+        >
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <p className="text-xs text-center mb-3 font-medium" style={{ color: "rgba(255,255,255,0.75)" }}>
+              {lang === "ar"
+                ? "📤 شارك رابط اللعبة مع أصدقائك!"
+                : "📤 Share the game link with friends!"}
+            </p>
+            <div
+              className={`flex items-center gap-2 rounded-xl px-3 py-2 mb-3 ${lang === "ar" ? "flex-row-reverse" : ""}`}
+              style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <span
+                className="text-xs flex-1 truncate font-mono"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+                dir="ltr"
+              >
+                {`${window.location.origin}/game/join/${pin}`}
+              </span>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(`${window.location.origin}/game/join/${pin}`)
+                    .then(() => {
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+                    });
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-white rounded-xl text-sm font-bold transition-all"
+                style={{ background: "linear-gradient(135deg, #1A3A28, #2D6A44)", boxShadow: "0 2px 12px rgba(26,58,40,0.4)" }}
+              >
+                {shareCopied ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                {shareCopied
+                  ? lang === "ar"
+                    ? "تم النسخ!"
+                    : "Copied!"
+                  : lang === "ar"
+                    ? "نسخ الرابط"
+                    : "Copy Link"}
+              </button>
+              {typeof navigator.share === "function" && (
+                <button
+                  onClick={() =>
+                    navigator
+                      .share({
+                        title:
+                          lang === "ar"
+                            ? "انضم إلى المسابقة!"
+                            : "Join the game!",
+                        text:
+                          lang === "ar"
+                            ? `انضم إلى اللعبة باستخدام الرمز: ${pin}`
+                            : `Join the game with PIN: ${pin}`,
+                        url: `${window.location.origin}/game/join/${pin}`,
+                      })
+                      .catch(() => {})
+                  }
+                  className="flex items-center gap-2 px-4 py-2 text-white rounded-xl text-sm font-bold transition-all"
+                  style={{ background: "linear-gradient(135deg, #C9960C, #E8B84B)", boxShadow: "0 2px 12px rgba(201,150,12,0.4)" }}
+                >
+                  <Share2 className="w-4 h-4" />
+                  {lang === "ar" ? "مشاركة" : "Share"}
+                </button>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2.5 }}
+          className="relative z-10 flex flex-col items-center gap-3"
+        >
+          <p className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.7)" }}>
+            {lang === "ar"
+              ? "انتظر المعلم لإعادة اللعبة..."
+              : "Waiting for teacher to replay..."}
+          </p>
+          <button
+            onClick={() => setLocation("/")}
+            className="px-8 py-3 text-white rounded-xl font-bold transition-all"
+            style={{
+              background: "rgba(255,255,255,0.08)",
+              border: "1.5px solid rgba(232,184,75,0.35)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(232,184,75,0.15)";
+              e.currentTarget.style.borderColor = "rgba(232,184,75,0.6)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.borderColor = "rgba(232,184,75,0.35)";
+            }}
+          >
+            {t.gamePlay.backToHome}
+          </button>
+        </motion.div>
+      </div>
       </>
     );
   }
