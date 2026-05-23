@@ -1529,6 +1529,13 @@ export default function TugPlay() {
       setQuestion(data);
       setIsPowerQ(!!data.isPower);
       setIsPaused(false);
+      setSelectedAnswer(null);
+      setAnswerCorrect(null);
+      setAnswerCorrectIndex(null);
+      setRoundData(null);
+      setScorePopup(null);
+      setCheerMsg(null);
+      setShowBoost(false);
       setPhase("question");
       startTimer(data.duration);
       getSound().startBackground();
@@ -1656,12 +1663,19 @@ export default function TugPlay() {
   const handleAnswer = (idx: number) => {
     if (selectedAnswer !== null || phase !== "question") return;
     setSelectedAnswer(idx);
-    getTugSocket().emit("tug:answer", { pin, answerIndex: idx },
+    const selectedText = question?.options[idx];
+    getTugSocket().emit("tug:answer", { pin, answerIndex: idx, answerText: selectedText },
       (res: { correct?: boolean; isBoost?: boolean; isPower?: boolean; streak?: number; correctIndex?: number; error?: string }) => {
-        if (res.error) return;
-        const correct = !!res.correct;
+        if (res.error) {
+          setSelectedAnswer(null);
+          setError(res.error);
+          return;
+        }
+        const serverCorrectIndex = typeof res.correctIndex === "number" ? res.correctIndex : undefined;
+        const serverCorrectText = serverCorrectIndex !== undefined ? question?.options[serverCorrectIndex] : undefined;
+        const correct = !!res.correct || (!!selectedText && !!serverCorrectText && selectedText === serverCorrectText);
         setAnswerCorrect(correct);
-        if (res.correctIndex !== undefined) setAnswerCorrectIndex(res.correctIndex);
+        if (serverCorrectIndex !== undefined) setAnswerCorrectIndex(serverCorrectIndex);
         setPhase("answered");
 
         if (correct) {
