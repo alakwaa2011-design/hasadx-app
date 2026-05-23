@@ -1357,15 +1357,24 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
                 <button
                   type="button"
                   onClick={onCopyLink}
-                  className="flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-bold transition-all hover:shadow-[0_0_20px_rgba(212,166,58,0.15)]"
+                  className="mt-1 flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-3 text-sm font-black transition-all active:scale-95"
                   style={{
-                    borderColor: P.border,
-                    background: "rgba(2,20,12,0.5)",
-                    color: P.muted,
+                    background: linkCopied
+                      ? "linear-gradient(135deg,#16a34a,#15803d)"
+                      : "linear-gradient(135deg,#d4a63a,#f4c95d,#d4a63a)",
+                    color: linkCopied ? "#fff" : "#0a1a0c",
+                    boxShadow: linkCopied
+                      ? "0 0 18px rgba(34,197,94,0.35)"
+                      : "0 4px 20px rgba(212,166,58,0.45), 0 0 40px rgba(244,201,93,0.18)",
+                    border: "none",
                   }}
                 >
-                  {linkCopied ? <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> : <Link2 className="h-3.5 w-3.5 text-[#d4a63a]" />}
-                  {linkCopied ? (isAr ? "تم النسخ!" : "Copied!") : isAr ? "نسخ رابط الانضمام" : "Copy join link"}
+                  {linkCopied
+                    ? <CheckCircle className="h-4.5 w-4.5 shrink-0" />
+                    : <Link2 className="h-4.5 w-4.5 shrink-0" />}
+                  {linkCopied
+                    ? (isAr ? "✓ تم نسخ الرابط!" : "✓ Link copied!")
+                    : (isAr ? "نسخ رابط الانضمام" : "Copy join link")}
                 </button>
               </div>
 
