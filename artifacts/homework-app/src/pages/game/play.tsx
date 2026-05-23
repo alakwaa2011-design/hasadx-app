@@ -4369,7 +4369,7 @@ export default function GamePlay() {
                   >
                     <div className="relative mb-2"
                       style={{ filter: `drop-shadow(0 0 14px ${MEDAL[1].glow})` }}>
-                      <AvatarDisplay avatar={winner.avatar} size="5xl" />
+                      <AvatarDisplay avatar={winner.avatar} size="4xl" />
                       <div
                         className="absolute -bottom-1.5 -end-1.5 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-white"
                         style={{ background: MEDAL[1].podiumBg, boxShadow: `0 0 12px ${MEDAL[1].glow}` }}
