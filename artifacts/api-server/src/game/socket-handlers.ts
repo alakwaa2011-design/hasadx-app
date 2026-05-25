@@ -602,14 +602,9 @@ function scheduleAutoAdvance(io: Server, game: Game) {
     return;
   }
 
-  // Solo challenge: no inter-question delay — advance immediately so the
-  // player experience matches Duolingo / Kahoot Challenge mode. The 5-second
-  // multiplayer buffer (for teachers/spectators to read the leaderboard) is
-  // irrelevant when there is only one player.
-  const advanceDelay = game.gameMode === "solo" ? 0 : AUTO_ADVANCE_DELAY_MS;
   game.autoAdvanceTimerId = setTimeout(() => {
     doAutoAdvance(io, game.pin);
-  }, advanceDelay);
+  }, AUTO_ADVANCE_DELAY_MS);
 }
 
 function deferredEndQuestion(io: Server, game: Game) {
