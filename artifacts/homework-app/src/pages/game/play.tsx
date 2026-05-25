@@ -3105,7 +3105,7 @@ export default function GamePlay() {
           )}
         </div>
 
-        <div className={`flex-shrink-0 ${isSoloRef.current && !hackMode ? "pt-2 pb-1" : "px-4 py-6"}`}>
+        <div className={`flex-shrink-0 ${isSoloRef.current && !hackMode ? "pt-1 pb-0" : "px-4 py-6"}`}>
           {isDoublePoints && pointsEnabled && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
@@ -3581,7 +3581,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[96%] max-w-[960px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-3 pb-4" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[96%] max-w-[960px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-2 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3839,6 +3839,8 @@ export default function GamePlay() {
               />
               <span className="text-[11px] sm:text-xs font-medium">
                 Powered by <span className="font-bold">حصاد</span>
+                <span className="text-white/25 mx-1.5">·</span>
+                <span className="text-white/35">أنشئ مسابقاتك التفاعلية</span>
               </span>
             </a>
             <div className="flex items-center gap-4 sm:gap-5">

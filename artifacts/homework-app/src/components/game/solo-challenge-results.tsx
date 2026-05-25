@@ -81,9 +81,10 @@ export function SoloChallengeResults({
     totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
+  // Share message carries the HasadX brand + a hook before the link.
   const shareText = isAr
-    ? `أجبت على ${correctCount} من ${totalQuestions} سؤالاً في مسابقة «${soloChallengeTitle || soloSlug}»! هل تستطيع التفوق عليّ؟ 🎯\nالعب الآن: ${challengeUrl}`
-    : `I answered ${correctCount}/${totalQuestions} in "${soloChallengeTitle || soloSlug}"! Can you beat me? 🎯\nPlay now: ${challengeUrl}`;
+    ? `جرّب هذا التحدي التفاعلي على حصاد X ✨\n${challengeUrl}`
+    : `Try this interactive challenge on HasadX ✨\n${challengeUrl}`;
 
   // Match rank by correctCount (now stored as score) + name.
   const myRankIdx = (() => {
@@ -336,6 +337,50 @@ export function SoloChallengeResults({
             )}
           </div>
         </motion.div>
+
+        {/* ── HasadX CTA — slim glass card, shown before action buttons ── */}
+        <motion.a
+          href="https://hasadx.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="mt-3 sm:mt-4 flex items-center gap-3 rounded-xl sm:rounded-2xl px-4 py-3 sm:py-3.5 group transition-all hover:brightness-105 active:scale-[0.99]"
+          style={{
+            background: "rgba(232,184,75,0.07)",
+            border: "1px solid rgba(232,184,75,0.22)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <img
+            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            alt=""
+            aria-hidden
+            className="w-9 h-9 rounded-lg object-cover opacity-90 shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-xs sm:text-sm leading-snug">
+              {isAr
+                ? "أنشئ مسابقاتك وعروضك التفاعلية مع حصاد X"
+                : "Create interactive quizzes with HasadX"}
+            </p>
+            <p className="text-white/45 text-[10px] sm:text-xs mt-0.5 truncate">
+              {isAr
+                ? "الذكاء الاصطناعي • المسابقات • الواجبات • التفاعل المباشر"
+                : "AI · Quizzes · Homework · Live Interaction"}
+            </p>
+          </div>
+          <span
+            className="shrink-0 inline-flex items-center px-3 py-1.5 rounded-full text-[11px] sm:text-xs font-black whitespace-nowrap"
+            style={{
+              background: "linear-gradient(135deg,#C9930A,#E8B84B)",
+              color: "#1A1200",
+            }}
+          >
+            {isAr ? "ابدأ مجانًا" : "Start Free"}
+          </span>
+        </motion.a>
 
         {/* ── Action buttons ────────────────────────────────── */}
         <motion.div
