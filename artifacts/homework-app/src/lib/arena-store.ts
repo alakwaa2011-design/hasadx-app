@@ -31,7 +31,7 @@ export interface ArenaActiveQuestion {
   answeringTeam: string;
   trapUsed: boolean;
   transferUsed: boolean;
-  ghaneemaUsed: boolean;
+  twoAnswersActive: boolean;
   revealed: boolean;
   timeLeft: number;
   helpersUsedThisQ: HelperId[];
@@ -109,7 +109,11 @@ export function loadArenaState(): ArenaState | null {
           ? ({
               ...parsed.active,
               slot: (parsed.active.slot ?? 1) as ArenaCardSlot,
-              ghaneemaUsed: parsed.active.ghaneemaUsed ?? false,
+              twoAnswersActive:
+                (parsed.active as { twoAnswersActive?: boolean; ghaneemaUsed?: boolean })
+                  .twoAnswersActive ??
+                (parsed.active as { ghaneemaUsed?: boolean }).ghaneemaUsed ??
+                false,
             } as ArenaActiveQuestion)
           : null,
         rulesAck: parsed.rulesAck ?? false,
@@ -153,7 +157,11 @@ export function loadArenaState(): ArenaState | null {
             ? ({
                 ...v3.active,
                 slot: (v3.active.slot ?? 1) as ArenaCardSlot,
-                ghaneemaUsed: v3.active.ghaneemaUsed ?? false,
+                twoAnswersActive:
+                  (v3.active as { twoAnswersActive?: boolean; ghaneemaUsed?: boolean })
+                    .twoAnswersActive ??
+                  (v3.active as { ghaneemaUsed?: boolean }).ghaneemaUsed ??
+                  false,
               } as ArenaActiveQuestion)
             : null,
           rulesAck: v3.rulesAck ?? false,

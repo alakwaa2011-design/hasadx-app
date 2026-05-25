@@ -382,7 +382,7 @@ export default function ArenaPlay() {
       | "trap"
       | "swap"
       | "shura"
-      | "ghaneema"
+      | "twoAnswers"
       | "friend"
       | "harvest",
   ) => {
@@ -585,7 +585,7 @@ export default function ArenaPlay() {
           });
           break;
         }
-        case "ghaneema": {
+        case "twoAnswers": {
           // Triumphant rising grab — brassy two-note sting like claiming a prize
           const grabNotes = [440, 659];
           grabNotes.forEach((f, i) => {
@@ -702,7 +702,7 @@ export default function ArenaPlay() {
         answeringTeam: s.currentTurn,
         trapUsed: false,
         transferUsed: false,
-        ghaneemaUsed: false,
+        twoAnswersActive: false,
         revealed: false,
         timeLeft: s.timerSeconds,
         helpersUsedThisQ: [],
@@ -1169,12 +1169,11 @@ export default function ArenaPlay() {
     if (team.usedHelpers.includes(helperId)) return false;
     if (active.helpersUsedThisQ.includes(helperId)) return false;
     if (active.revealed) return false;
-    if (helperId === "ghaneema") {
+    if (helperId === "twoAnswers") {
       return (
-        side !== active.answeringTeam &&
-        !active.ghaneemaUsed &&
-        !active.transferUsed &&
-        !active.trapUsed
+        side === active.answeringTeam &&
+        !active.twoAnswersActive &&
+        !active.revealed
       );
     }
     if (helperId === "trap") {
@@ -1224,15 +1223,9 @@ export default function ArenaPlay() {
           helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
         });
       }
-    } else if (helperId === "ghaneema") {
-      setTimerRunning(false);
+    } else if (helperId === "twoAnswers") {
       updateActive({
-        ghaneemaUsed: true,
-        answeringTeam: side,
-        transferUsed: true,
-        revealed: false,
-        shuraVisible: false,
-        timeLeft: state.timerSeconds,
+        twoAnswersActive: true,
         helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
       });
     } else if (helperId === "friend") {
@@ -1250,7 +1243,7 @@ export default function ArenaPlay() {
       harvest: "harvest",
       shura: "shura",
       swap: "swap",
-      ghaneema: "ghaneema",
+      twoAnswers: "twoAnswers",
       friend: "friend",
     };
     playSound(helperSoundMap[helperId] ?? "click");
@@ -2463,6 +2456,16 @@ function QuestionModal({
                 style={{ background: "#eff6ff", color: "#1d4ed8", border: "1px solid #93c5fd" }}
               >
                 ↔️ محوّل
+              </motion.span>
+            )}
+            {active.twoAnswersActive && (
+              <motion.span
+                initial={{ scale: 0, rotate: -45 }}
+                animate={{ scale: 1, rotate: 0 }}
+                className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                style={{ background: "#fffbeb", color: "#a07f37", border: "1px solid #fcd34d" }}
+              >
+                2️⃣ جوابين
               </motion.span>
             )}
           </motion.div>
