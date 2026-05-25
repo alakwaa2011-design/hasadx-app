@@ -3517,7 +3517,10 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       await navigator.clipboard.writeText(url);
       setState("copied");
       setTimeout(() => setState("idle"), 2500);
-    } catch {
+    } catch (err: any) {
+      import("@/components/ui/sonner").then(({ toast }) =>
+        toast.error(err?.message || (lang === "ar" ? "تعذّر إنشاء الرابط" : "Failed to create link"))
+      );
       setState("idle");
     }
   };
