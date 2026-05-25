@@ -2450,11 +2450,15 @@ export default function GamePlay() {
             ? undefined
             : isSoloRef.current
               ? {
-                  // Solo challenge — premium dark slate with a soft warm glow
-                  // behind the question card. Calmer than the green theme so
-                  // the focus stays on the question and options.
-                  background:
-                    "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(232,184,75,0.06) 0%, transparent 60%), linear-gradient(180deg, #0B0F1A 0%, #131829 50%, #0F1320 100%)",
+                  // Solo challenge — Wameedh dark emerald with a soft gold
+                  // shimmer overlay. Matches the HasadX signature identity:
+                  // editorial dark green base + warm gold accents from the
+                  // top-center, exactly like the وميض theme family.
+                  background: [
+                    "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(217,165,33,0.14) 0%, transparent 65%)",
+                    "radial-gradient(ellipse 60% 40% at 50% 100%, rgba(232,184,75,0.05) 0%, transparent 70%)",
+                    "linear-gradient(165deg, #07150F 0%, #0D2118 25%, #143828 55%, #0F2A1C 80%, #081710 100%)",
+                  ].join(", "),
                 }
               : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }
         }
@@ -2992,21 +2996,27 @@ export default function GamePlay() {
           <div className="px-4 pt-4 pb-2 flex items-center justify-between relative z-10">
             <div className="w-20" />
             {/* Platform brand identity — logo icon + "حصاد" wordmark,
-                matching the global layout/auth/home brand block. */}
-            <div className="flex flex-col items-center">
+                matching the global layout/auth/home brand block.
+                Clicking returns the player to the home page. */}
+            <button
+              type="button"
+              onClick={() => setLocation("/")}
+              className="flex flex-col items-center group rounded-lg px-2 py-1 -mx-2 hover:bg-white/[0.04] active:scale-95 transition-all duration-150"
+              aria-label="العودة للصفحة الرئيسية"
+            >
               <div className="flex items-center gap-2">
                 <img
                   src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
                   alt="حصاد"
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover ring-1 ring-white/15"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover ring-1 ring-white/15 group-hover:ring-[#E8B84B]/40 transition"
                   style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}
                 />
                 <span className="text-white font-extrabold text-lg sm:text-xl tracking-tight">
                   حصاد
                 </span>
               </div>
-              <span className="text-white/45 text-[10px] sm:text-xs mt-1">تجربة تفاعلية ذكية</span>
-            </div>
+              <span className="text-white/45 group-hover:text-white/65 text-[10px] sm:text-xs mt-1 transition">تجربة تفاعلية ذكية</span>
+            </button>
             <span className="w-20 text-end text-white/70 font-semibold text-sm sm:text-base tabular-nums">
               {(question?.index ?? 0) + 1} / {question?.total}
             </span>
@@ -3160,7 +3170,7 @@ export default function GamePlay() {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="w-[94%] max-w-[900px] mx-auto rounded-3xl px-5 sm:px-7 pt-4 sm:pt-5 pb-5 sm:pb-6 relative"
+              className="w-[96%] max-w-[960px] mx-auto rounded-3xl px-5 sm:px-7 pt-4 sm:pt-5 pb-5 sm:pb-6 relative"
               style={{
                 background:
                   "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
@@ -3567,7 +3577,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[94%] max-w-[900px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-3 pb-4" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[96%] max-w-[960px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-3 pb-4" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
