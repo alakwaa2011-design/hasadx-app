@@ -1531,7 +1531,7 @@ async function soloUniqueSlug(base: string): Promise<string> {
 
 /* POST /api/solo-challenges
    Teacher creates (or retrieves existing) a permanent solo challenge link. */
-router.post("/api/solo-challenges", async (req, res) => {
+router.post("/solo-challenges", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
@@ -1576,7 +1576,7 @@ router.post("/api/solo-challenges", async (req, res) => {
 
 /* GET /api/solo-challenges/by-assignment/:assignmentId
    Teacher checks if a solo link exists for their assignment. */
-router.get("/api/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
+router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
     if (!teacherId) return res.status(401).json({ message: "غير مصرح" });

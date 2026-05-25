@@ -352,7 +352,7 @@ router.post("/public/ai-generate", async (req, res) => {
 
 /* GET /api/solo-challenges/:slug
    Public: returns challenge metadata. */
-router.get("/api/solo-challenges/:slug", async (req, res) => {
+router.get("/solo-challenges/:slug", async (req, res) => {
   try {
     const slug = req.params.slug;
     const [challenge] = await db
@@ -386,7 +386,7 @@ router.get("/api/solo-challenges/:slug", async (req, res) => {
 
 /* POST /api/solo-challenges/:slug/start
    Public: create a solo Wameeth game session and return its PIN. */
-router.post("/api/solo-challenges/:slug/start", async (req, res) => {
+router.post("/solo-challenges/:slug/start", async (req, res) => {
   try {
     const slug = req.params.slug;
     const [challenge] = await db
@@ -450,7 +450,7 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
 
 /* POST /api/solo-challenges/:slug/score
    Public: record a completed game score. */
-router.post("/api/solo-challenges/:slug/score", async (req, res) => {
+router.post("/solo-challenges/:slug/score", async (req, res) => {
   try {
     const slug = req.params.slug;
     const playerName = String(req.body?.playerName || "").trim().slice(0, 60);
@@ -477,7 +477,7 @@ router.post("/api/solo-challenges/:slug/score", async (req, res) => {
 
 /* GET /api/solo-challenges/:slug/leaderboard
    Public: top 20 scores for this challenge. */
-router.get("/api/solo-challenges/:slug/leaderboard", async (req, res) => {
+router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   try {
     const slug = req.params.slug;
     const rows = await db

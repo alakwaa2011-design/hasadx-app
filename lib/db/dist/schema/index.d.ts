@@ -70,4 +70,5 @@ export * from "./arena-question-reports";
 export * from "./activity-logs";
 export * from "./arena-saves";
 export * from "./xp";
+export * from "./solo-challenges";
 //# sourceMappingURL=index.d.ts.map
