@@ -3164,13 +3164,15 @@ export default function GamePlay() {
         </div>
 
         <div className={`flex-shrink-0 ${isSoloRef.current && !hackMode ? "pt-4 pb-0" : "px-4 py-6"}`}>
-          {isDoublePoints && pointsEnabled && (
+          {/* Double-points badge — hidden in solo (solo doesn't display
+              score, so a "double points" indicator is meaningless and
+              creates an orphaned floating chip above the question card). */}
+          {!isSoloRef.current && isDoublePoints && pointsEnabled && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="flex justify-center mb-3"
             >
-              {/* Quiet dark-glass chip — gold border, no red, no loud glow */}
               <div
                 className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold text-[#E8B84B]/90"
                 style={{
@@ -3243,23 +3245,6 @@ export default function GamePlay() {
                   "0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 24px rgba(232,184,75,0.08)",
               }}
             >
-              {/* Corner shine ornaments — subtle gold accents */}
-              <span
-                aria-hidden
-                className="absolute top-0 start-0 w-16 h-16 rounded-tl-3xl pointer-events-none"
-                style={{
-                  background:
-                    "radial-gradient(circle at top left, rgba(232,184,75,0.22) 0%, transparent 70%)",
-                }}
-              />
-              <span
-                aria-hidden
-                className="absolute top-0 end-0 w-16 h-16 rounded-tr-3xl pointer-events-none"
-                style={{
-                  background:
-                    "radial-gradient(circle at top right, rgba(120,170,230,0.16) 0%, transparent 70%)",
-                }}
-              />
               {/* "سؤال X من Y" pill */}
               <div className="flex justify-center mb-3 sm:mb-4">
                 <span className="inline-flex items-center gap-1.5 bg-white/[0.06] border border-white/10 rounded-full px-3 py-1 text-white/65 text-xs sm:text-sm font-medium backdrop-blur-sm">
@@ -3639,7 +3624,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[560px] mx-auto content-center" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-1 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[560px] mx-auto content-start" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-1 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
