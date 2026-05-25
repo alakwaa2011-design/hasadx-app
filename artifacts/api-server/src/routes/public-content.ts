@@ -504,7 +504,7 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
    Identical purpose to /api/share/solo/:slug — serves full OG HTML and
    bounces real browsers to the play page. Designed for ASCII-clean URLs
    that look good in WhatsApp/Facebook/X link previews. */
-router.get("/s/:shortSlug", async (req, res) => {
+router.get("/api/s/:shortSlug", async (req, res) => {
   const escapeHtml = (s: string) =>
     s.replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")

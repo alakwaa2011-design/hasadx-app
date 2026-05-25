@@ -158,7 +158,7 @@ export function SoloChallengeResults({
   //  2. Fall back to /api/share/solo/:slug for challenges created before shortSlug
   //     was introduced (both work identically for social-card unfurling).
   const shareUrl = soloShortSlug
-    ? `${window.location.origin}/s/${encodeURIComponent(soloShortSlug)}`
+    ? `${window.location.origin}/api/s/${encodeURIComponent(soloShortSlug)}`
     : `${window.location.origin}/api/share/solo/${encodeURIComponent(soloSlug!)}`;
 
   // Performance tier — drives the celebratory headline + tier color.

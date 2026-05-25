@@ -1,0 +1,1 @@
+- [Proxy path prefix collision](proxy-path-collision.md) — adding a short prefix to artifact.toml breaks all React routes sharing that letter (e.g. /s breaks /solo, /student, /solve).
