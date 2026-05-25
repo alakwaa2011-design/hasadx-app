@@ -1277,6 +1277,13 @@ export default function GamePlay() {
         // so it doesn't need the delay.
         if (hackModeRef.current) {
           setPhase("answered");
+        } else if (isSoloRef.current) {
+          // Solo: brief 700ms so the colour-flash feedback on the buttons is
+          // visible, then show answered card. The next game:question arrives
+          // whenever the server is ready — no extra wait added here.
+          setTimeout(() => {
+            setPhase((prev) => (prev === "question" ? "answered" : prev));
+          }, 700);
         } else {
           setTimeout(() => {
             // Only switch if we're still on the question screen — the server
@@ -1372,7 +1379,13 @@ export default function GamePlay() {
       if (data.gameMode) setGameMode(data.gameMode);
       const me = data.leaderboard?.find((e: any) => e.name === myName);
       if (me) setMyScore(me.score);
-      setPhase("leaderboard");
+      // Solo: stay in "answered" phase (✅/❌ feedback visible) instead of
+      // jumping to the intermediate leaderboard/spinner while the server
+      // prepares the next question. Transition happens when game:question
+      // arrives — exactly like Duolingo / Kahoot Challenge mode.
+      if (!isSoloRef.current) {
+        setPhase("leaderboard");
+      }
       stopBackgroundBeat();
     });
 
@@ -1386,6 +1399,8 @@ export default function GamePlay() {
       if (data.gameMode) setGameMode(data.gameMode);
       const me = data.leaderboard?.find((e: any) => e.name === myName);
       if (me) setMyScore(me.score);
+      // Solo: skip heavy multi-sound victory cascade — results appear instantly.
+      if (isSoloRef.current) return;
       if (hackModeRef.current) {
         stopHackMarathonLoop();
         // Energetic Blooket-style victory cascade.
@@ -2322,15 +2337,26 @@ export default function GamePlay() {
                 +{answerResult.points} {t.gamePlay.points}
               </p>
             )}
+            {!answerResult?.correct && correctAnswer && (
+              <div className="mt-3 mb-3 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-center">
+                <p className="text-[11px] text-white/50 font-bold mb-0.5">
+                  {lang === "ar" ? "الإجابة الصحيحة" : "Correct Answer"}
+                </p>
+                <p className="text-white font-black text-base">{correctAnswer}</p>
+              </div>
+            )}
             <motion.p
               animate={{ opacity: [1, 0.4, 1] }}
               transition={{ repeat: Infinity, duration: 1.5 }}
               className="text-white/80 text-sm font-bold"
             >
-              {lang === "ar"
-                ? "انتظار اللاعبين الآخرين..."
-                : "Waiting for others..."}
-            </motion.p>
+              {isSoloRef.current
+                ? lang === "ar"
+                  ? "جارٍ تحضير السؤال التالي..."
+                  : "Next question coming..."
+                : lang === "ar"
+                  ? "انتظار اللاعبين الآخرين..."
+                  : "Waiting for others..."}</motion.p>
           </motion.div>
         )}
       </div>
