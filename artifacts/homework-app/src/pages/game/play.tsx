@@ -2991,18 +2991,19 @@ export default function GamePlay() {
         {isSoloRef.current && !hackMode && (
           <div className="px-4 pt-4 pb-2 flex items-center justify-between relative z-10">
             <div className="w-20" />
+            {/* Platform brand identity — logo icon + "حصاد" wordmark,
+                matching the global layout/auth/home brand block. */}
             <div className="flex flex-col items-center">
-              {/* Arabic brand "حصاد" with gold X suffix — dir="ltr"
-                  forces the X to sit AFTER حصاد regardless of RTL context. */}
-              <div
-                dir="ltr"
-                className="flex items-baseline gap-0.5 leading-none"
-              >
-                <span className="text-white font-extrabold text-xl sm:text-2xl tracking-tight">حصاد</span>
-                <span
-                  className="text-[#E8B84B] font-black text-xl sm:text-2xl tracking-tight"
-                  style={{ textShadow: "0 0 12px rgba(232,184,75,0.45)" }}
-                >X</span>
+              <div className="flex items-center gap-2">
+                <img
+                  src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                  alt="حصاد"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover ring-1 ring-white/15"
+                  style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}
+                />
+                <span className="text-white font-extrabold text-lg sm:text-xl tracking-tight">
+                  حصاد
+                </span>
               </div>
               <span className="text-white/45 text-[10px] sm:text-xs mt-1">تجربة تفاعلية ذكية</span>
             </div>
@@ -3807,9 +3808,25 @@ export default function GamePlay() {
             className="mt-auto flex items-center justify-between px-4 py-3 sm:py-3.5 border-t border-white/[0.06] backdrop-blur-sm relative z-10"
             style={{ background: "rgba(8,11,20,0.45)" }}
           >
-            <span className="text-white/35 text-[11px] sm:text-xs font-medium">
-              Powered by <span className="text-white/55">Hasad</span><span className="text-[#E8B84B]/80">X</span>
-            </span>
+            {/* Footer brand — same logo + name as the platform header,
+                clickable to hasadx.com with a short tagline. */}
+            <a
+              href="https://hasadx.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-white/45 hover:text-white/80 active:scale-95 transition-all duration-150 group"
+              aria-label="حصاد"
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                alt=""
+                aria-hidden
+                className="w-4 h-4 rounded object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+              />
+              <span className="text-[11px] sm:text-xs font-medium">
+                Powered by <span className="font-bold">حصاد</span>
+              </span>
+            </a>
             <div className="flex items-center gap-4 sm:gap-5">
               <button
                 type="button"
