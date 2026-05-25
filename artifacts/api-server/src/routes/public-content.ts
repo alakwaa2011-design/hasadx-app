@@ -4,6 +4,7 @@ import { eq, and, sql, desc, ne, inArray, or } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { generateSoloChallengeOgImage } from "../lib/og-image";
 
 const router: IRouter = Router();
 
@@ -498,12 +499,44 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   }
 });
 
+/* GET /api/share/solo/:slug/og.png
+   Generates a 1200×630 branded PNG card for the challenge (used as og:image).
+   WhatsApp/Telegram/FB/X crawlers fetch this; cached for 10 minutes. */
+router.get("/share/solo/:slug/og.png", async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    const [challenge] = await db
+      .select({ title: soloChallengesTable.assignmentTitle, assignmentId: soloChallengesTable.assignmentId })
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    const title = challenge?.title?.trim() || "تحدي حصاد";
+    const questionCount = challenge?.assignmentId
+      ? await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(questionsTable)
+          .where(and(
+            eq(questionsTable.assignmentId, challenge.assignmentId),
+            sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
+          ))
+          .then(r => r[0]?.count ?? 0)
+      : 0;
+
+    const png = generateSoloChallengeOgImage(title, questionCount);
+    res.set("Cache-Control", "public, max-age=600");
+    res.type("image/png").send(png);
+  } catch (err) {
+    req.log.error({ err }, "Solo OG image generation error");
+    res.status(500).end();
+  }
+});
+
 /* GET /api/share/solo/:slug
    Public share page: returns an HTML document with dynamic Open Graph tags
-   so that WhatsApp/Telegram/X/Facebook show the challenge title (instead of
-   the generic site title) when the share link is unfurled. Browsers visiting
-   this URL are bounced to the real play page via meta-refresh + JS, so the
-   experience is identical for humans, while social crawlers get rich previews. */
+   so that WhatsApp/Telegram/X/Facebook show the challenge title and a branded
+   image when the link is unfurled. Browsers visiting this URL are bounced to
+   the real play page via meta-refresh + JS. */
 router.get("/share/solo/:slug", async (req, res) => {
   const escapeHtml = (s: string) =>
     s.replace(/&/g, "&amp;")
@@ -524,35 +557,35 @@ router.get("/share/solo/:slug", async (req, res) => {
     const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
     const origin = `${proto}://${host}`;
     const playUrl = `${origin}/solo/${encodeURIComponent(slug)}`;
+    const ogImageUrl = `${origin}/api/share/solo/${encodeURIComponent(slug)}/og.png`;
 
     const rawTitle = challenge?.assignmentTitle?.trim() || "تحدي حصاد";
     const title = escapeHtml(rawTitle);
-    const description = escapeHtml(
-      `انضم إلى تحدي "${rawTitle}" على منصة حصاد — هل تقدر تتغلب على أصدقائك؟`
-    );
+    const description = escapeHtml("🎯 هل تقدر تتغلب عليه؟ جرّب التحدي الآن على حصاد");
     const safePlayUrl = escapeHtml(playUrl);
-    const imageUrl = "https://hasadx.com/opengraph.jpg";
+    const safeImageUrl = escapeHtml(ogImageUrl);
 
     res.set("Cache-Control", "public, max-age=300");
     res.type("html").send(`<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<title>${title} · حصاد</title>
+<title>${title}</title>
 <meta name="description" content="${description}" />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content="ar_AR" />
-<meta property="og:site_name" content="منصة حصاد" />
+<meta property="og:site_name" content="حصاد X" />
 <meta property="og:title" content="${title}" />
 <meta property="og:description" content="${description}" />
 <meta property="og:url" content="${safePlayUrl}" />
-<meta property="og:image" content="${imageUrl}" />
+<meta property="og:image" content="${safeImageUrl}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:type" content="image/png" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${title}" />
 <meta name="twitter:description" content="${description}" />
-<meta name="twitter:image" content="${imageUrl}" />
+<meta name="twitter:image" content="${safeImageUrl}" />
 <meta http-equiv="refresh" content="0; url=${safePlayUrl}" />
 <link rel="canonical" href="${safePlayUrl}" />
 <script>window.location.replace(${JSON.stringify(playUrl)});</script>
