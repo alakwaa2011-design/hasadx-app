@@ -289,6 +289,43 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS teacher_class_id INTEGER REFERENCES teacher_classes(id) ON DELETE SET NULL,
         ADD COLUMN IF NOT EXISTS skip_segments TEXT
     `);
+    // ── Solo Challenge Links (لعب فردي مفتوح) ──────────────────
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solo_challenges (
+        id            SERIAL PRIMARY KEY,
+        slug          TEXT NOT NULL UNIQUE,
+        assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+        teacher_id    INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        assignment_title TEXT NOT NULL,
+        play_count    INTEGER NOT NULL DEFAULT 0,
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solo_challenges_slug_idx        ON solo_challenges(slug)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solo_challenges_assignment_idx  ON solo_challenges(assignment_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solo_challenges_teacher_idx     ON solo_challenges(teacher_id)
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS solo_challenge_scores (
+        id          SERIAL PRIMARY KEY,
+        slug        TEXT NOT NULL,
+        player_name TEXT NOT NULL,
+        score       INTEGER NOT NULL DEFAULT 0,
+        played_at   TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx  ON solo_challenge_scores(slug)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)
+    `);
+
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");
