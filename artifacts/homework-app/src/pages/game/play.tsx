@@ -2442,7 +2442,7 @@ export default function GamePlay() {
       <>
         {reconnectBanner}
       <div
-        className={`min-h-screen flex flex-col ${hackMode ? "bg-black" : ""}`}
+        className={`min-h-screen flex flex-col relative overflow-hidden ${hackMode ? "bg-black" : ""}`}
         style={
           hackMode
             ? undefined
@@ -2458,6 +2458,37 @@ export default function GamePlay() {
         }
         dir={dir}
       >
+        {/* HasadX signature for solo — slim premium gold progress bar at
+            the very top edge + faint Arabic-geometric pattern overlay.
+            Both are decorative and don't affect layout. */}
+        {!hackMode && isSoloRef.current && (
+          <>
+            <div className="absolute top-0 inset-x-0 h-[3px] bg-white/5 z-30 pointer-events-none">
+              <motion.div
+                className="h-full"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(232,184,75,0.4) 0%, rgba(232,184,75,0.95) 50%, rgba(232,184,75,0.4) 100%)",
+                  boxShadow: "0 0 10px rgba(232,184,75,0.55)",
+                }}
+                initial={{ width: 0 }}
+                animate={{
+                  width: `${(((question?.index ?? 0) + 1) / Math.max(1, question?.total ?? 1)) * 100}%`,
+                }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            </div>
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none opacity-[0.035] mix-blend-soft-light"
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><g fill='none' stroke='%23E8B84B' stroke-width='0.6'><path d='M40 4 L76 40 L40 76 L4 40 Z'/><path d='M40 20 L60 40 L40 60 L20 40 Z'/><circle cx='40' cy='40' r='4'/></g></svg>\")",
+                backgroundSize: "120px 120px",
+              }}
+            />
+          </>
+        )}
         <MuteButton />
         <SoundPickerButton />
         {hackMode &&
@@ -3089,24 +3120,35 @@ export default function GamePlay() {
               </h2>
             </motion.div>
           ) : isSoloRef.current ? (
-            // Solo challenge — premium glass card around the question text.
-            // Minimal, generous breathing room, lighter font weight for a
-            // refined editorial feel (no gaming overload).
+            // Solo challenge — premium floating glass card around the
+            // question text. Subtle border + soft outer shadow + faint
+            // inner glow give it a refined "premium card" feel without
+            // any gaming overload.
             <motion.div
               key={question?.index}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-2xl sm:rounded-3xl px-5 sm:px-7 py-5 sm:py-7"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-2xl sm:rounded-3xl px-6 sm:px-8 py-6 sm:py-8 relative"
               style={{
-                background: "rgba(255,255,255,0.045)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                border: "1px solid rgba(255,255,255,0.09)",
+                background:
+                  "linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.025) 100%)",
+                backdropFilter: "blur(14px) saturate(140%)",
+                WebkitBackdropFilter: "blur(14px) saturate(140%)",
+                border: "1px solid rgba(255,255,255,0.12)",
                 boxShadow:
-                  "0 12px 40px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.04)",
+                  "0 20px 60px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 80px rgba(232,184,75,0.04) inset",
               }}
             >
+              {/* HasadX signature — soft gold accent corner mark */}
+              <span
+                aria-hidden
+                className="absolute top-3 start-3 w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: "rgba(232,184,75,0.55)",
+                  boxShadow: "0 0 10px rgba(232,184,75,0.45)",
+                }}
+              />
               <h2 className="text-lg sm:text-2xl md:text-[26px] font-bold text-white/95 text-center leading-[1.9] sm:leading-[1.75] tracking-wide">
                 {question?.text}
               </h2>
@@ -3470,7 +3512,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1" : "grid-cols-2"} ${hackMode ? "gap-2" : "gap-3"} px-4 pb-8 ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-start" : "auto-rows-fr"}`}
+            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 max-w-md sm:max-w-xl lg:max-w-2xl w-full mx-auto" : "grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} px-4 ${isSoloRef.current ? "pb-6 pt-2" : "pb-8"} ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-center" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3653,12 +3695,16 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[62px] sm:min-h-[72px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.98] transition-all duration-150 touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[64px] sm:min-h-[74px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
-                      className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-base sm:text-lg"
-                      style={soloColor.circleStyle}
+                      className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-sm sm:text-base"
+                      style={{
+                        ...soloColor.circleStyle,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        backdropFilter: "blur(4px)",
+                      }}
                     >
                       {lang === "ar" ? soloColor.arLabel : soloColor.enLabel}
                     </span>
