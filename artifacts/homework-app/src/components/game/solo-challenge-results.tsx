@@ -344,19 +344,34 @@ export function SoloChallengeResults({
           transition={{ delay: 0.28 }}
           className="mt-3 sm:mt-4 space-y-2"
         >
-          {/* Retry — full width, prominent */}
-          <button
+          {/* Retry — primary CTA, premium gold gradient + subtle pulse glow
+              draws the eye as the recommended next action. */}
+          <motion.button
             onClick={handleRetry}
-            className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileTap={{ scale: 0.97 }}
+            className="relative w-full flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-base sm:text-lg font-black transition-all duration-200 hover:brightness-110 hover:-translate-y-[1px] overflow-hidden"
             style={{
-              background: "rgba(255,255,255,0.1)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              color: "#fff",
+              background:
+                "linear-gradient(135deg,#C9930A 0%,#F2C84B 50%,#C9930A 100%)",
+              color: "#1A1200",
+              boxShadow:
+                "0 10px 30px rgba(232,184,75,0.35), 0 0 0 1px rgba(255,235,160,0.35) inset",
             }}
           >
-            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
-            {isAr ? "إعادة المسابقة" : "Play Again"}
-          </button>
+            <motion.span
+              aria-hidden
+              className="absolute inset-0 rounded-xl sm:rounded-2xl pointer-events-none"
+              animate={{ boxShadow: [
+                "0 0 0 0 rgba(232,184,75,0.45)",
+                "0 0 0 10px rgba(232,184,75,0)",
+              ] }}
+              transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut" }}
+            />
+            <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+            <span className="relative">{isAr ? "إعادة المسابقة" : "Play Again"}</span>
+          </motion.button>
 
           {/* Share + WhatsApp side by side */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3">

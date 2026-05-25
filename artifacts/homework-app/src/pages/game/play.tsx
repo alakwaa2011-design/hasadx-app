@@ -29,8 +29,7 @@ import {
   Music2,
   Loader2,
   ChevronLeft,
-  Flag,
-  Bookmark,
+  MessageSquare,
 } from "lucide-react";
 import RaceTrack from "@/components/race-track";
 import {
@@ -2993,11 +2992,19 @@ export default function GamePlay() {
           <div className="px-4 pt-4 pb-2 flex items-center justify-between relative z-10">
             <div className="w-20" />
             <div className="flex flex-col items-center">
-              <div className="flex items-baseline gap-0.5 leading-none">
-                <span className="text-white font-bold text-lg sm:text-xl tracking-wide">Hasad</span>
-                <span className="text-[#E8B84B] font-black text-lg sm:text-xl tracking-wide">X</span>
+              {/* Arabic brand "حصاد" with gold X suffix — dir="ltr"
+                  forces the X to sit AFTER حصاد regardless of RTL context. */}
+              <div
+                dir="ltr"
+                className="flex items-baseline gap-0.5 leading-none"
+              >
+                <span className="text-white font-extrabold text-xl sm:text-2xl tracking-tight">حصاد</span>
+                <span
+                  className="text-[#E8B84B] font-black text-xl sm:text-2xl tracking-tight"
+                  style={{ textShadow: "0 0 12px rgba(232,184,75,0.45)" }}
+                >X</span>
               </div>
-              <span className="text-white/45 text-[10px] sm:text-xs mt-0.5">تجربة تفاعلية ذكية</span>
+              <span className="text-white/45 text-[10px] sm:text-xs mt-1">تجربة تفاعلية ذكية</span>
             </div>
             <span className="w-20 text-end text-white/70 font-semibold text-sm sm:text-base tabular-nums">
               {(question?.index ?? 0) + 1} / {question?.total}
@@ -3152,7 +3159,7 @@ export default function GamePlay() {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-3xl px-6 sm:px-8 pt-5 sm:pt-6 pb-6 sm:pb-7 relative"
+              className="max-w-lg sm:max-w-2xl lg:max-w-3xl mx-auto rounded-3xl px-6 sm:px-8 pt-5 sm:pt-6 pb-6 sm:pb-7 relative"
               style={{
                 background:
                   "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
@@ -3559,7 +3566,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 max-w-md sm:max-w-xl lg:max-w-2xl w-full mx-auto" : "grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} px-4 ${isSoloRef.current ? "pb-6 pt-2" : "pb-8"} ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-center" : "auto-rows-fr"}`}
+            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 max-w-lg sm:max-w-2xl lg:max-w-3xl w-full mx-auto" : "grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} px-4 ${isSoloRef.current ? "pb-6 pt-2" : "pb-8"} ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-center" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3806,19 +3813,31 @@ export default function GamePlay() {
             <div className="flex items-center gap-4 sm:gap-5">
               <button
                 type="button"
-                className="flex items-center gap-1.5 text-white/40 hover:text-white/70 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
-                aria-label="إبلاغ عن سؤال"
+                onClick={() => setLocation("/feedback")}
+                className="flex items-center gap-1.5 text-white/45 hover:text-white/80 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
+                aria-label="ملاحظات واقتراحات"
               >
-                <Flag className="w-3.5 h-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">إبلاغ عن سؤال</span>
+                <MessageSquare className="w-3.5 h-3.5" strokeWidth={2} />
+                <span>ملاحظات واقتراحات</span>
               </button>
               <button
                 type="button"
-                className="flex items-center gap-1.5 text-white/40 hover:text-white/70 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
-                aria-label="حفظ السؤال"
+                onClick={() => {
+                  // Lightweight share — uses Web Share API on mobile,
+                  // falls back to copying the play URL on desktop.
+                  const shareUrl = window.location.origin;
+                  const shareText = "تحدّى نفسك في حصاد — تجربة تفاعلية ذكية";
+                  if (navigator.share) {
+                    navigator.share({ title: "حصادX", text: shareText, url: shareUrl }).catch(() => {});
+                  } else {
+                    navigator.clipboard?.writeText(`${shareText} ${shareUrl}`).catch(() => {});
+                  }
+                }}
+                className="flex items-center gap-1.5 text-white/45 hover:text-white/80 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
+                aria-label="مشاركة"
               >
-                <Bookmark className="w-3.5 h-3.5" strokeWidth={2} />
-                <span className="hidden sm:inline">حفظ السؤال</span>
+                <Share2 className="w-3.5 h-3.5" strokeWidth={2} />
+                <span>مشاركة</span>
               </button>
             </div>
           </div>
