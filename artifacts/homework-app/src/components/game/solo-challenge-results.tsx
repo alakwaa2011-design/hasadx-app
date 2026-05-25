@@ -39,34 +39,68 @@ export function SoloChallengeResults({
       : null,
   );
 
+  // ── First-attempt-only scoring ──────────────────────────────────────────────
+  // We store the first completed score in localStorage so that replays on the
+  // same device always show (and share) the first result, not an inflated one.
+  // Key: "hasad_solo_first_<slug>" → {score, total, name}
+  type FirstScore = { score: number; total: number; name: string };
+  const lsKey = soloSlug ? `hasad_solo_first_${soloSlug}` : null;
+
+  const [firstScore] = useState<FirstScore | null>(() => {
+    if (!lsKey || typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(lsKey);
+      return raw ? (JSON.parse(raw) as FirstScore) : null;
+    } catch { return null; }
+  });
+
+  // isReplay = true when this device has already completed this challenge.
+  const isReplay = firstScore !== null;
+
+  // The score we display and share: always the first attempt.
+  const displayCorrect = isReplay ? firstScore!.score : correctCount;
+  const displayTotal   = isReplay ? firstScore!.total : totalQuestions;
+  // ────────────────────────────────────────────────────────────────────────────
+
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
 
   useEffect(() => {
-    if (!soloSlug) return;
+    if (!soloSlug || !lsKey) return;
     const API = import.meta.env.VITE_API_URL || "";
     const playerName = soloPlayerName || myName || "لاعب";
 
-    // Submit correct-answer count as the "score" so the leaderboard ranks
-    // by correct answers — not server-computed time-bonus points.
-    fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ playerName, score: correctCount }),
-    })
-      .catch(() => {})
-      .finally(() => {
-        fetch(
-          `${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`,
-        )
-          .then((r) => r.json())
-          .then((data) => {
-            setLeaderboard(Array.isArray(data) ? data : []);
-            setLeaderboardLoaded(true);
-          })
-          .catch(() => setLeaderboardLoaded(true));
-      });
+    if (!isReplay) {
+      // First attempt → save to localStorage and submit to leaderboard.
+      const entry: FirstScore = { score: correctCount, total: totalQuestions, name: playerName };
+      try { localStorage.setItem(lsKey, JSON.stringify(entry)); } catch { /* storage full */ }
+
+      fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ playerName, score: correctCount }),
+      })
+        .catch(() => {})
+        .finally(() => {
+          fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`)
+            .then((r) => r.json())
+            .then((data) => {
+              setLeaderboard(Array.isArray(data) ? data : []);
+              setLeaderboardLoaded(true);
+            })
+            .catch(() => setLeaderboardLoaded(true));
+        });
+    } else {
+      // Replay → skip score submission; just refresh the leaderboard.
+      fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`)
+        .then((r) => r.json())
+        .then((data) => {
+          setLeaderboard(Array.isArray(data) ? data : []);
+          setLeaderboardLoaded(true);
+        })
+        .catch(() => setLeaderboardLoaded(true));
+    }
 
     sessionStorage.removeItem("solo_challenge_slug");
     sessionStorage.removeItem("solo_challenge_player");
@@ -78,7 +112,7 @@ export function SoloChallengeResults({
 
   const displayName = soloPlayerName || myName || (isAr ? "لاعب" : "Player");
   const pct =
-    totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    displayTotal > 0 ? Math.round((displayCorrect / displayTotal) * 100) : 0;
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
   // Share URL: routes through /api/share/solo/:slug which returns an HTML page
@@ -126,13 +160,13 @@ export function SoloChallengeResults({
   const trimmedTitle = soloChallengeTitle?.trim() || "";
   const challengeTitleStr = trimmedTitle ? ` "${trimmedTitle}"` : "";
   const shareText = isAr
-    ? `🎯 ${displayName} حصل على ${correctCount}/${totalQuestions}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${shareUrl}\n\n✨ على حصاد X`
-    : `🎯 ${displayName} scored ${correctCount}/${totalQuestions}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${shareUrl}\n\n✨ Powered by HasadX`;
+    ? `🎯 ${displayName} حصل على ${displayCorrect}/${displayTotal}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${shareUrl}\n\n✨ على حصاد X`
+    : `🎯 ${displayName} scored ${displayCorrect}/${displayTotal}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${shareUrl}\n\n✨ Powered by HasadX`;
 
-  // Match rank by correctCount (now stored as score) + name.
+  // Match rank by displayCorrect (first attempt score) + name.
   const myRankIdx = (() => {
     const byBoth = leaderboard.findIndex(
-      (e) => e.playerName === displayName && e.score === correctCount,
+      (e) => e.playerName === displayName && e.score === displayCorrect,
     );
     if (byBoth >= 0) return byBoth;
     return leaderboard.findIndex((e) => e.playerName === displayName);
@@ -246,6 +280,23 @@ export function SoloChallengeResults({
             {displayName}
           </p>
 
+          {/* First-attempt badge — shown on replay to remind the player that
+              what they see is their original score, not the current attempt. */}
+          {isReplay && (
+            <div className="mt-2 flex justify-center">
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{
+                  background: "rgba(232,184,75,0.12)",
+                  border: "1px solid rgba(232,184,75,0.35)",
+                  color: "#E8B84B",
+                }}
+              >
+                🔒 {isAr ? "نتيجتك الأولى المحفوظة" : "Your saved first score"}
+              </span>
+            </div>
+          )}
+
           {/* Stats: correct/total | percentage | rank */}
           <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
             <div
@@ -262,9 +313,9 @@ export function SoloChallengeResults({
                 {isAr ? "صحيح" : "Correct"}
               </p>
               <p className="font-black text-base sm:text-2xl text-white leading-none">
-                {correctCount}
+                {displayCorrect}
                 <span className="text-white/40 text-xs sm:text-sm font-bold">
-                  {" / "}{totalQuestions || "—"}
+                  {" / "}{displayTotal || "—"}
                 </span>
               </p>
             </div>
