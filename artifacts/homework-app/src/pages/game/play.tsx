@@ -3582,7 +3582,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[86vw] max-w-[780px] mx-auto content-start" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-[22px] sm:gap-[26px]" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-2 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[920px] mx-auto auto-rows-fr" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-[12px] sm:gap-[14px]" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-2 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3765,11 +3765,11 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-5 sm:px-6 py-1.5 sm:py-2 font-semibold text-base sm:text-lg flex items-center gap-4 sm:gap-5 text-start min-h-[44px] sm:min-h-[50px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-semibold text-base sm:text-lg flex items-center gap-4 sm:gap-5 text-start min-h-[72px] sm:min-h-[82px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
-                      className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-extrabold text-base sm:text-lg"
+                      className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-extrabold text-sm sm:text-base"
                       style={{
                         ...soloColor.circleStyle,
                         border: "1.5px solid rgba(255,255,255,0.18)",
@@ -3784,7 +3784,7 @@ export default function GamePlay() {
                   <span
                     className={
                       soloColor
-                        ? "flex-1 leading-snug text-white text-xl sm:text-2xl font-semibold"
+                        ? "flex-1 leading-snug text-white text-base sm:text-lg font-semibold"
                         : "leading-snug"
                     }
                   >
