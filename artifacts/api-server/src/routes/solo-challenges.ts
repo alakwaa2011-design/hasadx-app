@@ -32,9 +32,6 @@ const router: IRouter = Router();
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_slug_idx ON solo_challenges(slug)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_assignment_idx ON solo_challenges(assignment_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_teacher_idx ON solo_challenges(teacher_id)`);
-    // Short ASCII slug for clean social-share URLs (added later — idempotent)
-    await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS short_slug TEXT UNIQUE`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_short_slug_idx ON solo_challenges(short_slug)`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS solo_challenge_scores (
         id          SERIAL PRIMARY KEY,
