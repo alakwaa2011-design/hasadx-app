@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Share2, Loader2, RotateCcw } from "lucide-react";
 
-type LeaderboardEntry = { playerName: string; score: number };
+type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
 
 interface Props {
   myScore: number;
@@ -114,7 +114,7 @@ export function SoloChallengeResults({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ playerName, score: correctCount }),
+        body: JSON.stringify({ playerName, points: myScore, correctCount }),
       })
         .catch(() => {})
         .finally(() => {
@@ -203,10 +203,10 @@ export function SoloChallengeResults({
     ? `🎯 ${displayName} حصل على ${displayCorrect}/${displayTotal}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${shareUrl}\n\n✨ على حصاد X`
     : `🎯 ${displayName} scored ${displayCorrect}/${displayTotal}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${shareUrl}\n\n✨ Powered by HasadX`;
 
-  // Match rank by displayCorrect (first attempt score) + name.
+  // Match rank by points (score) + name.
   const myRankIdx = (() => {
     const byBoth = leaderboard.findIndex(
-      (e) => e.playerName === displayName && e.score === displayCorrect,
+      (e) => e.playerName === displayName && e.score === displayPoints,
     );
     if (byBoth >= 0) return byBoth;
     return leaderboard.findIndex((e) => e.playerName === displayName);
@@ -417,12 +417,20 @@ export function SoloChallengeResults({
             <h3 className="font-black text-white text-sm sm:text-base">
               {isAr ? "أفضل 20 لاعب" : "Top 20 Players"}
             </h3>
-            <span
-              className="ms-auto text-[10px] sm:text-xs font-bold"
-              style={{ color: "rgba(255,255,255,0.35)" }}
-            >
-              {isAr ? "الصحيح" : "Correct"}
-            </span>
+            <div className="ms-auto flex items-center gap-3">
+              <span
+                className="text-[10px] sm:text-xs font-bold"
+                style={{ color: "rgba(255,255,255,0.35)" }}
+              >
+                {isAr ? "صحيح" : "Correct"}
+              </span>
+              <span
+                className="text-[10px] sm:text-xs font-bold"
+                style={{ color: "rgba(232,184,75,0.6)" }}
+              >
+                {isAr ? "النقاط" : "Points"}
+              </span>
+            </div>
           </div>
 
           <div className="px-2 py-1.5 space-y-0.5 max-h-44 sm:max-h-72 overflow-y-auto">
@@ -468,13 +476,21 @@ export function SoloChallengeResults({
                         </span>
                       )}
                     </span>
+                    {/* Correct count — secondary column */}
                     <span
-                      className="font-black text-xs sm:text-sm"
+                      className="text-[11px] sm:text-xs font-bold w-7 text-center"
+                      style={{ color: "rgba(255,255,255,0.38)" }}
+                    >
+                      {entry.correctCount ?? "—"}
+                    </span>
+                    {/* Points — primary sort column */}
+                    <span
+                      className="font-black text-xs sm:text-sm w-16 text-end"
                       style={{
-                        color: i === 0 ? "#E8B84B" : "rgba(255,255,255,0.65)",
+                        color: i === 0 ? "#E8B84B" : "rgba(255,255,255,0.8)",
                       }}
                     >
-                      {entry.score}
+                      {entry.score > 0 ? entry.score.toLocaleString() : "—"}
                     </span>
                   </div>
                 );

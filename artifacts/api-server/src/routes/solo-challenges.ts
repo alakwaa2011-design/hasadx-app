@@ -253,7 +253,9 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
         optionC: q.optionC ?? null,
         optionD: q.optionD ?? null,
         correctAnswer: q.correctAnswer ?? "",
-        points: q.points ?? 1,
+        // Base 100 pts per question — the engine applies a time-speed bonus
+        // on top so fast answers score higher than slow ones.
+        points: 100,
         duration: 15,
         imageUrl: q.imageUrl ?? null,
         readAloud: q.readAloud ?? false,
@@ -274,12 +276,9 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
       "solo",
     );
 
-    // Solo challenge: disable ALL point calculations (time bonus, streak
-    // multiplier, double-points rounds). Ranking is based purely on the
-    // number of correct answers, tracked client-side and POSTed to the
-    // leaderboard as the "score" on the results page.
-    game.pointsEnabled = false;
-
+    // Solo challenge: enable point scoring (base 100 per question + time-speed
+    // bonus). The results page POSTs both the total points and the correct
+    // count; the leaderboard ranks by points DESC, correct_count DESC.
     startGameFromRest(game.pin);
 
     // Increment play count
@@ -302,12 +301,14 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
 
 /* ── POST /api/solo-challenges/:slug/score ───────────────────
    Public: record a completed game score. No auth required.
-   Body: { playerName, score } */
+   Body: { playerName, points, correctCount } */
 router.post("/api/solo-challenges/:slug/score", async (req, res) => {
   try {
     const slug = req.params.slug;
     const playerName = String(req.body?.playerName || "").trim().slice(0, 60);
-    const score = Number(req.body?.score ?? 0);
+    // Accept both new `points` field and legacy `score` field for backward compat.
+    const score = Number(req.body?.points ?? req.body?.score ?? 0);
+    const correctCount = Number(req.body?.correctCount ?? 0);
 
     if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
 
@@ -319,7 +320,7 @@ router.post("/api/solo-challenges/:slug/score", async (req, res) => {
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
 
-    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score });
+    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount });
 
     res.json({ ok: true });
   } catch (err) {
@@ -329,7 +330,7 @@ router.post("/api/solo-challenges/:slug/score", async (req, res) => {
 });
 
 /* ── GET /api/solo-challenges/:slug/leaderboard ─────────────
-   Public: returns top 20 scores for this challenge. */
+   Public: returns top 20 scores sorted by points DESC, correctCount DESC. */
 router.get("/api/solo-challenges/:slug/leaderboard", async (req, res) => {
   try {
     const slug = req.params.slug;
@@ -337,11 +338,15 @@ router.get("/api/solo-challenges/:slug/leaderboard", async (req, res) => {
       .select({
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)
       .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(desc(soloChallengeScoresTable.score))
+      .orderBy(
+        desc(soloChallengeScoresTable.score),
+        desc(soloChallengeScoresTable.correctCount),
+      )
       .limit(20);
 
     res.json(rows);

@@ -26,7 +26,10 @@ export const soloChallengeScoresTable = pgTable("solo_challenge_scores", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull(),
   playerName: text("player_name").notNull(),
+  /** Total points earned (base 100 × question × time-bonus multiplier). */
   score: integer("score").notNull().default(0),
+  /** Number of correctly answered questions (secondary sort key). */
+  correctCount: integer("correct_count").notNull().default(0),
   playedAt: timestamp("played_at").notNull().defaultNow(),
 }, (t) => ({
   slugIdx: index("solo_challenge_scores_slug_idx").on(t.slug),
