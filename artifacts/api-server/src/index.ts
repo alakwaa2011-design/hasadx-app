@@ -289,7 +289,13 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS teacher_class_id INTEGER REFERENCES teacher_classes(id) ON DELETE SET NULL,
         ADD COLUMN IF NOT EXISTS skip_segments TEXT
     `);
-    // ── Solo Challenge Links (لعب فردي مفتوح) ──────────────────
+    logger.info("Schema migrations applied");
+  } catch (err) {
+    logger.error(err, "Schema migration failed");
+  }
+
+  // ── Solo Challenge Links — isolated block so earlier failures don't block it ──
+  try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS solo_challenges (
         id            SERIAL PRIMARY KEY,
@@ -301,15 +307,9 @@ async function runSchemaMigrations() {
         created_at    TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS solo_challenges_slug_idx        ON solo_challenges(slug)
-    `);
-    await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS solo_challenges_assignment_idx  ON solo_challenges(assignment_id)
-    `);
-    await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS solo_challenges_teacher_idx     ON solo_challenges(teacher_id)
-    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_slug_idx        ON solo_challenges(slug)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_assignment_idx  ON solo_challenges(assignment_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_teacher_idx     ON solo_challenges(teacher_id)`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS solo_challenge_scores (
         id          SERIAL PRIMARY KEY,
@@ -319,16 +319,11 @@ async function runSchemaMigrations() {
         played_at   TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx  ON solo_challenge_scores(slug)
-    `);
-    await db.execute(sql`
-      CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)
-    `);
-
-    logger.info("Schema migrations applied");
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx  ON solo_challenge_scores(slug)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)`);
+    logger.info("Solo challenge tables ready");
   } catch (err) {
-    logger.error(err, "Schema migration failed");
+    logger.error(err, "Solo challenge table migration failed");
   }
 }
 
