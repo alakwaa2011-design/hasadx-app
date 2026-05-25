@@ -3497,6 +3497,51 @@ function Section({
   );
 }
 
+/* ── Solo Link Button — per-card, stateless click ── */
+const BASE_URL_SOLO = import.meta.env.VITE_API_URL || "";
+function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
+  const handleClick = async () => {
+    if (state !== "idle") return;
+    setState("loading");
+    try {
+      const res = await fetch(`${BASE_URL_SOLO}/api/solo-challenges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ assignmentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      const url = `${window.location.origin}/solo/${data.slug}`;
+      await navigator.clipboard.writeText(url);
+      setState("copied");
+      setTimeout(() => setState("idle"), 2500);
+    } catch {
+      setState("idle");
+    }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={state === "loading"}
+      className="text-xs font-bold px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 border-amber-400/50 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:border-amber-500/30"
+      title={lang === "ar" ? "إنشاء ونسخ رابط اللعب الفردي" : "Create & copy solo play link"}
+    >
+      {state === "loading" ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : state === "copied" ? (
+        <Check className="w-3.5 h-3.5 text-green-500" />
+      ) : (
+        <Zap className="w-3.5 h-3.5" />
+      )}
+      {state === "copied"
+        ? (lang === "ar" ? "تم النسخ!" : "Copied!")
+        : (lang === "ar" ? "رابط فردي" : "Solo Link")}
+    </button>
+  );
+}
+
 /* ── Assignment Row (compact, expandable) ── */
 function AssignmentRow({
   assignment,
@@ -3731,6 +3776,9 @@ function AssignmentRow({
                 <Copy className="w-3.5 h-3.5" />
                 {lang === "ar" ? "نسخ رابط الواجب" : "Copy assignment link"}
               </button>
+              {/* ── Solo Play Link Button ── */}
+              <SoloLinkButton assignmentId={assignment.id} lang={lang} />
+
               <button
                 onClick={() => onShare(assignment.id)}
                 className="text-xs font-medium px-3 py-2 min-h-[44px] bg-card text-foreground border border-border rounded-lg hover:border-foreground/40 transition-colors inline-flex items-center gap-1.5"
