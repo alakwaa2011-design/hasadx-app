@@ -3769,11 +3769,13 @@ export default function GamePlay() {
                 >
                   {soloColor && (
                     <span
-                      className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-sm sm:text-base"
+                      className="flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-extrabold text-base sm:text-lg"
                       style={{
                         ...soloColor.circleStyle,
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        backdropFilter: "blur(4px)",
+                        border: "1.5px solid rgba(255,255,255,0.18)",
+                        backdropFilter: "blur(6px)",
+                        boxShadow:
+                          "0 0 14px rgba(255,255,255,0.12), 0 2px 10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.28)",
                       }}
                     >
                       {lang === "ar" ? soloColor.arLabel : soloColor.enLabel}
@@ -3782,7 +3784,7 @@ export default function GamePlay() {
                   <span
                     className={
                       soloColor
-                        ? "flex-1 leading-snug text-white/95"
+                        ? "flex-1 leading-snug text-white text-lg sm:text-xl font-semibold"
                         : "leading-snug"
                     }
                   >
