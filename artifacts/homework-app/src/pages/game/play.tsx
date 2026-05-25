@@ -1431,6 +1431,19 @@ export default function GamePlay() {
       if (data.gameMode) setGameMode(data.gameMode);
       const me = data.leaderboard?.find((e: any) => e.name === myName);
       if (me) setMyScore(me.score);
+      // Solo: if the player didn't answer before time ran out, treat it as a
+      // wrong answer — play the wrong sound and reveal the correct option so
+      // the player learns from the miss.
+      if (isSoloRef.current && !selectedAnswerRef.current) {
+        playWrongSound();
+        setAnswerResult({
+          correct: false,
+          points: 0,
+          streak: 0,
+          totalScore: 0,
+          correctAnswerText: data.correctAnswerText ?? null,
+        });
+      }
       // Solo: stay in "answered" phase (✅/❌ feedback visible) instead of
       // jumping to the intermediate leaderboard/spinner while the server
       // prepares the next question. Transition happens when game:question
@@ -1997,7 +2010,10 @@ export default function GamePlay() {
     </>
   );
 
-  const SoundPickerButton = () => (
+  const SoundPickerButton = () => {
+    // Solo challenge: bell/notification picker is irrelevant — hide it entirely.
+    if (isSoloRef.current) return null;
+    return (
     <div
       className={`fixed top-16 ${lang === "ar" ? "left-4" : "right-4"} z-50`}
     >
@@ -2043,7 +2059,8 @@ export default function GamePlay() {
         )}
       </AnimatePresence>
     </div>
-  );
+    );
+  };
 
   const reconnectBanner = (
     <ReconnectingBanner
