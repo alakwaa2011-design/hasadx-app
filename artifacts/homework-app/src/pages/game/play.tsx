@@ -127,7 +127,8 @@ const SOLO_OPTION_COLORS: Array<{
     bgStyle: {
       background: "linear-gradient(135deg, rgba(125,45,58,0.92) 0%, rgba(90,31,42,0.92) 100%)",
       border: "1px solid rgba(220,120,140,0.18)",
-      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+      boxShadow:
+        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
     },
     circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFD4DC" },
   },
@@ -137,7 +138,8 @@ const SOLO_OPTION_COLORS: Array<{
     bgStyle: {
       background: "linear-gradient(135deg, rgba(30,58,95,0.92) 0%, rgba(21,38,61,0.92) 100%)",
       border: "1px solid rgba(120,170,230,0.18)",
-      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+      boxShadow:
+        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
     },
     circleStyle: { background: "rgba(255,255,255,0.14)", color: "#C8DCFF" },
   },
@@ -147,7 +149,8 @@ const SOLO_OPTION_COLORS: Array<{
     bgStyle: {
       background: "linear-gradient(135deg, rgba(139,107,46,0.92) 0%, rgba(107,79,31,0.92) 100%)",
       border: "1px solid rgba(232,184,75,0.22)",
-      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+      boxShadow:
+        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
     },
     circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFE5A8" },
   },
@@ -157,7 +160,8 @@ const SOLO_OPTION_COLORS: Array<{
     bgStyle: {
       background: "linear-gradient(135deg, rgba(74,49,99,0.92) 0%, rgba(50,33,70,0.92) 100%)",
       border: "1px solid rgba(180,140,220,0.18)",
-      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+      boxShadow:
+        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
     },
     circleStyle: { background: "rgba(255,255,255,0.14)", color: "#E4D0FF" },
   },
@@ -3035,9 +3039,46 @@ export default function GamePlay() {
               </div>
               <span className="text-white/45 group-hover:text-white/65 text-[10px] sm:text-xs mt-1 transition">تجربة تفاعلية ذكية</span>
             </button>
-            <span className="w-20 text-end text-white/70 font-semibold text-sm sm:text-base tabular-nums">
-              {(question?.index ?? 0) + 1} / {question?.total}
-            </span>
+            {/* Premium circular countdown — the signature element of every
+                world-class quiz app (Kahoot/Duolingo/Quizizz). Gold ring
+                depletes smoothly, pulses red in the final seconds.
+                Replaces the plain "3 / 5" counter (which is already shown
+                inside the question card pill, so it was redundant). */}
+            <div className="w-20 flex justify-end">
+              <div className="relative w-14 h-14 sm:w-[60px] sm:h-[60px]">
+                <svg className="absolute inset-0 -rotate-90 w-full h-full" viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3.5" />
+                  <circle
+                    cx="30" cy="30" r="26" fill="none"
+                    stroke={isUrgent ? "#FF6B6B" : "#E8B84B"}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray={Math.PI * 2 * 26}
+                    strokeDashoffset={Math.PI * 2 * 26 * (1 - Math.max(0, Math.min(100, timerPercent)) / 100)}
+                    style={{
+                      transition: "stroke-dashoffset 0.2s linear, stroke 0.3s ease",
+                      filter: isUrgent
+                        ? "drop-shadow(0 0 6px rgba(255,107,107,0.65))"
+                        : "drop-shadow(0 0 4px rgba(232,184,75,0.5))",
+                    }}
+                  />
+                </svg>
+                <motion.div
+                  key={isUrgent ? "urgent" : "calm"}
+                  animate={isUrgent ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+                  transition={isUrgent ? { repeat: Infinity, duration: 1, ease: "easeInOut" } : { duration: 0.2 }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <span
+                    className={`font-extrabold text-lg sm:text-xl tabular-nums leading-none ${
+                      isUrgent ? "text-red-300" : "text-white"
+                    }`}
+                  >
+                    {Math.max(0, Math.ceil(timeLeft))}
+                  </span>
+                </motion.div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -3763,8 +3804,25 @@ export default function GamePlay() {
                     : "";
 
               return (
-                <button
-                  key={opt.key}
+                <motion.button
+                  // Key includes the question index so React remounts the
+                  // button between questions — this lets the staggered
+                  // entrance animation replay each new question instead of
+                  // running only on first mount. (The disabled/answer state
+                  // changes within a question keep the key stable, so taps
+                  // never trigger an unwanted re-animation.)
+                  key={`${question?.index ?? 0}-${opt.key}`}
+                  // Cascading entrance — each option slides in 70ms after the
+                  // previous one. Signature move of premium quiz UIs; gives
+                  // the page a sense of choreography instead of "everything
+                  // appears at once."
+                  initial={soloColor ? { opacity: 0, y: 18, scale: 0.96 } : false}
+                  animate={soloColor ? { opacity: 1, y: 0, scale: 1 } : undefined}
+                  transition={
+                    soloColor
+                      ? { duration: 0.38, delay: 0.08 + i * 0.07, ease: [0.22, 1, 0.36, 1] }
+                      : undefined
+                  }
                   onPointerDown={(e) => {
                     // Fire on pointer-down — the tap is registered the instant
                     // the player's finger touches the screen, eliminating the
@@ -3829,7 +3887,7 @@ export default function GamePlay() {
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-7 h-7 text-white drop-shadow`}
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
