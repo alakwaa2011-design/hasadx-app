@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Share2, Loader2 } from "lucide-react";
+import { Trophy, Share2, Loader2, RotateCcw } from "lucide-react";
 
 type LeaderboardEntry = { playerName: string; score: number };
 
@@ -14,7 +14,6 @@ interface Props {
 }
 
 export function SoloChallengeResults({
-  myScore,
   myName,
   lang,
   correctCount,
@@ -23,6 +22,7 @@ export function SoloChallengeResults({
 }: Props) {
   const isAr = lang === "ar";
 
+  // Capture sessionStorage values once at mount; clear them in the effect.
   const [soloSlug] = useState<string | null>(() =>
     typeof window !== "undefined"
       ? sessionStorage.getItem("solo_challenge_slug")
@@ -45,15 +45,15 @@ export function SoloChallengeResults({
   useEffect(() => {
     if (!soloSlug) return;
     const API = import.meta.env.VITE_API_URL || "";
+    const playerName = soloPlayerName || myName || "لاعب";
 
+    // Submit correct-answer count as the "score" so the leaderboard ranks
+    // by correct answers — not server-computed time-bonus points.
     fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({
-        playerName: soloPlayerName || myName || "لاعب",
-        score: myScore,
-      }),
+      body: JSON.stringify({ playerName, score: correctCount }),
     })
       .catch(() => {})
       .finally(() => {
@@ -76,18 +76,19 @@ export function SoloChallengeResults({
 
   if (!soloSlug) return null;
 
-  const displayName =
-    soloPlayerName || myName || (isAr ? "لاعب" : "Player");
+  const displayName = soloPlayerName || myName || (isAr ? "لاعب" : "Player");
   const pct =
     totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
   const shareText = isAr
     ? `أجبت على ${correctCount} من ${totalQuestions} سؤالاً في مسابقة «${soloChallengeTitle || soloSlug}»! هل تستطيع التفوق عليّ؟ 🎯\nالعب الآن: ${challengeUrl}`
     : `I answered ${correctCount}/${totalQuestions} in "${soloChallengeTitle || soloSlug}"! Can you beat me? 🎯\nPlay now: ${challengeUrl}`;
 
+  // Match rank by correctCount (now stored as score) + name.
   const myRankIdx = (() => {
     const byBoth = leaderboard.findIndex(
-      (e) => e.playerName === displayName && e.score === myScore,
+      (e) => e.playerName === displayName && e.score === correctCount,
     );
     if (byBoth >= 0) return byBoth;
     return leaderboard.findIndex((e) => e.playerName === displayName);
@@ -117,6 +118,11 @@ export function SoloChallengeResults({
       "_blank",
       "noopener,noreferrer",
     );
+  };
+
+  // Retry: navigate back to the solo entry page — starts fresh from name input.
+  const handleRetry = () => {
+    window.location.href = `/solo/${soloSlug}`;
   };
 
   const medals = ["🥇", "🥈", "🥉"];
@@ -155,7 +161,6 @@ export function SoloChallengeResults({
         ))}
       </div>
 
-      {/* ── Responsive content container — narrow on mobile, wider on desktop */}
       <div className="relative z-10 max-w-sm sm:max-w-xl lg:max-w-2xl mx-auto">
 
         {/* ── Main result card ──────────────────────────────── */}
@@ -186,7 +191,7 @@ export function SoloChallengeResults({
             {displayName}
           </p>
 
-          {/* Stats grid — correct/total  |  percentage  |  rank */}
+          {/* Stats: correct/total | percentage | rank */}
           <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
             <div
               className="rounded-xl sm:rounded-2xl py-3 sm:py-4 px-2"
@@ -199,7 +204,7 @@ export function SoloChallengeResults({
                 className="text-[10px] sm:text-xs font-bold mb-1"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                {isAr ? "الصحيح" : "Correct"}
+                {isAr ? "صحيح" : "Correct"}
               </p>
               <p className="font-black text-base sm:text-2xl text-white leading-none">
                 {correctCount}
@@ -251,7 +256,7 @@ export function SoloChallengeResults({
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.18 }}
           className="mt-3 sm:mt-4 rounded-2xl overflow-hidden"
           style={{
             background: "rgba(232,184,75,0.05)",
@@ -266,6 +271,12 @@ export function SoloChallengeResults({
             <h3 className="font-black text-white text-sm sm:text-base">
               {isAr ? "أفضل 20 لاعب" : "Top 20 Players"}
             </h3>
+            <span
+              className="ms-auto text-[10px] sm:text-xs font-bold"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+            >
+              {isAr ? "الصحيح" : "Correct"}
+            </span>
           </div>
 
           <div className="px-2 py-1.5 space-y-0.5 max-h-44 sm:max-h-72 overflow-y-auto">
@@ -296,8 +307,7 @@ export function SoloChallengeResults({
                     <span
                       className="w-6 sm:w-7 text-center text-xs sm:text-sm font-black shrink-0"
                       style={{
-                        color:
-                          i < 3 ? "#E8B84B" : "rgba(255,255,255,0.4)",
+                        color: i < 3 ? "#E8B84B" : "rgba(255,255,255,0.4)",
                       }}
                     >
                       {i < 3 ? medals[i] : i + 1}
@@ -315,8 +325,7 @@ export function SoloChallengeResults({
                     <span
                       className="font-black text-xs sm:text-sm"
                       style={{
-                        color:
-                          i === 0 ? "#E8B84B" : "rgba(255,255,255,0.65)",
+                        color: i === 0 ? "#E8B84B" : "rgba(255,255,255,0.65)",
                       }}
                     >
                       {entry.score}
@@ -328,46 +337,63 @@ export function SoloChallengeResults({
           </div>
         </motion.div>
 
-        {/* ── Share buttons ─────────────────────────────────── */}
+        {/* ── Action buttons ────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3"
+          transition={{ delay: 0.28 }}
+          className="mt-3 sm:mt-4 space-y-2"
         >
+          {/* Retry — full width, prominent */}
           <button
-            onClick={handleShare}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+            onClick={handleRetry}
+            className="w-full flex items-center justify-center gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
             style={{
-              background:
-                "linear-gradient(135deg,#C9930A 0%,#E8B84B 50%,#C9930A 100%)",
-              color: "#1A1200",
-              boxShadow: "0 3px 18px rgba(232,184,75,0.3)",
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              color: "#fff",
             }}
           >
-            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-            {isAr ? "شارك التحدي" : "Share"}
+            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+            {isAr ? "إعادة المسابقة" : "Play Again"}
           </button>
 
-          <button
-            onClick={handleWhatsApp}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
-            style={{
-              background: "#25D366",
-              color: "#fff",
-              boxShadow: "0 3px 18px rgba(37,211,102,0.28)",
-            }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="w-4 h-4 sm:w-5 sm:h-5 shrink-0"
-              fill="currentColor"
+          {/* Share + WhatsApp side by side */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <button
+              onClick={handleShare}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+              style={{
+                background:
+                  "linear-gradient(135deg,#C9930A 0%,#E8B84B 50%,#C9930A 100%)",
+                color: "#1A1200",
+                boxShadow: "0 3px 18px rgba(232,184,75,0.3)",
+              }}
             >
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.112 1.524 5.84L.057 23.571l5.887-1.543A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.502-5.177-1.38l-.371-.22-3.494.916.933-3.41-.242-.384A9.954 9.954 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-            </svg>
-            {isAr ? "واتساب" : "WhatsApp"}
-          </button>
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              {isAr ? "شارك" : "Share"}
+            </button>
+
+            <button
+              onClick={handleWhatsApp}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+              style={{
+                background: "#25D366",
+                color: "#fff",
+                boxShadow: "0 3px 18px rgba(37,211,102,0.28)",
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="w-4 h-4 sm:w-5 sm:h-5 shrink-0"
+                fill="currentColor"
+              >
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.112 1.524 5.84L.057 23.571l5.887-1.543A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.502-5.177-1.38l-.371-.22-3.494.916.933-3.41-.242-.384A9.954 9.954 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+              </svg>
+              {isAr ? "واتساب" : "WhatsApp"}
+            </button>
+          </div>
         </motion.div>
       </div>
     </div>
