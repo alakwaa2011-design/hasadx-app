@@ -65,6 +65,7 @@ export default function SoloPlayPage() {
       sessionStorage.setItem("solo_challenge_slug", slug!);
       sessionStorage.setItem("solo_challenge_player", name);
       sessionStorage.setItem("solo_challenge_title", info?.assignmentTitle ?? "");
+      sessionStorage.setItem("solo_challenge_start_time", String(Date.now()));
 
       // Skip the old /game/join screen entirely — solo has its own entry.
       // Go straight to /game/play/:pin with name + avatar in the query string

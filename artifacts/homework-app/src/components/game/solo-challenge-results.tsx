@@ -13,7 +13,15 @@ interface Props {
   dir: "rtl" | "ltr";
 }
 
+/** Format elapsed seconds as m:ss (e.g. 83 → "1:23") */
+function fmtTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export function SoloChallengeResults({
+  myScore,
   myName,
   lang,
   correctCount,
@@ -42,8 +50,14 @@ export function SoloChallengeResults({
   // ── First-attempt-only scoring ──────────────────────────────────────────────
   // We store the first completed score in localStorage so that replays on the
   // same device always show (and share) the first result, not an inflated one.
-  // Key: "hasad_solo_first_<slug>" → {score, total, name}
-  type FirstScore = { score: number; total: number; name: string };
+  // Key: "hasad_solo_first_<slug>" → {score, total, name, points?, timeTaken?}
+  type FirstScore = {
+    score: number;
+    total: number;
+    name: string;
+    points?: number;
+    timeTaken?: number; // seconds
+  };
   const lsKey = soloSlug ? `hasad_solo_first_${soloSlug}` : null;
 
   const [firstScore] = useState<FirstScore | null>(() => {
@@ -54,12 +68,22 @@ export function SoloChallengeResults({
     } catch { return null; }
   });
 
+  // Compute elapsed time from sessionStorage start timestamp (first attempt only).
+  const [elapsedSec] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    const t = sessionStorage.getItem("solo_challenge_start_time");
+    if (!t) return 0;
+    return Math.round((Date.now() - Number(t)) / 1000);
+  });
+
   // isReplay = true when this device has already completed this challenge.
   const isReplay = firstScore !== null;
 
   // The score we display and share: always the first attempt.
-  const displayCorrect = isReplay ? firstScore!.score : correctCount;
-  const displayTotal   = isReplay ? firstScore!.total : totalQuestions;
+  const displayCorrect  = isReplay ? firstScore!.score       : correctCount;
+  const displayTotal    = isReplay ? firstScore!.total       : totalQuestions;
+  const displayPoints   = isReplay ? (firstScore!.points  ?? 0) : myScore;
+  const displayTimeSec  = isReplay ? (firstScore!.timeTaken ?? 0) : elapsedSec;
   // ────────────────────────────────────────────────────────────────────────────
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -72,7 +96,13 @@ export function SoloChallengeResults({
 
     if (!isReplay) {
       // First attempt → save to localStorage and submit to leaderboard.
-      const entry: FirstScore = { score: correctCount, total: totalQuestions, name: playerName };
+      const entry: FirstScore = {
+        score: correctCount,
+        total: totalQuestions,
+        name: playerName,
+        points: myScore,
+        timeTaken: elapsedSec,
+      };
       try { localStorage.setItem(lsKey, JSON.stringify(entry)); } catch { /* storage full */ }
 
       fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
@@ -105,6 +135,7 @@ export function SoloChallengeResults({
     sessionStorage.removeItem("solo_challenge_slug");
     sessionStorage.removeItem("solo_challenge_player");
     sessionStorage.removeItem("solo_challenge_title");
+    sessionStorage.removeItem("solo_challenge_start_time");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -331,28 +362,28 @@ export function SoloChallengeResults({
                 className="text-[10px] sm:text-xs font-bold mb-1"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                {isAr ? "النسبة" : "Score %"}
+                {isAr ? "النقاط" : "Points"}
               </p>
               <p className="font-black text-base sm:text-2xl text-green-300 leading-none">
-                {pct}%
+                {displayPoints > 0 ? displayPoints.toLocaleString() : "—"}
               </p>
             </div>
 
             <div
               className="rounded-xl sm:rounded-2xl py-3 sm:py-4 px-2"
               style={{
-                background: "rgba(232,184,75,0.1)",
-                border: "1px solid rgba(232,184,75,0.22)",
+                background: "rgba(147,197,253,0.08)",
+                border: "1px solid rgba(147,197,253,0.2)",
               }}
             >
               <p
                 className="text-[10px] sm:text-xs font-bold mb-1"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                {isAr ? "ترتيبك" : "Rank"}
+                {isAr ? "الوقت" : "Time"}
               </p>
-              <p className="font-black text-base sm:text-2xl text-amber-300 leading-none">
-                {!leaderboardLoaded ? "…" : myRank ? `#${myRank}` : "—"}
+              <p className="font-black text-base sm:text-2xl text-blue-300 leading-none">
+                {displayTimeSec > 0 ? fmtTime(displayTimeSec) : "—"}
               </p>
             </div>
           </div>
