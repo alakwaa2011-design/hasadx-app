@@ -1,58 +1,88 @@
 import { Resvg } from "@resvg/resvg-js";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FONT_DIR = path.resolve(__dirname, "../data/fonts");
+
+/**
+ * Split an Arabic title into at most 2 display lines.
+ * Rules:
+ *  - Max ~22 chars per line (display-width heuristic; Arabic is wider than Latin)
+ *  - Never end a line on a lone conjunction (و، أو، في، من، على، إلى، لا)
+ *  - If it fits on one line, return one element
+ */
+function splitArabicTitle(title: string): [string] | [string, string] {
+  const CONJUNCTIONS = new Set(["و", "أو", "في", "من", "على", "إلى", "لا", "ثم"]);
+  const MAX = 22;
+
+  if (title.length <= MAX) return [title];
+
+  const words = title.split(" ");
+  let best = -1;
+
+  for (let i = 1; i < words.length; i++) {
+    const left = words.slice(0, i).join(" ");
+    if (left.length > MAX) break;
+    const lastWord = words[i - 1];
+    if (!CONJUNCTIONS.has(lastWord)) best = i;
+  }
+
+  if (best < 1) {
+    const pivot = words.findIndex((_, idx) => words.slice(0, idx + 1).join(" ").length > MAX);
+    best = pivot > 1 ? pivot : Math.ceil(words.length / 2);
+  }
+
+  return [
+    words.slice(0, best).join(" "),
+    words.slice(best).join(" "),
+  ];
+}
 
 /**
  * Generates a 1200×630 branded PNG card for a solo challenge share link.
- * Dark emerald background, gold accents, Arabic RTL title — ready for OG.
+ * Uses Noto Naskh Arabic Bold for elegant Arabic typography.
  */
 export function generateSoloChallengeOgImage(
   title: string,
   questionCount: number,
 ): Buffer {
   const escXml = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
+    s.replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
-  const safeTitle = escXml(title);
-  const safeCount = questionCount > 0 ? `${questionCount} سؤال` : "تحدي حصاد";
+  const lines = splitArabicTitle(title.trim());
+  const twoLines = lines.length === 2;
 
-  // Wrap long titles — split into up to 2 lines of ≤28 chars each.
-  const words = title.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const w of words) {
-    if ((current + " " + w).trim().length > 28 && current) {
-      lines.push(current.trim());
-      current = w;
-    } else {
-      current = (current + " " + w).trim();
-    }
-    if (lines.length === 2) { current = ""; break; }
-  }
-  if (current) lines.push(current.trim());
-  const [line1, line2] = [escXml(lines[0] ?? safeTitle), escXml(lines[1] ?? "")];
+  const fontSize = lines[0].length > 18 ? 62 : 70;
+  const titleY = twoLines ? 255 : 330;
+  const lineGap = fontSize + 14;
 
-  const titleY = line2 ? 270 : 310;
-  const titleBlock = line2
-    ? `<text x="600" y="${titleY}" font-size="64" font-weight="bold" fill="#E8B84B"
-         text-anchor="middle" font-family="serif" direction="rtl">${line1}</text>
-       <text x="600" y="${titleY + 80}" font-size="64" font-weight="bold" fill="#E8B84B"
-         text-anchor="middle" font-family="serif" direction="rtl">${line2}</text>`
-    : `<text x="600" y="${titleY}" font-size="68" font-weight="bold" fill="#E8B84B"
-         text-anchor="middle" font-family="serif" direction="rtl">${line1}</text>`;
+  const titleSvg = lines
+    .map((line, i) =>
+      `<text x="600" y="${titleY + i * lineGap}" font-size="${fontSize}"
+         font-weight="bold" fill="#E8B84B"
+         text-anchor="middle" font-family="Noto Naskh Arabic"
+         direction="rtl" unicode-bidi="embed">${escXml(line)}</text>`,
+    )
+    .join("\n  ");
+
+  const badgeY = titleY + lines.length * lineGap + 22;
+  const countLabel = questionCount > 0 ? `${questionCount} سؤال` : "تحدي حصاد";
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0b2416"/>
-      <stop offset="100%" stop-color="#1a3a2a"/>
+      <stop offset="0%" stop-color="#0a1f13"/>
+      <stop offset="100%" stop-color="#16362a"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#E8B84B" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#E8B84B"/>
+    <linearGradient id="goldBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#E8B84B" stop-opacity="0"/>
+      <stop offset="30%"  stop-color="#E8B84B"/>
+      <stop offset="70%"  stop-color="#E8B84B"/>
       <stop offset="100%" stop-color="#E8B84B" stop-opacity="0"/>
     </linearGradient>
   </defs>
@@ -60,53 +90,52 @@ export function generateSoloChallengeOgImage(
   <!-- Background -->
   <rect width="1200" height="630" fill="url(#bg)"/>
 
-  <!-- Subtle grid pattern -->
-  <rect width="1200" height="630" fill="none" stroke="#1e4d35" stroke-width="1" opacity="0.4"/>
+  <!-- Subtle vignette border -->
+  <rect x="0" y="0" width="1200" height="630"
+        fill="none" stroke="#E8B84B" stroke-width="3" opacity="0.18"/>
 
-  <!-- Corner glows -->
-  <ellipse cx="0" cy="0" rx="300" ry="300" fill="#E8B84B" opacity="0.04"/>
-  <ellipse cx="1200" cy="630" rx="300" ry="300" fill="#E8B84B" opacity="0.04"/>
+  <!-- Top and bottom gold bars -->
+  <rect x="0" y="0"   width="1200" height="5" fill="url(#goldBar)"/>
+  <rect x="0" y="625" width="1200" height="5" fill="url(#goldBar)"/>
 
-  <!-- Top gold bar -->
-  <rect x="0" y="0" width="1200" height="4" fill="url(#gold)"/>
+  <!-- Soft corner glows -->
+  <circle cx="60"  cy="60"  r="120" fill="#E8B84B" opacity="0.045"/>
+  <circle cx="1140" cy="570" r="120" fill="#E8B84B" opacity="0.045"/>
 
-  <!-- حصاد logo area -->
-  <text x="600" y="90" font-size="28" fill="#86c4a0" text-anchor="middle"
-        font-family="serif" letter-spacing="4" opacity="0.9">حصاد X</text>
-  <text x="600" y="118" font-size="14" fill="#6aaa88" text-anchor="middle"
-        font-family="serif" opacity="0.7">تجربة تفاعلية ذكية</text>
+  <!-- حصاد X — site brand at top -->
+  <text x="600" y="82" font-size="26" fill="#a8d5be"
+        text-anchor="middle" font-family="Noto Naskh Arabic"
+        direction="rtl" letter-spacing="1" opacity="0.85">حصاد X</text>
 
-  <!-- Diamond separator -->
-  <line x1="400" y1="145" x2="570" y2="145" stroke="#E8B84B" stroke-width="1" opacity="0.4"/>
-  <polygon points="600,138 608,145 600,152 592,145" fill="#E8B84B" opacity="0.8"/>
-  <line x1="630" y1="145" x2="800" y2="145" stroke="#E8B84B" stroke-width="1" opacity="0.4"/>
+  <!-- thin gold rule under brand -->
+  <rect x="520" y="100" width="160" height="1.5"
+        rx="1" fill="#E8B84B" opacity="0.35"/>
 
-  <!-- Challenge title -->
-  ${titleBlock}
+  <!-- Challenge title (1 or 2 lines) -->
+  ${titleSvg}
 
-  <!-- Divider line under title -->
-  <rect x="400" y="${titleY + (line2 ? 110 : 50)}" width="400" height="2"
-        fill="url(#gold)" rx="1" opacity="0.6"/>
+  <!-- Question count pill -->
+  <rect x="${600 - 100}" y="${badgeY}" width="200" height="40"
+        rx="20" fill="#E8B84B" fill-opacity="0.12"
+        stroke="#E8B84B" stroke-width="1.2" stroke-opacity="0.45"/>
+  <text x="600" y="${badgeY + 26}" font-size="19" fill="#E8B84B"
+        text-anchor="middle" font-family="Noto Naskh Arabic"
+        direction="rtl">${escXml(countLabel)}</text>
 
-  <!-- Question count badge -->
-  <rect x="490" y="${titleY + (line2 ? 135 : 75)}" width="220" height="44"
-        rx="22" fill="#E8B84B" fill-opacity="0.12"
-        stroke="#E8B84B" stroke-width="1.5" stroke-opacity="0.5"/>
-  <text x="600" y="${titleY + (line2 ? 163 : 103)}" font-size="20" fill="#E8B84B"
-        text-anchor="middle" font-family="serif" direction="rtl">${escXml(safeCount)}</text>
-
-  <!-- Bottom CTA -->
-  <text x="600" y="560" font-size="22" fill="#86c4a0" text-anchor="middle"
-        font-family="serif" direction="rtl" opacity="0.9">🎯 هل تقدر تتغلب عليه؟</text>
-  <text x="600" y="596" font-size="15" fill="#4a8c6a" text-anchor="middle"
-        font-family="serif" opacity="0.7">hasadx.com</text>
-
-  <!-- Bottom gold bar -->
-  <rect x="0" y="626" width="1200" height="4" fill="url(#gold)"/>
+  <!-- Bottom call-to-action -->
+  <text x="600" y="552" font-size="22" fill="#86c4a0"
+        text-anchor="middle" font-family="Noto Naskh Arabic"
+        direction="rtl" opacity="0.9">هل تقدر تتغلب عليه؟</text>
+  <text x="600" y="594" font-size="16" fill="#507a64"
+        text-anchor="middle" font-family="Noto Naskh Arabic"
+        opacity="0.8">hasadx.com</text>
 </svg>`;
 
   const resvg = new Resvg(svg, {
-    font: { loadSystemFonts: true },
+    font: {
+      loadSystemFonts: false,
+      fontDirs: [FONT_DIR],
+    },
     fitTo: { mode: "width", value: 1200 },
   });
 
