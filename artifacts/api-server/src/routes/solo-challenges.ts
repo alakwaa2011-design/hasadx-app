@@ -227,6 +227,12 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
       "solo",
     );
 
+    // Solo challenge: disable ALL point calculations (time bonus, streak
+    // multiplier, double-points rounds). Ranking is based purely on the
+    // number of correct answers, tracked client-side and POSTed to the
+    // leaderboard as the "score" on the results page.
+    game.pointsEnabled = false;
+
     startGameFromRest(game.pin);
 
     // Increment play count

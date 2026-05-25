@@ -602,9 +602,12 @@ function scheduleAutoAdvance(io: Server, game: Game) {
     return;
   }
 
+  // Solo challenge: 4-second uniform delay between every question.
+  // Multiplayer keeps the original 5-second buffer.
+  const advanceDelay = game.gameMode === "solo" ? 4000 : AUTO_ADVANCE_DELAY_MS;
   game.autoAdvanceTimerId = setTimeout(() => {
     doAutoAdvance(io, game.pin);
-  }, AUTO_ADVANCE_DELAY_MS);
+  }, advanceDelay);
 }
 
 function deferredEndQuestion(io: Server, game: Game) {
@@ -632,7 +635,9 @@ function endQuestion(io: Server, game: Game) {
   const teamLeaderboard = getTeamLeaderboard(game);
   const distribution = getAnswerDistribution(game);
 
-  const giftRoundNext = shouldStartGiftRound(game);
+  // Solo challenge: never trigger a gift round (it caused the extra wait
+  // every 3rd question). Multiplayer behavior is unchanged.
+  const giftRoundNext = game.gameMode === "solo" ? false : shouldStartGiftRound(game);
 
   io.to(`game:${game.pin}`).emit("game:question-ended", {
     leaderboard,
