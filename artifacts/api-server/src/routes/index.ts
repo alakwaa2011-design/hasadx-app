@@ -59,6 +59,7 @@ import studentTimelineRouter from "./student-timeline";
 import classroomRouter from "./classroom";
 import teamsRouter from "./teams";
 import xpRouter from "./xp";
+import soloChallengesRouter from "./solo-challenges";
 
 const router: IRouter = Router();
 
@@ -125,5 +126,6 @@ router.use(studentTimelineRouter);
 router.use(xpRouter);
 router.use(classroomRouter);
 router.use(teamsRouter);
+router.use(soloChallengesRouter);
 
 export default router;

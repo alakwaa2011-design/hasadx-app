@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -63,6 +63,51 @@ export default function TeacherAssignmentDetail() {
      Results tab. */
   const [classRoster, setClassRoster] = useState<Array<{ id: number; name: string; gradeLevel: string | null }> | null>(null);
   const [rosterLoading, setRosterLoading] = useState(false);
+
+  // Solo challenge link state
+  const [soloChallenge, setSoloChallenge] = useState<{ slug: string; playCount: number; assignmentTitle: string } | null | undefined>(undefined);
+  const [soloCreating, setSoloCreating] = useState(false);
+  const [soloCopied, setSoloCopied] = useState(false);
+
+  // Fetch existing solo challenge link on mount
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${BASE}/api/solo-challenges/by-assignment/${id}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setSoloChallenge(data))
+      .catch(() => setSoloChallenge(null));
+  }, [id]);
+
+  const handleCreateSoloChallenge = async () => {
+    setSoloCreating(true);
+    try {
+      const res = await fetch(`${BASE}/api/solo-challenges`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ assignmentId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || "خطأ"); return; }
+      setSoloChallenge(data);
+      const url = `${window.location.origin}/solo/${data.slug}`;
+      navigator.clipboard.writeText(url);
+      toast.success(lang === "ar" ? "تم إنشاء الرابط ونسخه!" : "Link created and copied!");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر الإنشاء" : "Failed to create");
+    } finally {
+      setSoloCreating(false);
+    }
+  };
+
+  const copySoloLink = () => {
+    if (!soloChallenge) return;
+    const url = `${window.location.origin}/solo/${soloChallenge.slug}`;
+    navigator.clipboard.writeText(url);
+    setSoloCopied(true);
+    setTimeout(() => setSoloCopied(false), 2000);
+    toast.success(lang === "ar" ? "تم نسخ رابط اللعب الفردي" : "Solo play link copied!");
+  };
 
   useEffect(() => {
     if ((assignment as any)?.isShared !== undefined) setAssignmentShared((assignment as any).isShared);
@@ -1017,6 +1062,34 @@ export default function TeacherAssignmentDetail() {
                   <Copy className="w-3.5 h-3.5" />
                   {t.assignmentDetail.copyLink}
                 </Button>
+
+                {/* ── Solo Play Link ─────────────────────────────── */}
+                {soloChallenge === undefined ? null : soloChallenge === null ? (
+                  <Button
+                    variant="outline"
+                    onClick={handleCreateSoloChallenge}
+                    disabled={soloCreating}
+                    className="gap-1.5 px-4 py-2 text-sm font-bold border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                  >
+                    {soloCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                    {lang === "ar" ? "إنشاء رابط لعب فردي" : "Create Solo Play Link"}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                    <Zap className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{lang === "ar" ? "لعب فردي" : "Solo"}: </span>
+                    <code className="text-xs font-mono truncate max-w-[120px]">/solo/{soloChallenge.slug}</code>
+                    <span className="text-xs opacity-60 hidden md:inline">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
+                    <button
+                      onClick={copySoloLink}
+                      className="ms-1 p-1 rounded hover:bg-amber-500/20 transition-colors"
+                      title={lang === "ar" ? "نسخ رابط اللعب الفردي" : "Copy solo play link"}
+                    >
+                      {soloCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                )}
+
                 <Button onClick={() => window.open(`${BASE}/api/assignments/${id}/export-csv`, "_blank")} variant="outline" className="gap-1.5 px-4 py-2 text-sm">
                   <Download className="w-3.5 h-3.5" />
                   {t.assignmentDetail.exportCSV}

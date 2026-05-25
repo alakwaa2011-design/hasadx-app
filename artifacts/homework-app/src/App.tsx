@@ -87,6 +87,7 @@ const StudentVideoLesson = lazy(() => import("@/pages/student/video-lesson"));
 const AdaptiveSolve = lazy(() => import("@/pages/student/adaptive-solve"));
 const PublicGamesPage = lazy(() => import("@/pages/public-games"));
 const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
+const SoloPlayPage = lazy(() => import("@/pages/solo-play"));
 const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
@@ -506,6 +507,7 @@ function Router() {
         <Route path="/games" component={GamesPage} />
         <Route path="/public/games" component={PublicGamesPage} />
         <Route path="/guest/create" component={GuestCreatePage} />
+        <Route path="/solo/:slug" component={SoloPlayPage} />
 
         <Route path="/install-tutorial" component={InstallTutorial} />
         <Route path="/install" component={InstallPage} />
