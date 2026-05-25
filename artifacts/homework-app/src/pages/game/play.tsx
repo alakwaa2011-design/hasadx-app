@@ -3175,15 +3175,15 @@ export default function GamePlay() {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="w-[96%] max-w-[960px] mx-auto rounded-3xl px-5 sm:px-7 pt-4 sm:pt-5 pb-5 sm:pb-6 relative"
+              className="w-[96%] max-w-[960px] mx-auto rounded-3xl px-5 sm:px-8 pt-4 sm:pt-5 pb-4 sm:pb-5 relative"
               style={{
                 background:
-                  "linear-gradient(160deg, rgba(255,255,255,0.045) 0%, rgba(20,56,40,0.25) 100%)",
-                backdropFilter: "blur(14px) saturate(140%)",
-                WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                border: "1px solid rgba(232,184,75,0.18)",
+                  "linear-gradient(160deg, rgba(255,255,255,0.052) 0%, rgba(20,56,40,0.30) 100%)",
+                backdropFilter: "blur(16px) saturate(150%)",
+                WebkitBackdropFilter: "blur(16px) saturate(150%)",
+                border: "1px solid rgba(232,184,75,0.28)",
                 boxShadow:
-                  "0 8px 32px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.05) inset",
+                  "0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 0 24px rgba(232,184,75,0.08)",
               }}
             >
               {/* Corner shine ornaments — subtle gold accents */}
@@ -3582,7 +3582,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[96%] max-w-[960px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-2 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[96%] max-w-[960px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-2 sm:gap-2.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-1.5 pb-2" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3765,7 +3765,7 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[104px] sm:min-h-[116px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-semibold text-base sm:text-lg flex items-center gap-4 sm:gap-5 text-start min-h-[100px] sm:min-h-[110px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
@@ -3839,9 +3839,9 @@ export default function GamePlay() {
                 className="w-4 h-4 rounded object-cover opacity-70 group-hover:opacity-100 transition-opacity"
               />
               <span className="text-[11px] sm:text-xs font-medium">
-                Powered by <span className="font-bold">حصاد</span>
-                <span className="text-white/25 mx-1.5">·</span>
-                <span className="text-white/35">أنشئ مسابقاتك التفاعلية</span>
+                أنشئ مسابقاتك التفاعلية
+                <span className="text-white/25 mx-1.5">•</span>
+                Powered by <span className="font-bold">حصاد X</span>
               </span>
             </a>
             <div className="flex items-center gap-4 sm:gap-5">
@@ -3857,20 +3857,21 @@ export default function GamePlay() {
               <button
                 type="button"
                 onClick={() => {
-                  // Lightweight share — uses Web Share API on mobile,
-                  // falls back to copying the play URL on desktop.
-                  const shareUrl = window.location.origin;
-                  const shareText = "تحدّى نفسك في حصاد — تجربة تفاعلية ذكية";
+                  // Primary share action — opens native share sheet on mobile
+                  // (WhatsApp, Telegram, etc. appear automatically in the sheet).
+                  // Falls back to clipboard copy on desktop browsers.
+                  const shareUrl = "https://hasadx.com";
+                  const shareText = "جرّب هذا التحدي التفاعلي على حصاد X ✨";
                   if (navigator.share) {
-                    navigator.share({ title: "حصادX", text: shareText, url: shareUrl }).catch(() => {});
+                    navigator.share({ title: "حصاد X", text: shareText, url: shareUrl }).catch(() => {});
                   } else {
-                    navigator.clipboard?.writeText(`${shareText} ${shareUrl}`).catch(() => {});
+                    navigator.clipboard?.writeText(`${shareText}\n${shareUrl}`).catch(() => {});
                   }
                 }}
-                className="flex items-center gap-1.5 text-white/45 hover:text-white/80 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
+                className="flex items-center gap-1.5 bg-white/[0.07] hover:bg-white/[0.13] border border-white/15 hover:border-[#E8B84B]/40 text-white/75 hover:text-white active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-semibold px-2.5 py-1.5 rounded-full"
                 aria-label="مشاركة"
               >
-                <Share2 className="w-3.5 h-3.5" strokeWidth={2} />
+                <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
                 <span>مشاركة</span>
               </button>
             </div>
