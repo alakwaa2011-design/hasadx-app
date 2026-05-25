@@ -3384,7 +3384,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2"} ${hackMode ? "gap-2" : "gap-3"} px-4 pb-8 auto-rows-fr`}
+            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1" : "grid-cols-2"} ${hackMode ? "gap-2" : "gap-3"} px-4 pb-8 ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-start" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3518,6 +3518,16 @@ export default function GamePlay() {
                   btnClass = `${color.bg || ""} ${color.text} opacity-30`.trim();
                   // keep btnStyle to keep gradient visible (dimmed by opacity-30)
                 }
+              } else if (isSelected) {
+                // Instant visual feedback the moment the player taps — before
+                // the server's answer-result arrives. Without this the button
+                // looks identical to its non-tapped state for 100-500ms, and
+                // the player thinks their tap was lost and re-taps repeatedly.
+                btnClass = `${btnClass} ring-4 ring-white/80 scale-[1.02] brightness-110`;
+              } else if (selectedAnswer) {
+                // Once any answer is tapped, dim the others immediately so the
+                // player gets clear "you tapped X" feedback without waiting.
+                btnClass = `${btnClass} opacity-50`;
               }
 
               const fbAnimClass = isSelected && answerResult?.correct
@@ -3529,12 +3539,26 @@ export default function GamePlay() {
                     : "";
 
               return (
-                <motion.button
+                <button
                   key={opt.key}
-                  onClick={() => submitAnswer(opt.key)}
+                  onPointerDown={(e) => {
+                    // Fire on pointer-down — the tap is registered the instant
+                    // the player's finger touches the screen, eliminating the
+                    // delay between touch and visual feedback. Also prevents
+                    // a stray onClick from re-firing.
+                    if (selectedAnswerRef.current) return;
+                    e.preventDefault();
+                    submitAnswer(opt.key);
+                  }}
+                  onClick={() => {
+                    // Fallback for mouse / keyboard / older browsers where
+                    // PointerEvent is not delivered first.
+                    if (selectedAnswerRef.current) return;
+                    submitAnswer(opt.key);
+                  }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md min-h-[54px] sm:min-h-[64px] relative active:scale-[0.97] transition-transform duration-75 touch-manipulation select-none`}
+                  className={`${btnClass} ${fbAnimClass} rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"} relative active:scale-[0.97] transition-all duration-100 touch-manipulation select-none cursor-pointer`}
                 >
                   <span className="leading-snug">{opt.text}</span>
                   {isSelected && answerResult?.correct && (
@@ -3552,7 +3576,7 @@ export default function GamePlay() {
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-7 h-7 text-white drop-shadow`}
                     />
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
