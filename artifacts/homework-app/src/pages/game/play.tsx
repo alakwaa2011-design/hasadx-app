@@ -109,6 +109,57 @@ class WoomeezFlashEffects {
   }
 }
 const woomeezEffects = new WoomeezFlashEffects();
+// Solo challenge: muted, elegant palette — lower saturation, deeper tones.
+// Premium-minimal aesthetic (Quizizz/Duolingo modern). Letter circles in
+// the button itself receive a brighter shade of the same hue.
+const SOLO_OPTION_COLORS: Array<{
+  bgStyle: React.CSSProperties;
+  circleStyle: React.CSSProperties;
+  arLabel: string;
+  enLabel: string;
+}> = [
+  {
+    arLabel: "أ",
+    enLabel: "A",
+    bgStyle: {
+      background: "linear-gradient(135deg, rgba(125,45,58,0.92) 0%, rgba(90,31,42,0.92) 100%)",
+      border: "1px solid rgba(220,120,140,0.18)",
+      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+    },
+    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFD4DC" },
+  },
+  {
+    arLabel: "ب",
+    enLabel: "B",
+    bgStyle: {
+      background: "linear-gradient(135deg, rgba(30,58,95,0.92) 0%, rgba(21,38,61,0.92) 100%)",
+      border: "1px solid rgba(120,170,230,0.18)",
+      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+    },
+    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#C8DCFF" },
+  },
+  {
+    arLabel: "ج",
+    enLabel: "C",
+    bgStyle: {
+      background: "linear-gradient(135deg, rgba(139,107,46,0.92) 0%, rgba(107,79,31,0.92) 100%)",
+      border: "1px solid rgba(232,184,75,0.22)",
+      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+    },
+    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFE5A8" },
+  },
+  {
+    arLabel: "د",
+    enLabel: "D",
+    bgStyle: {
+      background: "linear-gradient(135deg, rgba(74,49,99,0.92) 0%, rgba(50,33,70,0.92) 100%)",
+      border: "1px solid rgba(180,140,220,0.18)",
+      boxShadow: "0 4px 18px rgba(0,0,0,0.28)",
+    },
+    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#E4D0FF" },
+  },
+];
+
 const OPTION_COLORS: Array<{
   bg: string;
   hover: string;
@@ -2392,7 +2443,19 @@ export default function GamePlay() {
         {reconnectBanner}
       <div
         className={`min-h-screen flex flex-col ${hackMode ? "bg-black" : ""}`}
-        style={hackMode ? undefined : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+        style={
+          hackMode
+            ? undefined
+            : isSoloRef.current
+              ? {
+                  // Solo challenge — premium dark slate with a soft warm glow
+                  // behind the question card. Calmer than the green theme so
+                  // the focus stays on the question and options.
+                  background:
+                    "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(232,184,75,0.06) 0%, transparent 60%), linear-gradient(180deg, #0B0F1A 0%, #131829 50%, #0F1320 100%)",
+                }
+              : { background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }
+        }
         dir={dir}
       >
         <MuteButton />
@@ -3025,6 +3088,29 @@ export default function GamePlay() {
                 {question?.text}
               </h2>
             </motion.div>
+          ) : isSoloRef.current ? (
+            // Solo challenge — premium glass card around the question text.
+            // Minimal, generous breathing room, lighter font weight for a
+            // refined editorial feel (no gaming overload).
+            <motion.div
+              key={question?.index}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-2xl sm:rounded-3xl px-5 sm:px-7 py-5 sm:py-7"
+              style={{
+                background: "rgba(255,255,255,0.045)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                boxShadow:
+                  "0 12px 40px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.04)",
+              }}
+            >
+              <h2 className="text-lg sm:text-2xl md:text-[26px] font-bold text-white/95 text-center leading-[1.9] sm:leading-[1.75] tracking-wide">
+                {question?.text}
+              </h2>
+            </motion.div>
           ) : (
             <motion.h2
               key={question?.index}
@@ -3497,10 +3583,19 @@ export default function GamePlay() {
                   text: "text-white",
                 },
               ];
+              // Solo challenge — swap to muted/elegant palette for MCQ.
+              // True/false keeps the standard green/red for clarity.
+              const useSoloPalette =
+                isSoloRef.current && qType !== "true_false";
+              const soloColor = useSoloPalette ? SOLO_OPTION_COLORS[i] : null;
               const color =
                 qType === "true_false" ? tfColors[i] : OPTION_COLORS[i];
-              let btnStyle: React.CSSProperties = color.style || {};
-              btnClass = `${color.bg || ""} ${color.hover || ""} ${color.text}`.trim();
+              let btnStyle: React.CSSProperties = soloColor
+                ? soloColor.bgStyle
+                : color.style || {};
+              btnClass = soloColor
+                ? "text-white"
+                : `${color.bg || ""} ${color.hover || ""} ${color.text}`.trim();
               if (answerResult) {
                 if (isSelected && answerResult.correct) {
                   btnClass =
@@ -3558,9 +3653,25 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"} relative active:scale-[0.97] transition-all duration-100 touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[62px] sm:min-h-[72px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.98] transition-all duration-150 touch-manipulation select-none cursor-pointer`}
                 >
-                  <span className="leading-snug">{opt.text}</span>
+                  {soloColor && (
+                    <span
+                      className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-base sm:text-lg"
+                      style={soloColor.circleStyle}
+                    >
+                      {lang === "ar" ? soloColor.arLabel : soloColor.enLabel}
+                    </span>
+                  )}
+                  <span
+                    className={
+                      soloColor
+                        ? "flex-1 leading-snug text-white/95"
+                        : "leading-snug"
+                    }
+                  >
+                    {opt.text}
+                  </span>
                   {isSelected && answerResult?.correct && (
                     <CheckCircle
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-6 h-6 text-white`}
