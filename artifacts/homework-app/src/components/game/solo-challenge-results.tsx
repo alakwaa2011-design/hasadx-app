@@ -81,6 +81,11 @@ export function SoloChallengeResults({
     totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
+  // Share URL: routes through /api/share/solo/:slug which returns an HTML page
+  // with dynamic Open Graph tags (title = challenge name). Social platforms
+  // (WhatsApp/Telegram/X/FB) unfurl the rich preview using THIS page; a meta
+  // refresh + JS redirect bounces human clickers straight to the play page.
+  const shareUrl = `${window.location.origin}/api/share/solo/${soloSlug}`;
 
   // Performance tier — drives the celebratory headline + tier color.
   // Static "well done" regardless of score kills the dopamine hit; tier-aware
@@ -121,8 +126,8 @@ export function SoloChallengeResults({
   const trimmedTitle = soloChallengeTitle?.trim() || "";
   const challengeTitleStr = trimmedTitle ? ` "${trimmedTitle}"` : "";
   const shareText = isAr
-    ? `🎯 ${displayName} حصل على ${correctCount}/${totalQuestions}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${challengeUrl}\n\n✨ على حصاد X`
-    : `🎯 ${displayName} scored ${correctCount}/${totalQuestions}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${challengeUrl}\n\n✨ Powered by HasadX`;
+    ? `🎯 ${displayName} حصل على ${correctCount}/${totalQuestions}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${shareUrl}\n\n✨ على حصاد X`
+    : `🎯 ${displayName} scored ${correctCount}/${totalQuestions}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${shareUrl}\n\n✨ Powered by HasadX`;
 
   // Match rank by correctCount (now stored as score) + name.
   const myRankIdx = (() => {
@@ -141,7 +146,7 @@ export function SoloChallengeResults({
           title:
             soloChallengeTitle || (isAr ? "تحدي حصاد" : "Hasad Challenge"),
           text: shareText,
-          url: challengeUrl,
+          url: shareUrl,
         })
         .catch(() => {
           navigator.clipboard.writeText(shareText).catch(() => {});

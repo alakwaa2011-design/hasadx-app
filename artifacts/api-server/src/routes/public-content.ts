@@ -498,4 +498,73 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   }
 });
 
+/* GET /api/share/solo/:slug
+   Public share page: returns an HTML document with dynamic Open Graph tags
+   so that WhatsApp/Telegram/X/Facebook show the challenge title (instead of
+   the generic site title) when the share link is unfurled. Browsers visiting
+   this URL are bounced to the real play page via meta-refresh + JS, so the
+   experience is identical for humans, while social crawlers get rich previews. */
+router.get("/share/solo/:slug", async (req, res) => {
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  try {
+    const slug = req.params.slug;
+    const [challenge] = await db
+      .select()
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0] || req.protocol;
+    const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
+    const origin = `${proto}://${host}`;
+    const playUrl = `${origin}/solo/${encodeURIComponent(slug)}`;
+
+    const rawTitle = challenge?.assignmentTitle?.trim() || "تحدي حصاد";
+    const title = escapeHtml(rawTitle);
+    const description = escapeHtml(
+      `انضم إلى تحدي "${rawTitle}" على منصة حصاد — هل تقدر تتغلب على أصدقائك؟`
+    );
+    const safePlayUrl = escapeHtml(playUrl);
+    const imageUrl = "https://hasadx.com/opengraph.jpg";
+
+    res.set("Cache-Control", "public, max-age=300");
+    res.type("html").send(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>${title} · حصاد</title>
+<meta name="description" content="${description}" />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="ar_AR" />
+<meta property="og:site_name" content="منصة حصاد" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${description}" />
+<meta property="og:url" content="${safePlayUrl}" />
+<meta property="og:image" content="${imageUrl}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${description}" />
+<meta name="twitter:image" content="${imageUrl}" />
+<meta http-equiv="refresh" content="0; url=${safePlayUrl}" />
+<link rel="canonical" href="${safePlayUrl}" />
+<script>window.location.replace(${JSON.stringify(playUrl)});</script>
+</head>
+<body style="background:#0d2818;color:#e8b84b;font-family:system-ui,sans-serif;text-align:center;padding:40px">
+<p>جارٍ فتح التحدي… <a href="${safePlayUrl}" style="color:#e8b84b">اضغط هنا إذا لم يحدث تلقائياً</a></p>
+</body>
+</html>`);
+  } catch (err) {
+    req.log.error({ err }, "Solo share OG page error");
+    res.status(500).type("html").send("<!DOCTYPE html><html><body>Error</body></html>");
+  }
+});
+
 export default router;
