@@ -1278,12 +1278,10 @@ export default function GamePlay() {
         if (hackModeRef.current) {
           setPhase("answered");
         } else if (isSoloRef.current) {
-          // Solo: brief 700ms so the colour-flash feedback on the buttons is
-          // visible, then show answered card. The next game:question arrives
-          // whenever the server is ready — no extra wait added here.
-          setTimeout(() => {
-            setPhase((prev) => (prev === "question" ? "answered" : prev));
-          }, 700);
+          // Solo: STAY on "question" phase — feedback (✅/❌ button colours +
+          // inline banner) is rendered directly on the question screen.
+          // No intermediate full-screen "answered" card at all.
+          // Transition happens only when the server sends game:question next.
         } else {
           setTimeout(() => {
             // Only switch if we're still on the question screen — the server
@@ -2247,7 +2245,8 @@ export default function GamePlay() {
   // For hack mode, the answer reveal is rendered INLINE on the question screen
   // (Blooket-style green/red card highlight + correct-answer-text banner),
   // so we skip this separate "answered" full-screen view.
-  if (phase === "answered" && !showMysteryBoxes && !hackMode) {
+  // Solo never enters this block — it stays on "question" phase with inline feedback.
+  if (phase === "answered" && !showMysteryBoxes && !hackMode && !isSoloRef.current) {
     return (
       <>
         {reconnectBanner}
@@ -2928,7 +2927,8 @@ export default function GamePlay() {
                 🛡️ محمي
               </motion.div>
             )}
-            {pointsEnabled &&
+            {/* Solo: hide score display entirely — results use correct-count, not points. */}
+            {pointsEnabled && !isSoloRef.current &&
               (hackMode ? (
                 <div className="flex items-center gap-2 bg-green-950/60 border border-green-800 px-4 py-2 rounded-full font-mono">
                   <span className="text-green-700 text-xs">PTS</span>
@@ -2946,7 +2946,7 @@ export default function GamePlay() {
         </div>
 
         <div className="px-4 mb-2">
-          {hackMode ? null : ( // Hack mode: no per-question timer — only the marathon timer at the top of the screen runs.
+          {hackMode || isSoloRef.current ? null : ( // Solo: no timer display (no time-based scoring). Hack mode: marathon timer at top only.
             <>
               <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
@@ -3051,7 +3051,10 @@ export default function GamePlay() {
           )}
         </div>
 
-        {phase === "answered" &&
+        {/* Feedback banner: shown in the standard "answered" phase for multiplayer,
+            OR inline on "question" phase for solo (no separate answered screen). */}
+        {((phase === "answered" && !isSoloRef.current) ||
+          (isSoloRef.current && phase === "question" && !!answerResult)) &&
           answerResult &&
           !showMysteryBoxes &&
           (hackMode ? (

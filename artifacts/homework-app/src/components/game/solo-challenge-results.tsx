@@ -13,20 +13,6 @@ interface Props {
   dir: "rtl" | "ltr";
 }
 
-/**
- * Solo-challenge end-of-game page.
- *
- * Lives in its own component so its hooks always run in the same order —
- * the parent <GamePlay> has many early returns above this UI, so co-locating
- * the hooks there caused a "Rendered more hooks than during the previous
- * render" violation when the phase transitioned to "finished".
- *
- * Owns the entire finished screen for solo (no podium / no "all players" /
- * no PIN share / no "wait for teacher"). Reads the solo session info from
- * sessionStorage once at mount, reports the player's score, fetches the
- * top-20 leaderboard, then clears the session keys so a replay does not
- * re-report.
- */
 export function SoloChallengeResults({
   myScore,
   myName,
@@ -37,8 +23,6 @@ export function SoloChallengeResults({
 }: Props) {
   const isAr = lang === "ar";
 
-  /* Lazy-init from sessionStorage so the values are captured once at mount
-     and stay stable even after we clear sessionStorage in the effect. */
   const [soloSlug] = useState<string | null>(() =>
     typeof window !== "undefined"
       ? sessionStorage.getItem("solo_challenge_slug")
@@ -60,7 +44,6 @@ export function SoloChallengeResults({
 
   useEffect(() => {
     if (!soloSlug) return;
-
     const API = import.meta.env.VITE_API_URL || "";
 
     fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
@@ -95,12 +78,13 @@ export function SoloChallengeResults({
 
   const displayName =
     soloPlayerName || myName || (isAr ? "لاعب" : "Player");
+  const pct =
+    totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
   const shareText = isAr
-    ? `حصلت على ${myScore} نقطة في مسابقة «${soloChallengeTitle || soloSlug}»! هل تستطيع التفوق عليّ؟ 🎯\nالعب الآن: ${challengeUrl}`
-    : `I scored ${myScore} in "${soloChallengeTitle || soloSlug}"! Can you beat me? 🎯\nPlay now: ${challengeUrl}`;
+    ? `أجبت على ${correctCount} من ${totalQuestions} سؤالاً في مسابقة «${soloChallengeTitle || soloSlug}»! هل تستطيع التفوق عليّ؟ 🎯\nالعب الآن: ${challengeUrl}`
+    : `I answered ${correctCount}/${totalQuestions} in "${soloChallengeTitle || soloSlug}"! Can you beat me? 🎯\nPlay now: ${challengeUrl}`;
 
-  /* ── Rank detection ─────────────────────────────────────── */
   const myRankIdx = (() => {
     const byBoth = leaderboard.findIndex(
       (e) => e.playerName === displayName && e.score === myScore,
@@ -110,14 +94,12 @@ export function SoloChallengeResults({
   })();
   const myRank = myRankIdx >= 0 ? myRankIdx + 1 : null;
 
-  /* ── Share handlers ─────────────────────────────────────── */
   const handleShare = () => {
     if (typeof navigator.share === "function") {
       navigator
         .share({
           title:
-            soloChallengeTitle ||
-            (isAr ? "تحدي حصاد" : "Hasad Challenge"),
+            soloChallengeTitle || (isAr ? "تحدي حصاد" : "Hasad Challenge"),
           text: shareText,
           url: challengeUrl,
         })
@@ -130,38 +112,42 @@ export function SoloChallengeResults({
   };
 
   const handleWhatsApp = () => {
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-    window.open(waUrl, "_blank", "noopener,noreferrer");
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div
-      className="min-h-screen p-3 sm:p-6 relative overflow-hidden"
+      className="min-h-screen p-4 sm:p-8 relative overflow-hidden"
       style={{
         background:
           "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)",
       }}
       dir={dir}
     >
-      {/* Subtle floating dots */}
+      {/* Floating confetti dots */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: 14 }).map((_, i) => (
           <motion.div
             key={`c-${i}`}
-            initial={{ y: -16, x: (i * 71) % 400, opacity: 0.9 }}
+            initial={{ y: -16, x: (i * 67) % 500, opacity: 0.85 }}
             animate={{
-              y: (typeof window !== "undefined" ? window.innerHeight : 700) + 16,
+              y:
+                (typeof window !== "undefined" ? window.innerHeight : 800) + 16,
               opacity: 0,
-              rotate: 270,
+              rotate: 300,
             }}
             transition={{
               duration: 4 + (i % 3),
-              delay: (i * 0.22) % 2.2,
+              delay: (i * 0.2) % 2.5,
               repeat: Infinity,
             }}
-            className="absolute w-1.5 h-1.5 rounded-full"
+            className="absolute w-2 h-2 rounded-full"
             style={{
               backgroundColor: ["#fbbf24", "#f59e0b", "#fde68a"][i % 3],
             }}
@@ -169,17 +155,19 @@ export function SoloChallengeResults({
         ))}
       </div>
 
-      <div className="relative z-10 max-w-sm mx-auto">
+      {/* ── Responsive content container — narrow on mobile, wider on desktop */}
+      <div className="relative z-10 max-w-sm sm:max-w-xl lg:max-w-2xl mx-auto">
+
         {/* ── Main result card ──────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 130, damping: 18 }}
-          className="rounded-2xl text-center p-5"
+          className="rounded-2xl sm:rounded-3xl text-center p-5 sm:p-8"
           style={{
             background: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(232,184,75,0.35)",
-            boxShadow: "0 16px 50px rgba(0,0,0,0.5)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
           }}
         >
           <motion.div
@@ -187,101 +175,100 @@ export function SoloChallengeResults({
             transition={{ repeat: Infinity, duration: 2.6 }}
             className="inline-block"
           >
-            <Trophy className="w-12 h-12 mx-auto text-amber-400 drop-shadow-[0_0_18px_rgba(232,184,75,0.5)]" />
+            <Trophy className="w-14 h-14 sm:w-20 sm:h-20 mx-auto text-amber-400 drop-shadow-[0_0_20px_rgba(232,184,75,0.55)]" />
           </motion.div>
 
-          <h1 className="mt-3 text-xl font-black text-white">
+          <h1 className="mt-3 text-xl sm:text-3xl font-black text-white">
             {isAr ? "أحسنت! انتهت اللعبة" : "Well done! Game Over"}
           </h1>
 
-          <p className="mt-0.5 text-sm font-bold text-amber-300/80 truncate">
+          <p className="mt-1 text-sm sm:text-base font-bold text-amber-300/80 truncate">
             {displayName}
           </p>
 
-          {/* Big score */}
-          <p
-            className="mt-3 font-black leading-none"
-            style={{
-              fontSize: "52px",
-              color: "#E8B84B",
-              textShadow: "0 3px 18px rgba(232,184,75,0.3)",
-            }}
-          >
-            {myScore}
-          </p>
-          <p
-            className="text-[11px] font-bold mt-0.5"
-            style={{ color: "rgba(255,255,255,0.45)" }}
-          >
-            {isAr ? "الدرجة النهائية" : "Final Score"}
-          </p>
-
-          {/* Stats row */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          {/* Stats grid — correct/total  |  percentage  |  rank */}
+          <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
             <div
-              className="rounded-xl py-2.5 px-2"
+              className="rounded-xl sm:rounded-2xl py-3 sm:py-4 px-2"
               style={{
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.08)",
               }}
             >
               <p
-                className="text-[10px] font-bold mb-0.5"
+                className="text-[10px] sm:text-xs font-bold mb-1"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                {isAr ? "الإجابات الصحيحة" : "Correct"}
+                {isAr ? "الصحيح" : "Correct"}
               </p>
-              <p className="font-black text-lg text-white leading-none">
+              <p className="font-black text-base sm:text-2xl text-white leading-none">
                 {correctCount}
-                <span className="text-white/40 text-sm font-bold">
-                  {" / "}
-                  {totalQuestions || "—"}
+                <span className="text-white/40 text-xs sm:text-sm font-bold">
+                  {" / "}{totalQuestions || "—"}
                 </span>
               </p>
             </div>
+
             <div
-              className="rounded-xl py-2.5 px-2"
+              className="rounded-xl sm:rounded-2xl py-3 sm:py-4 px-2"
+              style={{
+                background: "rgba(74,222,128,0.08)",
+                border: "1px solid rgba(74,222,128,0.2)",
+              }}
+            >
+              <p
+                className="text-[10px] sm:text-xs font-bold mb-1"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+              >
+                {isAr ? "النسبة" : "Score %"}
+              </p>
+              <p className="font-black text-base sm:text-2xl text-green-300 leading-none">
+                {pct}%
+              </p>
+            </div>
+
+            <div
+              className="rounded-xl sm:rounded-2xl py-3 sm:py-4 px-2"
               style={{
                 background: "rgba(232,184,75,0.1)",
                 border: "1px solid rgba(232,184,75,0.22)",
               }}
             >
               <p
-                className="text-[10px] font-bold mb-0.5"
+                className="text-[10px] sm:text-xs font-bold mb-1"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
-                {isAr ? "ترتيبك" : "Your Rank"}
+                {isAr ? "ترتيبك" : "Rank"}
               </p>
-              <p className="font-black text-lg text-amber-300 leading-none">
+              <p className="font-black text-base sm:text-2xl text-amber-300 leading-none">
                 {!leaderboardLoaded ? "…" : myRank ? `#${myRank}` : "—"}
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* ── Top-20 leaderboard (compact) ────────────────────── */}
+        {/* ── Top-20 leaderboard ────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-3 rounded-2xl overflow-hidden"
+          className="mt-3 sm:mt-4 rounded-2xl overflow-hidden"
           style={{
             background: "rgba(232,184,75,0.05)",
             border: "1px solid rgba(232,184,75,0.18)",
           }}
         >
           <div
-            className="px-4 py-2.5 flex items-center gap-2"
+            className="px-4 py-2.5 sm:py-3 flex items-center gap-2"
             style={{ borderBottom: "1px solid rgba(232,184,75,0.12)" }}
           >
-            <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
-            <h3 className="font-black text-white text-sm">
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+            <h3 className="font-black text-white text-sm sm:text-base">
               {isAr ? "أفضل 20 لاعب" : "Top 20 Players"}
             </h3>
           </div>
 
-          {/* Capped at 160px so it doesn't push share buttons off screen */}
-          <div className="px-2 py-1.5 space-y-0.5 max-h-40 overflow-y-auto">
+          <div className="px-2 py-1.5 space-y-0.5 max-h-44 sm:max-h-72 overflow-y-auto">
             {!leaderboardLoaded ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
@@ -296,18 +283,18 @@ export function SoloChallengeResults({
                 return (
                   <div
                     key={i}
-                    className="flex items-center gap-2 px-2.5 py-1 rounded-lg"
+                    className="flex items-center gap-2 px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl"
                     style={
                       isMe
                         ? {
-                            background: "rgba(232,184,75,0.15)",
-                            border: "1px solid rgba(232,184,75,0.4)",
+                            background: "rgba(232,184,75,0.14)",
+                            border: "1px solid rgba(232,184,75,0.38)",
                           }
                         : {}
                     }
                   >
                     <span
-                      className="w-6 text-center text-xs font-black shrink-0"
+                      className="w-6 sm:w-7 text-center text-xs sm:text-sm font-black shrink-0"
                       style={{
                         color:
                           i < 3 ? "#E8B84B" : "rgba(255,255,255,0.4)",
@@ -316,7 +303,7 @@ export function SoloChallengeResults({
                       {i < 3 ? medals[i] : i + 1}
                     </span>
                     <span
-                      className={`flex-1 text-xs font-bold truncate ${isMe ? "text-amber-300" : "text-white/75"}`}
+                      className={`flex-1 text-xs sm:text-sm font-bold truncate ${isMe ? "text-amber-300" : "text-white/75"}`}
                     >
                       {entry.playerName}
                       {isMe && (
@@ -326,7 +313,7 @@ export function SoloChallengeResults({
                       )}
                     </span>
                     <span
-                      className="font-black text-xs"
+                      className="font-black text-xs sm:text-sm"
                       style={{
                         color:
                           i === 0 ? "#E8B84B" : "rgba(255,255,255,0.65)",
@@ -341,42 +328,39 @@ export function SoloChallengeResults({
           </div>
         </motion.div>
 
-        {/* ── Share buttons ────────────────────────────────────── */}
+        {/* ── Share buttons ─────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.32 }}
-          className="mt-3 grid grid-cols-2 gap-2"
+          transition={{ delay: 0.3 }}
+          className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3"
         >
-          {/* General share / copy */}
           <button
             onClick={handleShare}
-            className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-black"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
             style={{
               background:
                 "linear-gradient(135deg,#C9930A 0%,#E8B84B 50%,#C9930A 100%)",
               color: "#1A1200",
-              boxShadow: "0 3px 16px rgba(232,184,75,0.3)",
+              boxShadow: "0 3px 18px rgba(232,184,75,0.3)",
             }}
           >
-            <Share2 className="w-4 h-4" />
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
             {isAr ? "شارك التحدي" : "Share"}
           </button>
 
-          {/* WhatsApp */}
           <button
             onClick={handleWhatsApp}
-            className="flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-black"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
             style={{
               background: "#25D366",
               color: "#fff",
-              boxShadow: "0 3px 16px rgba(37,211,102,0.3)",
+              boxShadow: "0 3px 18px rgba(37,211,102,0.28)",
             }}
           >
-            {/* WhatsApp SVG icon */}
             <svg
               viewBox="0 0 24 24"
-              className="w-4 h-4 shrink-0"
+              className="w-4 h-4 sm:w-5 sm:h-5 shrink-0"
               fill="currentColor"
             >
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
