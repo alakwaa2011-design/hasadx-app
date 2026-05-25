@@ -499,6 +499,84 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   }
 });
 
+/* GET /s/:shortSlug
+   Short-form social-share page (e.g. hasadx.com/s/eid-quiz-k4x2).
+   Identical purpose to /api/share/solo/:slug — serves full OG HTML and
+   bounces real browsers to the play page. Designed for ASCII-clean URLs
+   that look good in WhatsApp/Facebook/X link previews. */
+router.get("/s/:shortSlug", async (req, res) => {
+  const escapeHtml = (s: string) =>
+    s.replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  try {
+    const shortSlug = req.params.shortSlug;
+    const [challenge] = await db
+      .select()
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.shortSlug, shortSlug))
+      .limit(1);
+
+    if (!challenge) return res.status(404).type("html").send(`<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="UTF-8"/>
+<title>الرابط غير موجود — حصاد</title>
+<meta http-equiv="refresh" content="3; url=https://hasadx.com/" />
+</head><body style="background:#0d2818;color:#e8b84b;font-family:system-ui,sans-serif;text-align:center;padding:60px">
+<p>لم يُعثر على هذا التحدي.</p></body></html>`);
+
+    const proto = (req.headers["x-forwarded-proto"] as string)?.split(",")[0] || req.protocol;
+    const host = (req.headers["x-forwarded-host"] as string) || req.get("host") || "";
+    const origin = `${proto}://${host}`;
+
+    const playUrl   = `${origin}/solo/${encodeURIComponent(challenge.slug)}`;
+    const ogImageUrl = `${origin}/api/share/solo/${encodeURIComponent(challenge.slug)}/og.png`;
+    const shortUrl  = `${origin}/s/${encodeURIComponent(shortSlug)}`;
+
+    const rawTitle   = challenge.assignmentTitle?.trim() || "تحدي حصاد";
+    const title      = escapeHtml(rawTitle);
+    const description = escapeHtml("🎯 هل تقدر تتغلب عليه؟ جرّب التحدي الآن على حصاد");
+    const safePlayUrl  = escapeHtml(playUrl);
+    const safeImageUrl = escapeHtml(ogImageUrl);
+    const safeShortUrl = escapeHtml(shortUrl);
+
+    res.set("Cache-Control", "public, max-age=300");
+    res.type("html").send(`<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>${title}</title>
+<meta name="description" content="${description}" />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="ar_AR" />
+<meta property="og:site_name" content="حصاد X" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${description}" />
+<meta property="og:url" content="${safeShortUrl}" />
+<meta property="og:image" content="${safeImageUrl}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:type" content="image/png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${title}" />
+<meta name="twitter:description" content="${description}" />
+<meta name="twitter:image" content="${safeImageUrl}" />
+<meta http-equiv="refresh" content="0; url=${safePlayUrl}" />
+<link rel="canonical" href="${safeShortUrl}" />
+<script>window.location.replace(${JSON.stringify(playUrl)});</script>
+</head>
+<body style="background:#0d2818;color:#e8b84b;font-family:system-ui,sans-serif;text-align:center;padding:40px">
+<p>جارٍ فتح التحدي… <a href="${safePlayUrl}" style="color:#e8b84b">اضغط هنا إذا لم يحدث تلقائياً</a></p>
+</body>
+</html>`);
+  } catch (err) {
+    req.log.error({ err }, "Short slug share OG page error");
+    res.status(500).type("html").send("<!DOCTYPE html><html><body>Error</body></html>");
+  }
+});
+
 /* GET /api/share/solo/:slug/og.png
    Generates a 1200×630 branded PNG card for the challenge (used as og:image).
    WhatsApp/Telegram/FB/X crawlers fetch this; cached for 10 minutes. */

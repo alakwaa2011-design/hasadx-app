@@ -32,6 +32,9 @@ const router: IRouter = Router();
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_slug_idx ON solo_challenges(slug)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_assignment_idx ON solo_challenges(assignment_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_teacher_idx ON solo_challenges(teacher_id)`);
+    // Short ASCII slug for clean social-share URLs (added later — idempotent)
+    await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS short_slug TEXT UNIQUE`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenges_short_slug_idx ON solo_challenges(short_slug)`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS solo_challenge_scores (
         id          SERIAL PRIMARY KEY,
@@ -48,7 +51,7 @@ const router: IRouter = Router();
   }
 })();
 
-/** Convert assignment title to a URL-friendly slug. */
+/** Convert assignment title to a URL-friendly slug (keeps Arabic chars). */
 function titleToSlug(title: string): string {
   return title
     .trim()
@@ -57,6 +60,32 @@ function titleToSlug(title: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80) || "challenge";
+}
+
+/** Transliterate Arabic characters to ASCII-safe equivalents for short slugs. */
+function arabicToLatinSlug(title: string): string {
+  const map: Record<string, string> = {
+    'ا':'a','أ':'a','إ':'i','آ':'a','ب':'b','ت':'t','ث':'th','ج':'j',
+    'ح':'h','خ':'kh','د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh',
+    'ص':'s','ض':'d','ط':'t','ظ':'z','ع':'a','غ':'gh','ف':'f','ق':'q',
+    'ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ى':'a',
+    'ة':'a','ء':'','ئ':'y','ؤ':'w','لا':'la',
+  };
+  let result = '';
+  for (const ch of title.trim().toLowerCase()) {
+    if (map[ch] !== undefined) result += map[ch];
+    else if (/[a-z0-9]/.test(ch)) result += ch;
+    else if (/[\s\-_]/.test(ch)) result += '-';
+  }
+  return result
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 20) || 'quiz';
+}
+
+/** 4-character random alphanumeric suffix for short slug uniqueness. */
+function randomSuffix(): string {
+  return Math.random().toString(36).slice(2, 6);
 }
 
 /** Generate a unique slug (append -2, -3 ... if needed). */
@@ -102,19 +131,40 @@ router.post("/api/solo-challenges", async (req, res) => {
       .limit(1);
 
     if (existing) {
-      return res.json({ slug: existing.slug, playCount: existing.playCount, assignmentTitle: existing.assignmentTitle });
+      // Back-fill shortSlug for challenges created before this feature landed
+      if (!existing.shortSlug) {
+        const short = `${arabicToLatinSlug(existing.assignmentTitle)}-${randomSuffix()}`;
+        try {
+          await db.update(soloChallengesTable)
+            .set({ shortSlug: short })
+            .where(eq(soloChallengesTable.id, existing.id));
+          existing.shortSlug = short;
+        } catch { /* collision — leave null */ }
+      }
+      return res.json({
+        slug: existing.slug,
+        shortSlug: existing.shortSlug ?? null,
+        playCount: existing.playCount,
+        assignmentTitle: existing.assignmentTitle,
+      });
     }
 
-    // Create new slug
+    // Create new slug + short slug
     const base = titleToSlug(assignment.title);
     const slug = await uniqueSlug(base);
+    const shortSlug = `${arabicToLatinSlug(assignment.title)}-${randomSuffix()}`;
 
     const [created] = await db
       .insert(soloChallengesTable)
-      .values({ slug, assignmentId, teacherId, assignmentTitle: assignment.title })
+      .values({ slug, shortSlug, assignmentId, teacherId, assignmentTitle: assignment.title })
       .returning();
 
-    res.json({ slug: created.slug, playCount: 0, assignmentTitle: created.assignmentTitle });
+    res.json({
+      slug: created.slug,
+      shortSlug: created.shortSlug ?? null,
+      playCount: 0,
+      assignmentTitle: created.assignmentTitle,
+    });
   } catch (err) {
     req.log.error(err, "Create solo challenge error");
     res.status(500).json({ message: "خطأ في إنشاء الرابط" });
@@ -241,7 +291,12 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
       .set({ playCount: sql`${soloChallengesTable.playCount} + 1` })
       .where(eq(soloChallengesTable.slug, slug));
 
-    res.json({ pin: game.pin, title: challenge.assignmentTitle, questionCount: gameQuestions.length });
+    res.json({
+      pin: game.pin,
+      title: challenge.assignmentTitle,
+      questionCount: gameQuestions.length,
+      shortSlug: challenge.shortSlug ?? null,
+    });
   } catch (err) {
     req.log.error(err, "Solo challenge start error");
     res.status(500).json({ message: "خطأ في بدء اللعبة" });

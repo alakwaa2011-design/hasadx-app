@@ -36,6 +36,11 @@ export function SoloChallengeResults({
       ? sessionStorage.getItem("solo_challenge_slug")
       : null,
   );
+  const [soloShortSlug] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("solo_challenge_short_slug")
+      : null,
+  );
   const [soloPlayerName] = useState<string | null>(() =>
     typeof window !== "undefined"
       ? sessionStorage.getItem("solo_challenge_player")
@@ -133,6 +138,7 @@ export function SoloChallengeResults({
     }
 
     sessionStorage.removeItem("solo_challenge_slug");
+    sessionStorage.removeItem("solo_challenge_short_slug");
     sessionStorage.removeItem("solo_challenge_player");
     sessionStorage.removeItem("solo_challenge_title");
     sessionStorage.removeItem("solo_challenge_start_time");
@@ -146,11 +152,14 @@ export function SoloChallengeResults({
     displayTotal > 0 ? Math.round((displayCorrect / displayTotal) * 100) : 0;
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
-  // Share URL: routes through /api/share/solo/:slug which returns an HTML page
-  // with dynamic Open Graph tags (title = challenge name). Social platforms
-  // (WhatsApp/Telegram/X/FB) unfurl the rich preview using THIS page; a meta
-  // refresh + JS redirect bounces human clickers straight to the play page.
-  const shareUrl = `${window.location.origin}/api/share/solo/${soloSlug}`;
+  // Share URL strategy:
+  //  1. Prefer /s/:shortSlug — short ASCII URL (e.g. hasadx.com/s/eid-quiz-k4x2)
+  //     handled by the API server, returns OG HTML so FB/WhatsApp show a rich card.
+  //  2. Fall back to /api/share/solo/:slug for challenges created before shortSlug
+  //     was introduced (both work identically for social-card unfurling).
+  const shareUrl = soloShortSlug
+    ? `${window.location.origin}/s/${encodeURIComponent(soloShortSlug)}`
+    : `${window.location.origin}/api/share/solo/${encodeURIComponent(soloSlug!)}`;
 
   // Performance tier — drives the celebratory headline + tier color.
   // Static "well done" regardless of score kills the dopamine hit; tier-aware

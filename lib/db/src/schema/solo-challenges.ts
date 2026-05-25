@@ -6,6 +6,9 @@ import { assignmentsTable } from "./assignments";
 export const soloChallengesTable = pgTable("solo_challenges", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
+  /** Short ASCII slug used in social-share URLs, e.g. "eid-quiz-k4x2".
+   *  Nullable for rows created before this column was added. */
+  shortSlug: text("short_slug").unique(),
   assignmentId: integer("assignment_id").notNull().references(() => assignmentsTable.id, { onDelete: "cascade" }),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   assignmentTitle: text("assignment_title").notNull(),
@@ -13,6 +16,7 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   slugIdx: index("solo_challenges_slug_idx").on(t.slug),
+  shortSlugIdx: index("solo_challenges_short_slug_idx").on(t.shortSlug),
   assignmentIdx: index("solo_challenges_assignment_idx").on(t.assignmentId),
   teacherIdx: index("solo_challenges_teacher_idx").on(t.teacherId),
 }));

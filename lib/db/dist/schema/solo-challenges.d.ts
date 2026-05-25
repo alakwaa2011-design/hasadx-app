@@ -37,6 +37,23 @@ export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        shortSlug: import("drizzle-orm/pg-core").PgColumn<{
+            name: "short_slug";
+            tableName: "solo_challenges";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         assignmentId: import("drizzle-orm/pg-core").PgColumn<{
             name: "assignment_id";
             tableName: "solo_challenges";
