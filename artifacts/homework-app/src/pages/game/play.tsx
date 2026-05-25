@@ -3094,7 +3094,7 @@ export default function GamePlay() {
           )}
         </div>
 
-        <div className={`px-4 flex-shrink-0 ${isSoloRef.current && !hackMode ? "py-3" : "py-6"}`}>
+        <div className={`flex-shrink-0 ${isSoloRef.current && !hackMode ? "pt-2 pb-1" : "px-4 py-6"}`}>
           {isDoublePoints && pointsEnabled && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
@@ -3159,7 +3159,7 @@ export default function GamePlay() {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="max-w-lg sm:max-w-2xl lg:max-w-3xl mx-auto rounded-3xl px-6 sm:px-8 pt-5 sm:pt-6 pb-6 sm:pb-7 relative"
+              className="w-[94%] max-w-[900px] mx-auto rounded-3xl px-5 sm:px-7 pt-4 sm:pt-5 pb-5 sm:pb-6 relative"
               style={{
                 background:
                   "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
@@ -3566,7 +3566,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`flex-1 grid ${qType === "true_false" ? "grid-cols-2" : hackMode ? "grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 max-w-lg sm:max-w-2xl lg:max-w-3xl w-full mx-auto" : "grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} px-4 ${isSoloRef.current ? "pb-6 pt-2" : "pb-8"} ${isSoloRef.current && qType !== "true_false" ? "auto-rows-min content-center" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "grid-cols-1 w-[94%] max-w-[900px] mx-auto" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-3 pb-4" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3749,7 +3749,7 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[64px] sm:min-h-[74px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[92px] sm:min-h-[100px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
