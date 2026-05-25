@@ -602,9 +602,10 @@ function scheduleAutoAdvance(io: Server, game: Game) {
     return;
   }
 
-  // Solo challenge: 4-second uniform delay between every question.
+  // Solo challenge: 2.5-second uniform delay between every question —
+  // just long enough to read the correct/wrong feedback, then moves on.
   // Multiplayer keeps the original 5-second buffer.
-  const advanceDelay = game.gameMode === "solo" ? 4000 : AUTO_ADVANCE_DELAY_MS;
+  const advanceDelay = game.gameMode === "solo" ? 2500 : AUTO_ADVANCE_DELAY_MS;
   game.autoAdvanceTimerId = setTimeout(() => {
     doAutoAdvance(io, game.pin);
   }, advanceDelay);

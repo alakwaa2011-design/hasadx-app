@@ -207,7 +207,7 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
         optionD: q.optionD ?? null,
         correctAnswer: q.correctAnswer ?? "",
         points: q.points ?? 1,
-        duration: 20,
+        duration: 15,
         imageUrl: q.imageUrl ?? null,
         readAloud: q.readAloud ?? false,
       }));

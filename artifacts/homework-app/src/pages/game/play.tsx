@@ -44,6 +44,7 @@ import {
   playVictoryFanfare,
   playClapSound,
   playFireworkSound,
+  playSoloVictory,
   playHackerVictory,
   playHackerAccessGranted,
   playCyberWinTune,
@@ -1450,8 +1451,8 @@ export default function GamePlay() {
       if (data.gameMode) setGameMode(data.gameMode);
       const me = data.leaderboard?.find((e: any) => e.name === myName);
       if (me) setMyScore(me.score);
-      // Solo: skip heavy multi-sound victory cascade — results appear instantly.
-      if (isSoloRef.current) return;
+      // Solo: play a brief gentle chime instead of the full victory cascade.
+      if (isSoloRef.current) { playSoloVictory(); return; }
       if (hackModeRef.current) {
         stopHackMarathonLoop();
         // Energetic Blooket-style victory cascade.
@@ -3764,7 +3765,7 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[92px] sm:min-h-[100px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-3.5 text-start min-h-[104px] sm:min-h-[116px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span

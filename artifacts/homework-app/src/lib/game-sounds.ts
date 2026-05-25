@@ -178,6 +178,38 @@ export function playCorrectSound() {
   osc.stop(ctx.currentTime + 0.4);
 }
 
+/**
+ * Solo challenge end — a brief, gentle 3-note ascending chime (~1.1s).
+ * Soft enough not to startle, clear enough to feel like a reward.
+ */
+export function playSoloVictory() {
+  if (isMuted) return;
+  try {
+    const ctx = getCtx();
+    const master = getMaster();
+    const notes = [
+      { freq: 523.25, time: 0.00, dur: 0.38 }, // C5
+      { freq: 659.25, time: 0.28, dur: 0.38 }, // E5
+      { freq: 783.99, time: 0.56, dur: 0.55 }, // G5
+    ];
+    notes.forEach(({ freq, time, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(master);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + time;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.025);
+      gain.gain.setValueAtTime(0.18, t + dur - 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t);
+      osc.stop(t + dur + 0.01);
+    });
+  } catch {/* AudioContext blocked or unavailable */}
+}
+
 export function playWrongSound() {
   if (isMuted) return;
   const ctx = getCtx();
