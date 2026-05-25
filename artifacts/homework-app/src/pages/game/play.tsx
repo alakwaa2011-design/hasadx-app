@@ -28,7 +28,6 @@ import {
   Bell,
   Music2,
   Loader2,
-  ChevronLeft,
   MessageSquare,
 } from "lucide-react";
 import RaceTrack from "@/components/race-track";
@@ -125,45 +124,45 @@ const SOLO_OPTION_COLORS: Array<{
     arLabel: "أ",
     enLabel: "A",
     bgStyle: {
-      background: "linear-gradient(135deg, rgba(125,45,58,0.92) 0%, rgba(90,31,42,0.92) 100%)",
-      border: "1px solid rgba(220,120,140,0.18)",
+      background: "linear-gradient(135deg, rgba(220,70,95,0.95) 0%, rgba(175,45,70,0.95) 100%)",
+      border: "1px solid rgba(255,165,180,0.28)",
       boxShadow:
-        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
+        "0 8px 24px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 0 rgba(0,0,0,0.2)",
     },
-    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFD4DC" },
+    circleStyle: { background: "rgba(255,255,255,0.22)", color: "#FFFFFF" },
   },
   {
     arLabel: "ب",
     enLabel: "B",
     bgStyle: {
-      background: "linear-gradient(135deg, rgba(30,58,95,0.92) 0%, rgba(21,38,61,0.92) 100%)",
-      border: "1px solid rgba(120,170,230,0.18)",
+      background: "linear-gradient(135deg, rgba(60,120,220,0.95) 0%, rgba(40,90,185,0.95) 100%)",
+      border: "1px solid rgba(155,195,255,0.3)",
       boxShadow:
-        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
+        "0 8px 24px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 0 rgba(0,0,0,0.2)",
     },
-    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#C8DCFF" },
+    circleStyle: { background: "rgba(255,255,255,0.22)", color: "#FFFFFF" },
   },
   {
     arLabel: "ج",
     enLabel: "C",
     bgStyle: {
-      background: "linear-gradient(135deg, rgba(139,107,46,0.92) 0%, rgba(107,79,31,0.92) 100%)",
-      border: "1px solid rgba(232,184,75,0.22)",
+      background: "linear-gradient(135deg, rgba(34,180,115,0.95) 0%, rgba(22,140,85,0.95) 100%)",
+      border: "1px solid rgba(140,235,180,0.3)",
       boxShadow:
-        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
+        "0 8px 24px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 0 rgba(0,0,0,0.2)",
     },
-    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#FFE5A8" },
+    circleStyle: { background: "rgba(255,255,255,0.22)", color: "#FFFFFF" },
   },
   {
     arLabel: "د",
     enLabel: "D",
     bgStyle: {
-      background: "linear-gradient(135deg, rgba(74,49,99,0.92) 0%, rgba(50,33,70,0.92) 100%)",
-      border: "1px solid rgba(180,140,220,0.18)",
+      background: "linear-gradient(135deg, rgba(160,100,225,0.95) 0%, rgba(120,70,190,0.95) 100%)",
+      border: "1px solid rgba(210,170,255,0.3)",
       boxShadow:
-        "0 10px 28px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -2px 0 rgba(0,0,0,0.22)",
+        "0 8px 24px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 0 rgba(0,0,0,0.2)",
     },
-    circleStyle: { background: "rgba(255,255,255,0.14)", color: "#E4D0FF" },
+    circleStyle: { background: "rgba(255,255,255,0.22)", color: "#FFFFFF" },
   },
 ];
 
@@ -3640,7 +3639,7 @@ export default function GamePlay() {
           </div>
         ) : (
           <div
-            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[920px] mx-auto auto-rows-fr" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-[12px] sm:gap-[14px]" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "pt-2 pb-3" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
+            className={`grid ${qType === "true_false" ? "flex-1 grid-cols-2" : hackMode ? "flex-1 grid-cols-1 sm:grid-cols-2" : isSoloRef.current ? "flex-1 grid-cols-1 w-[94%] max-w-[560px] mx-auto content-center" : "flex-1 grid-cols-2"} ${hackMode ? "gap-2" : isSoloRef.current && qType !== "true_false" ? "gap-3 sm:gap-3.5" : "gap-3"} ${isSoloRef.current && qType !== "true_false" ? "py-4" : "px-4 pb-8"} ${isSoloRef.current && qType !== "true_false" ? "" : "auto-rows-fr"}`}
           >
             {options.map((opt, i) => {
               const isSelected = selectedAnswer === opt.key;
@@ -3840,7 +3839,7 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-semibold text-base sm:text-lg flex items-center gap-4 sm:gap-5 text-start min-h-[72px] sm:min-h-[82px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[58px] sm:min-h-[66px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
@@ -3865,13 +3864,6 @@ export default function GamePlay() {
                   >
                     {opt.text}
                   </span>
-                  {soloColor && !answerResult && (
-                    <ChevronLeft
-                      className={`flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 opacity-50 ${lang === "ar" ? "" : "rotate-180"}`}
-                      style={{ color: soloColor.circleStyle.color as string }}
-                      strokeWidth={2.5}
-                    />
-                  )}
                   {isSelected && answerResult?.correct && (
                     <CheckCircle
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-6 h-6 text-white`}
