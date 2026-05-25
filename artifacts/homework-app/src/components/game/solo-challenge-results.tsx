@@ -81,10 +81,48 @@ export function SoloChallengeResults({
     totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
 
   const challengeUrl = `${window.location.origin}/solo/${soloSlug}`;
-  // Share message carries the HasadX brand + a hook before the link.
+
+  // Performance tier — drives the celebratory headline + tier color.
+  // Static "well done" regardless of score kills the dopamine hit; tier-aware
+  // copy makes a 10/10 feel like a triumph and a 4/10 feel like a challenge
+  // worth retrying / sharing for redemption.
+  const tier =
+    pct >= 90 ? "legend" : pct >= 70 ? "excellent" : pct >= 50 ? "good" : "keep_going";
+  const TIER = {
+    legend: {
+      title: isAr ? "أسطورة!" : "Legend!",
+      subtitle: isAr ? "أداء استثنائي — تستحق التحدي" : "Exceptional performance",
+      emoji: "🏆",
+      color: "#FFD66E",
+    },
+    excellent: {
+      title: isAr ? "ممتاز!" : "Excellent!",
+      subtitle: isAr ? "نتيجة رائعة — تحدّى أصدقاءك" : "Great score — challenge your friends",
+      emoji: "✨",
+      color: "#E8B84B",
+    },
+    good: {
+      title: isAr ? "جيد!" : "Good!",
+      subtitle: isAr ? "تقدر تتحسن — جرّب مرة أخرى" : "You can do better",
+      emoji: "👏",
+      color: "#86E8B1",
+    },
+    keep_going: {
+      title: isAr ? "استمر!" : "Keep Going!",
+      subtitle: isAr ? "الأبطال لا يستسلمون — أعد المحاولة" : "Champions don't quit",
+      emoji: "💪",
+      color: "#A8C8FF",
+    },
+  }[tier];
+
+  // Personalised, competitive share text — the viral engine. Includes the
+  // player's name, score, and a "can you beat me?" hook. Anyone who opens
+  // the link arrives as a fresh solo player and gets pulled into the loop.
+  const trimmedTitle = soloChallengeTitle?.trim() || "";
+  const challengeTitleStr = trimmedTitle ? ` "${trimmedTitle}"` : "";
   const shareText = isAr
-    ? `جرّب هذا التحدي التفاعلي على حصاد X ✨\n${challengeUrl}`
-    : `Try this interactive challenge on HasadX ✨\n${challengeUrl}`;
+    ? `🎯 ${displayName} حصل على ${correctCount}/${totalQuestions}${challengeTitleStr ? ` في تحدي${challengeTitleStr}` : ""}\n\nهل تقدر تتغلب عليه؟ جرّب التحدي الآن:\n${challengeUrl}\n\n✨ على حصاد X`
+    : `🎯 ${displayName} scored ${correctCount}/${totalQuestions}${challengeTitleStr ? ` on${challengeTitleStr}` : ""}\n\nCan you beat them? Try the challenge now:\n${challengeUrl}\n\n✨ Powered by HasadX`;
 
   // Match rank by correctCount (now stored as score) + name.
   const myRankIdx = (() => {
@@ -179,16 +217,27 @@ export function SoloChallengeResults({
           <motion.div
             animate={{ rotate: [0, -5, 5, 0], scale: [1, 1.06, 1] }}
             transition={{ repeat: Infinity, duration: 2.6 }}
-            className="inline-block"
+            className="inline-block text-5xl sm:text-7xl"
+            style={{
+              filter: `drop-shadow(0 0 22px ${TIER.color}88)`,
+            }}
           >
-            <Trophy className="w-14 h-14 sm:w-20 sm:h-20 mx-auto text-amber-400 drop-shadow-[0_0_20px_rgba(232,184,75,0.55)]" />
+            {TIER.emoji}
           </motion.div>
 
-          <h1 className="mt-3 text-xl sm:text-3xl font-black text-white">
-            {isAr ? "أحسنت! انتهت اللعبة" : "Well done! Game Over"}
+          {/* Tier-aware celebratory headline — scales the dopamine hit
+              to the player's actual performance. */}
+          <h1
+            className="mt-2 text-2xl sm:text-4xl font-black tracking-tight"
+            style={{ color: TIER.color }}
+          >
+            {TIER.title}
           </h1>
+          <p className="mt-1 text-xs sm:text-sm font-bold text-white/65">
+            {TIER.subtitle}
+          </p>
 
-          <p className="mt-1 text-sm sm:text-base font-bold text-amber-300/80 truncate">
+          <p className="mt-3 text-sm sm:text-base font-bold text-amber-300/80 truncate">
             {displayName}
           </p>
 
@@ -389,69 +438,78 @@ export function SoloChallengeResults({
           transition={{ delay: 0.28 }}
           className="mt-3 sm:mt-4 space-y-2"
         >
-          {/* Retry — primary CTA, premium gold gradient + subtle pulse glow
-              draws the eye as the recommended next action. */}
+          {/* PRIMARY: Challenge friends on WhatsApp — the viral engine.
+              Full-width green CTA with pulse-glow halo. For Arabic-speaking
+              markets, WhatsApp is THE social channel; this single button
+              is responsible for ~90% of the platform's organic growth, so
+              it gets the dominant visual weight. */}
           <motion.button
-            onClick={handleRetry}
+            onClick={handleWhatsApp}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.97 }}
-            className="relative w-full flex items-center justify-center gap-2 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-base sm:text-lg font-black transition-all duration-200 hover:brightness-110 hover:-translate-y-[1px] overflow-hidden"
+            className="relative w-full flex items-center justify-center gap-2.5 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-base sm:text-lg font-black transition-all duration-200 hover:brightness-110 hover:-translate-y-[1px] overflow-hidden"
             style={{
               background:
-                "linear-gradient(135deg,#C9930A 0%,#F2C84B 50%,#C9930A 100%)",
-              color: "#1A1200",
+                "linear-gradient(135deg,#1FAE56 0%,#25D366 50%,#1FAE56 100%)",
+              color: "#fff",
               boxShadow:
-                "0 10px 30px rgba(232,184,75,0.35), 0 0 0 1px rgba(255,235,160,0.35) inset",
+                "0 10px 30px rgba(37,211,102,0.42), 0 0 0 1px rgba(255,255,255,0.18) inset",
             }}
           >
             <motion.span
               aria-hidden
               className="absolute inset-0 rounded-xl sm:rounded-2xl pointer-events-none"
-              animate={{ boxShadow: [
-                "0 0 0 0 rgba(232,184,75,0.45)",
-                "0 0 0 10px rgba(232,184,75,0)",
-              ] }}
+              animate={{
+                boxShadow: [
+                  "0 0 0 0 rgba(37,211,102,0.5)",
+                  "0 0 0 12px rgba(37,211,102,0)",
+                ],
+              }}
               transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut" }}
             />
-            <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
-            <span className="relative">{isAr ? "إعادة المسابقة" : "Play Again"}</span>
+            <svg
+              viewBox="0 0 24 24"
+              className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 relative"
+              fill="currentColor"
+            >
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.112 1.524 5.84L.057 23.571l5.887-1.543A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.502-5.177-1.38l-.371-.22-3.494.916.933-3.41-.242-.384A9.954 9.954 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+            </svg>
+            <span className="relative">
+              {isAr ? "تحدّى أصدقاءك على واتساب" : "Challenge friends on WhatsApp"}
+            </span>
           </motion.button>
 
-          {/* Share + WhatsApp side by side */}
+          {/* Secondary row: generic Share + Replay. Equal weight, gold/glass
+              to stay subordinate to the primary green CTA above. */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-all duration-200 active:scale-[0.97] hover:brightness-110"
               style={{
                 background:
                   "linear-gradient(135deg,#C9930A 0%,#E8B84B 50%,#C9930A 100%)",
                 color: "#1A1200",
-                boxShadow: "0 3px 18px rgba(232,184,75,0.3)",
+                boxShadow:
+                  "0 6px 20px rgba(232,184,75,0.32), inset 0 1px 0 rgba(255,235,160,0.4)",
               }}
             >
-              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
               {isAr ? "شارك" : "Share"}
             </button>
 
             <button
-              onClick={handleWhatsApp}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-transform active:scale-[0.97]"
+              onClick={handleRetry}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black text-white transition-all duration-200 active:scale-[0.97] hover:bg-white/[0.08]"
               style={{
-                background: "#25D366",
-                color: "#fff",
-                boxShadow: "0 3px 18px rgba(37,211,102,0.28)",
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                backdropFilter: "blur(8px)",
               }}
             >
-              <svg
-                viewBox="0 0 24 24"
-                className="w-4 h-4 sm:w-5 sm:h-5 shrink-0"
-                fill="currentColor"
-              >
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.112 1.524 5.84L.057 23.571l5.887-1.543A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.65-.502-5.177-1.38l-.371-.22-3.494.916.933-3.41-.242-.384A9.954 9.954 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-              </svg>
-              {isAr ? "واتساب" : "WhatsApp"}
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+              {isAr ? "إعادة" : "Replay"}
             </button>
           </div>
         </motion.div>
