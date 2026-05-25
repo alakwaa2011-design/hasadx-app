@@ -3112,15 +3112,19 @@ export default function GamePlay() {
               animate={{ scale: 1, opacity: 1 }}
               className="flex justify-center mb-3"
             >
-              <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 1.2 }}
-                className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white px-6 py-2 rounded-full font-black text-lg shadow-lg shadow-orange-500/30 flex items-center gap-2"
+              {/* Quiet dark-glass chip — gold border, no red, no loud glow */}
+              <div
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold text-[#E8B84B]/90"
+                style={{
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(232,184,75,0.35)",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+                }}
               >
-                <span className="text-xl">⚡</span>
-                <span>نقاط مضاعفة!</span>
-                <span className="text-xl">⚡</span>
-              </motion.div>
+                <span className="text-sm">⚡</span>
+                <span>نقاط مضاعفة</span>
+              </div>
             </motion.div>
           )}
           {isSpeaking && (
@@ -3173,12 +3177,12 @@ export default function GamePlay() {
               className="w-[96%] max-w-[960px] mx-auto rounded-3xl px-5 sm:px-7 pt-4 sm:pt-5 pb-5 sm:pb-6 relative"
               style={{
                 background:
-                  "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
+                  "linear-gradient(160deg, rgba(255,255,255,0.045) 0%, rgba(20,56,40,0.25) 100%)",
                 backdropFilter: "blur(14px) saturate(140%)",
                 WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                border: "1px solid rgba(255,255,255,0.10)",
+                border: "1px solid rgba(232,184,75,0.18)",
                 boxShadow:
-                  "0 20px 60px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 80px rgba(232,184,75,0.04) inset",
+                  "0 8px 32px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.05) inset",
               }}
             >
               {/* Corner shine ornaments — subtle gold accents */}
