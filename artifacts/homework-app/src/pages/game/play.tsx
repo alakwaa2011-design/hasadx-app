@@ -957,6 +957,22 @@ export default function GamePlay() {
   const hackModeRef = useRef(false);
   const hackStepRef = useRef<string | null>(null);
 
+  /* ── Solo challenge mode ──────────────────────────────────────────
+     When the player came in via /solo/:slug, sessionStorage carries
+     the solo flag. We capture it ONCE at mount via a ref so all socket
+     handlers and render branches can short-circuit competitive UI
+     (countdown, race track, gift round, mystery boxes, intermediate
+     leaderboard, "wait for teacher", "all players", PIN share, etc.)
+     without touching live/multiplayer/classroom flows.
+     `solo-challenge-results.tsx` clears the sessionStorage key on
+     mount, but the ref keeps the value stable for this game session. */
+  const isSoloRef = useRef(
+    typeof window !== "undefined" &&
+      !!sessionStorage.getItem("solo_challenge_slug"),
+  );
+  const soloTotalQuestionsRef = useRef<number>(0);
+  const [soloCorrectCount, setSoloCorrectCount] = useState(0);
+
   useEffect(() => {
     myPasswordRef.current = myPassword;
   }, [myPassword]);
@@ -1140,6 +1156,10 @@ export default function GamePlay() {
     });
 
     socket.on("game:question", (q: any) => {
+      // Solo challenge: track total/correct for the simplified results card.
+      if (isSoloRef.current && typeof q?.total === "number") {
+        soloTotalQuestionsRef.current = q.total;
+      }
       setAnswerResult(null);
       setCorrectAnswer(null);
       setSelectedAnswer(null);
@@ -1162,8 +1182,14 @@ export default function GamePlay() {
       stopSpeech();
       pendingQuestionRef.current = q;
       setPendingQuestion(q);
-      setPhase("countdown");
-      setCountdownVal(3);
+      if (isSoloRef.current) {
+        // Solo: no per-question countdown — jump straight to the question.
+        // The countdown effect handles setCountdownVal(0) → setPhase("question").
+        setCountdownVal(0);
+      } else {
+        setPhase("countdown");
+        setCountdownVal(3);
+      }
     });
 
     socket.on("game:hack-marathon-ended", () => {
@@ -1259,6 +1285,7 @@ export default function GamePlay() {
           }, 1400);
         }
         if (result.correct) {
+          if (isSoloRef.current) setSoloCorrectCount((n) => n + 1);
           if (hackModeRef.current) {
             playHackCorrectChime();
             playHackMarathonLoop();
@@ -1411,6 +1438,8 @@ export default function GamePlay() {
         duration: number;
         usedGiftTypes?: string[];
       }) => {
+        // Solo: no surprise/gift round between questions.
+        if (isSoloRef.current) return;
         if (data.players) setOtherPlayers(data.players);
         if (data.usedGiftTypes) setUsedGiftTypes(new Set(data.usedGiftTypes));
         setGiftRoundChosen(false);
@@ -1500,6 +1529,8 @@ export default function GamePlay() {
     });
 
     socket.on("game:mystery-boxes", () => {
+      // Solo: no surprise/bonus mystery boxes.
+      if (isSoloRef.current) return;
       playMysteryBoxReveal();
       setShowMysteryBoxes(true);
       setOpenedBoxIndex(null);
@@ -3707,6 +3738,19 @@ export default function GamePlay() {
     );
   }
 
+  // Solo: no intermediate leaderboard / race-track / "your rank 1 of 1" — wait silently for the next question.
+  if (phase === "leaderboard" && isSoloRef.current) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center"
+        style={{ background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)" }}
+        dir={dir}
+      >
+        <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />
+      </div>
+    );
+  }
+
   if (phase === "leaderboard" && showMysteryBoxes) {
     return (
       <>
@@ -4169,6 +4213,21 @@ export default function GamePlay() {
   }
 
   if (phase === "finished") {
+    // Solo challenge: render only the simplified solo results page.
+    // No podium, no "all players", no PIN-share, no "wait for teacher".
+    if (isSoloRef.current) {
+      return (
+        <SoloChallengeResults
+          myScore={myScore}
+          myName={myName}
+          lang={lang}
+          correctCount={soloCorrectCount}
+          totalQuestions={soloTotalQuestionsRef.current}
+          dir={dir}
+        />
+      );
+    }
+
     const top3 = leaderboard.slice(0, 3);
     const winner = top3[0];
     const second = top3[1];
@@ -4439,12 +4498,8 @@ export default function GamePlay() {
             </div>
           </motion.div>
 
-          {/* ── Solo Challenge: Leaderboard + Share ───────────────
-              Extracted to its own component so its hooks always run in a
-              stable order. The parent has many early returns above this,
-              so co-locating useState/useEffect here triggered "Rendered
-              more hooks than during the previous render". */}
-          <SoloChallengeResults myScore={myScore} myName={myName} lang={lang} />
+          {/* Solo challenge has its own dedicated finished screen above
+              (rendered before the multiplayer JSX), so nothing extra here. */}
 
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.2 }}
             className="mb-4">

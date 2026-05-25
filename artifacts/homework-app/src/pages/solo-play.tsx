@@ -61,14 +61,18 @@ export default function SoloPlayPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "خطأ");
 
-      // Store context for score reporting after game ends
+      // Store context for solo-only tweaks in play.tsx + score reporting
       sessionStorage.setItem("solo_challenge_slug", slug!);
       sessionStorage.setItem("solo_challenge_player", name);
       sessionStorage.setItem("solo_challenge_title", info?.assignmentTitle ?? "");
 
-      // Navigate to game join page with name pre-filled
-      sessionStorage.setItem("guest_player_name", name);
-      setLocation(`/game/join/${data.pin}`);
+      // Skip the old /game/join screen entirely — solo has its own entry.
+      // Go straight to /game/play/:pin with name + avatar in the query string
+      // (same shape GameJoin would have produced when forwarding).
+      const avatar = "🎯";
+      setLocation(
+        `/game/play/${data.pin}?name=${encodeURIComponent(name)}&avatar=${encodeURIComponent(avatar)}`,
+      );
     } catch (err: any) {
       setNameError(err.message || (lang === "ar" ? "تعذّر بدء اللعبة" : "Failed to start"));
       setStarting(false);
