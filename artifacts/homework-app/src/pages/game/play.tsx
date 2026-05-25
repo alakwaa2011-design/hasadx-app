@@ -28,6 +28,9 @@ import {
   Bell,
   Music2,
   Loader2,
+  ChevronLeft,
+  Flag,
+  Bookmark,
 } from "lucide-react";
 import RaceTrack from "@/components/race-track";
 import {
@@ -2981,7 +2984,28 @@ export default function GamePlay() {
           )}
         </AnimatePresence>
 
-        <div className="p-4 flex items-center justify-between">
+        {/* Solo challenge — premium HasadX top bar:
+            spacer-left (MuteButton/SoundPickerButton are fixed-positioned),
+            brand-center, counter-right. The standard multi-player header
+            (Q count + streak + score) is hidden for solo via the
+            !isSoloRef.current guard below. */}
+        {isSoloRef.current && !hackMode && (
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between relative z-10">
+            <div className="w-20" />
+            <div className="flex flex-col items-center">
+              <div className="flex items-baseline gap-0.5 leading-none">
+                <span className="text-white font-bold text-lg sm:text-xl tracking-wide">Hasad</span>
+                <span className="text-[#E8B84B] font-black text-lg sm:text-xl tracking-wide">X</span>
+              </div>
+              <span className="text-white/45 text-[10px] sm:text-xs mt-0.5">تجربة تفاعلية ذكية</span>
+            </div>
+            <span className="w-20 text-end text-white/70 font-semibold text-sm sm:text-base tabular-nums">
+              {(question?.index ?? 0) + 1} / {question?.total}
+            </span>
+          </div>
+        )}
+
+        <div className={`p-4 flex items-center justify-between ${isSoloRef.current && !hackMode ? "hidden" : ""}`}>
           <div className="flex items-center gap-3">
             <span className="bg-white/15 border border-white/25 text-white font-bold text-sm px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
               {(question?.index ?? 0) + 1} / {question?.total}
@@ -3063,7 +3087,7 @@ export default function GamePlay() {
           )}
         </div>
 
-        <div className="px-4 py-6 flex-shrink-0">
+        <div className={`px-4 flex-shrink-0 ${isSoloRef.current && !hackMode ? "py-3" : "py-6"}`}>
           {isDoublePoints && pointsEnabled && (
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
@@ -3120,38 +3144,61 @@ export default function GamePlay() {
               </h2>
             </motion.div>
           ) : isSoloRef.current ? (
-            // Solo challenge — premium floating glass card around the
-            // question text. Subtle border + soft outer shadow + faint
-            // inner glow give it a refined "premium card" feel without
-            // any gaming overload.
+            // Solo challenge — premium floating glass card. Corner shine
+            // ornaments + a top "سؤال X من Y" pill + a diamond divider at
+            // the bottom give it the HasadX signature look.
             <motion.div
               key={question?.index}
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-2xl sm:rounded-3xl px-6 sm:px-8 py-6 sm:py-8 relative"
+              className="max-w-md sm:max-w-xl lg:max-w-2xl mx-auto rounded-3xl px-6 sm:px-8 pt-5 sm:pt-6 pb-6 sm:pb-7 relative"
               style={{
                 background:
-                  "linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.025) 100%)",
+                  "linear-gradient(160deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
                 backdropFilter: "blur(14px) saturate(140%)",
                 WebkitBackdropFilter: "blur(14px) saturate(140%)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.10)",
                 boxShadow:
                   "0 20px 60px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.06) inset, 0 0 80px rgba(232,184,75,0.04) inset",
               }}
             >
-              {/* HasadX signature — soft gold accent corner mark */}
+              {/* Corner shine ornaments — subtle gold accents */}
               <span
                 aria-hidden
-                className="absolute top-3 start-3 w-1.5 h-1.5 rounded-full"
+                className="absolute top-0 start-0 w-16 h-16 rounded-tl-3xl pointer-events-none"
                 style={{
-                  background: "rgba(232,184,75,0.55)",
-                  boxShadow: "0 0 10px rgba(232,184,75,0.45)",
+                  background:
+                    "radial-gradient(circle at top left, rgba(232,184,75,0.22) 0%, transparent 70%)",
                 }}
               />
+              <span
+                aria-hidden
+                className="absolute top-0 end-0 w-16 h-16 rounded-tr-3xl pointer-events-none"
+                style={{
+                  background:
+                    "radial-gradient(circle at top right, rgba(120,170,230,0.16) 0%, transparent 70%)",
+                }}
+              />
+              {/* "سؤال X من Y" pill */}
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <span className="inline-flex items-center gap-1.5 bg-white/[0.06] border border-white/10 rounded-full px-3 py-1 text-white/65 text-xs sm:text-sm font-medium backdrop-blur-sm">
+                  <span className="w-3.5 h-3.5 rounded-full border border-white/30 inline-flex items-center justify-center text-[9px] font-bold text-white/60">؟</span>
+                  سؤال {(question?.index ?? 0) + 1} من {question?.total}
+                </span>
+              </div>
               <h2 className="text-lg sm:text-2xl md:text-[26px] font-bold text-white/95 text-center leading-[1.9] sm:leading-[1.75] tracking-wide">
                 {question?.text}
               </h2>
+              {/* Bottom diamond divider — HasadX signature */}
+              <div className="flex items-center justify-center gap-2 mt-4 sm:mt-5">
+                <span className="h-px w-10 bg-gradient-to-r from-transparent to-white/15" />
+                <span
+                  className="w-2 h-2 rotate-45 bg-[#E8B84B]/60"
+                  style={{ boxShadow: "0 0 8px rgba(232,184,75,0.4)" }}
+                />
+                <span className="h-px w-10 bg-gradient-to-l from-transparent to-white/15" />
+              </div>
             </motion.div>
           ) : (
             <motion.h2
@@ -3718,6 +3765,13 @@ export default function GamePlay() {
                   >
                     {opt.text}
                   </span>
+                  {soloColor && !answerResult && (
+                    <ChevronLeft
+                      className={`flex-shrink-0 w-4 h-4 sm:w-5 sm:h-5 opacity-50 ${lang === "ar" ? "" : "rotate-180"}`}
+                      style={{ color: soloColor.circleStyle.color as string }}
+                      strokeWidth={2.5}
+                    />
+                  )}
                   {isSelected && answerResult?.correct && (
                     <CheckCircle
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-6 h-6 text-white`}
@@ -3736,6 +3790,37 @@ export default function GamePlay() {
                 </button>
               );
             })}
+          </div>
+        )}
+        {/* HasadX signature bottom bar — solo only.
+            "Powered by HasadX" branding + soft action buttons. Pure UI,
+            actions are visual-only stubs (no logic changes). */}
+        {isSoloRef.current && !hackMode && (
+          <div
+            className="mt-auto flex items-center justify-between px-4 py-3 sm:py-3.5 border-t border-white/[0.06] backdrop-blur-sm relative z-10"
+            style={{ background: "rgba(8,11,20,0.45)" }}
+          >
+            <span className="text-white/35 text-[11px] sm:text-xs font-medium">
+              Powered by <span className="text-white/55">Hasad</span><span className="text-[#E8B84B]/80">X</span>
+            </span>
+            <div className="flex items-center gap-4 sm:gap-5">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-white/40 hover:text-white/70 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
+                aria-label="إبلاغ عن سؤال"
+              >
+                <Flag className="w-3.5 h-3.5" strokeWidth={2} />
+                <span className="hidden sm:inline">إبلاغ عن سؤال</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-white/40 hover:text-white/70 active:scale-95 transition-all duration-150 text-[11px] sm:text-xs font-medium"
+                aria-label="حفظ السؤال"
+              >
+                <Bookmark className="w-3.5 h-3.5" strokeWidth={2} />
+                <span className="hidden sm:inline">حفظ السؤال</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
