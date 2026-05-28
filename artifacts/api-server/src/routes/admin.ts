@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES, presentationsTable, worksheetsTable, lessonPlansTable, soloChallengesTable } from "@workspace/db";
 import { eq, sql, desc, asc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
@@ -117,6 +117,10 @@ router.get("/admin/teachers", async (req, res) => {
         submissionCount: sql<number>`(SELECT COUNT(*) FROM submissions s JOIN assignments a ON s.assignment_id = a.id WHERE a.teacher_id = teachers.id)::int`,
         studentCount: sql<number>`(SELECT COUNT(*) FROM students WHERE students.teacher_id = teachers.id)::int`,
         questionCount: sql<number>`(SELECT COUNT(*) FROM question_bank WHERE question_bank.teacher_id = teachers.id)::int`,
+        soloChallengeCount: sql<number>`(SELECT COUNT(*) FROM solo_challenges WHERE solo_challenges.teacher_id = teachers.id)::int`,
+        presentationCount: sql<number>`(SELECT COUNT(*) FROM presentations WHERE presentations.teacher_id = teachers.id)::int`,
+        worksheetCount: sql<number>`(SELECT COUNT(*) FROM worksheets WHERE worksheets.teacher_id = teachers.id)::int`,
+        lessonPlanCount: sql<number>`(SELECT COUNT(*) FROM lesson_plans WHERE lesson_plans.teacher_id = teachers.id)::int`,
         totalXp: sql<number>`COALESCE(${teacherStatsTable.totalXp}, 0)::int`,
         xpLevel: sql<number>`COALESCE(${teacherStatsTable.level}, 1)::int`,
         displayLevelOverride: teacherStatsTable.displayLevelOverride,

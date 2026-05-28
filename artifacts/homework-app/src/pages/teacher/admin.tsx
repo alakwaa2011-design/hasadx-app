@@ -50,6 +50,10 @@ interface TeacherData {
   studentCount: number;
   gameCount: number;
   questionCount: number;
+  soloChallengeCount?: number;
+  presentationCount?: number;
+  worksheetCount?: number;
+  lessonPlanCount?: number;
   totalXp?: number;
   xpLevel?: number;
   displayLevelOverride?: number | null;
@@ -1976,18 +1980,35 @@ export default function AdminPage() {
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                           <div className="px-4 pb-4 pt-3 border-t border-border/50 space-y-4">
 
-                            {/* Stats grid */}
+                            {/* Stats grid — core counts */}
                             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                               {[
-                                { label: "الواجبات", value: teacher.assignmentCount, color: "bg-purple-50 text-purple-700" },
-                                { label: "التسليمات", value: teacher.submissionCount, color: "bg-teal-50 text-teal-700" },
-                                { label: "الطلاب", value: teacher.studentCount, color: "bg-green-50 text-green-700" },
-                                { label: "المسابقات", value: teacher.gameCount, color: "bg-orange-50 text-orange-700" },
-                                { label: "الأسئلة", value: teacher.questionCount, color: "bg-indigo-50 text-indigo-700" },
+                                { label: "الواجبات", value: teacher.assignmentCount, color: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" },
+                                { label: "التسليمات", value: teacher.submissionCount, color: "bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300" },
+                                { label: "الطلاب", value: teacher.studentCount, color: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+                                { label: "المسابقات", value: teacher.gameCount, color: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" },
+                                { label: "الأسئلة", value: teacher.questionCount, color: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" },
                               ].map((s, idx) => (
                                 <div key={idx} className={`text-center p-2 rounded-lg ${s.color}`}>
                                   <p className="text-lg font-black">{s.value}</p>
                                   <p className="text-[10px] font-bold">{s.label}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Stats grid — content creation */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                              {[
+                                { label: "تحديات حصاد", value: teacher.soloChallengeCount ?? 0, color: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300", icon: "🎯" },
+                                { label: "عروض تفاعلية", value: teacher.presentationCount ?? 0, color: "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300", icon: "📊" },
+                                { label: "أوراق عمل", value: teacher.worksheetCount ?? 0, color: "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300", icon: "📄" },
+                                { label: "خطط دروس", value: teacher.lessonPlanCount ?? 0, color: "bg-lime-50 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300", icon: "📋" },
+                              ].map((s, idx) => (
+                                <div key={idx} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${s.color}`}>
+                                  <span className="text-base">{s.icon}</span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-black leading-none">{s.value}</p>
+                                    <p className="text-[10px] font-bold leading-tight mt-0.5 truncate">{s.label}</p>
+                                  </div>
                                 </div>
                               ))}
                             </div>
