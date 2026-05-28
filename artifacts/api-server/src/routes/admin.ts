@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES, presentationsTable, worksheetsTable, lessonPlansTable, soloChallengesTable } from "@workspace/db";
+import { db, pool, teachersTable, studentsTable, assignmentsTable, submissionsTable, questionBankTable, platformSettingsTable, teacherStatsTable, adventureGamesTable, videoLessonsTable, tugTemplatesTable, memoryCardSetsTable, studentAccountsTable, teacherLibraryFilesTable, DEFAULT_PRESENTATION_LIMITS, DEFAULT_ARENA_IMPORT_SOURCES, presentationsTable, worksheetsTable, lessonPlansTable, soloChallengesTable, wheelTemplatesTable, rocketTemplatesTable, letrlyPuzzlesTable, contentCollectionsTable } from "@workspace/db";
 import { eq, sql, desc, asc, and, isNotNull, inArray } from "drizzle-orm";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { z } from "zod";
@@ -121,6 +121,12 @@ router.get("/admin/teachers", async (req, res) => {
         presentationCount: sql<number>`(SELECT COUNT(*) FROM presentations WHERE presentations.teacher_id = teachers.id)::int`,
         worksheetCount: sql<number>`(SELECT COUNT(*) FROM worksheets WHERE worksheets.teacher_id = teachers.id)::int`,
         lessonPlanCount: sql<number>`(SELECT COUNT(*) FROM lesson_plans WHERE lesson_plans.teacher_id = teachers.id)::int`,
+        videoLessonCount: sql<number>`(SELECT COUNT(*) FROM video_lessons WHERE video_lessons.teacher_id = teachers.id)::int`,
+        tugTemplateCount: sql<number>`(SELECT COUNT(*) FROM tug_templates WHERE tug_templates.teacher_id = teachers.id)::int`,
+        wheelTemplateCount: sql<number>`(SELECT COUNT(*) FROM wheel_templates WHERE wheel_templates.teacher_id = teachers.id)::int`,
+        rocketTemplateCount: sql<number>`(SELECT COUNT(*) FROM rocket_templates WHERE rocket_templates.teacher_id = teachers.id)::int`,
+        letrlyPuzzleCount: sql<number>`(SELECT COUNT(*) FROM letrly_puzzles WHERE letrly_puzzles.creator_teacher_id = teachers.id)::int`,
+        collectionCount: sql<number>`(SELECT COUNT(*) FROM content_collections WHERE content_collections.teacher_id = teachers.id)::int`,
         totalXp: sql<number>`COALESCE(${teacherStatsTable.totalXp}, 0)::int`,
         xpLevel: sql<number>`COALESCE(${teacherStatsTable.level}, 1)::int`,
         displayLevelOverride: teacherStatsTable.displayLevelOverride,
