@@ -68,7 +68,6 @@ import {
 } from "lucide-react";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
-import { QuickChallengeModal, QuickChallengeFAB } from "@/components/teacher/QuickChallengeModal";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
 import { Card, Button } from "@/components/ui-elements";
@@ -1742,7 +1741,6 @@ function CompetitiveTab({
   initialOpenWameeth,
   onConsumeWameethDeepLink,
 }: any) {
-  const [showQuickChallenge, setShowQuickChallenge] = useState(false);
   const [showKnowledgeRace, setShowKnowledgeRace] = useState(false);
   const [showWameethModal, setShowWameethModal] = useState(false);
   const wameethPickerRef = useRef<HTMLDivElement | null>(null);
@@ -2445,13 +2443,6 @@ function CompetitiveTab({
 
     </div>
 
-    {/* ── Floating Quick Challenge button ── */}
-    <QuickChallengeFAB onClick={() => setShowQuickChallenge(true)} />
-    <AnimatePresence>
-      {showQuickChallenge && (
-        <QuickChallengeModal onClose={() => setShowQuickChallenge(false)} />
-      )}
-    </AnimatePresence>
   </>
   );
 }
