@@ -951,6 +951,7 @@ function CategoryEditor({
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[90] flex items-center justify-center p-4"
@@ -1058,14 +1059,16 @@ function CategoryEditor({
           </div>
         </div>
 
-        <ArenaImagePicker
-          open={picker}
-          onClose={() => setPicker(false)}
-          onPick={(url) => setCoverImageUrl(url)}
-          initialQuery={name}
-        />
       </motion.div>
     </motion.div>
+
+    <ArenaImagePicker
+      open={picker}
+      onClose={() => setPicker(false)}
+      onPick={(url) => setCoverImageUrl(url)}
+      initialQuery={name}
+    />
+    </>
   );
 }
 
