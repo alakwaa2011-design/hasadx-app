@@ -83,7 +83,7 @@ ${topicLine}
 [{"text":"...","optionA":"...","optionB":"...","optionC":"...","optionD":"...","correctAnswer":"B","points":1},...]`;
 }
 
-router.post("/api/quick-challenge/create", async (req, res) => {
+router.post("/quick-challenge/create", async (req, res) => {
   const teacherId = req.session?.teacherId;
 
   const { questionType = "mcq", topic = "" } = req.body || {};
@@ -219,7 +219,7 @@ router.post("/api/quick-challenge/create", async (req, res) => {
   }
 });
 
-router.post("/api/quick-challenge/create-from-questions", async (req, res) => {
+router.post("/quick-challenge/create-from-questions", async (req, res) => {
   const teacherId = req.session?.teacherId;
 
   if (!teacherId) {
@@ -345,7 +345,7 @@ router.post("/api/quick-challenge/create-from-questions", async (req, res) => {
   }
 });
 
-router.post("/api/quick-challenge/guest-ai-generate", async (req, res) => {
+router.post("/quick-challenge/guest-ai-generate", async (req, res) => {
   const ip = getClientIp(req);
   const limit = await getGuestLimit();
   if (limit === 0 || !checkGuestRate(ip, Math.max(limit, GUEST_RATE_FALLBACK_MAX))) {
@@ -431,7 +431,7 @@ router.post("/api/quick-challenge/guest-ai-generate", async (req, res) => {
   }
 });
 
-router.post("/api/quick-challenge/start/:pin", async (req, res) => {
+router.post("/quick-challenge/start/:pin", async (req, res) => {
   const teacherId = req.session?.teacherId;
 
   const { pin } = req.params;
@@ -458,7 +458,7 @@ router.post("/api/quick-challenge/start/:pin", async (req, res) => {
 /* ── POST /api/quick-challenge/from-assignment/:id ──────────────
    Teacher starts a وميض game from an existing assignment (no AI needed).
    Requires login. Returns { pin, title, questionCount }. */
-router.post("/api/quick-challenge/from-assignment/:id", async (req, res) => {
+router.post("/quick-challenge/from-assignment/:id", async (req, res) => {
   const teacherId = req.session?.teacherId;
   if (!teacherId) {
     res.status(401).json({ message: "يجب تسجيل الدخول أولاً" });
