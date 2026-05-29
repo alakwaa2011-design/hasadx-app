@@ -43,17 +43,21 @@ const ActivityBody = z.object({
   sortOrder: z.number().int().default(0),
 });
 
-// GET /arena-content/categories — public + own (unauthenticated: public only)
+// GET /arena-content/categories — admins: all rows; teachers: public + own; guests: public only
 router.get("/arena-content/categories", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
-    const where = teacherId
-      ? or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId))
-      : eq(arenaCategoriesTable.isPublic, true);
+    const admin = teacherId ? await isAdmin(teacherId) : false;
     const rows = await db
       .select()
       .from(arenaCategoriesTable)
-      .where(where)
+      .where(
+        admin
+          ? undefined
+          : teacherId
+            ? or(eq(arenaCategoriesTable.isPublic, true), eq(arenaCategoriesTable.teacherId, teacherId))
+            : eq(arenaCategoriesTable.isPublic, true),
+      )
       .orderBy(asc(arenaCategoriesTable.sortOrder), asc(arenaCategoriesTable.id));
     res.json(rows);
   } catch (err) {
@@ -133,20 +137,25 @@ router.delete("/arena-content/categories/:id", async (req, res) => {
   }
 });
 
-// GET /arena-content/activities?categoryIds=1,2,3 (unauthenticated: public only)
+// GET /arena-content/activities?categoryIds=1,2,3 — admins: all rows; teachers: public+own; guests: public only
 router.get("/arena-content/activities", async (req, res) => {
   try {
     const teacherId = (req.session as any)?.teacherId;
+    const admin = teacherId ? await isAdmin(teacherId) : false;
     const idsRaw = String(req.query.categoryIds ?? "").trim();
-    let cond = teacherId
-      ? or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId))
-      : eq(arenaActivitiesTable.isPublic, true);
-    if (idsRaw) {
-      const ids = idsRaw.split(",").map(Number).filter(n => Number.isFinite(n));
-      if (ids.length > 0) {
-        cond = and(cond, inArray(arenaActivitiesTable.categoryId, ids))!;
-      }
+    const ids = idsRaw ? idsRaw.split(",").map(Number).filter(n => Number.isFinite(n)) : [];
+
+    let cond = admin
+      ? undefined
+      : teacherId
+        ? or(eq(arenaActivitiesTable.isPublic, true), eq(arenaActivitiesTable.teacherId, teacherId))
+        : eq(arenaActivitiesTable.isPublic, true);
+
+    if (ids.length > 0) {
+      const idsCond = inArray(arenaActivitiesTable.categoryId, ids);
+      cond = cond ? and(cond, idsCond)! : idsCond;
     }
+
     const rows = await db.select().from(arenaActivitiesTable)
       .where(cond)
       .orderBy(asc(arenaActivitiesTable.sortOrder), asc(arenaActivitiesTable.id));
