@@ -316,7 +316,7 @@ export function QuickChallengeFAB({ onClick }: { onClick: () => void }) {
       whileHover={{ scale: 1.05, y: -2 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="fixed bottom-6 end-6 z-40 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl text-white font-black text-sm"
+      className="fixed bottom-20 end-4 z-40 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl text-white font-black text-sm"
       style={{
         background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
         boxShadow: "0 8px 32px rgba(124,58,237,0.45)",
