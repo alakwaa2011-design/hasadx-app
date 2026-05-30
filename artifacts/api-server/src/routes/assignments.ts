@@ -1595,4 +1595,34 @@ router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
   }
 });
 
+/* PATCH /api/solo-challenges/:slug/notes
+   Teacher: update the notes shown to players before starting. */
+router.patch("/solo-challenges/:slug/notes", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
+
+    const slug = req.params.slug;
+    const notes = req.body?.notes != null ? String(req.body.notes).slice(0, 1000) : null;
+
+    const [challenge] = await db
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+
+    await db.update(soloChallengesTable)
+      .set({ notes: notes || null })
+      .where(eq(soloChallengesTable.slug, slug));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log?.error(err, "Update solo challenge notes error");
+    res.status(500).json({ message: "خطأ في حفظ الملاحظات" });
+  }
+});
+
 export default router;

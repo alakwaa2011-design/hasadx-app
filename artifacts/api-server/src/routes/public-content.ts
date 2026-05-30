@@ -376,6 +376,7 @@ router.get("/solo-challenges/:slug", async (req, res) => {
     res.json({
       slug: challenge.slug,
       assignmentTitle: challenge.assignmentTitle,
+      notes: challenge.notes ?? null,
       playCount: challenge.playCount,
       questionCount,
     });
