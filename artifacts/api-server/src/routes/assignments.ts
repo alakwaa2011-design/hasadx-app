@@ -1617,6 +1617,7 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
         correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)

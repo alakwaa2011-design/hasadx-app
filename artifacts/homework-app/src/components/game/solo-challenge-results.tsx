@@ -114,7 +114,7 @@ export function SoloChallengeResults({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ playerName, points: myScore, correctCount }),
+        body: JSON.stringify({ playerName, points: myScore, correctCount, timeTaken: elapsedSec }),
       })
         .catch(() => {})
         .finally(() => {

@@ -465,7 +465,10 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
   try {
     const slug = req.params.slug;
     const playerName = String(req.body?.playerName || "").trim().slice(0, 60);
-    const score = Number(req.body?.score ?? 0);
+    // Frontend sends "points" (the Hasad scoring system name); fall back to "score"
+    const score = Number(req.body?.points ?? req.body?.score ?? 0);
+    const correctCount = Number(req.body?.correctCount ?? 0);
+    const timeTaken = req.body?.timeTaken != null ? Number(req.body.timeTaken) : null;
 
     if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
 
@@ -477,7 +480,7 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
 
-    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score });
+    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount, timeTaken });
 
     res.json({ ok: true });
   } catch (err) {
@@ -496,6 +499,7 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
         correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)

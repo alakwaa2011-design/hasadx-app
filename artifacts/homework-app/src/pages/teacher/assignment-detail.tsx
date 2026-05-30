@@ -73,7 +73,7 @@ export default function TeacherAssignmentDetail() {
   const [soloNotesOpen, setSoloNotesOpen] = useState(false);
   // Leaderboard
   const [soloLeaderboardOpen, setSoloLeaderboardOpen] = useState(false);
-  const [soloParticipants, setSoloParticipants] = useState<Array<{ playerName: string; score: number; correctCount: number; playedAt: string }>>([]);
+  const [soloParticipants, setSoloParticipants] = useState<Array<{ playerName: string; score: number; correctCount: number; timeTaken: number | null; playedAt: string }>>([]);
   const [soloParticipantsLoading, setSoloParticipantsLoading] = useState(false);
   // Deadline
   const [soloDeadlineOpen, setSoloDeadlineOpen] = useState(false);
@@ -2192,8 +2192,17 @@ export default function TeacherAssignmentDetail() {
                 </button>
               </div>
 
+              {/* Column headers */}
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 dark:border-gray-800 text-[11px] font-bold text-muted-foreground">
+                <span className="w-7 shrink-0">#</span>
+                <span className="flex-1">{lang === "ar" ? "الاسم" : "Name"}</span>
+                <span className="w-10 text-center">{lang === "ar" ? "صحيح" : "✓"}</span>
+                <span className="w-14 text-center">{lang === "ar" ? "الوقت" : "Time"}</span>
+                <span className="w-16 text-end">{lang === "ar" ? "النقاط" : "Points"}</span>
+              </div>
+
               {/* Body */}
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-3">
                 {soloParticipantsLoading ? (
                   <div className="flex justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
@@ -2204,23 +2213,38 @@ export default function TeacherAssignmentDetail() {
                     <p className="text-sm font-bold">{lang === "ar" ? "لا يوجد مشاركون بعد" : "No participants yet"}</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1">
                     {soloParticipants.map((p, i) => {
-                      const medalColor = i === 0 ? "#f59e0b" : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : undefined;
+                      const isTop3 = i < 3;
+                      const medalColors = ["#f59e0b", "#9ca3af", "#b45309"];
+                      const fmtTime = (s: number | null) => {
+                        if (!s) return "—";
+                        const m = Math.floor(s / 60), sec = s % 60;
+                        return `${m}:${String(sec).padStart(2, "0")}`;
+                      };
                       return (
-                        <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${i < 3 ? "border-amber-200 bg-amber-50/60 dark:bg-amber-900/10 dark:border-amber-700/40" : "border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"}`}>
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: medalColor ?? "#e5e7eb", color: medalColor ? "white" : "#6b7280" }}>
-                            {i < 3 ? <Medal className="w-3.5 h-3.5" /> : <span>{i + 1}</span>}
+                        <div key={i} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${isTop3 ? "border-amber-200 bg-amber-50/60 dark:bg-amber-900/10 dark:border-amber-700/40" : "border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/40"}`}>
+                          {/* Rank badge */}
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0" style={{ background: isTop3 ? medalColors[i] : "#e5e7eb", color: isTop3 ? "white" : "#6b7280" }}>
+                            {isTop3 ? ["🥇","🥈","🥉"][i] : i + 1}
                           </div>
+                          {/* Name + date */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold truncate">{p.playerName}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {lang === "ar" ? `${p.correctCount ?? "—"} إجابة صحيحة` : `${p.correctCount ?? "—"} correct`}
-                              {" · "}
-                              {new Date(p.playedAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}
-                            </p>
+                            <p className="text-[10px] text-muted-foreground">{new Date(p.playedAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}</p>
                           </div>
-                          <div className="text-lg font-black text-amber-600">{p.score}</div>
+                          {/* Correct count */}
+                          <div className="w-10 text-center">
+                            <span className={`text-sm font-black ${p.correctCount > 0 ? "text-green-600" : "text-gray-400"}`}>{p.correctCount}</span>
+                          </div>
+                          {/* Time */}
+                          <div className="w-14 text-center">
+                            <span className="text-xs font-bold text-blue-500">{fmtTime(p.timeTaken)}</span>
+                          </div>
+                          {/* Score / points */}
+                          <div className="w-16 text-end">
+                            <span className={`text-sm font-black ${isTop3 ? "text-amber-600" : "text-gray-700 dark:text-gray-300"}`}>{p.score > 0 ? p.score.toLocaleString() : "—"}</span>
+                          </div>
                         </div>
                       );
                     })}
