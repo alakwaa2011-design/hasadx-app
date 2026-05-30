@@ -1,1 +1,2 @@
 - [Proxy path prefix collision](proxy-path-collision.md) — adding a short prefix to artifact.toml breaks all React routes sharing that letter (e.g. /s breaks /solo, /student, /solve).
+- [Solo challenge data](solo-challenge-data.md) — وميض فردي results live ONLY in solo_challenge_scores (not game_history); a score-write bug = permanent loss. Distinct from gameMode='solo' live games.
