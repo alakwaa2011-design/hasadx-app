@@ -65,18 +65,45 @@ export default function TeacherAssignmentDetail() {
   const [rosterLoading, setRosterLoading] = useState(false);
 
   // Solo challenge link state
-  const [soloChallenge, setSoloChallenge] = useState<{ slug: string; playCount: number; assignmentTitle: string } | null | undefined>(undefined);
+  const [soloChallenge, setSoloChallenge] = useState<{ slug: string; playCount: number; assignmentTitle: string; notes?: string | null } | null | undefined>(undefined);
   const [soloCreating, setSoloCreating] = useState(false);
   const [soloCopied, setSoloCopied] = useState(false);
+  const [soloNotes, setSoloNotes] = useState("");
+  const [soloNotesSaving, setSoloNotesSaving] = useState(false);
+  const [soloNotesOpen, setSoloNotesOpen] = useState(false);
 
   // Fetch existing solo challenge link on mount
   useEffect(() => {
     if (!id) return;
     fetch(`${BASE}/api/solo-challenges/by-assignment/${id}`, { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
-      .then(data => setSoloChallenge(data))
+      .then(data => {
+        setSoloChallenge(data);
+        if (data?.notes) setSoloNotes(data.notes);
+      })
       .catch(() => setSoloChallenge(null));
   }, [id]);
+
+  const saveSoloNotes = async () => {
+    if (!soloChallenge?.slug) return;
+    setSoloNotesSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/notes`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ notes: soloNotes.trim() || null }),
+      });
+      if (!res.ok) throw new Error();
+      setSoloChallenge(prev => prev ? { ...prev, notes: soloNotes.trim() || null } : prev);
+      setSoloNotesOpen(false);
+      toast.success(lang === "ar" ? "تم حفظ الملاحظات" : "Notes saved!");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر الحفظ" : "Failed to save");
+    } finally {
+      setSoloNotesSaving(false);
+    }
+  };
 
   const handleCreateSoloChallenge = async () => {
     setSoloCreating(true);
@@ -1065,18 +1092,57 @@ export default function TeacherAssignmentDetail() {
 
                 {/* ── Solo Play Link ─────────────────────────────── */}
                 {soloChallenge && soloChallenge.slug ? (
-                  /* Already created — show slug + copy */
-                  <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                    <Zap className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-xs font-mono truncate max-w-[110px]">/solo/{soloChallenge.slug}</span>
-                    <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
-                    <button
-                      onClick={copySoloLink}
-                      className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors"
-                      title={lang === "ar" ? "نسخ رابط اللعب الفردي" : "Copy solo play link"}
-                    >
-                      {soloCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
+                  /* Already created — show slug + copy + notes */
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                      <Zap className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-xs font-mono truncate max-w-[110px]">/solo/{soloChallenge.slug}</span>
+                      <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
+                      <button
+                        onClick={copySoloLink}
+                        className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors"
+                        title={lang === "ar" ? "نسخ رابط اللعب الفردي" : "Copy solo play link"}
+                      >
+                        {soloCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => { setSoloNotesOpen(v => !v); setSoloNotes(soloChallenge.notes ?? ""); }}
+                        className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors"
+                        title={lang === "ar" ? "ملاحظات للطلاب" : "Student notes"}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {soloNotesOpen && (
+                      <div className="mt-1 rounded-lg border border-amber-400/40 bg-amber-50/70 dark:bg-amber-900/20 p-2.5 flex flex-col gap-2">
+                        <label className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                          {lang === "ar" ? "ملاحظات تظهر للطالب قبل البدء" : "Notes shown to student before starting"}
+                        </label>
+                        <textarea
+                          value={soloNotes}
+                          onChange={e => setSoloNotes(e.target.value)}
+                          rows={3}
+                          maxLength={1000}
+                          placeholder={lang === "ar" ? "مثال: اقرأ الأسئلة بعناية، الوقت ٣٠ ثانية لكل سؤال..." : "e.g. Read each question carefully..."}
+                          className="w-full rounded-lg border border-amber-300 px-2.5 py-1.5 text-xs resize-none focus:outline-none bg-white dark:bg-gray-800"
+                          dir="rtl"
+                        />
+                        <div className="flex gap-1.5 justify-end">
+                          <button onClick={() => setSoloNotesOpen(false)} className="px-3 py-1 text-xs rounded-lg border font-bold hover:bg-gray-50">
+                            {lang === "ar" ? "إلغاء" : "Cancel"}
+                          </button>
+                          <button
+                            onClick={saveSoloNotes}
+                            disabled={soloNotesSaving}
+                            className="px-3 py-1 text-xs rounded-lg font-bold text-white inline-flex items-center gap-1 disabled:opacity-50"
+                            style={{ background: "#C9930A" }}
+                          >
+                            {soloNotesSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {lang === "ar" ? "حفظ" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* Not created yet — show create button (even while loading) */

@@ -12,6 +12,7 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   assignmentId: integer("assignment_id").notNull().references(() => assignmentsTable.id, { onDelete: "cascade" }),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   assignmentTitle: text("assignment_title").notNull(),
+  notes: text("notes"),
   playCount: integer("play_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({

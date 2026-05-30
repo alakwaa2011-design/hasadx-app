@@ -43,6 +43,8 @@ const router: IRouter = Router();
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx ON solo_challenge_scores(slug)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)`);
+    // Backfill: add notes column if it doesn't exist yet
+    await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS notes TEXT`);
   } catch {
     // Tables may already exist — safe to ignore
   }
@@ -214,6 +216,7 @@ router.get("/api/solo-challenges/:slug", async (req, res) => {
     res.json({
       slug: challenge.slug,
       assignmentTitle: challenge.assignmentTitle,
+      notes: challenge.notes ?? null,
       playCount: challenge.playCount,
       questionCount,
     });
@@ -256,7 +259,7 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
         // Base 100 pts per question — the engine applies a time-speed bonus
         // on top so fast answers score higher than slow ones.
         points: 100,
-        duration: 15,
+        duration: 30,
         imageUrl: q.imageUrl ?? null,
         readAloud: q.readAloud ?? false,
       }));
@@ -296,6 +299,36 @@ router.post("/api/solo-challenges/:slug/start", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Solo challenge start error");
     res.status(500).json({ message: "خطأ في بدء اللعبة" });
+  }
+});
+
+/* ── PATCH /api/solo-challenges/:slug/notes ─────────────────
+   Teacher: update the notes shown to players before starting. */
+router.patch("/api/solo-challenges/:slug/notes", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
+
+    const slug = req.params.slug;
+    const notes = req.body?.notes != null ? String(req.body.notes).slice(0, 1000) : null;
+
+    const [challenge] = await db
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+
+    await db.update(soloChallengesTable)
+      .set({ notes: notes || null })
+      .where(eq(soloChallengesTable.slug, slug));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "Update solo challenge notes error");
+    res.status(500).json({ message: "خطأ في حفظ الملاحظات" });
   }
 });
 

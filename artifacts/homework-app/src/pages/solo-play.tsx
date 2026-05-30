@@ -8,7 +8,7 @@ import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import {
-  Trophy, Users, Zap, Play, Loader2, AlertCircle,
+  Trophy, Users, Zap, Play, Loader2, AlertCircle, FileText,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -16,6 +16,7 @@ const API = import.meta.env.VITE_API_URL || "";
 interface ChallengeInfo {
   slug: string;
   assignmentTitle: string;
+  notes: string | null;
   playCount: number;
   questionCount: number;
 }
@@ -171,6 +172,17 @@ export default function SoloPlayPage() {
               </span>
             </div>
           </div>
+
+          {/* Teacher notes */}
+          {info!.notes && (
+            <div className="mx-6 mt-5 rounded-xl px-4 py-3.5 flex items-start gap-3"
+              style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.35)" }}>
+              <FileText className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
+              <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.85)" }} dir="rtl">
+                {info!.notes}
+              </p>
+            </div>
+          )}
 
           {/* Name input */}
           <div className="p-6">
