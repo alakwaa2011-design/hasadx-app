@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable, soloChallengeScoresTable } from "@workspace/db";
-import { eq, sql, and, ne, notInArray, inArray, isNull, or } from "drizzle-orm";
+import { eq, sql, and, ne, notInArray, inArray, isNull, or, desc } from "drizzle-orm";
 import {
   CreateAssignmentBody,
   GetAssignmentParams,
@@ -1592,6 +1592,75 @@ router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
   } catch (err) {
     console.error("Get solo challenge error:", err);
     res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/* GET /api/solo-challenges/:slug/participants
+   Teacher-auth: return all participants sorted by score DESC, correctCount DESC. */
+router.get("/solo-challenges/:slug/participants", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
+
+    const slug = req.params.slug;
+    const [challenge] = await db
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+
+    const rows = await db
+      .select({
+        playerName: soloChallengeScoresTable.playerName,
+        score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
+        playedAt: soloChallengeScoresTable.playedAt,
+      })
+      .from(soloChallengeScoresTable)
+      .where(eq(soloChallengeScoresTable.slug, slug))
+      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount));
+
+    res.json(rows);
+  } catch (err) {
+    req.log?.error(err, "Get solo challenge participants error");
+    res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/* PATCH /api/solo-challenges/:slug/deadline
+   Teacher: set or clear the challenge expiry time. */
+router.patch("/solo-challenges/:slug/deadline", async (req, res) => {
+  try {
+    const teacherId = (req.session as any)?.teacherId;
+    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
+
+    const slug = req.params.slug;
+    const rawDeadline = req.body?.expiresAt;
+    const expiresAt = rawDeadline ? new Date(rawDeadline) : null;
+    if (rawDeadline && isNaN(expiresAt!.getTime())) {
+      return res.status(400).json({ message: "تاريخ غير صالح" });
+    }
+
+    const [challenge] = await db
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.slug, slug))
+      .limit(1);
+
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+
+    await db.update(soloChallengesTable)
+      .set({ expiresAt })
+      .where(eq(soloChallengesTable.slug, slug));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log?.error(err, "Update solo challenge deadline error");
+    res.status(500).json({ message: "خطأ في حفظ الموعد" });
   }
 });
 

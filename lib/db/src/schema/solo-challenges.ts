@@ -13,6 +13,8 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   assignmentTitle: text("assignment_title").notNull(),
   notes: text("notes"),
+  /** If set, the challenge is closed after this timestamp. */
+  expiresAt: timestamp("expires_at"),
   playCount: integer("play_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({

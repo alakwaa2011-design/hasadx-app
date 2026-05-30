@@ -373,10 +373,15 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       ))
       .then(r => r[0]?.count ?? 0);
 
+    const now = new Date();
+    const isExpired = !!(challenge.expiresAt && challenge.expiresAt < now);
+
     res.json({
       slug: challenge.slug,
       assignmentTitle: challenge.assignmentTitle,
       notes: challenge.notes ?? null,
+      expiresAt: challenge.expiresAt ?? null,
+      isExpired,
       playCount: challenge.playCount,
       questionCount,
     });
@@ -398,6 +403,10 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
+
+    if (challenge.expiresAt && challenge.expiresAt < new Date()) {
+      return res.status(410).json({ message: "انتهت مدة هذه المسابقة", isExpired: true });
+    }
 
     const dbQuestions = await db
       .select()
@@ -478,7 +487,7 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
 });
 
 /* GET /api/solo-challenges/:slug/leaderboard
-   Public: top 20 scores for this challenge. */
+   Public: all scores for this challenge, sorted by score DESC then correctCount DESC. */
 router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   try {
     const slug = req.params.slug;
@@ -486,12 +495,12 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
       .select({
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)
       .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(desc(soloChallengeScoresTable.score))
-      .limit(20);
+      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount));
 
     res.json(rows);
   } catch (err) {

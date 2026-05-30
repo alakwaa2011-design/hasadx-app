@@ -322,6 +322,7 @@ async function runSchemaMigrations() {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_slug_idx  ON solo_challenge_scores(slug)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS solo_challenge_scores_score_idx ON solo_challenge_scores(slug, score DESC)`);
     await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS notes TEXT`);
+    await db.execute(sql`ALTER TABLE solo_challenges ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
     logger.info("Solo challenge tables ready");
   } catch (err) {
     logger.error(err, "Solo challenge table migration failed");

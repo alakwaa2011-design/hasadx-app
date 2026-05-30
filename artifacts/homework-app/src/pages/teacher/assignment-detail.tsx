@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -65,12 +65,20 @@ export default function TeacherAssignmentDetail() {
   const [rosterLoading, setRosterLoading] = useState(false);
 
   // Solo challenge link state
-  const [soloChallenge, setSoloChallenge] = useState<{ slug: string; playCount: number; assignmentTitle: string; notes?: string | null } | null | undefined>(undefined);
+  const [soloChallenge, setSoloChallenge] = useState<{ slug: string; playCount: number; assignmentTitle: string; notes?: string | null; expiresAt?: string | null } | null | undefined>(undefined);
   const [soloCreating, setSoloCreating] = useState(false);
   const [soloCopied, setSoloCopied] = useState(false);
   const [soloNotes, setSoloNotes] = useState("");
   const [soloNotesSaving, setSoloNotesSaving] = useState(false);
   const [soloNotesOpen, setSoloNotesOpen] = useState(false);
+  // Leaderboard
+  const [soloLeaderboardOpen, setSoloLeaderboardOpen] = useState(false);
+  const [soloParticipants, setSoloParticipants] = useState<Array<{ playerName: string; score: number; correctCount: number; playedAt: string }>>([]);
+  const [soloParticipantsLoading, setSoloParticipantsLoading] = useState(false);
+  // Deadline
+  const [soloDeadlineOpen, setSoloDeadlineOpen] = useState(false);
+  const [soloDeadline, setSoloDeadline] = useState("");
+  const [soloDeadlineSaving, setSoloDeadlineSaving] = useState(false);
 
   // Fetch existing solo challenge link on mount
   useEffect(() => {
@@ -80,9 +88,51 @@ export default function TeacherAssignmentDetail() {
       .then(data => {
         setSoloChallenge(data);
         if (data?.notes) setSoloNotes(data.notes);
+        if (data?.expiresAt) {
+          // Convert ISO to datetime-local format (YYYY-MM-DDTHH:mm)
+          setSoloDeadline(new Date(data.expiresAt).toISOString().slice(0, 16));
+        }
       })
       .catch(() => setSoloChallenge(null));
   }, [id]);
+
+  const loadParticipants = async () => {
+    if (!soloChallenge?.slug) return;
+    setSoloParticipantsLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/participants`, { credentials: "include" });
+      const data = await res.json();
+      setSoloParticipants(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر تحميل المشاركين" : "Failed to load");
+    } finally {
+      setSoloParticipantsLoading(false);
+    }
+  };
+
+  const saveDeadline = async () => {
+    if (!soloChallenge?.slug) return;
+    setSoloDeadlineSaving(true);
+    try {
+      const expiresAt = soloDeadline ? new Date(soloDeadline).toISOString() : null;
+      const res = await fetch(`${BASE}/api/solo-challenges/${soloChallenge.slug}/deadline`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ expiresAt }),
+      });
+      if (!res.ok) throw new Error();
+      setSoloChallenge(prev => prev ? { ...prev, expiresAt } : prev);
+      setSoloDeadlineOpen(false);
+      toast.success(expiresAt
+        ? (lang === "ar" ? "تم تحديد وقت الإنهاء" : "Deadline set!")
+        : (lang === "ar" ? "تم إزالة وقت الإنهاء" : "Deadline cleared!"));
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر الحفظ" : "Failed to save");
+    } finally {
+      setSoloDeadlineSaving(false);
+    }
+  };
 
   const saveSoloNotes = async () => {
     if (!soloChallenge?.slug) return;
@@ -1092,27 +1142,45 @@ export default function TeacherAssignmentDetail() {
 
                 {/* ── Solo Play Link ─────────────────────────────── */}
                 {soloChallenge && soloChallenge.slug ? (
-                  /* Already created — show slug + copy + notes */
+                  /* Already created — show slug + action buttons */
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
                       <Zap className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-xs font-mono truncate max-w-[110px]">/solo/{soloChallenge.slug}</span>
+                      <span className="text-xs font-mono truncate max-w-[90px]">/solo/{soloChallenge.slug}</span>
                       <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
-                      <button
-                        onClick={copySoloLink}
-                        className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors"
-                        title={lang === "ar" ? "نسخ رابط اللعب الفردي" : "Copy solo play link"}
-                      >
+                      {/* Copy */}
+                      <button onClick={copySoloLink} className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors" title={lang === "ar" ? "نسخ الرابط" : "Copy link"}>
                         {soloCopied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
-                      <button
-                        onClick={() => { setSoloNotesOpen(v => !v); setSoloNotes(soloChallenge.notes ?? ""); }}
-                        className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors"
-                        title={lang === "ar" ? "ملاحظات للطلاب" : "Student notes"}
-                      >
+                      {/* Notes */}
+                      <button onClick={() => { setSoloNotesOpen(v => !v); setSoloDeadlineOpen(false); setSoloNotes(soloChallenge.notes ?? ""); }} className="p-1 rounded hover:bg-amber-500/20 transition-colors" title={lang === "ar" ? "ملاحظات" : "Notes"}>
                         <FileText className="w-3.5 h-3.5" />
                       </button>
+                      {/* Deadline */}
+                      <button onClick={() => { setSoloDeadlineOpen(v => !v); setSoloNotesOpen(false); }} className={`p-1 rounded hover:bg-amber-500/20 transition-colors ${soloChallenge.expiresAt ? "text-red-500" : ""}`} title={lang === "ar" ? "وقت الإنهاء" : "Set deadline"}>
+                        <Clock className="w-3.5 h-3.5" />
+                      </button>
+                      {/* Leaderboard */}
+                      <button
+                        onClick={() => { setSoloLeaderboardOpen(true); loadParticipants(); }}
+                        className="p-1 rounded hover:bg-amber-500/20 transition-colors"
+                        title={lang === "ar" ? "قائمة المتصدرين" : "Leaderboard"}
+                      >
+                        <Trophy className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+
+                    {/* Deadline status badge */}
+                    {soloChallenge.expiresAt && (
+                      <div className="text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1" style={{ color: new Date(soloChallenge.expiresAt) < new Date() ? "#dc2626" : "#92400e", background: new Date(soloChallenge.expiresAt) < new Date() ? "#fee2e2" : "#fef3c7" }}>
+                        <Clock className="w-3 h-3" />
+                        {new Date(soloChallenge.expiresAt) < new Date()
+                          ? (lang === "ar" ? "المسابقة منتهية" : "Closed")
+                          : (lang === "ar" ? `تنتهي: ${new Date(soloChallenge.expiresAt).toLocaleString("ar-SA")}` : `Closes: ${new Date(soloChallenge.expiresAt).toLocaleString()}`)}
+                      </div>
+                    )}
+
+                    {/* Notes panel */}
                     {soloNotesOpen && (
                       <div className="mt-1 rounded-lg border border-amber-400/40 bg-amber-50/70 dark:bg-amber-900/20 p-2.5 flex flex-col gap-2">
                         <label className="text-xs font-bold text-amber-700 dark:text-amber-300">
@@ -1128,16 +1196,35 @@ export default function TeacherAssignmentDetail() {
                           dir="rtl"
                         />
                         <div className="flex gap-1.5 justify-end">
-                          <button onClick={() => setSoloNotesOpen(false)} className="px-3 py-1 text-xs rounded-lg border font-bold hover:bg-gray-50">
-                            {lang === "ar" ? "إلغاء" : "Cancel"}
-                          </button>
-                          <button
-                            onClick={saveSoloNotes}
-                            disabled={soloNotesSaving}
-                            className="px-3 py-1 text-xs rounded-lg font-bold text-white inline-flex items-center gap-1 disabled:opacity-50"
-                            style={{ background: "#C9930A" }}
-                          >
+                          <button onClick={() => setSoloNotesOpen(false)} className="px-3 py-1 text-xs rounded-lg border font-bold hover:bg-gray-50">{lang === "ar" ? "إلغاء" : "Cancel"}</button>
+                          <button onClick={saveSoloNotes} disabled={soloNotesSaving} className="px-3 py-1 text-xs rounded-lg font-bold text-white inline-flex items-center gap-1 disabled:opacity-50" style={{ background: "#C9930A" }}>
                             {soloNotesSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {lang === "ar" ? "حفظ" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Deadline panel */}
+                    {soloDeadlineOpen && (
+                      <div className="mt-1 rounded-lg border border-red-300/50 bg-red-50/70 dark:bg-red-900/10 p-2.5 flex flex-col gap-2">
+                        <label className="text-xs font-bold text-red-700 dark:text-red-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {lang === "ar" ? "تاريخ ووقت إنهاء المسابقة" : "Challenge closes at"}
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={soloDeadline}
+                          onChange={e => setSoloDeadline(e.target.value)}
+                          className="w-full rounded-lg border border-red-300 px-2.5 py-1.5 text-xs focus:outline-none bg-white dark:bg-gray-800"
+                        />
+                        <div className="flex gap-1.5 justify-end">
+                          <button onClick={() => setSoloDeadlineOpen(false)} className="px-3 py-1 text-xs rounded-lg border font-bold hover:bg-gray-50">{lang === "ar" ? "إلغاء" : "Cancel"}</button>
+                          {soloChallenge.expiresAt && (
+                            <button onClick={() => { setSoloDeadline(""); saveDeadline(); }} className="px-3 py-1 text-xs rounded-lg border font-bold text-red-600 hover:bg-red-50">{lang === "ar" ? "إزالة" : "Clear"}</button>
+                          )}
+                          <button onClick={saveDeadline} disabled={soloDeadlineSaving} className="px-3 py-1 text-xs rounded-lg font-bold text-white inline-flex items-center gap-1 disabled:opacity-50" style={{ background: "#dc2626" }}>
+                            {soloDeadlineSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                             {lang === "ar" ? "حفظ" : "Save"}
                           </button>
                         </div>
@@ -2069,6 +2156,88 @@ export default function TeacherAssignmentDetail() {
                   </>
                 );
               })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Solo Challenge Leaderboard Modal ─────────────────── */}
+      <AnimatePresence>
+        {soloLeaderboardOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => setSoloLeaderboardOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800" style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)" }}>
+                <Trophy className="w-6 h-6 text-white" />
+                <div className="flex-1">
+                  <h2 className="text-base font-black text-white">{lang === "ar" ? "قائمة المتصدرين" : "Leaderboard"}</h2>
+                  <p className="text-xs text-white/80">{lang === "ar" ? `وميض فردي · ${soloChallenge?.slug}` : `Solo · ${soloChallenge?.slug}`}</p>
+                </div>
+                <button onClick={() => setSoloLeaderboardOpen(false)} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {soloParticipantsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                  </div>
+                ) : soloParticipants.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Trophy className="w-10 h-10 mx-auto mb-2 opacity-25" />
+                    <p className="text-sm font-bold">{lang === "ar" ? "لا يوجد مشاركون بعد" : "No participants yet"}</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {soloParticipants.map((p, i) => {
+                      const medalColor = i === 0 ? "#f59e0b" : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : undefined;
+                      return (
+                        <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${i < 3 ? "border-amber-200 bg-amber-50/60 dark:bg-amber-900/10 dark:border-amber-700/40" : "border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-800/40"}`}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-black shrink-0" style={{ background: medalColor ?? "#e5e7eb", color: medalColor ? "white" : "#6b7280" }}>
+                            {i < 3 ? <Medal className="w-3.5 h-3.5" /> : <span>{i + 1}</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold truncate">{p.playerName}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {lang === "ar" ? `${p.correctCount ?? "—"} إجابة صحيحة` : `${p.correctCount ?? "—"} correct`}
+                              {" · "}
+                              {new Date(p.playedAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}
+                            </p>
+                          </div>
+                          <div className="text-lg font-black text-amber-600">{p.score}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {soloParticipants.length} {lang === "ar" ? "مشارك" : "participants"}
+                </span>
+                <button onClick={loadParticipants} disabled={soloParticipantsLoading} className="text-xs font-bold text-amber-600 hover:underline flex items-center gap-1">
+                  <Loader2 className={`w-3 h-3 ${soloParticipantsLoading ? "animate-spin" : "opacity-0"}`} />
+                  {lang === "ar" ? "تحديث" : "Refresh"}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

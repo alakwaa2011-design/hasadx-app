@@ -8,7 +8,7 @@ import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import {
-  Trophy, Users, Zap, Play, Loader2, AlertCircle, FileText,
+  Trophy, Users, Zap, Play, Loader2, AlertCircle, FileText, Lock, Clock,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -17,6 +17,8 @@ interface ChallengeInfo {
   slug: string;
   assignmentTitle: string;
   notes: string | null;
+  expiresAt: string | null;
+  isExpired: boolean;
   playCount: number;
   questionCount: number;
 }
@@ -100,6 +102,29 @@ export default function SoloPlayPage() {
           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
           <AlertCircle className="w-14 h-14 text-red-400 mx-auto mb-4" />
           <p className="text-white font-bold text-lg">{loadError}</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Expired ──────────────────────────────────────────────
+  if (info?.isExpired) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "linear-gradient(160deg,#0D2118 0%,#1A3A28 50%,#0F2A1C 100%)" }} dir={dir}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-sm w-full rounded-3xl p-8"
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,100,100,0.25)" }}>
+          <Lock className="w-14 h-14 text-red-400 mx-auto mb-4" />
+          <h2 className="text-white font-black text-xl mb-2">{info.assignmentTitle}</h2>
+          <p className="text-red-300 font-bold text-base mb-3">
+            {lang === "ar" ? "انتهت مدة هذه المسابقة" : "This challenge has closed"}
+          </p>
+          {info.expiresAt && (
+            <p className="flex items-center justify-center gap-1.5 text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <Clock className="w-3.5 h-3.5" />
+              {new Date(info.expiresAt).toLocaleString(lang === "ar" ? "ar-SA" : "en-US")}
+            </p>
+          )}
         </motion.div>
       </div>
     );
