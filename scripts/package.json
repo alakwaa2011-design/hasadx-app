@@ -9,6 +9,7 @@
     "seed:hasad-expansion": "tsx ./src/seed-hasad-challenge-expansion.ts",
     "seed:hasad-hard": "tsx ./src/seed-hasad-challenge-hard.ts",
     "seed:dedup": "tsx ./src/seed-dedup-cleanup.ts",
+    "seed:expand2": "tsx ./src/seed-islamic-expansion-2.ts",
     "backfill:content-kind": "tsx ./src/backfill-assignment-content-kind.ts",
     "thumbs:arena-covers": "tsx ./src/generate-arena-cover-thumbs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
