@@ -15,6 +15,8 @@ export default function IslamicAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<"content" | "permissions" | "import">("content");
   const [importMsg, setImportMsg] = useState("");
+  const [dedupRunning, setDedupRunning] = useState(false);
+  const [dedupMsg, setDedupMsg] = useState("");
   const [editing, setEditing] = useState<Partial<Q> & { id?: number } | null>(null);
 
   async function reload() {
@@ -107,6 +109,20 @@ export default function IslamicAdmin() {
     await api(`/islamic/admin/permissions/${teacherId}`, { method: "DELETE" });
     reload();
   }
+  async function runDedup() {
+    if (!confirm("سيتم حذف الأسئلة المكررة وإضافة الأسئلة الأساسية. هل أنت متأكد؟")) return;
+    setDedupRunning(true);
+    setDedupMsg("");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/admin/dedup-islamic-questions`, { method: "POST", credentials: "include" });
+      const r = await res.json();
+      if (!res.ok) { setDedupMsg(`فشل: ${r.message || res.statusText}`); return; }
+      setDedupMsg(`✅ تم: حُذف ${r.deletedDuplicates} مكرر، أُضيف ${r.newQuestionsInserted} سؤال جديد`);
+      reload();
+    } catch { setDedupMsg("حدث خطأ أثناء التنظيف"); }
+    finally { setDedupRunning(false); }
+  }
+
   async function importFile(file: File) {
     setImportMsg("جاري الاستيراد…");
     const fd = new FormData();
@@ -133,8 +149,14 @@ export default function IslamicAdmin() {
 
       {tab === "content" && (
         <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <GoldButton onClick={addSection}>+ قسم جديد</GoldButton>
+            {isAdmin && (
+              <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#fca5a5", borderColor: "#fca5a5" }}>
+                {dedupRunning ? "جاري التنظيف…" : "🧹 حذف المكررات"}
+              </GhostButton>
+            )}
+            {dedupMsg && <span style={{ fontSize: 13, color: ISLAMIC_GOLD, marginRight: 8 }}>{dedupMsg}</span>}
           </div>
           {sections.map((s) => (
             <IslamicCard key={s.id} style={{ marginBottom: 12 }}>
