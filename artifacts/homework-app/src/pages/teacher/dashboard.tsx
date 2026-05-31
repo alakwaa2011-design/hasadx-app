@@ -70,6 +70,7 @@ import SharedContentPage from "@/pages/teacher/shared-content";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
 import DashboardOverview from "@/components/teacher/DashboardOverview";
+import { OnboardingTour } from "@/components/teacher/OnboardingTour";
 import { Card, Button } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSocket, disconnectSocket } from "@/lib/socket";
@@ -1058,6 +1059,12 @@ export default function TeacherDashboard() {
           )}
         </main>
       </div>
+
+      {/* ── الجولة التوجيهية — تظهر لأول مرة فقط ── */}
+      <OnboardingTour
+        lang={lang}
+        onCreateActivity={() => setLocation("/teacher/new")}
+      />
 
       {/* ── Mobile overview ── */}
       {activeTab === "overview" && (
