@@ -71,16 +71,76 @@
         </script>
     </head>
     <body>
+        <style>
+            #hasad-splash {
+                position: fixed;
+                inset: 0;
+                background: #f7f6f2;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 20px;
+                z-index: 9999;
+                font-family: 'Tajawal', 'IBM Plex Sans Arabic', sans-serif;
+                direction: rtl;
+            }
+            #hasad-splash .logo-wrap {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            #hasad-splash .logo-icon {
+                width: 48px;
+                height: 48px;
+                background: linear-gradient(135deg, #1e4d35 0%, #2d6a4f 100%);
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 8px 24px rgba(30,77,53,0.28);
+            }
+            #hasad-splash .logo-icon span {
+                color: #d4a63a;
+                font-size: 22px;
+                font-weight: 900;
+                letter-spacing: -1px;
+            }
+            #hasad-splash .logo-text {
+                font-size: 28px;
+                font-weight: 800;
+                color: #1a3d2a;
+                letter-spacing: -0.5px;
+            }
+            #hasad-splash .tagline {
+                font-size: 14px;
+                color: #6b8c7a;
+                font-weight: 500;
+            }
+            #hasad-splash .bar-wrap {
+                width: 160px;
+                height: 3px;
+                background: rgba(30,77,53,0.1);
+                border-radius: 99px;
+                overflow: hidden;
+            }
+            #hasad-splash .bar-fill {
+                height: 100%;
+                width: 40%;
+                background: linear-gradient(90deg, #1e4d35, #d4a63a);
+                border-radius: 99px;
+                animation: hasad-slide 1.4s ease-in-out infinite;
+            }
+            @keyframes hasad-slide {
+                0%   { transform: translateX(300%); opacity: 0.7; }
+                50%  { transform: translateX(0%);   opacity: 1;   }
+                100% { transform: translateX(-300%); opacity: 0.7; }
+            }
+        </style>
+
         <div id="root">
-            <!-- Static Arabic SEO content rendered server-side (well, build-side).
-                 React replaces this on hydration. Search engines that don't run JS,
-                 social-card scrapers, and slow first-paint visitors all see real
-                 content here instead of an empty shell. -->
             <noscript>
-                <!-- When JS is disabled, hide the pre-hydration fallback (which would
-                     otherwise show a stuck "loading…" message) and surface the rich
-                     static content below instead. -->
-                <style>#seo-fallback{display:none !important;}</style>
+                <style>#hasad-splash{display:none !important;}</style>
                 <div style="max-width:760px;margin:48px auto;padding:24px;font-family:'Tajawal','IBM Plex Sans Arabic',sans-serif;direction:rtl;text-align:right;color:#0f172a;line-height:1.8">
                     <h1 style="font-size:32px;color:#14532d;margin:0 0 12px">منصة حصاد التعليمية — HasadX</h1>
                     <p>منصة <strong>حصاد</strong> (HasadX) منصة عربية للتعليم التفاعلي، تتيح للمعلمين إنشاء <strong>عروض تفاعلية</strong> و<strong>مسابقات تعليمية</strong> و<strong>واجبات وأنشطة</strong> ومشاركتها مع الطلاب عبر رابط أو رمز دخول.</p>
@@ -96,12 +156,17 @@
                     <p>هذا الموقع يعمل بشكل أفضل عند تفعيل JavaScript في المتصفح.</p>
                 </div>
             </noscript>
-            <!-- Pre-hydration visible content for crawlers + faster LCP. React
-                 mounts into #root and overwrites this on first render. -->
-            <div id="seo-fallback" style="max-width:760px;margin:48px auto;padding:24px;font-family:'Tajawal','IBM Plex Sans Arabic',sans-serif;direction:rtl;text-align:right;color:#0f172a;line-height:1.8">
-                <h1 style="font-size:30px;color:#14532d;margin:0 0 12px">منصة حصاد | HasadX</h1>
-                <p style="margin:0 0 8px">منصة <strong>حصاد</strong> التعليمية للمعلم العربي: <strong>عروض تفاعلية</strong>، <strong>مسابقات تعليمية</strong>، <strong>واجبات وأنشطة</strong>، و<strong>إنشاء عروض بالذكاء الاصطناعي</strong>.</p>
-                <p style="color:#475569;font-size:14px">جارٍ تحميل المنصة…</p>
+
+            <!-- شاشة التحميل — تظهر فوراً قبل React وتختفي بعده -->
+            <div id="hasad-splash">
+                <div class="logo-wrap">
+                    <div class="logo-icon"><span>X</span></div>
+                    <span class="logo-text">حصاد</span>
+                </div>
+                <span class="tagline">منصة التعليم التفاعلي</span>
+                <div class="bar-wrap">
+                    <div class="bar-fill"></div>
+                </div>
             </div>
         </div>
         <script type="module" src="/src/main.tsx"></script>
