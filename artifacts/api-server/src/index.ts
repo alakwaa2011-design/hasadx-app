@@ -23,6 +23,7 @@ import { inArray } from "drizzle-orm";
 import { seedMillionBankIfEmpty } from "./seedMillionBank";
 import { seedIslamicIfNeeded } from "./seedIslamic";
 import { seedIslamicExtraIfNeeded } from "./seedIslamicExtra";
+import { seedIslamicLevelsIfNeeded } from "./seedIslamicLevels";
 import { seedPlansIfMissing } from "./seedPlans";
 import { seedArenaContentIfNeeded } from "./seedArenaContent";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
@@ -424,6 +425,7 @@ httpServer.listen(port, () => {
       seedMillionBankIfEmpty();
       seedIslamicIfNeeded();
       seedIslamicExtraIfNeeded();
+      seedIslamicLevelsIfNeeded();
       seedArenaContentIfNeeded();
       seedXpDefaultsIfNeeded();
       startPasswordResetCleanupJob();
