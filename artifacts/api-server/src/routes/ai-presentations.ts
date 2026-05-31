@@ -470,7 +470,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
     if (!outlineRaw || typeof outlineRaw !== "object") {
       res.status(422).json({
         message: brief.language === "ar"
-          ? "تعذّر إنتاج مخطط صالح. عدّل الموضوع أو أعد المحاولة."
+          ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
           : "Could not produce a valid outline. Adjust the brief and retry.",
       });
       return;
@@ -515,7 +515,7 @@ router.post("/presentations/ai/outline", requireTeacher, sensitiveActionLimiter,
       req.log.warn({ issues: parsed.error.issues }, "Outline failed strict validation");
       res.status(422).json({
         message: brief.language === "ar"
-          ? "تعذّر إنتاج مخطط صالح. عدّل الموضوع أو أعد المحاولة."
+          ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
           : "Could not produce a valid outline. Adjust the brief and retry.",
         issues: parsed.error.issues.slice(0, 5),
       });

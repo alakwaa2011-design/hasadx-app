@@ -4,7 +4,7 @@ import { SONNET_MODEL } from "./anthropic-client";
 
 export type AiTier = "standard" | "pro" | "claude";
 
-const STANDARD_MODEL = "gpt-5-mini";
+const STANDARD_MODEL = "gpt-5.2";
 const PRO_MODEL = "gpt-5.2";
 
 export function modelForTier(tier: AiTier): string {
