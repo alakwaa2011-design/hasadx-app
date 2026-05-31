@@ -458,6 +458,23 @@ export declare const islamicQuestionsTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        questionLevel: import("drizzle-orm/pg-core").PgColumn<{
+            name: "question_level";
+            tableName: "islamic_questions";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdBy: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_by";
             tableName: "islamic_questions";
@@ -637,6 +654,23 @@ export declare const islamicProgressTable: import("drizzle-orm/pg-core").PgTable
         }, {}, {}>;
         certificatesEarned: import("drizzle-orm/pg-core").PgColumn<{
             name: "certificates_earned";
+            tableName: "islamic_progress";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        maxUnlockedLevel: import("drizzle-orm/pg-core").PgColumn<{
+            name: "max_unlocked_level";
             tableName: "islamic_progress";
             dataType: "number";
             columnType: "PgInteger";

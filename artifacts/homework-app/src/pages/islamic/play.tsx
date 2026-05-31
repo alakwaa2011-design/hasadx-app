@@ -172,7 +172,8 @@ export default function IslamicPlay() {
           body: JSON.stringify({
             categoryId,
             totalQuestions: questions.length,
-            allCorrect: allCorrect && (certificateMode ?? true),
+            allCorrect,
+            certificateEligible: allCorrect && (certificateMode ?? true),
             totalStars,
             sessionId: sessionIdRef.current,
             durationSeconds,

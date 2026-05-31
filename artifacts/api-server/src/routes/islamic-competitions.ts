@@ -559,13 +559,17 @@ router.post("/islamic/answer", async (req, res) => {
 router.post("/islamic/complete", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
   const userId = req.session.teacherId!;
-  const { categoryId, totalQuestions, allCorrect, totalStars, sessionId, durationSeconds, level } = req.body || {};
+  const { categoryId, totalQuestions, allCorrect, certificateEligible, totalStars, sessionId, durationSeconds, level } = req.body || {};
   if (!categoryId) {
     res.status(400).json({ message: "categoryId مطلوب" });
     return;
   }
   const currentLevel = typeof level === "number" ? level : 1;
   const completionBonus = 50 * currentLevel;
+  // allCorrect = user got every question right (used for level unlock)
+  // certificateEligible = allCorrect AND user chose certificate mode (used for cert issuance)
+  // Fall back to allCorrect for old clients that don't send certificateEligible
+  const eligibleForCert = certificateEligible !== undefined ? !!certificateEligible : !!allCorrect;
 
   // Check if next level exists and should be unlocked
   let nextLevel: number | null = null;
@@ -587,7 +591,7 @@ router.post("/islamic/complete", async (req, res) => {
       set: {
         totalPoints: sql`${islamicProgressTable.totalPoints} + ${completionBonus}`,
         completedAt: new Date(),
-        certificatesEarned: allCorrect ? sql`${islamicProgressTable.certificatesEarned} + 1` : islamicProgressTable.certificatesEarned,
+        certificatesEarned: eligibleForCert ? sql`${islamicProgressTable.certificatesEarned} + 1` : islamicProgressTable.certificatesEarned,
         maxUnlockedLevel: nextLevel
           ? sql`GREATEST(${islamicProgressTable.maxUnlockedLevel}, ${nextLevel})`
           : islamicProgressTable.maxUnlockedLevel,
@@ -597,7 +601,7 @@ router.post("/islamic/complete", async (req, res) => {
 
   let certificate: Record<string, unknown> | null = null;
   const certFlags = await getGeneralFlags();
-  if (allCorrect && certFlags.showCertificates) {
+  if (eligibleForCert && certFlags.showCertificates) {
     const [teacher] = await db.select({ name: teachersTable.name }).from(teachersTable).where(eq(teachersTable.id, userId)).limit(1);
     const [cat] = await db.select({ name: islamicCategoriesTable.name }).from(islamicCategoriesTable).where(eq(islamicCategoriesTable.id, categoryId)).limit(1);
     const serial = `HSD-${Date.now()}-${randomInt(1000, 9999)}`;

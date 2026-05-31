@@ -572,4 +572,8 @@ CREATE TABLE IF NOT EXISTS teacher_followers (
   created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS teacher_followers_uniq ON teacher_followers(teacher_id, follower_id);
+
+-- Islamic quiz level progression columns (idempotent)
+ALTER TABLE islamic_questions ADD COLUMN IF NOT EXISTS question_level INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE islamic_progress  ADD COLUMN IF NOT EXISTS max_unlocked_level INTEGER NOT NULL DEFAULT 1;
 `;
