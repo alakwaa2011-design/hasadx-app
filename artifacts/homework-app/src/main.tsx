@@ -7,6 +7,14 @@ initGA();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
+// إخفاء شاشة التحميل بعد أن يحمّل React
+const splash = document.getElementById("hasad-splash");
+if (splash) {
+  splash.style.transition = "opacity 0.35s ease";
+  splash.style.opacity = "0";
+  setTimeout(() => splash.remove(), 380);
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
