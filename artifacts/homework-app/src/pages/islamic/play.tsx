@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, useSearch } from "wouter";
 import { api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink, ISLAMIC_GOLD, ISLAMIC_GREEN, playCorrect, playWrong } from "./_shared";
 
 interface Q {
@@ -9,15 +9,22 @@ interface Q {
   options: string[];
   correctAnswer: string;
   difficulty: string;
+  level?: number;
 }
 
 const BASE_TIME = 25;
 const QURRA_NAME = "من القارئ";
 
+const LEVEL_NAMES: Record<number, string> = { 1: "الأساسي", 2: "المتقدم", 3: "الخبراء" };
+const LEVEL_COLORS: Record<number, string> = { 1: "#16a34a", 2: "#d97706", 3: "#dc2626" };
+const LEVEL_ICONS: Record<number, string> = { 1: "🌱", 2: "🔥", 3: "💎" };
+
 export default function IslamicPlay() {
   const [, params] = useRoute("/islamic/play/:categoryId");
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const categoryId = parseInt(params?.categoryId || "0");
+  const level = parseInt(new URLSearchParams(search).get("level") || "1") || 1;
 
   const [questions, setQuestions] = useState<Q[] | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -42,6 +49,7 @@ export default function IslamicPlay() {
   const [done, setDone] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [categoryName, setCategoryName] = useState("");
+  const [nextLevelUnlocked, setNextLevelUnlocked] = useState<number | null>(null);
 
   const startRef = useRef<number>(Date.now());
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -49,9 +57,9 @@ export default function IslamicPlay() {
   const audioListensRef = useRef<number>(0);
 
   useEffect(() => {
-    api<{ questions: Q[]; sessionId: string }>(`/islamic/play/${categoryId}`)
+    api<{ questions: Q[]; sessionId: string; level: number }>(`/islamic/play/${categoryId}?level=${level}`)
       .then((r) => {
-        if (r.questions.length === 0) setErrorMsg("لا أسئلة في هذه الفئة بعد");
+        if (r.questions.length === 0) setErrorMsg("لا أسئلة في هذا المستوى بعد");
         setQuestions(r.questions);
         sessionIdRef.current = r.sessionId;
         sessionStartRef.current = Date.now();
@@ -67,7 +75,7 @@ export default function IslamicPlay() {
     api<{ showCertificates?: boolean }>("/islamic/access")
       .then((a) => setCertEnabled(!!a?.showCertificates))
       .catch(() => setCertEnabled(false));
-  }, [categoryId]);
+  }, [categoryId, level]);
 
   useEffect(() => {
     if (!questions || done || revealed) return;
@@ -145,9 +153,6 @@ export default function IslamicPlay() {
     else setStreak(0);
 
     if (certEnabled) {
-      if (!isCorrect && certificateMode === true) {
-        // user is going for certificate but missed
-      }
       if (!isCorrect && !askedAboutCert) {
         setCertificateMode(false);
         setAskedAboutCert(true);
@@ -162,7 +167,7 @@ export default function IslamicPlay() {
       const totalStars = stars.reduce((a, b) => a + b, 0);
       try {
         const durationSeconds = (Date.now() - sessionStartRef.current) / 1000;
-        const r = await api<{ completionBonus: number; certificate: { serial: string } | null }>("/islamic/complete", {
+        const r = await api<{ completionBonus: number; certificate: { serial: string } | null; nextLevel: number | null; unlockedNextLevel: boolean }>("/islamic/complete", {
           method: "POST",
           body: JSON.stringify({
             categoryId,
@@ -171,10 +176,12 @@ export default function IslamicPlay() {
             totalStars,
             sessionId: sessionIdRef.current,
             durationSeconds,
+            level,
           }),
         });
         setPoints((p) => p + r.completionBonus);
         if (r.certificate) setFinalCert(r.certificate);
+        if (r.unlockedNextLevel && r.nextLevel) setNextLevelUnlocked(r.nextLevel);
       } catch {}
       doneRef.current = true;
       setDone(true);
@@ -267,14 +274,61 @@ export default function IslamicPlay() {
 
   if (done) {
     const totalStars = stars.reduce((a, b) => a + b, 0);
+    const allCorrect = stars.every((s) => s > 0);
     return (
       <IslamicShell title="انتهت الجلسة">
         <BackLink />
+
+        {/* Level unlock celebration */}
+        {nextLevelUnlocked && (
+          <div style={{
+            background: "linear-gradient(135deg, #7c2d12, #dc2626)",
+            border: `3px solid ${ISLAMIC_GOLD}`,
+            borderRadius: 20,
+            padding: 28,
+            textAlign: "center",
+            marginBottom: 20,
+            boxShadow: `0 0 40px ${ISLAMIC_GOLD}88`,
+            animation: "levelUnlock 0.5s ease-out",
+          }}>
+            <style>{`@keyframes levelUnlock { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>{LEVEL_ICONS[nextLevelUnlocked] ?? "🏆"}</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: ISLAMIC_GOLD, marginBottom: 6 }}>
+              🔓 تهانينا! فتحت المستوى {nextLevelUnlocked === 2 ? "الثاني" : "الثالث"}!
+            </div>
+            <div style={{ fontSize: 16, opacity: 0.9, marginBottom: 16 }}>
+              {LEVEL_NAMES[nextLevelUnlocked]} — {nextLevelUnlocked === 2 ? "أسئلة أصعب تنتظرك!" : "أنت من الخبراء!"}
+            </div>
+            <GoldButton onClick={() => setLocation(`/islamic/play/${categoryId}?level=${nextLevelUnlocked}`)}>
+              {LEVEL_ICONS[nextLevelUnlocked]} العب المستوى {nextLevelUnlocked === 2 ? "الثاني" : "الثالث"} الآن!
+            </GoldButton>
+          </div>
+        )}
+
         <IslamicCard glow>
           <div style={{ textAlign: "center", fontSize: 22, lineHeight: 2 }}>
-            <div>أحسنت! 🎉</div>
+            <div style={{ marginBottom: 4 }}>
+              <span style={{
+                background: LEVEL_COLORS[level] ?? ISLAMIC_GREEN,
+                color: "#fff",
+                borderRadius: 8,
+                padding: "2px 12px",
+                fontSize: 14,
+                fontWeight: 700,
+              }}>
+                {LEVEL_ICONS[level]} المستوى {level === 1 ? "الأساسي" : level === 2 ? "المتقدم" : "الخبراء"}
+              </span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {allCorrect ? "ممتاز! أجبت بدون أي خطأ 🎉" : "أحسنت! 🎉"}
+            </div>
             <div>النقاط المكتسبة: <span style={{ color: ISLAMIC_GOLD, fontWeight: 900 }}>{points}</span></div>
             <div>إجمالي النجوم: {"⭐".repeat(Math.min(totalStars, 30))} ({totalStars})</div>
+            {!allCorrect && level > 1 && (
+              <div style={{ fontSize: 15, color: "#fca5a5", marginTop: 8 }}>
+                ⚠️ يلزم الإجابة بدون أخطاء لفتح المستوى التالي
+              </div>
+            )}
             {certEnabled && finalCert && (
               <>
                 <div style={{ marginTop: 16, color: ISLAMIC_GOLD, fontWeight: 900 }}>
@@ -288,6 +342,9 @@ export default function IslamicPlay() {
             <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               <GhostButton onClick={() => setLocation("/islamic")}>الرئيسية</GhostButton>
               <GhostButton onClick={() => setLocation("/islamic/leaderboard")}>المتصدرون</GhostButton>
+              {!allCorrect && (
+                <GoldButton onClick={restartFromZero}>إعادة المحاولة ↺</GoldButton>
+              )}
             </div>
           </div>
         </IslamicCard>
@@ -300,6 +357,22 @@ export default function IslamicPlay() {
   return (
     <IslamicShell>
       <BackLink />
+
+      {/* Level badge */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <span style={{
+          background: LEVEL_COLORS[level] ?? ISLAMIC_GREEN,
+          color: "#fff",
+          borderRadius: 8,
+          padding: "3px 12px",
+          fontSize: 13,
+          fontWeight: 700,
+        }}>
+          {LEVEL_ICONS[level]} المستوى {level === 1 ? "الأساسي" : level === 2 ? "المتقدم" : "الخبراء"}
+        </span>
+        {categoryName && <span style={{ fontSize: 14, opacity: 0.8 }}>{categoryName}</span>}
+      </div>
+
       {certEnabled && idx === 0 && certificateMode === null && !askedAboutCert && (
         <IslamicCard glow style={{ marginBottom: 12 }}>
           <p style={{ textAlign: "center", fontSize: 17, fontWeight: 700 }}>

@@ -142,10 +142,28 @@ router.get("/islamic/sections", async (req, res) => {
     .where(eq(islamicQuestionsTable.difficulty, "hard"))
     .groupBy(islamicQuestionsTable.categoryId);
   const hardMap = new Map(hardCounts.map((c) => [c.categoryId, c.n]));
+
+  // Level distribution per category
+  const levelRows = await db
+    .select({ categoryId: islamicQuestionsTable.categoryId, lvl: islamicQuestionsTable.questionLevel, n: sql<number>`COUNT(*)::int` })
+    .from(islamicQuestionsTable)
+    .groupBy(islamicQuestionsTable.categoryId, islamicQuestionsTable.questionLevel);
+  const levelMap = new Map<number, number[]>();
+  for (const row of levelRows) {
+    const existing = levelMap.get(row.categoryId) ?? [];
+    if (!existing.includes(row.lvl)) existing.push(row.lvl);
+    levelMap.set(row.categoryId, existing.sort((a, b) => a - b));
+  }
+
+  // User's max unlocked level per category
+  const userProgress = await db
+    .select({ categoryId: islamicProgressTable.categoryId, maxUnlockedLevel: islamicProgressTable.maxUnlockedLevel })
+    .from(islamicProgressTable)
+    .where(eq(islamicProgressTable.userId, teacherId));
+  const userLevelMap = new Map(userProgress.map((p) => [p.categoryId, p.maxUnlockedLevel]));
+
   const sections = all
     .filter((s) => {
-      // Quran-related sections are hidden by default; admin can flip on the
-      // `showQuranSection` flag in platform-settings to expose them globally.
       if (!flags.showQuran && !isAdmin && isQuranSection(s.name)) return false;
       if (s.ownerId !== null && s.ownerId !== undefined) return s.ownerId === teacherId;
       return isAdmin || s.isVisible;
@@ -159,7 +177,13 @@ router.get("/islamic/sections", async (req, res) => {
           if (c.ownerId !== null && c.ownerId !== undefined) return c.ownerId === teacherId;
           return isAdmin || c.isVisible;
         })
-        .map((c) => ({ ...c, questionCount: countMap.get(c.id) || 0, hardCount: hardMap.get(c.id) || 0 })),
+        .map((c) => ({
+          ...c,
+          questionCount: countMap.get(c.id) || 0,
+          hardCount: hardMap.get(c.id) || 0,
+          availableLevels: levelMap.get(c.id) ?? [1],
+          userMaxLevel: userLevelMap.get(c.id) ?? 1,
+        })),
     }));
   res.json(sections);
 });
@@ -423,7 +447,27 @@ router.post("/islamic/import", upload.single("file"), async (req, res) => {
 router.get("/islamic/play/:categoryId", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
   const categoryId = parseInt(req.params.categoryId);
-  const all = await db.select().from(islamicQuestionsTable).where(eq(islamicQuestionsTable.categoryId, categoryId));
+  const level = parseInt(req.query.level as string) || 1;
+
+  // Verify this level is unlocked for the user
+  const userId = req.session.teacherId!;
+  const [prog] = await db.select({ maxUnlockedLevel: islamicProgressTable.maxUnlockedLevel })
+    .from(islamicProgressTable)
+    .where(and(eq(islamicProgressTable.userId, userId), eq(islamicProgressTable.categoryId, categoryId)))
+    .limit(1);
+  const maxUnlocked = prog?.maxUnlockedLevel ?? 1;
+  if (level > maxUnlocked) {
+    res.status(403).json({ message: "هذا المستوى مقفل. أكمل المستوى السابق بدون أخطاء لفتحه." });
+    return;
+  }
+
+  const all = await db.select().from(islamicQuestionsTable).where(
+    and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.questionLevel, level))
+  );
+  if (all.length === 0) {
+    res.status(404).json({ message: "لا أسئلة في هذا المستوى" });
+    return;
+  }
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   const questions = shuffled.map((q) => {
     const opts = [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5);
@@ -436,17 +480,18 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
       options: opts,
       correctAnswer,
       difficulty: q.difficulty,
+      level,
     };
   });
   const sessionId = randomUUID();
   void logIslamicEvent({
-    userId: req.session.teacherId!,
+    userId,
     eventType: "start_quiz",
     categoryId,
     sessionId,
-    metadata: { questionCount: questions.length },
+    metadata: { questionCount: questions.length, level },
   });
-  res.json({ categoryId, sessionId, questions });
+  res.json({ categoryId, sessionId, questions, level });
 });
 
 router.post("/islamic/answer", async (req, res) => {
@@ -514,21 +559,38 @@ router.post("/islamic/answer", async (req, res) => {
 router.post("/islamic/complete", async (req, res) => {
   if (!(await requireAccess(req, res))) return;
   const userId = req.session.teacherId!;
-  const { categoryId, totalQuestions, allCorrect, totalStars, sessionId, durationSeconds } = req.body || {};
+  const { categoryId, totalQuestions, allCorrect, totalStars, sessionId, durationSeconds, level } = req.body || {};
   if (!categoryId) {
     res.status(400).json({ message: "categoryId مطلوب" });
     return;
   }
-  const completionBonus = 50;
+  const currentLevel = typeof level === "number" ? level : 1;
+  const completionBonus = 50 * currentLevel;
+
+  // Check if next level exists and should be unlocked
+  let nextLevel: number | null = null;
+  if (allCorrect) {
+    const [nextLvlRow] = await db
+      .select({ n: sql<number>`COUNT(*)::int` })
+      .from(islamicQuestionsTable)
+      .where(and(eq(islamicQuestionsTable.categoryId, categoryId), eq(islamicQuestionsTable.questionLevel, currentLevel + 1)));
+    if ((nextLvlRow?.n ?? 0) > 0) {
+      nextLevel = currentLevel + 1;
+    }
+  }
+
   await db
     .insert(islamicProgressTable)
-    .values({ userId, categoryId, totalPoints: completionBonus, completedAt: new Date() })
+    .values({ userId, categoryId, totalPoints: completionBonus, completedAt: new Date(), maxUnlockedLevel: nextLevel ?? currentLevel })
     .onConflictDoUpdate({
       target: [islamicProgressTable.userId, islamicProgressTable.categoryId],
       set: {
         totalPoints: sql`${islamicProgressTable.totalPoints} + ${completionBonus}`,
         completedAt: new Date(),
         certificatesEarned: allCorrect ? sql`${islamicProgressTable.certificatesEarned} + 1` : islamicProgressTable.certificatesEarned,
+        maxUnlockedLevel: nextLevel
+          ? sql`GREATEST(${islamicProgressTable.maxUnlockedLevel}, ${nextLevel})`
+          : islamicProgressTable.maxUnlockedLevel,
         lastUpdated: new Date(),
       },
     });
@@ -563,10 +625,11 @@ router.post("/islamic/complete", async (req, res) => {
       totalQuestions: totalQuestions ?? 0,
       totalStars: totalStars ?? 0,
       allCorrect: !!allCorrect,
+      level: currentLevel,
       certificateSerial: certificate?.serial ?? null,
     },
   });
-  res.json({ completionBonus, certificate });
+  res.json({ completionBonus, certificate, nextLevel, unlockedNextLevel: nextLevel !== null });
 });
 
 router.post("/islamic/events/exit", async (req, res) => {

@@ -13,7 +13,8 @@
     "thumbs:arena-covers": "tsx ./src/generate-arena-cover-thumbs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:million-bank": "node seed-million-bank.mjs",
-    "import:500-questions": "node import-500-questions.mjs"
+    "import:500-questions": "node import-500-questions.mjs",
+    "seed:islamic-levels": "tsx ./src/seed-islamic-levels.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

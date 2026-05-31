@@ -34,6 +34,7 @@ export const islamicQuestionsTable = pgTable("islamic_questions", {
   optionD: text("option_d").notNull(),
   correctAnswer: text("correct_answer").notNull(),
   difficulty: text("difficulty").notNull().default("medium"),
+  questionLevel: integer("question_level").notNull().default(1),
   createdBy: integer("created_by").references(() => teachersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -48,6 +49,7 @@ export const islamicProgressTable = pgTable("islamic_progress", {
   correctAnswers: integer("correct_answers").notNull().default(0),
   bestStreak: integer("best_streak").notNull().default(0),
   certificatesEarned: integer("certificates_earned").notNull().default(0),
+  maxUnlockedLevel: integer("max_unlocked_level").notNull().default(1),
   completedAt: timestamp("completed_at"),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 }, (t) => ({

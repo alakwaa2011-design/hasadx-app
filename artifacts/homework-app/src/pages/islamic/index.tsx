@@ -10,6 +10,8 @@ interface Category {
   isVisible: boolean;
   order: number;
   questionCount: number;
+  availableLevels: number[];
+  userMaxLevel: number;
 }
 interface Section {
   id: number;
@@ -28,6 +30,10 @@ interface Progress {
 
 const ONBOARDING_KEY = "islamic_onboarded_v1";
 
+const LEVEL_LABELS: Record<number, string> = { 1: "المستوى ١", 2: "المستوى ٢", 3: "المستوى ٣" };
+const LEVEL_ICONS: Record<number, string> = { 1: "🌱", 2: "🔥", 3: "💎" };
+const LEVEL_COLORS: Record<number, string> = { 1: "#16a34a", 2: "#d97706", 3: "#dc2626" };
+
 export default function IslamicHome() {
   const [, setLocation] = useLocation();
   const [access, setAccess] = useState<{ hasAccess: boolean; isAdmin: boolean; showCertificates?: boolean } | null>(null);
@@ -35,6 +41,7 @@ export default function IslamicHome() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [welcome, setWelcome] = useState<string>("");
+  const [expandedCategory, setExpandedCategory] = useState<number | null>(null);
 
   useEffect(() => {
     api<{ hasAccess: boolean; isAdmin: boolean; showCertificates?: boolean }>("/islamic/access")
@@ -101,6 +108,7 @@ export default function IslamicHome() {
               <li>🎮 طريقة اللعب — اختر فئة وأجب قبل انتهاء الوقت.</li>
               <li>⭐ نظام النجوم — أجب أسرع لتحصل على ⭐⭐⭐.</li>
               <li>🔥 سلسلة الأيام — ادخل يومياً للحفاظ على سلسلتك.</li>
+              <li>🏆 نظام المستويات — أجب بدون خطأ لفتح مستوى أصعب!</li>
             </ul>
             <div style={{ textAlign: "center", marginTop: 20 }}>
               <GoldButton
@@ -163,14 +171,110 @@ export default function IslamicHome() {
             <div key={s.id} style={{ marginBottom: 32 }}>
               <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12, color: ISLAMIC_GOLD }}>{s.name}</h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-                {visibleCategories.map((c) => (
-                  <IslamicCard key={c.id} onClick={c.questionCount > 0 ? () => setLocation(`/islamic/play/${c.id}`) : undefined}>
-                    <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{c.name}</div>
-                    {c.description && <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>{c.description}</div>}
-                    <div style={{ fontSize: 13, color: ISLAMIC_GOLD }}>{c.questionCount} سؤال</div>
-                    {c.questionCount === 0 && <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>لم تُضف أسئلة بعد</div>}
-                  </IslamicCard>
-                ))}
+                {visibleCategories.map((c) => {
+                  const hasMultipleLevels = c.availableLevels && c.availableLevels.length > 1;
+                  const isExpanded = expandedCategory === c.id;
+
+                  return (
+                    <IslamicCard
+                      key={c.id}
+                      onClick={
+                        c.questionCount > 0 && !hasMultipleLevels
+                          ? () => setLocation(`/islamic/play/${c.id}`)
+                          : hasMultipleLevels
+                          ? () => setExpandedCategory(isExpanded ? null : c.id)
+                          : undefined
+                      }
+                    >
+                      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{c.name}</div>
+                      {c.description && <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>{c.description}</div>}
+                      <div style={{ fontSize: 13, color: ISLAMIC_GOLD, marginBottom: 8 }}>
+                        {c.questionCount} سؤال
+                        {hasMultipleLevels && ` · ${c.availableLevels.length} مستويات`}
+                      </div>
+
+                      {hasMultipleLevels ? (
+                        <>
+                          {/* Level pills summary */}
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                            {c.availableLevels.map((lv) => {
+                              const isUnlocked = lv <= (c.userMaxLevel ?? 1);
+                              return (
+                                <span
+                                  key={lv}
+                                  style={{
+                                    fontSize: 12,
+                                    padding: "2px 8px",
+                                    borderRadius: 6,
+                                    fontWeight: 700,
+                                    background: isUnlocked ? LEVEL_COLORS[lv] : "rgba(255,255,255,0.1)",
+                                    color: isUnlocked ? "#fff" : "rgba(255,255,255,0.4)",
+                                    border: isUnlocked ? "none" : "1px solid rgba(255,255,255,0.2)",
+                                  }}
+                                >
+                                  {isUnlocked ? LEVEL_ICONS[lv] : "🔒"} {LEVEL_LABELS[lv]}
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          {/* Expanded level buttons */}
+                          {isExpanded && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+                              {c.availableLevels.map((lv) => {
+                                const isUnlocked = lv <= (c.userMaxLevel ?? 1);
+                                return (
+                                  <button
+                                    key={lv}
+                                    onClick={() => isUnlocked && setLocation(`/islamic/play/${c.id}?level=${lv}`)}
+                                    style={{
+                                      padding: "10px 16px",
+                                      borderRadius: 12,
+                                      border: `2px solid ${isUnlocked ? LEVEL_COLORS[lv] : "rgba(255,255,255,0.15)"}`,
+                                      background: isUnlocked
+                                        ? `${LEVEL_COLORS[lv]}22`
+                                        : "rgba(255,255,255,0.04)",
+                                      color: isUnlocked ? "#fff" : "rgba(255,255,255,0.35)",
+                                      cursor: isUnlocked ? "pointer" : "not-allowed",
+                                      fontFamily: "inherit",
+                                      fontSize: 15,
+                                      fontWeight: 700,
+                                      textAlign: "right",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      transition: "all 0.15s",
+                                    }}
+                                  >
+                                    <span style={{ fontSize: 20 }}>{isUnlocked ? LEVEL_ICONS[lv] : "🔒"}</span>
+                                    <span>
+                                      {LEVEL_LABELS[lv]}
+                                      {lv === 1 && " — أساسي"}
+                                      {lv === 2 && " — متقدم"}
+                                      {lv === 3 && " — خبراء"}
+                                    </span>
+                                    {isUnlocked
+                                      ? <span style={{ fontSize: 13, color: LEVEL_COLORS[lv] }}>ابدأ ←</span>
+                                      : <span style={{ fontSize: 11, opacity: 0.5 }}>أكمل السابق بدون خطأ</span>
+                                    }
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {!isExpanded && (
+                            <div style={{ fontSize: 12, opacity: 0.6, textAlign: "center" }}>
+                              {isExpanded ? "▲ إخفاء" : "▼ اختر المستوى"}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        c.questionCount === 0 && <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>لم تُضف أسئلة بعد</div>
+                      )}
+                    </IslamicCard>
+                  );
+                })}
               </div>
             </div>
           );
