@@ -328,6 +328,79 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "Solo challenge table migration failed");
   }
+
+  // ── Presentations — idempotent column / table additions ──
+  // Core tables are created via Drizzle push; these guards protect
+  // production deployments whose last push predates a feature phase.
+  try {
+    // presentations: columns added after initial push
+    await db.execute(sql`
+      ALTER TABLE presentations
+        ADD COLUMN IF NOT EXISTS pattern TEXT NOT NULL DEFAULT 'solid',
+        ADD COLUMN IF NOT EXISTS mode TEXT,
+        ADD COLUMN IF NOT EXISTS template TEXT,
+        ADD COLUMN IF NOT EXISTS cover_emoji TEXT DEFAULT '📚',
+        ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft',
+        ADD COLUMN IF NOT EXISTS published_at TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS linked_activity_id TEXT,
+        ADD COLUMN IF NOT EXISTS linked_activity_kind TEXT,
+        ADD COLUMN IF NOT EXISTS last_presented_at TIMESTAMP
+    `);
+    // presentation_sessions: session_mode added for Self-Paced Mode
+    await db.execute(sql`
+      ALTER TABLE presentation_sessions
+        ADD COLUMN IF NOT EXISTS session_mode TEXT NOT NULL DEFAULT 'teacher'
+    `);
+    // presentation_responses: class_student_id added for class-mode joins
+    await db.execute(sql`
+      ALTER TABLE presentation_responses
+        ADD COLUMN IF NOT EXISTS class_student_id INTEGER
+          REFERENCES students(id) ON DELETE SET NULL
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS presentation_responses_class_student_idx
+        ON presentation_responses(class_student_id)
+    `);
+    // presentation_assets: tier-system asset tracking table (Phase 2B)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS presentation_assets (
+        id               SERIAL PRIMARY KEY,
+        presentation_id  INTEGER NOT NULL
+          REFERENCES presentations(id) ON DELETE CASCADE,
+        kind             TEXT NOT NULL,
+        url              TEXT NOT NULL,
+        byte_size        INTEGER NOT NULL DEFAULT 0,
+        created_at       TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    // presentation_inline_quiz_runs: per-student quiz-run history (Phase 6)
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS presentation_inline_quiz_runs (
+        id               SERIAL PRIMARY KEY,
+        session_id       INTEGER NOT NULL
+          REFERENCES presentation_sessions(id) ON DELETE CASCADE,
+        element_id       TEXT NOT NULL,
+        total_questions  INTEGER NOT NULL,
+        student_key      VARCHAR(40) NOT NULL,
+        student_name     TEXT NOT NULL,
+        class_student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
+        correct          INTEGER NOT NULL,
+        answered         INTEGER NOT NULL,
+        finished_at      TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS presentation_inline_quiz_runs_session_idx
+        ON presentation_inline_quiz_runs(session_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS presentation_inline_quiz_runs_run_idx
+        ON presentation_inline_quiz_runs(session_id, element_id, finished_at)
+    `);
+    logger.info("Presentation migrations applied");
+  } catch (err) {
+    logger.error(err, "Presentation migrations failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {
