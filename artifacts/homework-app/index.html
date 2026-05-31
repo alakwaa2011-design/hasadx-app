@@ -91,23 +91,21 @@
                 gap: 10px;
             }
             #hasad-splash .logo-icon {
-                width: 48px;
-                height: 48px;
-                background: linear-gradient(135deg, #1e4d35 0%, #2d6a4f 100%);
-                border-radius: 14px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 8px 24px rgba(30,77,53,0.28);
+                width: 64px;
+                height: 64px;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 8px 28px rgba(30,77,53,0.28);
+                flex-shrink: 0;
             }
-            #hasad-splash .logo-icon span {
-                color: #d4a63a;
-                font-size: 22px;
-                font-weight: 900;
-                letter-spacing: -1px;
+            #hasad-splash .logo-icon img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                display: block;
             }
             #hasad-splash .logo-text {
-                font-size: 28px;
+                font-size: 32px;
                 font-weight: 800;
                 color: #1a3d2a;
                 letter-spacing: -0.5px;
@@ -160,7 +158,9 @@
             <!-- شاشة التحميل — تظهر فوراً قبل React وتختفي بعده -->
             <div id="hasad-splash">
                 <div class="logo-wrap">
-                    <div class="logo-icon"><span>X</span></div>
+                    <div class="logo-icon">
+                        <img src="/images/logo-icon.png" alt="حصاد" />
+                    </div>
                     <span class="logo-text">حصاد</span>
                 </div>
                 <span class="tagline">منصة التعليم التفاعلي</span>
