@@ -252,9 +252,24 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
           `<Layout>`. Do not also mount inside layouts. */}
       {/* Compact pill launcher — green / white only, low visual weight */}
       {!launcherMinimized && (
-        <div className="fixed bottom-3 end-3 z-40 pointer-events-none [&>*]:pointer-events-auto">
+        <div className="fixed bottom-4 end-3 z-40 pointer-events-none [&>*]:pointer-events-auto">
+          {/* على الهاتف: دائرة صغيرة فقط — على الشاشة الكبيرة: الزر الكامل */}
+
+          {/* دائرة الهاتف */}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="sm:hidden flex items-center justify-center w-11 h-11 rounded-full shadow-lg border border-white/10"
+            style={{ background: GUIDE_GREEN }}
+            aria-label={t.openLauncher}
+            title={t.brand}
+          >
+            <Sparkles className="w-4 h-4 text-white" aria-hidden />
+          </button>
+
+          {/* الزر الكامل للشاشة الكبيرة */}
           <div
-            className="inline-flex max-w-[min(88vw,200px)] sm:max-w-[220px] items-stretch overflow-hidden rounded-full border border-white/10 shadow-md shadow-black/20"
+            className="hidden sm:inline-flex max-w-[220px] items-stretch overflow-hidden rounded-full border border-white/10 shadow-md shadow-black/20"
             style={{ background: GUIDE_GREEN }}
           >
             <button
@@ -268,10 +283,10 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
                 <Sparkles className="w-3.5 h-3.5 text-white" aria-hidden />
               </span>
               <span className="min-w-0 flex-1 py-0.5">
-                <span className="block text-[11px] sm:text-xs font-semibold leading-tight truncate">
+                <span className="block text-xs font-semibold leading-tight truncate">
                   {t.brand}
                 </span>
-                <span className="mt-0.5 hidden sm:block text-[9px] leading-tight text-white/55 truncate">
+                <span className="mt-0.5 block text-[9px] leading-tight text-white/55 truncate">
                   {t.tagline}
                 </span>
               </span>
