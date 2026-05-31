@@ -639,7 +639,7 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
     case "minimal":
       return { minPoints: 2, maxPoints: 3, maxWordsPerPoint: 6, allowSubtitle: false };
     case "detailed":
-      return { minPoints: 3, maxPoints: 5, maxWordsPerPoint: 12, allowSubtitle: true };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 16, allowSubtitle: true };
     case "balanced":
     default:
       return { minPoints: 3, maxPoints: 4, maxWordsPerPoint: 9, allowSubtitle: false };
@@ -678,7 +678,7 @@ const DENSITY_RULES_AR: Record<OutlineDensity, string> = {
   balanced:
     "كثافة متوسطة: 3-4 نقاط لكل شريحة، كل نقطة ≤ 9 كلمات بأسلوب عناوين. ممنوع الفقرات الطويلة. كل شريحة فكرة واحدة فقط.",
   detailed:
-    "كثافة عالية: 3-5 نقاط لكل شريحة، كل نقطة ≤ 12 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة سطر واحد قصير، لا فقرة.",
+    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 16 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة جملة مكثّفة تحمل معلومة كاملة — لا نصف جملة ولا فقرة.",
 };
 const DENSITY_RULES_EN: Record<OutlineDensity, string> = {
   minimal:
@@ -1065,7 +1065,8 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `قسّم العرض إلى 4 مراحل وظيفية حسب منطق الموضوع، وليس قالباً ثابتاً. استخدم مفاتيح stage التقنية نفسها فقط: opener, concept, practice, closure، لكن اجعل توزيع الشرائح يعكس بنية العرض التي اخترتها. كل index لشريحة يجب أن يظهر في exactly one stage.`,
         `كل شريحة لها purpose واحد فقط. ممنوع تكرار العنوان عبر الشرائح.`,
         `ممنوع أن تكون عناوين الشرائح عامة ومتوقعة مثل: مقدمة، أهمية، خطوات، مقارنة، خلاصة، نشاط، فكرة محورية، ملاحظة. اكتب عناوين موضوعية تحمل معلومة أو سؤالاً محدداً من صميم الموضوع.`,
-        `المحتوى يجب أن يكون عميقاً بما يكفي للدرس: أمثلة، تفاصيل دقيقة، حالات تطبيق، أخطاء شائعة، أو أدلة مناسبة حسب المادة. لا تكتفِ بنقاط عامة سطحية.`,
+        `المحتوى يجب أن يكون عميقاً حقيقياً: كل نقطة في talkingPoints تحمل معلومة محددة أو مثالاً أو دليلاً أو تفصيلاً — لا تسميات عامة. مثال خاطئ: "أهمية البعث" — مثال صحيح: "البعث يجعل الإنسان محاسَباً على كل فعل صغير وكبير". إذا الفكرة غنية اجعلها شريحتين بدلاً من تكثيفها في نقطتين فارغتين.`,
+        `عدد النقاط: استخدم دائماً الحد الأعلى المسموح به من كثافة العرض المختارة (detailed: 5 نقاط، balanced: 4 نقاط، minimal: 3 نقاط) — لا تكتفِ بالحد الأدنى إلا إذا لم يكن للشريحة ما يكفي.`,
         `ممنوع وضع شريحة تفاعلية (kind: "interactive") كثاني شريحة في العرض — يجب أن يسبقها محتوى حقيقي ومعلومات أولاً.`,
         `إذا ذكرت رقماً أو إحصائية، أضف حقل source يقترح المرجع. وإلا اترك source فارغاً.`,
         togglesLine,
