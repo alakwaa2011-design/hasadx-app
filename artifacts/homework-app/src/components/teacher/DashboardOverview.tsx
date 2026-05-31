@@ -36,6 +36,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
 import { getSocket } from "@/lib/socket";
 
@@ -933,6 +934,17 @@ export default function DashboardOverview({
               </span>
             </div>
           </motion.button>
+
+          {/* وميض — معاينة حية للعبة */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: 0.12 }}
+          >
+            <WameethPreviewCard
+              onStart={() => setActiveTab("competitive")}
+            />
+          </motion.div>
 
           {/* Recent assignments — collapsible (closed by default) */}
           <motion.div
