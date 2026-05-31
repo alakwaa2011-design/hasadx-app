@@ -613,10 +613,11 @@ export default function DashboardOverview({
               onClick={() => setLocation("/teacher/new")}
               style={{
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 10,
-                padding: isMobile ? "18px 20px" : "22px 24px",
+                gap: 4,
+                padding: isMobile ? "16px 20px" : "18px 24px",
                 background: C.green,
                 color: "#fff",
                 border: "none",
@@ -636,17 +637,23 @@ export default function DashboardOverview({
                 (e.currentTarget.style.transform = "scale(1)")
               }
             >
-              <Plus style={{ width: 22, height: 22 }} />
-              {isAr ? "أنشئ نشاطاً" : "Create activity"}
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Plus style={{ width: 22, height: 22 }} />
+                {isAr ? "أنشئ نشاطاً" : "Create activity"}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.82 }}>
+                {isAr ? "واجب، فيديو، عرض، خطة درس..." : "Assignment, video, presentation..."}
+              </span>
             </button>
             <button
               onClick={() => setActiveTab("competitive")}
               style={{
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 10,
-                padding: isMobile ? "18px 20px" : "22px 24px",
+                gap: 4,
+                padding: isMobile ? "16px 20px" : "18px 24px",
                 background: C.goldBright,
                 color: C.green,
                 border: "none",
@@ -666,8 +673,13 @@ export default function DashboardOverview({
                 (e.currentTarget.style.transform = "scale(1)")
               }
             >
-              <Play style={{ width: 22, height: 22, fill: C.green }} />
-              {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Play style={{ width: 22, height: 22, fill: C.green }} />
+                {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.72 }}>
+                {isAr ? "اختر لعبة وابدأ مع طلابك الآن" : "Pick a game and play with students"}
+              </span>
             </button>
           </motion.div>
           {/* Hasad Challenge — premium hero banner */}
