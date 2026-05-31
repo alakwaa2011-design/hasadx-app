@@ -726,7 +726,7 @@ export function systemPromptFor(lang: OutlineLanguage): string {
    director" upgrade — without these rules the model defaults to
    concept-card for everything and the deck looks monotonous. */
 const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) — اقرأها قبل كل شريحة:
-- title         → فقط شريحة الافتتاح. عنوان كبير + عنوان فرعي قصير.
+- title         → فقط شريحة الافتتاح. عنوان كبير + عنوان فرعي قصير مثير للاهتمام خاص بالموضوع (مثل: سؤال، حقيقة، أو جملة تشويقية). ممنوع subtitle عامة مثل "عرض تعليمي" أو "درس" أو "مقدمة".
 - objectives    → عند الحاجة فقط لسرد أهداف واضحة (2-4 أهداف) — لا تستخدمها تلقائياً في كل عرض.
 - concept-card  → فكرة محورية واحدة تحتاج شرحاً سريعاً بعدة نقاط مرتبطة (تخطيط مقسوم: نص ⇄ بصري).
 - comparison    → عند ذكر طرفين/فكرتين/خيارين/قبل-بعد، يُرسم عمودين متقابلين. ممنوع استخدامه لقائمة عادية. لا تخلط النقيضين داخل نفس العمود: اجعل talkingPoints تبدأ بعنوان الطرف الأول متبوعاً بنقاطه، ثم عنوان الطرف الثاني متبوعاً بنقاطه. مثال: ["القلب الذاكر: طمأنينة","نور","راحة","القلب الغافل: قلق","ضيق","وحشة"].
@@ -772,6 +772,8 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
   استخدم بكثرة: quote (للآيات والأحاديث) ، callout (للتدبّر والوقفات) ، concept-card (لشرح المعاني).
   تجنّب: stat ، comparison (إلا لمقارنة فقهية واضحة) ، formula.
   لا تجعل كل درس ديني: عنوان → معنى → حكم → خطوات → خلاصة. ابدأ أحياناً بموقف حياتي، أو نص مؤثر، أو سؤال تدبري.
+  ⚠️ الآيات والأحاديث: عند استخدام kind: "quote" لآية أو حديث، يجب أن تحتوي talkingPoints على 2-3 نقاط تشرح معنى الآية أو تستخلص منها درساً أو تربطها بحياة الطالب — الآية وحدها بدون تعليق تعني شريحة ميتة. talkingPoints[0] = نص الآية أو الحديث، talkingPoints[1] و[2] = تأمل أو شرح أو تطبيق عملي.
+  المحتوى الديني يجب أن يتضمن: أدلة من القرآن والسنة مع شرحها، أوصافاً تفصيلية للمفهوم، حكم وفوائد، صلة بالحياة اليومية للطالب، تصحيح مفاهيم خاطئة شائعة إن وُجدت.
 - علوم (فيزياء/كيمياء/أحياء/علوم عامة):
   استخدم بكثرة: visual-hero (للظواهر) ، formula (للقوانين) ، steps (للتجارب) ، stat (للأرقام والحقائق) ، concept-card (للمفاهيم).
   أضف interactive لتجارب أو تنبؤات.
@@ -789,7 +791,7 @@ const LAYOUT_RULES_AR = `قواعد اختيار نوع الشريحة (kind) �
 - مواد أخرى (فنون، تربية، اجتماعيات، …): اختَر الأنواع الأقرب لطبيعة الفكرة في كل شريحة، مع الالتزام بقواعد التنوّع أعلاه.`;
 
 const LAYOUT_RULES_EN = `Layout-selection rules (pick ONE kind per slide):
-- title         → Only the opening slide. Big title + short subtitle.
+- title         → Only the opening slide. Big title + short subtitle that is specific and engaging (e.g., a provocative question, a striking fact, or a hook). NEVER use generic subtitles like "Educational presentation", "Lesson", or "Introduction".
 - objectives    → Only when explicit objectives are genuinely useful (2-4 objectives). Do not add it automatically to every deck.
 - concept-card  → One central idea explained in a few related points (split layout: text ⇄ visual).
 - comparison    → Two sides/ideas/options/before-after, rendered as opposing columns. NOT for plain lists. Never mix opposites inside the same column: talkingPoints must start with side A label + its bullets, then side B label + its bullets. Example: ["Mindful heart: calm","light","comfort","Neglectful heart: anxiety","tightness","loneliness"].
@@ -835,6 +837,8 @@ Kind selection by topic category (MANDATORY — analyze the topic first, then ch
   Favor: quote (for verses & hadith), callout (for reflection points), concept-card (for explanations).
   Avoid: stat, comparison (unless a clear jurisprudential contrast), formula.
   Do not make every Islamic deck title → meaning → ruling → steps → summary. Sometimes open with a life situation, a powerful text, or a reflective question.
+  ⚠️ Quranic verses & hadith: when using kind: "quote" for a verse or hadith, talkingPoints MUST include 2-3 points that explain its meaning, draw a lesson, or connect it to students' daily life — the verse alone with no commentary is a dead slide. talkingPoints[0] = the verse/hadith text, talkingPoints[1] and [2] = reflection, explanation, or practical application.
+  Religious content must include: textual evidence (Quran/Sunnah) with explanation, detailed descriptions, wisdoms and benefits, connection to students' daily life, and correction of common misconceptions if any.
 - Science (physics/chemistry/biology/general science):
   Favor: visual-hero (for phenomena), formula (for laws), steps (for experiments), stat (for facts/figures), concept-card (for concepts).
   Add interactive for predictions or labs.
@@ -1060,8 +1064,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         ...designerPrinciples,
         `قسّم العرض إلى 4 مراحل وظيفية حسب منطق الموضوع، وليس قالباً ثابتاً. استخدم مفاتيح stage التقنية نفسها فقط: opener, concept, practice, closure، لكن اجعل توزيع الشرائح يعكس بنية العرض التي اخترتها. كل index لشريحة يجب أن يظهر في exactly one stage.`,
         `كل شريحة لها purpose واحد فقط. ممنوع تكرار العنوان عبر الشرائح.`,
-        `ممنوع أن تكون عناوين الشرائح عامة ومتوقعة مثل: مقدمة، أهمية، خطوات، مقارنة، خلاصة. اكتب عناوين موضوعية تحمل معلومة أو سؤالاً محدداً.`,
+        `ممنوع أن تكون عناوين الشرائح عامة ومتوقعة مثل: مقدمة، أهمية، خطوات، مقارنة، خلاصة، نشاط، فكرة محورية، ملاحظة. اكتب عناوين موضوعية تحمل معلومة أو سؤالاً محدداً من صميم الموضوع.`,
         `المحتوى يجب أن يكون عميقاً بما يكفي للدرس: أمثلة، تفاصيل دقيقة، حالات تطبيق، أخطاء شائعة، أو أدلة مناسبة حسب المادة. لا تكتفِ بنقاط عامة سطحية.`,
+        `ممنوع وضع شريحة تفاعلية (kind: "interactive") كثاني شريحة في العرض — يجب أن يسبقها محتوى حقيقي ومعلومات أولاً.`,
         `إذا ذكرت رقماً أو إحصائية، أضف حقل source يقترح المرجع. وإلا اترك source فارغاً.`,
         togglesLine,
         `ممنوع استخدام العبارات التالية: ${banned.map((p) => `"${p}"`).join("، ")}.`,
@@ -1074,8 +1079,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         ...designerPrinciples,
         `Split the deck into 4 functional stages based on the topic's logic, not a fixed template. Use the same technical stage keys only: opener, concept, practice, closure, but distribute slides according to the narrative structure you chose. Every slide index appears in exactly one stage.`,
         `Each slide has exactly one purpose. Never repeat a title across slides.`,
-        `Avoid generic predictable slide titles like: Introduction, Importance, Steps, Comparison, Summary. Write topic-specific titles that carry a concrete idea or question.`,
+        `Avoid generic predictable slide titles like: Introduction, Importance, Steps, Comparison, Summary, Activity, Key Idea, Note. Write topic-specific titles that carry a concrete idea or question directly tied to the subject matter.`,
         `Content must be deep enough for the lesson: examples, precise details, application cases, common mistakes, or evidence as appropriate. Do not settle for shallow generic points.`,
+        `NEVER place an interactive slide (kind: "interactive") as the second slide — real content and information must come first.`,
         `If you cite a number/fact, add a "source" field suggesting a reference. Otherwise leave it empty.`,
         togglesLine,
         `NEVER use these phrases: ${banned.map((p) => `"${p}"`).join(", ")}.`,
