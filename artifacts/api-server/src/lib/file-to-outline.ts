@@ -218,10 +218,10 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
 
   const rules = ar
     ? [
-        `أنتج بالضبط ${slideCount} شريحة مستخرجة من محتوى الملف الفعلي — لا تختلق معلومات غير موجودة في الملف.`,
+        `أنتج بالضبط ${slideCount} شريحة تعالج محتوى الملف بعمق — استخرج كل الأفكار الرئيسية والتفاصيل المهمة والأمثلة والأدلة الموجودة في الملف. لا تختصر أو تحذف شيئاً مهماً.`,
         `ابدأ بشريحة عنوان (title)، أنهِ بشريحة خاتمة (closure).`,
         `اللغة: ${ar ? "عربية فصحى مبسّطة" : "English"}.`,
-        `الكثافة: متوسطة (3-4 نقاط لكل شريحة، أسلوب عناوين، لا فقرات).`,
+        `الكثافة: مفصّلة (3-5 نقاط لكل شريحة، كل نقطة تحمل معلومة حقيقية محددة وليست تسمية عامة، أسلوب عناوين مكثّفة لا فقرات). إذا الموضوع يستحق أكثر من شريحة فقسّمه — لا تكدّس كل شيء في نقطتين.`,
         `إذا ظهرت عناوين أو أرقام صفحات في الملف، اذكرها في حقل source للشريحة المناسبة.`,
         `objectives: 2-5 أهداف مستخرجة من محتوى الملف بصياغة "سيكون الطالب قادراً على ..."`,
         `كل index يظهر في مرحلة واحدة فقط من teachingFlow.`,
@@ -232,10 +232,10 @@ function buildDocPrompt(ef: ExtractedFile, filename: string): string {
         `imagePlacement: "side" (الافتراضي، عمود صورة بجانب النص — استخدمه لكل شرائح المحتوى) أو "background" (تعبئة كاملة — للشرائح ذات العبارة القوية الموجزة فقط مثل visual-hero/stat/quote) أو "none" (نادراً).`,
       ]
     : [
-        `Produce exactly ${slideCount} slides drawn from the actual file content — do NOT invent information not present in the document.`,
+        `Produce exactly ${slideCount} slides that thoroughly cover the document's content — extract ALL main ideas, details, examples, and evidence from the file. Do not skip important material or over-simplify.`,
         `Start with a title slide, end with a closure slide.`,
         `Language: English.`,
-        `Density: balanced (3-4 headline-style points per slide, no paragraphs).`,
+        `Density: detailed (3-5 points per slide; each point must carry a real, specific piece of information — not a generic label. Use headline style, not paragraphs). If a section has rich content, split it into multiple slides rather than cramming it into two bullet points.`,
         `If headings or page numbers appear in the document, cite them in the source field.`,
         `Objectives: 2-5 items extracted from the file, phrased "Students will be able to ..."`,
         `Each slide index must appear in exactly one teachingFlow stage.`,
@@ -518,7 +518,7 @@ export async function multiImagesToOutline(
     `5. **لا تختصر الصور إلى شريحة واحدة لكل صورة.** إذا الصورة تحتوي 3 أمثلة مثلاً، اجعل كل مثال شريحة منفصلة. إذا الصور كثيرة وتشترك في موضوع واحد، اجمع المتشابه.`,
     `6. **استخرج المحتوى الفعلي من الصور** — لا تختلق معلومات غير موجودة. اقتبس النصوص والأرقام كما هي.`,
     `7. أضف 1-2 شريحة تفاعلية (kind="interactive", interactionHint="quiz") تختبر فهم الطلاب لمحتوى الصور.`,
-    `8. talkingPoints: 2-5 نقاط لكل شريحة بأسلوب عناوين قصيرة (لا فقرات).`,
+    `8. talkingPoints: 3-5 نقاط لكل شريحة بأسلوب عناوين مكثّفة. كل نقطة يجب أن تحمل معلومة حقيقية محددة من محتوى الصور — لا نقاط عامة مثل "أهمية الموضوع" أو "خطوات العمل". إذا الشريحة غنية بالمعلومات قسّمها إلى شريحتين.`,
     `9. اللغة: عربية إذا كان محتوى الصور بالعربية، إنجليزية إذا كان بالإنجليزية.`,
     `10. slideTheme = null دائماً، gameSuggestion = null دائماً.`,
     "",
