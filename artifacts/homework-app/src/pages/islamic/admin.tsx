@@ -17,6 +17,8 @@ export default function IslamicAdmin() {
   const [importMsg, setImportMsg] = useState("");
   const [dedupRunning, setDedupRunning] = useState(false);
   const [dedupMsg, setDedupMsg] = useState("");
+  const [fixRunning, setFixRunning] = useState(false);
+  const [fixMsg, setFixMsg] = useState("");
   const [editing, setEditing] = useState<Partial<Q> & { id?: number } | null>(null);
 
   async function reload() {
@@ -109,6 +111,19 @@ export default function IslamicAdmin() {
     await api(`/islamic/admin/permissions/${teacherId}`, { method: "DELETE" });
     reload();
   }
+  async function runFixAnswers() {
+    if (!confirm("سيتم إصلاح الأسئلة التي تظهر إجاباتها خاطئة رغم صحتها. هل أنت متأكد؟")) return;
+    setFixRunning(true); setFixMsg("");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ""}/api/admin/fix-islamic-correct-answers`, { method: "POST", credentials: "include" });
+      const r = await res.json();
+      if (!res.ok) { setFixMsg(`فشل: ${r.message || res.statusText}`); return; }
+      setFixMsg(`✅ أُصلح ${r.letterFixed + r.partialFixed} سؤال (متبقٍ معطوب: ${r.stillBroken})`);
+      reload();
+    } catch { setFixMsg("حدث خطأ"); }
+    finally { setFixRunning(false); }
+  }
+
   async function runDedup() {
     if (!confirm("سيتم حذف الأسئلة المكررة وإضافة الأسئلة الأساسية. هل أنت متأكد؟")) return;
     setDedupRunning(true);
@@ -152,11 +167,17 @@ export default function IslamicAdmin() {
           <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <GoldButton onClick={addSection}>+ قسم جديد</GoldButton>
             {isAdmin && (
-              <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#fca5a5", borderColor: "#fca5a5" }}>
-                {dedupRunning ? "جاري التنظيف…" : "🧹 حذف المكررات"}
-              </GhostButton>
+              <>
+                <GhostButton onClick={runFixAnswers} disabled={fixRunning} style={{ color: "#86efac", borderColor: "#86efac" }}>
+                  {fixRunning ? "جاري الإصلاح…" : "🔧 إصلاح الإجابات"}
+                </GhostButton>
+                <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#fca5a5", borderColor: "#fca5a5" }}>
+                  {dedupRunning ? "جاري التنظيف…" : "🧹 حذف المكررات"}
+                </GhostButton>
+              </>
             )}
-            {dedupMsg && <span style={{ fontSize: 13, color: ISLAMIC_GOLD, marginRight: 8 }}>{dedupMsg}</span>}
+            {fixMsg && <span style={{ fontSize: 13, color: "#86efac" }}>{fixMsg}</span>}
+            {dedupMsg && <span style={{ fontSize: 13, color: ISLAMIC_GOLD }}>{dedupMsg}</span>}
           </div>
           {sections.map((s) => (
             <IslamicCard key={s.id} style={{ marginBottom: 12 }}>
@@ -209,11 +230,33 @@ export default function IslamicAdmin() {
               <div onClick={(e) => e.stopPropagation()} style={{ background: "#0d6334", borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "90vh", overflow: "auto", border: `1px solid ${ISLAMIC_GOLD}` }}>
                 <h3 style={{ fontSize: 18, color: ISLAMIC_GOLD, marginBottom: 12 }}>{editing.id ? "تعديل سؤال" : "سؤال جديد"}</h3>
                 <textarea placeholder="نص السؤال" value={editing.questionText || ""} onChange={(e) => setEditing({ ...editing, questionText: e.target.value })} style={inpStyle} rows={3} />
-                <input placeholder="الخيار أ" value={editing.optionA || ""} onChange={(e) => setEditing({ ...editing, optionA: e.target.value })} style={inpStyle} />
-                <input placeholder="الخيار ب" value={editing.optionB || ""} onChange={(e) => setEditing({ ...editing, optionB: e.target.value })} style={inpStyle} />
-                <input placeholder="الخيار ج" value={editing.optionC || ""} onChange={(e) => setEditing({ ...editing, optionC: e.target.value })} style={inpStyle} />
-                <input placeholder="الخيار د" value={editing.optionD || ""} onChange={(e) => setEditing({ ...editing, optionD: e.target.value })} style={inpStyle} />
-                <input placeholder="الإجابة الصحيحة (انسخ من الخيارات)" value={editing.correctAnswer || ""} onChange={(e) => setEditing({ ...editing, correctAnswer: e.target.value })} style={inpStyle} />
+                {[
+                  { label: "الخيار أ", key: "optionA" as const },
+                  { label: "الخيار ب", key: "optionB" as const },
+                  { label: "الخيار ج", key: "optionC" as const },
+                  { label: "الخيار د", key: "optionD" as const },
+                ].map(({ label, key }) => (
+                  <input key={key} placeholder={label} value={(editing as any)[key] || ""} onChange={(e) => setEditing({ ...editing, [key]: e.target.value })} style={inpStyle} />
+                ))}
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 6 }}>الإجابة الصحيحة:</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {[
+                      { label: "أ", val: editing.optionA },
+                      { label: "ب", val: editing.optionB },
+                      { label: "ج", val: editing.optionC },
+                      { label: "د", val: editing.optionD },
+                    ].map(({ label, val }) =>
+                      val ? (
+                        <label key={label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: editing.correctAnswer === val ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)", border: editing.correctAnswer === val ? "1px solid #4ade80" : "1px solid rgba(255,255,255,0.1)" }}>
+                          <input type="radio" name="correctAnswer" value={val} checked={editing.correctAnswer === val} onChange={() => setEditing({ ...editing, correctAnswer: val })} style={{ accentColor: "#4ade80" }} />
+                          <span style={{ color: ISLAMIC_GOLD, fontWeight: 700, minWidth: 20 }}>{label}</span>
+                          <span style={{ fontSize: 14 }}>{val}</span>
+                        </label>
+                      ) : null
+                    )}
+                  </div>
+                </div>
                 <select value={editing.difficulty || "medium"} onChange={(e) => setEditing({ ...editing, difficulty: e.target.value })} style={inpStyle}>
                   <option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option>
                 </select>

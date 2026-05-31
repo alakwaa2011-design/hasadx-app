@@ -427,12 +427,14 @@ router.get("/islamic/play/:categoryId", async (req, res) => {
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   const questions = shuffled.map((q) => {
     const opts = [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5);
+    const letterMap: Record<string, string> = { A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD };
+    const correctAnswer = letterMap[q.correctAnswer] ?? q.correctAnswer;
     return {
       id: q.id,
       questionText: q.questionText,
       audioUrl: q.audioUrl,
       options: opts,
-      correctAnswer: q.correctAnswer,
+      correctAnswer,
       difficulty: q.difficulty,
     };
   });

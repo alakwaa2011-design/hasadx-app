@@ -1517,5 +1517,60 @@ router.post("/admin/dedup-islamic-questions", async (req, res) => {
   }
 });
 
+/* ── POST /admin/fix-islamic-correct-answers ──────────────────────────────
+   Fixes islamic_questions rows where correct_answer is stored as a letter
+   (A/B/C/D) or as partial text that doesn't match any option exactly.
+   Admin-only, idempotent. */
+router.post("/admin/fix-islamic-correct-answers", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const client = await pool.connect();
+    try {
+      // Fix letter-based answers
+      const letterRes = await client.query(`
+        UPDATE islamic_questions SET correct_answer = CASE
+          WHEN correct_answer = 'A' THEN option_a
+          WHEN correct_answer = 'B' THEN option_b
+          WHEN correct_answer = 'C' THEN option_c
+          WHEN correct_answer = 'D' THEN option_d
+        END
+        WHERE correct_answer IN ('A','B','C','D')
+      `);
+      const letterFixed = letterRes.rowCount ?? 0;
+
+      // Fix partial-text answers
+      const partialRes = await client.query(`
+        UPDATE islamic_questions SET correct_answer = CASE
+          WHEN option_a ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_a || '%' THEN option_a
+          WHEN option_b ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_b || '%' THEN option_b
+          WHEN option_c ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_c || '%' THEN option_c
+          WHEN option_d ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_d || '%' THEN option_d
+        END
+        WHERE correct_answer != option_a AND correct_answer != option_b
+          AND correct_answer != option_c AND correct_answer != option_d
+          AND (
+            option_a ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_a || '%' OR
+            option_b ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_b || '%' OR
+            option_c ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_c || '%' OR
+            option_d ILIKE '%' || correct_answer || '%' OR correct_answer ILIKE '%' || option_d || '%'
+          )
+      `);
+      const partialFixed = partialRes.rowCount ?? 0;
+
+      const stillBroken = await client.query(`
+        SELECT COUNT(*)::int AS n FROM islamic_questions
+        WHERE correct_answer != option_a AND correct_answer != option_b
+          AND correct_answer != option_c AND correct_answer != option_d
+      `);
+
+      req.log.info({ letterFixed, partialFixed }, "fix-islamic-correct-answers done");
+      res.json({ ok: true, letterFixed, partialFixed, stillBroken: stillBroken.rows[0].n });
+    } finally { client.release(); }
+  } catch (err) {
+    req.log.error({ err }, "fix-islamic-correct-answers error");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
 export { getPublicVisibility };
 export default router;
