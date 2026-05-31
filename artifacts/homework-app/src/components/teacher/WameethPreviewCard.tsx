@@ -125,10 +125,15 @@ export function WameethPreviewCard({ onStart }: { onStart?: () => void }) {
           background: "rgba(10,58,34,0.4)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Zap style={{ width: 14, height: 14, color: "#f4c95d" }} />
-          <span style={{ color: "#f4c95d", fontSize: 12, fontWeight: 700 }}>وميض</span>
-          <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>— معاينة</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Zap style={{ width: 14, height: 14, color: "#f4c95d" }} />
+            <span style={{ color: "#f4c95d", fontSize: 12, fontWeight: 700 }}>وميض</span>
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>— معاينة</span>
+          </div>
+          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, lineHeight: 1.4, paddingRight: 2 }}>
+            تنافس مباشر بنتائج فورية · دخول برابط أو رمز أو باركود
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {/* التايمر الدائري */}
