@@ -385,54 +385,53 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
  */
 const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
-       style={{ filter: "drop-shadow(0 2px 12px rgba(249,115,22,0.6))" }}>
+       style={{ filter: "drop-shadow(0 2px 14px rgba(251,191,36,0.5))" }}>
     <defs>
-      <radialGradient id="hs-bg" cx="50%" cy="80%" r="70%">
-        <stop offset="0%" stopColor="#7c1d06"/>
-        <stop offset="100%" stopColor="#1a0800"/>
+      <radialGradient id="hs-floor" cx="50%" cy="100%" r="60%">
+        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35"/>
+        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/>
       </radialGradient>
     </defs>
-    {/* Background */}
-    <rect width="56" height="56" rx="12" fill="url(#hs-bg)"/>
 
-    {/* === Flames rising from bottom — drawn FIRST (behind chair) === */}
-    <path d="M18 54 Q14 44 18 36 Q16 44 21 41 Q18 49 20 54 Z" fill="#dc2626" opacity="0.85"/>
-    <path d="M24 54 Q19 42 24 32 Q22 43 27 39 Q23 48 25 54 Z" fill="#f97316"/>
-    <path d="M28 54 Q23 38 28 26 Q27 40 32 35 Q28 46 30 54 Z" fill="#fb923c"/>
-    <path d="M32 54 Q37 42 32 32 Q34 43 29 39 Q33 48 31 54 Z" fill="#f97316"/>
-    <path d="M38 54 Q42 44 38 36 Q40 44 35 41 Q38 49 36 54 Z" fill="#dc2626" opacity="0.85"/>
-    {/* Bright inner cores */}
-    <path d="M28 54 Q26 44 28 34 Q27 43 30 40 Q28 49 29 54 Z" fill="#fde68a" opacity="0.9"/>
-    <path d="M24 54 Q23 47 25 40 Q24 46 26 44 Q24 50 25 54 Z" fill="#fbbf24" opacity="0.7"/>
-    <path d="M32 54 Q33 47 31 40 Q32 46 30 44 Q32 50 31 54 Z" fill="#fbbf24" opacity="0.7"/>
+    {/* Dark stage background */}
+    <rect width="56" height="56" rx="12" fill="#0c0c14"/>
 
-    {/* === Chair — clearly drawn on top of flames === */}
+    {/* Spotlight beams from top — three angled cones */}
+    <path d="M8 0 L2 42 L24 42 Z"  fill="rgba(251,191,36,0.07)"/>
+    <path d="M28 0 L12 56 L44 56 Z" fill="rgba(251,191,36,0.10)"/>
+    <path d="M48 0 L32 42 L54 42 Z" fill="rgba(251,191,36,0.07)"/>
 
-    {/* Back left leg */}
-    <rect x="15" y="34" width="4.5" height="18" rx="2" fill="#92400e"/>
-    {/* Back right leg */}
-    <rect x="36.5" y="34" width="4.5" height="18" rx="2" fill="#92400e"/>
+    {/* Floor glow under chair */}
+    <ellipse cx="28" cy="53" rx="18" ry="4" fill="url(#hs-floor)"/>
 
-    {/* Front left leg */}
-    <rect x="17" y="38" width="4" height="14" rx="2" fill="#78350f"/>
-    {/* Front right leg */}
-    <rect x="35" y="38" width="4" height="14" rx="2" fill="#78350f"/>
+    {/* ── Chair (front view) ── */}
 
-    {/* Seat cushion */}
-    <rect x="11" y="30" width="34" height="9" rx="3.5" fill="#ea580c"/>
-    <rect x="12" y="30" width="32" height="4" rx="2.5" fill="rgba(255,255,255,0.15)"/>
+    {/* Back-left leg  — spans full height */}
+    <rect x="12" y="10" width="5" height="44" rx="2.5" fill="#92400e"/>
+    {/* Back-right leg */}
+    <rect x="39" y="10" width="5" height="44" rx="2.5" fill="#92400e"/>
 
-    {/* Backrest vertical supports */}
-    <rect x="16" y="8" width="4" height="24" rx="2" fill="#c2410c"/>
-    <rect x="36" y="8" width="4" height="24" rx="2" fill="#c2410c"/>
+    {/* Backrest panel between legs */}
+    <rect x="12" y="10" width="32" height="22" rx="3" fill="#d97706"/>
+    {/* Backrest gloss */}
+    <rect x="13" y="11" width="30" height="8" rx="2" fill="rgba(255,255,255,0.16)"/>
+    {/* Backrest bottom edge darker */}
+    <rect x="12" y="29" width="32" height="3" rx="1" fill="#92400e"/>
 
-    {/* Backrest top rail */}
-    <rect x="12" y="6" width="32" height="6" rx="3" fill="#ea580c"/>
-    <rect x="13" y="6" width="30" height="3" rx="2" fill="rgba(255,255,255,0.18)"/>
+    {/* Seat — slightly wider than backrest */}
+    <rect x="9" y="32" width="38" height="8" rx="3.5" fill="#f59e0b"/>
+    {/* Seat gloss */}
+    <rect x="10" y="32" width="36" height="4" rx="2" fill="rgba(255,255,255,0.2)"/>
 
-    {/* Backrest middle rail */}
-    <rect x="12" y="17" width="32" height="5" rx="2.5" fill="#ea580c"/>
-    <rect x="13" y="17" width="30" height="2.5" rx="1.5" fill="rgba(255,255,255,0.12)"/>
+    {/* Front-left leg */}
+    <rect x="12" y="40" width="5" height="14" rx="2.5" fill="#78350f"/>
+    {/* Front-right leg */}
+    <rect x="39" y="40" width="5" height="14" rx="2.5" fill="#78350f"/>
+
+    {/* Spotlight source dots at top */}
+    <circle cx="8"  cy="3" r="2.5" fill="#fde68a" opacity="0.9"/>
+    <circle cx="28" cy="2" r="3"   fill="#fde68a"/>
+    <circle cx="48" cy="3" r="2.5" fill="#fde68a" opacity="0.9"/>
   </svg>
 );
 
