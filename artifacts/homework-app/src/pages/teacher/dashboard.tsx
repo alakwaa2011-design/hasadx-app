@@ -74,7 +74,7 @@ const HackIcon = ({ size = 56 }: { size?: number }) => (
       <text x="20" y="46" fill="#009922" fontSize="5.2" fontFamily="monospace" opacity="0.6">0xDEAD 0xBEEF</text>
       <text x="20" y="52" fill="#00dd33" fontSize="5.2" fontFamily="monospace" opacity="0.75">{">>> decrypt..."}</text>
       {/* HACK label */}
-      <text x="50" y="58" fill="#00ff41" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="middle" opacity="0.95">HACK</text>
+      <text x="50" y="53" fill="#39ff14" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle" letterSpacing="2">HACK</text>
       {/* Blinking cursor block */}
       <rect x="74" y="47" width="4" height="6" fill="#00ff41"/>
     </g>
