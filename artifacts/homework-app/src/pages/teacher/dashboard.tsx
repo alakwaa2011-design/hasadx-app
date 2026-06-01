@@ -1,40 +1,41 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
-/** Wameeth icon — 4 coloured answer blocks matching the actual game buttons */
+/** Wameeth icon — 4 answer blocks, exact game colours + A/B/C/D labels, Hasad dark-green background */
 const WameethIcon = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="wm-red" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#F05070"/>
-        <stop offset="100%" stopColor="#B01414"/>
+        <stop offset="0%" stopColor="#C41818"/>
+        <stop offset="100%" stopColor="#7A0A0A"/>
       </linearGradient>
       <linearGradient id="wm-blue" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#5090E8"/>
-        <stop offset="100%" stopColor="#0A50A0"/>
+        <stop offset="0%" stopColor="#1870C0"/>
+        <stop offset="100%" stopColor="#08386E"/>
       </linearGradient>
-      <linearGradient id="wm-green" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#35D090"/>
-        <stop offset="100%" stopColor="#148050"/>
+      <linearGradient id="wm-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#DAA520"/>
+        <stop offset="100%" stopColor="#9A6A08"/>
       </linearGradient>
       <linearGradient id="wm-purple" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#C080F0"/>
-        <stop offset="100%" stopColor="#7028B0"/>
+        <stop offset="0%" stopColor="#9B40D8"/>
+        <stop offset="100%" stopColor="#5A1A8A"/>
       </linearGradient>
     </defs>
-    {/* Top-left: Red (option A) */}
-    <rect x="2" y="2" width="46" height="46" rx="9" fill="url(#wm-red)"/>
-    {/* Top-right: Blue (option B) */}
-    <rect x="52" y="2" width="46" height="46" rx="9" fill="url(#wm-blue)"/>
-    {/* Bottom-left: Green (option C) */}
-    <rect x="2" y="52" width="46" height="46" rx="9" fill="url(#wm-green)"/>
-    {/* Bottom-right: Purple (option D) */}
-    <rect x="52" y="52" width="46" height="46" rx="9" fill="url(#wm-purple)"/>
-    {/* Subtle gloss on each block */}
-    <rect x="2" y="2" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
-    <rect x="52" y="2" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
-    <rect x="2" y="52" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
-    <rect x="52" y="52" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
+    {/* Hasad dark-green background */}
+    <rect width="100" height="100" rx="12" fill="#0D2118"/>
+    {/* Top-left: B (Blue) — matches game RTL layout */}
+    <rect x="4" y="4" width="44" height="44" rx="7" fill="url(#wm-blue)"/>
+    <text x="26" y="26" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">B</text>
+    {/* Top-right: A (Red) */}
+    <rect x="52" y="4" width="44" height="44" rx="7" fill="url(#wm-red)"/>
+    <text x="74" y="26" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">A</text>
+    {/* Bottom-left: D (Purple) */}
+    <rect x="4" y="52" width="44" height="44" rx="7" fill="url(#wm-purple)"/>
+    <text x="26" y="74" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">D</text>
+    {/* Bottom-right: C (Gold) */}
+    <rect x="52" y="52" width="44" height="44" rx="7" fill="url(#wm-gold)"/>
+    <text x="74" y="74" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">C</text>
   </svg>
 );
 
@@ -1892,7 +1893,7 @@ function CompetitiveTab({
         (lang === "ar"
           ? "مسابقة حية على الشاشة — الطلاب يجيبون من هواتفهم بأسلوب وميض. اربطها بواجبك."
           : "Live quiz on screen — students answer on phones, Wameedh-style. Link an assignment."),
-      color: "from-fuchsia-500 to-purple-600",
+      color: "from-[#0D2118] to-[#1A4030]",
       type: "knowledge_race",
       available: true,
       pill:
@@ -2282,8 +2283,8 @@ function CompetitiveTab({
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-yellow-400/30 to-amber-500/20 flex items-center justify-center shadow-lg shrink-0 border border-yellow-500/20">
-                <WameethIcon size={34} />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
+                <WameethIcon size={46} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
