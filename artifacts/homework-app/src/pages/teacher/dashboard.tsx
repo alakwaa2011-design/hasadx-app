@@ -384,68 +384,91 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
  * Orange/red colours matching the game card.
  */
 const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
-       style={{ filter: "drop-shadow(0 3px 16px rgba(251,100,20,0.7))" }}>
+  <svg width={size} height={size} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"
+       style={{ filter: "drop-shadow(0 3px 18px rgba(234,88,12,0.75))" }}>
     <defs>
-      <radialGradient id="hs-glow" cx="50%" cy="72%" r="55%">
-        <stop offset="0%" stopColor="#f97316" stopOpacity="0.85"/>
-        <stop offset="60%" stopColor="#ea580c" stopOpacity="0.3"/>
-        <stop offset="100%" stopColor="#ea580c" stopOpacity="0"/>
+      <radialGradient id="hs-glow" cx="50%" cy="78%" r="60%">
+        <stop offset="0%" stopColor="#f97316" stopOpacity="0.9"/>
+        <stop offset="55%" stopColor="#c2410c" stopOpacity="0.35"/>
+        <stop offset="100%" stopColor="#7c2d12" stopOpacity="0"/>
       </radialGradient>
-      <linearGradient id="hs-back" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#1e1e2e"/>
-        <stop offset="100%" stopColor="#0f0f1a"/>
+      <linearGradient id="hs-dark" x1="15%" y1="0%" x2="85%" y2="100%">
+        <stop offset="0%" stopColor="#232336"/>
+        <stop offset="100%" stopColor="#111122"/>
       </linearGradient>
-      <linearGradient id="hs-seat" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#2a2a3e"/>
-        <stop offset="100%" stopColor="#16162a"/>
+      <linearGradient id="hs-mid" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#2e2e48"/>
+        <stop offset="100%" stopColor="#1a1a30"/>
       </linearGradient>
     </defs>
 
-    {/* Stage black background */}
-    <rect width="56" height="56" rx="13" fill="#08080f"/>
-    {/* Heat glow from beneath chair */}
-    <rect width="56" height="56" rx="13" fill="url(#hs-glow)"/>
+    {/* Stage background */}
+    <rect width="60" height="60" rx="13" fill="#07070e"/>
+    <rect width="60" height="60" rx="13" fill="url(#hs-glow)"/>
 
-    {/* ── Modern pedestal chair (front view) ── */}
+    {/* ── HEADREST ── */}
+    <rect x="20" y="5" width="20" height="8" rx="4" fill="url(#hs-dark)"/>
+    <rect x="21" y="6" width="18" height="3.5" rx="1.5" fill="rgba(255,255,255,0.09)"/>
+    <rect x="20" y="11.5" width="20" height="1.5" rx="0.7" fill="#f97316" opacity="0.55"/>
 
-    {/* Headrest — rounded pill at top */}
-    <rect x="18" y="6" width="20" height="9" rx="4.5" fill="url(#hs-back)"/>
-    <rect x="19" y="7" width="18" height="4" rx="2" fill="rgba(255,255,255,0.07)"/>
-    {/* Subtle orange edge glow on headrest */}
-    <rect x="18" y="13" width="20" height="1.5" rx="0.7" fill="#f97316" opacity="0.5"/>
+    {/* ── BACKREST ── */}
+    <path d="M16 12 Q15 34 17 36 L43 36 Q45 34 44 12 Z" fill="url(#hs-dark)"/>
+    {/* Center stitch seam */}
+    <line x1="30" y1="14" x2="30" y2="35" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+    {/* Lumbar bulge */}
+    <path d="M17 28 Q30 32 43 28 L43 34 Q30 36 17 34 Z" fill="rgba(255,255,255,0.04)"/>
+    {/* Orange accent stripe at base of backrest */}
+    <rect x="16" y="35.5" width="28" height="1.8" rx="0.9" fill="#f97316" opacity="0.8"/>
 
-    {/* Backrest — slightly tapered toward top */}
-    <path d="M14 14 Q13 35 15 37 L41 37 Q43 35 42 14 Z" fill="url(#hs-back)"/>
-    {/* Backrest inner panel */}
-    <path d="M17 16 Q16 32 18 34 L38 34 Q40 32 39 16 Z" fill="rgba(255,255,255,0.04)"/>
-    {/* Backrest seam lines */}
-    <line x1="28" y1="16" x2="28" y2="34" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-    <line x1="14" y1="26" x2="42" y2="26" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-    {/* Orange accent line on backrest */}
-    <rect x="14" y="37" width="28" height="1.5" rx="0.7" fill="#f97316" opacity="0.7"/>
+    {/* ── LEFT ARMREST ── */}
+    {/* Vertical arm support */}
+    <rect x="9" y="26" width="5" height="10" rx="2.5" fill="url(#hs-mid)"/>
+    {/* Horizontal arm pad */}
+    <rect x="4" y="23" width="14" height="5" rx="2.5" fill="url(#hs-dark)"/>
+    <rect x="5" y="23.5" width="12" height="2" rx="1" fill="rgba(255,255,255,0.08)"/>
+    {/* Arm pad orange edge */}
+    <rect x="4" y="27.5" width="14" height="1.2" rx="0.6" fill="#f97316" opacity="0.5"/>
 
-    {/* Seat — wider, bold */}
-    <rect x="10" y="36" width="36" height="8" rx="4" fill="url(#hs-seat)"/>
-    <rect x="11" y="37" width="34" height="3.5" rx="2" fill="rgba(255,255,255,0.08)"/>
-    {/* Orange glow line under seat edge */}
-    <rect x="10" y="43" width="36" height="1.5" rx="0.7" fill="#f97316" opacity="0.9"/>
+    {/* ── RIGHT ARMREST ── */}
+    <rect x="46" y="26" width="5" height="10" rx="2.5" fill="url(#hs-mid)"/>
+    <rect x="42" y="23" width="14" height="5" rx="2.5" fill="url(#hs-dark)"/>
+    <rect x="43" y="23.5" width="12" height="2" rx="1" fill="rgba(255,255,255,0.08)"/>
+    <rect x="42" y="27.5" width="14" height="1.2" rx="0.6" fill="#f97316" opacity="0.5"/>
 
-    {/* Pedestal column */}
-    <rect x="24" y="44" width="8" height="7" rx="2" fill="#111120"/>
-    <rect x="25" y="44" width="4" height="3" rx="1" fill="rgba(255,255,255,0.05)"/>
+    {/* ── SEAT ── */}
+    <rect x="12" y="35" width="36" height="9" rx="4.5" fill="url(#hs-mid)"/>
+    <rect x="13" y="36" width="34" height="4" rx="2" fill="rgba(255,255,255,0.09)"/>
+    <rect x="12" y="43" width="36" height="1.5" rx="0.7" fill="#f97316" opacity="0.9"/>
 
-    {/* Base disc — ellipse for 3-D effect */}
-    <ellipse cx="28" cy="52.5" rx="14" ry="3" fill="#111120"/>
-    <ellipse cx="28" cy="52" rx="12" ry="2" fill="#1a1a2e"/>
-    {/* Base orange rim glow */}
-    <ellipse cx="28" cy="52" rx="13" ry="2.5" fill="none" stroke="#f97316" strokeWidth="0.8" opacity="0.6"/>
+    {/* ── PEDESTAL COLUMN ── */}
+    <rect x="26" y="44" width="8" height="8" rx="2" fill="#101020"/>
+    <rect x="27" y="44" width="4" height="4" rx="1" fill="rgba(255,255,255,0.05)"/>
 
-    {/* Heat shimmer lines on either side */}
-    <line x1="7" y1="48" x2="10" y2="38" stroke="#f97316" strokeWidth="1" opacity="0.3" strokeLinecap="round"/>
-    <line x1="9" y1="50" x2="11" y2="42" stroke="#fbbf24" strokeWidth="0.8" opacity="0.2" strokeLinecap="round"/>
-    <line x1="49" y1="48" x2="46" y2="38" stroke="#f97316" strokeWidth="1" opacity="0.3" strokeLinecap="round"/>
-    <line x1="47" y1="50" x2="45" y2="42" stroke="#fbbf24" strokeWidth="0.8" opacity="0.2" strokeLinecap="round"/>
+    {/* ── 5-STAR BASE (modern office chair) ── */}
+    {/* 5 spokes from center (30,54) */}
+    {[0,72,144,216,288].map((deg, i) => {
+      const r = 12;
+      const rad = (deg - 90) * Math.PI / 180;
+      const x2 = 30 + r * Math.cos(rad);
+      const y2 = 54 + r * Math.sin(rad) * 0.45; // flatten for perspective
+      return (
+        <g key={i}>
+          <line x1="30" y1="54" x2={x2} y2={y2}
+                stroke="#1a1a30" strokeWidth="3.5" strokeLinecap="round"/>
+          <line x1="30" y1="54" x2={x2} y2={y2}
+                stroke="#2a2a44" strokeWidth="2" strokeLinecap="round"/>
+          {/* Caster wheel at tip */}
+          <ellipse cx={x2} cy={y2} rx="2.2" ry="1.5" fill="#111120"/>
+          <ellipse cx={x2} cy={y2} rx="1.3" ry="0.9" fill="#f97316" opacity="0.45"/>
+        </g>
+      );
+    })}
+    {/* Base center hub */}
+    <circle cx="30" cy="54" r="3" fill="#1a1a30"/>
+    <circle cx="30" cy="54" r="1.5" fill="#f97316" opacity="0.5"/>
+
+    {/* Floor glow */}
+    <ellipse cx="30" cy="57" rx="18" ry="2.5" fill="#f97316" opacity="0.2"/>
   </svg>
 );
 
