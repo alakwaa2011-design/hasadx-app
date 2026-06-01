@@ -145,6 +145,119 @@ const MemoryIcon = ({ size = 56 }: { size?: number }) => {
 };
 
 /**
+ * Scrambled Words icon — letter tiles (violet gradient, 3-D shadow) scattered below
+ * and partially-filled answer slots above. Matches the real game exactly.
+ */
+const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
+  // Answer slots: 4 positions, first one filled
+  const slotY = 14, slotW = 18, slotH = 22, slotGap = 4;
+  const slotStart = (100 - (4 * slotW + 3 * slotGap)) / 2; // centered
+  // Tile row: 3 remaining tiles (one already placed)
+  const tileY = 58, tileW = 22, tileH = 26, tileGap = 5;
+  const tileStart = (100 - (3 * tileW + 2 * tileGap)) / 2;
+  const letters = ["ص", "ا", "د"];
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="scr-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0F0A1E"/><stop offset="100%" stopColor="#1A0A2E"/>
+        </linearGradient>
+        <linearGradient id="scr-tile" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#5B21B6"/>
+        </linearGradient>
+        <linearGradient id="scr-filled" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8B5CF6"/><stop offset="100%" stopColor="#6D28D9"/>
+        </linearGradient>
+      </defs>
+      {/* Dark game background */}
+      <rect width="100" height="100" rx="14" fill="url(#scr-bg)"/>
+      <rect width="100" height="18" rx="14" fill="rgba(255,255,255,0.05)"/>
+
+      {/* ── Answer slots ── */}
+      {[0,1,2,3].map(i => {
+        const x = slotStart + i * (slotW + slotGap);
+        const filled = i === 0;
+        return (
+          <g key={i}>
+            {/* Shadow for 3D on filled tile */}
+            {filled && <rect x={x} y={slotY+4} width={slotW} height={slotH} rx="5" fill="rgba(109,40,217,0.5)"/>}
+            <rect x={x} y={slotY} width={slotW} height={slotH} rx="5"
+                  fill={filled ? "url(#scr-filled)" : "rgba(255,255,255,0.07)"}
+                  stroke={filled ? "none" : "rgba(255,255,255,0.18)"} strokeWidth="1.2"/>
+            {filled && (
+              <text x={x+slotW/2} y={slotY+slotH/2+1} textAnchor="middle" dominantBaseline="central"
+                    fill="white" fontSize="12" fontWeight="900" fontFamily="system-ui,sans-serif">ح</text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Hint label */}
+      <text x="50" y="47" textAnchor="middle" dominantBaseline="central"
+            fill="rgba(255,255,255,0.22)" fontSize="7" fontFamily="system-ui,sans-serif">رتّب الحروف</text>
+
+      {/* ── Scrambled letter tiles ── */}
+      {letters.map((letter, i) => {
+        const x = tileStart + i * (tileW + tileGap);
+        return (
+          <g key={i}>
+            {/* 3-D bottom shadow */}
+            <rect x={x} y={tileY+5} width={tileW} height={tileH} rx="6" fill="#3B0764" opacity="0.7"/>
+            {/* Tile face */}
+            <rect x={x} y={tileY} width={tileW} height={tileH} rx="6" fill="url(#scr-tile)"/>
+            {/* Top gloss */}
+            <rect x={x} y={tileY} width={tileW} height={8} rx="6" fill="rgba(255,255,255,0.18)"/>
+            {/* Letter */}
+            <text x={x+tileW/2} y={tileY+tileH/2+1} textAnchor="middle" dominantBaseline="central"
+                  fill="white" fontSize="14" fontWeight="900" fontFamily="system-ui,sans-serif">{letter}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+};
+
+/**
+ * Stroop Game icon — the word "أحمر" written in BLUE ink (classic Stroop mismatch),
+ * and "أزرق" written in RED ink below it. Dark background. No external background.
+ */
+const StroopIcon = ({ size = 56 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="str-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#1E1B2E"/>
+        <stop offset="100%" stopColor="#2D1B3D"/>
+      </linearGradient>
+    </defs>
+    {/* Dark background */}
+    <rect width="100" height="100" rx="14" fill="url(#str-bg)"/>
+    {/* Subtle top gloss */}
+    <rect width="100" height="20" rx="14" fill="rgba(255,255,255,0.06)"/>
+
+    {/* "أحمر" written in BLUE — the classic Stroop confusion */}
+    <text x="50" y="36"
+          textAnchor="middle" dominantBaseline="central"
+          fill="#3B82F6" fontSize="26" fontWeight="900"
+          fontFamily="system-ui,sans-serif">أحمر</text>
+
+    {/* Thin divider */}
+    <line x1="20" y1="52" x2="80" y2="52" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
+
+    {/* "أزرق" written in RED */}
+    <text x="50" y="68"
+          textAnchor="middle" dominantBaseline="central"
+          fill="#EF4444" fontSize="26" fontWeight="900"
+          fontFamily="system-ui,sans-serif">أزرق</text>
+
+    {/* Small question mark hint */}
+    <text x="50" y="88"
+          textAnchor="middle" dominantBaseline="central"
+          fill="rgba(255,255,255,0.3)" fontSize="9"
+          fontFamily="system-ui,sans-serif">ما لون الحبر؟</text>
+  </svg>
+);
+
+/**
  * Multiplication icon — a mini "chalkboard" equation: 7 × 8 = ? with the answer revealed below.
  * Amber/orange colours matching the game card. No background.
  */
@@ -152,8 +265,8 @@ const MultiplyIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="mul-bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#F97316"/>
-        <stop offset="100%" stopColor="#B45309"/>
+        <stop offset="0%" stopColor="#FB923C" stopOpacity="0.85"/>
+        <stop offset="100%" stopColor="#D97706" stopOpacity="0.85"/>
       </linearGradient>
       <linearGradient id="mul-ans" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#FCD34D"/>
@@ -166,21 +279,15 @@ const MultiplyIcon = ({ size = 56 }: { size?: number }) => (
     {/* Subtle top gloss */}
     <rect x="4" y="4" width="92" height="22" rx="14" fill="rgba(255,255,255,0.15)"/>
 
-    {/* Question line: 7 × 8 = */}
-    <text x="50" y="40"
+    {/* Equation: 7 × 8 = ? */}
+    <text x="50" y="46"
           textAnchor="middle" dominantBaseline="central"
-          fill="white" fontSize="26" fontWeight="900"
-          fontFamily="system-ui,monospace">{"7 × 8 ="}</text>
-
-    {/* Divider line */}
-    <line x1="18" y1="55" x2="82" y2="55" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeDasharray="4,3"/>
-
-    {/* Answer box */}
-    <rect x="28" y="62" width="44" height="28" rx="8" fill="url(#mul-ans)"/>
-    <text x="50" y="76"
+          fill="white" fontSize="30" fontWeight="900"
+          fontFamily="system-ui,monospace">{"7 × 8"}</text>
+    <text x="50" y="72"
           textAnchor="middle" dominantBaseline="central"
-          fill="#7C2D12" fontSize="22" fontWeight="900"
-          fontFamily="system-ui,monospace">56</text>
+          fill="rgba(255,255,255,0.75)" fontSize="24" fontWeight="700"
+          fontFamily="system-ui,monospace">= ?</text>
   </svg>
 );
 
@@ -2407,7 +2514,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "رياضيات" : "Math",
     },
     {
-      icon: "🧠",
+      icon: <StroopIcon size={56} />,
       title: lang === "ar" ? "لعبة ارتباك" : "Stroop Game",
       desc:
         lang === "ar"
@@ -2419,7 +2526,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "دماغ" : "Brain",
     },
     {
-      icon: "🔤",
+      icon: <ScrambleIcon size={56} />,
       title: lang === "ar" ? "الكلمات المبعثرة" : "Scrambled Words",
       desc:
         lang === "ar"
@@ -2490,7 +2597,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
