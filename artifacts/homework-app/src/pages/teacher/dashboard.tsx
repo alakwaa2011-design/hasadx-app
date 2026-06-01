@@ -914,7 +914,7 @@ type AssignmentLiveGameChoice =
   | "million"
   | "hack"
   | "rocket_race"
-  | "hotseat";
+  | "wheel_of_fortune";
 
 export default function TeacherDashboard() {
   const [, setLocation] = useLocation();
@@ -1124,8 +1124,8 @@ export default function TeacherDashboard() {
       setLocation(`/game/rocket/create?assignmentId=${id}`);
       return;
     }
-    if (choice === "hotseat") {
-      setLocation(`/game/hotseat/create`);
+    if (choice === "wheel_of_fortune") {
+      setLocation(`/game/wheel/create?assignmentId=${id}`);
       return;
     }
     if (choice === "million") {
@@ -1830,7 +1830,8 @@ export default function TeacherDashboard() {
                   [
                     {
                       key: "knowledge_race" as const,
-                      emoji: "⚡",
+                      icon: <WameethIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "وميض",
                       titleEn: "Wameedh",
                       descAr:
@@ -1842,7 +1843,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "tug_of_war" as const,
-                      emoji: "🪢",
+                      icon: <TugWarIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "شد الحبل",
                       titleEn: "Tug of War",
                       descAr:
@@ -1853,7 +1855,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "million" as const,
-                      emoji: "🏆",
+                      icon: "🏆",
+                      svgIcon: false,
                       titleAr: "من سيحصد المليون؟",
                       titleEn: "Who Wants a Million?",
                       descAr:
@@ -1864,7 +1867,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "hack" as const,
-                      emoji: "💻",
+                      icon: <HackIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "لعبة الاختراق",
                       titleEn: "Hack Game",
                       descAr:
@@ -1875,7 +1879,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "rocket_race" as const,
-                      emoji: "🚀",
+                      icon: <RocketIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "سباق الصواريخ",
                       titleEn: "Rocket Race",
                       descAr:
@@ -1885,17 +1890,28 @@ export default function TeacherDashboard() {
                       gradient: "from-violet-500 to-fuchsia-600",
                     },
                     {
-                      key: "hotseat" as const,
-                      emoji: "🔥",
-                      titleAr: "الكرسي الساخن",
-                      titleEn: "HotSeat",
+                      key: "wheel_of_fortune" as const,
+                      icon: <WheelIcon size={56} />,
+                      svgIcon: true,
+                      titleAr: "عجلة الحظ",
+                      titleEn: "Wheel of Fortune",
                       descAr:
-                        "طالب على الكرسي يجيب على أسئلة زملائه المجهولة والجميع يصوّت.",
+                        "أدر العجلة لاختيار سؤال عشوائي — الفرق تتنافس على النقاط.",
                       descEn:
-                        "One student answers anonymous classmates' questions — everyone votes.",
-                      gradient: "from-orange-500 to-red-600",
+                        "Spin the wheel for a random question — teams compete for points.",
+                      gradient: "from-pink-500 to-rose-600",
                     },
-                  ] as const
+                  ] as Array<{
+                    key: AssignmentLiveGameChoice;
+                    icon: React.ReactNode;
+                    svgIcon: boolean;
+                    titleAr: string;
+                    titleEn: string;
+                    descAr: string;
+                    descEn: string;
+                    gradient: string;
+                    defaultBadge?: boolean;
+                  }>
                 ).map((opt) => {
                   const busy =
                     creatingGameForId === assignmentGamePickerId &&
@@ -1910,9 +1926,9 @@ export default function TeacherDashboard() {
                     >
                       <div className="flex items-start gap-3">
                         <div
-                          className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${opt.gradient} flex items-center justify-center text-2xl shadow-md shrink-0`}
+                          className={`rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ${opt.svgIcon ? "" : `w-14 h-14 bg-gradient-to-br ${opt.gradient} text-2xl shadow-md`}`}
                         >
-                          {opt.emoji}
+                          {opt.icon}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-0.5">
