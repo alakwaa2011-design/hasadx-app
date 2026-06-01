@@ -401,6 +401,21 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "Presentation migrations failed");
   }
+
+  // ── Solo Challenge Enhancements ──────────────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE solo_challenges
+        ADD COLUMN IF NOT EXISTS questions         JSONB,
+        ADD COLUMN IF NOT EXISTS time_per_question INTEGER DEFAULT 20,
+        ADD COLUMN IF NOT EXISTS leaderboard_display TEXT DEFAULT 'top20'
+    `);
+    // Allow standalone challenges (no linked assignment)
+    await db.execute(sql`ALTER TABLE solo_challenges ALTER COLUMN assignment_id DROP NOT NULL`);
+    logger.info("Solo challenge enhancement migrations applied");
+  } catch (err) {
+    logger.error(err, "Solo challenge enhancement migrations failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

@@ -51,6 +51,11 @@ export function SoloChallengeResults({
       ? sessionStorage.getItem("solo_challenge_title")
       : null,
   );
+  const [soloLeaderboardDisplay] = useState<string | null>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("solo_leaderboard_display")
+      : null,
+  );
 
   // ── First-attempt-only scoring ──────────────────────────────────────────────
   // We store the first completed score in localStorage so that replays on the
@@ -142,6 +147,7 @@ export function SoloChallengeResults({
     sessionStorage.removeItem("solo_challenge_player");
     sessionStorage.removeItem("solo_challenge_title");
     sessionStorage.removeItem("solo_challenge_start_time");
+    sessionStorage.removeItem("solo_leaderboard_display");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -415,7 +421,17 @@ export function SoloChallengeResults({
           >
             <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
             <h3 className="font-black text-white text-sm sm:text-base">
-              {isAr ? "أفضل 20 لاعب" : "Top 20 Players"}
+              {isAr
+                ? soloLeaderboardDisplay === "top3"
+                  ? "المتصدرون الثلاثة"
+                  : soloLeaderboardDisplay === "all"
+                    ? "جدول المتصدرين"
+                    : "أفضل 20 لاعب"
+                : soloLeaderboardDisplay === "top3"
+                  ? "Top 3 Players"
+                  : soloLeaderboardDisplay === "all"
+                    ? "Full Leaderboard"
+                    : "Top 20 Players"}
             </h3>
             <div className="ms-auto flex items-center gap-3">
               <span

@@ -1,20 +1,28 @@
-import { pgTable, serial, text, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, jsonb } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 
-/** One permanent public link per assignment (teacher-owned). */
+/** One permanent public link per challenge (teacher-owned).
+ *  Can be linked to an existing assignment OR be standalone with inline questions. */
 export const soloChallengesTable = pgTable("solo_challenges", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
-  /** Short ASCII slug used in social-share URLs, e.g. "eid-quiz-k4x2".
-   *  Nullable for rows created before this column was added. */
+  /** Short ASCII slug used in social-share URLs, e.g. "eid-quiz-k4x2". */
   shortSlug: text("short_slug").unique(),
-  assignmentId: integer("assignment_id").notNull().references(() => assignmentsTable.id, { onDelete: "cascade" }),
+  /** Nullable for standalone challenges (questions stored in `questions` column). */
+  assignmentId: integer("assignment_id").references(() => assignmentsTable.id, { onDelete: "cascade" }),
   teacherId: integer("teacher_id").notNull().references(() => teachersTable.id, { onDelete: "cascade" }),
   assignmentTitle: text("assignment_title").notNull(),
   notes: text("notes"),
   /** If set, the challenge is closed after this timestamp. */
   expiresAt: timestamp("expires_at"),
+  /** Inline questions for standalone challenges (null when linked to an assignment).
+   *  Shape: Array<{ text, optionA, optionB, optionC, optionD, correctAnswer: "A"|"B"|"C"|"D" }> */
+  questions: jsonb("questions"),
+  /** Seconds allocated per question (clamped 5–120 by the game engine). */
+  timePerQuestion: integer("time_per_question").default(20),
+  /** How many entries to show in the leaderboard: 'top3' | 'top20' | 'all' */
+  leaderboardDisplay: text("leaderboard_display").default("top20"),
   playCount: integer("play_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
@@ -29,7 +37,7 @@ export const soloChallengeScoresTable = pgTable("solo_challenge_scores", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull(),
   playerName: text("player_name").notNull(),
-  /** Total points earned (base 100 × question × time-bonus multiplier). */
+  /** Total points earned (base 100 × question × time-speed bonus multiplier). */
   score: integer("score").notNull().default(0),
   /** Number of correctly answered questions (secondary sort key). */
   correctCount: integer("correct_count").notNull().default(0),

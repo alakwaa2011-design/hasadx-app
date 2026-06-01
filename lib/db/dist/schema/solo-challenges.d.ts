@@ -1,4 +1,5 @@
-/** One permanent public link per assignment (teacher-owned). */
+/** One permanent public link per challenge (teacher-owned).
+ *  Can be linked to an existing assignment OR be standalone with inline questions. */
 export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
     name: "solo_challenges";
     schema: undefined;
@@ -61,7 +62,7 @@ export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableW
             columnType: "PgInteger";
             data: number;
             driverParam: string | number;
-            notNull: true;
+            notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -135,6 +136,57 @@ export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableW
             isAutoincrement: false;
             hasRuntimeDefault: false;
             enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        questions: import("drizzle-orm/pg-core").PgColumn<{
+            name: "questions";
+            tableName: "solo_challenges";
+            dataType: "json";
+            columnType: "PgJsonb";
+            data: unknown;
+            driverParam: unknown;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        timePerQuestion: import("drizzle-orm/pg-core").PgColumn<{
+            name: "time_per_question";
+            tableName: "solo_challenges";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        leaderboardDisplay: import("drizzle-orm/pg-core").PgColumn<{
+            name: "leaderboard_display";
+            tableName: "solo_challenges";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
             baseColumn: never;
             identity: undefined;
             generated: undefined;

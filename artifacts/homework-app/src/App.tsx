@@ -182,6 +182,9 @@ const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const TeamsPage = lazy(() => import("@/pages/teacher/teams"));
 const InstallTutorial = lazy(() => import("@/pages/install-tutorial"));
 const InstallPage = lazy(() => import("@/pages/install"));
+const SoloChallengesPage = lazy(() => import("@/pages/teacher/solo-challenges"));
+const SoloChallengeCreate = lazy(() => import("@/pages/teacher/solo-challenge-create"));
+const SoloChallengeManage = lazy(() => import("@/pages/teacher/solo-challenge-manage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -234,6 +237,10 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         
         {/* Teacher Routes — most specific `/teacher/*` paths first; dashboard `/teacher` last */}
+        {/* وميض فردي — standalone solo challenge management */}
+        <Route path="/teacher/solo-challenges/new" component={SoloChallengeCreate} />
+        <Route path="/teacher/solo-challenges/:slug" component={SoloChallengeManage} />
+        <Route path="/teacher/solo-challenges" component={SoloChallengesPage} />
         <Route path="/teacher/new/assignment" component={CreateAssignment} />
         <Route path="/teacher/new/dictation" component={DictationCreate} />
         <Route path="/teacher/new" component={NewActivity} />
