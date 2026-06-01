@@ -1889,7 +1889,7 @@ function CompetitiveTab({
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
     {
-      icon: <WameethIcon height={28} />,
+      icon: <WameethIcon height={44} />,
       title:
         t.competitiveGames?.knowledgeRaceTitle ||
         (lang === "ar" ? "وميض" : "Wameeth"),
@@ -1917,7 +1917,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "جماعي" : "Team play",
     },
     {
-      icon: <WheelIcon size={30} />,
+      icon: <WheelIcon size={52} />,
       title: lang === "ar" ? "عجلة الحظ" : "Wheel of Fortune",
       desc:
         lang === "ar"
@@ -2162,7 +2162,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-2xl shadow-lg`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune") ? "overflow-hidden" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
