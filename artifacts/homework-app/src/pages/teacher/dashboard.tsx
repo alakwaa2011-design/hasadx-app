@@ -156,11 +156,12 @@ const LetrlyIcon = ({ size = 56 }: { size?: number }) => {
   const sq = 16, gap = 3;
   const startX = (100 - (5 * sq + 4 * gap)) / 2;
   const startY = 8;
-  // Each entry: [letter, state]
+  // Secret word: م-ل-ا-ع-ب  (ملاعب)
+  // Each entry: [letter, state]  g=green  y=yellow  z=gray
   const rows: Array<Array<[string, "g"|"y"|"z"]>> = [
-    [["م","z"],["ط","z"],["ا","y"],["ر","y"],["ب","z"]],
-    [["ك","z"],["ر","g"],["ي","g"],["ا","g"],["ض","g"]],
-    [["ر","g"],["ي","g"],["ا","g"],["ض","g"],["ة","g"]],
+    [["ح","z"],["ف","z"],["ك","z"],["ن","z"],["س","z"]], // all wrong
+    [["م","g"],["ر","z"],["ا","g"],["س","z"],["ب","g"]], // 3 correct positions
+    [["م","g"],["ل","g"],["ا","g"],["ع","g"],["ب","g"]], // WIN!
   ];
   const fill = { g: "#10B981", y: "#F59E0B", z: "#6B7280" };
   const border = { g: "#059669", y: "#D97706", z: "#4B5563" };
