@@ -330,6 +330,50 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
 };
 
 /**
+ * Interactive Video icon — film clapperboard in YouTube-red.
+ * Professional video production symbol, no platform copying.
+ */
+const VideoIcon = ({ size = 64 }: { size?: number }) => {
+  const w = size;
+  const h = Math.round(size * 0.9);
+  return (
+    <svg width={w} height={h} viewBox="0 0 64 58" xmlns="http://www.w3.org/2000/svg"
+         style={{ filter: "drop-shadow(0 2px 8px rgba(255,0,0,0.45))" }}>
+      {/* Main board body */}
+      <rect x="4" y="18" width="56" height="36" rx="5" fill="#FF0000"/>
+      {/* Body sheen */}
+      <rect x="4" y="18" width="56" height="9" rx="5" fill="rgba(255,255,255,0.15)"/>
+      {/* White vertical dividers on body */}
+      <line x1="20" y1="26" x2="20" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
+      <line x1="36" y1="26" x2="36" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
+      <line x1="52" y1="26" x2="52" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
+      {/* Play button circle */}
+      <circle cx="32" cy="38" r="11" fill="rgba(0,0,0,0.28)"/>
+      <polygon points="28,32 28,44 41,38" fill="#FFFFFF"/>
+      {/* Clapper top bar (black base) */}
+      <rect x="4" y="8" width="56" height="12" rx="4" fill="#1a1a1a"/>
+      {/* Clapper diagonal stripes — angled red/white */}
+      <clipPath id="clp-top">
+        <rect x="4" y="8" width="56" height="12" rx="4"/>
+      </clipPath>
+      <g clipPath="url(#clp-top)">
+        {[0,1,2,3,4,5,6,7].map(i => (
+          <polygon key={i}
+            points={`${4 + i*14},8 ${4 + i*14+10},8 ${4 + i*14+4},20 ${4 + i*14-6},20`}
+            fill={i % 2 === 0 ? "#FF0000" : "#ffffff"}
+          />
+        ))}
+      </g>
+      {/* Clapper border */}
+      <rect x="4" y="8" width="56" height="12" rx="4" fill="none" stroke="#111" strokeWidth="1"/>
+      {/* Hinge pin */}
+      <circle cx="10" cy="14" r="3" fill="#444"/>
+      <circle cx="10" cy="14" r="1.5" fill="#888"/>
+    </svg>
+  );
+};
+
+/**
  * Multiplication icon — a mini "chalkboard" equation: 7 × 8 = ? with the answer revealed below.
  * Amber/orange colours matching the game card. No background.
  */
@@ -2497,13 +2541,13 @@ function CompetitiveTab({
       pill: lang === "ar" ? "تصويت جماعي" : "Team voting",
     },
     {
-      icon: "🎬",
+      icon: <VideoIcon size={52} />,
       title: lang === "ar" ? "فيديو تفاعلي" : "Interactive Video",
       desc:
         lang === "ar"
           ? "أنشئ درس فيديو يتوقف تلقائياً عند الأسئلة لقياس الفهم أثناء العرض."
           : "Video lessons that pause for questions — formative checks while watching.",
-      color: "from-red-500 to-rose-600",
+      color: "from-red-600 to-red-700",
       type: "video_lesson",
       available: true,
       pill: lang === "ar" ? "درس مرئي" : "Video lesson",
@@ -2669,7 +2713,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
