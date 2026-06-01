@@ -1,43 +1,48 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
-/** Wameeth icon — 4 answer blocks, exact game colours + A/B/C/D labels, Hasad dark-green background */
-const WameethIcon = ({ size = 28 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="wm-red" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#C41818"/>
-        <stop offset="100%" stopColor="#7A0A0A"/>
-      </linearGradient>
-      <linearGradient id="wm-blue" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#1870C0"/>
-        <stop offset="100%" stopColor="#08386E"/>
-      </linearGradient>
-      <linearGradient id="wm-gold" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#DAA520"/>
-        <stop offset="100%" stopColor="#9A6A08"/>
-      </linearGradient>
-      <linearGradient id="wm-purple" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#9B40D8"/>
-        <stop offset="100%" stopColor="#5A1A8A"/>
-      </linearGradient>
-    </defs>
-    {/* Hasad dark-green background */}
-    <rect width="100" height="100" rx="12" fill="#0D2118"/>
-    {/* Top-left: B (Blue) — matches game RTL layout */}
-    <rect x="4" y="4" width="44" height="44" rx="7" fill="url(#wm-blue)"/>
-    <text x="26" y="26" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">B</text>
-    {/* Top-right: A (Red) */}
-    <rect x="52" y="4" width="44" height="44" rx="7" fill="url(#wm-red)"/>
-    <text x="74" y="26" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">A</text>
-    {/* Bottom-left: D (Purple) */}
-    <rect x="4" y="52" width="44" height="44" rx="7" fill="url(#wm-purple)"/>
-    <text x="26" y="74" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">D</text>
-    {/* Bottom-right: C (Gold) */}
-    <rect x="52" y="52" width="44" height="44" rx="7" fill="url(#wm-gold)"/>
-    <text x="74" y="74" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="17" fontWeight="bold" fontFamily="system-ui,sans-serif">C</text>
-  </svg>
-);
+/**
+ * Wameeth icon — landscape rectangle, 4 wide answer blocks matching exact game colours,
+ * Arabic labels أ ب ج د, Hasad dark-green background.
+ * Aspect ratio 130 × 72  (≈ 9:5).
+ */
+const WameethIcon = ({ height = 36 }: { height?: number }) => {
+  const w = Math.round(height * 130 / 72);
+  return (
+    <svg width={w} height={height} viewBox="0 0 130 72" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wm-red2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#C41818"/>
+          <stop offset="100%" stopColor="#7A0A0A"/>
+        </linearGradient>
+        <linearGradient id="wm-blue2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1870C0"/>
+          <stop offset="100%" stopColor="#08386E"/>
+        </linearGradient>
+        <linearGradient id="wm-gold2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#DAA520"/>
+          <stop offset="100%" stopColor="#9A6A08"/>
+        </linearGradient>
+        <linearGradient id="wm-purple2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#9B40D8"/>
+          <stop offset="100%" stopColor="#5A1A8A"/>
+        </linearGradient>
+      </defs>
+      {/* Hasad dark-green background */}
+      <rect width="130" height="72" rx="10" fill="#0D2118"/>
+      {/* Row 1 — top-right: أ (Red), top-left: ب (Blue) — RTL matches game */}
+      <rect x="68" y="4"  width="58" height="30" rx="6" fill="url(#wm-red2)"/>
+      <text x="97" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">أ</text>
+      <rect x="4"  y="4"  width="58" height="30" rx="6" fill="url(#wm-blue2)"/>
+      <text x="33" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">ب</text>
+      {/* Row 2 — bottom-right: ج (Gold), bottom-left: د (Purple) */}
+      <rect x="68" y="38" width="58" height="30" rx="6" fill="url(#wm-gold2)"/>
+      <text x="97" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">ج</text>
+      <rect x="4"  y="38" width="58" height="30" rx="6" fill="url(#wm-purple2)"/>
+      <text x="33" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">د</text>
+    </svg>
+  );
+};
 
 /** Professional SVG wheel icon — mirrors the actual game wheel colours */
 const WheelIcon = ({ size = 28 }: { size?: number }) => (
@@ -1884,7 +1889,7 @@ function CompetitiveTab({
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
     {
-      icon: <WameethIcon size={30} />,
+      icon: <WameethIcon height={28} />,
       title:
         t.competitiveGames?.knowledgeRaceTitle ||
         (lang === "ar" ? "وميض" : "Wameeth"),
@@ -2283,8 +2288,8 @@ function CompetitiveTab({
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg shrink-0">
-                <WameethIcon size={46} />
+              <div className="rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                <WameethIcon height={40} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
