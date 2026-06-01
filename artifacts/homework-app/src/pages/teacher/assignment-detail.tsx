@@ -1146,7 +1146,7 @@ export default function TeacherAssignmentDetail() {
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
                       <Zap className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-xs font-mono truncate max-w-[90px]">⚡ {soloChallenge.slug}</span>
+                      <span className="text-xs font-bold truncate">{lang === "ar" ? "وميض حر" : "Free Flash"}</span>
                       <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
                       {/* Copy */}
                       <button onClick={copySoloLink} className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors" title={lang === "ar" ? "نسخ الرابط" : "Copy link"}>
