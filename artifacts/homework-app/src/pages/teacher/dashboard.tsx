@@ -380,6 +380,45 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
 };
 
 /**
+ * Public Quizzes icon — globe with a question mark badge.
+ * Amber/gold colours matching the card.
+ */
+const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
+       style={{ filter: "drop-shadow(0 2px 8px rgba(245,158,11,0.5))" }}>
+    <defs>
+      <radialGradient id="pq-globe" cx="38%" cy="32%" r="65%">
+        <stop offset="0%" stopColor="#fcd34d"/>
+        <stop offset="100%" stopColor="#d97706"/>
+      </radialGradient>
+      <clipPath id="pq-clip">
+        <circle cx="26" cy="28" r="20"/>
+      </clipPath>
+    </defs>
+    {/* Globe body */}
+    <circle cx="26" cy="28" r="20" fill="url(#pq-globe)"/>
+    {/* Globe grid lines */}
+    <g clipPath="url(#pq-clip)" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2">
+      {/* Latitude lines */}
+      <line x1="6" y1="28" x2="46" y2="28"/>
+      <line x1="8" y1="20" x2="44" y2="20"/>
+      <line x1="8" y1="36" x2="44" y2="36"/>
+      {/* Longitude curves */}
+      <ellipse cx="26" cy="28" rx="8" ry="20"/>
+      <ellipse cx="26" cy="28" rx="15" ry="20"/>
+      <ellipse cx="26" cy="28" rx="20" ry="20"/>
+    </g>
+    {/* Globe border */}
+    <circle cx="26" cy="28" r="20" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1"/>
+    {/* Question mark badge */}
+    <circle cx="42" cy="14" r="11" fill="#1c1c1c"/>
+    <circle cx="42" cy="14" r="9.5" fill="#f59e0b"/>
+    <text x="42" y="19" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="900"
+          fontFamily="Georgia, serif">?</text>
+  </svg>
+);
+
+/**
  * Interactive Video icon — film clapperboard in YouTube-red.
  * Professional video production symbol, no platform copying.
  */
@@ -2877,8 +2916,8 @@ function CompetitiveTab({
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-amber-500/35 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-amber-500/12 via-card to-orange-500/8"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shrink-0">
-                <Medal className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={2} />
+              <div className="rounded-2xl flex items-center justify-center shrink-0">
+                <PublicQuizIcon size={56} />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-base sm:text-lg font-black text-foreground">
