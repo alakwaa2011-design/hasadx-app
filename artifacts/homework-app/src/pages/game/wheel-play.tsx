@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
-import { playVictoryFanfare } from "@/lib/game-sounds";
+import { playVictoryFanfare, playCorrectSound, playGiftSound, playNotificationSound } from "@/lib/game-sounds";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -393,7 +393,10 @@ export default function WheelPlay() {
         setSwapPicks([]);
         setShowAnswer(false);
         // Slight delay so the wheel visibly settles before the modal opens.
-        scheduleTimeout(() => setShowResult(true), 350);
+        scheduleTimeout(() => {
+          setShowResult(true);
+          if (soundOn) playNotificationSound();
+        }, 350);
       }
     };
     animFrameRef.current = requestAnimationFrame(tick);
@@ -430,6 +433,7 @@ export default function WheelPlay() {
       next[teamIdx] = Math.max(0, (next[teamIdx] ?? 0) + points);
       return next;
     });
+    if (soundOn && points > 0) playGiftSound();
   };
 
   // Apply the "double" multiplier to a question's payout, then reset it.
@@ -813,7 +817,7 @@ export default function WheelPlay() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => setShowAnswer(true)}
+                        onClick={() => { setShowAnswer(true); if (soundOn) playCorrectSound(); }}
                         className="w-full py-3 rounded-xl font-black flex items-center justify-center gap-2"
                         style={{ background: BRAND_GOLD, color: "#1a1a1a" }}
                       >
@@ -1134,7 +1138,7 @@ export default function WheelPlay() {
                   {ar ? "العب مجدّداً" : "Play Again"}
                 </button>
                 <button
-                  onClick={() => { window.location.href = "/teacher"; }}
+                  onClick={() => setLocation("/teacher")}
                   className="w-full py-3 rounded-xl font-black border-2"
                   style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD }}
                 >
