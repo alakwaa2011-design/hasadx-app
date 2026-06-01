@@ -183,7 +183,7 @@ export default function TeacherAssignmentDetail() {
     navigator.clipboard.writeText(url);
     setSoloCopied(true);
     setTimeout(() => setSoloCopied(false), 2000);
-    toast.success(lang === "ar" ? "تم نسخ رابط اللعب الفردي" : "Solo play link copied!");
+    toast.success(lang === "ar" ? "تم نسخ رابط وميض حر" : "Free Flash link copied!");
   };
 
   useEffect(() => {
@@ -1140,7 +1140,7 @@ export default function TeacherAssignmentDetail() {
                   {t.assignmentDetail.copyLink}
                 </Button>
 
-                {/* ── Solo Play Link ─────────────────────────────── */}
+                {/* ── Free Flash ─────────────────────────────── */}
                 {soloChallenge && soloChallenge.slug ? (
                   /* Already created — show slug + action buttons */
                   <div className="flex flex-col gap-1">
@@ -1240,7 +1240,7 @@ export default function TeacherAssignmentDetail() {
                     className="gap-1.5 px-4 py-2 text-sm font-bold border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
                   >
                     {soloCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                    {lang === "ar" ? "رابط لعب فردي" : "Solo Play Link"}
+                    {lang === "ar" ? "وميض حر" : "Free Flash"}
                   </Button>
                 )}
 

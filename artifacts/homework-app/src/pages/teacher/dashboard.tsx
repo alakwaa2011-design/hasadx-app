@@ -3538,7 +3538,7 @@ function Section({
   );
 }
 
-/* ── Solo Link Button — per-card, stateless click ── */
+/* ── Free Flash Button — per-card, stateless click ── */
 const BASE_URL_SOLO = import.meta.env.VITE_API_URL || "";
 function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: string }) {
   const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
@@ -3570,7 +3570,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       onClick={handleClick}
       disabled={state === "loading"}
       className="text-xs font-bold px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 border-amber-400/50 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:border-amber-500/30"
-      title={lang === "ar" ? "إنشاء ونسخ رابط اللعب الفردي" : "Create & copy solo play link"}
+      title={lang === "ar" ? "إنشاء وميض حر ونسخ الرابط" : "Create Free Flash & copy link"}
     >
       {state === "loading" ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -3581,7 +3581,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       )}
       {state === "copied"
         ? (lang === "ar" ? "تم النسخ!" : "Copied!")
-        : (lang === "ar" ? "رابط فردي" : "Solo Link")}
+        : (lang === "ar" ? "وميض حر" : "Free Flash")}
     </button>
   );
 }
@@ -3820,7 +3820,7 @@ function AssignmentRow({
                 <Copy className="w-3.5 h-3.5" />
                 {lang === "ar" ? "نسخ رابط الواجب" : "Copy assignment link"}
               </button>
-              {/* ── Solo Play Link Button ── */}
+              {/* ── Free Flash Button ── */}
               <SoloLinkButton assignmentId={assignment.id} lang={lang} />
 
               <button
