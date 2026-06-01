@@ -350,18 +350,30 @@ export default function WheelCreate() {
         toast.error(ar ? "لا توجد أسئلة اختيار متعدد أو صح/خطأ في هذا الواجب" : "No MCQ or True/False questions found");
         return;
       }
+      const mcqAnswerText = (q: any): string => {
+        if (q.questionType === "mcq") {
+          const map: Record<string, string> = {
+            A: q.optionA ?? "", B: q.optionB ?? "",
+            C: q.optionC ?? "", D: q.optionD ?? "",
+          };
+          return map[q.correctAnswer?.toUpperCase()] || q.correctAnswer || "";
+        }
+        return q.correctAnswer ?? "";
+      };
+
       const newSegs: Segment[] = compatible.slice(0, 16).map(q => ({
         id: newId(),
         text: q.text,
-        answer: q.correctAnswer ?? "",
+        answer: mcqAnswerText(q),
         explanation: q.explanation ?? "",
         points: 100,
         kind: "question" as const,
       }));
       setSegments(colorize(newSegs));
-      if (!title.trim() && data.title) setTitle(data.title);
-      if (!subject.trim() && data.subject) setSubject(data.subject);
-      if (!gradeLevel && data.gradeLevel) setGradeLevel(data.gradeLevel);
+      // Always apply title, subject, grade from the selected assignment
+      if (data.title) setTitle(data.title);
+      if (data.subject) setSubject(data.subject);
+      if (data.gradeLevel) setGradeLevel(data.gradeLevel);
       setImportOpen(false);
       toast.success(ar ? `تم استيراد ${newSegs.length} سؤال` : `Imported ${newSegs.length} questions`);
     } catch {
@@ -400,13 +412,6 @@ export default function WheelCreate() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => { setImportOpen(true); loadAssignmentsForImport(); }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm"
-            >
-              <FileDown className="w-4 h-4" />
-              {ar ? "استيراد من واجب" : "Import from Assignment"}
-            </button>
-            <button
               onClick={() => setSavedOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm"
             >
@@ -434,24 +439,24 @@ export default function WheelCreate() {
                     className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none text-base"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <Globe className="w-4 h-4" />
-                    {ar ? "لغة المحتوى" : "Content language"}
-                  </label>
-                  <div className="flex gap-2">
-                    {(["ar", "en"] as const).map(l => (
-                      <button
-                        key={l}
-                        type="button"
-                        onClick={() => setContentLang(l)}
-                        className={`flex-1 py-2.5 rounded-xl font-bold border-2 transition-all ${contentLang === l ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"}`}
-                      >
-                        {l === "ar" ? "العربية" : "English"}
-                      </button>
-                    ))}
-                  </div>
+
+                {/* Import from assignment — prominent button replacing language buttons */}
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={() => { setImportOpen(true); loadAssignmentsForImport(); }}
+                    className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl border-2 font-black text-base transition-all hover:scale-[1.01] active:scale-100 shadow-sm"
+                    style={{
+                      background: `linear-gradient(135deg, ${BRAND_PRIMARY}12, ${BRAND_GOLD}18)`,
+                      borderColor: `${BRAND_PRIMARY}50`,
+                      color: BRAND_PRIMARY,
+                    }}
+                  >
+                    <FileDown className="w-5 h-5 shrink-0" style={{ color: BRAND_GOLD }} />
+                    <span>{ar ? "استيراد أسئلة من واجب" : "Import Questions from Assignment"}</span>
+                  </button>
                 </div>
+
                 <div>
                   <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
                     <BookOpen className="w-4 h-4" />
@@ -464,6 +469,20 @@ export default function WheelCreate() {
                     placeholder={ar ? "مثال: العلوم" : "e.g. Science"}
                     className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none"
                   />
+                </div>
+                <div>
+                  <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                    <Globe className="w-4 h-4" />
+                    {ar ? "لغة المحتوى" : "Content language"}
+                  </label>
+                  <select
+                    value={contentLang}
+                    onChange={e => setContentLang(e.target.value as "ar" | "en")}
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
+                  >
+                    <option value="ar">العربية</option>
+                    <option value="en">English</option>
+                  </select>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
