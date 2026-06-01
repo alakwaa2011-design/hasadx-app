@@ -1,6 +1,43 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
+/** Wameeth icon — 4 coloured answer blocks matching the actual game buttons */
+const WameethIcon = ({ size = 28 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="wm-red" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#F05070"/>
+        <stop offset="100%" stopColor="#B01414"/>
+      </linearGradient>
+      <linearGradient id="wm-blue" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#5090E8"/>
+        <stop offset="100%" stopColor="#0A50A0"/>
+      </linearGradient>
+      <linearGradient id="wm-green" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#35D090"/>
+        <stop offset="100%" stopColor="#148050"/>
+      </linearGradient>
+      <linearGradient id="wm-purple" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#C080F0"/>
+        <stop offset="100%" stopColor="#7028B0"/>
+      </linearGradient>
+    </defs>
+    {/* Top-left: Red (option A) */}
+    <rect x="2" y="2" width="46" height="46" rx="9" fill="url(#wm-red)"/>
+    {/* Top-right: Blue (option B) */}
+    <rect x="52" y="2" width="46" height="46" rx="9" fill="url(#wm-blue)"/>
+    {/* Bottom-left: Green (option C) */}
+    <rect x="2" y="52" width="46" height="46" rx="9" fill="url(#wm-green)"/>
+    {/* Bottom-right: Purple (option D) */}
+    <rect x="52" y="52" width="46" height="46" rx="9" fill="url(#wm-purple)"/>
+    {/* Subtle gloss on each block */}
+    <rect x="2" y="2" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
+    <rect x="52" y="2" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
+    <rect x="2" y="52" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
+    <rect x="52" y="52" width="46" height="16" rx="9" fill="rgba(255,255,255,0.18)"/>
+  </svg>
+);
+
 /** Professional SVG wheel icon — mirrors the actual game wheel colours */
 const WheelIcon = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -1846,7 +1883,7 @@ function CompetitiveTab({
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
     {
-      icon: "⚡",
+      icon: <WameethIcon size={30} />,
       title:
         t.competitiveGames?.knowledgeRaceTitle ||
         (lang === "ar" ? "وميض" : "Wameeth"),
@@ -2245,8 +2282,8 @@ function CompetitiveTab({
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shrink-0">
-                <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={2.5} />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-yellow-400/30 to-amber-500/20 flex items-center justify-center shadow-lg shrink-0 border border-yellow-500/20">
+                <WameethIcon size={34} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
