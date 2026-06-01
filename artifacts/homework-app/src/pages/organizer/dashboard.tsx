@@ -366,6 +366,11 @@ export default function OrganizerDashboard() {
       Icon: HomeIcon,
     },
     {
+      href: "/teacher/solo-challenges",
+      label: lang === "ar" ? "وميض حر" : "Free Flash",
+      Icon: Zap,
+    },
+    {
       href: "/teacher/sessions",
       label: lang === "ar" ? "مسابقاتي السابقة" : "Past Contests",
       Icon: History,
@@ -383,6 +388,7 @@ export default function OrganizerDashboard() {
   const mobileNav = [
     { href: "/organizer", label: lang === "ar" ? "الرئيسية" : "Home", Icon: HomeIcon },
     { href: "/teacher/new/assignment?contest=1", label: lang === "ar" ? "ابدأ مسابقة" : "Start", Icon: Plus, primary: true },
+    { href: "/teacher/solo-challenges", label: lang === "ar" ? "وميض حر" : "Free Flash", Icon: Zap },
     { href: "/teacher/sessions", label: lang === "ar" ? "السابقة" : "Past", Icon: History },
   ];
 

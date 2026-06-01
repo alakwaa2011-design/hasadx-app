@@ -1,6 +1,6 @@
 /**
  * /teacher/solo-challenges/new
- * إنشاء مسابقة وميض فردي جديدة:
+ * إنشاء مسابقة وميض حر جديدة:
  *   - من واجب موجود، أو
  *   - أسئلة جديدة بمساعدة الذكاء الاصطناعي + تعديل يدوي
  */
@@ -299,7 +299,7 @@ export default function SoloChallengeCreatePage() {
             <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center">
               <Zap className="w-4 h-4 text-amber-500" />
             </div>
-            <h1 className="text-base font-black text-foreground">مسابقة وميض فردي جديدة</h1>
+            <h1 className="text-base font-black text-foreground">مسابقة وميض حر جديدة</h1>
           </div>
         </div>
       </div>

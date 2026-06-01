@@ -1,6 +1,6 @@
 /**
  * /teacher/solo-challenges
- * لوحة تحكم وميض فردي — تعرض كل مسابقات المعلم
+ * لوحة تحكم وميض حر — تعرض كل مسابقات المعلم
  */
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -97,7 +97,7 @@ export default function SoloChallengesPage() {
                 <Zap className="w-5 h-5 text-amber-500" />
               </div>
               <div>
-                <h1 className="text-lg font-black text-foreground">وميض فردي</h1>
+                <h1 className="text-lg font-black text-foreground">وميض حر</h1>
                 <p className="text-xs text-muted-foreground">مسابقات مفتوحة بدون جلسة</p>
               </div>
             </div>

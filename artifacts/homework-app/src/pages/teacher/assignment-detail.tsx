@@ -2185,7 +2185,7 @@ export default function TeacherAssignmentDetail() {
                 <Trophy className="w-6 h-6 text-white" />
                 <div className="flex-1">
                   <h2 className="text-base font-black text-white">{lang === "ar" ? "قائمة المتصدرين" : "Leaderboard"}</h2>
-                  <p className="text-xs text-white/80">{lang === "ar" ? `وميض فردي · ${soloChallenge?.slug}` : `Solo · ${soloChallenge?.slug}`}</p>
+                  <p className="text-xs text-white/80">{lang === "ar" ? `وميض حر · ${soloChallenge?.slug}` : `Solo · ${soloChallenge?.slug}`}</p>
                 </div>
                 <button onClick={() => setSoloLeaderboardOpen(false)} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white">
                   <X className="w-4 h-4" />

@@ -237,7 +237,7 @@ function Router() {
         <Route path="/reset-password" component={ResetPassword} />
         
         {/* Teacher Routes — most specific `/teacher/*` paths first; dashboard `/teacher` last */}
-        {/* وميض فردي — standalone solo challenge management */}
+        {/* وميض حر — standalone solo challenge management */}
         <Route path="/teacher/solo-challenges/new" component={SoloChallengeCreate} />
         <Route path="/teacher/solo-challenges/:slug" component={SoloChallengeManage} />
         <Route path="/teacher/solo-challenges" component={SoloChallengesPage} />

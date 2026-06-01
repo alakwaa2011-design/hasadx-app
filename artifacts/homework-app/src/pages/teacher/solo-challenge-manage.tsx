@@ -1,6 +1,6 @@
 /**
  * /teacher/solo-challenges/:slug
- * إدارة مسابقة وميض فردي — إعدادات، كشف اللاعبين، الحذف
+ * إدارة مسابقة وميض حر — إعدادات، كشف اللاعبين، الحذف
  */
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";

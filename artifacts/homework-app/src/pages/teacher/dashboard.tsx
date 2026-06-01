@@ -661,8 +661,8 @@ export default function TeacherDashboard() {
     },
     {
       id: "solo_challenges",
-      label: lang === "ar" ? "وميض فردي" : "Solo Flash",
-      shortLabel: lang === "ar" ? "وميض فردي" : "Solo Flash",
+      label: lang === "ar" ? "وميض حر" : "Free Flash",
+      shortLabel: lang === "ar" ? "وميض حر" : "Free Flash",
       icon: <Zap className="w-4 h-4" />,
       href: "/teacher/solo-challenges",
     },
