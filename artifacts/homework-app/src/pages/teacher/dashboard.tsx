@@ -297,11 +297,59 @@ const StroopIcon = ({ size = 56 }: { size?: number }) => (
 );
 
 /**
+ * Hasad Arena icon — mini Jeopardy board: 3 cols × 3 rows of point cards
+ * using the exact game colours (200=teal, 400=slate-blue, 600=gold).
+ * Dark background matching the arena theme.
+ */
+const ArenaIcon = ({ size = 56 }: { size?: number }) => {
+  const cols = 3;
+  const rows = 3;
+  const pad = 3;
+  const gap = 2;
+  const cardW = Math.round((size - pad * 2 - gap * (cols - 1)) / cols);
+  const cardH = Math.round((size - pad * 2 - gap * (rows - 1)) / rows);
+  const colors = ["#2a5d6a", "#4a5572", "#a07f37"]; // 200, 400, 600
+  const labels = ["200", "400", "600"];
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} xmlns="http://www.w3.org/2000/svg"
+         style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}>
+      {/* Board background */}
+      <rect width={size} height={size} rx="10" fill="#0f1e14"/>
+      {/* Grid of cards */}
+      {Array.from({ length: rows }).map((_, row) =>
+        Array.from({ length: cols }).map((_, col) => {
+          const x = pad + col * (cardW + gap);
+          const y = pad + row * (cardH + gap);
+          const color = colors[row];
+          const label = labels[row];
+          const fontSize = Math.round(cardH * 0.38);
+          return (
+            <g key={`${row}-${col}`}>
+              <rect x={x} y={y} width={cardW} height={cardH} rx="3" fill={color}/>
+              {/* Subtle gloss */}
+              <rect x={x} y={y} width={cardW} height={Math.round(cardH * 0.35)} rx="3" fill="rgba(255,255,255,0.08)"/>
+              {/* Point label */}
+              <text
+                x={x + cardW / 2} y={y + cardH / 2 + fontSize * 0.36}
+                textAnchor="middle" fill="#fff"
+                fontSize={fontSize} fontFamily="monospace" fontWeight="bold"
+              >{label}</text>
+            </g>
+          );
+        })
+      )}
+      {/* Subtle top border accent */}
+      <rect x={pad} y={pad} width={size - pad * 2} height="2" rx="1" fill="#d6ad55" opacity="0.6"/>
+    </svg>
+  );
+};
+
+/**
  * Rocket Race icon — exact same SVG rocket used in the actual game,
  * violet/fuchsia colour, flame, window. No background.
  */
 const RocketIcon = ({ size = 70 }: { size?: number }) => {
-  const color = "#a855f7"; // violet-500 — matches card gradient
+  const color = "#ef4444"; // red-500 — bold rocket red
   const w = Math.round(size * 60 / 96);
   return (
     <svg width={w} height={size} viewBox="0 0 60 96" xmlns="http://www.w3.org/2000/svg"
@@ -1887,7 +1935,7 @@ export default function TeacherDashboard() {
                         "كل طالب صاروخاً يصعد مع الإجابات الصحيحة السريعة.",
                       descEn:
                         "Each student is a rocket — faster correct answers climb higher.",
-                      gradient: "from-violet-500 to-fuchsia-600",
+                      gradient: "from-red-500 to-orange-500",
                     },
                     {
                       key: "wheel_of_fortune" as const,
@@ -2443,7 +2491,7 @@ function CompetitiveTab({
 
   /** تحدّي حصاد — يُعرَض بجوار مسابقات عامة (لا يُكرَّر في شبكة المسابقات الحية) */
   const arenaGame = {
-    icon: "⚔️",
+    icon: <ArenaIcon size={58} />,
     title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
     desc:
       lang === "ar"
@@ -2504,7 +2552,7 @@ function CompetitiveTab({
         lang === "ar"
           ? "كل طالب صاروخ — السرعة والدقة ترقيه في المدرج. جيد للحماس الفردي داخل الصف."
           : "Each student is a rocket — speed and accuracy climb the leaderboard.",
-      color: "from-violet-500 to-fuchsia-600",
+      color: "from-red-500 to-orange-500",
       type: "rocket_race",
       available: true,
       pill: lang === "ar" ? "سباق حي" : "Live race",
@@ -2800,10 +2848,7 @@ function CompetitiveTab({
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
           >
             <div className="flex items-center gap-4">
-              <div
-                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${arenaGame.color} flex items-center justify-center text-2xl shadow-lg shrink-0`}
-                aria-hidden
-              >
+              <div className="rounded-2xl flex items-center justify-center shrink-0 overflow-hidden" aria-hidden>
                 {arenaGame.icon}
               </div>
               <div className="flex-1 min-w-0">
