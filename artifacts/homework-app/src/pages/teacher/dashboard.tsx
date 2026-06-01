@@ -87,6 +87,64 @@ const HackIcon = ({ size = 56 }: { size?: number }) => (
 );
 
 /**
+ * Memory Match icon — 3×2 card grid: 4 face-down (purple back + stripe + corner dots)
+ * and one matched pair revealed (rose gradient + ★ + green ring). No background.
+ */
+const MemoryIcon = ({ size = 56 }: { size?: number }) => {
+  const cW = 28, cH = 38, gX = 4, gY = 4, sX = 5, sY = 11;
+  type CardDef = { x: number; y: number; matched: boolean };
+  const cards: CardDef[] = [
+    { x: sX,              y: sY,        matched: false },
+    { x: sX + cW + gX,   y: sY,        matched: true  },
+    { x: sX+(cW+gX)*2,   y: sY,        matched: false },
+    { x: sX,              y: sY+cH+gY,  matched: false },
+    { x: sX + cW + gX,   y: sY+cH+gY,  matched: true  },
+    { x: sX+(cW+gX)*2,   y: sY+cH+gY,  matched: false },
+  ];
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="mem-back" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#4338CA"/>
+        </linearGradient>
+        <linearGradient id="mem-rose" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#FB7185"/><stop offset="100%" stopColor="#BE123C"/>
+        </linearGradient>
+        <pattern id="mem-stripe" width="6" height="6" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="6" x2="6" y2="0" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
+        </pattern>
+      </defs>
+
+      {cards.map((c, i) => c.matched ? (
+        <g key={i}>
+          {/* Face-up matched card */}
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-rose)"/>
+          <rect x={c.x} y={c.y} width={cW} height={10}  rx="5" fill="rgba(255,255,255,0.22)"/>
+          <text x={c.x+cW/2} y={c.y+cH/2+1} textAnchor="middle" dominantBaseline="central"
+                fontSize="15" fill="white">★</text>
+          {/* Green matched ring */}
+          <rect x={c.x-1.5} y={c.y-1.5} width={cW+3} height={cH+3} rx="6.5"
+                fill="none" stroke="#4ADE80" strokeWidth="2.2"/>
+        </g>
+      ) : (
+        <g key={i}>
+          {/* Face-down card */}
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-back)"/>
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-stripe)"/>
+          {/* Corner dots — matches real game */}
+          <circle cx={c.x+4}    cy={c.y+4}    r="1.5" fill="rgba(255,255,255,0.45)"/>
+          <circle cx={c.x+cW-4} cy={c.y+4}    r="1.5" fill="rgba(255,255,255,0.45)"/>
+          <circle cx={c.x+4}    cy={c.y+cH-4} r="1.5" fill="rgba(255,255,255,0.45)"/>
+          <circle cx={c.x+cW-4} cy={c.y+cH-4} r="1.5" fill="rgba(255,255,255,0.45)"/>
+          <text x={c.x+cW/2} y={c.y+cH/2+1} textAnchor="middle" dominantBaseline="central"
+                fontSize="13" fill="rgba(255,255,255,0.35)">?</text>
+        </g>
+      ))}
+    </svg>
+  );
+};
+
+/**
  * Flag Quiz icon — 2×2 grid of four recognisable country flags.
  * France | Japan  /  Germany | Italy  — no background.
  */
@@ -2285,7 +2343,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "جغرافيا" : "Geo",
     },
     {
-      icon: "🧠",
+      icon: <MemoryIcon size={56} />,
       title: lang === "ar" ? "لعبة الذاكرة" : "Memory Match",
       desc:
         lang === "ar"
@@ -2392,7 +2450,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
