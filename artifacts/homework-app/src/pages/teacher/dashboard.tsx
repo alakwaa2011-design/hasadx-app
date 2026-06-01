@@ -263,6 +263,7 @@ type TabId =
   | "library_homework"
   | "library_competitions"
   | "competitive"
+  | "solo_challenges"
   | "tools"
   | "presentations"
   | "islamic"
@@ -659,6 +660,13 @@ export default function TeacherDashboard() {
       icon: <Trophy className="w-4 h-4" />,
     },
     {
+      id: "solo_challenges",
+      label: lang === "ar" ? "وميض فردي" : "Solo Flash",
+      shortLabel: lang === "ar" ? "وميض فردي" : "Solo Flash",
+      icon: <Zap className="w-4 h-4" />,
+      href: "/teacher/solo-challenges",
+    },
+    {
       id: "tools",
       label: lang === "ar" ? "الأدوات" : "Tools",
       shortLabel: lang === "ar" ? "أدوات" : "Tools",
@@ -833,7 +841,7 @@ export default function TeacherDashboard() {
             <p className="px-3 mb-1 text-[10px] font-black uppercase tracking-widest" style={{color: "rgba(255,255,255,0.4)"}}>
               {isAr ? "الرئيسية" : "Main"}
             </p>
-            {tabs.filter(t => ["overview","assignments","library_homework","library_competitions","competitive","islamic","stats","students"].includes(t.id)).map((tab) => {
+            {tabs.filter(t => ["overview","assignments","library_homework","library_competitions","competitive","solo_challenges","islamic","stats","students"].includes(t.id)).map((tab) => {
               const active = activeTab === tab.id;
               return (
                 <button
