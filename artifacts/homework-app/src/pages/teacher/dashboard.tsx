@@ -162,18 +162,18 @@ const CapitalsIcon = ({ height = 36 }: { height?: number }) => {
       </defs>
       {/* Dark teal background — distinguishes from Wameeth */}
       <rect width="130" height="72" rx="10" fill="#0D3D3A"/>
-      {/* Top-right: Red */}
+      {/* Top-right: Red — باريس */}
       <rect x="68" y="4"  width="58" height="30" rx="6" fill="url(#cap-red2)"/>
-      {/* Top-left: Blue */}
+      <text x="97" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">باريس</text>
+      {/* Top-left: Blue — لندن */}
       <rect x="4"  y="4"  width="58" height="30" rx="6" fill="url(#cap-blue2)"/>
-      {/* Bottom-right: Amber */}
+      <text x="33" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">لندن</text>
+      {/* Bottom-right: Amber — طوكيو */}
       <rect x="68" y="38" width="58" height="30" rx="6" fill="url(#cap-amber2)"/>
-      {/* Bottom-left: Green */}
+      <text x="97" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">طوكيو</text>
+      {/* Bottom-left: Green — برلين */}
       <rect x="4"  y="38" width="58" height="30" rx="6" fill="url(#cap-green2)"/>
-      {/* Small location pin watermark in center */}
-      <circle cx="65" cy="36" r="5" fill="white" opacity="0.18"/>
-      <circle cx="65" cy="34" r="3.5" fill="white" opacity="0.25"/>
-      <path d="M65,37 L62,42 L65,40 L68,42 Z" fill="white" opacity="0.25"/>
+      <text x="33" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">برلين</text>
     </svg>
   );
 };
