@@ -295,6 +295,41 @@ const StroopIcon = ({ size = 56 }: { size?: number }) => (
 );
 
 /**
+ * Rocket Race icon — exact same SVG rocket used in the actual game,
+ * violet/fuchsia colour, flame, window. No background.
+ */
+const RocketIcon = ({ size = 70 }: { size?: number }) => {
+  const color = "#a855f7"; // violet-500 — matches card gradient
+  const w = Math.round(size * 60 / 96);
+  return (
+    <svg width={w} height={size} viewBox="0 0 60 96" xmlns="http://www.w3.org/2000/svg"
+         style={{ filter: `drop-shadow(0 2px 10px ${color}90)` }}>
+      <defs>
+        <linearGradient id="rkt-body" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.75"/>
+          <stop offset="40%" stopColor="#fff" stopOpacity="0.2"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.95"/>
+        </linearGradient>
+      </defs>
+      {/* Flame */}
+      <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill="#ff6b1a" opacity="0.95"/>
+      <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill="#ffd54f" opacity="0.95"/>
+      <path d="M26 78 Q30 84 34 78 Q32 82 30 83 Q28 82 26 78 Z" fill="#fff9c4" opacity="0.9"/>
+      {/* Body */}
+      <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={color}/>
+      <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill="url(#rkt-body)"/>
+      {/* Window */}
+      <circle cx="30" cy="40" r="8" fill="#b3e5fc" stroke="#fff" strokeWidth="2.5" opacity="0.95"/>
+      <circle cx="30" cy="40" r="5" fill="#0288d1" opacity="0.7"/>
+      <circle cx="28" cy="38" r="2" fill="#fff" opacity="0.55"/>
+      {/* Fins */}
+      <path d="M16 62 L4 82 L16 78 Z" fill={color} opacity="0.9"/>
+      <path d="M44 62 L56 82 L44 78 Z" fill={color} opacity="0.9"/>
+    </svg>
+  );
+};
+
+/**
  * Multiplication icon — a mini "chalkboard" equation: 7 × 8 = ? with the answer revealed below.
  * Amber/orange colours matching the game card. No background.
  */
@@ -2401,7 +2436,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "عرض صفّي" : "Class display",
     },
     {
-      icon: "🚀",
+      icon: <RocketIcon size={62} />,
       title: lang === "ar" ? "سباق الصواريخ" : "Rocket Race",
       desc:
         lang === "ar"
@@ -2576,7 +2611,7 @@ function CompetitiveTab({
     },
     {
       icon: <LetrlyIcon size={56} />,
-      title: lang === "ar" ? "خمن الكلمة" : "Guess the Word",
+      title: lang === "ar" ? "خمن الكلمة — WORDLE" : "Guess the Word — WORDLE",
       desc:
         lang === "ar"
           ? "Wordle بالعربية — كلمة سرّية ومحاولات محدودة، للعب الفردي أو مشاركة الرابط مع الطلاب."
@@ -2634,7 +2669,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
