@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
+import { playVictoryFanfare } from "@/lib/game-sounds";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -179,6 +180,7 @@ export default function WheelPlay() {
   const [showResult, setShowResult] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showFinal, setShowFinal] = useState(false);
+  const [confetti, setConfetti] = useState<{ id: number; x: number; color: string; delay: number; dur: number; size: number; rot: number }[]>([]);
 
   // Pending bonus modifiers — applied to the *next* question that resolves.
   const [doubleMultiplier, setDoubleMultiplier] = useState(1);
@@ -401,6 +403,25 @@ export default function WheelPlay() {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     clearAllTimeouts();
   }, [clearAllTimeouts]);
+
+  /* ── Victory celebration ──────────────────────────────────── */
+  useEffect(() => {
+    if (!showFinal) return;
+    if (soundOn) playVictoryFanfare();
+    const COLORS = ["#D9A521", "#ffffff", "#ff4d4d", "#4dff91", "#4db8ff", "#ffb347", "#e040fb", "#225739"];
+    const pieces = Array.from({ length: 80 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      delay: Math.random() * 1.2,
+      dur: 2.0 + Math.random() * 2.5,
+      size: 7 + Math.random() * 10,
+      rot: Math.random() * 360,
+    }));
+    setConfetti(pieces);
+    const t = setTimeout(() => setConfetti([]), 5000);
+    return () => clearTimeout(t);
+  }, [showFinal]);
 
   /* ── Scoring helpers ──────────────────────────────────────── */
   const awardPoints = (teamIdx: number, points: number) => {
@@ -1009,6 +1030,42 @@ export default function WheelPlay() {
         )}
       </AnimatePresence>
 
+      {/* Confetti particles */}
+      <AnimatePresence>
+        {confetti.length > 0 && (
+          <div className="fixed inset-0 z-[60] pointer-events-none overflow-hidden">
+            {confetti.map(p => (
+              <motion.div
+                key={p.id}
+                initial={{ y: -20, x: `${p.x}vw`, opacity: 1, rotate: p.rot }}
+                animate={{ y: "110vh", opacity: [1, 1, 0.6, 0], rotate: p.rot + 720 }}
+                transition={{ duration: p.dur, delay: p.delay, ease: "easeIn" }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  width: p.size,
+                  height: p.size * (Math.random() > 0.5 ? 0.5 : 1.6),
+                  borderRadius: Math.random() > 0.4 ? "50%" : "2px",
+                  background: p.color,
+                  boxShadow: `0 0 4px ${p.color}88`,
+                }}
+              />
+            ))}
+            {/* Flash/spotlight bursts */}
+            {[0, 0.4, 0.9, 1.6].map((delay, i) => (
+              <motion.div
+                key={`flash-${i}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.18, 0] }}
+                transition={{ duration: 0.35, delay }}
+                className="absolute inset-0"
+                style={{ background: `radial-gradient(ellipse at ${30 + i * 15}% 30%, #fff 0%, transparent 70%)` }}
+              />
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* End-of-game modal */}
       <AnimatePresence>
         {showFinal && (
@@ -1022,24 +1079,43 @@ export default function WheelPlay() {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 18 }}
-              className="rounded-3xl p-8 max-w-md w-full text-center text-white shadow-2xl"
+              className="rounded-3xl p-8 max-w-md w-full text-center text-white shadow-2xl relative overflow-hidden"
               style={{
                 background: `linear-gradient(160deg, ${BRAND_PRIMARY}, #0f2a1c)`,
                 border: `3px solid ${BRAND_GOLD}`,
               }}
             >
-              <Trophy className="w-20 h-20 mx-auto mb-3" style={{ color: BRAND_GOLD }} />
+              {/* Inner glow ring */}
+              <motion.div
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.2, 0.5] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{ boxShadow: `0 0 60px ${BRAND_GOLD}55 inset` }}
+              />
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+              >
+                <Trophy className="w-20 h-20 mx-auto mb-3" style={{ color: BRAND_GOLD, filter: `drop-shadow(0 0 14px ${BRAND_GOLD})` }} />
+              </motion.div>
               <h2 className="text-3xl font-black mb-1">
-                {ar ? "انتهت اللعبة!" : "Game Over!"}
+                {ar ? "🎉 انتهت اللعبة!" : "🎉 Game Over!"}
               </h2>
               {scores[winnerIdx] > 0 ? (
                 <>
                   <p className="text-white/80 mb-4">
                     {ar ? "الفائز:" : "Winner:"}
                   </p>
-                  <p className="text-4xl font-black mb-2" style={{ color: BRAND_GOLD }}>
+                  <motion.p
+                    initial={{ scale: 0.5 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, delay: 0.3 }}
+                    className="text-4xl font-black mb-2"
+                    style={{ color: BRAND_GOLD, textShadow: `0 0 20px ${BRAND_GOLD}88` }}
+                  >
                     {template.config.teamNames[winnerIdx]}
-                  </p>
+                  </motion.p>
                   <p className="text-2xl font-black mb-6">
                     {scores[winnerIdx]} {ar ? "نقطة" : "points"}
                   </p>
@@ -1058,7 +1134,7 @@ export default function WheelPlay() {
                   {ar ? "العب مجدّداً" : "Play Again"}
                 </button>
                 <button
-                  onClick={() => setLocation("/teacher")}
+                  onClick={() => { window.location.href = "/teacher"; }}
                   className="w-full py-3 rounded-xl font-black border-2"
                   style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD }}
                 >
