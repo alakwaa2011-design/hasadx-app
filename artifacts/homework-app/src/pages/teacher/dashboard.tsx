@@ -420,20 +420,13 @@ const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
     {/* Orange accent stripe at base of backrest */}
     <rect x="16" y="35.5" width="28" height="1.8" rx="0.9" fill="#f97316" opacity="0.8"/>
 
-    {/* ── LEFT ARMREST ── */}
-    {/* Vertical arm support */}
-    <rect x="9" y="26" width="5" height="10" rx="2.5" fill="url(#hs-mid)"/>
-    {/* Horizontal arm pad */}
-    <rect x="4" y="23" width="14" height="5" rx="2.5" fill="url(#hs-dark)"/>
-    <rect x="5" y="23.5" width="12" height="2" rx="1" fill="rgba(255,255,255,0.08)"/>
-    {/* Arm pad orange edge */}
-    <rect x="4" y="27.5" width="14" height="1.2" rx="0.6" fill="#f97316" opacity="0.5"/>
+    {/* ── LEFT ARMREST — thin bar + slim post ── */}
+    <rect x="8"  y="35" width="3" height="7" rx="1.5" fill="url(#hs-mid)"/>
+    <rect x="5"  y="30" width="10" height="3" rx="1.5" fill="url(#hs-dark)"/>
 
     {/* ── RIGHT ARMREST ── */}
-    <rect x="46" y="26" width="5" height="10" rx="2.5" fill="url(#hs-mid)"/>
-    <rect x="42" y="23" width="14" height="5" rx="2.5" fill="url(#hs-dark)"/>
-    <rect x="43" y="23.5" width="12" height="2" rx="1" fill="rgba(255,255,255,0.08)"/>
-    <rect x="42" y="27.5" width="14" height="1.2" rx="0.6" fill="#f97316" opacity="0.5"/>
+    <rect x="49" y="35" width="3" height="7" rx="1.5" fill="url(#hs-mid)"/>
+    <rect x="45" y="30" width="10" height="3" rx="1.5" fill="url(#hs-dark)"/>
 
     {/* ── SEAT ── */}
     <rect x="12" y="35" width="36" height="9" rx="4.5" fill="url(#hs-mid)"/>
