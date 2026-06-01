@@ -113,6 +113,34 @@ export default function SoloChallengesPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+        {/* Explainer card */}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/60 dark:bg-amber-900/10 dark:border-amber-700/40 p-4 flex gap-4 items-start">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0 mt-0.5">
+            <Zap className="w-5 h-5 text-amber-500" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-sm font-black text-amber-800 dark:text-amber-300">ما هو وميض حر؟</h2>
+            <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+              مسابقة أسئلة تُنشئها مرة واحدة وتُرسل رابطها للطلاب — يلعبون بشكل فردي في أي وقت يناسبهم، دون الحاجة لجلسة مباشرة.
+              كل طالب يجيب على الأسئلة بمفرده وفق مؤقت لكل سؤال، وتُجمع النتائج تلقائياً في قائمة متصدرين يمكنك مراجعتها.
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5">
+              {[
+                { icon: Clock, text: "مؤقت لكل سؤال" },
+                { icon: Trophy, text: "قائمة متصدرين" },
+                { icon: Users, text: "لعب فردي مستقل" },
+                { icon: Share2, text: "رابط قابل للمشاركة" },
+              ].map(({ icon: Icon, text }) => (
+                <span key={text} className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                  <Icon className="w-3 h-3" />
+                  {text}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Stats */}
         {challenges.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
