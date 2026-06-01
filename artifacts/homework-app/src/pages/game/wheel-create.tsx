@@ -15,6 +15,35 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
 const BRAND_GOLD = "#D9A521";
 
+/** Professional SVG wheel icon — mirrors the actual game wheel colours */
+const WheelIcon = ({ size = 40 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    {/* 8 coloured segments */}
+    <path d="M50,50 L50,4 A46,46 0 0,1 82.5,17.5 Z" fill="#225739"/>
+    <path d="M50,50 L82.5,17.5 A46,46 0 0,1 96,50 Z" fill="#D9A521"/>
+    <path d="M50,50 L96,50 A46,46 0 0,1 82.5,82.5 Z" fill="#3a7a55"/>
+    <path d="M50,50 L82.5,82.5 A46,46 0 0,1 50,96 Z" fill="#c47e2c"/>
+    <path d="M50,50 L50,96 A46,46 0 0,1 17.5,82.5 Z" fill="#1f4d3a"/>
+    <path d="M50,50 L17.5,82.5 A46,46 0 0,1 4,50 Z" fill="#e6b54f"/>
+    <path d="M50,50 L4,50 A46,46 0 0,1 17.5,17.5 Z" fill="#2d6a4f"/>
+    <path d="M50,50 L17.5,17.5 A46,46 0 0,1 50,4 Z" fill="#b08440"/>
+    {/* Spoke dividers */}
+    <line x1="50" y1="4" x2="50" y2="96" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="4" y1="50" x2="96" y2="50" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="17.5" y1="17.5" x2="82.5" y2="82.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="82.5" y1="17.5" x2="17.5" y2="82.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    {/* Outer ring */}
+    <circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.35"/>
+    {/* Centre hub */}
+    <circle cx="50" cy="50" r="13" fill="white"/>
+    <circle cx="50" cy="50" r="8"  fill="#225739"/>
+    <circle cx="50" cy="50" r="3"  fill="white"/>
+    {/* Gold pointer triangle at top */}
+    <polygon points="50,0 43,12 57,12" fill="#D9A521"/>
+    <polygon points="50,1 44,10 56,10" fill="#FFD166"/>
+  </svg>
+);
+
 const WHEEL_PALETTE = [
   "#225739", "#D9A521", "#3a7a55", "#c47e2c",
   "#1f4d3a", "#e6b54f", "#2d6a4f", "#b08440",
@@ -397,7 +426,7 @@ export default function WheelCreate() {
                 background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})`,
               }}
             >
-              <span className="text-3xl">🎡</span>
+              <WheelIcon size={36} />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-foreground">
@@ -638,7 +667,7 @@ export default function WheelCreate() {
 
               {segments.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
-                  <span className="text-4xl block mb-3">🎡</span>
+                  <div className="flex justify-center mb-3"><WheelIcon size={52} /></div>
                   <p className="font-bold mb-1">
                     {ar ? "لا توجد قطاعات بعد" : "No segments yet"}
                   </p>
