@@ -86,6 +86,59 @@ const HackIcon = ({ size = 56 }: { size?: number }) => (
   </svg>
 );
 
+/**
+ * Tug-of-War icon — two teams (blue/red stick figures) pulling a braided rope
+ * with a red centre-flag marker. No background.
+ */
+const TugWarIcon = ({ size = 60 }: { size?: number }) => {
+  const h = Math.round(size * 65 / 120);
+  return (
+    <svg width={size} height={h} viewBox="0 0 120 65" xmlns="http://www.w3.org/2000/svg">
+      {/* ── Left team (blue) ── */}
+      {/* person 1 */}
+      <circle cx="10" cy="14" r="5.5" fill="#2563EB"/>
+      <line x1="10" y1="20" x2="8"  y2="40" stroke="#2563EB" strokeWidth="3"   strokeLinecap="round"/>
+      <line x1="10" y1="27" x2="25" y2="33" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="8"  y1="40" x2="3"  y2="55" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="8"  y1="40" x2="13" y2="55" stroke="#2563EB" strokeWidth="2.5" strokeLinecap="round"/>
+      {/* person 2 (behind, slightly offset) */}
+      <circle cx="21" cy="12" r="4.5" fill="#1D4ED8" opacity="0.8"/>
+      <line x1="21" y1="17" x2="19" y2="35" stroke="#1D4ED8" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+      <line x1="21" y1="23" x2="30" y2="33" stroke="#1D4ED8" strokeWidth="2"   strokeLinecap="round" opacity="0.8"/>
+      <line x1="19" y1="35" x2="14" y2="52" stroke="#1D4ED8" strokeWidth="2"   strokeLinecap="round" opacity="0.8"/>
+      <line x1="19" y1="35" x2="23" y2="52" stroke="#1D4ED8" strokeWidth="2"   strokeLinecap="round" opacity="0.8"/>
+
+      {/* ── Right team (red) ── */}
+      {/* person 1 */}
+      <circle cx="110" cy="14" r="5.5" fill="#DC2626"/>
+      <line x1="110" y1="20" x2="112" y2="40" stroke="#DC2626" strokeWidth="3"   strokeLinecap="round"/>
+      <line x1="110" y1="27" x2="95"  y2="33" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="112" y1="40" x2="117" y2="55" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="112" y1="40" x2="107" y2="55" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round"/>
+      {/* person 2 (behind) */}
+      <circle cx="99" cy="12" r="4.5" fill="#B91C1C" opacity="0.8"/>
+      <line x1="99" y1="17" x2="101" y2="35" stroke="#B91C1C" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+      <line x1="99" y1="23" x2="90"  y2="33" stroke="#B91C1C" strokeWidth="2"   strokeLinecap="round" opacity="0.8"/>
+      <line x1="101" y1="35" x2="106" y2="52" stroke="#B91C1C" strokeWidth="2"  strokeLinecap="round" opacity="0.8"/>
+      <line x1="101" y1="35" x2="97"  y2="52" stroke="#B91C1C" strokeWidth="2"  strokeLinecap="round" opacity="0.8"/>
+
+      {/* ── Braided rope ── */}
+      {/* shadow / base */}
+      <path d="M30,33 Q60,30 90,33" stroke="#5C3A0A" strokeWidth="8" fill="none" strokeLinecap="round"/>
+      {/* main golden strand */}
+      <path d="M30,33 Q60,30 90,33" stroke="#C8861A" strokeWidth="6" fill="none" strokeLinecap="round"/>
+      {/* highlight stripe — simulates top strand */}
+      <path d="M30,33 Q60,30 90,33" stroke="#E8C050" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeDasharray="6,6" strokeDashoffset="0"/>
+      {/* shadow stripe — opposite phase, simulates under strand */}
+      <path d="M30,33 Q60,30 90,33" stroke="#8B5210" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeDasharray="6,6" strokeDashoffset="6"/>
+
+      {/* ── Centre flag / marker ── */}
+      <line x1="60" y1="22" x2="60" y2="43" stroke="#EF4444" strokeWidth="3" strokeLinecap="round"/>
+      <polygon points="60,22 69,26 60,30" fill="#EF4444"/>
+    </svg>
+  );
+};
+
 /** Professional SVG wheel icon — mirrors the actual game wheel colours */
 const WheelIcon = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -1947,7 +2000,7 @@ function CompetitiveTab({
         lang === "ar" ? "موصى به — وميض" : "Recommended — Wameedh",
     },
     {
-      icon: "🪢",
+      icon: <TugWarIcon size={70} />,
       title: lang === "ar" ? "شد الحبل" : "Tug of War",
       desc:
         lang === "ar"
@@ -2204,7 +2257,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack" || game.type === "tug_of_war") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
