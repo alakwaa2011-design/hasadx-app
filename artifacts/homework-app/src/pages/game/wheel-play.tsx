@@ -551,7 +551,7 @@ export default function WheelPlay() {
         <div className="text-center">
           <p className="text-xl font-black mb-4">{error || (ar ? "غير موجود" : "Not found")}</p>
           <button
-            onClick={() => setLocation("/teacher/dashboard")}
+            onClick={() => setLocation("/teacher")}
             className="px-5 py-2.5 rounded-xl font-bold"
             style={{ background: BRAND_GOLD, color: "#1a1a1a" }}
           >
@@ -576,7 +576,7 @@ export default function WheelPlay() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => setLocation("/teacher/dashboard")}
+            onClick={() => setLocation("/teacher")}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
             aria-label="back"
           >
@@ -1058,7 +1058,7 @@ export default function WheelPlay() {
                   {ar ? "العب مجدّداً" : "Play Again"}
                 </button>
                 <button
-                  onClick={() => setLocation("/teacher/dashboard")}
+                  onClick={() => setLocation("/teacher")}
                   className="w-full py-3 rounded-xl font-black border-2"
                   style={{ borderColor: BRAND_GOLD, color: BRAND_GOLD }}
                 >

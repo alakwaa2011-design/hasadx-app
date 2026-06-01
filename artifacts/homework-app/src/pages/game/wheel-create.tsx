@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Play, Plus, Trash2, Save, FolderOpen, Loader2,
   Wand2, X, Gift, HelpCircle, Edit3, Check,
-  Globe, BookOpen, GraduationCap, Users,
+  Globe, BookOpen, GraduationCap, Users, FileDown,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -110,6 +110,12 @@ export default function WheelCreate() {
 
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
+
+  // Import from assignment
+  const [importOpen, setImportOpen] = useState(false);
+  const [importAssignments, setImportAssignments] = useState<{ id: number; title: string; subject: string | null; gradeLevel: string | null; questionCount: number }[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importingId, setImportingId] = useState<number | null>(null);
 
   // Load grade levels
   useEffect(() => {
@@ -312,6 +318,59 @@ export default function WheelCreate() {
     }
   };
 
+  const loadAssignmentsForImport = async () => {
+    setImportLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/assignments`, { credentials: "include" });
+      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الواجبات" : "Failed to load assignments"); return; }
+      const data = await res.json();
+      setImportAssignments(
+        (Array.isArray(data) ? data : []).map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          subject: a.subject ?? null,
+          gradeLevel: a.gradeLevel ?? null,
+          questionCount: a.questionCount ?? 0,
+        }))
+      );
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const importFromAssignment = async (assignmentId: number) => {
+    setImportingId(assignmentId);
+    try {
+      const res = await fetch(`${API_BASE}/api/assignments/${assignmentId}`, { credentials: "include" });
+      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الواجب" : "Failed to load assignment"); return; }
+      const data = await res.json();
+      const qs: any[] = Array.isArray(data.questions) ? data.questions : [];
+      const compatible = qs.filter(q => ["mcq", "true_false"].includes(q.questionType));
+      if (compatible.length === 0) {
+        toast.error(ar ? "لا توجد أسئلة اختيار متعدد أو صح/خطأ في هذا الواجب" : "No MCQ or True/False questions found");
+        return;
+      }
+      const newSegs: Segment[] = compatible.slice(0, 16).map(q => ({
+        id: newId(),
+        text: q.text,
+        answer: q.correctAnswer ?? "",
+        explanation: q.explanation ?? "",
+        points: 100,
+        kind: "question" as const,
+      }));
+      setSegments(colorize(newSegs));
+      if (!title.trim() && data.title) setTitle(data.title);
+      if (!subject.trim() && data.subject) setSubject(data.subject);
+      if (!gradeLevel && data.gradeLevel) setGradeLevel(data.gradeLevel);
+      setImportOpen(false);
+      toast.success(ar ? `تم استيراد ${newSegs.length} سؤال` : `Imported ${newSegs.length} questions`);
+    } catch {
+      toast.error(ar ? "حدث خطأ" : "Error");
+    } finally {
+      setImportingId(null);
+    }
+  };
+
   const colorPreview = useMemo(() => colorize(segments), [segments]);
 
   return (
@@ -339,7 +398,14 @@ export default function WheelCreate() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => { setImportOpen(true); loadAssignmentsForImport(); }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm"
+            >
+              <FileDown className="w-4 h-4" />
+              {ar ? "استيراد من واجب" : "Import from Assignment"}
+            </button>
             <button
               onClick={() => setSavedOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm"
@@ -405,25 +471,16 @@ export default function WheelCreate() {
                     {ar ? "الصف (اختياري)" : "Grade (optional)"}
                   </label>
                   {gradeLevels.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setGradeLevel("")}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-bold border-2 transition-all ${!gradeLevel ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"}`}
-                      >
-                        {ar ? "بدون تحديد" : "Any"}
-                      </button>
+                    <select
+                      value={gradeLevel}
+                      onChange={e => setGradeLevel(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
+                    >
+                      <option value="">{ar ? "بدون تحديد" : "Any grade"}</option>
                       {gradeLevels.map(g => (
-                        <button
-                          key={g.gradeLevel}
-                          type="button"
-                          onClick={() => setGradeLevel(g.gradeLevel)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-bold border-2 transition-all ${gradeLevel === g.gradeLevel ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"}`}
-                        >
-                          {g.gradeLevel}
-                        </button>
+                        <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>
                       ))}
-                    </div>
+                    </select>
                   ) : (
                     <input
                       type="text"
@@ -772,6 +829,86 @@ export default function WheelCreate() {
             </div>
           </div>
         </div>
+
+        {/* Import from assignment modal */}
+        <AnimatePresence>
+          {importOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+              onClick={() => setImportOpen(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85dvh] overflow-hidden flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                  <div>
+                    <h3 className="text-lg font-black text-foreground flex items-center gap-2">
+                      <FileDown className="w-5 h-5" style={{ color: BRAND_PRIMARY }} />
+                      {ar ? "استيراد من واجب" : "Import from Assignment"}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {ar ? "اختر واجباً لاستيراد أسئلته (اختيار متعدد وصح/خطأ)" : "Select an assignment to import MCQ & True/False questions"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setImportOpen(false)}
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  {importLoading ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                    </div>
+                  ) : importAssignments.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <BookOpen className="w-12 h-12 mx-auto opacity-30 mb-2" />
+                      <p className="font-bold">{ar ? "لا توجد واجبات" : "No assignments found"}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {importAssignments.map(a => (
+                        <div
+                          key={a.id}
+                          className="border-2 border-border rounded-xl p-3 hover:border-primary/40 hover:bg-primary/[0.02] transition-all flex items-center gap-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-foreground truncate">{a.title}</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {a.questionCount > 0 ? `${a.questionCount} ${ar ? "سؤال" : "questions"}` : ar ? "بدون أسئلة" : "no questions"}
+                              {a.subject ? ` · ${a.subject}` : ""}
+                              {a.gradeLevel ? ` · ${a.gradeLevel}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => importFromAssignment(a.id)}
+                            disabled={importingId === a.id || a.questionCount === 0}
+                            className="shrink-0 px-3 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 border transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY, borderColor: `${BRAND_PRIMARY}40` }}
+                          >
+                            {importingId === a.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <FileDown className="w-3.5 h-3.5" />}
+                            {ar ? "استيراد" : "Import"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Saved templates modal */}
         <AnimatePresence>
