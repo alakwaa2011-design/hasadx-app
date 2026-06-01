@@ -44,41 +44,45 @@ const WameethIcon = ({ height = 36 }: { height?: number }) => {
   );
 };
 
-/** Hack Game icon — laptop with green matrix/hacker code on screen */
-const HackIcon = ({ size = 52 }: { size?: number }) => (
+/** Hack Game icon — laptop with clipped green-matrix screen, no white background */
+const HackIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    {/* Laptop base / body */}
-    <rect x="8" y="18" width="84" height="56" rx="5" fill="#1a1a1a"/>
-    {/* Screen bezel */}
-    <rect x="12" y="22" width="76" height="46" rx="3" fill="#111"/>
-    {/* Screen — black with green glow */}
-    <rect x="14" y="24" width="72" height="42" rx="2" fill="#030f06"/>
-    <rect x="14" y="24" width="72" height="42" rx="2" fill="url(#hack-glow)" opacity="0.4"/>
     <defs>
-      <radialGradient id="hack-glow" cx="50%" cy="50%" r="55%">
-        <stop offset="0%" stopColor="#00ff41" stopOpacity="0.35"/>
+      {/* Clip to keep all text strictly inside the screen */}
+      <clipPath id="hck-screen">
+        <rect x="17" y="20" width="66" height="38"/>
+      </clipPath>
+      <radialGradient id="hck-glow" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stopColor="#00ff41" stopOpacity="0.3"/>
         <stop offset="100%" stopColor="#00ff41" stopOpacity="0"/>
       </radialGradient>
     </defs>
-    {/* Matrix code lines — green characters */}
-    {/* Row 1 */}
-    <text x="17" y="32" fill="#00ff41" fontSize="5" fontFamily="monospace" opacity="0.9">01 AC FF 7E 3B</text>
-    {/* Row 2 */}
-      <text x="17" y="39" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.75">{"if(root){hack()}"}</text>
-    {/* Row 3 - brighter highlighted line */}
-    <text x="17" y="46" fill="#00ff41" fontSize="5" fontFamily="monospace" fontWeight="bold">ACCESS_GRANTED_</text>
-    {/* Row 4 */}
-    <text x="17" y="53" fill="#009922" fontSize="5" fontFamily="monospace" opacity="0.65">0xDEAD 0xBEEF</text>
-    {/* Row 5 */}
-    <text x="17" y="60" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.8">{">>> decrypt..."}</text>
-    {/* Blinking cursor */}
-    <rect x="74" y="55" width="4" height="6" rx="0.5" fill="#00ff41" opacity="0.95"/>
-    {/* Laptop base / keyboard area */}
-    <rect x="4" y="74" width="92" height="7" rx="3" fill="#222"/>
+
+    {/* ── Laptop lid ── */}
+    <rect x="6" y="8" width="88" height="60" rx="6" fill="#1c1c1c"/>
+    {/* Bezel */}
+    <rect x="10" y="12" width="80" height="52" rx="4" fill="#111"/>
+    {/* Screen (dark green-black) */}
+    <rect x="17" y="18" width="66" height="42" rx="2" fill="#020d05"/>
+
+    {/* Clipped content: glow + code lines */}
+    <g clipPath="url(#hck-screen)">
+      <rect x="17" y="18" width="66" height="42" fill="url(#hck-glow)"/>
+      <text x="20" y="28" fill="#00ff41" fontSize="5.2" fontFamily="monospace" opacity="0.85">01 AC FF 7E 3B</text>
+      <text x="20" y="34" fill="#00dd33" fontSize="5.2" fontFamily="monospace" opacity="0.7">{"if(root){hack()}"}</text>
+      <text x="20" y="40" fill="#00ff41" fontSize="5.2" fontFamily="monospace" fontWeight="bold">ACCESS_GRANTED</text>
+      <text x="20" y="46" fill="#009922" fontSize="5.2" fontFamily="monospace" opacity="0.6">0xDEAD 0xBEEF</text>
+      <text x="20" y="52" fill="#00dd33" fontSize="5.2" fontFamily="monospace" opacity="0.75">{">>> decrypt..."}</text>
+      {/* Blinking cursor block */}
+      <rect x="74" y="47" width="4" height="6" fill="#00ff41"/>
+    </g>
+
+    {/* ── Laptop base ── */}
+    <rect x="3" y="68" width="94" height="9" rx="4" fill="#1c1c1c"/>
+    {/* Hinge notch */}
+    <rect x="6" y="67" width="88" height="4" rx="2" fill="#141414"/>
     {/* Trackpad */}
-    <rect x="38" y="76" width="24" height="3" rx="1.5" fill="#333"/>
-    {/* Hinge */}
-    <rect x="8" y="73" width="84" height="3" rx="1" fill="#1a1a1a"/>
+    <rect x="37" y="70" width="26" height="4" rx="2" fill="#2a2a2a"/>
   </svg>
 );
 
@@ -2200,7 +2204,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack") ? "overflow-hidden" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
