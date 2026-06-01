@@ -87,6 +87,98 @@ const HackIcon = ({ size = 56 }: { size?: number }) => (
 );
 
 /**
+ * Flag Quiz icon — 2×2 grid of four recognisable country flags.
+ * France | Japan  /  Germany | Italy  — no background.
+ */
+const FlagQuizIcon = ({ size = 56 }: { size?: number }) => {
+  const h = Math.round(size * 76 / 100);
+  return (
+    <svg width={size} height={h} viewBox="0 0 100 76" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="fq-fr"><rect x="2" y="2"  width="46" height="30" rx="5"/></clipPath>
+        <clipPath id="fq-jp"><rect x="52" y="2"  width="46" height="30" rx="5"/></clipPath>
+        <clipPath id="fq-de"><rect x="2" y="36" width="46" height="30" rx="5"/></clipPath>
+        <clipPath id="fq-it"><rect x="52" y="36" width="46" height="30" rx="5"/></clipPath>
+      </defs>
+
+      {/* ── France (blue | white | red — vertical) ── */}
+      <rect x="2"  y="2"  width="46" height="30" rx="5" fill="white"/>
+      <g clipPath="url(#fq-fr)">
+        <rect x="2"   y="2"  width="15.3" height="30" fill="#002395"/>
+        <rect x="17.3" y="2" width="15.3" height="30" fill="white"/>
+        <rect x="32.6" y="2" width="15.4" height="30" fill="#ED2939"/>
+      </g>
+      <rect x="2"  y="2"  width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
+
+      {/* ── Japan (white + red circle) ── */}
+      <rect x="52" y="2"  width="46" height="30" rx="5" fill="white"/>
+      <g clipPath="url(#fq-jp)">
+        <circle cx="75" cy="17" r="9.5" fill="#BC002D"/>
+      </g>
+      <rect x="52" y="2"  width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
+
+      {/* ── Germany (black | red | gold — horizontal) ── */}
+      <rect x="2"  y="36" width="46" height="30" rx="5" fill="#000"/>
+      <g clipPath="url(#fq-de)">
+        <rect x="2" y="36" width="46" height="10" fill="#000"/>
+        <rect x="2" y="46" width="46" height="10" fill="#DD0000"/>
+        <rect x="2" y="56" width="46" height="10" fill="#FFCE00"/>
+      </g>
+      <rect x="2"  y="36" width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
+
+      {/* ── Italy (green | white | red — vertical) ── */}
+      <rect x="52" y="36" width="46" height="30" rx="5" fill="white"/>
+      <g clipPath="url(#fq-it)">
+        <rect x="52"   y="36" width="15.3" height="30" fill="#009246"/>
+        <rect x="67.3" y="36" width="15.3" height="30" fill="white"/>
+        <rect x="82.6" y="36" width="15.4" height="30" fill="#CE2B37"/>
+      </g>
+      <rect x="52" y="36" width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
+    </svg>
+  );
+};
+
+/**
+ * Capitals Game icon — 4 answer boxes in the exact game colours (red/blue/amber/green),
+ * teal dark background, landscape rectangle like Wameeth.
+ */
+const CapitalsIcon = ({ height = 36 }: { height?: number }) => {
+  const w = Math.round(height * 130 / 72);
+  return (
+    <svg width={w} height={height} viewBox="0 0 130 72" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="cap-red2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F87171"/><stop offset="100%" stopColor="#B91C1C"/>
+        </linearGradient>
+        <linearGradient id="cap-blue2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#60A5FA"/><stop offset="100%" stopColor="#1D4ED8"/>
+        </linearGradient>
+        <linearGradient id="cap-amber2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FCD34D"/><stop offset="100%" stopColor="#B45309"/>
+        </linearGradient>
+        <linearGradient id="cap-green2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#4ADE80"/><stop offset="100%" stopColor="#15803D"/>
+        </linearGradient>
+      </defs>
+      {/* Dark teal background — distinguishes from Wameeth */}
+      <rect width="130" height="72" rx="10" fill="#0D3D3A"/>
+      {/* Top-right: Red */}
+      <rect x="68" y="4"  width="58" height="30" rx="6" fill="url(#cap-red2)"/>
+      {/* Top-left: Blue */}
+      <rect x="4"  y="4"  width="58" height="30" rx="6" fill="url(#cap-blue2)"/>
+      {/* Bottom-right: Amber */}
+      <rect x="68" y="38" width="58" height="30" rx="6" fill="url(#cap-amber2)"/>
+      {/* Bottom-left: Green */}
+      <rect x="4"  y="38" width="58" height="30" rx="6" fill="url(#cap-green2)"/>
+      {/* Small location pin watermark in center */}
+      <circle cx="65" cy="36" r="5" fill="white" opacity="0.18"/>
+      <circle cx="65" cy="34" r="3.5" fill="white" opacity="0.25"/>
+      <path d="M65,37 L62,42 L65,40 L68,42 Z" fill="white" opacity="0.25"/>
+    </svg>
+  );
+};
+
+/**
  * Color Game icon — 4×4 grid of same-colour squares, one is a different shade.
  * Mirrors the actual game mechanic. No background.
  */
@@ -2169,7 +2261,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "تركيز" : "Focus",
     },
     {
-      icon: "🏁",
+      icon: <FlagQuizIcon size={58} />,
       title: lang === "ar" ? "أعلام الدول" : "Flag Quiz",
       desc:
         lang === "ar"
@@ -2181,7 +2273,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "جغرافيا" : "Geo",
     },
     {
-      icon: "🌍",
+      icon: <CapitalsIcon height={44} />,
       title: lang === "ar" ? "عواصم البلدان" : "World Capitals",
       desc:
         lang === "ar"
@@ -2300,7 +2392,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack" || game.type === "tug_of_war" || game.type === "color_game") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
