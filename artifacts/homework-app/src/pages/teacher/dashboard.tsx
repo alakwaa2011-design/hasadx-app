@@ -380,16 +380,68 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
 };
 
 /**
+ * HotSeat icon — a chair with flames rising beneath it.
+ * Orange/red colours matching the game card.
+ */
+const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
+       style={{ filter: "drop-shadow(0 2px 10px rgba(249,115,22,0.55))" }}>
+    <defs>
+      <radialGradient id="hs-bg" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#431407"/>
+        <stop offset="100%" stopColor="#1c0a02"/>
+      </radialGradient>
+    </defs>
+    {/* Dark background */}
+    <rect width="56" height="56" rx="12" fill="url(#hs-bg)"/>
+
+    {/* === Flames === */}
+    {/* Left outer flame */}
+    <path d="M16 44 Q12 36 17 30 Q15 38 20 36 Q16 42 19 44 Z" fill="#ef4444" opacity="0.9"/>
+    {/* Center-left flame */}
+    <path d="M22 44 Q17 34 22 26 Q20 36 25 33 Q21 40 24 44 Z" fill="#f97316" opacity="0.95"/>
+    {/* Center flame — tallest */}
+    <path d="M28 44 Q22 30 28 20 Q26 33 31 29 Q27 38 30 44 Z" fill="#fb923c"/>
+    {/* Center-right flame */}
+    <path d="M34 44 Q39 34 34 26 Q36 36 31 33 Q35 40 32 44 Z" fill="#f97316" opacity="0.95"/>
+    {/* Right outer flame */}
+    <path d="M40 44 Q44 36 39 30 Q41 38 36 36 Q40 42 37 44 Z" fill="#ef4444" opacity="0.9"/>
+    {/* Inner flame cores (brighter) */}
+    <path d="M28 44 Q25 36 28 28 Q27 36 30 34 Q28 40 29 44 Z" fill="#fde68a" opacity="0.85"/>
+    <path d="M24 44 Q22 38 25 32 Q24 38 26 36 Q24 41 25 44 Z" fill="#fbbf24" opacity="0.7"/>
+    <path d="M32 44 Q34 38 31 32 Q32 38 30 36 Q32 41 31 44 Z" fill="#fbbf24" opacity="0.7"/>
+
+    {/* === Chair === */}
+    {/* Back legs */}
+    <rect x="14" y="32" width="4" height="14" rx="2" fill="#7c2d12"/>
+    <rect x="38" y="32" width="4" height="14" rx="2" fill="#7c2d12"/>
+    {/* Seat */}
+    <rect x="12" y="28" width="32" height="7" rx="3" fill="#c2410c"/>
+    {/* Seat sheen */}
+    <rect x="13" y="28" width="30" height="3" rx="2" fill="rgba(255,255,255,0.12)"/>
+    {/* Backrest */}
+    <rect x="13" y="12" width="30" height="18" rx="4" fill="#ea580c"/>
+    {/* Backrest sheen */}
+    <rect x="14" y="13" width="28" height="6" rx="3" fill="rgba(255,255,255,0.14)"/>
+    {/* Backrest top rail */}
+    <rect x="13" y="12" width="30" height="4" rx="3" fill="#c2410c"/>
+    {/* Front legs */}
+    <rect x="14" y="35" width="4" height="11" rx="2" fill="#9a3412"/>
+    <rect x="38" y="35" width="4" height="11" rx="2" fill="#9a3412"/>
+  </svg>
+);
+
+/**
  * Public Quizzes icon — globe with a question mark badge.
  * Amber/gold colours matching the card.
  */
 const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
-       style={{ filter: "drop-shadow(0 2px 8px rgba(245,158,11,0.5))" }}>
+       style={{ filter: "drop-shadow(0 2px 10px rgba(30,77,53,0.55))" }}>
     <defs>
       <radialGradient id="pq-globe" cx="38%" cy="32%" r="65%">
-        <stop offset="0%" stopColor="#fcd34d"/>
-        <stop offset="100%" stopColor="#d97706"/>
+        <stop offset="0%" stopColor="#2d7a50"/>
+        <stop offset="100%" stopColor="#0F2A20"/>
       </radialGradient>
       <clipPath id="pq-clip">
         <circle cx="26" cy="28" r="20"/>
@@ -398,7 +450,7 @@ const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
     {/* Globe body */}
     <circle cx="26" cy="28" r="20" fill="url(#pq-globe)"/>
     {/* Globe grid lines */}
-    <g clipPath="url(#pq-clip)" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2">
+    <g clipPath="url(#pq-clip)" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2">
       {/* Latitude lines */}
       <line x1="6" y1="28" x2="46" y2="28"/>
       <line x1="8" y1="20" x2="44" y2="20"/>
@@ -408,11 +460,14 @@ const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
       <ellipse cx="26" cy="28" rx="15" ry="20"/>
       <ellipse cx="26" cy="28" rx="20" ry="20"/>
     </g>
+    {/* Subtle gloss */}
+    <ellipse cx="20" cy="18" rx="8" ry="5" fill="rgba(255,255,255,0.08)"/>
     {/* Globe border */}
-    <circle cx="26" cy="28" r="20" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1"/>
+    <circle cx="26" cy="28" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
     {/* Question mark badge */}
-    <circle cx="42" cy="14" r="11" fill="#1c1c1c"/>
-    <circle cx="42" cy="14" r="9.5" fill="#f59e0b"/>
+    <circle cx="42" cy="14" r="11" fill="#0F2A20"/>
+    <circle cx="42" cy="14" r="9.5" fill="#1E4D35"/>
+    <circle cx="42" cy="14" r="8" fill="#d6ad55"/>
     <text x="42" y="19" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="900"
           fontFamily="Georgia, serif">?</text>
   </svg>
@@ -2597,7 +2652,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "سباق حي" : "Live race",
     },
     {
-      icon: "🔥",
+      icon: <HotSeatIcon size={58} />,
       title: lang === "ar" ? "الكرسي الساخن" : "HotSeat",
       desc:
         lang === "ar"
@@ -2818,7 +2873,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
