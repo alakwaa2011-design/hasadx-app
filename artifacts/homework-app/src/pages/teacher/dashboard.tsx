@@ -1,5 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CSSProperties, ReactNode } from "react";
+
+/** Professional SVG wheel icon — mirrors the actual game wheel colours */
+const WheelIcon = ({ size = 28 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50,50 L50,4 A46,46 0 0,1 82.5,17.5 Z" fill="#225739"/>
+    <path d="M50,50 L82.5,17.5 A46,46 0 0,1 96,50 Z" fill="#D9A521"/>
+    <path d="M50,50 L96,50 A46,46 0 0,1 82.5,82.5 Z" fill="#3a7a55"/>
+    <path d="M50,50 L82.5,82.5 A46,46 0 0,1 50,96 Z" fill="#c47e2c"/>
+    <path d="M50,50 L50,96 A46,46 0 0,1 17.5,82.5 Z" fill="#1f4d3a"/>
+    <path d="M50,50 L17.5,82.5 A46,46 0 0,1 4,50 Z" fill="#e6b54f"/>
+    <path d="M50,50 L4,50 A46,46 0 0,1 17.5,17.5 Z" fill="#2d6a4f"/>
+    <path d="M50,50 L17.5,17.5 A46,46 0 0,1 50,4 Z" fill="#b08440"/>
+    <line x1="50" y1="4" x2="50" y2="96" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="4" y1="50" x2="96" y2="50" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="17.5" y1="17.5" x2="82.5" y2="82.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <line x1="82.5" y1="17.5" x2="17.5" y2="82.5" stroke="white" strokeWidth="1.5" strokeOpacity="0.45"/>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="2" strokeOpacity="0.35"/>
+    <circle cx="50" cy="50" r="13" fill="white"/>
+    <circle cx="50" cy="50" r="8"  fill="#225739"/>
+    <circle cx="50" cy="50" r="3"  fill="white"/>
+    <polygon points="50,0 43,12 57,12" fill="#D9A521"/>
+    <polygon points="50,1 44,10 56,10" fill="#FFD166"/>
+  </svg>
+);
 import { createPortal } from "react-dom";
 import {
   useListAssignments,
@@ -1850,7 +1874,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "جماعي" : "Team play",
     },
     {
-      icon: "🎡",
+      icon: <WheelIcon size={30} />,
       title: lang === "ar" ? "عجلة الحظ" : "Wheel of Fortune",
       desc:
         lang === "ar"
