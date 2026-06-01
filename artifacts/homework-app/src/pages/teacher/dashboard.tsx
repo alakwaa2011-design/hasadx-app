@@ -145,6 +145,43 @@ const MemoryIcon = ({ size = 56 }: { size?: number }) => {
 };
 
 /**
+ * Letrly (Wordle) icon — 3 rows × 5 squares with green/yellow/gray states.
+ * Matches the actual game's visual language exactly. Light background.
+ */
+const LetrlyIcon = ({ size = 56 }: { size?: number }) => {
+  const sq = 14, gap = 3;
+  const startX = 9, startY = 26;
+  const xs = [0,1,2,3,4].map(i => startX + i * (sq + gap));
+  const ys = [0,1,2].map(i => startY + i * (sq + gap));
+  const rows: Array<Array<"g"|"y"|"z">> = [
+    ["z","z","z","z","z"],
+    ["g","z","y","z","z"],
+    ["g","g","g","y","z"],
+  ];
+  const fill = { g: "#10B981", y: "#FBBF24", z: "#A1A1AA" };
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      {/* Light greenish-white background */}
+      <rect width="100" height="100" rx="14" fill="#EEF7F2"/>
+      <rect width="100" height="18" rx="14" fill="rgba(16,185,129,0.08)"/>
+      {rows.map((row, ri) => row.map((state, ci) => (
+        <g key={`${ri}-${ci}`}>
+          {/* Subtle tile shadow */}
+          <rect x={xs[ci]} y={ys[ri]+2} width={sq} height={sq} rx="3" fill="rgba(0,0,0,0.08)"/>
+          {/* Tile */}
+          <rect x={xs[ci]} y={ys[ri]} width={sq} height={sq} rx="3" fill={fill[state]}/>
+          {/* Top gloss */}
+          <rect x={xs[ci]} y={ys[ri]} width={sq} height={5} rx="3" fill="rgba(255,255,255,0.25)"/>
+        </g>
+      )))}
+      {/* Small label */}
+      <text x="50" y="88" textAnchor="middle" dominantBaseline="central"
+            fill="#256B3A" fontSize="8" fontWeight="700" fontFamily="system-ui,sans-serif">خمن الكلمة</text>
+    </svg>
+  );
+};
+
+/**
  * Scrambled Words icon — letter tiles (violet gradient, 3-D shadow) scattered below
  * and partially-filled answer slots above. Matches the real game exactly.
  */
@@ -160,7 +197,7 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="scr-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#0F0A1E"/><stop offset="100%" stopColor="#1A0A2E"/>
+          <stop offset="0%" stopColor="#3B0764"/><stop offset="100%" stopColor="#4C1D95"/>
         </linearGradient>
         <linearGradient id="scr-tile" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#5B21B6"/>
@@ -225,8 +262,8 @@ const StroopIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="str-bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#1E1B2E"/>
-        <stop offset="100%" stopColor="#2D1B3D"/>
+        <stop offset="0%" stopColor="#7F1D1D"/>
+        <stop offset="100%" stopColor="#92400E"/>
       </linearGradient>
     </defs>
     {/* Dark background */}
@@ -2538,8 +2575,8 @@ function CompetitiveTab({
       pill: lang === "ar" ? "إملاء" : "Spelling",
     },
     {
-      icon: "🔡",
-      title: lang === "ar" ? "تحدي الكلمة" : "Word Challenge",
+      icon: <LetrlyIcon size={56} />,
+      title: lang === "ar" ? "خمن الكلمة" : "Guess the Word",
       desc:
         lang === "ar"
           ? "Wordle بالعربية — كلمة سرّية ومحاولات محدودة، للعب الفردي أو مشاركة الرابط مع الطلاب."
@@ -2597,7 +2634,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
