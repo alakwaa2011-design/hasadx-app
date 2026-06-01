@@ -385,53 +385,67 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
  */
 const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
-       style={{ filter: "drop-shadow(0 2px 14px rgba(251,191,36,0.5))" }}>
+       style={{ filter: "drop-shadow(0 3px 16px rgba(251,100,20,0.7))" }}>
     <defs>
-      <radialGradient id="hs-floor" cx="50%" cy="100%" r="60%">
-        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.35"/>
-        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0"/>
+      <radialGradient id="hs-glow" cx="50%" cy="72%" r="55%">
+        <stop offset="0%" stopColor="#f97316" stopOpacity="0.85"/>
+        <stop offset="60%" stopColor="#ea580c" stopOpacity="0.3"/>
+        <stop offset="100%" stopColor="#ea580c" stopOpacity="0"/>
       </radialGradient>
+      <linearGradient id="hs-back" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#1e1e2e"/>
+        <stop offset="100%" stopColor="#0f0f1a"/>
+      </linearGradient>
+      <linearGradient id="hs-seat" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#2a2a3e"/>
+        <stop offset="100%" stopColor="#16162a"/>
+      </linearGradient>
     </defs>
 
-    {/* Dark stage background */}
-    <rect width="56" height="56" rx="12" fill="#0c0c14"/>
+    {/* Stage black background */}
+    <rect width="56" height="56" rx="13" fill="#08080f"/>
+    {/* Heat glow from beneath chair */}
+    <rect width="56" height="56" rx="13" fill="url(#hs-glow)"/>
 
-    {/* Spotlight beams from top — three angled cones */}
-    <path d="M8 0 L2 42 L24 42 Z"  fill="rgba(251,191,36,0.07)"/>
-    <path d="M28 0 L12 56 L44 56 Z" fill="rgba(251,191,36,0.10)"/>
-    <path d="M48 0 L32 42 L54 42 Z" fill="rgba(251,191,36,0.07)"/>
+    {/* ── Modern pedestal chair (front view) ── */}
 
-    {/* Floor glow under chair */}
-    <ellipse cx="28" cy="53" rx="18" ry="4" fill="url(#hs-floor)"/>
+    {/* Headrest — rounded pill at top */}
+    <rect x="18" y="6" width="20" height="9" rx="4.5" fill="url(#hs-back)"/>
+    <rect x="19" y="7" width="18" height="4" rx="2" fill="rgba(255,255,255,0.07)"/>
+    {/* Subtle orange edge glow on headrest */}
+    <rect x="18" y="13" width="20" height="1.5" rx="0.7" fill="#f97316" opacity="0.5"/>
 
-    {/* ── Chair (front view) ── */}
+    {/* Backrest — slightly tapered toward top */}
+    <path d="M14 14 Q13 35 15 37 L41 37 Q43 35 42 14 Z" fill="url(#hs-back)"/>
+    {/* Backrest inner panel */}
+    <path d="M17 16 Q16 32 18 34 L38 34 Q40 32 39 16 Z" fill="rgba(255,255,255,0.04)"/>
+    {/* Backrest seam lines */}
+    <line x1="28" y1="16" x2="28" y2="34" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+    <line x1="14" y1="26" x2="42" y2="26" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
+    {/* Orange accent line on backrest */}
+    <rect x="14" y="37" width="28" height="1.5" rx="0.7" fill="#f97316" opacity="0.7"/>
 
-    {/* Back-left leg  — spans full height */}
-    <rect x="12" y="10" width="5" height="44" rx="2.5" fill="#92400e"/>
-    {/* Back-right leg */}
-    <rect x="39" y="10" width="5" height="44" rx="2.5" fill="#92400e"/>
+    {/* Seat — wider, bold */}
+    <rect x="10" y="36" width="36" height="8" rx="4" fill="url(#hs-seat)"/>
+    <rect x="11" y="37" width="34" height="3.5" rx="2" fill="rgba(255,255,255,0.08)"/>
+    {/* Orange glow line under seat edge */}
+    <rect x="10" y="43" width="36" height="1.5" rx="0.7" fill="#f97316" opacity="0.9"/>
 
-    {/* Backrest panel between legs */}
-    <rect x="12" y="10" width="32" height="22" rx="3" fill="#d97706"/>
-    {/* Backrest gloss */}
-    <rect x="13" y="11" width="30" height="8" rx="2" fill="rgba(255,255,255,0.16)"/>
-    {/* Backrest bottom edge darker */}
-    <rect x="12" y="29" width="32" height="3" rx="1" fill="#92400e"/>
+    {/* Pedestal column */}
+    <rect x="24" y="44" width="8" height="7" rx="2" fill="#111120"/>
+    <rect x="25" y="44" width="4" height="3" rx="1" fill="rgba(255,255,255,0.05)"/>
 
-    {/* Seat — slightly wider than backrest */}
-    <rect x="9" y="32" width="38" height="8" rx="3.5" fill="#f59e0b"/>
-    {/* Seat gloss */}
-    <rect x="10" y="32" width="36" height="4" rx="2" fill="rgba(255,255,255,0.2)"/>
+    {/* Base disc — ellipse for 3-D effect */}
+    <ellipse cx="28" cy="52.5" rx="14" ry="3" fill="#111120"/>
+    <ellipse cx="28" cy="52" rx="12" ry="2" fill="#1a1a2e"/>
+    {/* Base orange rim glow */}
+    <ellipse cx="28" cy="52" rx="13" ry="2.5" fill="none" stroke="#f97316" strokeWidth="0.8" opacity="0.6"/>
 
-    {/* Front-left leg */}
-    <rect x="12" y="40" width="5" height="14" rx="2.5" fill="#78350f"/>
-    {/* Front-right leg */}
-    <rect x="39" y="40" width="5" height="14" rx="2.5" fill="#78350f"/>
-
-    {/* Spotlight source dots at top */}
-    <circle cx="8"  cy="3" r="2.5" fill="#fde68a" opacity="0.9"/>
-    <circle cx="28" cy="2" r="3"   fill="#fde68a"/>
-    <circle cx="48" cy="3" r="2.5" fill="#fde68a" opacity="0.9"/>
+    {/* Heat shimmer lines on either side */}
+    <line x1="7" y1="48" x2="10" y2="38" stroke="#f97316" strokeWidth="1" opacity="0.3" strokeLinecap="round"/>
+    <line x1="9" y1="50" x2="11" y2="42" stroke="#fbbf24" strokeWidth="0.8" opacity="0.2" strokeLinecap="round"/>
+    <line x1="49" y1="48" x2="46" y2="38" stroke="#f97316" strokeWidth="1" opacity="0.3" strokeLinecap="round"/>
+    <line x1="47" y1="50" x2="45" y2="42" stroke="#fbbf24" strokeWidth="0.8" opacity="0.2" strokeLinecap="round"/>
   </svg>
 );
 
