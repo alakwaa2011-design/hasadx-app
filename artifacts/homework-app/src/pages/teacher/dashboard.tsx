@@ -145,6 +145,46 @@ const MemoryIcon = ({ size = 56 }: { size?: number }) => {
 };
 
 /**
+ * Multiplication icon — a mini "chalkboard" equation: 7 × 8 = ? with the answer revealed below.
+ * Amber/orange colours matching the game card. No background.
+ */
+const MultiplyIcon = ({ size = 56 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="mul-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#F97316"/>
+        <stop offset="100%" stopColor="#B45309"/>
+      </linearGradient>
+      <linearGradient id="mul-ans" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#FCD34D"/>
+        <stop offset="100%" stopColor="#F59E0B"/>
+      </linearGradient>
+    </defs>
+
+    {/* Chalkboard / card background */}
+    <rect x="4" y="4" width="92" height="92" rx="14" fill="url(#mul-bg)"/>
+    {/* Subtle top gloss */}
+    <rect x="4" y="4" width="92" height="22" rx="14" fill="rgba(255,255,255,0.15)"/>
+
+    {/* Question line: 7 × 8 = */}
+    <text x="50" y="40"
+          textAnchor="middle" dominantBaseline="central"
+          fill="white" fontSize="26" fontWeight="900"
+          fontFamily="system-ui,monospace">{"7 × 8 ="}</text>
+
+    {/* Divider line */}
+    <line x1="18" y1="55" x2="82" y2="55" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeDasharray="4,3"/>
+
+    {/* Answer box */}
+    <rect x="28" y="62" width="44" height="28" rx="8" fill="url(#mul-ans)"/>
+    <text x="50" y="76"
+          textAnchor="middle" dominantBaseline="central"
+          fill="#7C2D12" fontSize="22" fontWeight="900"
+          fontFamily="system-ui,monospace">56</text>
+  </svg>
+);
+
+/**
  * Flag Quiz icon — 2×2 grid of four recognisable country flags.
  * France | Japan  /  Germany | Italy  — no background.
  */
@@ -2355,7 +2395,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "ذاكرة" : "Memory",
     },
     {
-      icon: "✖️",
+      icon: <MultiplyIcon size={56} />,
       title: lang === "ar" ? "جدول الضرب" : "Multiplication",
       desc:
         lang === "ar"
@@ -2450,7 +2490,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
