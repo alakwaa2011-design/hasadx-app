@@ -44,6 +44,44 @@ const WameethIcon = ({ height = 36 }: { height?: number }) => {
   );
 };
 
+/** Hack Game icon — laptop with green matrix/hacker code on screen */
+const HackIcon = ({ size = 52 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    {/* Laptop base / body */}
+    <rect x="8" y="18" width="84" height="56" rx="5" fill="#1a1a1a"/>
+    {/* Screen bezel */}
+    <rect x="12" y="22" width="76" height="46" rx="3" fill="#111"/>
+    {/* Screen — black with green glow */}
+    <rect x="14" y="24" width="72" height="42" rx="2" fill="#030f06"/>
+    <rect x="14" y="24" width="72" height="42" rx="2" fill="url(#hack-glow)" opacity="0.4"/>
+    <defs>
+      <radialGradient id="hack-glow" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stopColor="#00ff41" stopOpacity="0.35"/>
+        <stop offset="100%" stopColor="#00ff41" stopOpacity="0"/>
+      </radialGradient>
+    </defs>
+    {/* Matrix code lines — green characters */}
+    {/* Row 1 */}
+    <text x="17" y="32" fill="#00ff41" fontSize="5" fontFamily="monospace" opacity="0.9">01 AC FF 7E 3B</text>
+    {/* Row 2 */}
+    <text x="17" y="39" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.75">if(root){hack()}</text>
+    {/* Row 3 - brighter highlighted line */}
+    <text x="17" y="46" fill="#00ff41" fontSize="5" fontFamily="monospace" fontWeight="bold">ACCESS_GRANTED_</text>
+    {/* Row 4 */}
+    <text x="17" y="53" fill="#009922" fontSize="5" fontFamily="monospace" opacity="0.65">0xDEAD 0xBEEF</text>
+    {/* Row 5 */}
+    <text x="17" y="60" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.8">{">>> decrypt..."}</text>
+    {/* Blinking cursor */}
+    <rect x="74" y="55" width="4" height="6" rx="0.5" fill="#00ff41" opacity="0.95"/>
+    {/* Laptop base / keyboard area */}
+    <rect x="4" y="74" width="92" height="7" rx="3" fill="#222"/>
+    {/* Trackpad */}
+    <rect x="38" y="76" width="24" height="3" rx="1.5" fill="#333"/>
+    {/* Hinge */}
+    <rect x="8" y="73" width="84" height="3" rx="1" fill="#1a1a1a"/>
+  </svg>
+);
+
 /** Professional SVG wheel icon — mirrors the actual game wheel colours */
 const WheelIcon = ({ size = 28 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -1965,7 +2003,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "عرض صفّي" : "Class display",
     },
     {
-      icon: "💻",
+      icon: <HackIcon size={58} />,
       title: lang === "ar" ? "لعبة الاختراق" : "Hack Game",
       desc:
         lang === "ar"
@@ -2162,7 +2200,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune") ? "overflow-hidden" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack") ? "overflow-hidden" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
