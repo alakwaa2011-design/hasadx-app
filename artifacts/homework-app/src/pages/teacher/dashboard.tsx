@@ -87,6 +87,49 @@ const HackIcon = ({ size = 56 }: { size?: number }) => (
 );
 
 /**
+ * Color Game icon — 4×4 grid of same-colour squares, one is a different shade.
+ * Mirrors the actual game mechanic. No background.
+ */
+const ColorGameIcon = ({ size = 56 }: { size?: number }) => {
+  // Base: vivid violet  |  Different: lighter purple
+  const base = "#7C3AED";
+  const diff = "#C084FC";
+  // Odd square at row=2, col=1 (non-obvious position like real game)
+  const oddIdx = 2 * 4 + 1; // = 9
+  const sq = 22, gap = 3, start = 2;
+  const pos = (n: number) => start + n * (sq + gap);
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      {Array.from({ length: 16 }).map((_, i) => {
+        const row = Math.floor(i / 4);
+        const col = i % 4;
+        const isOdd = i === oddIdx;
+        return (
+          <rect
+            key={i}
+            x={pos(col)} y={pos(row)}
+            width={sq} height={sq}
+            rx="5"
+            fill={isOdd ? diff : base}
+            opacity={isOdd ? 1 : 0.88}
+          />
+        );
+      })}
+      {/* Subtle white ring on the odd square to make it "pop" */}
+      <rect
+        x={pos(1) - 2} y={pos(2) - 2}
+        width={sq + 4} height={sq + 4}
+        rx="7"
+        fill="none"
+        stroke="white"
+        strokeWidth="2"
+        opacity="0.55"
+      />
+    </svg>
+  );
+};
+
+/**
  * Tug-of-War icon — two teams (blue/red stick figures) pulling a braided rope
  * with a red centre-flag marker. No background.
  */
@@ -2114,7 +2157,7 @@ function CompetitiveTab({
       _gated: "maraqui" as const,
     },
     {
-      icon: "🎨",
+      icon: <ColorGameIcon size={54} />,
       title: lang === "ar" ? "لعبة الألوان" : "Color Game",
       desc:
         lang === "ar"
@@ -2257,7 +2300,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack" || game.type === "tug_of_war") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(game.type === "knowledge_race" || game.type === "wheel_of_fortune" || game.type === "hack" || game.type === "tug_of_war" || game.type === "color_game") ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
