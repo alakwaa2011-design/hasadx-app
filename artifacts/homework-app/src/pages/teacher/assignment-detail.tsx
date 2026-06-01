@@ -1146,7 +1146,7 @@ export default function TeacherAssignmentDetail() {
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-sm font-bold border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">
                       <Zap className="w-3.5 h-3.5 shrink-0" />
-                      <span className="text-xs font-mono truncate max-w-[90px]">/solo/{soloChallenge.slug}</span>
+                      <span className="text-xs font-mono truncate max-w-[90px]">⚡ {soloChallenge.slug}</span>
                       <span className="text-xs opacity-55 hidden md:inline ms-0.5">• {soloChallenge.playCount} {lang === "ar" ? "لاعب" : "plays"}</span>
                       {/* Copy */}
                       <button onClick={copySoloLink} className="ms-0.5 p-1 rounded hover:bg-amber-500/20 transition-colors" title={lang === "ar" ? "نسخ الرابط" : "Copy link"}>
@@ -2185,7 +2185,7 @@ export default function TeacherAssignmentDetail() {
                 <Trophy className="w-6 h-6 text-white" />
                 <div className="flex-1">
                   <h2 className="text-base font-black text-white">{lang === "ar" ? "قائمة المتصدرين" : "Leaderboard"}</h2>
-                  <p className="text-xs text-white/80">{lang === "ar" ? `وميض حر · ${soloChallenge?.slug}` : `Solo · ${soloChallenge?.slug}`}</p>
+                  <p className="text-xs text-white/80">{lang === "ar" ? `وميض حر · ${soloChallenge?.slug}` : `Free Flash · ${soloChallenge?.slug}`}</p>
                 </div>
                 <button onClick={() => setSoloLeaderboardOpen(false)} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white">
                   <X className="w-4 h-4" />
