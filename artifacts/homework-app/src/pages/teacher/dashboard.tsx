@@ -2158,7 +2158,7 @@ function CompetitiveTab({
               : "Big-screen challenges for audiences plus ready quizzes you can share by link or PIN."}
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           <Card
             onClick={() => openGameFromCatalog(arenaGame)}
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
@@ -2211,6 +2211,36 @@ function CompetitiveTab({
               </div>
               <ChevronLeft
                 className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+              />
+            </div>
+          </Card>
+
+          {/* وميض حر — مسابقة فردية بالرابط */}
+          <Card
+            onClick={() => setLocation("/teacher/solo-challenges")}
+            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shrink-0">
+                <Zap className="w-6 h-6 sm:w-7 sm:h-7 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === "ar" ? "وميض حر" : "Free Flash"}
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/25">
+                    {lang === "ar" ? "بالرابط" : "Link"}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                  {lang === "ar"
+                    ? "أنشئ مسابقة وأرسل رابطها — يجيب المشاركون في أي وقت بشكل فردي."
+                    : "Create a quiz, share the link — participants answer anytime, individually."}
+                </p>
+              </div>
+              <ChevronLeft
+                className={`w-5 h-5 text-muted-foreground group-hover:text-yellow-500 shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
               />
             </div>
           </Card>
