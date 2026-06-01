@@ -148,35 +148,45 @@ const MemoryIcon = ({ size = 56 }: { size?: number }) => {
  * Letrly (Wordle) icon — 3 rows × 5 squares with green/yellow/gray states.
  * Matches the actual game's visual language exactly. Light background.
  */
+/**
+ * Letrly (Wordle-Arabic) icon — real Arabic letters in a 3-row × 5-col grid.
+ * Secret word: ر-ي-ا-ض-ة  showing 3 guesses with true green/yellow/gray states.
+ */
 const LetrlyIcon = ({ size = 56 }: { size?: number }) => {
-  const sq = 14, gap = 3;
-  const startX = 9, startY = 26;
-  const xs = [0,1,2,3,4].map(i => startX + i * (sq + gap));
-  const ys = [0,1,2].map(i => startY + i * (sq + gap));
-  const rows: Array<Array<"g"|"y"|"z">> = [
-    ["z","z","z","z","z"],
-    ["g","z","y","z","z"],
-    ["g","g","g","y","z"],
+  const sq = 16, gap = 3;
+  const startX = (100 - (5 * sq + 4 * gap)) / 2;
+  const startY = 8;
+  // Each entry: [letter, state]
+  const rows: Array<Array<[string, "g"|"y"|"z"]>> = [
+    [["م","z"],["ط","z"],["ا","y"],["ر","y"],["ب","z"]],
+    [["ك","z"],["ر","g"],["ي","g"],["ا","g"],["ض","g"]],
+    [["ر","g"],["ي","g"],["ا","g"],["ض","g"],["ة","g"]],
   ];
-  const fill = { g: "#10B981", y: "#FBBF24", z: "#A1A1AA" };
+  const fill = { g: "#10B981", y: "#F59E0B", z: "#6B7280" };
+  const border = { g: "#059669", y: "#D97706", z: "#4B5563" };
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      {/* Light greenish-white background */}
-      <rect width="100" height="100" rx="14" fill="#EEF7F2"/>
-      <rect width="100" height="18" rx="14" fill="rgba(16,185,129,0.08)"/>
-      {rows.map((row, ri) => row.map((state, ci) => (
-        <g key={`${ri}-${ci}`}>
-          {/* Subtle tile shadow */}
-          <rect x={xs[ci]} y={ys[ri]+2} width={sq} height={sq} rx="3" fill="rgba(0,0,0,0.08)"/>
-          {/* Tile */}
-          <rect x={xs[ci]} y={ys[ri]} width={sq} height={sq} rx="3" fill={fill[state]}/>
-          {/* Top gloss */}
-          <rect x={xs[ci]} y={ys[ri]} width={sq} height={5} rx="3" fill="rgba(255,255,255,0.25)"/>
-        </g>
-      )))}
-      {/* Small label */}
-      <text x="50" y="88" textAnchor="middle" dominantBaseline="central"
-            fill="#256B3A" fontSize="8" fontWeight="700" fontFamily="system-ui,sans-serif">خمن الكلمة</text>
+      {/* White background like real game */}
+      <rect width="100" height="100" rx="14" fill="#F8FAF9"/>
+      {rows.map((row, ri) =>
+        row.map(([letter, state], ci) => {
+          const x = startX + ci * (sq + gap);
+          const y = startY + ri * (sq + gap + 2);
+          return (
+            <g key={`${ri}-${ci}`}>
+              <rect x={x} y={y} width={sq} height={sq} rx="3"
+                    fill={fill[state]} stroke={border[state]} strokeWidth="1"/>
+              <text x={x + sq/2} y={y + sq/2 + 1}
+                    textAnchor="middle" dominantBaseline="central"
+                    fill="white" fontSize="9" fontWeight="900"
+                    fontFamily="system-ui,sans-serif">{letter}</text>
+            </g>
+          );
+        })
+      )}
+      {/* Label bottom */}
+      <text x="50" y="93" textAnchor="middle" dominantBaseline="central"
+            fill="#256B3A" fontSize="7.5" fontWeight="700" fontFamily="system-ui,sans-serif">خمن الكلمة</text>
     </svg>
   );
 };
@@ -196,9 +206,6 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="scr-bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#3B0764"/><stop offset="100%" stopColor="#4C1D95"/>
-        </linearGradient>
         <linearGradient id="scr-tile" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#5B21B6"/>
         </linearGradient>
@@ -206,9 +213,9 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
           <stop offset="0%" stopColor="#8B5CF6"/><stop offset="100%" stopColor="#6D28D9"/>
         </linearGradient>
       </defs>
-      {/* Dark game background */}
-      <rect width="100" height="100" rx="14" fill="url(#scr-bg)"/>
-      <rect width="100" height="18" rx="14" fill="rgba(255,255,255,0.05)"/>
+      {/* Light lavender background — tiles pop against it */}
+      <rect width="100" height="100" rx="14" fill="#F5F0FF"/>
+      <rect width="100" height="18" rx="14" fill="rgba(139,92,246,0.08)"/>
 
       {/* ── Answer slots ── */}
       {[0,1,2,3].map(i => {
@@ -216,14 +223,13 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
         const filled = i === 0;
         return (
           <g key={i}>
-            {/* Shadow for 3D on filled tile */}
-            {filled && <rect x={x} y={slotY+4} width={slotW} height={slotH} rx="5" fill="rgba(109,40,217,0.5)"/>}
+            {filled && <rect x={x} y={slotY+4} width={slotW} height={slotH} rx="5" fill="rgba(109,40,217,0.35)"/>}
             <rect x={x} y={slotY} width={slotW} height={slotH} rx="5"
-                  fill={filled ? "url(#scr-filled)" : "rgba(255,255,255,0.07)"}
-                  stroke={filled ? "none" : "rgba(255,255,255,0.18)"} strokeWidth="1.2"/>
+                  fill={filled ? "url(#scr-filled)" : "rgba(139,92,246,0.12)"}
+                  stroke={filled ? "none" : "#C4B5FD"} strokeWidth="1.5"/>
             {filled && (
               <text x={x+slotW/2} y={slotY+slotH/2+1} textAnchor="middle" dominantBaseline="central"
-                    fill="white" fontSize="12" fontWeight="900" fontFamily="system-ui,sans-serif">ح</text>
+                    fill="white" fontSize="13" fontWeight="900" fontFamily="system-ui,sans-serif">ح</text>
             )}
           </g>
         );
@@ -231,7 +237,7 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
 
       {/* Hint label */}
       <text x="50" y="47" textAnchor="middle" dominantBaseline="central"
-            fill="rgba(255,255,255,0.22)" fontSize="7" fontFamily="system-ui,sans-serif">رتّب الحروف</text>
+            fill="#7C3AED" fontSize="7.5" fontWeight="600" fontFamily="system-ui,sans-serif">رتّب الحروف</text>
 
       {/* ── Scrambled letter tiles ── */}
       {letters.map((letter, i) => {
@@ -239,14 +245,14 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
         return (
           <g key={i}>
             {/* 3-D bottom shadow */}
-            <rect x={x} y={tileY+5} width={tileW} height={tileH} rx="6" fill="#3B0764" opacity="0.7"/>
+            <rect x={x} y={tileY+5} width={tileW} height={tileH} rx="6" fill="#6D28D9" opacity="0.45"/>
             {/* Tile face */}
             <rect x={x} y={tileY} width={tileW} height={tileH} rx="6" fill="url(#scr-tile)"/>
             {/* Top gloss */}
-            <rect x={x} y={tileY} width={tileW} height={8} rx="6" fill="rgba(255,255,255,0.18)"/>
+            <rect x={x} y={tileY} width={tileW} height={8} rx="6" fill="rgba(255,255,255,0.22)"/>
             {/* Letter */}
             <text x={x+tileW/2} y={tileY+tileH/2+1} textAnchor="middle" dominantBaseline="central"
-                  fill="white" fontSize="14" fontWeight="900" fontFamily="system-ui,sans-serif">{letter}</text>
+                  fill="white" fontSize="15" fontWeight="900" fontFamily="system-ui,sans-serif">{letter}</text>
           </g>
         );
       })}
@@ -260,37 +266,30 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
  */
 const StroopIcon = ({ size = 56 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="str-bg" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#7F1D1D"/>
-        <stop offset="100%" stopColor="#92400E"/>
-      </linearGradient>
-    </defs>
-    {/* Dark background */}
-    <rect width="100" height="100" rx="14" fill="url(#str-bg)"/>
-    {/* Subtle top gloss */}
-    <rect width="100" height="20" rx="14" fill="rgba(255,255,255,0.06)"/>
+    {/* Clean white background — coloured text pops best on white */}
+    <rect width="100" height="100" rx="14" fill="#FFFBF5"/>
+    {/* Subtle top tint */}
+    <rect width="100" height="16" rx="14" fill="rgba(239,68,68,0.06)"/>
 
-    {/* "أحمر" written in BLUE — the classic Stroop confusion */}
-    <text x="50" y="36"
+    {/* "أحمر" — the WORD says red, but written in BLUE */}
+    <text x="50" y="34"
           textAnchor="middle" dominantBaseline="central"
-          fill="#3B82F6" fontSize="26" fontWeight="900"
-          fontFamily="system-ui,sans-serif">أحمر</text>
+          fill="#2563EB" fontSize="30" fontWeight="900"
+          fontFamily="'Segoe UI',Tahoma,Arial,sans-serif">أحمر</text>
 
-    {/* Thin divider */}
-    <line x1="20" y1="52" x2="80" y2="52" stroke="rgba(255,255,255,0.15)" strokeWidth="1"/>
+    {/* Divider */}
+    <line x1="14" y1="52" x2="86" y2="52" stroke="#E5E7EB" strokeWidth="1.5"/>
 
-    {/* "أزرق" written in RED */}
-    <text x="50" y="68"
+    {/* "أزرق" — the WORD says blue, but written in RED */}
+    <text x="50" y="70"
           textAnchor="middle" dominantBaseline="central"
-          fill="#EF4444" fontSize="26" fontWeight="900"
-          fontFamily="system-ui,sans-serif">أزرق</text>
+          fill="#DC2626" fontSize="30" fontWeight="900"
+          fontFamily="'Segoe UI',Tahoma,Arial,sans-serif">أزرق</text>
 
-    {/* Small question mark hint */}
-    <text x="50" y="88"
+    {/* Hint */}
+    <text x="50" y="89"
           textAnchor="middle" dominantBaseline="central"
-          fill="rgba(255,255,255,0.3)" fontSize="9"
-          fontFamily="system-ui,sans-serif">ما لون الحبر؟</text>
+          fill="#9CA3AF" fontSize="8" fontFamily="system-ui,sans-serif">ما لون الحبر؟</text>
   </svg>
 );
 
