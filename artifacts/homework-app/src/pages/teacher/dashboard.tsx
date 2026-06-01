@@ -64,7 +64,7 @@ const HackIcon = ({ size = 52 }: { size?: number }) => (
     {/* Row 1 */}
     <text x="17" y="32" fill="#00ff41" fontSize="5" fontFamily="monospace" opacity="0.9">01 AC FF 7E 3B</text>
     {/* Row 2 */}
-    <text x="17" y="39" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.75">if(root){hack()}</text>
+      <text x="17" y="39" fill="#00cc33" fontSize="5" fontFamily="monospace" opacity="0.75">{"if(root){hack()}"}</text>
     {/* Row 3 - brighter highlighted line */}
     <text x="17" y="46" fill="#00ff41" fontSize="5" fontFamily="monospace" fontWeight="bold">ACCESS_GRANTED_</text>
     {/* Row 4 */}
