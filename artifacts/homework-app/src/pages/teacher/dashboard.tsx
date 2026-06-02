@@ -380,6 +380,67 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
 };
 
 /**
+ * Million icon — game-show screen with 4 answer options (A/B/C/D)
+ * on the exact dark-navy background (#0a1628) used in the real game.
+ */
+const MillionIcon = ({ size = 56 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
+       style={{ filter: "drop-shadow(0 2px 10px rgba(245,158,11,0.5))" }}>
+    <defs>
+      <radialGradient id="ml-bg" cx="50%" cy="40%" r="65%">
+        <stop offset="0%" stopColor="#0d1f3c"/>
+        <stop offset="100%" stopColor="#060e1e"/>
+      </radialGradient>
+      {/* Option button gradient — dark blue */}
+      <linearGradient id="ml-opt" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#1e3a7b"/>
+        <stop offset="100%" stopColor="#132660"/>
+      </linearGradient>
+    </defs>
+
+    {/* Background */}
+    <rect width="56" height="56" rx="12" fill="url(#ml-bg)"/>
+
+    {/* Top gold question-mark badge */}
+    <circle cx="28" cy="10" r="7" fill="#f59e0b" opacity="0.15"/>
+    <circle cx="28" cy="10" r="5.5" fill="#f59e0b" opacity="0.25"/>
+    <text x="28" y="14" textAnchor="middle" fill="#fde68a" fontSize="9"
+          fontWeight="900" fontFamily="Georgia,serif">?</text>
+
+    {/* Prize ladder hint — thin amber bar on right */}
+    <rect x="50" y="18" width="3" height="20" rx="1.5" fill="rgba(245,158,11,0.15)"/>
+    <rect x="50" y="30" width="3" height="4"  rx="1.5" fill="#f59e0b" opacity="0.7"/>
+
+    {/* ── 4 answer option buttons ── */}
+    {/* Row 1: A (top-left), B (top-right) */}
+    {/* A */}
+    <rect x="4"  y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <text x="9"  y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">أ</text>
+    <rect x="14" y="23" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+
+    {/* B */}
+    <rect x="30" y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <text x="35" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">ب</text>
+    <rect x="40" y="23" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+
+    {/* Row 2: C (bottom-left) — highlighted gold (correct) */}
+    <rect x="4"  y="34" width="22" height="10" rx="5" fill="#92400e" stroke="#f59e0b" strokeWidth="1"/>
+    <text x="9"  y="41.5" fill="#fde68a" fontSize="5.5" fontWeight="800" fontFamily="monospace">ج</text>
+    <rect x="14" y="37" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.12)"/>
+
+    {/* D */}
+    <rect x="30" y="34" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <text x="35" y="41.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">د</text>
+    <rect x="40" y="37" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+
+    {/* Bottom lifeline dots */}
+    <circle cx="18" cy="51" r="2.5" fill="#f59e0b" opacity="0.85"/>
+    <circle cx="28" cy="51" r="2.5" fill="#3b82f6" opacity="0.75"/>
+    <circle cx="38" cy="51" r="2.5" fill="#10b981" opacity="0.75"/>
+  </svg>
+);
+
+/**
  * HotSeat icon — a chair with flames rising beneath it.
  * Orange/red colours matching the game card.
  */
@@ -2031,8 +2092,8 @@ export default function TeacherDashboard() {
                     },
                     {
                       key: "million" as const,
-                      icon: "🏆",
-                      svgIcon: false,
+                      icon: <MillionIcon size={56} />,
+                      svgIcon: true,
                       titleAr: "من سيحصد المليون؟",
                       titleEn: "Who Wants a Million?",
                       descAr:
@@ -2698,7 +2759,7 @@ function CompetitiveTab({
       pill: lang === "ar" ? "حوار وتقييم" : "Q&A + vote",
     },
     {
-      icon: "🏆",
+      icon: <MillionIcon size={58} />,
       title: lang === "ar" ? "من سيحصد المليون؟" : "Who Wants a Million?",
       desc:
         lang === "ar"
@@ -2907,7 +2968,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat","million"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
