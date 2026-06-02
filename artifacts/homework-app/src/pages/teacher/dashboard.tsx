@@ -411,27 +411,26 @@ const MillionIcon = ({ size = 56 }: { size?: number }) => (
     <rect x="50" y="18" width="3" height="20" rx="1.5" fill="rgba(245,158,11,0.15)"/>
     <rect x="50" y="30" width="3" height="4"  rx="1.5" fill="#f59e0b" opacity="0.7"/>
 
-    {/* ── 4 answer option buttons ── */}
-    {/* Row 1: A (top-left), B (top-right) */}
-    {/* A */}
+    {/* ── 4 answer option buttons — letters on RIGHT (RTL) ── */}
+    {/* A — top-left button, letter on right */}
     <rect x="4"  y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
-    <text x="9"  y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">أ</text>
-    <rect x="14" y="23" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+    <text x="21" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">أ</text>
+    <rect x="6"  y="23" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
 
-    {/* B */}
+    {/* B — top-right button, letter on right */}
     <rect x="30" y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
-    <text x="35" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">ب</text>
-    <rect x="40" y="23" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+    <text x="47" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">ب</text>
+    <rect x="32" y="23" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
 
-    {/* Row 2: C (bottom-left) — highlighted gold (correct) */}
+    {/* C — bottom-left, highlighted gold, letter on right */}
     <rect x="4"  y="34" width="22" height="10" rx="5" fill="#92400e" stroke="#f59e0b" strokeWidth="1"/>
-    <text x="9"  y="41.5" fill="#fde68a" fontSize="5.5" fontWeight="800" fontFamily="monospace">ج</text>
-    <rect x="14" y="37" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.12)"/>
+    <text x="21" y="41.5" fill="#fde68a" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">ج</text>
+    <rect x="6"  y="37" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.12)"/>
 
-    {/* D */}
+    {/* D — bottom-right, letter on right */}
     <rect x="30" y="34" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
-    <text x="35" y="41.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace">د</text>
-    <rect x="40" y="37" width="10" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
+    <text x="47" y="41.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">د</text>
+    <rect x="32" y="37" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
 
     {/* Bottom lifeline dots */}
     <circle cx="18" cy="51" r="2.5" fill="#f59e0b" opacity="0.85"/>
