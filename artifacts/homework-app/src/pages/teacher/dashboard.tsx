@@ -2782,19 +2782,6 @@ function CompetitiveTab({
       pill: lang === "ar" ? "تنافس عالي" : "High stakes",
     },
     {
-      icon: "🆚",
-      title:
-        lang === "ar" ? "مليون — فريق ضد فريق" : "Million — Team vs Team",
-      desc:
-        lang === "ar"
-          ? "فريقان يصوتان على نفس الأسئلة في الوقت الفعلي كما في برامج التلفاز."
-          : "Two teams vote on the same questions in real-time TV-show style.",
-      color: "from-blue-500 to-purple-600",
-      type: "million_team",
-      available: true,
-      pill: lang === "ar" ? "تصويت جماعي" : "Team voting",
-    },
-    {
       icon: <VideoIcon size={52} />,
       title: lang === "ar" ? "فيديو تفاعلي" : "Interactive Video",
       desc:
