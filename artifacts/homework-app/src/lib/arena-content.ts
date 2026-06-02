@@ -351,6 +351,15 @@ export const DB_PARENT_TO_STATIC_SECTION: Record<string, string> = {
   "السيارات والمركبات": "brands",
   "الطعام والمطبخ": "life",
   "أمثال وحكم": "arabic",
+  // Extended static sections
+  "واجهة الأطفال": "kids",
+  "سؤال الصورة": "picture-q",
+  "المنهج الدراسي": "curriculum",
+  "رمضان": "ramadan",
+  "السينما العربية": "cinema-arabic",
+  "مطابخ العالم": "world-cuisine",
+  "السيارات والمحركات": "cars-engines",
+  "الفضاء والكواكب": "space-planets",
 };
 
 /**
