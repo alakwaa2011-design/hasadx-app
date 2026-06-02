@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Plus, Pencil, Trash2, Image as ImageIcon, Upload, Search,
   Sparkles, ChevronLeft, X, Check, Lock, LogIn, Loader2, AlertTriangle,
-  Globe, User as UserIcon, Eye, RefreshCw,
+  Globe, User as UserIcon, Eye, RefreshCw, Mic, MicOff, Music, Youtube,
+  Square, Play, StopCircle,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -13,7 +14,7 @@ import {
   fetchArenaCategories, fetchArenaActivities,
   createArenaCategory, updateArenaCategory, deleteArenaCategory,
   createArenaActivity, updateArenaActivity, deleteArenaActivity,
-  uploadImageFile, aiGenerateArenaQuestions,
+  uploadImageFile, uploadAudioFile, aiGenerateArenaQuestions,
   type DbArenaCategory, type DbArenaActivity,
 } from "@/lib/arena-content";
 
@@ -1074,6 +1075,15 @@ function CategoryEditor({
 
 /* ─────────────────────── Activity editor modal ─────────────────────── */
 
+/** Extract YouTube video ID from various URL formats */
+function ytVideoId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+type QType = "text" | "image" | "audio";
+type AudioMode = "youtube" | "file" | "record";
+
 function ActivityEditor({
   initial, categoryId, initialDifficulty, onClose, onSaved,
 }: {
@@ -1083,6 +1093,11 @@ function ActivityEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const initialQType: QType =
+    initial?.type === "audio" ? "audio" :
+    initial?.type === "image" ? "image" : "text";
+
+  const [qType, setQType] = useState<QType>(initialQType);
   const [question, setQuestion] = useState(initial?.question ?? "");
   const [answer, setAnswer] = useState(initial?.answer ?? "");
   const [hint, setHint] = useState(initial?.hint ?? "");
@@ -1090,11 +1105,63 @@ function ActivityEditor({
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
   const [picker, setPicker] = useState(false);
   const [saving, setSaving] = useState(false);
-  const isImage = !!imageUrl;
+
+  // ── Audio state ──
+  const [audioMode, setAudioMode] = useState<AudioMode>("youtube");
+  const [audioUrl, setAudioUrl] = useState<string>(initial?.videoUrl ?? "");
+  const [ytInput, setYtInput] = useState(initial?.videoUrl ?? "");
+  const [audioUploading, setAudioUploading] = useState(false);
+
+  // Recording state
+  const [recording, setRecording] = useState(false);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopRecording = useCallback(() => {
+    mediaRecRef.current?.stop();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setRecording(false);
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunksRef.current = [];
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setRecordedUrl(URL.createObjectURL(blob));
+      };
+      mediaRecRef.current = mr;
+      mr.start();
+      setRecording(true);
+      setRecordSecs(0);
+      timerRef.current = setInterval(() => setRecordSecs(s => s + 1), 1000);
+    } catch {
+      toast.error("تعذّر الوصول للميكروفون");
+    }
+  }, []);
+
+  const uploadRecording = useCallback(async () => {
+    if (!recordedUrl) return;
+    setAudioUploading(true);
+    const blob = await fetch(recordedUrl).then(r => r.blob());
+    const file = new File([blob], `recording-${Date.now()}.webm`, { type: "audio/webm" });
+    const url = await uploadAudioFile(file);
+    setAudioUploading(false);
+    if (url) { setAudioUrl(url); toast.success("تم رفع التسجيل"); }
+    else toast.error("فشل رفع التسجيل");
+  }, [recordedUrl]);
 
   const save = async () => {
-    if (!question.trim()) { toast.error("اكتب نص السؤال"); return; }
+    if (!question.trim()) { toast.error("اكتب نص السؤال أو وصف الصوت"); return; }
     if (!answer.trim()) { toast.error("اكتب الإجابة"); return; }
+    if (qType === "audio" && !audioUrl.trim()) { toast.error("أضف رابطاً صوتياً أو سجّل صوتاً"); return; }
     setSaving(true);
     const payload: Partial<DbArenaActivity> = {
       categoryId,
@@ -1102,20 +1169,19 @@ function ActivityEditor({
       answer: answer.trim(),
       hint: hint.trim() || null,
       difficulty,
-      imageUrl: imageUrl || null,
-      type: isImage ? "image" : "text",
+      imageUrl: qType === "image" ? (imageUrl || null) : null,
+      videoUrl: qType === "audio" ? audioUrl.trim() : null,
+      type: qType === "audio" ? "audio" : qType === "image" ? "image" : "text",
     };
     const res = initial
       ? await updateArenaActivity(initial.id, payload)
       : await createArenaActivity(payload, "manual");
     setSaving(false);
-    if (res) {
-      toast.success("تم الحفظ");
-      onSaved();
-    } else {
-      toast.error("فشل الحفظ");
-    }
+    if (res) { toast.success("تم الحفظ"); onSaved(); }
+    else toast.error("فشل الحفظ");
   };
+
+  const ytId = qType === "audio" && audioMode === "youtube" ? ytVideoId(ytInput) : null;
 
   return (
     <motion.div
@@ -1139,6 +1205,36 @@ function ActivityEditor({
         </div>
 
         <div className="space-y-4">
+
+          {/* ── Question type selector ── */}
+          <div>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">نوع السؤال</label>
+            <div className="flex gap-2 flex-wrap">
+              {([
+                { key: "text",  label: "نص",   icon: <Check className="w-3.5 h-3.5"/> },
+                { key: "image", label: "بصورة", icon: <ImageIcon className="w-3.5 h-3.5"/> },
+                { key: "audio", label: "🎵 صوت", icon: null },
+              ] as { key: QType; label: string; icon: React.ReactNode }[]).map(({ key, label, icon }) => {
+                const sel = qType === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setQType(key)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold transition-all"
+                    style={{
+                      background: sel ? BRAND.green : "white",
+                      color: sel ? "white" : BRAND.green,
+                      borderColor: BRAND.green,
+                    }}
+                  >
+                    {icon}{label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Points ── */}
           <div>
             <label className="text-xs font-bold text-gray-700 block mb-1.5">النقاط</label>
             <div className="flex gap-2">
@@ -1146,30 +1242,143 @@ function ActivityEditor({
                 const c = d === 200 ? "#3b82f6" : d === 400 ? "#8b5cf6" : d === 600 ? "#ef4444" : "#f59e0b";
                 const sel = difficulty === d;
                 return (
-                  <button
-                    key={d}
-                    onClick={() => setDifficulty(d)}
+                  <button key={d} onClick={() => setDifficulty(d)}
                     className="px-4 py-2 rounded-lg font-extrabold border-2 text-sm transition-all"
-                    style={{
-                      background: sel ? c : "white",
-                      color: sel ? "white" : c,
-                      borderColor: c,
-                    }}
+                    style={{ background: sel ? c : "white", color: sel ? "white" : c, borderColor: c }}
                     data-testid={`diff-${d}`}
-                  >
-                    {d}
-                  </button>
+                  >{d}</button>
                 );
               })}
             </div>
           </div>
 
+          {/* ── AUDIO section ── */}
+          {qType === "audio" && (
+            <div className="rounded-xl border-2 p-4 space-y-3" style={{ borderColor: "rgba(34,87,57,0.25)", background: "#f0faf4" }}>
+              <div className="flex gap-2">
+                {([
+                  { m: "youtube" as AudioMode, label: "يوتيوب", icon: <Youtube className="w-4 h-4"/> },
+                  { m: "file"    as AudioMode, label: "ملف صوتي", icon: <Upload className="w-4 h-4"/> },
+                  { m: "record"  as AudioMode, label: "تسجيل", icon: <Mic className="w-4 h-4"/> },
+                ]).map(({ m, label, icon }) => (
+                  <button key={m} onClick={() => setAudioMode(m)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all"
+                    style={{
+                      background: audioMode === m ? BRAND.green : "white",
+                      color: audioMode === m ? "white" : BRAND.green,
+                      borderColor: BRAND.green,
+                    }}
+                  >{icon}{label}</button>
+                ))}
+              </div>
+
+              {audioMode === "youtube" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-600">رابط يوتيوب</label>
+                  <input
+                    type="url"
+                    value={ytInput}
+                    onChange={(e) => { setYtInput(e.target.value); setAudioUrl(e.target.value); }}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
+                    style={{ borderColor: "rgba(34,87,57,0.3)" }}
+                    dir="ltr"
+                  />
+                  {ytId && (
+                    <div className="rounded-lg overflow-hidden border-2" style={{ borderColor: "rgba(34,87,57,0.2)" }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytId}?autoplay=0&controls=1`}
+                        title="معاينة"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+                        className="w-full"
+                        style={{ height: 120 }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {audioMode === "file" && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-600">رفع ملف صوتي (mp3 / ogg / wav / m4a)</label>
+                  <label className="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer hover:bg-white transition-colors"
+                    style={{ borderColor: "rgba(34,87,57,0.4)", color: BRAND.green }}>
+                    {audioUploading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Upload className="w-5 h-5"/>}
+                    <span className="text-sm font-bold">{audioUploading ? "جارٍ الرفع…" : "اختر ملفاً"}</span>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      disabled={audioUploading}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 30 * 1024 * 1024) { toast.error("الحجم الأقصى 30 ميجا"); return; }
+                        setAudioUploading(true);
+                        const url = await uploadAudioFile(file);
+                        setAudioUploading(false);
+                        if (url) { setAudioUrl(url); toast.success("تم رفع الملف"); }
+                        else toast.error("فشل الرفع");
+                      }}
+                    />
+                  </label>
+                  {audioUrl && audioMode === "file" && !audioUrl.includes("youtube") && (
+                    <audio controls src={audioUrl} className="w-full rounded-lg mt-1" />
+                  )}
+                </div>
+              )}
+
+              {audioMode === "record" && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    {!recording ? (
+                      <button onClick={startRecording}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white text-sm"
+                        style={{ background: "#dc2626" }}>
+                        <Mic className="w-4 h-4"/> ابدأ التسجيل
+                      </button>
+                    ) : (
+                      <button onClick={stopRecording}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white text-sm animate-pulse"
+                        style={{ background: "#dc2626" }}>
+                        <Square className="w-4 h-4"/>
+                        إيقاف ({Math.floor(recordSecs/60).toString().padStart(2,"0")}:{(recordSecs%60).toString().padStart(2,"0")})
+                      </button>
+                    )}
+                  </div>
+                  {recordedUrl && (
+                    <div className="space-y-2">
+                      <audio controls src={recordedUrl} className="w-full rounded-lg"/>
+                      <button
+                        onClick={uploadRecording}
+                        disabled={audioUploading}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white text-sm w-full justify-center disabled:opacity-50"
+                        style={{ background: BRAND.green }}
+                      >
+                        {audioUploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
+                        رفع التسجيل وحفظه
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {audioUrl && (
+                <p className="text-xs text-green-700 font-medium truncate">✓ رابط الصوت: {audioUrl.slice(0,60)}…</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Question text ── */}
           <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">السؤال</label>
+            <label className="text-xs font-bold text-gray-700 block mb-1.5">
+              {qType === "audio" ? "وصف السؤال / ما المطلوب؟" : "نص السؤال"}
+            </label>
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               rows={2}
+              placeholder={qType === "audio" ? "مثال: ما اسم المطرب الذي يغني هذه الأغنية؟" : ""}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
               dir="rtl"
@@ -1177,90 +1386,71 @@ function ActivityEditor({
             />
           </div>
 
+          {/* ── Answer ── */}
           <div>
             <label className="text-xs font-bold text-gray-700 block mb-1.5">الإجابة الصحيحة</label>
-            <input
-              type="text"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
+            <input type="text" value={answer} onChange={(e) => setAnswer(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
-              dir="rtl"
-              data-testid="a-input"
+              dir="rtl" data-testid="a-input"
             />
           </div>
 
+          {/* ── Hint ── */}
           <div>
             <label className="text-xs font-bold text-gray-700 block mb-1.5">تلميح (اختياري)</label>
-            <input
-              type="text"
-              value={hint ?? ""}
-              onChange={(e) => setHint(e.target.value)}
+            <input type="text" value={hint ?? ""} onChange={(e) => setHint(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
               style={{ borderColor: "rgba(34,87,57,0.3)" }}
               dir="rtl"
             />
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-gray-700 block mb-1.5">صورة (اختياري)</label>
-            <div className="flex items-start gap-3">
-              {imageUrl ? (
-                <div className="relative">
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    className="w-28 h-28 object-cover rounded-lg border-2"
-                    style={{ borderColor: "rgba(34,87,57,0.2)" }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
-                  />
-                  <button
-                    onClick={() => setImageUrl(null)}
-                    className="absolute -top-2 -end-2 bg-red-500 text-white rounded-full p-1"
-                    aria-label="إزالة الصورة"
+          {/* ── Image (only when type=image) ── */}
+          {qType === "image" && (
+            <div>
+              <label className="text-xs font-bold text-gray-700 block mb-1.5">الصورة</label>
+              <div className="flex items-start gap-3">
+                {imageUrl ? (
+                  <div className="relative">
+                    <img src={imageUrl} alt="" className="w-28 h-28 object-cover rounded-lg border-2"
+                      style={{ borderColor: "rgba(34,87,57,0.2)" }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+                    />
+                    <button onClick={() => setImageUrl(null)}
+                      className="absolute -top-2 -end-2 bg-red-500 text-white rounded-full p-1">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setPicker(true)}
+                    className="w-28 h-28 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-xs gap-1 hover:bg-gray-50"
+                    style={{ borderColor: "rgba(34,87,57,0.4)", color: BRAND.green }}
+                    data-testid="add-image-btn"
                   >
-                    <X className="w-3 h-3" />
+                    <ImageIcon className="w-6 h-6"/>أضف صورة
                   </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setPicker(true)}
-                  className="w-28 h-28 rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-xs gap-1 hover:bg-gray-50"
-                  style={{ borderColor: "rgba(34,87,57,0.4)", color: BRAND.green }}
-                  data-testid="add-image-btn"
-                >
-                  <ImageIcon className="w-6 h-6" />
-                  أضف صورة
-                </button>
-              )}
-              {imageUrl && (
-                <button
-                  onClick={() => setPicker(true)}
-                  className="px-3 py-2 rounded-md text-xs font-bold border-2 hover:bg-gray-50"
-                  style={{ borderColor: BRAND.green, color: BRAND.green }}
-                >
-                  تغيير
-                </button>
-              )}
+                )}
+                {imageUrl && (
+                  <button onClick={() => setPicker(true)}
+                    className="px-3 py-2 rounded-md text-xs font-bold border-2 hover:bg-gray-50"
+                    style={{ borderColor: BRAND.green, color: BRAND.green }}>
+                    تغيير
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex gap-2 pt-2">
-            <button
-              onClick={onClose}
+            <button onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-lg font-bold border-2 hover:bg-gray-50"
-              style={{ borderColor: "rgba(0,0,0,0.15)" }}
-            >
-              إلغاء
-            </button>
-            <button
-              onClick={save}
-              disabled={saving}
+              style={{ borderColor: "rgba(0,0,0,0.15)" }}>إلغاء</button>
+            <button onClick={save} disabled={saving}
               className="flex-1 px-4 py-2.5 rounded-lg font-bold text-white inline-flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ background: BRAND.green }}
-              data-testid="save-act-btn"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              data-testid="save-act-btn">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Check className="w-4 h-4"/>}
               حفظ
             </button>
           </div>
