@@ -24,7 +24,7 @@ export interface DbArenaCategory {
 export interface DbArenaActivity {
   id: number;
   categoryId: number;
-  type: "text" | "image" | "video" | "memory" | "sin-jeem" | "categorize" | "logo";
+  type: "text" | "image" | "video" | "audio" | "memory" | "sin-jeem" | "categorize" | "logo";
   difficulty: 200 | 400 | 600 | 800;
   question: string;
   answer: string;
@@ -291,6 +291,29 @@ export async function deleteArenaReport(id: number): Promise<boolean> {
 }
 
 export async function uploadImageFile(file: File): Promise<string | null> {
+  try {
+    const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+    });
+    if (!reqRes.ok) return null;
+    const { uploadURL, objectPath } = await reqRes.json();
+    const putRes = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!putRes.ok) return null;
+    return `${API_BASE}/api${objectPath}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Upload an audio file (mp3/ogg/wav/m4a/webm) — reuses the same presigned-URL flow. */
+export async function uploadAudioFile(file: File): Promise<string | null> {
   try {
     const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
       method: "POST",

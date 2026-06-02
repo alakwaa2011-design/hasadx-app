@@ -6,6 +6,7 @@ export type ArenaQuestionType =
   | "text"
   | "image"
   | "video"
+  | "audio"
   | "memory"
   | "sin-jeem"
   | "categorize"

@@ -3804,6 +3804,7 @@ function InteractiveActivity({
   if (t === "categorize")
     return <CategorizePlay question={question} revealed={revealed} />;
   if (t === "logo") return <LogoPlay question={question} revealed={revealed} />;
+  if (t === "audio") return <AudioPlay question={question} revealed={revealed} />;
   if (t === "image")
     return (
       <ImagePlay
@@ -3839,6 +3840,105 @@ function InteractiveActivity({
         {question.q}
       </div>
     </>
+  );
+}
+
+/** Extract YouTube video ID from a URL */
+function ytId(url: string): string | null {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+/**
+ * AudioPlay — plays a YouTube audio embed or a direct audio URL.
+ * Shows only an audio-player style UI (no video), plus the question text.
+ * The answer is revealed on demand like all other question types.
+ */
+function AudioPlay({
+  question,
+  revealed,
+}: {
+  question: ArenaQuestion;
+  revealed: boolean;
+}) {
+  const src = question.videoUrl ?? "";
+  const yt = ytId(src);
+  const isYt = !!yt;
+
+  return (
+    <div className="w-full flex flex-col items-center gap-6">
+      {/* Audio player */}
+      <div className="w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl"
+           style={{ background: "#0d1520", border: "2px solid rgba(201,161,75,0.35)" }}>
+        {isYt ? (
+          /* YouTube embed — narrow height so it looks like an audio player */
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                 style={{ background: "linear-gradient(to bottom, transparent 0%, #0d1520 100%)" }}/>
+            <iframe
+              src={`https://www.youtube.com/embed/${yt}?autoplay=1&controls=1&rel=0&modestbranding=1`}
+              title="صوت السؤال"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+              className="w-full"
+              style={{ height: 120, border: "none" }}
+            />
+          </div>
+        ) : (
+          /* Direct audio file */
+          <div className="p-4 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+                   style={{ background: "rgba(201,161,75,0.2)", border: "2px solid #c9a14b" }}>
+                🎵
+              </div>
+              <span className="text-white font-bold text-sm">صوت السؤال</span>
+            </div>
+            <audio
+              controls
+              autoPlay
+              src={src}
+              className="w-full"
+              style={{ borderRadius: 8 }}
+            />
+          </div>
+        )}
+
+        {/* Animated sound-wave decoration */}
+        <div className="flex items-end justify-center gap-1 px-4 pb-3 h-8">
+          {[3,6,10,8,12,7,4,9,11,6,3,8,10,5,7].map((h, i) => (
+            <div
+              key={i}
+              className="rounded-full"
+              style={{
+                width: 3,
+                height: h,
+                background: "#c9a14b",
+                opacity: 0.6,
+                animation: `pulse ${0.4 + i * 0.07}s ease-in-out infinite alternate`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Question description */}
+      <div className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-[1.4] text-center"
+           style={{ color: "#1f2937", fontFamily: "'Readex Pro', 'IBM Plex Sans Arabic', sans-serif" }}>
+        {question.q}
+      </div>
+
+      {/* Answer — shown after reveal */}
+      {revealed && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          className="px-8 py-4 rounded-2xl font-extrabold text-2xl text-center"
+          style={{ background: "linear-gradient(135deg,#1a4731,#0f2d1f)", border: "2px solid #c9a14b", color: "#fde68a" }}
+        >
+          {question.a}
+        </motion.div>
+      )}
+    </div>
   );
 }
 
