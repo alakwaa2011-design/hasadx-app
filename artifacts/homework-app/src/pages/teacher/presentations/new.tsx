@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { platformHarvestBg } from "@/lib/platform-harvest-bg";
 import { AiPresentationBuilder } from "./builder";
+import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, Play, Pencil,
@@ -317,6 +318,15 @@ export default function NewPresentationPage() {
   const { lang } = useI18n();
   const [, setLocation] = useLocation();
   const isAr = lang === "ar";
+
+  // Auth guard — this page is AI-only, visitors must log in
+  const { data: currentUser, isLoading: authLoading, error: authError } =
+    useGetCurrentTeacher({ query: { retry: false } as any });
+  useEffect(() => {
+    if (!authLoading && (authError || !currentUser)) {
+      setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations/new"));
+    }
+  }, [authLoading, authError, currentUser, setLocation]);
 
   const goBack = useCallback(() => {
     if (window.history.length > 1) {
@@ -744,6 +754,17 @@ export default function NewPresentationPage() {
       setLaunchLoading(false);
     }
   }, [generatedPresentationId, isAr, setLocation]);
+
+  // Show nothing (redirect is in-flight) while auth resolves
+  if (authLoading || !currentUser) {
+    return (
+      <Layout>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#225739]" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
