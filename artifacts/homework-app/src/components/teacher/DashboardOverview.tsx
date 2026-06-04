@@ -607,81 +607,377 @@ export default function DashboardOverview({
             style={{
               display: "grid",
               gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-              gap: isMobile ? 10 : 14,
+              gap: isMobile ? 12 : 14,
             }}
           >
-            <button
-              onClick={() => setLocation("/teacher/new")}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                padding: isMobile ? "16px 20px" : "18px 24px",
-                background: C.green,
-                color: "#fff",
-                border: "none",
-                borderRadius: 14,
-                fontSize: isMobile ? 16 : 17,
-                fontWeight: 900,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                boxShadow: "0 6px 18px rgba(30,77,53,0.22)",
-                transition: "transform 0.12s ease, box-shadow 0.12s ease",
-              }}
-              onMouseDown={(e) =>
-                (e.currentTarget.style.transform = "scale(0.98)")
-              }
-              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "scale(1)")
-              }
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Plus style={{ width: 22, height: 22 }} />
-                {isAr ? "أنشئ نشاطاً" : "Create activity"}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.82 }}>
-                {isAr ? "واجب، فيديو، عرض، خطة درس..." : "Assignment, video, presentation..."}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab("competitive")}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 4,
-                padding: isMobile ? "16px 20px" : "18px 24px",
-                background: C.goldBright,
-                color: C.green,
-                border: "none",
-                borderRadius: 14,
-                fontSize: isMobile ? 16 : 17,
-                fontWeight: 900,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                boxShadow: "0 6px 18px rgba(232,168,14,0.32)",
-                transition: "transform 0.12s ease, box-shadow 0.12s ease",
-              }}
-              onMouseDown={(e) =>
-                (e.currentTarget.style.transform = "scale(0.98)")
-              }
-              onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "scale(1)")
-              }
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Play style={{ width: 22, height: 22, fill: C.green }} />
-                {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.72 }}>
-                {isAr ? "اختر لعبة وابدأ مع طلابك الآن" : "Pick a game and play with students"}
-              </span>
-            </button>
+            {/* ── Card 1: أنشئ نشاطاً ── */}
+            {isMobile ? (
+              <button
+                onClick={() => setLocation("/teacher/new")}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "stretch",
+                  padding: 0,
+                  background: `linear-gradient(135deg, ${C.greenLight} 0%, ${C.green} 55%, #14362a 100%)`,
+                  border: "none",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  boxShadow: "0 8px 28px rgba(30,77,53,0.30), inset 0 1px 0 rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  minHeight: 108,
+                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                }}
+                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                {/* Illustration zone */}
+                <div style={{
+                  width: 118,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  padding: "10px 0",
+                }}>
+                  {/* Sparkle dots */}
+                  <span style={{ position: "absolute", top: 12, left: 14, fontSize: 11, color: "rgba(255,255,255,0.55)", lineHeight: 1 }}>✦</span>
+                  <span style={{ position: "absolute", bottom: 14, right: 14, fontSize: 8, color: "rgba(255,255,255,0.40)", lineHeight: 1 }}>✦</span>
+                  {/* Floating mini icon: video */}
+                  <div style={{
+                    position: "absolute",
+                    top: 14,
+                    right: 8,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "rgba(255,255,255,0.18)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backdropFilter: "blur(4px)",
+                  }}>
+                    <Video style={{ width: 14, height: 14, color: "#fff" }} />
+                  </div>
+                  {/* Floating mini icon: book */}
+                  <div style={{
+                    position: "absolute",
+                    top: 10,
+                    left: 10,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 7,
+                    background: "rgba(255,255,255,0.14)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <BookText style={{ width: 12, height: 12, color: "#fff" }} />
+                  </div>
+                  {/* Floating mini icon: pencil */}
+                  <div style={{
+                    position: "absolute",
+                    bottom: 14,
+                    right: 10,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 7,
+                    background: "rgba(255,255,255,0.13)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <Pencil style={{ width: 12, height: 12, color: "#fff" }} />
+                  </div>
+                  {/* Main folder / plus icon */}
+                  <div style={{
+                    width: 58,
+                    height: 58,
+                    borderRadius: 17,
+                    background: "rgba(255,255,255,0.20)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.20)",
+                  }}>
+                    <Plus style={{ width: 30, height: 30, color: "#fff", strokeWidth: 2.8 }} />
+                  </div>
+                </div>
+
+                {/* Text zone */}
+                <div style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  paddingRight: 18,
+                  paddingLeft: 6,
+                  gap: 5,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, direction: "rtl" }}>
+                    <span style={{ color: "#fff", fontSize: 18, fontWeight: 900, letterSpacing: "-0.3px" }}>
+                      {isAr ? "أنشئ نشاطاً" : "Create activity"}
+                    </span>
+                    <div style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: "rgba(255,255,255,0.22)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <Plus style={{ width: 12, height: 12, color: "#fff", strokeWidth: 3 }} />
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 400,
+                    color: "rgba(255,255,255,0.78)",
+                    direction: "rtl",
+                    lineHeight: 1.5,
+                  }}>
+                    {isAr ? "واجب، فيديو، عرض، خطة درس..." : "Assignment, video, presentation..."}
+                  </span>
+                </div>
+
+                {/* Chevron affordance */}
+                <div style={{
+                  width: 38,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  <div style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.14)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <ChevronLeft style={{ width: 15, height: 15, color: "rgba(255,255,255,0.75)" }} />
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setLocation("/teacher/new")}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  padding: "18px 24px",
+                  background: C.green,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 14,
+                  fontSize: 17,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  boxShadow: "0 6px 18px rgba(30,77,53,0.22)",
+                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                }}
+                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Plus style={{ width: 22, height: 22 }} />
+                  {isAr ? "أنشئ نشاطاً" : "Create activity"}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.82 }}>
+                  {isAr ? "واجب، فيديو، عرض، خطة درس..." : "Assignment, video, presentation..."}
+                </span>
+              </button>
+            )}
+
+            {/* ── Card 2: ابدأ مسابقة مباشرة ── */}
+            {isMobile ? (
+              <button
+                onClick={() => setActiveTab("competitive")}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "stretch",
+                  padding: 0,
+                  background: `linear-gradient(135deg, #F5C842 0%, ${C.goldBright} 50%, ${C.gold} 100%)`,
+                  border: "none",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  boxShadow: "0 8px 28px rgba(201,146,10,0.36), inset 0 1px 0 rgba(255,255,255,0.30)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  minHeight: 120,
+                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                }}
+                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                {/* Trophy illustration zone */}
+                <div style={{
+                  width: 118,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  padding: "10px 0",
+                }}>
+                  {/* Subtle sparkles */}
+                  <span style={{ position: "absolute", top: 14, left: 12, fontSize: 10, color: "rgba(30,77,53,0.35)", lineHeight: 1 }}>✦</span>
+                  <span style={{ position: "absolute", bottom: 16, right: 12, fontSize: 8, color: "rgba(30,77,53,0.25)", lineHeight: 1 }}>✦</span>
+                  {/* Trophy container */}
+                  <div style={{ position: "relative" }}>
+                    <div style={{
+                      width: 66,
+                      height: 66,
+                      borderRadius: 20,
+                      background: "rgba(201,146,10,0.22)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
+                    }}>
+                      <Trophy style={{ width: 40, height: 40, color: C.green, strokeWidth: 1.6 }} />
+                    </div>
+                    {/* Zap badge */}
+                    <div style={{
+                      position: "absolute",
+                      bottom: -5,
+                      right: -5,
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: C.green,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(30,77,53,0.35)",
+                    }}>
+                      <Zap style={{ width: 13, height: 13, color: "#fff", fill: "#fff" }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Text zone */}
+                <div style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  paddingRight: 18,
+                  paddingLeft: 6,
+                  gap: 5,
+                }}>
+                  <span style={{
+                    color: C.green,
+                    fontSize: 17,
+                    fontWeight: 900,
+                    direction: "rtl",
+                    letterSpacing: "-0.3px",
+                    lineHeight: 1.3,
+                  }}>
+                    {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
+                  </span>
+                  <span style={{
+                    fontSize: 11.5,
+                    fontWeight: 400,
+                    color: C.greenMid,
+                    direction: "rtl",
+                    opacity: 0.85,
+                    lineHeight: 1.5,
+                  }}>
+                    {isAr ? "اختر من مجموعة المسابقات والألعاب" : "Pick a game and play with students"}
+                  </span>
+                  {/* Inline CTA button */}
+                  <div style={{
+                    marginTop: 4,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: C.green,
+                    color: "#fff",
+                    borderRadius: 22,
+                    padding: "5px 14px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    direction: "rtl",
+                    boxShadow: "0 2px 10px rgba(30,77,53,0.28)",
+                  }}>
+                    <Play style={{ width: 11, height: 11, fill: "#fff", color: "#fff" }} />
+                    {isAr ? "ابدأ الآن" : "Start now"}
+                  </div>
+                </div>
+
+                {/* Chevron affordance */}
+                <div style={{
+                  width: 38,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}>
+                  <div style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "rgba(201,146,10,0.28)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}>
+                    <ChevronLeft style={{ width: 15, height: 15, color: C.green }} />
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveTab("competitive")}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                  padding: "18px 24px",
+                  background: C.goldBright,
+                  color: C.green,
+                  border: "none",
+                  borderRadius: 14,
+                  fontSize: 17,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  boxShadow: "0 6px 18px rgba(232,168,14,0.32)",
+                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                }}
+                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
+                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Play style={{ width: 22, height: 22, fill: C.green }} />
+                  {isAr ? "ابدأ مسابقة مباشرة" : "Start live quiz"}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.72 }}>
+                  {isAr ? "اختر من مجموعة المسابقات والألعاب" : "Pick a game and play with students"}
+                </span>
+              </button>
+            )}
           </motion.div>
           {/* Hasad Challenge — premium hero banner */}
           <motion.button
