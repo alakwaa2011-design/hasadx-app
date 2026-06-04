@@ -1280,7 +1280,7 @@ export default function DashboardOverview({
             transition={{ duration: 0.22, delay: 0.12 }}
           >
             <WameethPreviewCard
-              onStart={() => setActiveTab("competitive")}
+              onStart={() => setLocation("/game/wameeth/create")}
             />
           </motion.div>
 
