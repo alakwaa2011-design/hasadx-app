@@ -614,6 +614,7 @@ export default function DashboardOverview({
             {isMobile ? (
               <button
                 onClick={() => setLocation("/teacher/new")}
+                dir="ltr"
                 style={{
                   width: "100%",
                   display: "flex",
@@ -794,6 +795,7 @@ export default function DashboardOverview({
             {isMobile ? (
               <button
                 onClick={() => setActiveTab("competitive")}
+                dir="ltr"
                 style={{
                   width: "100%",
                   display: "flex",
