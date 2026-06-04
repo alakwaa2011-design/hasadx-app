@@ -2672,12 +2672,12 @@ function CompetitiveTab({
 
   /** تحدّي حصاد — يُعرَض بجوار مسابقات عامة (لا يُكرَّر في شبكة المسابقات الحية) */
   const arenaGame = {
-    icon: <ArenaIcon size={58} />,
+    icon: <ArenaIcon size={44} />,
     title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
     desc:
       lang === "ar"
-        ? "مسابقة فريقين على شاشة كبيرة — 6 فئات، 6 بطاقات لكل فئة (200 و 400 و 600)، وسائل مساعدة استراتيجية، ومناسبة للكبار والمؤسسات والصفوف."
-        : "Two-team big-screen quiz — 6 categories with 6 cards each (200/400/600), strategic helpers, suitable for adults, institutions, and classrooms.",
+        ? "مسابقة فريقين على شاشة كبيرة — فئات وبطاقات بنقاط متدرجة ووسائل مساعدة."
+        : "Two-team big-screen quiz — categories with tiered-point cards and strategic helpers.",
     color: "from-emerald-700 to-amber-600",
     type: "arena",
     available: true,
@@ -3013,29 +3013,29 @@ function CompetitiveTab({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
           <Card
             onClick={() => openGameFromCatalog(arenaGame)}
-            className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
+            className="group p-3 sm:p-4 cursor-pointer transition-all hover:shadow-xl hover:border-[#b8922e]/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-[#0a1c15]/90 via-card to-amber-500/[0.08] dark:from-[#0d241c]/80"
           >
-            <div className="flex items-center gap-4">
-              <div className="rounded-2xl flex items-center justify-center shrink-0 overflow-hidden" aria-hidden>
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl flex items-center justify-center shrink-0 overflow-hidden" aria-hidden>
                 {arenaGame.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                  <h3 className="text-sm sm:text-base font-black text-foreground">
                     {arenaGame.title}
                   </h3>
                   {arenaGame.pill && (
-                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       {arenaGame.pill}
                     </span>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-muted-foreground line-clamp-1 leading-snug">
                   {arenaGame.desc}
                 </p>
               </div>
               <ChevronLeft
-                className={`w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
+                className={`w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0 transition-colors ${lang === "ar" ? "" : "rotate-180"}`}
               />
             </div>
           </Card>
