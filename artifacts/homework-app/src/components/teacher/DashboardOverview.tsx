@@ -713,33 +713,21 @@ export default function DashboardOverview({
                   flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "flex-end",
+                  alignItems: "stretch",
                   justifyContent: "center",
                   paddingRight: 18,
                   paddingLeft: 6,
                   gap: 5,
+                  direction: "rtl",
+                  textAlign: "right",
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, direction: "rtl" }}>
-                    <span style={{ color: "#fff", fontSize: 18, fontWeight: 900, letterSpacing: "-0.3px" }}>
-                      {isAr ? "أنشئ نشاطاً" : "Create activity"}
-                    </span>
-                    <div style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.22)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}>
-                      <Plus style={{ width: 12, height: 12, color: "#fff", strokeWidth: 3 }} />
-                    </div>
-                  </div>
+                  <span style={{ color: "#fff", fontSize: 18, fontWeight: 900, letterSpacing: "-0.3px" }}>
+                    {isAr ? "أنشئ نشاطاً" : "Create activity"}
+                  </span>
                   <span style={{
                     fontSize: 12,
                     fontWeight: 400,
                     color: "rgba(255,255,255,0.78)",
-                    direction: "rtl",
                     lineHeight: 1.5,
                   }}>
                     {isAr ? "واجب، فيديو، عرض، خطة درس..." : "Assignment, video, presentation..."}
@@ -877,17 +865,18 @@ export default function DashboardOverview({
                   flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "flex-end",
+                  alignItems: "stretch",
                   justifyContent: "center",
                   paddingRight: 18,
                   paddingLeft: 6,
                   gap: 5,
+                  direction: "rtl",
+                  textAlign: "right",
                 }}>
                   <span style={{
                     color: C.green,
                     fontSize: 17,
                     fontWeight: 900,
-                    direction: "rtl",
                     letterSpacing: "-0.3px",
                     lineHeight: 1.3,
                   }}>
@@ -897,7 +886,6 @@ export default function DashboardOverview({
                     fontSize: 11.5,
                     fontWeight: 400,
                     color: C.greenMid,
-                    direction: "rtl",
                     opacity: 0.85,
                     lineHeight: 1.5,
                   }}>
@@ -915,7 +903,7 @@ export default function DashboardOverview({
                     padding: "5px 14px",
                     fontSize: 13,
                     fontWeight: 700,
-                    direction: "rtl",
+                    alignSelf: "flex-start",
                     boxShadow: "0 2px 10px rgba(30,77,53,0.28)",
                   }}>
                     <Play style={{ width: 11, height: 11, fill: "#fff", color: "#fff" }} />
