@@ -788,11 +788,24 @@ export default function DashboardOverview({
                   cursor: "pointer",
                   fontFamily: "inherit",
                   boxShadow: "0 6px 18px rgba(30,77,53,0.22)",
-                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                  transition: "transform 200ms ease, box-shadow 200ms ease",
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(30,77,53,0.38)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(30,77,53,0.22)";
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px) scale(0.99)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(30,77,53,0.18)";
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(30,77,53,0.38)";
+                }}
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Plus style={{ width: 22, height: 22 }} />
@@ -979,11 +992,24 @@ export default function DashboardOverview({
                   cursor: "pointer",
                   fontFamily: "inherit",
                   boxShadow: "0 6px 18px rgba(232,168,14,0.32)",
-                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                  transition: "transform 200ms ease, box-shadow 200ms ease",
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(201,146,10,0.50)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(232,168,14,0.32)";
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px) scale(0.99)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(201,146,10,0.24)";
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(201,146,10,0.50)";
+                }}
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Play style={{ width: 22, height: 22, fill: C.green }} />
