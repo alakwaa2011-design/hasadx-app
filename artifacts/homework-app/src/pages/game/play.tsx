@@ -3084,7 +3084,9 @@ export default function GamePlay() {
         <div className={`p-4 flex items-center justify-between ${isSoloRef.current && !hackMode ? "hidden" : ""}`}>
           <div className="flex items-center gap-3">
             <span className="bg-white/15 border border-white/25 text-white font-bold text-sm px-3 py-1 rounded-full backdrop-blur-sm shadow-sm">
-              {(question?.index ?? 0) + 1} / {question?.total}
+              {lang === "ar"
+                ? `السؤال ${(question?.index ?? 0) + 1} من ${question?.total}`
+                : `Q${(question?.index ?? 0) + 1} / ${question?.total}`}
             </span>
             {myStreak >= 2 && (
               <motion.span
@@ -3266,14 +3268,24 @@ export default function GamePlay() {
               </div>
             </motion.div>
           ) : (
-            <motion.h2
+            <motion.div
               key={question?.index}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl sm:text-4xl font-black text-white text-center leading-relaxed"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+              className="mx-2 rounded-2xl px-5 py-4"
+              style={{
+                background: "linear-gradient(160deg, rgba(255,255,255,0.052) 0%, rgba(20,56,40,0.28) 100%)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid rgba(232,184,75,0.20)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.04)",
+              }}
             >
-              {question?.text}
-            </motion.h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-white text-center leading-relaxed">
+                {question?.text}
+              </h2>
+            </motion.div>
           )}
           {question?.imageUrl && (
             <motion.div
@@ -3824,7 +3836,7 @@ export default function GamePlay() {
                   }}
                   disabled={!!selectedAnswer}
                   style={btnStyle}
-                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-[18px] font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[70px] sm:min-h-[80px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 font-bold text-lg sm:text-xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px]" : "min-h-[54px] sm:min-h-[64px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
+                  className={`${btnClass} ${fbAnimClass} ${soloColor ? "w-full rounded-2xl px-4 sm:px-5 py-4 sm:py-[18px] font-semibold text-base sm:text-lg flex items-center gap-3 sm:gap-4 text-start min-h-[70px] sm:min-h-[80px] hover:brightness-110 hover:-translate-y-[1px]" : `rounded-2xl px-3 py-2 lg:py-1.5 font-bold text-lg sm:text-xl lg:text-2xl flex items-center justify-center text-center shadow-md ${isSoloRef.current ? "min-h-[60px] sm:min-h-[70px] lg:min-h-[52px]" : "min-h-[54px] sm:min-h-[64px] lg:min-h-[50px]"}`} relative active:scale-[0.985] transition-all duration-150 ease-out touch-manipulation select-none cursor-pointer`}
                 >
                   {soloColor && (
                     <span
@@ -3849,6 +3861,17 @@ export default function GamePlay() {
                   >
                     {opt.text}
                   </span>
+                  {/* Pending selection confirmation — shown immediately before server responds */}
+                  {isSelected && !answerResult && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.18, ease: "backOut" }}
+                      className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"}`}
+                    >
+                      <CheckCircle className="w-5 h-5 text-white/80 drop-shadow" strokeWidth={2.5} />
+                    </motion.div>
+                  )}
                   {isSelected && answerResult?.correct && (
                     <CheckCircle
                       className={`absolute top-2 ${lang === "ar" ? "right-2" : "left-2"} w-6 h-6 text-white`}
