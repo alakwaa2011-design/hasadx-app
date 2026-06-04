@@ -1516,13 +1516,6 @@ export default function TeacherDashboard() {
       icon: <Trophy className="w-4 h-4" />,
     },
     {
-      id: "solo_challenges",
-      label: lang === "ar" ? "وميض حر" : "Free Flash",
-      shortLabel: lang === "ar" ? "وميض حر" : "Free Flash",
-      icon: <Zap className="w-4 h-4" />,
-      href: "/teacher/solo-challenges",
-    },
-    {
       id: "tools",
       label: lang === "ar" ? "الأدوات" : "Tools",
       shortLabel: lang === "ar" ? "أدوات" : "Tools",
