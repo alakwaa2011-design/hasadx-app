@@ -629,11 +629,24 @@ export default function DashboardOverview({
                   cursor: "pointer",
                   fontFamily: "inherit",
                   minHeight: 108,
-                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                  transition: "transform 200ms ease, box-shadow 200ms ease",
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(30,77,53,0.38), inset 0 1px 0 rgba(255,255,255,0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                  e.currentTarget.style.boxShadow = "0 8px 28px rgba(30,77,53,0.30), inset 0 1px 0 rgba(255,255,255,0.08)";
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px) scale(0.99)";
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(30,77,53,0.22), inset 0 1px 0 rgba(255,255,255,0.08)";
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(30,77,53,0.38), inset 0 1px 0 rgba(255,255,255,0.08)";
+                }}
               >
                 {/* Illustration zone */}
                 <div style={{
@@ -810,11 +823,24 @@ export default function DashboardOverview({
                   cursor: "pointer",
                   fontFamily: "inherit",
                   minHeight: 120,
-                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                  transition: "transform 200ms ease, box-shadow 200ms ease",
                 }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.98)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(201,146,10,0.50), inset 0 1px 0 rgba(255,255,255,0.30)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                  e.currentTarget.style.boxShadow = "0 8px 28px rgba(201,146,10,0.36), inset 0 1px 0 rgba(255,255,255,0.30)";
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px) scale(0.99)";
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(201,146,10,0.28), inset 0 1px 0 rgba(255,255,255,0.30)";
+                }}
+                onMouseUp={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                  e.currentTarget.style.boxShadow = "0 14px 36px rgba(201,146,10,0.50), inset 0 1px 0 rgba(255,255,255,0.30)";
+                }}
               >
                 {/* Trophy illustration zone */}
                 <div style={{
