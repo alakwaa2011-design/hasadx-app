@@ -112,6 +112,24 @@ export function WameethPreviewCard({ onStart }: { onStart?: () => void }) {
         border: "1px solid rgba(212,166,58,0.22)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
         position: "relative",
+        cursor: "pointer",
+        transition: "transform 200ms ease, box-shadow 200ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px) scale(1.01)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 20px 52px rgba(0,0,0,0.58), 0 0 0 1px rgba(212,166,58,0.32)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0) scale(1)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 12px 40px rgba(0,0,0,0.45)";
+      }}
+      onMouseDown={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px) scale(0.99)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.38)";
+      }}
+      onMouseUp={(e) => {
+        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px) scale(1.01)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 20px 52px rgba(0,0,0,0.58), 0 0 0 1px rgba(212,166,58,0.32)";
       }}
     >
       {/* شريط العنوان */}
