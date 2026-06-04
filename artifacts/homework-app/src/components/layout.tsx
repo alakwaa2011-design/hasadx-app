@@ -395,9 +395,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 (location.startsWith("/teacher") ||
                   location.startsWith("/organizer")) ? (
                   <>
-                    <span className="text-sm font-extrabold text-white max-w-[34vw] truncate">
-                      {user.name}
-                    </span>
                     <button
                       onClick={toggleLang}
                       className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
