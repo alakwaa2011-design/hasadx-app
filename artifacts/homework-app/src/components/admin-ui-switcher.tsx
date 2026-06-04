@@ -18,7 +18,7 @@ import {
 } from "@/lib/admin-last-surface";
 
 interface AdminUiSwitcherProps {
-  variant?: "header" | "compact";
+  variant?: "header" | "compact" | "menu";
 }
 
 export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
@@ -83,6 +83,74 @@ export function AdminUiSwitcher({ variant = "header" }: AdminUiSwitcherProps) {
   const currentItem = items.find((i) => i.key === current) ?? items[0];
   const CurrentIcon = currentItem.Icon;
   const isCompact = variant === "compact";
+  const isMenu = variant === "menu";
+
+  // "menu" variant: full-width row inside the mobile hamburger menu
+  if (isMenu) {
+    return (
+      <div ref={ref} className="relative mb-1">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 transition-colors"
+        >
+          <CurrentIcon className="w-5 h-5 text-primary shrink-0" />
+          <span className="flex-1 text-start">
+            {lang === "ar"
+              ? `الدور الحالي: ${currentItem.label}`
+              : `Current role: ${currentItem.label}`}
+          </span>
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 text-muted-foreground transition-transform",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              transition={{ duration: 0.12 }}
+              role="menu"
+              className="mt-1 rounded-xl overflow-hidden border border-border shadow-md bg-background"
+            >
+              {items.map((it) => {
+                const active = it.key === current;
+                const Icon = it.Icon;
+                return (
+                  <button
+                    key={it.key}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setAdminLastSurface(it.key);
+                      setOpen(false);
+                      if (!active) setLocation(it.href);
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-4 py-3 text-sm font-bold transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted",
+                    )}
+                  >
+                    <Icon className="w-4 h-4 text-primary shrink-0" />
+                    <span className="flex-1 text-start">{it.label}</span>
+                    {active && <Check className="w-4 h-4 stroke-[3] text-primary" />}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="relative">

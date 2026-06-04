@@ -398,7 +398,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     <span className="text-sm font-extrabold text-white max-w-[34vw] truncate">
                       {user.name}
                     </span>
-                    <AdminUiSwitcher variant="compact" />
+                    <button
+                      onClick={toggleLang}
+                      className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                      aria-label={lang === "ar" ? "English" : "العربية"}
+                      title={lang === "ar" ? "English" : "العربية"}
+                    >
+                      <Languages className="w-4 h-4" />
+                    </button>
                     <NotificationBell />
                     <button
                       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -508,6 +515,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             {user.email || user.phone}
                           </p>
                         </div>
+                      </div>
+                      {/* Role switcher — only renders for multi-role accounts */}
+                      <div className="px-1">
+                        <AdminUiSwitcher variant="menu" />
                       </div>
                       <button
                         onClick={() => cycleColorScheme()}
