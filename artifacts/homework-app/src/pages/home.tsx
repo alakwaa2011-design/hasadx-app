@@ -2987,17 +2987,19 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Link href="/teacher/presentations/new">
-                    <button className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold shadow-lg shadow-fuchsia-500/40 hover:shadow-xl hover:scale-[1.02] transition-all">
-                      <span>✨</span>
-                      {lang === "ar" ? "أنشئ عرضاً الآن" : "Create a presentation"}
-                    </button>
-                  </Link>
-                  <Link href="/teacher/presentations">
-                    <button className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-violet-300 dark:border-violet-700 text-violet-900 dark:text-violet-100 font-bold hover:bg-white/60 dark:hover:bg-card transition-all">
-                      {lang === "ar" ? "تصفح عروضي" : "Browse my decks"}
-                    </button>
-                  </Link>
+                  <button
+                    onClick={() => isLoggedIn ? setLocation("/teacher/presentations/new") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations/new"))}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold shadow-lg shadow-fuchsia-500/40 hover:shadow-xl hover:scale-[1.02] transition-all"
+                  >
+                    <span>✨</span>
+                    {lang === "ar" ? "أنشئ عرضاً الآن" : "Create a presentation"}
+                  </button>
+                  <button
+                    onClick={() => isLoggedIn ? setLocation("/teacher/presentations") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations"))}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-violet-300 dark:border-violet-700 text-violet-900 dark:text-violet-100 font-bold hover:bg-white/60 dark:hover:bg-card transition-all"
+                  >
+                    {lang === "ar" ? "تصفح عروضي" : "Browse my decks"}
+                  </button>
                 </div>
               </motion.div>
 

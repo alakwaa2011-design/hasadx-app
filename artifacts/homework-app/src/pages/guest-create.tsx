@@ -117,6 +117,7 @@ export default function GuestCreatePage() {
   const [started, setStarted] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
+  const [authGateReason, setAuthGateReason] = useState<"ai" | "publish">("publish");
 
   const { data: currentUser, isLoading: userLoading } = useGetCurrentTeacher({ query: { retry: false } as any });
   const [autoResumed, setAutoResumed] = useState(false);
@@ -173,6 +174,13 @@ export default function GuestCreatePage() {
   };
 
   const handleAiGenerate = async () => {
+    // AI generation requires a logged-in account
+    if (!currentUser) {
+      saveGuestDraft(draft);
+      setAuthGateReason("ai");
+      setShowAuthGate(true);
+      return;
+    }
     if (aiUsage >= MAX_GUEST_AI_USES) {
       toast.error(t.guestCreate.aiGenLimitReached);
       return;
@@ -282,6 +290,7 @@ export default function GuestCreatePage() {
     if (!currentUser) {
       saveGuestDraft(draft);
       try { localStorage.setItem("pending_publish_after_auth", "1"); } catch {}
+      setAuthGateReason("publish");
       setShowAuthGate(true);
       return;
     }
@@ -302,6 +311,7 @@ export default function GuestCreatePage() {
       if (!res.ok) {
         if (data.limitReached) {
           saveGuestDraft(draft);
+          setAuthGateReason("publish");
           setShowAuthGate(true);
           return;
         }
@@ -435,15 +445,26 @@ export default function GuestCreatePage() {
               aria-labelledby="guest-auth-gate-title"
             >
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Save className="w-7 h-7 text-primary" />
+                {authGateReason === "ai"
+                  ? <Sparkles className="w-7 h-7 text-primary" />
+                  : <Save className="w-7 h-7 text-primary" />
+                }
               </div>
               <h3 id="guest-auth-gate-title" className="text-xl font-black text-foreground mb-2">
-                {lang === "ar" ? "احفظ مسابقتك للأبد" : "Save your quiz forever"}
+                {authGateReason === "ai"
+                  ? (lang === "ar" ? "سجّل الدخول لاستخدام الذكاء الاصطناعي" : "Log in to use AI")
+                  : (lang === "ar" ? "احفظ مسابقتك للأبد" : "Save your quiz forever")
+                }
               </h3>
               <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-                {lang === "ar"
-                  ? "أنشئ حساباً مجانياً (10 ثوانٍ) لنشر مسابقتك وتشغيلها للاعبين. مسودّتك محفوظة بالفعل."
-                  : "Create a free account (10 seconds) to publish and play your quiz. Your draft is already saved."}
+                {authGateReason === "ai"
+                  ? (lang === "ar"
+                      ? "توليد الأسئلة بالذكاء الاصطناعي متاح للأعضاء فقط. أنشئ حساباً مجانياً في ثوانٍ."
+                      : "AI question generation is available to members only. Create a free account in seconds.")
+                  : (lang === "ar"
+                      ? "أنشئ حساباً مجانياً (10 ثوانٍ) لنشر مسابقتك وتشغيلها للاعبين. مسودّتك محفوظة بالفعل."
+                      : "Create a free account (10 seconds) to publish and play your quiz. Your draft is already saved.")
+                }
               </p>
               <div className="flex flex-col gap-2.5">
                 <Link
