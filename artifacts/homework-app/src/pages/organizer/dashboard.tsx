@@ -1000,7 +1000,7 @@ export default function OrganizerDashboard() {
               }}
             >
               <Plus className="w-4 h-4" />
-              {lang === "ar" ? "إنشاء مسابقة جديدة" : "Create new contest"}
+              {lang === "ar" ? "إنشاء أسئلة جديدة" : "Create new questions"}
             </Link>
           </nav>
 
