@@ -999,8 +999,8 @@ export default function OrganizerDashboard() {
                 boxShadow: "0 12px 28px -10px rgba(215,165,29,0.60)",
               }}
             >
-              <Plus className="w-4 h-4" />
               {lang === "ar" ? "إنشاء أسئلة جديدة" : "Create new questions"}
+              <Plus className="w-4 h-4" />
             </Link>
           </nav>
 
