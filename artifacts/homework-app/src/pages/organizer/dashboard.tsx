@@ -287,18 +287,6 @@ export default function OrganizerDashboard() {
         accent: "#f472b6",
         tag: lang === "ar" ? "ترفيهي · حظ" : "Casual · Luck",
       },
-      {
-        href: "/islamic",
-        title: lang === "ar" ? "مسابقات عامة" : "General Quizzes",
-        subtitle:
-          lang === "ar"
-            ? "بنك أسئلة جاهزة للحفلات والفعاليات"
-            : "Ready question bank for events",
-        Icon: BookOpen,
-        svgIcon: <PublicQuizIcon size={52} />,
-        accent: "#22d3ee",
-        tag: lang === "ar" ? "بنك أسئلة" : "Question bank",
-      },
     ],
     [lang],
   );
@@ -1016,171 +1004,227 @@ export default function OrganizerDashboard() {
             </Link>
           </nav>
 
-          {/* Hero card: تحدّي حصاد — soft mint background + golden trophy in cream disc */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="mb-12 -mx-2 sm:-mx-6 lg:-mx-10"
-          >
-            <div
-              className="group relative overflow-hidden rounded-[28px] transition-all duration-300 hover:-translate-y-0.5"
-              style={{
-                background:
-                  "linear-gradient(135deg,#eaf2e6 0%,#e4eedf 50%,#dde9d6 100%)",
-                border: "1px solid rgba(155,180,140,0.35)",
-                boxShadow:
-                  "0 18px 50px -22px rgba(80,110,75,0.25), 0 2px 0 rgba(255,255,255,0.8) inset",
-              }}
-            >
-              {/* Faint cream glow behind trophy */}
-              <div
-                aria-hidden
-                className="absolute pointer-events-none"
+          {/* ─────────────────────────────────────────────
+               Section: منافسات بأسئلة جاهزة
+               (تحدّي حصاد + مسابقات عامة — no assignment needed)
+          ───────────────────────────────────────────── */}
+          <section className="mb-10">
+            {/* Section header */}
+            <div className="mb-4 flex items-end gap-3">
+              <div>
+                <div
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase mb-1.5 px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(215,165,29,0.14)",
+                    color: "#9a6f0c",
+                    border: "1px solid rgba(215,165,29,0.28)",
+                  }}
+                >
+                  <Trophy className="w-3 h-3" />
+                  {lang === "ar" ? "جاهزة للانطلاق" : "Ready to play"}
+                </div>
+                <h2
+                  className="text-xl sm:text-2xl font-black tracking-tight"
+                  style={{ color: "#103d2a" }}
+                >
+                  {lang === "ar"
+                    ? "منافسات بأسئلة جاهزة 🏆"
+                    : "Ready-question contests 🏆"}
+                </h2>
+                <p className="text-sm mt-0.5" style={{ color: "#3a6a4d" }}>
+                  {lang === "ar"
+                    ? "لا تحتاج إلى إضافة واجب — الأسئلة جاهزة مسبقاً"
+                    : "No assignment needed — questions are pre-loaded"}
+                </p>
+              </div>
+              <span
+                className="hidden sm:block flex-1 h-px self-end mb-2 mx-4"
                 style={{
-                  top: -60,
-                  [dir === "rtl" ? "left" : "right"]: -40,
-                  width: 280,
-                  height: 280,
-                  borderRadius: "50%",
                   background:
-                    "radial-gradient(circle, rgba(245,225,180,0.45) 0%, transparent 70%)",
-                  filter: "blur(8px)",
+                    "linear-gradient(90deg,transparent,rgba(215,165,29,0.35),transparent)",
                 }}
               />
+            </div>
 
-              <div
-                className="relative grid items-center gap-5 sm:gap-7 px-5 py-6 sm:px-9 sm:py-8"
-                style={{
-                  gridTemplateColumns: "auto 1fr auto",
-                }}
+            {/* Two-card grid */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+              {/* Card 1 — تحدّي حصاد */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                {/* ── LEFT: action buttons stacked ── */}
-                <div className="flex flex-col items-stretch gap-2.5 shrink-0 order-1">
-                  {/* Open/external icon button */}
-                  <Link
-                    href="/game/arena"
-                    aria-label={lang === "ar" ? "فتح" : "Open"}
-                    className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-all hover:-translate-y-0.5 hover:scale-[1.04]"
-                    style={{
-                      background: "rgba(255,255,255,0.7)",
-                      border: "1px solid rgba(155,180,140,0.40)",
-                      color: "#3a5a3e",
-                      boxShadow:
-                        "0 4px 12px -6px rgba(80,110,75,0.25), 0 1px 0 rgba(255,255,255,0.9) inset",
-                    }}
-                  >
-                    <ArrowUpRight className="w-5 h-5" strokeWidth={2.2} />
-                  </Link>
-                  {/* Explore now pill button */}
-                  <Link
-                    href="/game/arena"
-                    className="inline-flex items-center justify-center px-4 py-2.5 rounded-2xl text-[13px] font-extrabold transition-all hover:-translate-y-0.5 hover:scale-[1.02] whitespace-nowrap"
-                    style={{
-                      background: "rgba(255,255,255,0.9)",
-                      color: "#1f4d4f",
-                      border: "1px solid rgba(155,180,140,0.40)",
-                      boxShadow:
-                        "0 6px 16px -8px rgba(80,110,75,0.30), 0 1px 0 rgba(255,255,255,0.9) inset",
-                    }}
-                  >
-                    {lang === "ar" ? "استكشف الآن" : "Explore now"}
-                  </Link>
-                </div>
-
-                {/* ── CENTER: text block (right-aligned in RTL) ── */}
-                <div className="min-w-0 order-2 text-end">
-                  <div className="inline-flex items-center gap-2 mb-2 flex-row-reverse">
-                    <h2
-                      className="text-2xl sm:text-[32px] font-black leading-tight tracking-tight"
-                      style={{
-                        color: "#1f4d4f",
-                        fontFamily:
-                          "'Readex Pro','IBM Plex Sans Arabic',sans-serif",
-                      }}
-                    >
-                      {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
-                    </h2>
-                    <span
-                      className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
-                      style={{
-                        background: "rgba(120,140,115,0.18)",
-                        color: "#3a5a3e",
-                        border: "1px solid rgba(120,140,115,0.25)",
-                      }}
-                    >
-                      {lang === "ar" ? "مميّز" : "Featured"}
-                    </span>
-                  </div>
-                  <p
-                    className="text-sm sm:text-[15px] leading-relaxed"
-                    style={{ color: "#516257" }}
-                  >
-                    {lang === "ar"
-                      ? "مسابقة جماعية بين فريقين أمام الجمهور. مناسبة للحفلات والملتقيات. ليست للواجبات."
-                      : "A team contest in front of an audience — perfect for parties and gatherings, not for homework."}
-                  </p>
-                </div>
-
-                {/* ── RIGHT: golden trophy in cream disc ── */}
-                <Link
-                  href="/game/arena"
-                  aria-label={lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
-                  className="relative shrink-0 flex items-center justify-center order-3"
-                >
-                  {/* Soft outer cream halo */}
+                <Link href="/game/arena">
                   <div
-                    aria-hidden
-                    className="absolute rounded-full transition-transform duration-500 group-hover:scale-110"
-                    style={{
-                      width: 140,
-                      height: 140,
-                      background:
-                        "radial-gradient(circle, rgba(245,225,180,0.55) 0%, transparent 70%)",
-                      filter: "blur(4px)",
-                    }}
-                  />
-                  {/* Cream disc */}
-                  <div
-                    className="relative w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-[-4deg]"
+                    className="group relative h-full rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 overflow-hidden"
                     style={{
                       background:
-                        "radial-gradient(circle at 30% 28%, #fefaee 0%, #f5e6c5 60%, #e8d3a4 100%)",
-                      border: "1.5px solid rgba(220,200,160,0.65)",
+                        "linear-gradient(180deg,#eaf2e6 0%,#dde9d620 100%)",
+                      border: "1.5px solid rgba(155,180,140,0.40)",
+                      minHeight: 180,
                       boxShadow:
-                        "0 10px 28px -10px rgba(160,130,70,0.35), 0 2px 0 rgba(255,255,255,0.7) inset, 0 -4px 12px rgba(160,130,70,0.18) inset",
+                        "0 8px 24px -10px rgba(80,110,75,0.30), 0 2px 6px rgba(15,55,32,0.05)",
                     }}
                   >
-                    <Trophy
-                      className="w-11 h-11 sm:w-[52px] sm:h-[52px] transition-transform duration-300"
-                      style={{
-                        color: "#c89a3a",
-                        fill: "#e5b756",
-                        filter:
-                          "drop-shadow(0 2px 0 rgba(255,250,225,0.7)) drop-shadow(0 4px 6px rgba(140,100,30,0.35))",
-                        strokeWidth: 1.6,
-                      }}
-                    />
-                    {/* Soft shine highlight */}
                     <div
                       aria-hidden
                       className="absolute pointer-events-none"
                       style={{
-                        top: 10,
-                        [dir === "rtl" ? "right" : "left"]: 18,
-                        width: 24,
-                        height: 12,
+                        top: -40,
+                        [dir === "rtl" ? "left" : "right"]: -40,
+                        width: 120,
+                        height: 120,
                         borderRadius: "50%",
                         background:
-                          "radial-gradient(ellipse, rgba(255,255,255,0.85) 0%, transparent 70%)",
-                        filter: "blur(1.5px)",
+                          "radial-gradient(circle, rgba(245,225,180,0.40) 0%, transparent 70%)",
                       }}
                     />
+                    <div className="relative flex flex-col h-full">
+                      <div
+                        className="self-start mb-4 transition-transform duration-200 group-hover:scale-110"
+                        style={{
+                          filter:
+                            "drop-shadow(0 4px 10px rgba(200,154,58,0.50))",
+                        }}
+                      >
+                        <ArenaIcon size={52} />
+                      </div>
+                      <h3
+                        className="text-[17px] font-black leading-tight mb-1.5 tracking-tight"
+                        style={{ color: "#103d2a" }}
+                      >
+                        {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
+                      </h3>
+                      <p
+                        className="text-[13px] leading-relaxed"
+                        style={{ color: "#3a6a4d" }}
+                      >
+                        {lang === "ar"
+                          ? "مسابقة جماعية بين فريقين أمام الجمهور — مناسبة للحفلات والملتقيات"
+                          : "Team vs team in front of an audience — perfect for events"}
+                      </p>
+                      <div className="mt-auto pt-4 flex items-center justify-between gap-2">
+                        <span
+                          className="inline-flex items-center text-[10px] font-bold tracking-[0.10em] uppercase"
+                          style={{ color: "#1f8246" }}
+                        >
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full me-2 shrink-0"
+                            style={{ background: "#1f8246" }}
+                          />
+                          {lang === "ar" ? "منافسة جماعية" : "Team contest"}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 text-[12px] font-extrabold px-2.5 py-1 rounded-full transition-all"
+                          style={{
+                            background: "rgba(31,130,70,0.12)",
+                            color: "#1f8246",
+                          }}
+                        >
+                          {lang === "ar" ? "ابدأ" : "Start"}
+                          <ArrowRight
+                            className="w-3.5 h-3.5"
+                            style={{
+                              transform:
+                                dir === "rtl" ? "rotate(180deg)" : "none",
+                            }}
+                          />
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </Link>
-              </div>
+              </motion.div>
+
+              {/* Card 2 — مسابقات عامة */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06, duration: 0.3 }}
+              >
+                <Link href="/islamic">
+                  <div
+                    className="group relative h-full rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 overflow-hidden"
+                    style={{
+                      background:
+                        "linear-gradient(180deg,#ffffff 0%,#22d3ee0a 100%)",
+                      border: "1.5px solid rgba(34,211,238,0.32)",
+                      minHeight: 180,
+                      boxShadow:
+                        "0 8px 24px -10px rgba(34,211,238,0.30), 0 2px 6px rgba(15,55,32,0.05)",
+                    }}
+                  >
+                    <div
+                      aria-hidden
+                      className="absolute pointer-events-none"
+                      style={{
+                        top: -40,
+                        [dir === "rtl" ? "left" : "right"]: -40,
+                        width: 120,
+                        height: 120,
+                        borderRadius: "50%",
+                        background:
+                          "radial-gradient(circle, rgba(34,211,238,0.20) 0%, transparent 70%)",
+                      }}
+                    />
+                    <div className="relative flex flex-col h-full">
+                      <div
+                        className="self-start mb-4 transition-transform duration-200 group-hover:scale-110"
+                        style={{
+                          filter:
+                            "drop-shadow(0 4px 10px rgba(34,211,238,0.45))",
+                        }}
+                      >
+                        <PublicQuizIcon size={52} />
+                      </div>
+                      <h3
+                        className="text-[17px] font-black leading-tight mb-1.5 tracking-tight"
+                        style={{ color: "#103d2a" }}
+                      >
+                        {lang === "ar" ? "مسابقات عامة" : "General Quizzes"}
+                      </h3>
+                      <p
+                        className="text-[13px] leading-relaxed"
+                        style={{ color: "#3a6a4d" }}
+                      >
+                        {lang === "ar"
+                          ? "بنك أسئلة جاهز للحفلات والفعاليات — بدون إعداد مسبق"
+                          : "Ready question bank for events — no prep needed"}
+                      </p>
+                      <div className="mt-auto pt-4 flex items-center justify-between gap-2">
+                        <span
+                          className="inline-flex items-center text-[10px] font-bold tracking-[0.10em] uppercase"
+                          style={{ color: "#22d3ee" }}
+                        >
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full me-2 shrink-0"
+                            style={{ background: "#22d3ee" }}
+                          />
+                          {lang === "ar" ? "بنك أسئلة" : "Question bank"}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 text-[12px] font-extrabold px-2.5 py-1 rounded-full transition-all"
+                          style={{
+                            background: "rgba(34,211,238,0.12)",
+                            color: "#0e7490",
+                          }}
+                        >
+                          {lang === "ar" ? "ابدأ" : "Start"}
+                          <ArrowRight
+                            className="w-3.5 h-3.5"
+                            style={{
+                              transform:
+                                dir === "rtl" ? "rotate(180deg)" : "none",
+                            }}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
             </div>
-          </motion.div>
+          </section>
 
           {/* Section: live games. */}
           <div className="mb-5 flex items-end justify-between gap-3">
@@ -1434,7 +1478,7 @@ export default function OrganizerDashboard() {
               <div
                 className="relative grid gap-2 sm:gap-2.5"
                 style={{
-                  gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                  gridTemplateColumns: "repeat(4, 1fr)",
                 }}
               >
                 {soloBrainGames.map((g) => (
