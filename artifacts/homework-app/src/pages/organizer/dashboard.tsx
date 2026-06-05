@@ -1,4 +1,25 @@
 import { ArrowUpRight } from "lucide-react";
+import {
+  WameethIcon,
+  HackIcon,
+  MemoryIcon,
+  LetrlyIcon,
+  ScrambleIcon,
+  StroopIcon,
+  ArenaIcon,
+  RocketIcon,
+  MillionIcon,
+  HotSeatIcon,
+  PublicQuizIcon,
+  VideoIcon,
+  MultiplyIcon,
+  FlagQuizIcon,
+  CapitalsIcon,
+  ColorGameIcon,
+  TugWarIcon,
+  WheelIcon,
+} from "@/components/game-icons";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
@@ -52,6 +73,8 @@ interface OrganizerCard {
   title: string;
   subtitle: string;
   Icon: typeof Trophy;
+  /** Optional rich SVG icon — replaces the simple Lucide Icon when provided. */
+  svgIcon?: ReactNode;
   /** Hex accent for the icon badge and hover border. */
   accent: string;
   /** Small eyebrow label rendered at the bottom of the card. */
@@ -188,6 +211,7 @@ export default function OrganizerDashboard() {
             ? "غرفة مباشرة برمز PIN، يدخلها طلابك ويبدأ السباق على الإجابات"
             : "Live PIN room your students join and race to answer",
         Icon: Zap,
+        svgIcon: <WameethIcon height={44} />,
         accent: "#E8A80E",
         tag: lang === "ar" ? "اللعبة الافتراضية · بث مباشر" : "Default · Live",
       },
@@ -199,6 +223,7 @@ export default function OrganizerDashboard() {
             ? "مغامرة الفضاء — أسئلة سريعة وصواريخ تتسابق نحو الفوز"
             : "Space adventure — fast questions, rockets race to win",
         Icon: Rocket,
+        svgIcon: <RocketIcon size={52} />,
         accent: "#60a5fa",
         tag: lang === "ar" ? "بث مباشر · سرعة" : "Live · Speed",
       },
@@ -210,6 +235,7 @@ export default function OrganizerDashboard() {
             ? "طالب واحد في المقعد، أسئلة مباشرة، الكل يتابع"
             : "One student in the seat, live questions, everyone watching",
         Icon: Flame,
+        svgIcon: <HotSeatIcon size={52} />,
         accent: "#fb7185",
         tag: lang === "ar" ? "بث مباشر · فردي" : "Live · Solo spotlight",
       },
@@ -221,6 +247,7 @@ export default function OrganizerDashboard() {
             ? "مسابقة منوّعة على الطريقة التلفزيونية"
             : "TV-style elimination contest",
         Icon: Coins,
+        svgIcon: <MillionIcon size={52} />,
         accent: "#a78bfa",
         tag: lang === "ar" ? "تلفزيوني · إقصائي" : "TV · Elimination",
       },
@@ -232,6 +259,7 @@ export default function OrganizerDashboard() {
             ? "اقتحم الأسئلة، اسرق نقاط الخصوم، وفُكّ الأكواد"
             : "Crack questions, steal opponents' points, and break codes",
         Icon: Terminal,
+        svgIcon: <HackIcon size={52} />,
         accent: "#818cf8",
         tag: lang === "ar" ? "بث مباشر · استراتيجي" : "Live · Strategic",
       },
@@ -243,6 +271,7 @@ export default function OrganizerDashboard() {
             ? "فريقان وجهاً لوجه — كل إجابة صحيحة تشد الحبل لطرفك"
             : "Two teams face-off — every right answer pulls the rope",
         Icon: Users,
+        svgIcon: <TugWarIcon size={52} />,
         accent: "#94a3b8",
         tag: lang === "ar" ? "بث مباشر · فريقان" : "Live · Two teams",
       },
@@ -254,6 +283,7 @@ export default function OrganizerDashboard() {
             ? "أدِر العجلة لاختيار الفائز، السؤال أو الجائزة"
             : "Spin the wheel to pick a winner, question, or prize",
         Icon: Disc3,
+        svgIcon: <WheelIcon size={52} />,
         accent: "#f472b6",
         tag: lang === "ar" ? "ترفيهي · حظ" : "Casual · Luck",
       },
@@ -265,6 +295,7 @@ export default function OrganizerDashboard() {
             ? "بنك أسئلة جاهزة للحفلات والفعاليات"
             : "Ready question bank for events",
         Icon: BookOpen,
+        svgIcon: <PublicQuizIcon size={52} />,
         accent: "#22d3ee",
         tag: lang === "ar" ? "بنك أسئلة" : "Question bank",
       },
@@ -281,36 +312,42 @@ export default function OrganizerDashboard() {
         href: "/game/letrly",
         title: lang === "ar" ? "حروفي" : "Letrly",
         Icon: Type,
+        svgIcon: <LetrlyIcon size={44} />,
         tint: "#a78bfa",
       },
       {
         href: "/game/scramble",
         title: lang === "ar" ? "خلط الحروف" : "Word Scramble",
         Icon: Shuffle,
+        svgIcon: <ScrambleIcon size={44} />,
         tint: "#34d399",
       },
       {
         href: "/game/memory",
         title: lang === "ar" ? "ذاكرة" : "Memory",
         Icon: Brain,
+        svgIcon: <MemoryIcon size={44} />,
         tint: "#f472b6",
       },
       {
         href: "/game/multiply",
         title: lang === "ar" ? "جدول الضرب" : "Times Tables",
         Icon: Calculator,
+        svgIcon: <MultiplyIcon size={44} />,
         tint: "#60a5fa",
       },
       {
         href: "/game/stroop",
         title: lang === "ar" ? "ستروب" : "Stroop",
         Icon: Eye,
+        svgIcon: <StroopIcon size={44} />,
         tint: "#fb923c",
       },
       {
         href: "/game/color",
         title: lang === "ar" ? "الألوان" : "Colors",
         Icon: Palette,
+        svgIcon: <ColorGameIcon size={44} />,
         tint: "#22d3ee",
       },
       {
@@ -323,6 +360,7 @@ export default function OrganizerDashboard() {
         href: "/game/capitals",
         title: lang === "ar" ? "عواصم" : "Capitals",
         Icon: MapPin,
+        svgIcon: <CapitalsIcon height={36} />,
         tint: "#0ea5e9",
       },
     ],
@@ -601,15 +639,19 @@ export default function OrganizerDashboard() {
                       />
                       <div className="relative flex items-start gap-3 mb-3">
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 group-hover:rotate-6"
-                          style={{
+                          className="shrink-0 flex items-center justify-center transition-transform group-hover:scale-110"
+                          style={g.svgIcon ? {
+                            filter: `drop-shadow(0 3px 8px ${g.accent}66)`,
+                          } : {
+                            width: 40, height: 40,
+                            borderRadius: 12,
                             background: `linear-gradient(135deg,${g.accent}28 0%,${g.accent}14 100%)`,
                             border: `1.5px solid ${g.accent}55`,
                             color: g.accent,
                             boxShadow: `0 4px 12px -6px ${g.accent}70`,
                           }}
                         >
-                          <g.Icon className="w-5 h-5" />
+                          {g.svgIcon ?? <g.Icon className="w-5 h-5" />}
                         </div>
                         <div className="min-w-0">
                           <h3
@@ -667,15 +709,19 @@ export default function OrganizerDashboard() {
                         }}
                       >
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-6"
-                          style={{
+                          className="flex items-center justify-center transition-transform group-hover:scale-110"
+                          style={g.svgIcon ? {
+                            filter: `drop-shadow(0 3px 8px ${g.tint}66)`,
+                          } : {
+                            width: 40, height: 40,
+                            borderRadius: 12,
                             background: `linear-gradient(135deg,${g.tint}26 0%,${g.tint}14 100%)`,
                             border: `1.5px solid ${g.tint}55`,
                             color: g.tint,
                             boxShadow: `0 4px 10px -6px ${g.tint}66`,
                           }}
                         >
-                          <g.Icon className="w-5 h-5" />
+                          {g.svgIcon ?? <g.Icon className="w-5 h-5" />}
                         </div>
                         <span
                           className="text-[12px] font-extrabold text-center leading-tight"
@@ -1215,15 +1261,19 @@ export default function OrganizerDashboard() {
                     />
                     <div className="relative flex flex-col h-full">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6"
-                        style={{
+                        className="flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110"
+                        style={c.svgIcon ? {
+                          filter: `drop-shadow(0 4px 12px ${c.accent}55)`,
+                        } : {
+                          width: 48, height: 48,
+                          borderRadius: 12,
                           background: `linear-gradient(135deg,${c.accent}26 0%,${c.accent}14 100%)`,
                           border: `1.5px solid ${c.accent}55`,
                           color: c.accent,
                           boxShadow: `0 6px 18px -8px ${c.accent}80`,
                         }}
                       >
-                        <c.Icon className="w-5 h-5" />
+                        {c.svgIcon ?? <c.Icon className="w-5 h-5" />}
                       </div>
                       <h3
                         className="text-[17px] font-black leading-tight mb-1.5 tracking-tight"
@@ -1399,15 +1449,19 @@ export default function OrganizerDashboard() {
                     }}
                   >
                     <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-6"
-                      style={{
+                      className="flex items-center justify-center transition-transform group-hover:scale-110"
+                      style={g.svgIcon ? {
+                        filter: `drop-shadow(0 3px 8px ${g.tint}66)`,
+                      } : {
+                        width: 44, height: 44,
+                        borderRadius: 12,
                         background: `linear-gradient(135deg,${g.tint}26 0%,${g.tint}14 100%)`,
                         border: `1.5px solid ${g.tint}55`,
                         color: g.tint,
                         boxShadow: `0 6px 14px -6px ${g.tint}66`,
                       }}
                     >
-                      <g.Icon className="w-5 h-5" />
+                      {g.svgIcon ?? <g.Icon className="w-5 h-5" />}
                     </div>
                     <span
                       className="text-[13px] font-extrabold text-center leading-tight"
