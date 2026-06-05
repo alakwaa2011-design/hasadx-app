@@ -1261,7 +1261,7 @@ export default function OrganizerDashboard() {
                     />
                     <div className="relative flex flex-col h-full">
                       <div
-                        className="flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110"
+                        className="flex items-center justify-center mb-4 transition-transform duration-200 group-hover:scale-110 self-start"
                         style={c.svgIcon ? {
                           filter: `drop-shadow(0 4px 12px ${c.accent}55)`,
                         } : {
