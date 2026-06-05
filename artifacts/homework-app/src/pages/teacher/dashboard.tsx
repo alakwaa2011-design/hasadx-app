@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
@@ -7,92 +7,81 @@ import type { CSSProperties, ReactNode } from "react";
  * Aspect ratio 130 × 72  (≈ 9:5).
  */
 const WameethIcon = ({ height = 36 }: { height?: number }) => {
+  const uid = useId().replace(/:/g, "");
   const w = Math.round(height * 130 / 72);
   return (
     <svg width={w} height={height} viewBox="0 0 130 72" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="wm-red2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}wm-red`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#C41818"/>
           <stop offset="100%" stopColor="#7A0A0A"/>
         </linearGradient>
-        <linearGradient id="wm-blue2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}wm-blue`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#1870C0"/>
           <stop offset="100%" stopColor="#08386E"/>
         </linearGradient>
-        <linearGradient id="wm-gold2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}wm-gold`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#DAA520"/>
           <stop offset="100%" stopColor="#9A6A08"/>
         </linearGradient>
-        <linearGradient id="wm-purple2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}wm-purple`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#9B40D8"/>
           <stop offset="100%" stopColor="#5A1A8A"/>
         </linearGradient>
       </defs>
-      {/* Hasad dark-green background */}
       <rect width="130" height="72" rx="10" fill="#0D2118"/>
-      {/* Row 1 — top-right: أ (Red), top-left: ب (Blue) — RTL matches game */}
-      <rect x="68" y="4"  width="58" height="30" rx="6" fill="url(#wm-red2)"/>
+      <rect x="68" y="4"  width="58" height="30" rx="6" fill={`url(#${uid}wm-red)`}/>
       <text x="97" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">أ</text>
-      <rect x="4"  y="4"  width="58" height="30" rx="6" fill="url(#wm-blue2)"/>
+      <rect x="4"  y="4"  width="58" height="30" rx="6" fill={`url(#${uid}wm-blue)`}/>
       <text x="33" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">ب</text>
-      {/* Row 2 — bottom-right: ج (Gold), bottom-left: د (Purple) */}
-      <rect x="68" y="38" width="58" height="30" rx="6" fill="url(#wm-gold2)"/>
+      <rect x="68" y="38" width="58" height="30" rx="6" fill={`url(#${uid}wm-gold)`}/>
       <text x="97" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">ج</text>
-      <rect x="4"  y="38" width="58" height="30" rx="6" fill="url(#wm-purple2)"/>
+      <rect x="4"  y="38" width="58" height="30" rx="6" fill={`url(#${uid}wm-purple)`}/>
       <text x="33" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="16" fontWeight="bold" fontFamily="system-ui,sans-serif">د</text>
     </svg>
   );
 };
 
 /** Hack Game icon — laptop with clipped green-matrix screen, no white background */
-const HackIcon = ({ size = 56 }: { size?: number }) => (
+const HackIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      {/* Clip to keep all text strictly inside the screen */}
-      <clipPath id="hck-screen">
+      <clipPath id={`${uid}hck-screen`}>
         <rect x="17" y="20" width="66" height="38"/>
       </clipPath>
-      <radialGradient id="hck-glow" cx="50%" cy="50%" r="55%">
+      <radialGradient id={`${uid}hck-glow`} cx="50%" cy="50%" r="55%">
         <stop offset="0%" stopColor="#00ff41" stopOpacity="0.3"/>
         <stop offset="100%" stopColor="#00ff41" stopOpacity="0"/>
       </radialGradient>
     </defs>
-
-    {/* ── Laptop lid ── */}
     <rect x="6" y="8" width="88" height="60" rx="6" fill="#1c1c1c"/>
-    {/* Bezel */}
     <rect x="10" y="12" width="80" height="52" rx="4" fill="#111"/>
-    {/* Screen (dark green-black) */}
     <rect x="17" y="18" width="66" height="42" rx="2" fill="#020d05"/>
-
-    {/* Clipped content: glow + code lines */}
-    <g clipPath="url(#hck-screen)">
-      <rect x="17" y="18" width="66" height="42" fill="url(#hck-glow)"/>
+    <g clipPath={`url(#${uid}hck-screen)`}>
+      <rect x="17" y="18" width="66" height="42" fill={`url(#${uid}hck-glow)`}/>
       <text x="20" y="28" fill="#00ff41" fontSize="5.2" fontFamily="monospace" opacity="0.85">01 AC FF 7E 3B</text>
       <text x="20" y="34" fill="#00dd33" fontSize="5.2" fontFamily="monospace" opacity="0.7">{"if(root){hack()}"}</text>
       <text x="20" y="40" fill="#00ff41" fontSize="5.2" fontFamily="monospace" fontWeight="bold">ACCESS_GRANTED</text>
       <text x="20" y="46" fill="#009922" fontSize="5.2" fontFamily="monospace" opacity="0.6">0xDEAD 0xBEEF</text>
       <text x="20" y="52" fill="#00dd33" fontSize="5.2" fontFamily="monospace" opacity="0.75">{">>> decrypt..."}</text>
-      {/* HACK label */}
       <text x="50" y="53" fill="#39ff14" fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="middle" letterSpacing="2">HACK</text>
-      {/* Blinking cursor block */}
       <rect x="74" y="47" width="4" height="6" fill="#00ff41"/>
     </g>
-
-    {/* ── Laptop base ── */}
     <rect x="3" y="68" width="94" height="9" rx="4" fill="#1c1c1c"/>
-    {/* Hinge notch */}
     <rect x="6" y="67" width="88" height="4" rx="2" fill="#141414"/>
-    {/* Trackpad */}
     <rect x="37" y="70" width="26" height="4" rx="2" fill="#2a2a2a"/>
   </svg>
-);
+  );
+};
 
 /**
  * Memory Match icon — 3×2 card grid: 4 face-down (purple back + stripe + corner dots)
  * and one matched pair revealed (rose gradient + ★ + green ring). No background.
  */
 const MemoryIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
   const cW = 28, cH = 38, gX = 4, gY = 4, sX = 5, sY = 11;
   type CardDef = { x: number; y: number; matched: boolean };
   const cards: CardDef[] = [
@@ -106,33 +95,30 @@ const MemoryIcon = ({ size = 56 }: { size?: number }) => {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="mem-back" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`${uid}mem-back`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#4338CA"/>
         </linearGradient>
-        <linearGradient id="mem-rose" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={`${uid}mem-rose`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#FB7185"/><stop offset="100%" stopColor="#BE123C"/>
         </linearGradient>
-        <pattern id="mem-stripe" width="6" height="6" patternUnits="userSpaceOnUse">
+        <pattern id={`${uid}mem-stripe`} width="6" height="6" patternUnits="userSpaceOnUse">
           <line x1="0" y1="6" x2="6" y2="0" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
         </pattern>
       </defs>
 
       {cards.map((c, i) => c.matched ? (
         <g key={i}>
-          {/* Face-up matched card */}
-          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-rose)"/>
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill={`url(#${uid}mem-rose)`}/>
           <rect x={c.x} y={c.y} width={cW} height={10}  rx="5" fill="rgba(255,255,255,0.22)"/>
           <text x={c.x+cW/2} y={c.y+cH/2+1} textAnchor="middle" dominantBaseline="central"
                 fontSize="15" fill="white">★</text>
-          {/* Green matched ring */}
           <rect x={c.x-1.5} y={c.y-1.5} width={cW+3} height={cH+3} rx="6.5"
                 fill="none" stroke="#4ADE80" strokeWidth="2.2"/>
         </g>
       ) : (
         <g key={i}>
-          {/* Face-down card */}
-          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-back)"/>
-          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill="url(#mem-stripe)"/>
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill={`url(#${uid}mem-back)`}/>
+          <rect x={c.x} y={c.y} width={cW} height={cH} rx="5" fill={`url(#${uid}mem-stripe)`}/>
           {/* Corner dots — matches real game */}
           <circle cx={c.x+4}    cy={c.y+4}    r="1.5" fill="rgba(255,255,255,0.45)"/>
           <circle cx={c.x+cW-4} cy={c.y+4}    r="1.5" fill="rgba(255,255,255,0.45)"/>
@@ -199,20 +185,19 @@ const LetrlyIcon = ({ size = 56 }: { size?: number }) => {
  * and partially-filled answer slots above. Matches the real game exactly.
  */
 const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
-  // Answer slots: 4 positions, first one filled
+  const uid = useId().replace(/:/g, "");
   const slotY = 14, slotW = 18, slotH = 22, slotGap = 4;
-  const slotStart = (100 - (4 * slotW + 3 * slotGap)) / 2; // centered
-  // Tile row: 3 remaining tiles (one already placed)
+  const slotStart = (100 - (4 * slotW + 3 * slotGap)) / 2;
   const tileY = 58, tileW = 22, tileH = 26, tileGap = 5;
   const tileStart = (100 - (3 * tileW + 2 * tileGap)) / 2;
   const letters = ["ص", "ا", "د"];
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="scr-tile" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}scr-tile`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#7C3AED"/><stop offset="100%" stopColor="#5B21B6"/>
         </linearGradient>
-        <linearGradient id="scr-filled" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}scr-filled`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#8B5CF6"/><stop offset="100%" stopColor="#6D28D9"/>
         </linearGradient>
       </defs>
@@ -228,7 +213,7 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
           <g key={i}>
             {filled && <rect x={x} y={slotY+4} width={slotW} height={slotH} rx="5" fill="rgba(109,40,217,0.35)"/>}
             <rect x={x} y={slotY} width={slotW} height={slotH} rx="5"
-                  fill={filled ? "url(#scr-filled)" : "rgba(139,92,246,0.12)"}
+                  fill={filled ? `url(#${uid}scr-filled)` : "rgba(139,92,246,0.12)"}
                   stroke={filled ? "none" : "#C4B5FD"} strokeWidth="1.5"/>
             {filled && (
               <text x={x+slotW/2} y={slotY+slotH/2+1} textAnchor="middle" dominantBaseline="central"
@@ -247,10 +232,8 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
         const x = tileStart + i * (tileW + tileGap);
         return (
           <g key={i}>
-            {/* 3-D bottom shadow */}
             <rect x={x} y={tileY+5} width={tileW} height={tileH} rx="6" fill="#6D28D9" opacity="0.45"/>
-            {/* Tile face */}
-            <rect x={x} y={tileY} width={tileW} height={tileH} rx="6" fill="url(#scr-tile)"/>
+            <rect x={x} y={tileY} width={tileW} height={tileH} rx="6" fill={`url(#${uid}scr-tile)`}/>
             {/* Top gloss */}
             <rect x={x} y={tileY} width={tileW} height={8} rx="6" fill="rgba(255,255,255,0.22)"/>
             {/* Letter */}
@@ -349,30 +332,27 @@ const ArenaIcon = ({ size = 56 }: { size?: number }) => {
  * violet/fuchsia colour, flame, window. No background.
  */
 const RocketIcon = ({ size = 70 }: { size?: number }) => {
-  const color = "#ef4444"; // red-500 — bold rocket red
+  const uid = useId().replace(/:/g, "");
+  const color = "#ef4444";
   const w = Math.round(size * 60 / 96);
   return (
     <svg width={w} height={size} viewBox="0 0 60 96" xmlns="http://www.w3.org/2000/svg"
          style={{ filter: `drop-shadow(0 2px 10px ${color}90)` }}>
       <defs>
-        <linearGradient id="rkt-body" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id={`${uid}rkt-body`} x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor={color} stopOpacity="0.75"/>
           <stop offset="40%" stopColor="#fff" stopOpacity="0.2"/>
           <stop offset="100%" stopColor={color} stopOpacity="0.95"/>
         </linearGradient>
       </defs>
-      {/* Flame */}
       <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill="#ff6b1a" opacity="0.95"/>
       <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill="#ffd54f" opacity="0.95"/>
       <path d="M26 78 Q30 84 34 78 Q32 82 30 83 Q28 82 26 78 Z" fill="#fff9c4" opacity="0.9"/>
-      {/* Body */}
       <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={color}/>
-      <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill="url(#rkt-body)"/>
-      {/* Window */}
+      <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={`url(#${uid}rkt-body)`}/>
       <circle cx="30" cy="40" r="8" fill="#b3e5fc" stroke="#fff" strokeWidth="2.5" opacity="0.95"/>
       <circle cx="30" cy="40" r="5" fill="#0288d1" opacity="0.7"/>
       <circle cx="28" cy="38" r="2" fill="#fff" opacity="0.55"/>
-      {/* Fins */}
       <path d="M16 62 L4 82 L16 78 Z" fill={color} opacity="0.9"/>
       <path d="M44 62 L56 82 L44 78 Z" fill={color} opacity="0.9"/>
     </svg>
@@ -383,23 +363,23 @@ const RocketIcon = ({ size = 70 }: { size?: number }) => {
  * Million icon — game-show screen with 4 answer options (A/B/C/D)
  * on the exact dark-navy background (#0a1628) used in the real game.
  */
-const MillionIcon = ({ size = 56 }: { size?: number }) => (
+const MillionIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
   <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
        style={{ filter: "drop-shadow(0 2px 10px rgba(245,158,11,0.5))" }}>
     <defs>
-      <radialGradient id="ml-bg" cx="50%" cy="40%" r="65%">
+      <radialGradient id={`${uid}ml-bg`} cx="50%" cy="40%" r="65%">
         <stop offset="0%" stopColor="#0d1f3c"/>
         <stop offset="100%" stopColor="#060e1e"/>
       </radialGradient>
-      {/* Option button gradient — dark blue */}
-      <linearGradient id="ml-opt" x1="0%" y1="0%" x2="0%" y2="100%">
+      <linearGradient id={`${uid}ml-opt`} x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stopColor="#1e3a7b"/>
         <stop offset="100%" stopColor="#132660"/>
       </linearGradient>
     </defs>
 
-    {/* Background */}
-    <rect width="56" height="56" rx="12" fill="url(#ml-bg)"/>
+    <rect width="56" height="56" rx="12" fill={`url(#${uid}ml-bg)`}/>
 
     {/* Top gold question-mark badge */}
     <circle cx="28" cy="10" r="7" fill="#f59e0b" opacity="0.15"/>
@@ -412,13 +392,10 @@ const MillionIcon = ({ size = 56 }: { size?: number }) => (
     <rect x="50" y="30" width="3" height="4"  rx="1.5" fill="#f59e0b" opacity="0.7"/>
 
     {/* ── 4 answer option buttons — RTL order: أ right, ب left / ج right, د left ── */}
-    {/* أ — top-RIGHT */}
-    <rect x="30" y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <rect x="30" y="20" width="22" height="10" rx="5" fill={`url(#${uid}ml-opt)`} stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
     <text x="47" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">أ</text>
     <rect x="32" y="23" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
-
-    {/* ب — top-LEFT */}
-    <rect x="4"  y="20" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <rect x="4"  y="20" width="22" height="10" rx="5" fill={`url(#${uid}ml-opt)`} stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
     <text x="21" y="27.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">ب</text>
     <rect x="6"  y="23" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
 
@@ -427,69 +404,58 @@ const MillionIcon = ({ size = 56 }: { size?: number }) => (
     <text x="47" y="41.5" fill="#fde68a" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">ج</text>
     <rect x="32" y="37" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.12)"/>
 
-    {/* د — bottom-LEFT */}
-    <rect x="4"  y="34" width="22" height="10" rx="5" fill="url(#ml-opt)" stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
+    <rect x="4"  y="34" width="22" height="10" rx="5" fill={`url(#${uid}ml-opt)`} stroke="#3b82f6" strokeWidth="0.8" strokeOpacity="0.6"/>
     <text x="21" y="41.5" fill="#93c5fd" fontSize="5.5" fontWeight="800" fontFamily="monospace" textAnchor="middle">د</text>
     <rect x="6"  y="37" width="12" height="1.5" rx="0.7" fill="rgba(255,255,255,0.07)"/>
-
-    {/* Bottom lifeline dots */}
     <circle cx="18" cy="51" r="2.5" fill="#f59e0b" opacity="0.85"/>
     <circle cx="28" cy="51" r="2.5" fill="#3b82f6" opacity="0.75"/>
     <circle cx="38" cy="51" r="2.5" fill="#10b981" opacity="0.75"/>
   </svg>
-);
+  );
+};
 
 /**
  * HotSeat icon — a chair with flames rising beneath it.
  * Orange/red colours matching the game card.
  */
-const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
+const HotSeatIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
   <svg width={size} height={size} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"
        style={{ filter: "drop-shadow(0 3px 18px rgba(234,88,12,0.75))" }}>
     <defs>
-      <radialGradient id="hs-glow" cx="50%" cy="78%" r="60%">
+      <radialGradient id={`${uid}hs-glow`} cx="50%" cy="78%" r="60%">
         <stop offset="0%" stopColor="#f97316" stopOpacity="0.9"/>
         <stop offset="55%" stopColor="#c2410c" stopOpacity="0.35"/>
         <stop offset="100%" stopColor="#7c2d12" stopOpacity="0"/>
       </radialGradient>
-      <linearGradient id="hs-dark" x1="15%" y1="0%" x2="85%" y2="100%">
+      <linearGradient id={`${uid}hs-dark`} x1="15%" y1="0%" x2="85%" y2="100%">
         <stop offset="0%" stopColor="#232336"/>
         <stop offset="100%" stopColor="#111122"/>
       </linearGradient>
-      <linearGradient id="hs-mid" x1="0%" y1="0%" x2="0%" y2="100%">
+      <linearGradient id={`${uid}hs-mid`} x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stopColor="#2e2e48"/>
         <stop offset="100%" stopColor="#1a1a30"/>
       </linearGradient>
     </defs>
-
-    {/* Stage background */}
     <rect width="60" height="60" rx="13" fill="#07070e"/>
-    <rect width="60" height="60" rx="13" fill="url(#hs-glow)"/>
+    <rect width="60" height="60" rx="13" fill={`url(#${uid}hs-glow)`}/>
 
-    {/* ── HEADREST ── */}
-    <rect x="20" y="5" width="20" height="8" rx="4" fill="url(#hs-dark)"/>
+    <rect x="20" y="5" width="20" height="8" rx="4" fill={`url(#${uid}hs-dark)`}/>
     <rect x="21" y="6" width="18" height="3.5" rx="1.5" fill="rgba(255,255,255,0.09)"/>
     <rect x="20" y="11.5" width="20" height="1.5" rx="0.7" fill="#f97316" opacity="0.55"/>
 
-    {/* ── BACKREST ── */}
-    <path d="M16 12 Q15 34 17 36 L43 36 Q45 34 44 12 Z" fill="url(#hs-dark)"/>
-    {/* Center stitch seam */}
+    <path d="M16 12 Q15 34 17 36 L43 36 Q45 34 44 12 Z" fill={`url(#${uid}hs-dark)`}/>
     <line x1="30" y1="14" x2="30" y2="35" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-    {/* Lumbar bulge */}
     <path d="M17 28 Q30 32 43 28 L43 34 Q30 36 17 34 Z" fill="rgba(255,255,255,0.04)"/>
-    {/* Orange accent stripe at base of backrest */}
     <rect x="16" y="35.5" width="28" height="1.8" rx="0.9" fill="#f97316" opacity="0.8"/>
-
-    {/* ── LEFT ARMREST — thin bar + slim post ── */}
-    <rect x="8"  y="35" width="3" height="7" rx="1.5" fill="url(#hs-mid)"/>
-    <rect x="5"  y="30" width="10" height="3" rx="1.5" fill="url(#hs-dark)"/>
-
-    {/* ── RIGHT ARMREST ── */}
-    <rect x="49" y="35" width="3" height="7" rx="1.5" fill="url(#hs-mid)"/>
-    <rect x="45" y="30" width="10" height="3" rx="1.5" fill="url(#hs-dark)"/>
+    <rect x="8"  y="35" width="3" height="7" rx="1.5" fill={`url(#${uid}hs-mid)`}/>
+    <rect x="5"  y="30" width="10" height="3" rx="1.5" fill={`url(#${uid}hs-dark)`}/>
+    <rect x="49" y="35" width="3" height="7" rx="1.5" fill={`url(#${uid}hs-mid)`}/>
+    <rect x="45" y="30" width="10" height="3" rx="1.5" fill={`url(#${uid}hs-dark)`}/>
 
     {/* ── SEAT ── */}
-    <rect x="12" y="35" width="36" height="9" rx="4.5" fill="url(#hs-mid)"/>
+    <rect x="12" y="35" width="36" height="9" rx="4.5" fill={`url(#${uid}hs-mid)`}/>
     <rect x="13" y="36" width="34" height="4" rx="2" fill="rgba(255,255,255,0.09)"/>
     <rect x="12" y="43" width="36" height="1.5" rx="0.7" fill="#f97316" opacity="0.9"/>
 
@@ -523,28 +489,25 @@ const HotSeatIcon = ({ size = 56 }: { size?: number }) => (
     {/* Floor glow */}
     <ellipse cx="30" cy="57" rx="18" ry="2.5" fill="#f97316" opacity="0.2"/>
   </svg>
-);
+  );
+};
 
-/**
- * Public Quizzes icon — globe with a question mark badge.
- * Amber/gold colours matching the card.
- */
-const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
+const PublicQuizIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
   <svg width={size} height={size} viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg"
        style={{ filter: "drop-shadow(0 2px 10px rgba(30,77,53,0.55))" }}>
     <defs>
-      <radialGradient id="pq-globe" cx="38%" cy="32%" r="65%">
+      <radialGradient id={`${uid}pq-globe`} cx="38%" cy="32%" r="65%">
         <stop offset="0%" stopColor="#2d7a50"/>
         <stop offset="100%" stopColor="#0F2A20"/>
       </radialGradient>
-      <clipPath id="pq-clip">
+      <clipPath id={`${uid}pq-clip`}>
         <circle cx="26" cy="28" r="20"/>
       </clipPath>
     </defs>
-    {/* Globe body */}
-    <circle cx="26" cy="28" r="20" fill="url(#pq-globe)"/>
-    {/* Globe grid lines */}
-    <g clipPath="url(#pq-clip)" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2">
+    <circle cx="26" cy="28" r="20" fill={`url(#${uid}pq-globe)`}/>
+    <g clipPath={`url(#${uid}pq-clip)`} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2">
       {/* Latitude lines */}
       <line x1="6" y1="28" x2="46" y2="28"/>
       <line x1="8" y1="20" x2="44" y2="20"/>
@@ -558,43 +521,40 @@ const PublicQuizIcon = ({ size = 56 }: { size?: number }) => (
     <ellipse cx="20" cy="18" rx="8" ry="5" fill="rgba(255,255,255,0.08)"/>
     {/* Globe border */}
     <circle cx="26" cy="28" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
-    {/* Question mark badge */}
     <circle cx="42" cy="14" r="11" fill="#0F2A20"/>
     <circle cx="42" cy="14" r="9.5" fill="#1E4D35"/>
     <circle cx="42" cy="14" r="8" fill="#d6ad55"/>
     <text x="42" y="19" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="900"
           fontFamily="Georgia, serif">?</text>
   </svg>
-);
+  );
+};
 
 /**
  * Interactive Video icon — film clapperboard in YouTube-red.
  * Professional video production symbol, no platform copying.
  */
 const VideoIcon = ({ size = 64 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
   const w = size;
   const h = Math.round(size * 0.9);
   return (
     <svg width={w} height={h} viewBox="0 0 64 58" xmlns="http://www.w3.org/2000/svg"
          style={{ filter: "drop-shadow(0 2px 8px rgba(255,0,0,0.45))" }}>
-      {/* Main board body */}
       <rect x="4" y="18" width="56" height="36" rx="5" fill="#FF0000"/>
-      {/* Body sheen */}
       <rect x="4" y="18" width="56" height="9" rx="5" fill="rgba(255,255,255,0.15)"/>
-      {/* White vertical dividers on body */}
       <line x1="20" y1="26" x2="20" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
       <line x1="36" y1="26" x2="36" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
       <line x1="52" y1="26" x2="52" y2="54" stroke="rgba(255,255,255,0.25)" strokeWidth="1.2"/>
-      {/* Play button circle */}
       <circle cx="32" cy="38" r="11" fill="rgba(0,0,0,0.28)"/>
       <polygon points="28,32 28,44 41,38" fill="#FFFFFF"/>
-      {/* Clapper top bar (black base) */}
       <rect x="4" y="8" width="56" height="12" rx="4" fill="#1a1a1a"/>
-      {/* Clapper diagonal stripes — angled red/white */}
-      <clipPath id="clp-top">
-        <rect x="4" y="8" width="56" height="12" rx="4"/>
-      </clipPath>
-      <g clipPath="url(#clp-top)">
+      <defs>
+        <clipPath id={`${uid}clp-top`}>
+          <rect x="4" y="8" width="56" height="12" rx="4"/>
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${uid}clp-top)`}>
         {[0,1,2,3,4,5,6,7].map(i => (
           <polygon key={i}
             points={`${4 + i*14},8 ${4 + i*14+10},8 ${4 + i*14+4},20 ${4 + i*14-6},20`}
@@ -602,9 +562,7 @@ const VideoIcon = ({ size = 64 }: { size?: number }) => {
           />
         ))}
       </g>
-      {/* Clapper border */}
       <rect x="4" y="8" width="56" height="12" rx="4" fill="none" stroke="#111" strokeWidth="1"/>
-      {/* Hinge pin */}
       <circle cx="10" cy="14" r="3" fill="#444"/>
       <circle cx="10" cy="14" r="1.5" fill="#888"/>
     </svg>
@@ -615,22 +573,21 @@ const VideoIcon = ({ size = 64 }: { size?: number }) => {
  * Multiplication icon — a mini "chalkboard" equation: 7 × 8 = ? with the answer revealed below.
  * Amber/orange colours matching the game card. No background.
  */
-const MultiplyIcon = ({ size = 56 }: { size?: number }) => (
+const MultiplyIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="mul-bg" x1="0" y1="0" x2="1" y2="1">
+      <linearGradient id={`${uid}mul-bg`} x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#FB923C" stopOpacity="0.85"/>
         <stop offset="100%" stopColor="#D97706" stopOpacity="0.85"/>
       </linearGradient>
-      <linearGradient id="mul-ans" x1="0" y1="0" x2="1" y2="1">
+      <linearGradient id={`${uid}mul-ans`} x1="0" y1="0" x2="1" y2="1">
         <stop offset="0%" stopColor="#FCD34D"/>
         <stop offset="100%" stopColor="#F59E0B"/>
       </linearGradient>
     </defs>
-
-    {/* Chalkboard / card background */}
-    <rect x="4" y="4" width="92" height="92" rx="14" fill="url(#mul-bg)"/>
-    {/* Subtle top gloss */}
+    <rect x="4" y="4" width="92" height="92" rx="14" fill={`url(#${uid}mul-bg)`}/>
     <rect x="4" y="4" width="92" height="22" rx="14" fill="rgba(255,255,255,0.15)"/>
 
     {/* Equation: 7 × 8 = ? */}
@@ -643,51 +600,42 @@ const MultiplyIcon = ({ size = 56 }: { size?: number }) => (
           fill="rgba(255,255,255,0.75)" fontSize="24" fontWeight="700"
           fontFamily="system-ui,monospace">= ?</text>
   </svg>
-);
+  );
+};
 
-/**
- * Flag Quiz icon — 2×2 grid of four recognisable country flags.
- * France | Japan  /  Germany | Italy  — no background.
- */
 const FlagQuizIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
   const h = Math.round(size * 76 / 100);
   return (
     <svg width={size} height={h} viewBox="0 0 100 76" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <clipPath id="fq-fr"><rect x="2" y="2"  width="46" height="30" rx="5"/></clipPath>
-        <clipPath id="fq-jp"><rect x="52" y="2"  width="46" height="30" rx="5"/></clipPath>
-        <clipPath id="fq-de"><rect x="2" y="36" width="46" height="30" rx="5"/></clipPath>
-        <clipPath id="fq-it"><rect x="52" y="36" width="46" height="30" rx="5"/></clipPath>
+        <clipPath id={`${uid}fq-fr`}><rect x="2" y="2"  width="46" height="30" rx="5"/></clipPath>
+        <clipPath id={`${uid}fq-jp`}><rect x="52" y="2"  width="46" height="30" rx="5"/></clipPath>
+        <clipPath id={`${uid}fq-de`}><rect x="2" y="36" width="46" height="30" rx="5"/></clipPath>
+        <clipPath id={`${uid}fq-it`}><rect x="52" y="36" width="46" height="30" rx="5"/></clipPath>
       </defs>
 
-      {/* ── France (blue | white | red — vertical) ── */}
       <rect x="2"  y="2"  width="46" height="30" rx="5" fill="white"/>
-      <g clipPath="url(#fq-fr)">
+      <g clipPath={`url(#${uid}fq-fr)`}>
         <rect x="2"   y="2"  width="15.3" height="30" fill="#002395"/>
         <rect x="17.3" y="2" width="15.3" height="30" fill="white"/>
         <rect x="32.6" y="2" width="15.4" height="30" fill="#ED2939"/>
       </g>
       <rect x="2"  y="2"  width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
-
-      {/* ── Japan (white + red circle) ── */}
       <rect x="52" y="2"  width="46" height="30" rx="5" fill="white"/>
-      <g clipPath="url(#fq-jp)">
+      <g clipPath={`url(#${uid}fq-jp)`}>
         <circle cx="75" cy="17" r="9.5" fill="#BC002D"/>
       </g>
       <rect x="52" y="2"  width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
-
-      {/* ── Germany (black | red | gold — horizontal) ── */}
       <rect x="2"  y="36" width="46" height="30" rx="5" fill="#000"/>
-      <g clipPath="url(#fq-de)">
+      <g clipPath={`url(#${uid}fq-de)`}>
         <rect x="2" y="36" width="46" height="10" fill="#000"/>
         <rect x="2" y="46" width="46" height="10" fill="#DD0000"/>
         <rect x="2" y="56" width="46" height="10" fill="#FFCE00"/>
       </g>
       <rect x="2"  y="36" width="46" height="30" rx="5" fill="none" stroke="rgba(0,0,0,0.13)" strokeWidth="1.2"/>
-
-      {/* ── Italy (green | white | red — vertical) ── */}
       <rect x="52" y="36" width="46" height="30" rx="5" fill="white"/>
-      <g clipPath="url(#fq-it)">
+      <g clipPath={`url(#${uid}fq-it)`}>
         <rect x="52"   y="36" width="15.3" height="30" fill="#009246"/>
         <rect x="67.3" y="36" width="15.3" height="30" fill="white"/>
         <rect x="82.6" y="36" width="15.4" height="30" fill="#CE2B37"/>
@@ -702,36 +650,32 @@ const FlagQuizIcon = ({ size = 56 }: { size?: number }) => {
  * teal dark background, landscape rectangle like Wameeth.
  */
 const CapitalsIcon = ({ height = 36 }: { height?: number }) => {
+  const uid = useId().replace(/:/g, "");
   const w = Math.round(height * 130 / 72);
   return (
     <svg width={w} height={height} viewBox="0 0 130 72" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="cap-red2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}cap-red`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#F87171"/><stop offset="100%" stopColor="#B91C1C"/>
         </linearGradient>
-        <linearGradient id="cap-blue2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}cap-blue`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#60A5FA"/><stop offset="100%" stopColor="#1D4ED8"/>
         </linearGradient>
-        <linearGradient id="cap-amber2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}cap-amber`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FCD34D"/><stop offset="100%" stopColor="#B45309"/>
         </linearGradient>
-        <linearGradient id="cap-green2" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${uid}cap-green`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#4ADE80"/><stop offset="100%" stopColor="#15803D"/>
         </linearGradient>
       </defs>
-      {/* Dark teal background — distinguishes from Wameeth */}
       <rect width="130" height="72" rx="10" fill="#0D3D3A"/>
-      {/* Top-right: Red — باريس */}
-      <rect x="68" y="4"  width="58" height="30" rx="6" fill="url(#cap-red2)"/>
+      <rect x="68" y="4"  width="58" height="30" rx="6" fill={`url(#${uid}cap-red)`}/>
       <text x="97" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">باريس</text>
-      {/* Top-left: Blue — لندن */}
-      <rect x="4"  y="4"  width="58" height="30" rx="6" fill="url(#cap-blue2)"/>
+      <rect x="4"  y="4"  width="58" height="30" rx="6" fill={`url(#${uid}cap-blue)`}/>
       <text x="33" y="19" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">لندن</text>
-      {/* Bottom-right: Amber — طوكيو */}
-      <rect x="68" y="38" width="58" height="30" rx="6" fill="url(#cap-amber2)"/>
+      <rect x="68" y="38" width="58" height="30" rx="6" fill={`url(#${uid}cap-amber)`}/>
       <text x="97" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">طوكيو</text>
-      {/* Bottom-left: Green — برلين */}
-      <rect x="4"  y="38" width="58" height="30" rx="6" fill="url(#cap-green2)"/>
+      <rect x="4"  y="38" width="58" height="30" rx="6" fill={`url(#${uid}cap-green)`}/>
       <text x="33" y="53" textAnchor="middle" dominantBaseline="central" fill="white" fontSize="11" fontWeight="bold" fontFamily="system-ui,sans-serif">برلين</text>
     </svg>
   );
