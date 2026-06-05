@@ -223,7 +223,7 @@ const ScrambleIcon = ({ size = 56 }: { size?: number }) => {
       {/* ── Answer slots ── */}
       {[0,1,2,3].map(i => {
         const x = slotStart + i * (slotW + slotGap);
-        const filled = i === 0;
+        const filled = i === 3;
         return (
           <g key={i}>
             {filled && <rect x={x} y={slotY+4} width={slotW} height={slotH} rx="5" fill="rgba(109,40,217,0.35)"/>}
