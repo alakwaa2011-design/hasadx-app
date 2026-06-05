@@ -22,6 +22,9 @@ import {
   Search,
   Plus,
   Sparkles,
+  Link2,
+  QrCode,
+  Hash,
 } from "lucide-react";
 
 interface Assignment {
@@ -170,9 +173,34 @@ export default function WameethCreate() {
                 </h1>
                 <p className="text-white/75 text-sm mt-2 leading-relaxed">
                   {ar
-                    ? "اختر مسابقة وسنفتح غرفة فورية برمز PIN، يدخل عليه طلابك ويبدأ اللعب."
-                    : "Pick a quiz and we'll open an instant room with a PIN. Your students join and play."}
+                    ? "اختر واجبًا أو نشاطًا لتبدأ اللعبة، ويمكن للمشاركين الانضمام بثلاث طرق:"
+                    : "Pick an assignment or activity to start the game. Participants can join in three ways:"}
                 </p>
+                {/* Join method badges */}
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {[
+                    { icon: Link2,  label: ar ? "رابط مباشر" : "Direct link" },
+                    { icon: QrCode, label: ar ? "مسح الباركود" : "Scan QR" },
+                    { icon: Hash,   label: ar ? "رمز PIN" : "PIN code" },
+                  ].map(({ icon: Icon, label }) => (
+                    <div
+                      key={label}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                      style={{
+                        background: "rgba(244,201,93,0.10)",
+                        border: "1px solid rgba(244,201,93,0.30)",
+                      }}
+                    >
+                      <Icon className="w-3 h-3 shrink-0" style={{ color: "#f4c95d" }} />
+                      <span
+                        className="text-[11px] font-semibold tracking-wide"
+                        style={{ color: "rgba(255,255,255,0.85)" }}
+                      >
+                        {label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </motion.div>
