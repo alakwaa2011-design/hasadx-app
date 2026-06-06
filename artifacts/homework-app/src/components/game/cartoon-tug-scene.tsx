@@ -5,12 +5,20 @@ const GROUND_Y = 310;
 const CENTER_X = 500;
 const CHAR_SPACING = 100;
 
+export interface TugImpulse {
+  team: "blue" | "red";
+  kind: "win" | "lose";
+  id: number;
+}
+
 interface CartoonTugSceneProps {
   ropePos: number;
   isPulling: boolean;
   isUrgent: boolean;
   isCelebrating: boolean;
   winnerSide: "blue" | "red" | null;
+  /** Transient reactive nudge fired on each answer / big pull (presentational only). */
+  impulse?: TugImpulse | null;
 }
 
 interface CharProps {
@@ -470,7 +478,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
   );
 }
 
-function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: number; isPulling: boolean; pullCycle: number; isCelebrating: boolean }) {
+function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating, stretch = 0, shake = false }: { slideX: number; isPulling: boolean; pullCycle: number; isCelebrating: boolean; stretch?: number; shake?: boolean }) {
   const shoulderY = GROUND_Y - 55 - 50;
   const ropeGripY = shoulderY + 25;
 
@@ -489,15 +497,19 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
   const red0hand = red0cx - handOffset;
   const red1hand = red1cx - handOffset;
 
-  const overhang = 18;
+  // Stretch pulls the rope ends slightly outward (taut snap during an impulse).
+  const overhang = 18 + stretch * 7;
   const leftEnd = blue1hand - overhang;
   const rightEnd = red1hand + overhang;
 
   // Gentle continuous sway while waiting; tighter ripple while pulling.
-  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.18 : Math.sin(pullCycle * 0.8) * 0.07;
+  // A short high-frequency shake is layered in right after an answer impulse.
+  const shakeAmp = shake ? Math.sin(pullCycle * 13) * 0.55 : 0;
+  const wobble = (isPulling ? Math.sin(pullCycle * 4) * 0.18 : Math.sin(pullCycle * 0.8) * 0.07) + shakeAmp;
   const tension = Math.abs(slideX) / 80;
   // Lower sag values → the rope reads as genuinely taut rather than droopy.
-  const sag = isPulling ? 0.4 + (1 - tension) * 0.65 : 1.5;
+  // During a stretch the rope snaps even tauter (less sag).
+  const sag = (isPulling ? 0.4 + (1 - tension) * 0.65 : 1.5) * (1 - stretch * 0.5);
 
   const ropeLen = rightEnd - leftEnd;
   const seg = 30;
@@ -773,18 +785,22 @@ function Arena() {
   );
 }
 
-function DustCloud({ isPulling, pullCycle, slideX }: { isPulling: boolean; pullCycle: number; slideX: number }) {
-  if (!isPulling) return null;
+function DustCloud({ isPulling, pullCycle, slideX, burst = false }: { isPulling: boolean; pullCycle: number; slideX: number; burst?: boolean }) {
+  if (!isPulling && !burst) return null;
   const footPositions = [
     CENTER_X - 120 + slideX,
     CENTER_X - 120 - CHAR_SPACING + slideX,
     CENTER_X + 120 + slideX,
     CENTER_X + 120 + CHAR_SPACING + slideX,
   ];
+  // Burst = a denser, higher kick-up of dust right after an answer impulse.
+  const count = burst ? 8 : 5;
+  const opMul = burst ? 1.7 : 1;
+  const rise = burst ? 15 : 9;
   return (
     <g>
       {footPositions.flatMap((fx, fi) =>
-        Array.from({ length: 5 }).map((_, i) => {
+        Array.from({ length: count }).map((_, i) => {
           const ph = (pullCycle * 2.8 + i * 0.85 + fi * 1.1) % (Math.PI * 2);
           if (Math.sin(ph) < 0) return null;
           const spread = (i - 2) * 13;
@@ -792,10 +808,10 @@ function DustCloud({ isPulling, pullCycle, slideX }: { isPulling: boolean; pullC
             <circle
               key={`d-${fi}-${i}`}
               cx={fx + spread + Math.cos(ph + i) * 6}
-              cy={GROUND_Y - Math.sin(ph) * 9 + 2}
-              r={2.5 + Math.sin(ph) * 2.5}
+              cy={GROUND_Y - Math.sin(ph) * rise + 2}
+              r={2.5 + Math.sin(ph) * (burst ? 3.5 : 2.5)}
               fill="#C9A96E"
-              opacity={Math.sin(ph) * 0.38}
+              opacity={Math.min(0.7, Math.sin(ph) * 0.38 * opMul)}
             />
           );
         })
@@ -825,15 +841,34 @@ function SVGConfetti({ active }: { active: boolean }) {
   );
 }
 
-export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide }: CartoonTugSceneProps) {
+export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide, impulse }: CartoonTugSceneProps) {
   const [pullCycle, setPullCycle] = useState(0);
   // Smoothed rope position — eases toward the real ropePos so team progress
   // glides instead of snapping. Purely presentational; never sent anywhere.
   const [displayPos, setDisplayPos] = useState(ropePos);
   const ropePosRef = useRef(ropePos);
   ropePosRef.current = ropePos;
+  // Reactive impulse spring: a transient horizontal "kick" added on top of the
+  // eased position so the teams lunge forward (win) / recoil (lose) then rebound.
+  const [kick, setKick] = useState(0);
+  const [burstOn, setBurstOn] = useState(false);
+  const kickPosRef = useRef(0);
+  const kickVelRef = useRef(0);
+  const burstUntilRef = useRef(0);
+  const lastImpulseId = useRef<number | null>(null);
   const animRef = useRef(0);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    if (!impulse || impulse.id === lastImpulseId.current) return;
+    lastImpulseId.current = impulse.id;
+    // Win lunges forward (toward opponent); lose recoils backward, gentler.
+    const magnitude = impulse.kind === "win" ? 30 : 19;
+    const sign = (impulse.team === "blue" ? -1 : 1) * (impulse.kind === "win" ? 1 : -1);
+    kickPosRef.current = sign * magnitude;
+    kickVelRef.current = 0;
+    burstUntilRef.current = performance.now() + 450;
+  }, [impulse]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -846,6 +881,18 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
         const next = prev + (target - prev) * 0.14;
         return Math.abs(target - next) < 0.05 ? target : next;
       });
+      // Spring the kick back to rest with a slight overshoot → stretch & rebound.
+      if (kickPosRef.current !== 0 || kickVelRef.current !== 0) {
+        kickVelRef.current += -kickPosRef.current * 0.2;
+        kickVelRef.current *= 0.74;
+        kickPosRef.current += kickVelRef.current;
+        if (Math.abs(kickPosRef.current) < 0.12 && Math.abs(kickVelRef.current) < 0.12) {
+          kickPosRef.current = 0;
+          kickVelRef.current = 0;
+        }
+        setKick(kickPosRef.current);
+      }
+      setBurstOn(n < burstUntilRef.current);
       animRef.current = requestAnimationFrame(tick);
     };
     animRef.current = requestAnimationFrame(tick);
@@ -855,12 +902,19 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
   // When celebrating, losing team slides extra toward winner (retreats past center line)
   const baseSlideX = (displayPos - 50) * 4.5;
   const retreatOffset = isCelebrating && winnerSide ? (winnerSide === "blue" ? -120 : 120) : 0;
-  const slideX = baseSlideX + retreatOffset;
+  const slideX = baseSlideX + retreatOffset + kick;
   const blueFatigue = Math.max(0, Math.min(1, (displayPos - 50) / 40));
   const redFatigue = Math.max(0, Math.min(1, (50 - displayPos) / 40));
 
   const blueIsLosing = winnerSide === "red" || ropePos > 55;
   const redIsLosing = winnerSide === "blue" || ropePos < 45;
+
+  // Clearly-leading team → soft pulsing ground aura (control-shift feedback).
+  const lead: "blue" | "red" | null =
+    !isPulling || isCelebrating ? null : displayPos < 42 ? "blue" : displayPos > 58 ? "red" : null;
+  const leadAuraX =
+    lead === "blue" ? CENTER_X - 170 + slideX : lead === "red" ? CENTER_X + 170 + slideX : 0;
+  const kickStretch = Math.min(1, Math.abs(kick) / 26);
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl select-none border-2 border-white/20 shadow-xl">
@@ -870,7 +924,18 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
       <svg viewBox="100 72 800 288" className="w-full h-auto block">
         <Arena />
         <CenterLine />
-        <DustCloud isPulling={isPulling} pullCycle={pullCycle} slideX={slideX} />
+
+        {/* Pulsing ground aura under the team currently in control */}
+        {lead && (
+          <motion.ellipse
+            cx={leadAuraX} cy={GROUND_Y + 3} rx={86} ry={15}
+            fill={lead === "blue" ? "rgba(59,130,246,0.30)" : "rgba(239,68,68,0.30)"}
+            animate={{ opacity: [0.18, 0.42, 0.18], rx: [80, 92, 80] }}
+            transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+          />
+        )}
+
+        <DustCloud isPulling={isPulling} pullCycle={pullCycle} slideX={slideX} burst={burstOn} />
 
         {[1, 0].map(i => (
           <Character key={`blue-${i}`} side="blue" index={i} slideX={slideX}
@@ -879,7 +944,7 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
             pullCycle={pullCycle} fatigue={blueFatigue} />
         ))}
 
-        <TwistedRope slideX={slideX} isPulling={isPulling} pullCycle={pullCycle} isCelebrating={isCelebrating} />
+        <TwistedRope slideX={slideX} isPulling={isPulling} pullCycle={pullCycle} isCelebrating={isCelebrating} stretch={kickStretch} shake={burstOn} />
 
         {[1, 0].map(i => (
           <Character key={`red-${i}`} side="red" index={i} slideX={slideX}

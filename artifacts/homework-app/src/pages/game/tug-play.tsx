@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { getTugSocket } from "@/lib/tug-socket";
-import { CartoonTugScene } from "@/components/game/cartoon-tug-scene";
+import { CartoonTugScene, type TugImpulse } from "@/components/game/cartoon-tug-scene";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { QRModalButton } from "@/components/game-qr-code";
 import { Volume2, VolumeX } from "lucide-react";
@@ -902,12 +902,14 @@ function TugCharacters({
   isUrgent,
   isCelebrating,
   winnerSide,
+  impulse,
 }: {
   ropePos: number;
   isPulling: boolean;
   isUrgent: boolean;
   isCelebrating: boolean;
   winnerSide: "blue" | "red" | null;
+  impulse: TugImpulse | null;
 }) {
   return (
     <motion.div
@@ -921,6 +923,7 @@ function TugCharacters({
         isUrgent={isUrgent}
         isCelebrating={isCelebrating}
         winnerSide={winnerSide}
+        impulse={impulse}
       />
       {/* ── Cloth ribbon marker: two slim fabric tails hanging from the rope centre ── */}
       <motion.div
@@ -1171,6 +1174,7 @@ function TugArena({
   isUrgent,
   isCelebrating,
   winnerSide,
+  impulse,
   children,
 }: {
   ropePos: number;
@@ -1185,6 +1189,7 @@ function TugArena({
   isUrgent: boolean;
   isCelebrating: boolean;
   winnerSide: "blue" | "red" | null;
+  impulse: TugImpulse | null;
   children?: ReactNode;
 }) {
   return (
@@ -1198,6 +1203,7 @@ function TugArena({
             isUrgent={isUrgent}
             isCelebrating={isCelebrating}
             winnerSide={winnerSide}
+            impulse={impulse}
           />
         </div>
         <div className="grid items-end gap-1.5 lg:grid-cols-[170px_minmax(0,1fr)_170px] lg:gap-2">
@@ -1250,6 +1256,8 @@ export default function TugPlay() {
   const [cheerMsg, setCheerMsg] = useState<string | null>(null);
   const [scorePopup, setScorePopup] = useState<{ value: string; correct: boolean } | null>(null);
   const [powerPullTeam, setPowerPullTeam] = useState<"blue" | "red" | null>(null);
+  // Transient reactive nudge for the cartoon scene (lunge/recoil + dust + shake).
+  const [sceneImpulse, setSceneImpulse] = useState<TugImpulse | null>(null);
   const [myStreak, setMyStreak] = useState(0);
   const [linkCopied, setLinkCopied] = useState(false);
   const [showTeacherPanel, setShowTeacherPanel] = useState(false);
@@ -1493,6 +1501,7 @@ export default function TugPlay() {
         if (diff >= 5) {
           const movingTeam = data.ropePosition < prev ? "blue" : "red";
           setPowerPullTeam(movingTeam);
+          setSceneImpulse({ team: movingTeam, kind: "win", id: Date.now() });
           setTimeout(() => setPowerPullTeam(null), 500);
           getSound().playPowerPull();
         }
@@ -1622,6 +1631,17 @@ export default function TugPlay() {
         setAnswerCorrect(correct);
         if (serverCorrectIndex !== undefined) setAnswerCorrectIndex(serverCorrectIndex);
         setPhase("answered");
+
+        // Reactive scene nudge: lunge forward on a correct answer, recoil on a
+        // wrong one. Purely visual; never alters score or rope state.
+        const myTeamNow = myTeamRef.current;
+        if (myTeamNow) {
+          setSceneImpulse({ team: myTeamNow, kind: correct ? "win" : "lose", id: Date.now() });
+          if (correct) {
+            setPowerPullTeam(myTeamNow);
+            setTimeout(() => setPowerPullTeam((t) => (t === myTeamNow ? null : t)), 500);
+          }
+        }
 
         if (correct) {
           if (res.isBoost) {
@@ -1767,6 +1787,8 @@ export default function TugPlay() {
       >
         {phase === "finished" && gameEnd && gameEnd.winner !== "draw" && <Confetti color={gameEnd.winner === "blue" ? "#3b82f6" : "#ef4444"} />}
         {countdownNum !== null && <CountdownOverlay count={countdownNum} />}
+        {/* Soft directional power flash on a winning pull (keyed so it replays). */}
+        {sceneImpulse?.kind === "win" && <PowerPullFlash key={sceneImpulse.id} team={sceneImpulse.team} />}
         <AnimatePresence>
           {showBoost && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -30 }}
@@ -1941,6 +1963,7 @@ export default function TugPlay() {
             isUrgent={isUrgent}
             isCelebrating={phase === "finished"}
             winnerSide={gameEnd?.winner === "draw" ? null : gameEnd?.winner ?? null}
+            impulse={sceneImpulse}
           >
             {phase === "lobby" && isCreator && (
               <TugActionButton
