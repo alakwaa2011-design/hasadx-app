@@ -60,6 +60,23 @@ function SweatDrops({ cx, cy, active, pullCycle, index }: { cx: number; cy: numb
   );
 }
 
+// Stable per-athlete build/skin/hair variety. Keyed by side+index so each of the
+// four visible players is subtly distinct (height, shoulder width, skin, hair)
+// without random per-frame jitter. Team colours live in `palette`, untouched.
+const VARIANTS: Record<"blue" | "red", ReadonlyArray<{
+  legLen: number; torso: number; shoulder: number;
+  skin: string; skinHi: string; skinD: string; hair: string; fringe: boolean;
+}>> = {
+  blue: [
+    { legLen: 5, torso: 4, shoulder: 3, skin: "#F3B68E", skinHi: "#FCD9BE", skinD: "#C9784F", hair: "#241008", fringe: false },
+    { legLen: -3, torso: -1, shoulder: -1, skin: "#E6A074", skinHi: "#F6C9A4", skinD: "#B96A40", hair: "#3C2616", fringe: true },
+  ],
+  red: [
+    { legLen: 1, torso: 2, shoulder: 0, skin: "#DDA06A", skinHi: "#F3C896", skinD: "#AC6A3E", hair: "#2A1810", fringe: true },
+    { legLen: -4, torso: 3, shoulder: 4, skin: "#CE9059", skinHi: "#EBBC86", skinD: "#9C5E35", hair: "#1C1009", fringe: false },
+  ],
+};
+
 function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, isWinnerSide, isLosingSide, pullCycle, fatigue }: CharProps) {
   const isBlue = side === "blue";
   const dir = isBlue ? 1 : -1;
@@ -86,14 +103,24 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
   const leanDeg = baseLean + tiredSlump;
   const leanRad = (leanDeg * Math.PI) / 180;
 
-  const skin = index === 0 ? "#F2B38C" : "#D99863";
-  const skinD = index === 0 ? "#C9784F" : "#A9673F";
+  // ── Per-athlete variety ──────────────────────────────────────────────────
+  // Each of the 4 players gets a stable build/skin/hair seeded by side+index, so
+  // a team reads as real people instead of clones. Deterministic (no per-frame
+  // randomness). Team colours are NOT touched — only build, skin and hair vary.
+  const v = VARIANTS[side][index] ?? VARIANTS[side][0];
+  const skin = v.skin;
+  const skinHi = v.skinHi;
+  const skinD = v.skinD;
+  const hair = v.hair;
+  const uid = `${side}${index}`;
   const palette = isBlue
     ? {
       jersey: index === 0 ? "#1D4ED8" : "#2563EB",
+      jerseyHi: "#3B82F6",
       jerseyDark: "#0F2F7A",
       jerseyLight: "#F8FAFC",
       shorts: "#082F6F",
+      shortsDark: "#051C44",
       sock: "#DBEAFE",
       band: "#EAF2FF",
       bandTail: "#60A5FA",
@@ -102,20 +129,22 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
     }
     : {
       jersey: index === 0 ? "#DC2626" : "#EF4444",
+      jerseyHi: "#F87171",
       jerseyDark: "#7F1D1D",
       jerseyLight: "#F8FAFC",
       shorts: "#5F1111",
+      shortsDark: "#3E0B0B",
       sock: "#FEE2E2",
       band: "#2F0B0B",
       bandTail: "#F87171",
       shoe: "#F8FAFC",
       sole: "#7F1D1D",
     };
-  const hair = index === 0 ? "#23160F" : "#3A2414";
 
   const feetY = GROUND_Y;
-  const hipY = feetY - 55 + (isTired ? fatigue * 8 : 0);
-  const shoulderY = hipY - 50 + (isTired ? fatigue * 6 : 0);
+  // v.legLen / v.torso give each athlete a slightly different height & build.
+  const hipY = feetY - (55 + v.legLen) + (isTired ? fatigue * 8 : 0);
+  const shoulderY = hipY - (50 + v.torso) + (isTired ? fatigue * 6 : 0);
   const neckY = shoulderY - 5;
   const headCenterY = neckY - 25 + (isTired ? fatigue * 4 : 0);
 
@@ -143,7 +172,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
 
   const mouthOpen = isPulling && (isTired ? Math.abs(sin1) > 0.3 : Math.abs(sin1) > 0.65);
 
-  const shoulderOffsetX = 15 * dir;
+  const shoulderOffsetX = (15 + v.shoulder) * dir;
   const leftShoulderX = shoulderCx - shoulderOffsetX;
   const rightShoulderX = shoulderCx + shoulderOffsetX;
   const bounce = isCelebrating && isWinnerSide ? Math.sin(cycle * 3) * 3 : 0;
@@ -151,6 +180,24 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
 
   return (
     <g>
+      {/* Per-athlete gradients (unique IDs avoid cross-character collisions) for
+          a less flat, more premium cartoon look. */}
+      <defs>
+        <linearGradient id={`jg-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={palette.jerseyHi} />
+          <stop offset="50%" stopColor={palette.jersey} />
+          <stop offset="100%" stopColor={palette.jerseyDark} />
+        </linearGradient>
+        <radialGradient id={`sg-${uid}`} cx="38%" cy="30%" r="80%">
+          <stop offset="0%" stopColor={skinHi} />
+          <stop offset="62%" stopColor={skin} />
+          <stop offset="100%" stopColor={skinD} />
+        </radialGradient>
+        <linearGradient id={`pg-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={palette.shorts} />
+          <stop offset="100%" stopColor={palette.shortsDark} />
+        </linearGradient>
+      </defs>
       <ellipse cx={cx} cy={GROUND_Y + 4} rx={31} ry={7}
         fill="rgba(0,0,0,0.28)"
         transform={celebJump < -5 ? `translate(0, 3)` : ""}
@@ -181,20 +228,24 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
       >
         <path
           d={`M${hipCx - 4 * dir},${hipY} L${backKneeX},${backKneeY} L${backFootX},${feetY}`}
-          stroke={palette.shorts} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
+          stroke={`url(#pg-${uid})`} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
         />
         <path d={`M${backFootX - 12},${feetY - 2} Q${backFootX},${feetY - 10} ${backFootX + 14},${feetY - 2} Q${backFootX + 10},${feetY + 5} ${backFootX - 10},${feetY + 4} Z`}
           fill={palette.shoe} />
+        <path d={`M${backFootX - 8},${feetY - 4} Q${backFootX},${feetY - 8} ${backFootX + 9},${feetY - 4}`}
+          stroke="rgba(255,255,255,0.85)" strokeWidth={1.6} fill="none" strokeLinecap="round" opacity={0.6} />
         <path d={`M${backFootX - 12},${feetY + 2} Q${backFootX},${feetY + 7} ${backFootX + 14},${feetY + 1}`} stroke={palette.sole} strokeWidth={3} strokeLinecap="round" />
         <path d={`M${backFootX - 7},${feetY + 4} L${backFootX - 10},${feetY + 8} M${backFootX + 1},${feetY + 4} L${backFootX - 1},${feetY + 8} M${backFootX + 9},${feetY + 3} L${backFootX + 8},${feetY + 7}`}
           stroke={palette.sole} strokeWidth={1.5} strokeLinecap="round" opacity={0.65} />
 
         <path
           d={`M${hipCx + 4 * dir},${hipY} L${frontKneeX},${frontKneeY} L${frontFootX},${feetY}`}
-          stroke={palette.shorts} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
+          stroke={`url(#pg-${uid})`} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none"
         />
         <path d={`M${frontFootX - 12},${feetY - 2} Q${frontFootX},${feetY - 10} ${frontFootX + 15},${feetY - 2} Q${frontFootX + 11},${feetY + 5} ${frontFootX - 10},${feetY + 4} Z`}
           fill={palette.shoe} />
+        <path d={`M${frontFootX - 8},${feetY - 4} Q${frontFootX},${feetY - 8} ${frontFootX + 10},${feetY - 4}`}
+          stroke="rgba(255,255,255,0.85)" strokeWidth={1.6} fill="none" strokeLinecap="round" opacity={0.6} />
         <path d={`M${frontFootX - 12},${feetY + 2} Q${frontFootX},${feetY + 7} ${frontFootX + 15},${feetY + 1}`} stroke={palette.sole} strokeWidth={3} strokeLinecap="round" />
         <path d={`M${frontFootX - 7},${feetY + 4} L${frontFootX - 10},${feetY + 8} M${frontFootX + 1},${feetY + 4} L${frontFootX - 1},${feetY + 8} M${frontFootX + 10},${feetY + 3} L${frontFootX + 8},${feetY + 7}`}
           stroke={palette.sole} strokeWidth={1.5} strokeLinecap="round" opacity={0.65} />
@@ -211,8 +262,10 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
               ${hipCx + 14},${hipY + 7}
               Q${hipCx},${hipY + 17}
               ${hipCx - 14},${hipY + 7} Z`}
-          fill={palette.jersey}
+          fill={`url(#jg-${uid})`}
         />
+        {/* Soft shadow cast by the head/neck onto the chest */}
+        <ellipse cx={shoulderCx} cy={shoulderY + 3} rx={11} ry={4} fill="rgba(0,0,0,0.13)" />
         <path
           d={`M${leftShoulderX + 5 * dir},${shoulderY + 2}
               Q${shoulderCx},${shoulderY + 28}
@@ -287,6 +340,10 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
               stroke={skin} strokeWidth={9.5} strokeLinecap="round" fill="none" />
             <circle cx={hand1X} cy={ropeGripY} r={7} fill={skin} />
             <circle cx={hand1X} cy={ropeGripY} r={7} fill={skinD} opacity={0.14} />
+            {/* Knuckle shadow + top highlight for a rounder fist */}
+            <path d={`M${hand1X - 5},${ropeGripY - 1} Q${hand1X},${ropeGripY - 3} ${hand1X + 5},${ropeGripY - 1}`}
+              stroke={skinD} strokeWidth={1.2} fill="none" strokeLinecap="round" opacity={0.45} />
+            <circle cx={hand1X - 2} cy={ropeGripY - 3} r={2.2} fill="rgba(255,255,255,0.3)" />
 
             <path d={`M${leftShoulderX},${shoulderY}
                       Q${leftShoulderX + 10 * dir},${shoulderY + 12}
@@ -302,6 +359,9 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
               stroke={skin} strokeWidth={9.5} strokeLinecap="round" fill="none" />
             <circle cx={hand2X} cy={ropeGripY + 6} r={7} fill={skin} />
             <circle cx={hand2X} cy={ropeGripY + 6} r={7} fill={skinD} opacity={0.14} />
+            <path d={`M${hand2X - 5},${ropeGripY + 5} Q${hand2X},${ropeGripY + 3} ${hand2X + 5},${ropeGripY + 5}`}
+              stroke={skinD} strokeWidth={1.2} fill="none" strokeLinecap="round" opacity={0.45} />
+            <circle cx={hand2X - 2} cy={ropeGripY + 3} r={2.2} fill="rgba(255,255,255,0.3)" />
           </>
         )}
 
@@ -313,8 +373,10 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
         <ellipse cx={headCx - dir * 22} cy={headCenterY + 3} rx={3.5} ry={4.5} fill={skinD} opacity={0.28} />
 
         <g>
-          <circle cx={headCx} cy={headCenterY} r={24} fill={skin} />
-          <circle cx={headCx - 7} cy={headCenterY - 6} r={7} fill="rgba(255,255,255,0.16)" />
+          <circle cx={headCx} cy={headCenterY} r={24} fill={`url(#sg-${uid})`} />
+          {/* Soft jaw / cheek shading for a rounder, less flat face */}
+          <ellipse cx={headCx} cy={headCenterY + 13} rx={16} ry={8} fill={skinD} opacity={0.16} />
+          <circle cx={headCx - 7} cy={headCenterY - 6} r={7} fill="rgba(255,255,255,0.18)" />
           {isTired && isPulling && (
             <circle cx={headCx} cy={headCenterY} r={24} fill="rgba(200,50,50,0.08)" />
           )}
@@ -323,6 +385,14 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
                     Q${headCx + 25},${headCenterY - 22} ${headCx + 22},${headCenterY - 5}
                     Q${headCx + 6},${headCenterY - 15} ${headCx - 24},${headCenterY - 12} Z`}
             fill={hair} />
+          {/* Hair sheen highlight */}
+          <path d={`M${headCx - 14},${headCenterY - 23} Q${headCx - 2},${headCenterY - 28} ${headCx + 11},${headCenterY - 22}`}
+            stroke="rgba(255,255,255,0.16)" strokeWidth={2.6} fill="none" strokeLinecap="round" />
+          {/* Variant side fringe — only some athletes have it */}
+          {v.fringe && (
+            <path d={`M${headCx - 17 * dir},${headCenterY - 15} Q${headCx - 5 * dir},${headCenterY - 21} ${headCx + 3 * dir},${headCenterY - 9}`}
+              stroke={hair} strokeWidth={4.2} fill="none" strokeLinecap="round" />
+          )}
           <path d={`M${headCx - 22},${headCenterY - 16} Q${headCx},${headCenterY - 22} ${headCx + 23},${headCenterY - 16} L${headCx + 22},${headCenterY - 8} Q${headCx},${headCenterY - 13} ${headCx - 22},${headCenterY - 8} Z`}
             fill={palette.band} />
           <path d={isBlue
