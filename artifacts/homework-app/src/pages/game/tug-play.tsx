@@ -982,11 +982,32 @@ function TugCharacters({
 function TugPowerMeter({ position }: { position: number }) {
   const pos = Math.max(7, Math.min(93, position));
   const inDanger = pos < 20 || pos > 80;
+  // Leading team = whichever fill is larger. Drives a soft directional glow so
+  // the bar communicates who currently controls the rope.
+  const leader: "blue" | "red" | null = pos < 48 ? "blue" : pos > 52 ? "red" : null;
+  const leadStrength = Math.min(1, Math.abs(pos - 50) / 35);
   return (
     <div className="relative mx-auto w-full max-w-3xl px-2">
+      {/* Directional control glow for the leading team */}
+      {leader && (
+        <motion.div
+          aria-hidden
+          className={`pointer-events-none absolute inset-y-0 w-1/3 rounded-[1.2rem] blur-xl ${leader === "blue" ? "left-0" : "right-0"}`}
+          animate={{ opacity: [0.25 + leadStrength * 0.2, 0.45 + leadStrength * 0.3, 0.25 + leadStrength * 0.2] }}
+          transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
+          style={{ background: leader === "blue" ? "rgba(59,130,246,0.55)" : "rgba(239,68,68,0.55)" }}
+        />
+      )}
       <div
         className="relative h-8 sm:h-10 lg:h-12 rounded-[1.2rem] border border-white/25 bg-black/35 p-1 sm:p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
-        style={{ boxShadow: "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)" }}
+        style={{
+          boxShadow: leader === "blue"
+            ? "0 18px 50px rgba(0,0,0,0.38), 0 0 22px rgba(59,130,246,0.35), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)"
+            : leader === "red"
+              ? "0 18px 50px rgba(0,0,0,0.38), 0 0 22px rgba(239,68,68,0.35), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)"
+              : "0 18px 50px rgba(0,0,0,0.38), inset 0 2px 8px rgba(255,255,255,0.12), inset 0 -10px 18px rgba(0,0,0,0.3)",
+          transition: "box-shadow 0.55s ease",
+        }}
       >
         <div className="relative h-full overflow-hidden rounded-2xl">
           {/* Blue fills left — shrinks as red wins, grows as blue wins */}
@@ -1933,12 +1954,12 @@ export default function TugPlay() {
                 <TugActionButton label={lang === "ar" ? "انتظر المعلم" : "Waiting for host"} disabled />
               </div>
             )}
-            {(phase === "question" || phase === "answered") && (
+            {/* Only the useful confirmation remains; the redundant "press now"
+                call-to-action was removed (timer + options already signal it). */}
+            {phase === "answered" && (
               <div className="flex justify-center py-0.5">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-bold text-white/55 backdrop-blur-sm">
-                  {phase === "answered"
-                    ? (lang === "ar" ? "✓ تم الإجابة" : "✓ Answered")
-                    : (lang === "ar" ? "⚡ اضغط الآن" : "⚡ Press Now")}
+                  {lang === "ar" ? "✓ تم الإجابة" : "✓ Answered"}
                 </span>
               </div>
             )}
@@ -2066,12 +2087,12 @@ export default function TugPlay() {
                     )}
                   </div>
 
-                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-2 lg:p-3 mb-1 lg:mb-1.5 text-center border text-white shadow-md ${
+                  <div className={`mx-auto w-full max-w-3xl rounded-2xl p-3 lg:p-4 mb-1.5 lg:mb-2 text-center border-2 text-white shadow-lg backdrop-blur-sm ${
                     phase === "round-end" && roundData
                       ? "border-[#D9A521]/60"
                       : isPowerQ
                         ? "border-[#D9A521]/70"
-                        : "border-white/20"
+                        : "border-white/25"
                   }`} style={{
                     background: phase === "round-end" && roundData
                       ? "rgba(34,87,57,0.55)"
@@ -2086,7 +2107,7 @@ export default function TugPlay() {
                         ⚡ {lang === "ar" ? "سؤال القوة — نقاط مضاعفة!" : "POWER — 2x!"}
                       </motion.div>
                     )}
-                    <p className="text-base sm:text-lg lg:text-xl font-black leading-snug">{question.text}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-black leading-snug">{question.text}</p>
                     {phase === "round-end" && roundData && (
                       <p className="text-green-600 dark:text-green-300 text-sm lg:text-base font-bold mt-2">
                         ✅ {question.options[roundData.correctIndex]}
@@ -2100,7 +2121,7 @@ export default function TugPlay() {
                       return (
                         <button key={idx}
                           onClick={() => handleAnswer(idx)} disabled={selectedAnswer !== null || phase === "round-end"}
-                          className={`relative flex items-center justify-center gap-2 p-2 lg:p-3 rounded-2xl text-center font-bold text-sm lg:text-base border-2 overflow-hidden min-h-[48px] lg:min-h-[62px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
+                          className={`relative flex items-center justify-center gap-2 p-2 lg:p-3 rounded-2xl text-center font-bold text-base lg:text-lg border-2 overflow-hidden min-h-[48px] lg:min-h-[62px] shadow-md touch-manipulation select-none transition-colors duration-150 ${os.className}`}
                           style={{ background: os.bg, borderColor: os.border }}
                         >
                           {os.crossed && (
