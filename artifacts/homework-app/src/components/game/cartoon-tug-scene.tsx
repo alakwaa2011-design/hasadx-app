@@ -911,6 +911,68 @@ function SVGConfetti({ active }: { active: boolean }) {
   );
 }
 
+// Golden trophy that floats above the winning team inside the arena, with a
+// radiant halo and orbiting sparkles. Celebration-only; pure SVG/CSS.
+function VictoryTrophy({ x, pullCycle, accent }: { x: number; pullCycle: number; accent: string }) {
+  const topY = 116;
+  const sparkles = [
+    { dx: -46, dy: 8, ph: 0 },
+    { dx: 44, dy: 2, ph: 0.7 },
+    { dx: -30, dy: -34, ph: 1.4 },
+    { dx: 34, dy: -30, ph: 2.1 },
+    { dx: 0, dy: -46, ph: 2.8 },
+  ];
+  return (
+    <g>
+      {/* Soft halo */}
+      <motion.circle
+        cx={x} cy={topY + 16} r={52}
+        fill={accent}
+        animate={{ opacity: [0.14, 0.3, 0.14], r: [46, 56, 46] }}
+        transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+      />
+      <motion.g
+        animate={{ y: [0, -6, 0] }}
+        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+        style={{ transformOrigin: `${x}px ${topY}px` }}
+      >
+        {/* Rays */}
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+          <line key={a}
+            x1={x + Math.cos((a * Math.PI) / 180) * 30} y1={topY + 16 + Math.sin((a * Math.PI) / 180) * 30}
+            x2={x + Math.cos((a * Math.PI) / 180) * 40} y2={topY + 16 + Math.sin((a * Math.PI) / 180) * 40}
+            stroke="#FCE08A" strokeWidth={2.4} strokeLinecap="round" opacity={0.5} />
+        ))}
+        {/* Cup bowl */}
+        <path d={`M${x - 18},${topY} L${x + 18},${topY} Q${x + 16},${topY + 22} ${x},${topY + 26} Q${x - 16},${topY + 22} ${x - 18},${topY} Z`}
+          fill="#F4C53C" stroke="#C9941C" strokeWidth={1.4} />
+        <path d={`M${x - 12},${topY + 2} Q${x - 11},${topY + 16} ${x},${topY + 20}`}
+          stroke="#FFF0B8" strokeWidth={2.4} fill="none" strokeLinecap="round" opacity={0.85} />
+        {/* Handles */}
+        <path d={`M${x - 18},${topY + 2} Q${x - 30},${topY + 6} ${x - 24},${topY + 16}`}
+          stroke="#E0AE2A" strokeWidth={3.4} fill="none" strokeLinecap="round" />
+        <path d={`M${x + 18},${topY + 2} Q${x + 30},${topY + 6} ${x + 24},${topY + 16}`}
+          stroke="#E0AE2A" strokeWidth={3.4} fill="none" strokeLinecap="round" />
+        {/* Stem + base */}
+        <rect x={x - 3} y={topY + 26} width={6} height={8} fill="#D8A828" />
+        <path d={`M${x - 12},${topY + 40} Q${x},${topY + 36} ${x + 12},${topY + 40} L${x + 9},${topY + 44} L${x - 9},${topY + 44} Z`}
+          fill="#E0AE2A" stroke="#C9941C" strokeWidth={1} />
+        {/* Star on cup */}
+        <text x={x} y={topY + 16} textAnchor="middle" fontSize={11} fill="#8A5E08" fontWeight="900">★</text>
+      </motion.g>
+      {/* Orbiting sparkles */}
+      {sparkles.map((s, i) => {
+        const tw = (Math.sin(pullCycle * 1.6 + s.ph) + 1) / 2;
+        return (
+          <g key={i} opacity={0.35 + tw * 0.6}>
+            <text x={x + s.dx} y={topY + 16 + s.dy} textAnchor="middle" fontSize={9 + tw * 5} fill="#FFE9A8">✦</text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide, impulse }: CartoonTugSceneProps) {
   const [pullCycle, setPullCycle] = useState(0);
   // Smoothed rope position — eases toward the real ropePos so team progress
@@ -1028,6 +1090,15 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
             isWinnerSide={winnerSide === "red"} isLosingSide={redIsLosing}
             pullCycle={pullCycle} fatigue={redFatigue} />
         ))}
+
+        {/* Trophy floating above the winning team */}
+        {isCelebrating && winnerSide && (
+          <VictoryTrophy
+            x={winnerSide === "blue" ? 330 + slideX : 670 + slideX}
+            pullCycle={pullCycle}
+            accent={winnerSide === "blue" ? "rgba(96,165,250,0.55)" : "rgba(248,113,113,0.55)"}
+          />
+        )}
 
         <SVGConfetti active={isCelebrating && winnerSide !== null} />
       </svg>
