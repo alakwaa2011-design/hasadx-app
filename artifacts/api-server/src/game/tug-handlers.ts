@@ -912,10 +912,20 @@ export function setupTugSocket(io: Server) {
       clearTugRateBucket(socket.id);
       for (const [pin, game] of tugGames.entries()) {
         if (game.players[socket.id]) {
-          delete game.players[socket.id];
-          tugNs.to(`tug:${pin}`).emit("tug:players-updated", {
-            players: getPlayerList(game),
-          });
+          // Only drop the player while we're still in the lobby. During an
+          // active game a disconnect is almost always a transient network blip
+          // (mobile data, Wi-Fi handoff, tab sleep) — Socket.IO reconnects with
+          // a NEW socket.id. If we deleted the record here, `tug:rejoin` would
+          // no longer find it, the student would get re-added with a reset score
+          // (or hit "أنت لست في هذه اللعبة" on their next answer). So we KEEP the
+          // record mid-game; `tug:rejoin` re-keys it to the fresh socket.id and
+          // their team + score persist seamlessly.
+          if (game.state === "lobby") {
+            delete game.players[socket.id];
+            tugNs.to(`tug:${pin}`).emit("tug:players-updated", {
+              players: getPlayerList(game),
+            });
+          }
         }
 
         if (game.pendingPlayers[socket.id]) {
