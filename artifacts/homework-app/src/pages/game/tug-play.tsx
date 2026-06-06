@@ -1639,8 +1639,12 @@ export default function TugPlay() {
     getTugSocket().emit("tug:answer", { pin, answerIndex: idx, answerText: selectedText },
       (res: { correct?: boolean; isBoost?: boolean; isPower?: boolean; streak?: number; correctIndex?: number; error?: string }) => {
         if (res.error) {
+          // Never hard-fail the whole screen on an answer error. The usual cause
+          // is a transient reconnect (new socket.id) where the server hasn't
+          // re-attached our record yet. Silently re-join to re-key our socket,
+          // re-enable the options, and let the student tap again — no fatal page.
           setSelectedAnswer(null);
-          setError(res.error);
+          getTugSocket().emit("tug:rejoin", { pin, name: playerName, avatar: playerAvatar }, () => {});
           return;
         }
         const serverCorrectIndex = typeof res.correctIndex === "number" ? res.correctIndex : undefined;
