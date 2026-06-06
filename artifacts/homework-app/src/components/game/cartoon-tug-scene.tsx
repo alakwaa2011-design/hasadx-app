@@ -157,12 +157,17 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
             ? { y: [0, -22, -8, -18, 0], rotate: [0, -2.5 * dir, 1.8 * dir, -1.2 * dir, 0] }
             : isCelebrating && isLosingSide
               ? { y: [0, 3, 1, 3, 0], x: [0, 0.6 * dir, -0.4 * dir, 0.6 * dir, 0] }
-              : { y: celebJump + bounce, x: pullShake * dir, rotate: isPulling ? [0, -1.4 * dir, 0.9 * dir, 0] : 0 }
+              : isPulling
+                ? { y: celebJump + bounce, x: pullShake * dir, rotate: [0, -1.4 * dir, 0.9 * dir, 0] }
+                // Idle: gentle breathing + faint sway so the team never looks frozen
+                : { y: [0, -1.8, 0, -1.6, 0], x: [0, 0.5 * dir, 0, -0.5 * dir, 0], rotate: [0, -0.5 * dir, 0, 0.5 * dir, 0] }
         }
         transition={
           isCelebrating
             ? { repeat: Infinity, duration: isWinnerSide ? 0.85 : 2.8, ease: "easeInOut" }
-            : { repeat: isPulling ? Infinity : 0, duration: 0.55, ease: "easeInOut" }
+            : isPulling
+              ? { repeat: Infinity, duration: 0.55, ease: "easeInOut" }
+              : { repeat: Infinity, duration: 2.6 + index * 0.3, ease: "easeInOut" }
         }
         style={{ transformOrigin: `${cx}px ${feetY}px` }}
       >
@@ -488,9 +493,11 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
   const leftEnd = blue1hand - overhang;
   const rightEnd = red1hand + overhang;
 
-  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.18 : 0;
+  // Gentle continuous sway while waiting; tighter ripple while pulling.
+  const wobble = isPulling ? Math.sin(pullCycle * 4) * 0.18 : Math.sin(pullCycle * 0.8) * 0.07;
   const tension = Math.abs(slideX) / 80;
-  const sag = isPulling ? 0.6 + (1 - tension) * 0.9 : 2.2;
+  // Lower sag values → the rope reads as genuinely taut rather than droopy.
+  const sag = isPulling ? 0.4 + (1 - tension) * 0.65 : 1.5;
 
   const ropeLen = rightEnd - leftEnd;
   const seg = 30;
@@ -583,11 +590,11 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
         animate={{ y: fallenY - ropeGripY }}
         transition={{ duration: 0.6, ease: "easeIn" }}
       >
-        <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={10} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
-        <path d={mainPath} stroke="#3E2723" strokeWidth={11} fill="none" strokeLinecap="round" opacity={0.15} />
-        <path d={mainPath} stroke="#8D6E3C" strokeWidth={9} fill="none" strokeLinecap="round" />
-        <path d={s1Path} stroke="#EEC050" strokeWidth={3.5} fill="none" strokeLinecap="round" opacity={0.85} />
-        <path d={s2Path} stroke="#7A4C1E" strokeWidth={3} fill="none" strokeLinecap="round" opacity={0.78} />
+        <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={12} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
+        <path d={mainPath} stroke="#3E2723" strokeWidth={13} fill="none" strokeLinecap="round" opacity={0.15} />
+        <path d={mainPath} stroke="#8D6E3C" strokeWidth={11} fill="none" strokeLinecap="round" />
+        <path d={s1Path} stroke="#EEC050" strokeWidth={4.2} fill="none" strokeLinecap="round" opacity={0.85} />
+        <path d={s2Path} stroke="#7A4C1E" strokeWidth={3.6} fill="none" strokeLinecap="round" opacity={0.78} />
         <g transform={`translate(${slideX}, 0)`}>
           <rect x={CENTER_X - 5} y={ropeGripY - 5} width={10} height={16} rx={3} fill="#E53E3E" />
           <rect x={CENTER_X - 6} y={ropeGripY - 8} width={12} height={5} rx={2} fill="#C53030" />
@@ -598,26 +605,26 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating }: { slideX: 
 
   return (
     <g>
-      <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={10} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
+      <path d={mainPath} stroke="rgba(0,0,0,0.38)" strokeWidth={12} fill="none" strokeLinecap="round" opacity={0.18} transform="translate(0, 4)" />
       <motion.path
         d={mainPath}
         stroke="#FCD34D"
-        strokeWidth={2}
+        strokeWidth={2.4}
         fill="none"
         strokeLinecap="round"
         opacity={isPulling ? 0.18 : 0}
         animate={isPulling ? { opacity: [0.08, 0.22, 0.08] } : { opacity: 0 }}
         transition={{ repeat: Infinity, duration: 0.5 }}
       />
-      <path d={mainPath} stroke="#3E2723" strokeWidth={9} fill="none" strokeLinecap="round" opacity={0.15} />
+      <path d={mainPath} stroke="#3E2723" strokeWidth={11} fill="none" strokeLinecap="round" opacity={0.15} />
 
-      <path d={mainPath} stroke="#8D6E3C" strokeWidth={7} fill="none" strokeLinecap="round" />
+      <path d={mainPath} stroke="#8D6E3C" strokeWidth={9} fill="none" strokeLinecap="round" />
 
-      <path d={s1Path} stroke="#EEC050" strokeWidth={3.5} fill="none" strokeLinecap="round" opacity={0.85} />
-      <path d={s2Path} stroke="#7A4C1E" strokeWidth={3} fill="none" strokeLinecap="round" opacity={0.78} />
+      <path d={s1Path} stroke="#EEC050" strokeWidth={4.2} fill="none" strokeLinecap="round" opacity={0.85} />
+      <path d={s2Path} stroke="#7A4C1E" strokeWidth={3.6} fill="none" strokeLinecap="round" opacity={0.78} />
 
       {/* Rope highlight streak */}
-      <path d={mainPath} stroke="#E8C87A" strokeWidth={1.8} fill="none" strokeLinecap="round" opacity={0.35} />
+      <path d={mainPath} stroke="#E8C87A" strokeWidth={2.2} fill="none" strokeLinecap="round" opacity={0.35} />
 
       {Array.from({ length: 12 }).map((_, i) => {
         const t = (i + 0.5) / 12;
@@ -819,13 +826,12 @@ function SVGConfetti({ active }: { active: boolean }) {
 }
 
 export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide }: CartoonTugSceneProps) {
-  // When celebrating, losing team slides extra toward winner (retreats past center line)
-  const baseSlideX = (ropePos - 50) * 4.5;
-  const retreatOffset = isCelebrating && winnerSide ? (winnerSide === "blue" ? -120 : 120) : 0;
-  const slideX = baseSlideX + retreatOffset;
-  const blueFatigue = Math.max(0, Math.min(1, (ropePos - 50) / 40));
-  const redFatigue = Math.max(0, Math.min(1, (50 - ropePos) / 40));
   const [pullCycle, setPullCycle] = useState(0);
+  // Smoothed rope position — eases toward the real ropePos so team progress
+  // glides instead of snapping. Purely presentational; never sent anywhere.
+  const [displayPos, setDisplayPos] = useState(ropePos);
+  const ropePosRef = useRef(ropePos);
+  ropePosRef.current = ropePos;
   const animRef = useRef(0);
   const mountedRef = useRef(true);
 
@@ -835,18 +841,33 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
     const tick = (n: number) => {
       if (!mountedRef.current) return;
       setPullCycle((n - s) / 1000 * Math.PI * 2 * 1.2);
+      setDisplayPos((prev) => {
+        const target = ropePosRef.current;
+        const next = prev + (target - prev) * 0.14;
+        return Math.abs(target - next) < 0.05 ? target : next;
+      });
       animRef.current = requestAnimationFrame(tick);
     };
     animRef.current = requestAnimationFrame(tick);
     return () => { mountedRef.current = false; cancelAnimationFrame(animRef.current); };
   }, []);
 
+  // When celebrating, losing team slides extra toward winner (retreats past center line)
+  const baseSlideX = (displayPos - 50) * 4.5;
+  const retreatOffset = isCelebrating && winnerSide ? (winnerSide === "blue" ? -120 : 120) : 0;
+  const slideX = baseSlideX + retreatOffset;
+  const blueFatigue = Math.max(0, Math.min(1, (displayPos - 50) / 40));
+  const redFatigue = Math.max(0, Math.min(1, (50 - displayPos) / 40));
+
   const blueIsLosing = winnerSide === "red" || ropePos > 55;
   const redIsLosing = winnerSide === "blue" || ropePos < 45;
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl select-none border-2 border-white/20 shadow-xl">
-      <svg viewBox="0 0 1000 360" className="w-full h-auto block">
+      {/* viewBox crops the empty upper sky and side margins → camera pushes in
+          ~25% on the action while keeping the original 2.78 aspect ratio so the
+          surrounding layout is untouched. */}
+      <svg viewBox="100 72 800 288" className="w-full h-auto block">
         <Arena />
         <CenterLine />
         <DustCloud isPulling={isPulling} pullCycle={pullCycle} slideX={slideX} />

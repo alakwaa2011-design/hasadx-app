@@ -366,6 +366,7 @@ export default function OrganizerDashboard() {
             ? "تحدٍّ بين فريقين أو أكثر — ٦ فئات، أسئلة بقيم متصاعدة ومساعدات استراتيجية. مثالي للحفلات والتجمعات والزيارات."
             : "Multi-team challenge — 6 categories, escalating values. Built for events and gatherings.",
         Icon: Swords,
+        svgIcon: <ArenaIcon size={44} />,
         accent: "#1f8246",
         btnLabel: lang === "ar" ? "ابدأ التحدّي" : "Start challenge",
       },
@@ -377,6 +378,7 @@ export default function OrganizerDashboard() {
             ? "بنك أسئلة متنوّعة جاهزة للتجمعات والزيارات والمناسبات — انطلق فوراً بلا تحضير."
             : "Ready question bank for visits, gatherings, and school events — start instantly.",
         Icon: BookOpen,
+        svgIcon: <PublicQuizIcon size={44} />,
         accent: "#0e7490",
         btnLabel: lang === "ar" ? "ابدأ" : "Start",
       },
