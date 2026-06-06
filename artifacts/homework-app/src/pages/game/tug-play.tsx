@@ -464,21 +464,31 @@ class TugSoundEngine {
 }
 
 function Confetti({ color }: { color: string }) {
+  const palette = [color, "#D9A521", "#F7C948", "#fef3c7", "#34d399", "#ffffff"];
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
-      {Array.from({ length: 42 }, (_, i) => (
-        <motion.div key={i}
-          initial={{ y: -24, x: `${Math.random() * 100}vw`, opacity: 0.85, rotate: 0 }}
-          animate={{ y: "105vh", rotate: Math.random() * 420 - 210, opacity: [0.85, 0.75, 0] }}
-          transition={{ duration: 3.2 + Math.random() * 1.6, delay: Math.random() * 1.1, ease: "easeIn" }}
-          style={{
-            position: "absolute",
-            width: 5 + Math.random() * 7, height: 5 + Math.random() * 7,
-            borderRadius: Math.random() > 0.4 ? "50%" : "2px",
-            backgroundColor: [color, "#D9A521", "#fef3c7", "#34d399"][i % 4],
-          }}
-        />
-      ))}
+      {Array.from({ length: 80 }, (_, i) => {
+        const left = Math.random() * 100;
+        const size = 5 + Math.random() * 8;
+        const isStrip = Math.random() > 0.55;
+        const sway = (Math.random() - 0.5) * 14;
+        return (
+          <motion.div key={i}
+            initial={{ y: -28, opacity: 0.95, rotate: 0 }}
+            animate={{ y: "106vh", x: [`0vw`, `${sway}vw`, `0vw`], rotate: Math.random() * 540 - 270, opacity: [0.95, 0.85, 0] }}
+            transition={{ duration: 2.8 + Math.random() * 2, delay: Math.random() * 1.4, ease: "easeIn", x: { duration: 1.4 + Math.random(), repeat: Infinity, ease: "easeInOut" } }}
+            style={{
+              position: "absolute",
+              left: `${left}vw`,
+              width: isStrip ? size * 0.45 : size,
+              height: isStrip ? size * 1.3 : size,
+              borderRadius: isStrip ? "1px" : Math.random() > 0.5 ? "50%" : "2px",
+              backgroundColor: palette[i % palette.length],
+              boxShadow: i % 5 === 0 ? "0 0 6px rgba(247,201,72,0.6)" : "none",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -1195,6 +1205,14 @@ function TugArena({
   return (
     <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-1 sm:pb-2 pt-1 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
       <StadiumBackdrop active={isPulling} />
+      {/* On finish, fade the lower field into the page so the eye is pulled down
+          to the results card — the celebration above still shows through. */}
+      {isCelebrating && (
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-1/2"
+          style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(13,27,62,0.55) 70%, rgba(13,27,62,0.9) 100%)" }}
+        />
+      )}
       <div className="relative z-10 mx-auto max-w-6xl">
         <div className="min-h-[185px] sm:min-h-[290px] lg:min-h-[360px]">
           <TugCharacters
@@ -2202,27 +2220,47 @@ export default function TugPlay() {
                   ) : (
                     <>
                       <motion.div
-                        animate={{ y: [0, -6, 0], scale: [1, 1.04, 1] }}
-                        transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-                        className="relative mx-auto mb-2.5 flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-[2rem] border border-amber-300/36 bg-white/10 text-7xl shadow-[0_0_28px_rgba(217,165,33,0.26),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-md"
+                        animate={{ y: [0, -7, 0], scale: [1, 1.05, 1], rotate: [-2, 2, -2] }}
+                        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                        className="relative mx-auto mb-2 flex h-[7.5rem] w-[7.5rem] items-center justify-center rounded-[2rem] border border-amber-300/45 bg-white/10 text-7xl shadow-[0_0_42px_rgba(217,165,33,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] backdrop-blur-md"
                       >
                         🏆
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.05, duration: 0.3 }}
+                        className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-[11px] lg:text-xs font-black uppercase tracking-[0.22em]"
+                        style={{
+                          background: "linear-gradient(90deg, rgba(217,165,33,0.18), rgba(247,201,72,0.3), rgba(217,165,33,0.18))",
+                          border: "1px solid rgba(247,201,72,0.5)",
+                          color: "#FCE08A",
+                        }}
+                      >
+                        ✦ {lang === "ar" ? "الفريق الفائز" : "Winner"} ✦
                       </motion.div>
                       <motion.h2
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.08, duration: 0.35 }}
-                        className={`text-3xl lg:text-5xl font-black mb-1.5 drop-shadow-sm ${gameEnd.winner === "blue" ? "text-blue-200" : "text-red-200"}`}
+                        className="mb-1 text-4xl lg:text-6xl font-black leading-tight"
+                        style={{
+                          color: gameEnd.winner === "blue" ? "#bfdbfe" : "#fecaca",
+                          textShadow: gameEnd.winner === "blue"
+                            ? "0 0 26px rgba(59,130,246,0.6), 0 2px 8px rgba(0,0,0,0.4)"
+                            : "0 0 26px rgba(239,68,68,0.6), 0 2px 8px rgba(0,0,0,0.4)",
+                        }}
                       >
-                        {teamLabel(gameEnd.winner)} {lang === "ar" ? "يفوز!" : "Wins!"}
+                        {teamLabel(gameEnd.winner)}
                       </motion.h2>
                       <motion.p
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.16, duration: 0.35 }}
-                        className="mb-2.5 text-sm lg:text-base font-bold text-amber-100/85"
+                        className="mb-2.5 text-base lg:text-xl font-black"
+                        style={{ color: "#F7C948", textShadow: "0 2px 10px rgba(0,0,0,0.35)" }}
                       >
-                        {lang === "ar" ? "أحسنتم! لقد سيطرتم على الحبل" : "Well done! You controlled the rope"}
+                        {lang === "ar" ? "🎉 يفوز بشدّ الحبل!" : "🎉 Wins the tug of war!"}
                       </motion.p>
                       {myTeam === gameEnd.winner && (
                         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ repeat: Infinity, duration: 0.9 }}
@@ -2244,8 +2282,9 @@ export default function TugPlay() {
                           boxShadow: gameEnd.winner === "blue" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(59,130,246,0.18)" : "none",
                         }}
                       >
-                        <p className="text-blue-100 text-xs lg:text-sm font-black mb-1">{teamLabel("blue")}</p>
-                        <p className="text-2xl lg:text-4xl font-black text-white">
+                        <p className="text-blue-100 text-xs lg:text-sm font-black mb-1">{gameEnd.winner === "blue" ? "👑 " : ""}{teamLabel("blue")}</p>
+                        <p className={`font-black text-white ${gameEnd.winner === "blue" ? "text-3xl lg:text-5xl" : "text-2xl lg:text-4xl"}`}
+                          style={gameEnd.winner === "blue" ? { textShadow: "0 0 20px rgba(247,201,72,0.55)" } : undefined}>
                           {[...gameEnd.players].filter(p => p.team === "blue").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
@@ -2256,8 +2295,9 @@ export default function TugPlay() {
                           boxShadow: gameEnd.winner === "red" ? "0 18px 38px rgba(217,165,33,0.18), 0 0 22px rgba(248,113,113,0.18)" : "none",
                         }}
                       >
-                        <p className="text-red-100 text-xs lg:text-sm font-black mb-1">{teamLabel("red")}</p>
-                        <p className="text-2xl lg:text-4xl font-black text-white">
+                        <p className="text-red-100 text-xs lg:text-sm font-black mb-1">{gameEnd.winner === "red" ? "👑 " : ""}{teamLabel("red")}</p>
+                        <p className={`font-black text-white ${gameEnd.winner === "red" ? "text-3xl lg:text-5xl" : "text-2xl lg:text-4xl"}`}
+                          style={gameEnd.winner === "red" ? { textShadow: "0 0 20px rgba(247,201,72,0.55)" } : undefined}>
                           {[...gameEnd.players].filter(p => p.team === "red").reduce((s, p) => s + p.score, 0)}
                         </p>
                       </div>
@@ -2280,29 +2320,30 @@ export default function TugPlay() {
                     ))}
                   </div>
 
-                  <div className="flex gap-3">
+                  {/* Primary CTA = Play Again / Replay; Home is the quieter secondary action. */}
+                  <div className="flex flex-col gap-2.5">
+                    <motion.button whileTap={{ scale: 0.97 }}
+                      animate={{ scale: [1, 1.015, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                      onClick={isCreator
+                        ? handleReplay
+                        : () => setLocation(`/game/tug/join/${pin}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent(playerAvatar)}`)}
+                      className="w-full py-3.5 rounded-2xl font-black text-base lg:text-lg"
+                      style={{
+                        background: "linear-gradient(135deg, #f7c948 0%, #f59e0b 48%, #d97706 100%)",
+                        color: "#1a2e1a",
+                        boxShadow: "0 14px 32px rgba(217,165,33,0.5), inset 0 2px 0 rgba(255,255,255,0.32)",
+                      }}
+                    >
+                      🔄 {isCreator
+                        ? (lang === "ar" ? "أعد اللعبة" : "Replay")
+                        : (lang === "ar" ? "العب مجدداً" : "Play Again")}
+                    </motion.button>
                     <button onClick={() => setLocation("/")}
-                      className="flex-1 py-3 rounded-xl font-bold text-sm text-slate-800 transition-colors"
-                      style={{ background: "#ffffff", border: "1px solid rgba(148,163,184,0.45)" }}>
+                      className="w-full py-2.5 rounded-xl font-bold text-sm transition-colors hover:bg-white/15"
+                      style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.72)" }}>
                       {lang === "ar" ? "الرئيسية" : "Home"}
                     </button>
-                    {isCreator ? (
-                      <motion.button whileTap={{ scale: 0.96 }}
-                        onClick={handleReplay}
-                        className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg"
-                        style={{ background: "#D9A521", color: "#1a2e1a" }}
-                      >
-                        {lang === "ar" ? "🔄 أعد اللعبة" : "🔄 Replay"}
-                      </motion.button>
-                    ) : (
-                      <motion.button whileTap={{ scale: 0.96 }}
-                        onClick={() => setLocation(`/game/tug/join/${pin}?name=${encodeURIComponent(playerName)}&avatar=${encodeURIComponent(playerAvatar)}`)}
-                        className="flex-1 py-3 rounded-xl font-black text-sm shadow-lg"
-                        style={{ background: "#D9A521", color: "#1a2e1a" }}
-                      >
-                        {lang === "ar" ? "🔄 العب مجدداً" : "🔄 Play Again"}
-                      </motion.button>
-                    )}
                   </div>
                 </motion.div>
               )}
