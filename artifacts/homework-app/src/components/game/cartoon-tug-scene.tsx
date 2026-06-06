@@ -902,7 +902,13 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
   // When celebrating, losing team slides extra toward winner (retreats past center line)
   const baseSlideX = (displayPos - 50) * 4.5;
   const retreatOffset = isCelebrating && winnerSide ? (winnerSide === "blue" ? -120 : 120) : 0;
-  const slideX = baseSlideX + retreatOffset + kick;
+  // Clamp the whole rig inside the SVG viewBox (visible x: 100–900). The outer
+  // characters sit at base x = 280 (left) and 720 (right); with their ~45px
+  // bodies + rope ends, a ±130 cap keeps BOTH teams and the centre marker fully
+  // on-screen — even on a landslide win (e.g. 776–0) or the celebration retreat,
+  // where baseSlideX + retreat would otherwise drag the winner off the edge.
+  const SLIDE_LIMIT = 130;
+  const slideX = Math.max(-SLIDE_LIMIT, Math.min(SLIDE_LIMIT, baseSlideX + retreatOffset + kick));
   const blueFatigue = Math.max(0, Math.min(1, (displayPos - 50) / 40));
   const redFatigue = Math.max(0, Math.min(1, (50 - displayPos) / 40));
 
