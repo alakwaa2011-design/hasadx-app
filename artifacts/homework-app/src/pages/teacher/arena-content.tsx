@@ -325,9 +325,9 @@ function CoverTile({
 export default function ArenaContentAdmin() {
   const [, setLocation] = useLocation();
   const { data: teacherData, isLoading: teacherLoading } =
-    useGetCurrentTeacher({ query: { retry: false } as any });
+    useGetCurrentTeacher({ query: { retry: false, staleTime: 0 } as any });
   const teacherId = (teacherData as any)?.id ?? null;
-  const isAdmin = !!(teacherData as any)?.isAdmin;
+  const isAdmin = !!(teacherData as any)?.isAdmin || (teacherData as any)?.role === "admin";
   const isLoggedIn = teacherLoading ? null : !!teacherData;
 
   const [cats, setCats] = useState<DbArenaCategory[]>([]);
