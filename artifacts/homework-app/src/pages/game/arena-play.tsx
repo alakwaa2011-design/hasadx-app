@@ -1639,14 +1639,51 @@ export default function ArenaPlay() {
                 const isActive = state.currentTurn === state.teamOrder[0];
 
                 return (
-                  <div className="flex items-center gap-3">
+                  <motion.div
+                    className="flex items-center gap-3 relative"
+                    animate={isActive ? {
+                      scale: [1, 1.07, 1],
+                      filter: [
+                        `drop-shadow(0 0 6px ${t.color}88)`,
+                        `drop-shadow(0 0 18px ${t.color}dd)`,
+                        `drop-shadow(0 0 6px ${t.color}88)`,
+                      ],
+                    } : { scale: 1, filter: "none" }}
+                    transition={isActive
+                      ? { duration: 1.4, repeat: Infinity, ease: "easeInOut" }
+                      : { duration: 0.3 }}
+                  >
+                    {isActive && (
+                      <motion.span
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: [0.7, 1, 0.7], y: 0 }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        style={{
+                          position: "absolute",
+                          top: "-18px",
+                          right: "50%",
+                          transform: "translateX(50%)",
+                          fontSize: "10px",
+                          fontWeight: 900,
+                          color: t.color,
+                          whiteSpace: "nowrap",
+                          background: `${t.color}18`,
+                          borderRadius: "6px",
+                          padding: "1px 6px",
+                          fontFamily: ARABIC_FONT,
+                        }}
+                      >
+                        ← دورك
+                      </motion.span>
+                    )}
                     <div
                       className="flex items-center justify-center shrink-0"
                       style={{
-                        width: "32px",
-                        height: "32px",
+                        width: isActive ? "38px" : "32px",
+                        height: isActive ? "38px" : "32px",
                         borderRadius: "12px",
-                        background: `${t.color}1f`,
+                        background: isActive ? `${t.color}30` : `${t.color}1f`,
+                        transition: "all 0.3s ease",
                       }}
                     >
                       <Users
@@ -1658,11 +1695,12 @@ export default function ArenaPlay() {
                     <div className="flex flex-col leading-none">
                       <span
                         style={{
-                          fontSize: "14px",
+                          fontSize: isActive ? "15px" : "14px",
                           fontWeight: 700,
                           color: isActive ? t.color : "#4b5563",
                           whiteSpace: "nowrap",
                           lineHeight: 1.2,
+                          transition: "all 0.3s ease",
                         }}
                       >
                         {t.name}
@@ -1670,18 +1708,19 @@ export default function ArenaPlay() {
 
                       <span
                         style={{
-                          fontSize: "28px",
+                          fontSize: isActive ? "34px" : "28px",
                           fontWeight: 800,
                           lineHeight: 1.1,
                           marginTop: "2px",
                           color: isActive ? t.color : "#1f2937",
                           fontVariantNumeric: "tabular-nums",
+                          transition: "all 0.3s ease",
                         }}
                       >
                         {t.score}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })()}
 
@@ -1718,15 +1757,52 @@ export default function ArenaPlay() {
                 const isActive = state.currentTurn === state.teamOrder[1];
 
                 return (
-                  <div className="flex items-center gap-3">
+                  <motion.div
+                    className="flex items-center gap-3 relative"
+                    animate={isActive ? {
+                      scale: [1, 1.07, 1],
+                      filter: [
+                        `drop-shadow(0 0 6px ${t.color}88)`,
+                        `drop-shadow(0 0 18px ${t.color}dd)`,
+                        `drop-shadow(0 0 6px ${t.color}88)`,
+                      ],
+                    } : { scale: 1, filter: "none" }}
+                    transition={isActive
+                      ? { duration: 1.4, repeat: Infinity, ease: "easeInOut" }
+                      : { duration: 0.3 }}
+                  >
+                    {isActive && (
+                      <motion.span
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: [0.7, 1, 0.7], y: 0 }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        style={{
+                          position: "absolute",
+                          top: "-18px",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          fontSize: "10px",
+                          fontWeight: 900,
+                          color: t.color,
+                          whiteSpace: "nowrap",
+                          background: `${t.color}18`,
+                          borderRadius: "6px",
+                          padding: "1px 6px",
+                          fontFamily: ARABIC_FONT,
+                        }}
+                      >
+                        دورك →
+                      </motion.span>
+                    )}
                     <div className="flex flex-col leading-none items-end">
                       <span
                         style={{
-                          fontSize: "14px",
+                          fontSize: isActive ? "15px" : "14px",
                           fontWeight: 700,
                           color: isActive ? t.color : "#4b5563",
                           whiteSpace: "nowrap",
                           lineHeight: 1.2,
+                          transition: "all 0.3s ease",
                         }}
                       >
                         {t.name}
@@ -1734,12 +1810,13 @@ export default function ArenaPlay() {
 
                       <span
                         style={{
-                          fontSize: "28px",
+                          fontSize: isActive ? "34px" : "28px",
                           fontWeight: 800,
                           lineHeight: 1.1,
                           marginTop: "2px",
                           color: isActive ? t.color : "#1f2937",
                           fontVariantNumeric: "tabular-nums",
+                          transition: "all 0.3s ease",
                         }}
                       >
                         {t.score}
@@ -1749,10 +1826,11 @@ export default function ArenaPlay() {
                     <div
                       className="flex items-center justify-center shrink-0"
                       style={{
-                        width: "38px",
-                        height: "38px",
+                        width: isActive ? "38px" : "32px",
+                        height: isActive ? "38px" : "32px",
                         borderRadius: "12px",
-                        background: `${t.color}1f`,
+                        background: isActive ? `${t.color}30` : `${t.color}1f`,
+                        transition: "all 0.3s ease",
                       }}
                     >
                       <Users
@@ -1760,7 +1838,7 @@ export default function ArenaPlay() {
                         style={{ color: t.color }}
                       />
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })()}
             </div>
