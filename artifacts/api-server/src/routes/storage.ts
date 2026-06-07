@@ -104,7 +104,7 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
   }
 });
 
-router.get("/storage/objects/*path", async (req: Request, res: Response) => {
+async function serveObject(req: Request, res: Response) {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
@@ -144,6 +144,9 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     req.log.error({ err: error }, "Error serving object");
     res.status(500).json({ error: "Failed to serve object" });
   }
-});
+}
+
+router.get("/objects/*path", serveObject);
+router.get("/storage/objects/*path", serveObject);
 
 export default router;
