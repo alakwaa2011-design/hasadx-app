@@ -102,14 +102,14 @@ router.put("/arena-content/categories/:id", async (req, res) => {
     const [existing] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const admin = await isAdmin(teacherId);
-    // Any logged-in teacher may update category metadata;
-    // only admins may change isPublic flag.
+    const ownsOrAdmin = existing.teacherId === teacherId || admin;
+    if (!ownsOrAdmin) return res.status(403).json({ error: "Forbidden" });
     const body = CategoryBody.partial().parse(req.body);
     const isPublic = admin ? (body.isPublic ?? existing.isPublic) : existing.isPublic;
     const [row] = await db.update(arenaCategoriesTable).set({
       ...body,
       isPublic,
-      teacherId: existing.teacherId,
+      teacherId: isPublic ? null : (existing.teacherId ?? teacherId),
       updatedAt: new Date(),
     }).where(eq(arenaCategoriesTable.id, id)).returning();
     res.json(row);
@@ -174,7 +174,9 @@ router.post("/arena-content/activities", async (req, res) => {
     const [cat] = await db.select().from(arenaCategoriesTable).where(eq(arenaCategoriesTable.id, body.categoryId));
     if (!cat) return res.status(404).json({ error: "Category not found" });
     const admin = await isAdmin(teacherId);
-    // Any logged-in teacher may add activities to any category.
+    // Non-admins can only add activities to their own private categories
+    const ownsCat = cat.teacherId === teacherId || admin;
+    if (!ownsCat) return res.status(403).json({ error: "Forbidden — يمكنك فقط إضافة أسئلة لفئاتك الخاصة" });
     /* Enforce per-source feature flag — admins bypass so they can still
        moderate even when a source is globally disabled. The frontend
        picks the source via the `source` query param; legacy callers
@@ -218,7 +220,9 @@ router.put("/arena-content/activities/:id", async (req, res) => {
     const id = Number(req.params.id);
     const [existing] = await db.select().from(arenaActivitiesTable).where(eq(arenaActivitiesTable.id, id));
     if (!existing) return res.status(404).json({ error: "Not found" });
-    // Any logged-in teacher may update activities (content corrections, improvements).
+    const admin = await isAdmin(teacherId);
+    const owns = existing.teacherId === teacherId || admin;
+    if (!owns) return res.status(403).json({ error: "Forbidden" });
     const body = ActivityBody.partial().parse(req.body);
     const [row] = await db.update(arenaActivitiesTable).set({
       ...body,
