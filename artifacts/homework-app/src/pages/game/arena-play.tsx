@@ -1931,70 +1931,95 @@ export default function ArenaPlay() {
           </div>
         </div>
 
-        {/* ── Sub-header strip: turn pill ──────────────────────────────── */}
-        <div
-          className="flex items-center justify-center py-2"
-          style={{
-            width: "100%",
-          }}
-        >
-          <div
-            className="flex items-center gap-2 px-4 py-2 rounded-full"
+        {/* ── Sub-header strip: turn indicator ─────────────────────────── */}
+        <div className="flex items-center justify-center py-3" style={{ width: "100%" }}>
+          <motion.div
+            key={state.currentTurn}
+            initial={{ scale: 0.82, opacity: 0, y: -8 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 280, damping: 20 }}
+            className="relative inline-flex items-center gap-3 overflow-hidden"
             style={{
-              background:
-                "linear-gradient(135deg, #ffffff 0%, #f9f5ea 100%)",
-              border: "1px solid rgba(201,161,75,0.28)",
-              boxShadow:
-                "0 4px 12px rgba(0,0,0,0.04)",
-              maxWidth: "92%",
+              borderRadius: "999px",
+              padding: "10px 24px 10px 18px",
+              background: `linear-gradient(135deg, ${turnTeam.color}18 0%, ${turnTeam.color}08 100%)`,
+              border: `2px solid ${turnTeam.color}55`,
+              boxShadow: `0 0 0 4px ${turnTeam.color}14, 0 8px 28px -6px ${turnTeam.color}55`,
+              fontFamily: ARABIC_FONT,
             }}
           >
-            {/* Dot */}
+            {/* Outer pulse ring */}
             <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{ borderRadius: "999px" }}
               animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.7, 1, 0.7],
+                boxShadow: [
+                  `0 0 0 0px ${turnTeam.color}44`,
+                  `0 0 0 8px ${turnTeam.color}00`,
+                ],
               }}
-              transition={{
-                duration: 1.8,
-                repeat: Infinity,
-              }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
+            />
+            {/* Shimmer sweep */}
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              initial={{ x: "-130%" }}
+              animate={{ x: "130%" }}
+              transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 0.8, ease: "easeInOut" }}
               style={{
-                width: "8px",
-                height: "8px",
+                background: `linear-gradient(110deg, transparent 25%, ${turnTeam.color}40 50%, transparent 75%)`,
                 borderRadius: "999px",
-                background: "#c9a14b",
-                flexShrink: 0,
               }}
             />
-
-            {/* Text */}
-            <span
-              style={{
-                fontSize: window.innerWidth < 640 ? "13px" : "15px",
-                fontWeight: 700,
-                color: "#374151",
-                whiteSpace: "nowrap",
-              }}
-            >
-              الدور الآن
-            </span>
-
-            {/* Team */}
-            <span
-              style={{
-                fontSize: window.innerWidth < 640 ? "15px" : "18px",
-                fontWeight: 800,
-                color: "#0f5637",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                maxWidth: "120px",
-              }}
-            >
-              {turnTeam.name}
-            </span>
-          </div>
+            {/* Live dot */}
+            <div className="relative z-10 flex items-center gap-1.5">
+              <motion.div
+                animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                style={{
+                  width: "9px",
+                  height: "9px",
+                  borderRadius: "999px",
+                  background: turnTeam.color,
+                  boxShadow: `0 0 8px ${turnTeam.color}`,
+                  flexShrink: 0,
+                }}
+              />
+            </div>
+            {/* Label */}
+            <div className="relative z-10 flex flex-col leading-none items-start">
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 900,
+                  letterSpacing: "0.18em",
+                  color: turnTeam.color,
+                  opacity: 0.75,
+                  textTransform: "uppercase",
+                  fontFamily: ARABIC_FONT,
+                }}
+              >
+                الدور الآن
+              </span>
+              <motion.span
+                key={turnTeam.name}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 900,
+                  color: turnTeam.color,
+                  lineHeight: 1.15,
+                  fontFamily: ARABIC_FONT,
+                  textShadow: `0 0 24px ${turnTeam.color}88`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {turnTeam.emoji} {turnTeam.name}
+              </motion.span>
+            </div>
+          </motion.div>
         </div>
         {/* ── Audience strip ───────────────────────────────────────────── */}
         {isPublicGame && (
