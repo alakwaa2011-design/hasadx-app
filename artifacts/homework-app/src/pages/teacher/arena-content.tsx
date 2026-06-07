@@ -369,12 +369,10 @@ export default function ArenaContentAdmin() {
     [cats],
   );
 
-  // Admins see everything; teachers see only their own private sections
-  const visibleSections = isAdmin
-    ? sections
-    : sections.filter(c => c.teacherId === teacherId);
-  const canEditCat = (c: DbArenaCategory | null | undefined) =>
-    !!c && (isAdmin || c.teacherId === teacherId);
+  // All logged-in teachers see all sections (public + own).
+  const visibleSections = sections;
+  // Any logged-in teacher can edit any category; DELETE is still restricted.
+  const canEditCat = (c: DbArenaCategory | null | undefined) => !!c && !!teacherId;
 
   const subsBySection = useMemo(() => {
     const map = new Map<number, DbArenaCategory[]>();
@@ -391,7 +389,7 @@ export default function ArenaContentAdmin() {
   const subs = selectedSectionId ? (subsBySection.get(selectedSectionId) ?? []) : [];
   const selectedSub = selectedSubId ? cats.find(c => c.id === selectedSubId) : null;
   const selectedSection = selectedSectionId ? cats.find(c => c.id === selectedSectionId) : null;
-  const canEditSelectedSub = selectedSub && (isAdmin || selectedSub.teacherId === teacherId);
+  const canEditSelectedSub = selectedSub && !!teacherId;
 
   const subActs = useMemo(
     () => selectedSubId ? acts.filter(a => a.categoryId === selectedSubId) : [],
