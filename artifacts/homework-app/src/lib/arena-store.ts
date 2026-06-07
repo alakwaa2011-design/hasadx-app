@@ -30,6 +30,8 @@ export interface ArenaActiveQuestion {
   multiplier: number;
   answeringTeam: string;
   trapUsed: boolean;
+  /** The team that originally used the trap lifeline (gets points if the opponent fails). */
+  trapOwner: string | null;
   transferUsed: boolean;
   twoAnswersActive: boolean;
   revealed: boolean;

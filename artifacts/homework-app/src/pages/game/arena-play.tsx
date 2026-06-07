@@ -701,6 +701,7 @@ export default function ArenaPlay() {
         multiplier: 1,
         answeringTeam: s.currentTurn,
         trapUsed: false,
+        trapOwner: null,
         transferUsed: false,
         twoAnswersActive: false,
         revealed: false,
@@ -1200,6 +1201,7 @@ export default function ArenaPlay() {
     } else if (helperId === "trap") {
       updateActive({
         trapUsed: true,
+        trapOwner: active.answeringTeam,
         answeringTeam: otherSide(active.answeringTeam),
         helpersUsedThisQ: [...active.helpersUsedThisQ, helperId],
       });
@@ -1336,11 +1338,17 @@ export default function ArenaPlay() {
   // Two-step resolve: if the winning team has a roster, pause for player pick.
   const requestResolve = (winner: TeamSide | null) => {
     if (!active) return;
-    if (winner && state.teams[winner].players.length > 0) {
-      setPendingWinner(winner);
+    // Trap rule: if no one answered correctly but a trap was active,
+    // award the points to the team who set the trap.
+    const effectiveWinner =
+      winner === null && active.trapUsed && active.trapOwner
+        ? (active.trapOwner as TeamSide)
+        : winner;
+    if (effectiveWinner && state.teams[effectiveWinner].players.length > 0) {
+      setPendingWinner(effectiveWinner);
       return;
     }
-    finalizeResolve(winner, undefined);
+    finalizeResolve(effectiveWinner, undefined);
   };
 
   const finalizeResolve = (
@@ -2517,14 +2525,30 @@ function QuestionModal({
               </div>
             </div>
             {active.trapUsed && (
-              <motion.span
+              <motion.div
                 initial={{ scale: 0, rotate: -45 }}
                 animate={{ scale: 1, rotate: 0 }}
-                className="ms-auto relative z-10 text-[10px] font-extrabold px-2 py-0.5 rounded-full"
-                style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fca5a5" }}
+                className="ms-auto relative z-10 flex flex-col items-end gap-0.5"
               >
-                🪤 فخ
-              </motion.span>
+                <span
+                  className="text-[10px] font-extrabold px-2 py-0.5 rounded-full"
+                  style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fca5a5" }}
+                >
+                  🪤 فخ
+                </span>
+                {active.trapOwner && state.teams[active.trapOwner] && (
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                    style={{
+                      background: `${state.teams[active.trapOwner].color}18`,
+                      color: state.teams[active.trapOwner].color,
+                      border: `1px solid ${state.teams[active.trapOwner].color}44`,
+                    }}
+                  >
+                    فشلوا؟ → {state.teams[active.trapOwner].emoji} {state.teams[active.trapOwner].name}
+                  </span>
+                )}
+              </motion.div>
             )}
             {active.transferUsed && !active.trapUsed && (
               <motion.span
@@ -2906,14 +2930,20 @@ function QuestionModal({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onResolve(null)}
-                  className="flex-1 min-w-[110px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center"
-                  style={{
+                  className="flex-1 min-w-[110px] py-3 rounded-2xl font-extrabold text-sm inline-flex items-center justify-center gap-1.5"
+                  style={active.trapUsed && active.trapOwner ? {
+                    background: `${state.teams[active.trapOwner]?.color}14`,
+                    color: state.teams[active.trapOwner]?.color ?? "#b91c1c",
+                    border: `1.5px solid ${state.teams[active.trapOwner]?.color ?? "#b91c1c"}55`,
+                  } : {
                     background: "#ffffff",
                     color: "#5b6b87",
                     border: "1.5px solid #e9dfc7",
                   }}
                 >
-                  لا أحد
+                  {active.trapUsed && active.trapOwner
+                    ? <>🪤 نقطة لـ {state.teams[active.trapOwner]?.name}</>
+                    : "لا أحد"}
                 </motion.button>
               </motion.div>
             )}
