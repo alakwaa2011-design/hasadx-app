@@ -308,55 +308,70 @@ export const HotSeatIcon = ({ size = 56 }: { size?: number }) => {
   const uid = useId().replace(/:/g, "");
   return (
     <svg width={size} height={size} viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"
-         style={{ filter: "drop-shadow(0 3px 18px rgba(234,88,12,0.75))" }}>
+         style={{ filter: "drop-shadow(0 3px 12px rgba(249,115,22,0.38))" }}>
       <defs>
-        <radialGradient id={`${uid}hs-glow`} cx="50%" cy="78%" r="60%">
-          <stop offset="0%" stopColor="#f97316" stopOpacity="0.9"/>
-          <stop offset="55%" stopColor="#c2410c" stopOpacity="0.35"/>
-          <stop offset="100%" stopColor="#7c2d12" stopOpacity="0"/>
-        </radialGradient>
-        <linearGradient id={`${uid}hs-dark`} x1="15%" y1="0%" x2="85%" y2="100%">
-          <stop offset="0%" stopColor="#232336"/><stop offset="100%" stopColor="#111122"/>
+        {/* Light, warm card background */}
+        <linearGradient id={`${uid}hs-bg`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fff7ed"/><stop offset="100%" stopColor="#fde2c4"/>
         </linearGradient>
-        <linearGradient id={`${uid}hs-mid`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#2e2e48"/><stop offset="100%" stopColor="#1a1a30"/>
+        {/* Spotlight beam */}
+        <linearGradient id={`${uid}hs-beam`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85"/>
+          <stop offset="100%" stopColor="#fef3c7" stopOpacity="0"/>
+        </linearGradient>
+        {/* Chair upholstery — clear amber/orange */}
+        <linearGradient id={`${uid}hs-back`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#fdba74"/><stop offset="100%" stopColor="#ea580c"/>
+        </linearGradient>
+        <linearGradient id={`${uid}hs-seat`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#fb923c"/><stop offset="100%" stopColor="#c2410c"/>
+        </linearGradient>
+        <linearGradient id={`${uid}hs-metal`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#cbb6a3"/><stop offset="100%" stopColor="#9c8674"/>
         </linearGradient>
       </defs>
-      <rect width="60" height="60" rx="13" fill="#07070e"/>
-      <rect width="60" height="60" rx="13" fill={`url(#${uid}hs-glow)`}/>
-      <rect x="20" y="5" width="20" height="8" rx="4" fill={`url(#${uid}hs-dark)`}/>
-      <rect x="21" y="6" width="18" height="3.5" rx="1.5" fill="rgba(255,255,255,0.09)"/>
-      <rect x="20" y="11.5" width="20" height="1.5" rx="0.7" fill="#f97316" opacity="0.55"/>
-      <path d="M16 12 Q15 34 17 36 L43 36 Q45 34 44 12 Z" fill={`url(#${uid}hs-dark)`}/>
-      <line x1="30" y1="14" x2="30" y2="35" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-      <path d="M17 28 Q30 32 43 28 L43 34 Q30 36 17 34 Z" fill="rgba(255,255,255,0.04)"/>
-      <rect x="16" y="35.5" width="28" height="1.8" rx="0.9" fill="#f97316" opacity="0.8"/>
-      <rect x="8"  y="35" width="3" height="7" rx="1.5" fill={`url(#${uid}hs-mid)`}/>
-      <rect x="5"  y="30" width="10" height="3" rx="1.5" fill={`url(#${uid}hs-dark)`}/>
-      <rect x="49" y="35" width="3" height="7" rx="1.5" fill={`url(#${uid}hs-mid)`}/>
-      <rect x="45" y="30" width="10" height="3" rx="1.5" fill={`url(#${uid}hs-dark)`}/>
-      <rect x="12" y="35" width="36" height="9" rx="4.5" fill={`url(#${uid}hs-mid)`}/>
-      <rect x="13" y="36" width="34" height="4" rx="2" fill="rgba(255,255,255,0.09)"/>
-      <rect x="12" y="43" width="36" height="1.5" rx="0.7" fill="#f97316" opacity="0.9"/>
-      <rect x="26" y="44" width="8" height="8" rx="2" fill="#101020"/>
-      <rect x="27" y="44" width="4" height="4" rx="1" fill="rgba(255,255,255,0.05)"/>
+
+      <rect width="60" height="60" rx="13" fill={`url(#${uid}hs-bg)`}/>
+
+      {/* Spotlight source + beam shining down on the seat */}
+      <circle cx="30" cy="6" r="3.4" fill="#fffbeb" stroke="#fbbf24" strokeWidth="1"/>
+      <path d="M27 7 L33 7 L46 41 L14 41 Z" fill={`url(#${uid}hs-beam)`}/>
+      {/* Light pool on the floor */}
+      <ellipse cx="30" cy="45" rx="17" ry="4.2" fill="#fcd34d" opacity="0.45"/>
+
+      {/* Backrest */}
+      <path d="M20 15 Q20 11 24 11 L36 11 Q40 11 40 15 L40 28 Q40 31 36 31 L24 31 Q20 31 20 28 Z"
+            fill={`url(#${uid}hs-back)`}/>
+      <path d="M22 14 Q22 12.5 24 12.5 L36 12.5 Q38 12.5 38 14 L38 19 Q30 21 22 19 Z"
+            fill="#ffffff" opacity="0.28"/>
+      <line x1="30" y1="13" x2="30" y2="29" stroke="#c2410c" strokeWidth="1" opacity="0.5"/>
+      <line x1="25.5" y1="13" x2="25.5" y2="29" stroke="#c2410c" strokeWidth="0.8" opacity="0.32"/>
+      <line x1="34.5" y1="13" x2="34.5" y2="29" stroke="#c2410c" strokeWidth="0.8" opacity="0.32"/>
+
+      {/* Seat cushion */}
+      <rect x="18" y="30" width="24" height="7.5" rx="3.4" fill={`url(#${uid}hs-seat)`}/>
+      <rect x="19.5" y="31" width="21" height="3" rx="1.5" fill="#ffffff" opacity="0.26"/>
+
+      {/* Gas-lift column */}
+      <rect x="28.3" y="37" width="3.4" height="7" rx="1.6" fill={`url(#${uid}hs-metal)`}/>
+
+      {/* 5-star wheel base */}
       {[0,72,144,216,288].map((deg, i) => {
         const r = 12;
         const rad = (deg - 90) * Math.PI / 180;
         const x2 = 30 + r * Math.cos(rad);
-        const y2 = 54 + r * Math.sin(rad) * 0.45;
+        const y2 = 51 + r * Math.sin(rad) * 0.42;
         return (
           <g key={i}>
-            <line x1="30" y1="54" x2={x2} y2={y2} stroke="#1a1a30" strokeWidth="3.5" strokeLinecap="round"/>
-            <line x1="30" y1="54" x2={x2} y2={y2} stroke="#2a2a44" strokeWidth="2" strokeLinecap="round"/>
-            <ellipse cx={x2} cy={y2} rx="2.2" ry="1.5" fill="#111120"/>
-            <ellipse cx={x2} cy={y2} rx="1.3" ry="0.9" fill="#f97316" opacity="0.45"/>
+            <line x1="30" y1="51" x2={x2} y2={y2} stroke="#9c8674" strokeWidth="3.6" strokeLinecap="round"/>
+            <line x1="30" y1="51" x2={x2} y2={y2} stroke="#cbb6a3" strokeWidth="1.8" strokeLinecap="round"/>
+            <ellipse cx={x2} cy={y2 + 1.6} rx="2.3" ry="1.6" fill="#7c6a59"/>
+            <ellipse cx={x2} cy={y2 + 1.2} rx="2.3" ry="1.5" fill="#a8927e"/>
           </g>
         );
       })}
-      <circle cx="30" cy="54" r="3" fill="#1a1a30"/>
-      <circle cx="30" cy="54" r="1.5" fill="#f97316" opacity="0.5"/>
-      <ellipse cx="30" cy="57" rx="18" ry="2.5" fill="#f97316" opacity="0.2"/>
+      <circle cx="30" cy="51" r="3.2" fill="#a8927e"/>
+      <circle cx="30" cy="51" r="1.5" fill="#fff7ed" opacity="0.7"/>
     </svg>
   );
 };
