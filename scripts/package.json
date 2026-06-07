@@ -14,7 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:million-bank": "node seed-million-bank.mjs",
     "import:500-questions": "node import-500-questions.mjs",
-    "seed:islamic-levels": "tsx ./src/seed-islamic-levels.ts"
+    "seed:islamic-levels": "tsx ./src/seed-islamic-levels.ts",
+    "seed:migrate-static-arena": "tsx ./src/seed-migrate-static-arena.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
