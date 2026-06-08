@@ -26,6 +26,7 @@ import { seedIslamicExtraIfNeeded } from "./seedIslamicExtra";
 import { seedIslamicLevelsIfNeeded } from "./seedIslamicLevels";
 import { seedPlansIfMissing } from "./seedPlans";
 import { seedArenaContentIfNeeded } from "./seedArenaContent";
+import { seedStaticArenaIfNeeded } from "./seedStaticArena";
 import { startPasswordResetCleanupJob } from "./lib/password-reset-cleanup";
 import { startLibraryOrphanSweepJob } from "./lib/library-orphan-sweep";
 import { startActivityLogsCleanupJob } from "./lib/activity-logger";
@@ -515,6 +516,7 @@ httpServer.listen(port, () => {
       seedIslamicExtraIfNeeded();
       seedIslamicLevelsIfNeeded();
       seedArenaContentIfNeeded();
+      seedStaticArenaIfNeeded();
       seedXpDefaultsIfNeeded();
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();
