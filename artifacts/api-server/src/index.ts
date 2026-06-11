@@ -291,6 +291,12 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS teacher_class_id INTEGER REFERENCES teacher_classes(id) ON DELETE SET NULL,
         ADD COLUMN IF NOT EXISTS skip_segments TEXT
     `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS seed_completions (
+        key          TEXT PRIMARY KEY,
+        completed_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");

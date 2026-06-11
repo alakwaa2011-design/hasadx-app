@@ -1,15 +1,13 @@
 /*
  * Static arena categories seed (mirrors arena-questions.ts from the frontend).
  *
- * Runs idempotently at server startup — safe to call every time:
- *   - Sections matched by (name, parent_id IS NULL, is_public = true)
- *   - Sub-categories matched by (name, parent_id)
- *   - Activities matched by (category_id, question)
+ * Runs ONCE — guarded by a DB-level flag in seed_completions(key='static_arena_v1').
+ * After the initial seed, admin edits/deletes are never overwritten on restart.
  *
  * All content is public (teacher_id = NULL, is_public = true).
  */
 import { db, arenaCategoriesTable, arenaActivitiesTable } from "@workspace/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
 interface Q { q: string; a: string }
@@ -289,6 +287,7 @@ const SECTIONS: Section[] = [
 ];
 
 // ── seed function ──────────────────────────────────────────────────────────────
+const SEED_KEY = "static_arena_v1";
 let _seeded = false;
 
 export async function seedStaticArenaIfNeeded(): Promise<void> {
@@ -296,6 +295,12 @@ export async function seedStaticArenaIfNeeded(): Promise<void> {
   _seeded = true;
 
   try {
+    // ── Check DB-level flag so admin edits/deletes are never overwritten ──
+    const flag = await db.execute(
+      sql`SELECT 1 FROM seed_completions WHERE key = ${SEED_KEY} LIMIT 1`,
+    );
+    if (flag.rows.length > 0) return;
+
     let sectionsAdded = 0;
     let subCatsAdded = 0;
     let questionsAdded = 0;
@@ -374,9 +379,12 @@ export async function seedStaticArenaIfNeeded(): Promise<void> {
       }
     }
 
-    if (sectionsAdded > 0 || subCatsAdded > 0 || questionsAdded > 0) {
-      logger.info({ sectionsAdded, subCatsAdded, questionsAdded }, "Static arena categories seeded");
-    }
+    // ── Mark seed as done so it never re-runs on restart ──
+    await db.execute(
+      sql`INSERT INTO seed_completions (key) VALUES (${SEED_KEY}) ON CONFLICT DO NOTHING`,
+    );
+
+    logger.info({ sectionsAdded, subCatsAdded, questionsAdded }, "Static arena categories seeded");
   } catch (err) {
     logger.error(err, "seedStaticArenaIfNeeded failed");
   }
