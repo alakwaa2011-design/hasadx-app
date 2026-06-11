@@ -300,108 +300,82 @@ export async function seedStaticArenaIfNeeded(): Promise<void> {
     let subCatsAdded = 0;
     let questionsAdded = 0;
 
-    for (const section of SECTIONS) {
-      // ── upsert top-level section ──
-      const existing = await db
-        .select({ id: arenaCategoriesTable.id })
-        .from(arenaCategoriesTable)
-        .where(
-          and(
-            eq(arenaCategoriesTable.name, section.name),
-            isNull(arenaCategoriesTable.parentId),
-            eq(arenaCategoriesTable.isPublic, true),
-          ),
-        )
-        .limit(1);
+    // ── 1. Load ALL existing public categories in one query ──
+    const allCats = await db
+      .select({ id: arenaCategoriesTable.id, name: arenaCategoriesTable.name, parentId: arenaCategoriesTable.parentId })
+      .from(arenaCategoriesTable)
+      .where(eq(arenaCategoriesTable.isPublic, true));
 
-      let sectionId: number;
-      if (existing.length > 0) {
-        sectionId = existing[0]!.id;
+    const sectionMap = new Map<string, number>(); // name → id
+    const subMap = new Map<string, number>();      // "parentId:name" → id
+    for (const cat of allCats) {
+      if (cat.parentId === null) {
+        sectionMap.set(cat.name, cat.id);
       } else {
+        subMap.set(`${cat.parentId}:${cat.name}`, cat.id);
+      }
+    }
+
+    for (const section of SECTIONS) {
+      // ── upsert section ──
+      let sectionId = sectionMap.get(section.name);
+      if (sectionId === undefined) {
         const [ins] = await db
           .insert(arenaCategoriesTable)
-          .values({
-            name: section.name,
-            emoji: section.emoji,
-            isPublic: true,
-            teacherId: null,
-            sortOrder: 0,
-          })
+          .values({ name: section.name, emoji: section.emoji, isPublic: true, teacherId: null, sortOrder: 0 })
           .returning({ id: arenaCategoriesTable.id });
         sectionId = ins!.id;
+        sectionMap.set(section.name, sectionId);
         sectionsAdded++;
       }
 
       for (const sub of section.subs) {
         // ── upsert sub-category ──
-        const existingSub = await db
-          .select({ id: arenaCategoriesTable.id })
-          .from(arenaCategoriesTable)
-          .where(
-            and(
-              eq(arenaCategoriesTable.name, sub.name),
-              eq(arenaCategoriesTable.parentId, sectionId),
-            ),
-          )
-          .limit(1);
-
-        let subId: number;
-        if (existingSub.length > 0) {
-          subId = existingSub[0]!.id;
-        } else {
+        const subKey = `${sectionId}:${sub.name}`;
+        let subId = subMap.get(subKey);
+        if (subId === undefined) {
           const [ins] = await db
             .insert(arenaCategoriesTable)
-            .values({
-              name: sub.name,
-              emoji: "🎯",
-              parentId: sectionId,
-              isPublic: true,
-              teacherId: null,
-              sortOrder: 0,
-            })
+            .values({ name: sub.name, emoji: "🎯", parentId: sectionId, isPublic: true, teacherId: null, sortOrder: 0 })
             .returning({ id: arenaCategoriesTable.id });
           subId = ins!.id;
+          subMap.set(subKey, subId);
           subCatsAdded++;
         }
 
-        // ── insert missing questions ──
-        for (const [diffStr, qs] of Object.entries(sub.questions) as [string, Q[]][]) {
-          const difficulty = parseInt(diffStr, 10) as 200 | 400 | 600 | 800;
-          for (const { q, a } of qs) {
-            const existingQ = await db
-              .select({ id: arenaActivitiesTable.id })
-              .from(arenaActivitiesTable)
-              .where(
-                and(
-                  eq(arenaActivitiesTable.categoryId, subId),
-                  eq(arenaActivitiesTable.question, q),
-                ),
-              )
-              .limit(1);
+        // ── bulk-load existing questions for this sub-category ──
+        const existingQs = await db
+          .select({ question: arenaActivitiesTable.question })
+          .from(arenaActivitiesTable)
+          .where(eq(arenaActivitiesTable.categoryId, subId));
+        const existingSet = new Set(existingQs.map((r) => r.question));
 
-            if (existingQ.length === 0) {
-              await db.insert(arenaActivitiesTable).values({
-                categoryId: subId,
-                type: "text",
-                difficulty,
-                question: q,
-                answer: a,
-                isPublic: true,
-                teacherId: null,
-                sortOrder: 0,
-              });
-              questionsAdded++;
+        // ── collect all missing questions ──
+        const toInsert: {
+          categoryId: number; type: string; difficulty: number;
+          question: string; answer: string; isPublic: boolean;
+          teacherId: null; sortOrder: number;
+        }[] = [];
+
+        for (const [diffStr, qs] of Object.entries(sub.questions) as [string, Q[]][]) {
+          const difficulty = parseInt(diffStr, 10);
+          for (const { q, a } of qs) {
+            if (!existingSet.has(q)) {
+              toInsert.push({ categoryId: subId, type: "text", difficulty, question: q, answer: a, isPublic: true, teacherId: null, sortOrder: 0 });
             }
           }
+        }
+
+        // ── single bulk insert per sub-category ──
+        if (toInsert.length > 0) {
+          await db.insert(arenaActivitiesTable).values(toInsert);
+          questionsAdded += toInsert.length;
         }
       }
     }
 
     if (sectionsAdded > 0 || subCatsAdded > 0 || questionsAdded > 0) {
-      logger.info(
-        { sectionsAdded, subCatsAdded, questionsAdded },
-        "Static arena categories seeded",
-      );
+      logger.info({ sectionsAdded, subCatsAdded, questionsAdded }, "Static arena categories seeded");
     }
   } catch (err) {
     logger.error(err, "seedStaticArenaIfNeeded failed");
