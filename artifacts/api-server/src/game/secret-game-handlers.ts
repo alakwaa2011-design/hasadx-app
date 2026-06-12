@@ -313,6 +313,12 @@ export function setupSecretGameSocket(io: Server) {
     ) => {
       const room = rooms.get((data.pin ?? "").toUpperCase());
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      socket.join(`secret:${room.pin}`);
+      const prevHostConnected = io.sockets.sockets.has(room.hostSocketId);
+      if (!prevHostConnected) {
+        room.hostSocketId = socket.id;
+        socketToPin.set(socket.id, room.pin);
+      }
       cb?.({ state: getRoomState(room) });
     });
 

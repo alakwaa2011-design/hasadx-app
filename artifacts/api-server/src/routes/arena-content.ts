@@ -31,7 +31,7 @@ const CategoryBody = z.object({
 
 const ActivityBody = z.object({
   categoryId: z.number().int().positive(),
-  type: z.enum(["text", "image", "video", "memory", "sin-jeem", "categorize", "logo"]).default("text"),
+  type: z.enum(["text", "image", "video", "memory", "sin-jeem", "categorize", "logo", "secret"]).default("text"),
   difficulty: z.number().int().refine(v => [200, 400, 600, 800].includes(v)).default(200),
   question: z.string().min(1),
   answer: z.string().min(1),
