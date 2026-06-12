@@ -52,6 +52,23 @@ router.get("/secret-game/items/random/:categoryId", async (req, res) => {
   }
 });
 
+router.post("/secret-game/reveal-token", (req, res) => {
+  try {
+    const pin = (req.body?.pin as string | undefined)?.toUpperCase();
+    const team = req.body?.team as string | undefined;
+    if (!pin || !team) return res.status(400).json({ error: "pin and team required" });
+    if (team !== "A" && team !== "B") return res.status(400).json({ error: "team must be A or B" });
+    const room = secretGameRooms.get(pin);
+    if (!room) return res.status(404).json({ error: "الجلسة غير موجودة أو انتهت" });
+    if (room.phase === "ended") return res.status(410).json({ error: "اللعبة انتهت" });
+    const token = generateRevealToken(pin, team, room.teams[team].secretId);
+    res.json({ token });
+  } catch (err) {
+    req.log.error({ err }, "secret-game reveal-token");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.get("/secret-game/join", (req, res) => {
   try {
     const pin = (req.query.pin as string | undefined)?.toUpperCase();

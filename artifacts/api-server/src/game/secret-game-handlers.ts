@@ -8,25 +8,30 @@ if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET environment variable is required for secret-game token signing");
 }
 const TOKEN_SECRET = process.env.SESSION_SECRET;
-const TOKEN_TTL_MS = 15 * 60 * 1000;
+const TOKEN_TTL_SECS = 5 * 60; // 5 minutes
+
+function jwtBase64url(obj: object): string {
+  return Buffer.from(JSON.stringify(obj)).toString("base64url");
+}
 
 export function generateRevealToken(pin: string, team: "A" | "B", itemId: number): string {
-  const payload = JSON.stringify({ pin, team, itemId, exp: Date.now() + TOKEN_TTL_MS });
-  const payloadB64 = Buffer.from(payload).toString("base64url");
-  const sig = createHmac("sha256", TOKEN_SECRET).update(payloadB64).digest("base64url");
-  return `${payloadB64}.${sig}`;
+  const header = jwtBase64url({ alg: "HS256", typ: "JWT" });
+  const iat = Math.floor(Date.now() / 1000);
+  const payload = jwtBase64url({ pin, team, item_id: itemId, session_id: pin, iat, exp: iat + TOKEN_TTL_SECS });
+  const sig = createHmac("sha256", TOKEN_SECRET).update(`${header}.${payload}`).digest("base64url");
+  return `${header}.${payload}.${sig}`;
 }
 
 export function verifyRevealToken(token: string): { pin: string; team: "A" | "B"; itemId: number } | null {
   const parts = token.split(".");
-  if (parts.length !== 2) return null;
-  const [payloadB64, sig] = parts;
-  const expectedSig = createHmac("sha256", TOKEN_SECRET).update(payloadB64).digest("base64url");
+  if (parts.length !== 3) return null;
+  const [header, payloadB64, sig] = parts;
+  const expectedSig = createHmac("sha256", TOKEN_SECRET).update(`${header}.${payloadB64}`).digest("base64url");
   if (sig !== expectedSig) return null;
   try {
     const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString());
-    if (payload.exp < Date.now()) return null;
-    return { pin: payload.pin, team: payload.team, itemId: payload.itemId };
+    if (Math.floor(Date.now() / 1000) > payload.exp) return null;
+    return { pin: payload.pin, team: payload.team, itemId: payload.item_id };
   } catch {
     return null;
   }

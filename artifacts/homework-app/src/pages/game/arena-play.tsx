@@ -4659,7 +4659,14 @@ function SecretArenaActivity({
           }
           setTokenA(res.tokenA ?? "");
           setTokenB(res.tokenB ?? "");
-          setStatus("ready");
+          sock.emit(
+            "secret:get_state",
+            { pin: res.pin },
+            (stateRes: { state?: SecretArenaGameState; error?: string }) => {
+              if (stateRes.state) setGameState(stateRes.state);
+              setStatus("ready");
+            },
+          );
         },
       );
     });
