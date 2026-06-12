@@ -69,6 +69,7 @@ interface SecretRoom {
   currentAsker: "A" | "B";
   totalQuestions: number;
   maxQuestions: number;
+  hideDuration: number;
   phase: "waiting_scan" | "playing" | "guessing" | "ended";
   winner: "A" | "B" | null;
   hostSocketId: string;
@@ -101,6 +102,7 @@ function getRoomState(room: SecretRoom) {
     currentAsker: room.currentAsker,
     totalQuestions: room.totalQuestions,
     maxQuestions: room.maxQuestions,
+    hideDuration: room.hideDuration,
     phase: room.phase,
     winner: room.winner,
   };
@@ -155,6 +157,7 @@ export function setupSecretGameSocket(io: Server) {
             B: { name: data.teamBName || "الفريق الأزرق", color: data.teamBColor || "#2563eb", secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 },
           },
           currentAsker: "B",
+          hideDuration: 30,
           totalQuestions: 0,
           maxQuestions: Math.min(data.maxQuestions ?? 10, 10),
           phase: "waiting_scan",
@@ -175,18 +178,21 @@ export function setupSecretGameSocket(io: Server) {
 
     socket.on("secret:scan_confirm", (
       data: { pin: string; team: "A" | "B" },
-      cb?: (res: { ok?: boolean; error?: string }) => void,
+      cb?: (res: { ok?: boolean; hideDuration?: number; error?: string }) => void,
     ) => {
       const room = rooms.get(data.pin?.toUpperCase());
       if (!room) { cb?.({ error: "الغرفة غير موجودة" }); return; }
       room.teams[data.team].scanned = true;
+      // Join student socket to the room so they receive broadcasts (e.g. force_hide, hide_duration_changed)
+      socket.join(`secret:${room.pin}`);
       io.to(`secret:${room.pin}`).emit("secret:state", getRoomState(room));
       if (room.teams.A.scanned && room.teams.B.scanned && room.phase === "waiting_scan") {
         room.phase = "playing";
         io.to(`secret:${room.pin}`).emit("secret:started", getRoomState(room));
         logger.info({ pin: room.pin }, "Secret game started");
       }
-      cb?.({ ok: true });
+      // Return current hideDuration so the student's reveal page can initialize correctly
+      cb?.({ ok: true, hideDuration: room.hideDuration });
     });
 
     socket.on("secret:question", (
@@ -294,6 +300,35 @@ export function setupSecretGameSocket(io: Server) {
         logger.error(err, "secret:next_round error");
         cb?.({ error: "خطأ في إنشاء جولة جديدة" });
       }
+    });
+
+    socket.on("secret:set_hide_duration", (
+      data: { pin: string; duration: number },
+      cb?: (res: { ok?: boolean; error?: string }) => void,
+    ) => {
+      const room = rooms.get((data.pin ?? "").toUpperCase());
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
+      const allowed = [15, 30, 60];
+      const duration = Number(data.duration);
+      if (!allowed.includes(duration)) { cb?.({ error: "مدة غير صالحة" }); return; }
+      // Persist in room so late-joining or reconnecting students receive the correct value
+      room.hideDuration = duration;
+      io.to(`secret:${room.pin}`).emit("secret:hide_duration_changed", { duration });
+      logger.info({ pin: room.pin, duration }, "Secret hide duration changed");
+      cb?.({ ok: true });
+    });
+
+    socket.on("secret:force_hide", (
+      data: { pin: string },
+      cb?: (res: { ok?: boolean; error?: string }) => void,
+    ) => {
+      const room = rooms.get((data.pin ?? "").toUpperCase());
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
+      io.to(`secret:${room.pin}`).emit("secret:force_hide");
+      logger.info({ pin: room.pin }, "Secret force hidden by teacher");
+      cb?.({ ok: true });
     });
 
     socket.on("secret:get_state", (

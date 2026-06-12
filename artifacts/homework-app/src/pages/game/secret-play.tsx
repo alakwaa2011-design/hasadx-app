@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { io as socketIO, Socket } from "socket.io-client";
-import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, HelpCircle, QrCode, RotateCcw, ChevronRight, CheckCircle2, Clock, Plus } from "lucide-react";
+import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, HelpCircle, QrCode, RotateCcw, ChevronRight, CheckCircle2, Clock, Plus, EyeOff, Timer } from "lucide-react";
 import QRCode from "react-qr-code";
 
 function playAllReadyChime() {
@@ -125,6 +125,8 @@ export default function SecretPlay() {
   const [questionLoading, setQuestionLoading] = useState(false);
   const [allReadyBanner, setAllReadyBanner] = useState(false);
   const prevBothScannedRef = useRef(false);
+  const [hideDuration, setHideDuration] = useState<15 | 30 | 60>(30);
+  const [forceHideSent, setForceHideSent] = useState(false);
 
   useEffect(() => {
     if (!pin) { setLocation("/game/secret"); return; }
@@ -213,6 +215,17 @@ export default function SecretPlay() {
       if (res.tokenA) sessionStorage.setItem("secret_game_tokenA", res.tokenA);
       if (res.tokenB) sessionStorage.setItem("secret_game_tokenB", res.tokenB);
     });
+  }, [pin]);
+
+  const handleSetHideDuration = useCallback((duration: 15 | 30 | 60) => {
+    setHideDuration(duration);
+    socketRef.current?.emit("secret:set_hide_duration", { pin, duration });
+  }, [pin]);
+
+  const handleForceHide = useCallback(() => {
+    socketRef.current?.emit("secret:force_hide", { pin });
+    setForceHideSent(true);
+    setTimeout(() => setForceHideSent(false), 2000);
   }, [pin]);
 
   if (!pin) return null;
@@ -482,6 +495,59 @@ export default function SecretPlay() {
               </motion.button>
             ))}
           </div>
+        )}
+
+        {/* Teacher Secret Controls */}
+        {(phase === "playing" || phase === "waiting_scan") && (
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl p-4 border border-white/10 space-y-3"
+            style={{ background: "rgba(255,255,255,0.04)" }}
+          >
+            <p className="text-white/50 text-xs font-bold flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5" />
+              التحكم في ظهور السر
+            </p>
+
+            {/* Duration Selector */}
+            <div>
+              <p className="text-white/40 text-xs mb-2">مدة التعتيم التلقائي</p>
+              <div className="flex gap-2">
+                {([15, 30, 60] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => handleSetHideDuration(d)}
+                    className="flex-1 py-2 rounded-xl text-sm font-black border transition-all"
+                    style={{
+                      background: hideDuration === d ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.05)",
+                      borderColor: hideDuration === d ? "#8b5cf6" : "rgba(255,255,255,0.15)",
+                      color: hideDuration === d ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {d}ث
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Force Hide Button */}
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleForceHide}
+              disabled={forceHideSent}
+              className="w-full py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all border disabled:opacity-60"
+              style={{
+                background: forceHideSent ? "rgba(239,68,68,0.3)" : "rgba(239,68,68,0.15)",
+                borderColor: "rgba(239,68,68,0.5)",
+                color: "#fca5a5",
+              }}
+            >
+              <EyeOff className="w-4 h-4" />
+              {forceHideSent ? "تم الإخفاء ✓" : "إخفاء السر فوراً"}
+            </motion.button>
+          </motion.div>
         )}
       </div>
     </div>

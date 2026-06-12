@@ -11,7 +11,7 @@ interface RevealData {
   pin: string;
 }
 
-const AUTO_HIDE_SECONDS = 30;
+const DEFAULT_HIDE_SECONDS = 30;
 
 export default function SecretReveal() {
   const [location] = useLocation();
@@ -27,9 +27,11 @@ export default function SecretReveal() {
   const [confirmed, setConfirmed] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  const [countdown, setCountdown] = useState(AUTO_HIDE_SECONDS);
+  const [autoHideSeconds, setAutoHideSeconds] = useState(DEFAULT_HIDE_SECONDS);
+  const [countdown, setCountdown] = useState(DEFAULT_HIDE_SECONDS);
   const [screenshotWarning, setScreenshotWarning] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const socketRef = useRef<import("socket.io-client").Socket | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -45,9 +47,6 @@ export default function SecretReveal() {
           return;
         }
         setData(d as RevealData);
-        fetch(`/api/socket.io?transport=polling`, { method: "GET" }).catch(
-          () => {}
-        );
       })
       .catch(() => setError("تعذّر الاتصال بالخادم"))
       .finally(() => setLoading(false));
@@ -55,35 +54,68 @@ export default function SecretReveal() {
 
   useEffect(() => {
     if (!data || confirmed) return;
-    const tryConfirm = async () => {
+    const setupSocket = async () => {
       try {
         const { io } = await import("socket.io-client");
         const socket = io({
           path: "/api/socket.io",
           transports: ["websocket", "polling"],
         });
-        socket.emit("secret:scan_confirm", { pin: data.pin, team: data.team });
-        setTimeout(() => socket.disconnect(), 3000);
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+          socket.emit(
+            "secret:scan_confirm",
+            { pin: data.pin, team: data.team },
+            (res: { ok?: boolean; hideDuration?: number; error?: string }) => {
+              if (res?.hideDuration && res.hideDuration > 0) {
+                setAutoHideSeconds(res.hideDuration);
+                setCountdown(res.hideDuration);
+              }
+            },
+          );
+        });
+
+        socket.on("secret:hide_duration_changed", ({ duration }: { duration: number }) => {
+          const d = Number(duration);
+          if (d > 0) {
+            setAutoHideSeconds(d);
+            setCountdown((prev) => {
+              if (!revealed) return d;
+              return Math.min(prev, d);
+            });
+          }
+        });
+
+        socket.on("secret:force_hide", () => {
+          setRevealed(false);
+        });
+
         setConfirmed(true);
       } catch {}
     };
-    tryConfirm();
+    setupSocket();
+
+    return () => {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+    };
   }, [data, confirmed]);
 
   useEffect(() => {
     if (!revealed) {
       if (countdownRef.current) clearInterval(countdownRef.current);
-      setCountdown(AUTO_HIDE_SECONDS);
+      setCountdown(autoHideSeconds);
       return;
     }
 
-    setCountdown(AUTO_HIDE_SECONDS);
+    setCountdown(autoHideSeconds);
     countdownRef.current = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownRef.current!);
           setRevealed(false);
-          return AUTO_HIDE_SECONDS;
+          return autoHideSeconds;
         }
         return prev - 1;
       });
@@ -92,7 +124,7 @@ export default function SecretReveal() {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [revealed]);
+  }, [revealed, autoHideSeconds]);
 
   const revealedRef = useRef(revealed);
   useEffect(() => {
@@ -165,9 +197,9 @@ export default function SecretReveal() {
 
   const teamLetter = data.team === "A" ? "أ" : "ب";
   const bg = data.teamColor;
-  const countdownPct = (countdown / AUTO_HIDE_SECONDS) * 100;
+  const countdownPct = (countdown / autoHideSeconds) * 100;
   const countdownColor =
-    countdown > 15 ? bg : countdown > 8 ? "#f59e0b" : "#ef4444";
+    countdown > autoHideSeconds * 0.5 ? bg : countdown > autoHideSeconds * 0.25 ? "#f59e0b" : "#ef4444";
 
   return (
     <div
