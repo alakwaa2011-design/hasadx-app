@@ -225,7 +225,7 @@ export default function SecretReveal() {
             style={{ background: bg, color: "white" }}
           >
             <EyeOff className="w-6 h-6" />
-            اكشف سرّك
+            اكتشف سرّك
           </motion.button>
         </motion.div>
       ) : (

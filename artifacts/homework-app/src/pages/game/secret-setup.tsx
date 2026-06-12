@@ -39,7 +39,7 @@ export default function SecretSetup() {
   const [teamBName, setTeamBName] = useState("الفريق الأزرق");
   const [teamAColor, setTeamAColor] = useState(TEAM_COLORS[0].hex);
   const [teamBColor, setTeamBColor] = useState(TEAM_COLORS[1].hex);
-  const [maxQuestions, setMaxQuestions] = useState(10);
+  const [maxQuestions, setMaxQuestions] = useState(20);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -133,7 +133,7 @@ export default function SecretSetup() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2">
                 <Eye className="w-7 h-7 text-purple-400" />
-                اكشف السر
+                اكتشف السر
               </h1>
               <p className="text-white/50 text-sm">لعبة التخمين بالأسئلة</p>
             </div>

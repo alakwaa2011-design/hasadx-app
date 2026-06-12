@@ -46,7 +46,7 @@ export interface LogoPayload {
   hint?: string;
 }
 
-/** اكشف السر — two-team yes/no guessing game embedded in the arena tile. */
+/** اكتشف السر — two-team yes/no guessing game embedded in the arena tile. */
 export interface SecretPayload {
   categoryId: number;
   maxQuestions?: number;

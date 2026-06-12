@@ -179,24 +179,16 @@ export function setupSecretGameSocket(io: Server) {
       const room = rooms.get(pin);
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
       if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد" }); return; }
-
-      const asker = room.currentAsker;
-      if (room.teams[asker].questionCount >= room.maxQuestions) {
-        cb?.({ error: `وصل فريق ${room.teams[asker].name} للحد الأقصى من الأسئلة (${room.maxQuestions})` });
+      if (room.totalQuestions >= room.maxQuestions) {
+        cb?.({ error: `وصلنا للحد الأقصى من الأسئلة (${room.maxQuestions})` });
         return;
       }
 
-      room.teams[asker].questionCount += 1;
       room.totalQuestions += 1;
-
-      const nextAsker: "A" | "B" = asker === "A" ? "B" : "A";
-      room.currentAsker = nextAsker;
-
       const state = getRoomState(room);
-      io.to(`secret:${room.pin}`).emit("secret:question_asked", { ...state, askedBy: asker });
+      io.to(`secret:${room.pin}`).emit("secret:question_asked", state);
 
-      // If both teams have now exhausted their question limit, end the game as a draw
-      if (room.teams.A.questionCount >= room.maxQuestions && room.teams.B.questionCount >= room.maxQuestions) {
+      if (room.totalQuestions >= room.maxQuestions) {
         room.phase = "ended";
         room.winner = null;
         io.to(`secret:${room.pin}`).emit("secret:game_over", {
@@ -226,46 +218,25 @@ export function setupSecretGameSocket(io: Server) {
     });
 
     socket.on("secret:guess", (
-      data: { pin: string; team: "A" | "B"; guess: string },
+      data: { pin: string; team: "A" | "B" },
       cb?: (res: { correct?: boolean; error?: string }) => void,
     ) => {
       const room = rooms.get((data.pin ?? "").toUpperCase());
       if (!room || room.phase === "ended") { cb?.({ error: "لا توجد غرفة" }); return; }
 
-      const now = Date.now();
-      if (room.teams[data.team].penalty && room.teams[data.team].penaltyUntil > now) {
-        const remaining = Math.ceil((room.teams[data.team].penaltyUntil - now) / 1000);
-        cb?.({ error: `عقوبة — انتظر ${remaining} ثانية` });
-        return;
-      }
-
-      const opponent: "A" | "B" = data.team === "A" ? "B" : "A";
-      const secret = room.teams[opponent].secretName;
-      const correct = data.guess.trim() === secret.trim() ||
-        data.guess.trim().includes(secret.trim()) ||
-        secret.trim().includes(data.guess.trim());
-
-      if (correct) {
-        room.phase = "ended";
-        room.winner = data.team;
-        io.to(`secret:${room.pin}`).emit("secret:game_over", {
-          winner: data.team,
-          winnerName: room.teams[data.team].name,
-          secrets: { A: { name: room.teams.A.secretName, image: room.teams.A.secretImage }, B: { name: room.teams.B.secretName, image: room.teams.B.secretImage } },
-          state: getRoomState(room),
-        });
-        logger.info({ pin: room.pin, winner: data.team }, "Secret game ended");
-        cb?.({ correct: true });
-      } else {
-        room.teams[data.team].penalty = true;
-        room.teams[data.team].penaltyUntil = now + 30_000;
-        setTimeout(() => {
-          const r = rooms.get(room.pin);
-          if (r) r.teams[data.team].penalty = false;
-        }, 30_000);
-        io.to(`secret:${room.pin}`).emit("secret:wrong_guess", { team: data.team, state: getRoomState(room) });
-        cb?.({ correct: false });
-      }
+      room.phase = "ended";
+      room.winner = data.team;
+      io.to(`secret:${room.pin}`).emit("secret:game_over", {
+        winner: data.team,
+        winnerName: room.teams[data.team].name,
+        secrets: {
+          A: { name: room.teams.A.secretName, image: room.teams.A.secretImage },
+          B: { name: room.teams.B.secretName, image: room.teams.B.secretImage },
+        },
+        state: getRoomState(room),
+      });
+      logger.info({ pin: room.pin, winner: data.team }, "Secret game ended — teacher confirmed guess");
+      cb?.({ correct: true });
     });
 
     socket.on("secret:force_start", (

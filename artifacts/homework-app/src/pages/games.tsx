@@ -40,6 +40,16 @@ export default function GamesPage() {
 
   const games: GameCard[] = [
     {
+      href: "/game/secret",
+      icon: Eye,
+      title: lang === "ar" ? "اكتشف السر" : "Discover the Secret",
+      desc: lang === "ar"
+        ? "فريقان يمسحان باركوداً سرياً ويتبادلان الأسئلة نعم/لا حتى يكتشفا سر الخصم"
+        : "Two teams scan secret QR codes and ask yes/no questions to discover each other's secret",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-600",
+    },
+    {
       href: "/game/hack",
       icon: Terminal,
       title: lang === "ar" ? "لعبة الاختراق" : "Hack Game",
@@ -134,16 +144,6 @@ export default function GamesPage() {
         : "15 escalating questions toward a million — with 3 lifelines to help you",
       iconBg: "bg-amber-500/10",
       iconColor: "text-amber-600",
-    },
-    {
-      href: "/game/secret",
-      icon: Eye,
-      title: lang === "ar" ? "اكشف السر" : "Reveal the Secret",
-      desc: lang === "ar"
-        ? "فريقان يمسحان باركوداً سرياً ويتبادلان الأسئلة نعم/لا للوصول لسر الخصم"
-        : "Two teams scan secret QR codes and ask yes/no questions to guess each other's secret",
-      iconBg: "bg-purple-500/10",
-      iconColor: "text-purple-600",
     },
   ];
 

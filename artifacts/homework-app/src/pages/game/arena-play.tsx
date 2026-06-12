@@ -4591,7 +4591,7 @@ function LogoPlay({
   );
 }
 
-// ─────────────────────────── اكشف السر — Arena Integration ───────────────────────────
+// ─────────────────────────── اكتشف السر — Arena Integration ───────────────────────────
 
 interface SecretArenaTeamState {
   name: string;
@@ -4626,7 +4626,7 @@ function SecretArenaActivity({
 }) {
   const payload = (question.payload ?? {}) as Partial<SecretPayload>;
   const categoryId = payload.categoryId ?? 1;
-  const maxQ = payload.maxQuestions ?? 10;
+  const maxQ = payload.maxQuestions ?? 20;
 
   const socketRef = React.useRef<ReturnType<typeof socketIOClient> | null>(null);
   const [status, setStatus] = React.useState<"connecting" | "ready" | "error">("connecting");
@@ -4699,7 +4699,7 @@ function SecretArenaActivity({
     return (
       <div className="flex flex-col items-center gap-4 py-8 text-gray-500">
         <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm">جارٍ إنشاء جلسة اكشف السر…</p>
+        <p className="text-sm">جارٍ إنشاء جلسة اكتشف السر…</p>
       </div>
     );
   }
@@ -4759,7 +4759,7 @@ function SecretArenaActivity({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-500" />
-          <span className="font-black text-gray-800 text-lg">اكشف السر</span>
+          <span className="font-black text-gray-800 text-lg">اكتشف السر</span>
         </div>
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>

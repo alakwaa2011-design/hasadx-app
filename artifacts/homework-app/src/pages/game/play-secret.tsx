@@ -67,7 +67,7 @@ export default function PlaySecret() {
           >
             <Eye className="w-8 h-8 text-purple-400" />
           </div>
-          <h1 className="text-2xl font-black text-white">اكشف السر</h1>
+          <h1 className="text-2xl font-black text-white">اكتشف السر</h1>
           <p className="text-white/40 text-sm text-center">أدخل رمز الجلسة واختر فريقك</p>
         </div>
 
@@ -184,7 +184,7 @@ export default function PlaySecret() {
                 className="w-full py-4 rounded-xl font-black text-lg transition-all"
                 style={{ background: `linear-gradient(135deg,${joinInfo.teamColor},${joinInfo.teamColor}cc)` }}
               >
-                🔍 اكشف سرّك
+                🔍 اكتشف سرّك
               </button>
 
               <button
