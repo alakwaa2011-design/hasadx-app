@@ -26,7 +26,7 @@ interface GameState {
 }
 
 interface EndData {
-  winner: Team;
+  winner: Team | null;
   winnerName: string;
   secrets: { A: { name: string; image: string | null }; B: { name: string; image: string | null } };
 }
@@ -298,10 +298,10 @@ export default function SecretPlay() {
             <motion.div initial={{ scale: 0.8, y: 30 }} animate={{ scale: 1, y: 0 }}
               className="w-full max-w-md rounded-3xl p-6 text-center border-2"
               dir="rtl"
-              style={{ background: "linear-gradient(160deg,#1a0e2e,#0d0720)", borderColor: teams[endData.winner].color }}>
-              <Trophy className="w-14 h-14 mx-auto mb-3" style={{ color: teams[endData.winner].color }} />
+              style={{ background: "linear-gradient(160deg,#1a0e2e,#0d0720)", borderColor: endData.winner ? teams[endData.winner].color : "#6b7280" }}>
+              <Trophy className="w-14 h-14 mx-auto mb-3" style={{ color: endData.winner ? teams[endData.winner].color : "#9ca3af" }} />
               <h2 className="text-3xl font-black text-white mb-1">{endData.winnerName}</h2>
-              <p className="text-white/50 mb-5">فاز باللعبة!</p>
+              <p className="text-white/50 mb-5">{endData.winner ? "فاز باللعبة!" : "انتهى الحد الأقصى للأسئلة"}</p>
               <div className="grid grid-cols-2 gap-3 mb-5">
                 {(["A", "B"] as Team[]).map((t) => (
                   <div key={t} className="rounded-2xl p-3 border" style={{ background: `${teams[t].color}15`, borderColor: `${teams[t].color}40` }}>

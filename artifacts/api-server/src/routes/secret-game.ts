@@ -52,17 +52,25 @@ router.get("/secret-game/items/random/:categoryId", async (req, res) => {
   }
 });
 
-router.post("/secret-game/reveal-token", (req, res) => {
+router.get("/secret-game/join", (req, res) => {
   try {
-    const { pin, team, itemId } = req.body as { pin?: string; team?: string; itemId?: number };
-    if (!pin || !team || !itemId) return res.status(400).json({ error: "pin, team, itemId required" });
+    const pin = (req.query.pin as string | undefined)?.toUpperCase();
+    const team = req.query.team as string | undefined;
+    if (!pin || !team) return res.status(400).json({ error: "pin and team required" });
     if (team !== "A" && team !== "B") return res.status(400).json({ error: "team must be A or B" });
-    const room = secretGameRooms.get(pin.toUpperCase());
-    if (!room) return res.status(404).json({ error: "الجلسة غير موجودة" });
-    const token = generateRevealToken(pin.toUpperCase(), team, itemId);
-    res.json({ token });
+    const room = secretGameRooms.get(pin);
+    if (!room) return res.status(404).json({ error: "الجلسة غير موجودة أو انتهت" });
+    if (room.phase === "ended") return res.status(410).json({ error: "اللعبة انتهت" });
+    const token = generateRevealToken(pin, team, room.teams[team].secretId);
+    res.json({
+      token,
+      teamName: room.teams[team].name,
+      teamColor: room.teams[team].color,
+      opponentName: room.teams[team === "A" ? "B" : "A"].name,
+      phase: room.phase,
+    });
   } catch (err) {
-    req.log.error({ err }, "secret-game reveal-token");
+    req.log.error({ err }, "secret-game join");
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -4641,7 +4641,7 @@ function SecretArenaActivity({
   const BASE = typeof window !== "undefined" ? window.location.origin : "";
 
   React.useEffect(() => {
-    const sock = socketIOClient(BASE, { path: "/socket.io", transports: ["websocket"] });
+    const sock = socketIOClient(BASE, { path: "/api/socket.io", transports: ["websocket", "polling"] });
     socketRef.current = sock;
 
     sock.on("connect", () => {
