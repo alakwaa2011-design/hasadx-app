@@ -2624,6 +2624,7 @@ function QuestionModal({
               key={`${active.question.type ?? "text"}::${active.question.q}`}
               question={active.question}
               revealed={active.revealed}
+              awardedPts={active.difficulty * active.multiplier}
               onAutoResolve={(winner) =>
                 onResolve(
                   winner === null
@@ -3943,11 +3944,13 @@ function InteractiveActivity({
   revealed,
   onAutoResolve,
   teamInfo,
+  awardedPts,
 }: {
   question: ArenaQuestion;
   revealed: boolean;
   onAutoResolve?: (winner: "A" | "B" | null) => void;
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
+  awardedPts?: number;
 }) {
   const t = question.type;
   if (t === "sin-jeem")
@@ -3964,6 +3967,7 @@ function InteractiveActivity({
         question={question}
         onAutoResolve={onAutoResolve}
         teamInfo={teamInfo}
+        awardedPts={awardedPts}
       />
     );
   if (t === "image")
@@ -4619,10 +4623,12 @@ function SecretArenaActivity({
   question,
   onAutoResolve,
   teamInfo,
+  awardedPts,
 }: {
   question: ArenaQuestion;
   onAutoResolve?: (winner: "A" | "B" | null) => void;
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
+  awardedPts?: number;
 }) {
   const payload = (question.payload ?? {}) as Partial<SecretPayload>;
   const categoryId = payload.categoryId ?? 1;
@@ -4635,8 +4641,23 @@ function SecretArenaActivity({
   const [tokenB, setTokenB] = React.useState<string>("");
   const [endData, setEndData] = React.useState<SecretArenaEndData | null>(null);
   const [lastAnswer, setLastAnswer] = React.useState<"yes" | "no" | null>(null);
+  const [dismissProgress, setDismissProgress] = React.useState(100);
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
+
+  React.useEffect(() => {
+    if (!endData) return;
+    setDismissProgress(100);
+    const start = Date.now();
+    const DURATION = 4000;
+    const id = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const pct = Math.max(0, 100 - (elapsed / DURATION) * 100);
+      setDismissProgress(pct);
+      if (elapsed >= DURATION) clearInterval(id);
+    }, 50);
+    return () => clearInterval(id);
+  }, [endData]);
 
   const BASE = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -4686,7 +4707,7 @@ function SecretArenaActivity({
     sock.on("secret:game_over", (data: SecretArenaEndData & { state: SecretArenaGameState }) => {
       setGameState(data.state);
       setEndData(data);
-      setTimeout(() => onAutoResolveRef.current?.(data.winner), 2000);
+      setTimeout(() => onAutoResolveRef.current?.(data.winner), 4000);
     });
 
     return () => {
@@ -4714,25 +4735,126 @@ function SecretArenaActivity({
   }
 
   if (endData) {
+    const winnerColor =
+      endData.winner === "A"
+        ? teamInfo?.A.color
+        : endData.winner === "B"
+        ? teamInfo?.B.color
+        : undefined;
     return (
-      <div className="flex flex-col items-center gap-4 py-6 text-center" dir="rtl">
-        <div className="text-5xl">🏆</div>
-        <p className="text-2xl font-black text-gray-800">
-          {endData.winner ? `${endData.winnerName} عرف السر!` : "انتهى الوقت — تعادل!"}
-        </p>
-        <div className="flex gap-6 mt-2">
-          {(["A", "B"] as const).map((t) => (
-            <div key={t} className="flex flex-col items-center gap-1">
-              <p className="text-xs text-gray-500">سر فريق {t === "A" ? teamInfo?.A.name ?? "A" : teamInfo?.B.name ?? "B"}</p>
-              {endData.secrets[t].image && (
-                <img src={endData.secrets[t].image!} alt={endData.secrets[t].name} className="w-16 h-16 rounded-xl object-cover" />
-              )}
-              <p className="text-sm font-bold text-gray-700">{endData.secrets[t].name}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-gray-400 mt-1">سيتم إسناد النقاط للفريق الفائز تلقائياً…</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        className="flex flex-col items-center gap-5 py-4 text-center"
+        dir="rtl"
+      >
+        {/* Trophy / emoji */}
+        <motion.div
+          initial={{ scale: 0, rotate: -15 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.1 }}
+          className="text-6xl leading-none select-none"
+        >
+          {endData.winner ? "🏆" : "🤝"}
+        </motion.div>
+
+        {/* Result headline */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="space-y-1"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-widest text-purple-500">
+            انتهت جولة اكتشف السر
+          </p>
+          <p className="text-2xl font-black text-gray-800">
+            {endData.winner ? `${endData.winnerName} عرف السر!` : "تعادل — أحسنتما!"}
+          </p>
+        </motion.div>
+
+        {/* Team stat cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="flex gap-3 w-full"
+        >
+          {(["A", "B"] as const).map((t) => {
+            const isWinner = endData.winner === t;
+            const tColor = t === "A" ? teamInfo?.A.color : teamInfo?.B.color;
+            const tName =
+              t === "A"
+                ? (teamInfo?.A.name ?? "الفريق أ")
+                : (teamInfo?.B.name ?? "الفريق ب");
+            const qCount = gameState?.teams[t].questionCount ?? 0;
+            return (
+              <div
+                key={t}
+                className="flex-1 rounded-2xl p-3 border-2 flex flex-col items-center gap-2"
+                style={{
+                  borderColor: isWinner ? (tColor ?? "#888") : "#e5e7eb",
+                  background: isWinner ? `${tColor ?? "#888"}12` : "#f9fafb",
+                  boxShadow: isWinner
+                    ? `0 4px 16px -4px ${tColor ?? "#888"}44`
+                    : "none",
+                }}
+              >
+                {isWinner && (
+                  <span className="text-xl leading-none">🥇</span>
+                )}
+                <p className="text-sm font-black" style={{ color: tColor ?? "#888" }}>
+                  {tName}
+                </p>
+                {isWinner && awardedPts != null && (
+                  <span
+                    className="text-xs font-black px-2 py-0.5 rounded-full"
+                    style={{ background: `${tColor ?? "#a855f7"}20`, color: tColor ?? "#a855f7" }}
+                  >
+                    +{awardedPts} نقطة
+                  </span>
+                )}
+                <p className="text-[11px] text-gray-400">{qCount} سؤال</p>
+                {endData.secrets[t].image && (
+                  <img
+                    src={endData.secrets[t].image!}
+                    alt={endData.secrets[t].name}
+                    className="w-14 h-14 rounded-xl object-cover"
+                  />
+                )}
+                <p className="text-xs font-bold text-gray-600 leading-tight text-center">
+                  {endData.secrets[t].name}
+                </p>
+              </div>
+            );
+          })}
+        </motion.div>
+
+        {/* Auto-dismiss countdown progress bar */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="w-full space-y-1.5"
+        >
+          <p className="text-[11px] text-gray-400">
+            {endData.winner
+              ? "سيتم إسناد النقاط للفريق الفائز تلقائياً…"
+              : "انتهت الجولة بالتعادل — لا تُسند نقاط"}
+          </p>
+          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${dismissProgress}%`,
+                background: winnerColor ?? "#a855f7",
+                transition: "width 50ms linear",
+              }}
+            />
+          </div>
+        </motion.div>
+      </motion.div>
     );
   }
 
