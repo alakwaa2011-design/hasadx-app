@@ -68,10 +68,10 @@ function BubbleCounter({ count, max, color }: { count: number; max: number; colo
   );
 }
 
-function TeamCard({ team, state, isAsking, isAnswering, onYes, onNo, onGuess, onAnswer, showAnswerBtns }: {
+function TeamCard({ team, state, isAsking, isAnswering, onYes, onNo, onGuess, onAnswer, showAnswerBtns, maxQuestions }: {
   team: Team; state: TeamState; isAsking: boolean; isAnswering: boolean;
   onYes: () => void; onNo: () => void; onGuess: () => void; onAnswer: (a: "yes" | "no") => void;
-  showAnswerBtns: boolean;
+  showAnswerBtns: boolean; maxQuestions: number;
 }) {
   return (
     <motion.div
@@ -113,7 +113,7 @@ function TeamCard({ team, state, isAsking, isAnswering, onYes, onNo, onGuess, on
         )}
       </div>
 
-      <BubbleCounter count={state.questionCount} max={5} color={state.color} />
+      <BubbleCounter count={state.questionCount} max={maxQuestions} color={state.color} />
       <p className="text-white/40 text-xs text-center">{state.questionCount} سؤال تم طرحه</p>
 
       {showAnswerBtns && isAnswering && (
@@ -421,6 +421,7 @@ export default function SecretPlay() {
               isAsking={phase === "playing" && currentAsker === t}
               isAnswering={phase === "playing" && answerTeam === t}
               showAnswerBtns={phase === "playing"}
+              maxQuestions={maxQuestions}
               onYes={() => emitAnswer("yes")}
               onNo={() => emitAnswer("no")}
               onGuess={() => setGuessTeam(t)}

@@ -4,7 +4,10 @@ import { logger } from "../lib/logger";
 import { db, secretGameCategoriesTable, secretGameItemsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
-const TOKEN_SECRET = process.env.SESSION_SECRET ?? "hasad-secret-game-2024";
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required for secret-game token signing");
+}
+const TOKEN_SECRET = process.env.SESSION_SECRET;
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export function generateRevealToken(pin: string, team: "A" | "B", itemId: number): string {
@@ -173,6 +176,11 @@ export function setupSecretGameSocket(io: Server) {
       if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد" }); return; }
 
       const asker = room.currentAsker;
+      if (room.teams[asker].questionCount >= room.maxQuestions) {
+        cb?.({ error: `وصل فريق ${room.teams[asker].name} للحد الأقصى من الأسئلة (${room.maxQuestions})` });
+        return;
+      }
+
       room.teams[asker].questionCount += 1;
       room.totalQuestions += 1;
 
@@ -181,6 +189,23 @@ export function setupSecretGameSocket(io: Server) {
 
       const state = getRoomState(room);
       io.to(`secret:${room.pin}`).emit("secret:question_asked", { ...state, askedBy: asker });
+
+      // If both teams have now exhausted their question limit, end the game as a draw
+      if (room.teams.A.questionCount >= room.maxQuestions && room.teams.B.questionCount >= room.maxQuestions) {
+        room.phase = "ended";
+        room.winner = null;
+        io.to(`secret:${room.pin}`).emit("secret:game_over", {
+          winner: null,
+          winnerName: "تعادل",
+          secrets: {
+            A: { name: room.teams.A.secretName, image: room.teams.A.secretImage },
+            B: { name: room.teams.B.secretName, image: room.teams.B.secretImage },
+          },
+          state: getRoomState(room),
+        });
+        logger.info({ pin: room.pin }, "Secret game ended — question limit reached (draw)");
+      }
+
       cb?.({ ok: true });
     });
 

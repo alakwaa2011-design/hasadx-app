@@ -10,7 +10,8 @@ export type ArenaQuestionType =
   | "memory"
   | "sin-jeem"
   | "categorize"
-  | "logo";
+  | "logo"
+  | "secret";
 
 /** Memory-match pair: each side can be a text label or an image URL. */
 export interface MemoryPair {
@@ -45,11 +46,18 @@ export interface LogoPayload {
   hint?: string;
 }
 
+/** اكشف السر — two-team yes/no guessing game embedded in the arena tile. */
+export interface SecretPayload {
+  categoryId: number;
+  maxQuestions?: number;
+}
+
 export type ArenaQuestionPayload =
   | MemoryPayload
   | SinJeemPayload
   | CategorizePayload
   | LogoPayload
+  | SecretPayload
   | null
   | undefined;
 

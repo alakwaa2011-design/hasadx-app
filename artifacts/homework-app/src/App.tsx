@@ -180,6 +180,7 @@ const ArenaAudience = lazy(() => import("@/pages/game/arena-audience"));
 const SecretSetup = lazy(() => import("@/pages/game/secret-setup"));
 const SecretPlay = lazy(() => import("@/pages/game/secret-play"));
 const SecretReveal = lazy(() => import("@/pages/game/secret-reveal"));
+const PlaySecret = lazy(() => import("@/pages/game/play-secret"));
 const PublicArenaSetup = lazy(() => import("@/pages/play/arena"));
 const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const TeamsPage = lazy(() => import("@/pages/teacher/teams"));
@@ -472,6 +473,11 @@ function Router() {
             <SecretSetup />
           </Suspense>
         </Route>
+        <Route path="/game/secret-setup">
+          <Suspense fallback={<LoadingFallback />}>
+            <SecretSetup />
+          </Suspense>
+        </Route>
         {/* Hasad Arena Routes */}
         <Route path="/game/arena/audience">
           <Suspense fallback={<LoadingFallback />}>
@@ -512,6 +518,12 @@ function Router() {
           >
             <ArenaPlay />
           </ErrorBoundary>
+        </Route>
+        {/* Public: اكشف السر student join */}
+        <Route path="/play/secret">
+          <Suspense fallback={<LoadingFallback />}>
+            <PlaySecret />
+          </Suspense>
         </Route>
         {/* Public Arena — no login required */}
         <Route path="/play/arena">

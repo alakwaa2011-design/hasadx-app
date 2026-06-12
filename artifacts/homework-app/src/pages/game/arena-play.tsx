@@ -51,6 +51,7 @@ import {
   type SinJeemPayload,
   type CategorizePayload,
   type LogoPayload,
+  type SecretPayload,
 } from "@/data/arena-questions";
 import { getStaticCoverImage, toCoverThumb } from "@/data/arena-cover-images";
 import {
@@ -78,6 +79,8 @@ import {
   buildDbSections,
   submitArenaReport,
 } from "@/lib/arena-content";
+import { io as socketIOClient } from "socket.io-client";
+import QRCodeLib from "react-qr-code";
 
 /** Base difficulty tiers shown on the board. 800 is only added when
  *  the sub-category has explicit 800-pt questions (DB-backed only). */
@@ -2621,6 +2624,19 @@ function QuestionModal({
               key={`${active.question.type ?? "text"}::${active.question.q}`}
               question={active.question}
               revealed={active.revealed}
+              onAutoResolve={(winner) =>
+                onResolve(
+                  winner === null
+                    ? null
+                    : winner === "A"
+                    ? active.answeringTeam
+                    : getNextTeam(state.teamOrder, active.answeringTeam),
+                )
+              }
+              teamInfo={{
+                A: { name: answeringTeam.name, color: answeringTeam.color },
+                B: { name: otherTeam.name, color: otherTeam.color },
+              }}
             />
             <AnimatePresence>
               {active.revealed && (
@@ -3925,9 +3941,13 @@ function TeamBadge({
 function InteractiveActivity({
   question,
   revealed,
+  onAutoResolve,
+  teamInfo,
 }: {
   question: ArenaQuestion;
   revealed: boolean;
+  onAutoResolve?: (winner: "A" | "B" | null) => void;
+  teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
 }) {
   const t = question.type;
   if (t === "sin-jeem")
@@ -3938,6 +3958,14 @@ function InteractiveActivity({
     return <CategorizePlay question={question} revealed={revealed} />;
   if (t === "logo") return <LogoPlay question={question} revealed={revealed} />;
   if (t === "audio") return <AudioPlay question={question} revealed={revealed} />;
+  if (t === "secret")
+    return (
+      <SecretArenaActivity
+        question={question}
+        onAutoResolve={onAutoResolve}
+        teamInfo={teamInfo}
+      />
+    );
   if (t === "image")
     return (
       <ImagePlay
@@ -4558,6 +4586,324 @@ function LogoPlay({
         <div className="text-sm rounded-lg px-3 py-1.5" style={{ color: "#1f4d4f", background: "rgba(31,77,79,0.08)", border: "1px solid #2d5e3f55" }}>
           💡 تلميح: {hint}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────── اكشف السر — Arena Integration ───────────────────────────
+
+interface SecretArenaTeamState {
+  name: string;
+  color: string;
+  scanned: boolean;
+  questionCount: number;
+  penalty: boolean;
+}
+interface SecretArenaGameState {
+  pin: string;
+  teams: { A: SecretArenaTeamState; B: SecretArenaTeamState };
+  currentAsker: "A" | "B";
+  totalQuestions: number;
+  maxQuestions: number;
+  phase: "waiting_scan" | "playing" | "guessing" | "ended";
+  winner: "A" | "B" | null;
+}
+interface SecretArenaEndData {
+  winner: "A" | "B" | null;
+  winnerName: string;
+  secrets: { A: { name: string; image: string | null }; B: { name: string; image: string | null } };
+}
+
+function SecretArenaActivity({
+  question,
+  onAutoResolve,
+  teamInfo,
+}: {
+  question: ArenaQuestion;
+  onAutoResolve?: (winner: "A" | "B" | null) => void;
+  teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
+}) {
+  const payload = (question.payload ?? {}) as Partial<SecretPayload>;
+  const categoryId = payload.categoryId ?? 1;
+  const maxQ = payload.maxQuestions ?? 10;
+
+  const socketRef = React.useRef<ReturnType<typeof socketIOClient> | null>(null);
+  const [status, setStatus] = React.useState<"connecting" | "ready" | "error">("connecting");
+  const [gameState, setGameState] = React.useState<SecretArenaGameState | null>(null);
+  const [tokenA, setTokenA] = React.useState<string>("");
+  const [tokenB, setTokenB] = React.useState<string>("");
+  const [endData, setEndData] = React.useState<SecretArenaEndData | null>(null);
+  const [lastAnswer, setLastAnswer] = React.useState<"yes" | "no" | null>(null);
+  const onAutoResolveRef = React.useRef(onAutoResolve);
+  onAutoResolveRef.current = onAutoResolve;
+
+  const BASE = typeof window !== "undefined" ? window.location.origin : "";
+
+  React.useEffect(() => {
+    const sock = socketIOClient(BASE, { path: "/socket.io", transports: ["websocket"] });
+    socketRef.current = sock;
+
+    sock.on("connect", () => {
+      const teamAName = teamInfo?.A.name ?? "الفريق الأول";
+      const teamAColor = teamInfo?.A.color ?? "#dc2626";
+      const teamBName = teamInfo?.B.name ?? "الفريق الثاني";
+      const teamBColor = teamInfo?.B.color ?? "#2563eb";
+      sock.emit(
+        "secret:create",
+        { categoryId, maxQuestions: maxQ, teamAName, teamAColor, teamBName, teamBColor },
+        (res: { pin?: string; tokenA?: string; tokenB?: string; error?: string }) => {
+          if (res.error || !res.pin) {
+            setStatus("error");
+            return;
+          }
+          setTokenA(res.tokenA ?? "");
+          setTokenB(res.tokenB ?? "");
+          setStatus("ready");
+        },
+      );
+    });
+    sock.on("connect_error", () => setStatus("error"));
+
+    sock.on("secret:state", (s: SecretArenaGameState) => setGameState(s));
+    sock.on("secret:started", (s: SecretArenaGameState) => setGameState(s));
+    sock.on("secret:question_asked", (s: SecretArenaGameState) => {
+      setGameState(s);
+      setLastAnswer(null);
+    });
+    sock.on("secret:answered", ({ answer, state }: { answer: "yes" | "no"; state: SecretArenaGameState }) => {
+      setGameState(state);
+      setLastAnswer(answer);
+    });
+    sock.on("secret:wrong_guess", ({ state }: { state: SecretArenaGameState }) => setGameState(state));
+    sock.on("secret:game_over", (data: SecretArenaEndData & { state: SecretArenaGameState }) => {
+      setGameState(data.state);
+      setEndData(data);
+      setTimeout(() => onAutoResolveRef.current?.(data.winner), 2000);
+    });
+
+    return () => {
+      sock.disconnect();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (status === "connecting") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-8 text-gray-500">
+        <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm">جارٍ إنشاء جلسة اكشف السر…</p>
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-red-500">
+        <AlertTriangle className="w-8 h-8" />
+        <p className="text-sm font-bold">تعذّر الاتصال بالسيرفر</p>
+      </div>
+    );
+  }
+
+  if (endData) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 text-center" dir="rtl">
+        <div className="text-5xl">🏆</div>
+        <p className="text-2xl font-black text-gray-800">
+          {endData.winner ? `${endData.winnerName} عرف السر!` : "انتهى الوقت — تعادل!"}
+        </p>
+        <div className="flex gap-6 mt-2">
+          {(["A", "B"] as const).map((t) => (
+            <div key={t} className="flex flex-col items-center gap-1">
+              <p className="text-xs text-gray-500">سر فريق {t === "A" ? teamInfo?.A.name ?? "A" : teamInfo?.B.name ?? "B"}</p>
+              {endData.secrets[t].image && (
+                <img src={endData.secrets[t].image!} alt={endData.secrets[t].name} className="w-16 h-16 rounded-xl object-cover" />
+              )}
+              <p className="text-sm font-bold text-gray-700">{endData.secrets[t].name}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400 mt-1">سيتم إسناد النقاط للفريق الفائز تلقائياً…</p>
+      </div>
+    );
+  }
+
+  if (!gameState) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-8 text-gray-500">
+        <div className="w-8 h-8 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm">جارٍ تحميل حالة اللعبة…</p>
+      </div>
+    );
+  }
+
+  const pin = gameState.pin;
+  const revealUrlA = `${BASE}/game/secret/reveal?token=${encodeURIComponent(tokenA)}`;
+  const revealUrlB = `${BASE}/game/secret/reveal?token=${encodeURIComponent(tokenB)}`;
+  const asker = gameState.currentAsker;
+  const answerer: "A" | "B" = asker === "A" ? "B" : "A";
+  const askerTeam = gameState.teams[asker];
+  const answererTeam = gameState.teams[answerer];
+
+  return (
+    <div className="w-full" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Eye className="w-5 h-5 text-purple-500" />
+          <span className="font-black text-gray-800 text-lg">اكشف السر</span>
+        </div>
+        <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
+      </div>
+
+      {/* QR codes */}
+      {(gameState.phase === "waiting_scan" || !gameState.teams.A.scanned || !gameState.teams.B.scanned) && (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {(["A", "B"] as const).map((t) => {
+            const url = t === "A" ? revealUrlA : revealUrlB;
+            const team = gameState.teams[t];
+            const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
+            return (
+              <div key={t} className="flex flex-col items-center gap-2 p-3 rounded-xl border" style={{ borderColor: `${tInfo?.color ?? "#888"}40`, background: `${tInfo?.color ?? "#888"}08` }}>
+                <p className="text-xs font-bold" style={{ color: tInfo?.color ?? "#888" }}>{team.name}</p>
+                <div className="bg-white p-1.5 rounded-lg">
+                  <QRCodeLib value={url} size={90} />
+                </div>
+                <p className="text-xs text-gray-400">{team.scanned ? "✅ تم المسح" : "امسح الباركود"}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {gameState.phase === "waiting_scan" && (
+        <div className="flex justify-center mb-3">
+          <button
+            onClick={() => socketRef.current?.emit("secret:force_start", { pin })}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
+          >
+            بدء اللعبة فوراً
+          </button>
+        </div>
+      )}
+
+      {gameState.phase === "playing" && (
+        <div className="space-y-3">
+          {/* Turn indicator */}
+          <div className="flex gap-2">
+            {(["A", "B"] as const).map((t) => {
+              const team = gameState.teams[t];
+              const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
+              const isAsking = t === asker;
+              return (
+                <div key={t} className="flex-1 rounded-xl p-3 text-center border transition-all" style={{
+                  borderColor: isAsking ? tInfo?.color ?? "#888" : "transparent",
+                  background: isAsking ? `${tInfo?.color ?? "#888"}12` : "#f9f9f9",
+                }}>
+                  <p className="text-xs font-bold" style={{ color: tInfo?.color ?? "#888" }}>{team.name}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{team.questionCount}/{gameState.maxQuestions} سؤال</p>
+                  {isAsking && <p className="text-[10px] font-black text-purple-600 mt-1">يسأل الآن</p>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Last answer */}
+          {lastAnswer && (
+            <div className={`text-center py-2 rounded-xl font-black text-lg ${lastAnswer === "yes" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+              {lastAnswer === "yes" ? "✅ نعم" : "❌ لا"}
+            </div>
+          )}
+
+          {/* Host control buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => socketRef.current?.emit("secret:question", { pin })}
+              className="py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
+            >
+              ❓ سؤال جديد ({askerTeam.name})
+            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => socketRef.current?.emit("secret:answer", { pin, answer: "yes" })}
+                className="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
+              >
+                نعم ✅
+              </button>
+              <button
+                onClick={() => socketRef.current?.emit("secret:answer", { pin, answer: "no" })}
+                className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
+              >
+                لا ❌
+              </button>
+            </div>
+          </div>
+
+          {/* Guess entry */}
+          <GuessEntry pin={pin} teams={gameState.teams} teamInfo={teamInfo} socketRef={socketRef} answerer={answerer} answererTeam={answererTeam} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuessEntry({
+  pin,
+  teams,
+  teamInfo,
+  socketRef,
+  answerer,
+  answererTeam,
+}: {
+  pin: string;
+  teams: { A: SecretArenaTeamState; B: SecretArenaTeamState };
+  teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
+  socketRef: React.RefObject<ReturnType<typeof socketIOClient> | null>;
+  answerer: "A" | "B";
+  answererTeam: SecretArenaTeamState;
+}) {
+  const [guess, setGuess] = React.useState("");
+  const [guessingTeam, setGuessingTeam] = React.useState<"A" | "B">(answerer);
+  const tInfo = guessingTeam === "A" ? teamInfo?.A : teamInfo?.B;
+
+  const submitGuess = () => {
+    if (!guess.trim()) return;
+    socketRef.current?.emit("secret:guess", { pin, team: guessingTeam, guess: guess.trim() });
+    setGuess("");
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+      <p className="text-xs font-bold text-gray-500">تخمين الفريق</p>
+      <div className="flex gap-1">
+        {(["A", "B"] as const).map((t) => (
+          <button key={t} onClick={() => setGuessingTeam(t)}
+            className="flex-1 py-1 rounded-lg text-xs font-bold transition-colors"
+            style={{
+              background: guessingTeam === t ? (t === "A" ? teamInfo?.A.color : teamInfo?.B.color) ?? "#7c3aed" : "#f3f4f6",
+              color: guessingTeam === t ? "#fff" : "#6b7280",
+            }}>
+            {teams[t].name}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={guess}
+          onChange={(e) => setGuess(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submitGuess()}
+          placeholder={`تخمين ${tInfo?.name ?? ""}`}
+          className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-right focus:outline-none focus:ring-2 focus:ring-purple-300"
+          dir="rtl"
+        />
+        <button onClick={submitGuess} disabled={!guess.trim()}
+          className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-40 text-white text-sm font-bold transition-colors">
+          تخمين
+        </button>
+      </div>
+      {teams[guessingTeam].penalty && (
+        <p className="text-xs text-red-500 font-bold">⏳ هذا الفريق في فترة عقوبة (30 ثانية)</p>
       )}
     </div>
   );
