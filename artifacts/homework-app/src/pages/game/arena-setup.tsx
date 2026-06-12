@@ -1822,22 +1822,42 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     { name: "", items: ["", ""] },
   ]);
   const [draftSecretCategoryId, setDraftSecretCategoryId] = useState<number | null>(null);
-  const [secretGameCats, setSecretGameCats] = useState<{ id: number; name: string; emoji: string }[]>([]);
+  const [secretGameCats, setSecretGameCats] = useState<{ id: number; name: string; emoji: string; count: number }[]>([]);
   const [secretGameCatsLoaded, setSecretGameCatsLoaded] = useState(false);
+  const [secretCatPreviews, setSecretCatPreviews] = useState<Record<number, { samples: string[]; loading: boolean }>>({});
+  const [hoveredSecretCat, setHoveredSecretCat] = useState<number | null>(null);
 
   useEffect(() => {
     if (draftType !== "secret" || secretGameCatsLoaded) return;
     setSecretGameCatsLoaded(true);
     fetch("/api/secret-game/categories", { credentials: "include" })
       .then(r => r.json())
-      .then((data: { id: number; name: string; emoji?: string }[]) => {
-        setSecretGameCats(data.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? "🔍" })));
+      .then((data: { id: number; nameAr?: string; name?: string; icon?: string; emoji?: string; itemCount?: number }[]) => {
+        setSecretGameCats(data.map(c => ({
+          id: c.id,
+          name: c.nameAr ?? c.name ?? "فئة",
+          emoji: c.icon ?? c.emoji ?? "🔍",
+          count: c.itemCount ?? 0,
+        })));
         if (data.length > 0 && !draftSecretCategoryId) {
           setDraftSecretCategoryId(data[0].id);
         }
       })
       .catch(() => {});
   }, [draftType, secretGameCatsLoaded, draftSecretCategoryId]);
+
+  const fetchSecretCatPreview = (catId: number) => {
+    if (secretCatPreviews[catId]) return;
+    setSecretCatPreviews(prev => ({ ...prev, [catId]: { samples: [], loading: true } }));
+    fetch(`/api/secret-game/categories/${catId}/preview`, { credentials: "include" })
+      .then(r => r.json())
+      .then((data: { count: number; samples: string[] }) => {
+        setSecretCatPreviews(prev => ({ ...prev, [catId]: { samples: data.samples ?? [], loading: false } }));
+      })
+      .catch(() => {
+        setSecretCatPreviews(prev => ({ ...prev, [catId]: { samples: [], loading: false } }));
+      });
+  };
 
   const resetDraft = () => {
     setDraftQ(""); setDraftA(""); setDraftImageUrl(null); setDraftHint("");
@@ -2422,14 +2442,50 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           ) : (
                             <div className="flex flex-wrap gap-1.5">
                               {secretGameCats.map(cat => (
-                                <button
+                                <div
                                   key={cat.id}
-                                  type="button"
-                                  onClick={() => setDraftSecretCategoryId(cat.id)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow" : "bg-white/10 text-white/70 hover:bg-white/15"}`}
+                                  className="relative"
+                                  onMouseEnter={() => { setHoveredSecretCat(cat.id); fetchSecretCatPreview(cat.id); }}
+                                  onMouseLeave={() => setHoveredSecretCat(null)}
                                 >
-                                  <span>{cat.emoji}</span> {cat.name}
-                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDraftSecretCategoryId(cat.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow" : "bg-white/10 text-white/70 hover:bg-white/15"}`}
+                                  >
+                                    <span>{cat.emoji}</span>
+                                    <span>{cat.name}</span>
+                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${draftSecretCategoryId === cat.id ? "bg-white/25 text-white" : "bg-white/15 text-white/60"}`}>
+                                      {cat.count}
+                                    </span>
+                                  </button>
+
+                                  {hoveredSecretCat === cat.id && (
+                                    <div className="absolute bottom-full mb-1.5 right-0 z-50 min-w-[160px] max-w-[220px] rounded-xl bg-[#1a0d30] border border-purple-400/40 shadow-xl p-2.5 text-right pointer-events-none">
+                                      <div className="text-[10px] font-extrabold text-purple-300 mb-1.5 flex items-center gap-1 justify-end">
+                                        <span>عينة من الأسرار</span>
+                                        <span className="text-purple-400">🔍</span>
+                                      </div>
+                                      {secretCatPreviews[cat.id]?.loading ? (
+                                        <div className="text-[10px] text-white/40 text-center py-1">جارٍ التحميل…</div>
+                                      ) : secretCatPreviews[cat.id]?.samples.length === 0 ? (
+                                        <div className="text-[10px] text-white/40 text-center py-1">لا توجد عناصر</div>
+                                      ) : (
+                                        <ul className="space-y-1">
+                                          {secretCatPreviews[cat.id]?.samples.map((s, i) => (
+                                            <li key={i} className="text-[11px] text-white/80 flex items-center gap-1.5 justify-end">
+                                              <span>{s}</span>
+                                              <span className="text-purple-400 shrink-0">•</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                      <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-white/40 text-center">
+                                        {cat.count} عنصر في الفئة
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}

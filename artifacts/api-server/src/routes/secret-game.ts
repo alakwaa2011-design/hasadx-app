@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, secretGameCategoriesTable, secretGameItemsTable } from "@workspace/db";
-import { eq, sql, or, and, isNull } from "drizzle-orm";
+import { eq, sql, or, and, isNull, count } from "drizzle-orm";
 import { secretGameRooms, verifyRevealToken, generateRevealToken } from "../game/secret-game-handlers";
 
 async function canAccessCategory(categoryId: number, teacherId?: number): Promise<boolean> {
@@ -28,8 +28,20 @@ router.get("/secret-game/categories", async (req, res) => {
   try {
     const teacherId: number | undefined = req.session?.teacherId;
     const rows = await db
-      .select()
+      .select({
+        id: secretGameCategoriesTable.id,
+        nameAr: secretGameCategoriesTable.nameAr,
+        icon: secretGameCategoriesTable.icon,
+        sortOrder: secretGameCategoriesTable.sortOrder,
+        isActive: secretGameCategoriesTable.isActive,
+        createdAt: secretGameCategoriesTable.createdAt,
+        itemCount: count(secretGameItemsTable.id),
+      })
       .from(secretGameCategoriesTable)
+      .leftJoin(
+        secretGameItemsTable,
+        eq(secretGameItemsTable.categoryId, secretGameCategoriesTable.id),
+      )
       .where(
         and(
           eq(secretGameCategoriesTable.isActive, true),
@@ -42,10 +54,38 @@ router.get("/secret-game/categories", async (req, res) => {
           ),
         ),
       )
+      .groupBy(secretGameCategoriesTable.id)
       .orderBy(secretGameCategoriesTable.isCustom, secretGameCategoriesTable.sortOrder);
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "list secret-game categories");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/secret-game/categories/:id/preview", async (req, res) => {
+  try {
+    const categoryId = Number(req.params.id);
+    if (!Number.isFinite(categoryId)) return res.status(400).json({ error: "Invalid category" });
+
+    const [countRow] = await db
+      .select({ total: count(secretGameItemsTable.id) })
+      .from(secretGameItemsTable)
+      .where(eq(secretGameItemsTable.categoryId, categoryId));
+
+    const sampleRows = await db
+      .select({ nameAr: secretGameItemsTable.nameAr })
+      .from(secretGameItemsTable)
+      .where(eq(secretGameItemsTable.categoryId, categoryId))
+      .orderBy(sql`RANDOM()`)
+      .limit(3);
+
+    res.json({
+      count: countRow?.total ?? 0,
+      samples: sampleRows.map(r => r.nameAr),
+    });
+  } catch (err) {
+    req.log.error({ err }, "secret-game category preview");
     res.status(500).json({ error: "Server error" });
   }
 });
