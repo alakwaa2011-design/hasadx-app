@@ -4,6 +4,19 @@ import { logger } from "../lib/logger";
 import { db, secretGameCategoriesTable, secretGameItemsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
+async function categoryAccessible(categoryId: number, teacherId?: number): Promise<boolean> {
+  const [cat] = await db
+    .select()
+    .from(secretGameCategoriesTable)
+    .where(eq(secretGameCategoriesTable.id, categoryId))
+    .limit(1);
+  if (!cat || !cat.isActive) return false;
+  if (!cat.isCustom) return true;
+  if (cat.isPublic) return true;
+  if (teacherId && cat.teacherId === teacherId) return true;
+  return false;
+}
+
 if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET environment variable is required for secret-game token signing");
 }
@@ -120,6 +133,11 @@ export function setupSecretGameSocket(io: Server) {
       cb?: (res: { pin?: string; tokenA?: string; tokenB?: string; error?: string }) => void,
     ) => {
       try {
+        const teacherId: number | undefined = (socket.request as any).session?.teacherId;
+        if (!await categoryAccessible(data.categoryId, teacherId)) {
+          cb?.({ error: "لا يمكن الوصول إلى هذه الفئة" });
+          return;
+        }
         const items = await pickRandomItems(data.categoryId, 2);
         if (items.length < 2) {
           cb?.({ error: "لا توجد عناصر كافية في هذه الفئة" });

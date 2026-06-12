@@ -362,6 +362,9 @@ async function runSchemaMigrations() {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS secret_game_items_cat_idx ON secret_game_items(category_id)`);
+    await db.execute(sql`ALTER TABLE secret_game_categories ADD COLUMN IF NOT EXISTS is_custom BOOLEAN NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE secret_game_categories ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT false`);
+    await db.execute(sql`ALTER TABLE secret_game_categories ADD COLUMN IF NOT EXISTS teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE`);
     logger.info("Secret game tables ready");
   } catch (err) {
     logger.error(err, "Secret game table migration failed");

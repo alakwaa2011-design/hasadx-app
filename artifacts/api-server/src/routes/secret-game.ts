@@ -1,17 +1,48 @@
 import { Router, type IRouter } from "express";
 import { db, secretGameCategoriesTable, secretGameItemsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, or, and, isNull } from "drizzle-orm";
 import { secretGameRooms, verifyRevealToken, generateRevealToken } from "../game/secret-game-handlers";
+
+async function canAccessCategory(categoryId: number, teacherId?: number): Promise<boolean> {
+  const [cat] = await db
+    .select()
+    .from(secretGameCategoriesTable)
+    .where(eq(secretGameCategoriesTable.id, categoryId))
+    .limit(1);
+  if (!cat || !cat.isActive) return false;
+  if (!cat.isCustom) return true;
+  if (cat.isPublic) return true;
+  if (teacherId && cat.teacherId === teacherId) return true;
+  return false;
+}
 
 const router: IRouter = Router();
 
+function requireTeacher(req: any, res: any): number | null {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) { res.status(401).json({ error: "غير مصرح" }); return null; }
+  return teacherId;
+}
+
 router.get("/secret-game/categories", async (req, res) => {
   try {
+    const teacherId: number | undefined = req.session?.teacherId;
     const rows = await db
       .select()
       .from(secretGameCategoriesTable)
-      .where(eq(secretGameCategoriesTable.isActive, true))
-      .orderBy(secretGameCategoriesTable.sortOrder);
+      .where(
+        and(
+          eq(secretGameCategoriesTable.isActive, true),
+          or(
+            eq(secretGameCategoriesTable.isCustom, false),
+            eq(secretGameCategoriesTable.isPublic, true),
+            teacherId
+              ? eq(secretGameCategoriesTable.teacherId, teacherId)
+              : isNull(secretGameCategoriesTable.teacherId),
+          ),
+        ),
+      )
+      .orderBy(secretGameCategoriesTable.isCustom, secretGameCategoriesTable.sortOrder);
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "list secret-game categories");
@@ -23,6 +54,10 @@ router.get("/secret-game/items/:categoryId", async (req, res) => {
   try {
     const categoryId = Number(req.params.categoryId);
     if (!Number.isFinite(categoryId)) return res.status(400).json({ error: "Invalid category" });
+    const teacherId: number | undefined = req.session?.teacherId;
+    if (!await canAccessCategory(categoryId, teacherId)) {
+      return res.status(403).json({ error: "غير مسموح" });
+    }
     const rows = await db
       .select()
       .from(secretGameItemsTable)
@@ -39,6 +74,10 @@ router.get("/secret-game/items/random/:categoryId", async (req, res) => {
     const categoryId = Number(req.params.categoryId);
     const count = Math.min(Number(req.query.count ?? 2), 20);
     if (!Number.isFinite(categoryId)) return res.status(400).json({ error: "Invalid category" });
+    const teacherId: number | undefined = req.session?.teacherId;
+    if (!await canAccessCategory(categoryId, teacherId)) {
+      return res.status(403).json({ error: "غير مسموح" });
+    }
     const rows = await db
       .select()
       .from(secretGameItemsTable)
@@ -48,6 +87,147 @@ router.get("/secret-game/items/random/:categoryId", async (req, res) => {
     res.json(rows);
   } catch (err) {
     req.log.error({ err }, "random secret-game items");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/secret-game/custom-categories", async (req, res) => {
+  try {
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
+
+    const { nameAr, icon, isPublic, items } = req.body ?? {};
+    if (!nameAr || typeof nameAr !== "string" || !nameAr.trim()) {
+      return res.status(400).json({ error: "اسم الفئة مطلوب" });
+    }
+    if (!Array.isArray(items) || items.length < 2) {
+      return res.status(400).json({ error: "يجب إضافة عنصرين على الأقل" });
+    }
+    const validItems = items.filter(
+      (it: any) => it && typeof it.nameAr === "string" && it.nameAr.trim(),
+    );
+    if (validItems.length < 2) {
+      return res.status(400).json({ error: "يجب إضافة عنصرين على الأقل بأسماء صحيحة" });
+    }
+
+    const [category] = await db
+      .insert(secretGameCategoriesTable)
+      .values({
+        nameAr: nameAr.trim(),
+        icon: typeof icon === "string" && icon.trim() ? icon.trim() : "📋",
+        isCustom: true,
+        isPublic: isPublic === true,
+        teacherId,
+        sortOrder: 999,
+      })
+      .returning();
+
+    const itemRows = await db
+      .insert(secretGameItemsTable)
+      .values(
+        validItems.map((it: any) => ({
+          categoryId: category.id,
+          nameAr: it.nameAr.trim(),
+          imageUrl: typeof it.imageUrl === "string" && it.imageUrl.trim() ? it.imageUrl.trim() : null,
+        })),
+      )
+      .returning();
+
+    res.status(201).json({ category, items: itemRows });
+  } catch (err) {
+    req.log.error({ err }, "create custom secret-game category");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.put("/secret-game/custom-categories/:id", async (req, res) => {
+  try {
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
+
+    const categoryId = Number(req.params.id);
+    if (!Number.isFinite(categoryId)) return res.status(400).json({ error: "Invalid id" });
+
+    const [existing] = await db
+      .select()
+      .from(secretGameCategoriesTable)
+      .where(eq(secretGameCategoriesTable.id, categoryId))
+      .limit(1);
+
+    if (!existing) return res.status(404).json({ error: "الفئة غير موجودة" });
+    if (!existing.isCustom || existing.teacherId !== teacherId) {
+      return res.status(403).json({ error: "غير مسموح بتعديل هذه الفئة" });
+    }
+
+    const { nameAr, icon, isPublic, items } = req.body ?? {};
+
+    const updates: Partial<typeof secretGameCategoriesTable.$inferInsert> = {};
+    if (typeof nameAr === "string" && nameAr.trim()) updates.nameAr = nameAr.trim();
+    if (typeof icon === "string" && icon.trim()) updates.icon = icon.trim();
+    if (typeof isPublic === "boolean") updates.isPublic = isPublic;
+
+    if (Object.keys(updates).length > 0) {
+      await db
+        .update(secretGameCategoriesTable)
+        .set(updates)
+        .where(eq(secretGameCategoriesTable.id, categoryId));
+    }
+
+    if (Array.isArray(items)) {
+      const validItems = items.filter(
+        (it: any) => it && typeof it.nameAr === "string" && it.nameAr.trim(),
+      );
+      if (validItems.length >= 2) {
+        await db.delete(secretGameItemsTable).where(eq(secretGameItemsTable.categoryId, categoryId));
+        await db.insert(secretGameItemsTable).values(
+          validItems.map((it: any) => ({
+            categoryId,
+            nameAr: it.nameAr.trim(),
+            imageUrl: typeof it.imageUrl === "string" && it.imageUrl.trim() ? it.imageUrl.trim() : null,
+          })),
+        );
+      }
+    }
+
+    const [updated] = await db
+      .select()
+      .from(secretGameCategoriesTable)
+      .where(eq(secretGameCategoriesTable.id, categoryId));
+    const updatedItems = await db
+      .select()
+      .from(secretGameItemsTable)
+      .where(eq(secretGameItemsTable.categoryId, categoryId));
+
+    res.json({ category: updated, items: updatedItems });
+  } catch (err) {
+    req.log.error({ err }, "update custom secret-game category");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.delete("/secret-game/custom-categories/:id", async (req, res) => {
+  try {
+    const teacherId = requireTeacher(req, res);
+    if (!teacherId) return;
+
+    const categoryId = Number(req.params.id);
+    if (!Number.isFinite(categoryId)) return res.status(400).json({ error: "Invalid id" });
+
+    const [existing] = await db
+      .select()
+      .from(secretGameCategoriesTable)
+      .where(eq(secretGameCategoriesTable.id, categoryId))
+      .limit(1);
+
+    if (!existing) return res.status(404).json({ error: "الفئة غير موجودة" });
+    if (!existing.isCustom || existing.teacherId !== teacherId) {
+      return res.status(403).json({ error: "غير مسموح بحذف هذه الفئة" });
+    }
+
+    await db.delete(secretGameCategoriesTable).where(eq(secretGameCategoriesTable.id, categoryId));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "delete custom secret-game category");
     res.status(500).json({ error: "Server error" });
   }
 });

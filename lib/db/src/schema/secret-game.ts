@@ -1,4 +1,5 @@
 import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { teachersTable } from "./teachers";
 
 export const secretGameCategoriesTable = pgTable("secret_game_categories", {
   id: serial("id").primaryKey(),
@@ -6,6 +7,9 @@ export const secretGameCategoriesTable = pgTable("secret_game_categories", {
   icon: text("icon").notNull().default("🎯"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
+  isCustom: boolean("is_custom").notNull().default(false),
+  isPublic: boolean("is_public").notNull().default(false),
+  teacherId: integer("teacher_id").references(() => teachersTable.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
