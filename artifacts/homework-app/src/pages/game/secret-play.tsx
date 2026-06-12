@@ -2,8 +2,31 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { io as socketIO, Socket } from "socket.io-client";
-import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, QrCode, RotateCcw, Plus } from "lucide-react";
+import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, HelpCircle, QrCode, RotateCcw, ChevronRight, CheckCircle2, Clock, Plus } from "lucide-react";
 import QRCode from "react-qr-code";
+
+function playAllReadyChime() {
+  try {
+    const ctx = new AudioContext();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      const t = ctx.currentTime + i * 0.13;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t);
+      osc.stop(t + 0.36);
+    });
+  } catch {
+    // ignore if Web Audio not available
+  }
+}
 
 type Phase = "waiting_scan" | "playing" | "guessing" | "ended";
 type Team = "A" | "B";
@@ -100,6 +123,8 @@ export default function SecretPlay() {
   const [newTokenA, setNewTokenA] = useState<string | null>(null);
   const [newTokenB, setNewTokenB] = useState<string | null>(null);
   const [questionLoading, setQuestionLoading] = useState(false);
+  const [allReadyBanner, setAllReadyBanner] = useState(false);
+  const prevBothScannedRef = useRef(false);
 
   useEffect(() => {
     if (!pin) { setLocation("/game/secret"); return; }
@@ -144,6 +169,22 @@ export default function SecretPlay() {
 
     return () => { socket.disconnect(); socketRef.current = null; };
   }, [pin, setLocation]);
+
+  useEffect(() => {
+    if (!gameState) return undefined;
+    const bothScanned = gameState.teams.A.scanned && gameState.teams.B.scanned;
+    if (bothScanned && !prevBothScannedRef.current) {
+      prevBothScannedRef.current = true;
+      setAllReadyBanner(true);
+      playAllReadyChime();
+      const t = setTimeout(() => setAllReadyBanner(false), 6000);
+      return () => clearTimeout(t);
+    }
+    if (!bothScanned) {
+      prevBothScannedRef.current = false;
+    }
+    return undefined;
+  }, [gameState]);
 
   const emitQuestion = useCallback(() => {
     if (questionLoading) return;
@@ -207,6 +248,36 @@ export default function SecretPlay() {
         </div>
       </div>
 
+      {/* All Teams Ready Banner */}
+      <AnimatePresence>
+        {allReadyBanner && (
+          <motion.div
+            key="all-ready-banner"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 22 }}
+            className="fixed top-16 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl border-2"
+            style={{
+              background: "linear-gradient(135deg,#065f46,#047857)",
+              borderColor: "#34d399",
+              minWidth: 260,
+            }}
+          >
+            <motion.div
+              animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <CheckCircle2 className="w-7 h-7 text-emerald-300 flex-shrink-0" />
+            </motion.div>
+            <div>
+              <p className="text-white font-black text-base leading-tight">جميع الفرق جاهزة! 🎉</p>
+              <p className="text-emerald-200/80 text-xs mt-0.5">يمكنك بدء اللعبة الآن</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* QR Panel */}
       <AnimatePresence>
         {(showQR || phase === "waiting_scan") && (
@@ -216,6 +287,39 @@ export default function SecretPlay() {
               <p className="text-center text-white/60 text-xs mb-3">
                 {phase === "waiting_scan" ? "🔍 في انتظار مسح الباركود من قائدَي الفريقين" : "باركودات الجولة الجديدة"}
               </p>
+
+              {/* Scan progress indicator */}
+              {phase === "waiting_scan" && (
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  {(["A", "B"] as Team[]).map((t) => (
+                    <motion.div
+                      key={t}
+                      initial={false}
+                      animate={teams[t].scanned
+                        ? { scale: [1, 1.15, 1], backgroundColor: ["transparent", teams[t].color, teams[t].color] }
+                        : {}}
+                      transition={{ duration: 0.35 }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-colors"
+                      style={{
+                        borderColor: teams[t].scanned ? teams[t].color : `${teams[t].color}40`,
+                        background: teams[t].scanned ? `${teams[t].color}25` : "transparent",
+                      }}
+                    >
+                      {teams[t].scanned
+                        ? <CheckCircle2 className="w-4 h-4" style={{ color: teams[t].color }} />
+                        : <Clock className="w-4 h-4 text-white/30" />
+                      }
+                      <span
+                        className="text-sm font-bold"
+                        style={{ color: teams[t].scanned ? teams[t].color : "rgba(255,255,255,0.4)" }}
+                      >
+                        {teams[t].name}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
                 <QRPanel token={effectiveTokenA} teamName={teams.A.name} teamColor={teams.A.color} scanned={teams.A.scanned} />
                 <QRPanel token={effectiveTokenB} teamName={teams.B.name} teamColor={teams.B.color} scanned={teams.B.scanned} />

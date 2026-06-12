@@ -14,4 +14,4 @@ if [ -d scripts/migrations ]; then
   done
 fi
 
-pnpm --filter db push
+pnpm --filter db push-force
