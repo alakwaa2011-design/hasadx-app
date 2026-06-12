@@ -24,7 +24,7 @@ export interface DbArenaCategory {
 export interface DbArenaActivity {
   id: number;
   categoryId: number;
-  type: "text" | "image" | "video" | "audio" | "memory" | "sin-jeem" | "categorize" | "logo";
+  type: "text" | "image" | "video" | "audio" | "memory" | "sin-jeem" | "categorize" | "logo" | "secret";
   difficulty: 200 | 400 | 600 | 800;
   question: string;
   answer: string;

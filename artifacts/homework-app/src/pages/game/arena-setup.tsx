@@ -1821,6 +1821,23 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
     { name: "", items: ["", ""] },
     { name: "", items: ["", ""] },
   ]);
+  const [draftSecretCategoryId, setDraftSecretCategoryId] = useState<number | null>(null);
+  const [secretGameCats, setSecretGameCats] = useState<{ id: number; name: string; emoji: string }[]>([]);
+  const [secretGameCatsLoaded, setSecretGameCatsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (draftType !== "secret" || secretGameCatsLoaded) return;
+    setSecretGameCatsLoaded(true);
+    fetch("/api/secret-game/categories", { credentials: "include" })
+      .then(r => r.json())
+      .then((data: { id: number; name: string; emoji?: string }[]) => {
+        setSecretGameCats(data.map(c => ({ id: c.id, name: c.name, emoji: c.emoji ?? "🔍" })));
+        if (data.length > 0 && !draftSecretCategoryId) {
+          setDraftSecretCategoryId(data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, [draftType, secretGameCatsLoaded, draftSecretCategoryId]);
 
   const resetDraft = () => {
     setDraftQ(""); setDraftA(""); setDraftImageUrl(null); setDraftHint("");
@@ -1835,6 +1852,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
       { name: "", items: ["", ""] },
       { name: "", items: ["", ""] },
     ]);
+    setDraftSecretCategoryId(secretGameCats[0]?.id ?? null);
   };
 
   const uploadInline = async (file: File): Promise<string | null> => {
@@ -1976,6 +1994,21 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
           },
         };
       }
+      case "secret": {
+        if (!draftSecretCategoryId) return { ok: false, error: "اختر فئة اكشف السر" };
+        const catName = secretGameCats.find(c => c.id === draftSecretCategoryId)?.name ?? "اكشف السر";
+        return {
+          ok: true,
+          data: {
+            type: "secret",
+            question: `اكشف السر — ${catName}`,
+            answer: catName,
+            payload: { categoryId: draftSecretCategoryId, maxQuestions: 10 } as unknown as DbArenaActivity["payload"],
+          },
+        };
+      }
+      default:
+        return { ok: false, error: "نوع غير مدعوم" };
     }
   };
 
@@ -2308,6 +2341,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         { id: "sin-jeem", label: "سين جيم", emoji: "🔤" },
                         { id: "memory", label: "ذاكرة", emoji: "🧠" },
                         { id: "categorize", label: "تصنيف", emoji: "🗂️" },
+                        { id: "secret", label: "اكشف السر", emoji: "🔍" },
                       ] as const).map(t => (
                         <button
                           key={t.id}
@@ -2375,6 +2409,37 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       />
                     )}
 
+                    {draftType === "secret" && (
+                      <div className="space-y-3 p-3 rounded-xl border border-purple-400/30 bg-purple-500/8">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-purple-300 text-lg">🔍</span>
+                          <span className="text-sm font-extrabold text-purple-200">إعداد جولة اكشف السر</span>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-emerald-100/70 mb-1 block">فئة الأسرار</label>
+                          {secretGameCats.length === 0 ? (
+                            <div className="text-xs text-emerald-100/50 py-2">جارٍ التحميل...</div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {secretGameCats.map(cat => (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => setDraftSecretCategoryId(cat.id)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow" : "bg-white/10 text-white/70 hover:bg-white/15"}`}
+                                >
+                                  <span>{cat.emoji}</span> {cat.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-emerald-100/50 flex items-center gap-1">
+                          <span className="text-purple-300">⏱</span> كل جولة تحتوي على حد أقصى 10 أسئلة
+                        </div>
+                      </div>
+                    )}
+
                     {(draftType === "text" || draftType === "image") && (
                       <div className="grid sm:grid-cols-12 gap-2">
                         <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? "وصف السؤال (مثال: ما هو هذا الحيوان؟)" : "نص السؤال"} className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
@@ -2434,7 +2499,10 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             /* ── Normal row ── */
                             <div className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
                               <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: a.difficulty === 800 ? "#fde68a" : a.difficulty === 600 ? "#fca5a5" : a.difficulty === 400 ? "#c4b5fd" : "#93c5fd", background: a.difficulty === 800 ? "rgba(180,83,9,0.35)" : a.difficulty === 600 ? "rgba(146,35,64,0.35)" : a.difficulty === 400 ? "rgba(85,37,168,0.35)" : "rgba(36,87,168,0.35)" }}>{a.difficulty}</span>
-                              {a.imageUrl && (
+                              {a.type === "secret" && (
+                                <span className="text-base shrink-0" title="اكشف السر">🔍</span>
+                              )}
+                              {a.imageUrl && a.type !== "secret" && (
                                 <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
                               )}
                               <div className="flex-1 min-w-0">
