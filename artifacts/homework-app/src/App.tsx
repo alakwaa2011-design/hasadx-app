@@ -177,6 +177,9 @@ const GamesPage = lazy(() => import("@/pages/games"));
 const ArenaSetup = lazy(() => import("@/pages/game/arena-setup"));
 const ArenaPlay = lazy(() => import("@/pages/game/arena-play"));
 const ArenaAudience = lazy(() => import("@/pages/game/arena-audience"));
+const SecretSetup = lazy(() => import("@/pages/game/secret-setup"));
+const SecretPlay = lazy(() => import("@/pages/game/secret-play"));
+const SecretReveal = lazy(() => import("@/pages/game/secret-reveal"));
 const PublicArenaSetup = lazy(() => import("@/pages/play/arena"));
 const ClassroomPage = lazy(() => import("@/pages/teacher/classroom"));
 const TeamsPage = lazy(() => import("@/pages/teacher/teams"));
@@ -453,6 +456,22 @@ function Router() {
         <Route path="/game/hack/share/:pin" component={HackShare} />
         <Route path="/game/hack/join/:pin?" component={HackJoinRedirect} />
         <Route path="/game/hack/play/:pin" component={HackPlayRedirect} />
+        {/* اكشف السر Routes */}
+        <Route path="/game/secret/reveal">
+          <Suspense fallback={<LoadingFallback />}>
+            <SecretReveal />
+          </Suspense>
+        </Route>
+        <Route path="/game/secret/play">
+          <Suspense fallback={<LoadingFallback />}>
+            <SecretPlay />
+          </Suspense>
+        </Route>
+        <Route path="/game/secret">
+          <Suspense fallback={<LoadingFallback />}>
+            <SecretSetup />
+          </Suspense>
+        </Route>
         {/* Hasad Arena Routes */}
         <Route path="/game/arena/audience">
           <Suspense fallback={<LoadingFallback />}>

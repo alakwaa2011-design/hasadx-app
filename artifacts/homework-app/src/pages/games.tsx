@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
 import {
-  Globe, Brain, Shuffle, Landmark, Sparkles, Calculator, ArrowRight, ArrowLeft, Gamepad2, Trophy, Terminal, Type, Swords,
+  Globe, Brain, Shuffle, Landmark, Sparkles, Calculator, ArrowRight, ArrowLeft, Gamepad2, Trophy, Terminal, Type, Swords, Eye,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 
@@ -134,6 +134,16 @@ export default function GamesPage() {
         : "15 escalating questions toward a million — with 3 lifelines to help you",
       iconBg: "bg-amber-500/10",
       iconColor: "text-amber-600",
+    },
+    {
+      href: "/game/secret",
+      icon: Eye,
+      title: lang === "ar" ? "اكشف السر" : "Reveal the Secret",
+      desc: lang === "ar"
+        ? "فريقان يمسحان باركوداً سرياً ويتبادلان الأسئلة نعم/لا للوصول لسر الخصم"
+        : "Two teams scan secret QR codes and ask yes/no questions to guess each other's secret",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-600",
     },
   ];
 

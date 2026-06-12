@@ -16,6 +16,8 @@ import { setupMillionTeamSocket } from "./game/million-team-handlers";
 import { setupMillionClassSocket } from "./game/million-class-handlers";
 import { setupArenaSocket } from "./game/arena-handlers";
 import { setupHotSeatSocket } from "./game/hotseat-handlers";
+import { setupSecretGameSocket } from "./game/secret-game-handlers";
+import { seedSecretGameIfNeeded } from "./seedSecretGame";
 import { setupPresentationSocket } from "./game/presentation-handlers";
 import { db, teachersTable } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -336,6 +338,35 @@ async function runSchemaMigrations() {
     logger.error(err, "Solo challenge table migration failed");
   }
 
+  // ── Secret Game tables ──
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS secret_game_categories (
+        id         SERIAL PRIMARY KEY,
+        name_ar    TEXT NOT NULL,
+        icon       TEXT NOT NULL DEFAULT '🎯',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_active  BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS secret_game_items (
+        id          SERIAL PRIMARY KEY,
+        category_id INTEGER NOT NULL REFERENCES secret_game_categories(id) ON DELETE CASCADE,
+        name_ar     TEXT NOT NULL,
+        image_url   TEXT,
+        difficulty  TEXT NOT NULL DEFAULT 'medium',
+        is_active   BOOLEAN NOT NULL DEFAULT true,
+        created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS secret_game_items_cat_idx ON secret_game_items(category_id)`);
+    logger.info("Secret game tables ready");
+  } catch (err) {
+    logger.error(err, "Secret game table migration failed");
+  }
+
   // ── Presentations — idempotent column / table additions ──
   // Core tables are created via Drizzle push; these guards protect
   // production deployments whose last push predates a feature phase.
@@ -491,6 +522,7 @@ setupMillionTeamSocket(io);
 setupMillionClassSocket(io);
 setupArenaSocket(io);
 setupHotSeatSocket(io);
+setupSecretGameSocket(io);
 setupPresentationSocket(io);
 bindXpSocket(io);
 
@@ -523,6 +555,7 @@ httpServer.listen(port, () => {
       seedIslamicLevelsIfNeeded();
       seedArenaContentIfNeeded();
       seedStaticArenaIfNeeded();
+      seedSecretGameIfNeeded();
       seedXpDefaultsIfNeeded();
       startPasswordResetCleanupJob();
       startLibraryOrphanSweepJob();

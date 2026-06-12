@@ -71,4 +71,5 @@ export * from "./activity-logs";
 export * from "./arena-saves";
 export * from "./xp";
 export * from "./solo-challenges";
+export * from "./secret-game";
 //# sourceMappingURL=index.d.ts.map
