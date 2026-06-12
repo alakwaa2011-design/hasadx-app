@@ -48,6 +48,7 @@ import {
   Swords,
   ArrowUpRight,
   MessageSquarePlus,
+  Eye,
 } from "lucide-react";
 import { Card } from "@/components/ui-elements";
 import { InstallAppButton } from "@/components/install-app-button";
@@ -1506,6 +1507,18 @@ export default function Home() {
   }
 
   const allGameCards = [
+    {
+      href: "/game/secret",
+      icon: Eye,
+      title: lang === "ar" ? "اكتشف السر" : "Discover the Secret",
+      desc:
+        lang === "ar"
+          ? "فريقان يمسحان باركوداً سرياً ويتبادلان أسئلة نعم/لا حتى يكتشفا سر الخصم"
+          : "Two teams scan secret QR codes and ask yes/no questions to discover each other's secret",
+      iconBg: "bg-purple-500/10",
+      iconColor: "text-purple-600",
+      visible: true,
+    },
     {
       href: "/game/flags",
       icon: Globe,

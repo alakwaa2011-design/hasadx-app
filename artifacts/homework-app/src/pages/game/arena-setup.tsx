@@ -16,6 +16,7 @@ import {
   type ArenaCustomQuestion, type ArenaDifficulty, type ArenaSection,
   type ArenaSubCategory, type ArenaCover, type HelperId,
   type MemoryPair, type CategorizeGroup, type SinJeemPrompt,
+  type SecretPayload,
 } from "@/data/arena-questions";
 import { saveArenaState, loadArenaLastSettings, saveArenaLastSettings, type ArenaState } from "@/lib/arena-store";
 import {
@@ -147,6 +148,21 @@ export default function ArenaSetup() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<DbArenaCategory | null>(null);
 
+  // Secret game categories — loaded at mount for the section picker
+  const [secretSectionCats, setSecretSectionCats] = useState<{ id: number; name: string; emoji: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/secret-game/categories", { credentials: "include" })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { id: number; nameAr?: string; name?: string; icon?: string; emoji?: string }[]) => {
+        setSecretSectionCats(data.map(c => ({
+          id: c.id,
+          name: c.nameAr ?? c.name ?? "فئة",
+          emoji: c.icon ?? c.emoji ?? "🔍",
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
   // Check for a server-saved game on first login
   useEffect(() => {
     if (!isLoggedIn || resumeChecked) return;
@@ -195,6 +211,28 @@ export default function ArenaSetup() {
     [dbCats, dbActs, dbSelectedIds],
   );
 
+  // Virtual "اكتشف السر" section — each secret-game DB category becomes a subcategory
+  const secretArenaSection = useMemo<ArenaSection | null>(() => {
+    if (secretSectionCats.length === 0) return null;
+    return {
+      id: "secret-game",
+      name: "اكتشف السر",
+      emoji: "🔍",
+      cover: { emoji: "🔍", color: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)" },
+      subCategories: secretSectionCats.map(cat => ({
+        id: `secret-cat-${cat.id}`,
+        name: cat.name,
+        cover: { emoji: cat.emoji, color: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)" },
+        questions: {
+          200: [{ q: `اكتشف السر — ${cat.name}`, a: "", type: "secret" as const, payload: { categoryId: cat.id, maxQuestions: 20 } as SecretPayload }],
+          400: [],
+          600: [],
+          800: [],
+        } as Record<ArenaDifficulty, import("@/data/arena-questions").ArenaQuestion[]>,
+      })),
+    };
+  }, [secretSectionCats]);
+
   // All sections for the picker: inject DB sub-cats into matching static sections,
   // then append any DB sections that have no static counterpart, then custom.
   const sectionsForPicker = useMemo<ArenaSection[]>(() => {
@@ -205,9 +243,10 @@ export default function ArenaSetup() {
       return { ...sec, subCategories: [...sec.subCategories, ...extra] };
     });
     const all: ArenaSection[] = [...enriched, ...dbSections];
+    if (secretArenaSection) all.unshift(secretArenaSection);
     if (custom) all.push(custom);
     return all;
-  }, [customQuestions, dbSections, mergedSubsByStaticId]);
+  }, [customQuestions, dbSections, mergedSubsByStaticId, secretArenaSection]);
 
   // Search query for filtering visible categories on Step 2
   const [catSearch, setCatSearch] = useState("");
@@ -400,6 +439,7 @@ export default function ArenaSetup() {
     // DB sub-cat only lives in mergedSubsByStaticId it is never saved and becomes
     // invisible on the board.
     const dbSectionsForState: ArenaSection[] = [
+      ...(secretArenaSection ? [secretArenaSection] : []),
       ...dbSections,
       ...Object.entries(mergedSubsByStaticId)
         .filter(([, subs]) => subs.length > 0)
