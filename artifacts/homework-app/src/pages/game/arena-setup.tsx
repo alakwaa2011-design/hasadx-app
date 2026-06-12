@@ -149,15 +149,16 @@ export default function ArenaSetup() {
   const [editingCat, setEditingCat] = useState<DbArenaCategory | null>(null);
 
   // Secret game categories — loaded at mount for the section picker
-  const [secretSectionCats, setSecretSectionCats] = useState<{ id: number; name: string; emoji: string }[]>([]);
+  const [secretSectionCats, setSecretSectionCats] = useState<{ id: number; name: string; emoji: string; coverImageUrl: string | null }[]>([]);
   useEffect(() => {
     fetch("/api/secret-game/categories", { credentials: "include" })
       .then(r => r.ok ? r.json() : [])
-      .then((data: { id: number; nameAr?: string; name?: string; icon?: string; emoji?: string }[]) => {
+      .then((data: { id: number; nameAr?: string; name?: string; icon?: string; emoji?: string; coverImageUrl?: string | null }[]) => {
         setSecretSectionCats(data.map(c => ({
           id: c.id,
           name: c.nameAr ?? c.name ?? "فئة",
           emoji: c.icon ?? c.emoji ?? "🔍",
+          coverImageUrl: c.coverImageUrl ?? null,
         })));
       })
       .catch(() => {});
@@ -222,7 +223,7 @@ export default function ArenaSetup() {
       subCategories: secretSectionCats.map(cat => ({
         id: `secret-cat-${cat.id}`,
         name: cat.name,
-        cover: { emoji: cat.emoji, color: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)" },
+        cover: { emoji: cat.emoji, color: "#7c3aed", gradient: "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)", imageUrl: cat.coverImageUrl ?? null },
         questions: {
           200: [{ q: `اكتشف السر — ${cat.name}`, a: "", type: "secret" as const, payload: { categoryId: cat.id, maxQuestions: 20 } as SecretPayload }],
           400: [],

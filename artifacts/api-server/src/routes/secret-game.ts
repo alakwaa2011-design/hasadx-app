@@ -36,6 +36,13 @@ router.get("/secret-game/categories", async (req, res) => {
         isActive: secretGameCategoriesTable.isActive,
         createdAt: secretGameCategoriesTable.createdAt,
         itemCount: count(secretGameItemsTable.id),
+        coverImageUrl: sql<string | null>`(
+          SELECT image_url FROM secret_game_items
+          WHERE category_id = ${secretGameCategoriesTable.id}
+            AND image_url IS NOT NULL
+          ORDER BY id
+          LIMIT 1
+        )`,
       })
       .from(secretGameCategoriesTable)
       .leftJoin(

@@ -204,6 +204,17 @@ export default function OrganizerDashboard() {
   const liveGames: OrganizerCard[] = useMemo(
     () => [
       {
+        href: "/game/secret",
+        title: lang === "ar" ? "اكتشف السر 🔍" : "Discover the Secret",
+        subtitle:
+          lang === "ar"
+            ? "أظهر صورة تدريجياً — الفريق الأول الذي يعرف السر يفوز"
+            : "Reveal an image tile by tile — first team to name the secret wins",
+        Icon: Eye,
+        accent: "#7c3aed",
+        tag: lang === "ar" ? "بث مباشر · صور" : "Live · Images",
+      },
+      {
         href: "/game/wameeth/create",
         title: lang === "ar" ? "وميض" : "Wameedh",
         subtitle:

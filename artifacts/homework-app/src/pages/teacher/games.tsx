@@ -15,6 +15,7 @@ import {
   Star,
   User,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 
 interface GameItem {
@@ -50,6 +51,14 @@ export default function TeacherGamesPage() {
       descEn: "Play with your students in live, interactive competition",
       accent: "from-fuchsia-500 to-purple-600",
       items: [
+        {
+          icon: <Eye />,
+          titleAr: "اكتشف السر",
+          titleEn: "Discover the Secret",
+          to: "/game/secret",
+          iconBg: "bg-purple-500/10",
+          iconColor: "text-purple-600",
+        },
         {
           icon: <Zap />,
           titleAr: "وميض",
