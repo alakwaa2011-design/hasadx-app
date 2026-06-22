@@ -48,5 +48,8 @@ export function toCoverThumb(url: string | undefined | null): string | undefined
   if (/^\/arena-covers\/[^/]+\.png$/i.test(url)) {
     return url.replace(/\.png$/i, ".webp");
   }
+  if (url.includes("wikimedia.org") || url.includes("wikipedia.org")) {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
   return url;
 }

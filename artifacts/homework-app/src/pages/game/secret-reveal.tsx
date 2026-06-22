@@ -114,29 +114,40 @@ export default function SecretReveal() {
     >
       <AnimatePresence mode="wait">
         {!revealed ? (
-          /* ── Pre-reveal: just a tap button ── */
+          /* ── Pre-reveal: name at top, button centered ── */
           <motion.div
             key="pre"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col items-center justify-center gap-8 p-8"
+            className="flex-1 flex flex-col"
           >
+            {/* Team name — pinned at top, very clear */}
             <div
-              className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black border-4 shadow-2xl"
-              style={{ background: `${bg}22`, borderColor: bg, color: bg }}
+              className="w-full py-6 px-8 flex flex-col items-center gap-2 shadow-lg"
+              style={{ background: `${bg}22`, borderBottom: `3px solid ${bg}` }}
             >
-              {data.team === "A" ? "أ" : "ب"}
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-black border-4"
+                style={{ background: `${bg}33`, borderColor: bg, color: bg }}
+              >
+                {data.team === "A" ? "أ" : "ب"}
+              </div>
+              <h1 className="text-4xl font-black text-white tracking-wide">{data.teamName}</h1>
             </div>
-            <h1 className="text-3xl font-black text-white">{data.teamName}</h1>
-            <motion.button
-              whileTap={{ scale: 0.93 }}
-              onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
-              className="w-full max-w-xs py-6 rounded-3xl font-black text-2xl text-white shadow-2xl"
-              style={{ background: bg }}
-            >
-              اضغط لترى سرّك
-            </motion.button>
+
+            {/* Button — centered in remaining space */}
+            <div className="flex-1 flex items-center justify-center p-8">
+              <motion.button
+                whileTap={{ scale: 0.93 }}
+                whileHover={{ scale: 1.03 }}
+                onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+                className="w-full max-w-xs py-8 rounded-3xl font-black text-2xl text-white shadow-2xl"
+                style={{ background: bg }}
+              >
+                اضغط لرؤية الصورة
+              </motion.button>
+            </div>
           </motion.div>
         ) : (
           /* ── Revealed: image + name only ── */

@@ -1571,7 +1571,11 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
             decoding="async"
             onError={(e) => {
               const img = e.currentTarget;
-              if (cover.imageUrl && img.src !== cover.imageUrl) img.src = cover.imageUrl;
+              const direct = cover.imageUrl ?? "";
+              const proxied = direct.includes("wikimedia.org") || direct.includes("wikipedia.org")
+                ? `/api/image-proxy?url=${encodeURIComponent(direct)}`
+                : direct;
+              if (direct && img.src !== proxied) img.src = proxied;
             }}
           />
         ) : (

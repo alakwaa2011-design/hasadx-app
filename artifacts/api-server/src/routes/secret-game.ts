@@ -358,7 +358,15 @@ router.get("/image-proxy", async (req, res) => {
     if (!allowed.some((h) => parsed.hostname === h || parsed.hostname.endsWith("." + h))) {
       return res.status(403).end();
     }
-    const imgRes = await fetch(url, {
+
+    let fetchUrl = url;
+    if (parsed.hostname === "upload.wikimedia.org" && parsed.pathname.includes("/thumb/")) {
+      fetchUrl = url
+        .replace(/\/thumb\//, "/")
+        .replace(/\/[^/]+$/, "");
+    }
+
+    const imgRes = await fetch(fetchUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
         "Referer": "https://en.wikipedia.org/",
