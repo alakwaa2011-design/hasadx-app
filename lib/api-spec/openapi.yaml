@@ -1407,6 +1407,18 @@ components:
           enum: [teacher, organizer]
           default: teacher
           description: "Public registration role; admin role can only be granted internally."
+        acquisitionSource:
+          type: string
+          description: "Traffic source (google, facebook, instagram, whatsapp, direct, referral, other)"
+        acquisitionMedium:
+          type: string
+          description: "utm_medium or detected medium"
+        acquisitionCampaign:
+          type: string
+          description: "utm_campaign value"
+        acquisitionReferrer:
+          type: string
+          description: "document.referrer at time of first visit"
       required:
         - name
         - password

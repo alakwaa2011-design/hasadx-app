@@ -20,6 +20,7 @@ import { useSeo } from "@/lib/seo";
 import { toast } from "@/components/ui/sonner";
 import { GoogleLogin } from "@react-oauth/google";
 import { getAdminLastSurfacePath } from "@/lib/admin-last-surface";
+import { captureAcquisition, getAcquisition } from "@/lib/acquisition";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -765,6 +766,8 @@ export default function Auth() {
 
   const pickerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => { captureAcquisition(); }, []);
+
   useEffect(() => {
     if (!showCountryPicker) return;
     const handleClick = (e: MouseEvent) => {
@@ -881,6 +884,7 @@ export default function Auth() {
         }
       });
     } else {
+      const acq = getAcquisition();
       registerMutation.mutate({
         data: {
           name,
@@ -888,7 +892,13 @@ export default function Auth() {
           password,
           // Send selected role; defaults to teacher when picker was skipped.
           role: registerRole === "organizer" ? "organizer" : "teacher",
-        }
+          ...(acq ? {
+            acquisitionSource: acq.source || undefined,
+            acquisitionMedium: acq.medium || undefined,
+            acquisitionCampaign: acq.campaign || undefined,
+            acquisitionReferrer: acq.referrer || undefined,
+          } : {}),
+        } as any
       });
     }
   };

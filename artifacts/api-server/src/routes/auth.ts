@@ -478,6 +478,10 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         phone: body.phone || null,
         passwordHash,
         role: requestedRole,
+        acquisitionSource: (body as any).acquisitionSource || null,
+        acquisitionMedium: (body as any).acquisitionMedium || null,
+        acquisitionCampaign: (body as any).acquisitionCampaign || null,
+        acquisitionReferrer: (body as any).acquisitionReferrer || null,
       })
       .returning();
 

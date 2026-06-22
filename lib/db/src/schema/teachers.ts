@@ -30,6 +30,11 @@ export const teachersTable = pgTable("teachers", {
   teamsAccessToken: text("teams_access_token"),
   teamsRefreshToken: text("teams_refresh_token"),
   teamsTokenExpiry: timestamp("teams_token_expiry"),
+  // Traffic acquisition / attribution
+  acquisitionSource: text("acquisition_source"),
+  acquisitionMedium: text("acquisition_medium"),
+  acquisitionCampaign: text("acquisition_campaign"),
+  acquisitionReferrer: text("acquisition_referrer"),
   // Public profile / leaderboard fields (rewards system)
   displaySchool: text("display_school"),
   profileSlug: text("profile_slug").unique(),

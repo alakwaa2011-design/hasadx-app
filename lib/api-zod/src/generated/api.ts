@@ -32,6 +32,21 @@ export const RegisterTeacherBody = zod.object({
     .describe(
       "Public registration role; admin role can only be granted internally.",
     ),
+  acquisitionSource: zod
+    .string()
+    .optional()
+    .describe(
+      "Traffic source (google, facebook, instagram, whatsapp, direct, referral, other)",
+    ),
+  acquisitionMedium: zod
+    .string()
+    .optional()
+    .describe("utm_medium or detected medium"),
+  acquisitionCampaign: zod.string().optional().describe("utm_campaign value"),
+  acquisitionReferrer: zod
+    .string()
+    .optional()
+    .describe("document.referrer at time of first visit"),
 });
 
 /**

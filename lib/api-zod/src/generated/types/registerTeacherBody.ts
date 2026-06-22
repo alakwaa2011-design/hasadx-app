@@ -15,4 +15,12 @@ export interface RegisterTeacherBody {
   password: string;
   /** Public registration role; admin role can only be granted internally. */
   role?: RegisterTeacherBodyRole;
+  /** Traffic source (google, facebook, instagram, whatsapp, direct, referral, other) */
+  acquisitionSource?: string;
+  /** utm_medium or detected medium */
+  acquisitionMedium?: string;
+  /** utm_campaign value */
+  acquisitionCampaign?: string;
+  /** document.referrer at time of first visit */
+  acquisitionReferrer?: string;
 }

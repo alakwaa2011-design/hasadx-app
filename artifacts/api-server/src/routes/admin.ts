@@ -323,6 +323,26 @@ router.get("/admin/full-stats", async (req, res) => {
   }
 });
 
+router.get("/admin/acquisition-stats", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`
+      SELECT
+        COALESCE(acquisition_source, 'غير معروف') AS source,
+        COUNT(*)::int AS count
+      FROM teachers
+      GROUP BY acquisition_source
+      ORDER BY count DESC
+      LIMIT 20
+    `);
+    const total = result.rows.reduce((s: number, r: any) => s + r.count, 0);
+    res.json({ bySource: result.rows, total });
+  } catch (err) {
+    req.log.error(err, "Failed to get acquisition stats");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
 router.patch("/admin/teachers/:id/block", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;

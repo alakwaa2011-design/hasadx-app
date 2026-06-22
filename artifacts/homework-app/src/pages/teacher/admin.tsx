@@ -462,6 +462,8 @@ export default function AdminPage() {
   }
   const [fullStats, setFullStats] = useState<FullStatsData | null>(null);
   const [fullStatsLoading, setFullStatsLoading] = useState(false);
+  interface AcqStatItem { source: string; count: number; }
+  const [acqStats, setAcqStats] = useState<{ bySource: AcqStatItem[]; total: number } | null>(null);
 
   interface OrgSection { id: number; name: string; nameEn: string | null; icon: string; color: string; sortOrder: number; }
   interface OrgSubSection { id: number; sectionId: number; name: string; nameEn: string | null; icon: string; sortOrder: number; }
@@ -827,13 +829,20 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (activeTab !== "stats") return;
-    if (fullStats) return;
-    setFullStatsLoading(true);
-    fetch(`${API_BASE}/api/admin/full-stats`, { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setFullStats(d); })
-      .catch(() => {})
-      .finally(() => setFullStatsLoading(false));
+    if (!fullStats) {
+      setFullStatsLoading(true);
+      fetch(`${API_BASE}/api/admin/full-stats`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setFullStats(d); })
+        .catch(() => {})
+        .finally(() => setFullStatsLoading(false));
+    }
+    if (!acqStats) {
+      fetch(`${API_BASE}/api/admin/acquisition-stats`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setAcqStats(d); })
+        .catch(() => {});
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -1871,6 +1880,64 @@ export default function AdminPage() {
                     </div>
                   </Card>
                 </motion.div>
+
+                {acqStats && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+                    <Card className="p-5">
+                      <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-emerald-500" />
+                        {lang === "ar" ? "مصادر تسجيل المعلمين" : "Teacher Registration Sources"}
+                        <span className="mr-auto text-xs font-normal text-muted-foreground">
+                          {lang === "ar" ? `الإجمالي: ${acqStats.total}` : `Total: ${acqStats.total}`}
+                        </span>
+                      </h3>
+                      {acqStats.bySource.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          {lang === "ar" ? "لا توجد بيانات بعد — ستظهر بعد أول تسجيل" : "No data yet — will appear after first registration"}
+                        </p>
+                      ) : (() => {
+                        const SOURCE_LABELS: Record<string, { ar: string; color: string }> = {
+                          google:      { ar: "جوجل",        color: "bg-blue-500" },
+                          facebook:    { ar: "فيسبوك",      color: "bg-[#1877F2]" },
+                          instagram:   { ar: "إنستقرام",    color: "bg-pink-500" },
+                          whatsapp:    { ar: "واتساب",      color: "bg-emerald-500" },
+                          twitter:     { ar: "تويتر / X",   color: "bg-sky-500" },
+                          tiktok:      { ar: "تيك توك",     color: "bg-black" },
+                          youtube:     { ar: "يوتيوب",      color: "bg-red-500" },
+                          snapchat:    { ar: "سناب شات",    color: "bg-yellow-400" },
+                          telegram:    { ar: "تيليجرام",    color: "bg-sky-400" },
+                          linkedin:    { ar: "لينكد إن",    color: "bg-blue-700" },
+                          direct:      { ar: "رابط مباشر",  color: "bg-gray-500" },
+                          "غير معروف": { ar: "غير معروف",   color: "bg-gray-400" },
+                        };
+                        const maxVal = Math.max(...acqStats.bySource.map(s => s.count), 1);
+                        return (
+                          <div className="space-y-3">
+                            {acqStats.bySource.map((s, i) => {
+                              const meta = SOURCE_LABELS[s.source] ?? { ar: s.source, color: "bg-indigo-500" };
+                              const label = lang === "ar" ? meta.ar : s.source;
+                              const pct = Math.round((s.count / acqStats.total) * 100);
+                              return (
+                                <div key={i} className="flex items-center gap-3">
+                                  <span className="text-xs font-bold text-muted-foreground w-24 shrink-0 text-end">{label}</span>
+                                  <div className="flex-1 h-7 bg-muted/50 rounded-lg overflow-hidden relative">
+                                    <div
+                                      className={`h-full ${meta.color} rounded-lg transition-all duration-700`}
+                                      style={{ width: `${Math.max((s.count / maxVal) * 100, 3)}%` }}
+                                    />
+                                    <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-foreground mix-blend-difference">
+                                      {s.count} ({pct}%)
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </Card>
+                  </motion.div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
