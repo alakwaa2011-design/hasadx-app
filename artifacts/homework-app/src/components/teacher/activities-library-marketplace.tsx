@@ -523,12 +523,12 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: Math.min(i * 0.03, 0.2) }}
         className={cn(
-          "group relative flex flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-300",
+          "group relative flex flex-col rounded-2xl border bg-white transition-all duration-300",
           a.hiddenByAdmin ? "opacity-55 border-dashed border-amber-300" : "hover:-translate-y-1 hover:shadow-lg",
         )}
         style={{ borderColor: C.border, boxShadow: "0 2px 12px rgba(31,45,36,0.06)" }}
       >
-        <div className="relative">
+        <div className="relative overflow-hidden rounded-t-2xl">
           <ActivityCover kind={coverKind} subject={a.subject} title={a.title} type={a.type} aspect="video">
             <span className={cn("absolute top-2.5 z-10 rounded-lg px-2 py-0.5 text-[10px] font-bold text-white shadow-sm", dir === "rtl" ? "right-2.5" : "left-2.5", badge.cls)}>
               {badge.label}

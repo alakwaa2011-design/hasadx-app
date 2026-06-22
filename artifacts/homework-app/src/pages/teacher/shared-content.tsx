@@ -860,7 +860,7 @@ export default function SharedContentPage({
                 <motion.div key={a.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.025, 0.25) }} className="h-full">
                   <div
                     className={cn(
-                      "group relative flex flex-col rounded-2xl border bg-card h-full overflow-hidden",
+                      "group relative flex flex-col rounded-2xl border bg-card h-full",
                       a.hiddenByAdmin
                         ? "opacity-55 border-dashed border-amber-400 transition-all duration-200"
                         : isActivitiesLibrary
