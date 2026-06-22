@@ -813,70 +813,34 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </div>
         </div>
 
-        {/* Featured */}
-        <section className="mb-6">
-          <h2 className="mb-3 text-base font-extrabold tracking-tight" style={{ color: C.text }}>{isAr ? "أنشطة مميزة" : "Featured activities"}</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <FeaturedCard
-              isAr={isAr}
-              dir={dir}
-              title={wameethPick?.title ?? (isAr ? "وميض" : "Wameeth")}
-              badge={isAr ? "مسابقة مباشرة" : "Live quiz"}
-              desc={
-                wameethPick
-                  ? (isAr ? `${wameethPick.questionCount} سؤال — مسابقة حية سريعة مع إجابات الطلاب.` : `${wameethPick.questionCount} questions — fast live quiz.`)
-                  : (isAr ? "مسابقة حية سريعة على الشاشة مع إجابات الطلاب من هواتفهم." : "Fast live quiz on screen with student phone answers.")
-              }
-              coverKind="featured-live"
-              subject={wameethPick?.subject}
-              usesLabel={
-                wameethPick && !statsError && assignmentUseCount(wameethPick.id) > 0
-                  ? `${formatUseCount(assignmentUseCount(wameethPick.id))} ${isAr ? "استخدام" : "uses"}`
-                  : ""
-              }
-              ctaLabel={isAr ? "فتح النشاط" : "Open activity"}
-              teacher={wameethPick?.teacherName ?? (isAr ? "حصاد" : "Hasad")}
-              accent="live"
-              onAction={() => wameethPick && launchAsGame(wameethPick.id)}
-            />
-            <FeaturedCard
-              isAr={isAr}
-              dir={dir}
-              title={isAr ? "عروض تفاعلية" : "Interactive decks"}
-              badge={isAr ? "عرض تفاعلي" : "Presentation"}
-              desc={isAr ? "شرائح تفاعلية للفصل مع أسئلة فورية ومشاركة مباشرة." : "Interactive slides for class with instant questions."}
-              coverKind="presentation"
-              usesLabel={
-                !statsError && (libraryStats?.presentationUses ?? 0) > 0
-                  ? `${formatUseCount(libraryStats?.presentationUses)} ${isAr ? "جلسة عرض" : "presentation runs"}`
-                  : ""
-              }
-              ctaLabel={isAr ? "عرض النشاط" : "View decks"}
-              teacher={isAr ? "مكتبة العروض" : "Presentations"}
-              onAction={onPresentations}
-            />
-            <FeaturedCard
-              isAr={isAr}
-              dir={dir}
-              title={topVideoByUses?.title ?? (isAr ? "فيديو تعليمي" : "Video lesson")}
-              badge={isAr ? "فيديو" : "Video"}
-              desc={
-                topVideoByUses?.description ??
-                (isAr ? "درس فيديو مع أسئلة توقيت تلقائي أثناء المشاهدة." : "Video lesson with timed questions while watching.")
-              }
-              coverKind="video"
-              subject={topVideoByUses?.subject}
-              usesLabel={
-                topVideoByUses && !statsError && videoUseCount(topVideoByUses.id) > 0
-                  ? `${formatUseCount(videoUseCount(topVideoByUses.id))} ${isAr ? "استخدام" : "uses"}`
-                  : ""
-              }
-              ctaLabel={isAr ? "عرض النشاط" : "View lessons"}
-              teacher={topVideoByUses?.teacherName ?? (isAr ? "مجتمع المعلمين" : "Community")}
-              onAction={() => onActiveTabChange("videos")}
-            />
-          </div>
-        </section>
+        {/* Featured — video only */}
+        {topVideoByUses && (
+          <section className="mb-6">
+            <h2 className="mb-3 text-base font-extrabold tracking-tight" style={{ color: C.text }}>{isAr ? "أنشطة مميزة" : "Featured activities"}</h2>
+            <div className="max-w-sm">
+              <FeaturedCard
+                isAr={isAr}
+                dir={dir}
+                title={topVideoByUses.title}
+                badge={isAr ? "فيديو" : "Video"}
+                desc={
+                  topVideoByUses.description ??
+                  (isAr ? "درس فيديو مع أسئلة توقيت تلقائي أثناء المشاهدة." : "Video lesson with timed questions while watching.")
+                }
+                coverKind="video"
+                subject={topVideoByUses.subject}
+                usesLabel={
+                  !statsError && videoUseCount(topVideoByUses.id) > 0
+                    ? `${formatUseCount(videoUseCount(topVideoByUses.id))} ${isAr ? "استخدام" : "uses"}`
+                    : ""
+                }
+                ctaLabel={isAr ? "عرض النشاط" : "View lessons"}
+                teacher={topVideoByUses.teacherName ?? (isAr ? "مجتمع المعلمين" : "Community")}
+                onAction={() => onActiveTabChange("videos")}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Trending now */}
         {trendingNow.length > 0 && (
