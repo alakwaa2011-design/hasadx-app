@@ -360,6 +360,19 @@ export const DB_PARENT_TO_STATIC_SECTION: Record<string, string> = {
   "مطابخ العالم": "world-cuisine",
   "السيارات والمحركات": "cars-engines",
   "الفضاء والكواكب": "space-planets",
+  // DB mirror sections — same name as static sections, children are editable
+  "إسلاميات": "islamic",
+  "تاريخية": "history",
+  "لغة عربية": "arabic",
+  "ثقافة عامة": "general",
+  "رياضة": "sports",
+  "ماركات وعلامات": "brands",
+  "حياة وطبيعة": "life",
+  "ترفيه وألغاز": "entertainment",
+  "تقنية وإنترنت": "technology",
+  "فن وأدب": "arts",
+  "سبستون وأنمي": "spacetoon-anime",
+  "الكويت": "kuwait",
 };
 
 /**

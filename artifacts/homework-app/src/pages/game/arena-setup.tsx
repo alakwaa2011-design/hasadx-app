@@ -236,12 +236,17 @@ export default function ArenaSetup() {
 
   // All sections for the picker: inject DB sub-cats into matching static sections,
   // then append any DB sections that have no static counterpart, then custom.
+  // When a DB sub-cat shares a name with a static sub-cat, the DB version
+  // (editable) replaces the static one to avoid duplicates.
   const sectionsForPicker = useMemo<ArenaSection[]>(() => {
     const custom = buildCustomSection(customQuestions);
     const enriched = ARENA_SECTIONS.map(sec => {
       const extra = mergedSubsByStaticId[sec.id];
       if (!extra || extra.length === 0) return sec;
-      return { ...sec, subCategories: [...sec.subCategories, ...extra] };
+      // Replace static subs whose names match a DB sub, then append remaining DB subs
+      const extraByName = new Map(extra.map(e => [e.name, e]));
+      const staticKept = sec.subCategories.filter(s => !extraByName.has(s.name));
+      return { ...sec, subCategories: [...staticKept, ...extra] };
     });
     const all: ArenaSection[] = [...enriched, ...dbSections];
     if (secretArenaSection) all.unshift(secretArenaSection);
