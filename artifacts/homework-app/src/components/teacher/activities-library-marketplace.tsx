@@ -236,6 +236,14 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   const [libraryStats, setLibraryStats] = useState<ActivityLibraryStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const close = () => setOpenMenuId(null);
+    document.addEventListener("click", close, { capture: true });
+    return () => document.removeEventListener("click", close, { capture: true });
+  }, [openMenuId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -591,24 +599,31 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
                 >
                   {launchingIds.has(a.id) ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Play className="w-3.5 h-3.5 fill-current" />{isAr ? "ابدأ" : "Start"}</>}
                 </button>
-                <div className="relative group/menu">
-                  <button type="button" className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec]" style={{ borderColor: C.border }}>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === `a-${a.id}` ? null : `a-${a.id}`); }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors hover:bg-[#f5f2ec]"
+                    style={{ borderColor: C.border }}
+                  >
                     <MoreVertical className="w-4 h-4" style={{ color: C.muted }} />
                   </button>
-                  <div className={cn("absolute z-30 top-full mt-1 hidden min-w-[180px] flex-col rounded-xl border bg-white py-1 shadow-xl group-hover/menu:flex", dir === "rtl" ? "left-0" : "right-0")} style={{ borderColor: C.border }}>
-                    <button type="button" onClick={() => importAssignment(a.id)} disabled={importingIds.has(a.id) || importedIds.has(a.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec] disabled:opacity-50">
-                      {importedIds.has(a.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Download className="w-3.5 h-3.5" />}
-                      {t.sharedContent.importAssignment}
-                    </button>
-                    <button type="button" onClick={() => copyLink(a.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec]">
-                      <Copy className="w-3.5 h-3.5" />
-                      {t.sharedContent.copyLink}
-                    </button>
-                    <button type="button" onClick={() => dismissAssignment(a.id)} disabled={dismissingIds.has(`assignment-${a.id}`)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">
-                      <X className="w-3.5 h-3.5" />
-                      {isAr ? "إخفاء" : "Hide"}
-                    </button>
-                  </div>
+                  {openMenuId === `a-${a.id}` && (
+                    <div className={cn("absolute z-50 top-full mt-1 flex min-w-[180px] flex-col rounded-xl border bg-white py-1 shadow-xl", dir === "rtl" ? "left-0" : "right-0")} style={{ borderColor: C.border }} onClick={(e) => e.stopPropagation()}>
+                      <button type="button" onClick={() => { importAssignment(a.id); setOpenMenuId(null); }} disabled={importingIds.has(a.id) || importedIds.has(a.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec] disabled:opacity-50">
+                        {importedIds.has(a.id) ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Download className="w-3.5 h-3.5" />}
+                        {t.sharedContent.importAssignment}
+                      </button>
+                      <button type="button" onClick={() => { copyLink(a.id); setOpenMenuId(null); }} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold hover:bg-[#f5f2ec]">
+                        <Copy className="w-3.5 h-3.5" />
+                        {t.sharedContent.copyLink}
+                      </button>
+                      <button type="button" onClick={() => { dismissAssignment(a.id); setOpenMenuId(null); }} disabled={dismissingIds.has(`assignment-${a.id}`)} className="flex w-full items-center gap-2 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">
+                        <X className="w-3.5 h-3.5" />
+                        {isAr ? "إخفاء" : "Hide"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
