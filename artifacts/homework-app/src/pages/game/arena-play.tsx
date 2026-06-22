@@ -4644,7 +4644,6 @@ function SecretArenaActivity({
   const [tokenA, setTokenA] = React.useState<string>("");
   const [tokenB, setTokenB] = React.useState<string>("");
   const [endData, setEndData] = React.useState<SecretArenaEndData | null>(null);
-  const [lastAnswer, setLastAnswer] = React.useState<"yes" | "no" | null>(null);
   const [qrTeam, setQrTeam] = React.useState<"A" | "B">("A");
   const [dismissProgress, setDismissProgress] = React.useState(100);
   const onAutoResolveRef = React.useRef(onAutoResolve);
@@ -4702,11 +4701,9 @@ function SecretArenaActivity({
     sock.on("secret:started", (s: SecretArenaGameState) => setGameState(s));
     sock.on("secret:question_asked", (s: SecretArenaGameState) => {
       setGameState(s);
-      setLastAnswer(null);
     });
-    sock.on("secret:answered", ({ answer, state }: { answer: "yes" | "no"; state: SecretArenaGameState }) => {
+    sock.on("secret:answered", ({ state }: { answer: "yes" | "no"; state: SecretArenaGameState }) => {
       setGameState(state);
-      setLastAnswer(answer);
     });
     sock.on("secret:wrong_guess", ({ state }: { state: SecretArenaGameState }) => setGameState(state));
     sock.on("secret:game_over", (data: SecretArenaEndData & { state: SecretArenaGameState }) => {
@@ -4875,10 +4872,6 @@ function SecretArenaActivity({
   const pin = gameState.pin;
   const revealUrlA = `${BASE}/game/secret/reveal?token=${encodeURIComponent(tokenA)}`;
   const revealUrlB = `${BASE}/game/secret/reveal?token=${encodeURIComponent(tokenB)}`;
-  const asker = gameState.currentAsker;
-  const answerer: "A" | "B" = asker === "A" ? "B" : "A";
-  const askerTeam = gameState.teams[asker];
-  const answererTeam = gameState.teams[answerer];
 
   return (
     <div className="w-full" dir="rtl">
@@ -4954,56 +4947,49 @@ function SecretArenaActivity({
 
       {gameState.phase === "playing" && (
         <div className="space-y-3">
-          {/* Turn indicator */}
+          {/* Question counters */}
           <div className="flex gap-2">
             {(["A", "B"] as const).map((t) => {
               const team = gameState.teams[t];
               const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
-              const isAsking = t === asker;
               return (
-                <div key={t} className="flex-1 rounded-xl p-3 text-center border transition-all" style={{
-                  borderColor: isAsking ? tInfo?.color ?? "#888" : "transparent",
-                  background: isAsking ? `${tInfo?.color ?? "#888"}12` : "#f9f9f9",
+                <div key={t} className="flex-1 rounded-xl p-2 text-center border" style={{
+                  borderColor: `${tInfo?.color ?? "#888"}30`,
+                  background: `${tInfo?.color ?? "#888"}08`,
                 }}>
                   <p className="text-xs font-bold" style={{ color: tInfo?.color ?? "#888" }}>{team.name}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">{team.questionCount}/{gameState.maxQuestions} سؤال</p>
-                  {isAsking && <p className="text-[10px] font-black text-purple-600 mt-1">يسأل الآن</p>}
                 </div>
               );
             })}
           </div>
 
-          {/* Last answer */}
-          {lastAnswer && (
-            <div className={`text-center py-2 rounded-xl font-black text-lg ${lastAnswer === "yes" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-              {lastAnswer === "yes" ? "✅ نعم" : "❌ لا"}
-            </div>
-          )}
-
-          {/* Host control buttons */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => socketRef.current?.emit("secret:question", { pin })}
-              className="py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
-            >
-              ❓ سؤال جديد ({askerTeam.name})
-            </button>
-            <div className="flex gap-1">
-              <button
-                onClick={() => socketRef.current?.emit("secret:answer", { pin, answer: "yes" })}
-                className="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
-              >
-                نعم ✅
-              </button>
-              <button
-                onClick={() => socketRef.current?.emit("secret:answer", { pin, answer: "no" })}
-                className="flex-1 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold transition-colors"
-              >
-                لا ❌
-              </button>
-            </div>
+          {/* Award points — teacher picks the winning team manually */}
+          <p className="text-[11px] text-center text-gray-400 font-bold">من عرف السر أولاً؟</p>
+          <div className="grid grid-cols-2 gap-3">
+            {(["A", "B"] as const).map((t) => {
+              const team = gameState.teams[t];
+              const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
+              return (
+                <button
+                  key={t}
+                  onClick={() => onAutoResolveRef.current?.(t)}
+                  className="py-4 rounded-2xl font-black text-white text-sm shadow-lg active:scale-95 transition-transform"
+                  style={{ background: tInfo?.color ?? "#7c3aed" }}
+                >
+                  🏆 {team.name}
+                </button>
+              );
+            })}
           </div>
 
+          {/* Skip — no points */}
+          <button
+            onClick={() => onAutoResolveRef.current?.(null)}
+            className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            تخطّي بدون نقاط
+          </button>
         </div>
       )}
     </div>

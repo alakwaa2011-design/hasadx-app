@@ -24,7 +24,8 @@ export default function SecretReveal() {
   const [data, setData] = useState<RevealData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [revealed, setRevealed] = useState(false);
+  // Start revealed=true so the image shows immediately on scan
+  const [revealed, setRevealed] = useState(true);
   const [imgError, setImgError] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<import("socket.io-client").Socket | null>(null);
@@ -114,40 +115,22 @@ export default function SecretReveal() {
     >
       <AnimatePresence mode="wait">
         {!revealed ? (
-          /* ── Pre-reveal: name at top, button centered ── */
+          /* ── Hidden state: tap to re-show ── */
           <motion.div
             key="pre"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col"
+            className="flex-1 flex flex-col items-center justify-center gap-4 p-8"
+            onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
           >
-            {/* Team name — pinned at top, very clear */}
             <div
-              className="w-full py-6 px-8 flex flex-col items-center gap-2 shadow-lg"
-              style={{ background: `${bg}22`, borderBottom: `3px solid ${bg}` }}
+              className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black border-4"
+              style={{ background: `${bg}22`, borderColor: bg, color: bg }}
             >
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-black border-4"
-                style={{ background: `${bg}33`, borderColor: bg, color: bg }}
-              >
-                {data.team === "A" ? "أ" : "ب"}
-              </div>
-              <h1 className="text-4xl font-black text-white tracking-wide">{data.teamName}</h1>
+              {data.team === "A" ? "أ" : "ب"}
             </div>
-
-            {/* Button — centered in remaining space */}
-            <div className="flex-1 flex items-center justify-center p-8">
-              <motion.button
-                whileTap={{ scale: 0.93 }}
-                whileHover={{ scale: 1.03 }}
-                onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
-                className="w-full max-w-xs py-8 rounded-3xl font-black text-2xl text-white shadow-2xl"
-                style={{ background: bg }}
-              >
-                اضغط لرؤية الصورة
-              </motion.button>
-            </div>
+            <p className="text-white/60 text-lg font-bold">اضغط لإعادة العرض</p>
           </motion.div>
         ) : (
           /* ── Revealed: image + name only ── */
