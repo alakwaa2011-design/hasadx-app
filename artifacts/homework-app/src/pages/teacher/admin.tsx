@@ -464,6 +464,8 @@ export default function AdminPage() {
   const [fullStatsLoading, setFullStatsLoading] = useState(false);
   interface AcqStatItem { source: string; count: number; }
   const [acqStats, setAcqStats] = useState<{ bySource: AcqStatItem[]; total: number } | null>(null);
+  interface CountryStatItem { country: string; country_code: string; count: number; }
+  const [countryStats, setCountryStats] = useState<{ byCountry: CountryStatItem[]; total: number } | null>(null);
 
   interface OrgSection { id: number; name: string; nameEn: string | null; icon: string; color: string; sortOrder: number; }
   interface OrgSubSection { id: number; sectionId: number; name: string; nameEn: string | null; icon: string; sortOrder: number; }
@@ -841,6 +843,12 @@ export default function AdminPage() {
       fetch(`${API_BASE}/api/admin/acquisition-stats`, { credentials: "include" })
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) setAcqStats(d); })
+        .catch(() => {});
+    }
+    if (!countryStats) {
+      fetch(`${API_BASE}/api/admin/country-stats`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setCountryStats(d); })
         .catch(() => {});
     }
   }, [activeTab]);
@@ -1935,6 +1943,50 @@ export default function AdminPage() {
                           </div>
                         );
                       })()}
+                    </Card>
+                  </motion.div>
+                )}
+
+                {countryStats && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.57 }}>
+                    <Card className="p-5">
+                      <h3 className="font-bold text-foreground mb-4 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-blue-500" />
+                        {lang === "ar" ? "توزيع المعلمين حسب الدولة" : "Teachers by Country"}
+                        <span className="mr-auto text-xs font-normal text-muted-foreground">
+                          {lang === "ar" ? `الإجمالي: ${countryStats.total}` : `Total: ${countryStats.total}`}
+                        </span>
+                      </h3>
+                      {countryStats.byCountry.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          {lang === "ar" ? "لا توجد بيانات بعد" : "No data yet"}
+                        </p>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {countryStats.byCountry.map((c, i) => {
+                            const flag = c.country_code
+                              ? String.fromCodePoint(...[...c.country_code.toUpperCase()].map(ch => 0x1F1E0 - 65 + ch.charCodeAt(0)))
+                              : "🌍";
+                            const pct = Math.round((c.count / countryStats.total) * 100);
+                            const maxVal = countryStats.byCountry[0]?.count ?? 1;
+                            return (
+                              <div key={i} className="flex items-center gap-3">
+                                <span className="text-xl w-8 text-center shrink-0">{flag}</span>
+                                <span className="text-xs font-bold text-muted-foreground w-24 shrink-0 truncate">{c.country}</span>
+                                <div className="flex-1 h-6 bg-muted/50 rounded-lg overflow-hidden relative">
+                                  <div
+                                    className="h-full bg-blue-500 rounded-lg transition-all duration-700"
+                                    style={{ width: `${Math.max((c.count / maxVal) * 100, 3)}%` }}
+                                  />
+                                  <span className="absolute inset-0 flex items-center justify-center text-xs font-black text-foreground mix-blend-difference">
+                                    {c.count} ({pct}%)
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </Card>
                   </motion.div>
                 )}

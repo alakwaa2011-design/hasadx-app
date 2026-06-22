@@ -343,6 +343,27 @@ router.get("/admin/acquisition-stats", async (req, res) => {
   }
 });
 
+router.get("/admin/country-stats", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+    const result = await pool.query(`
+      SELECT
+        COALESCE(registration_country,      'غير معروف') AS country,
+        COALESCE(registration_country_code, '')           AS country_code,
+        COUNT(*)::int                                     AS count
+      FROM teachers
+      GROUP BY registration_country, registration_country_code
+      ORDER BY count DESC
+      LIMIT 30
+    `);
+    const total = result.rows.reduce((s: number, r: any) => s + r.count, 0);
+    res.json({ byCountry: result.rows, total });
+  } catch (err) {
+    req.log.error(err, "Failed to get country stats");
+    res.status(500).json({ message: "حدث خطأ" });
+  }
+});
+
 router.patch("/admin/teachers/:id/block", async (req, res) => {
   try {
     if (!(await requireAdmin(req, res))) return;

@@ -425,6 +425,26 @@ function stampTeacherSession(req: any) {
   req.session.lastSeenAt = now;
 }
 
+/** Fire-and-forget: detect country from IP and update the teacher record. Never throws. */
+async function detectAndSaveCountry(teacherId: number, req: any): Promise<void> {
+  try {
+    const forwarded = req.headers["x-forwarded-for"];
+    const rawIp = (typeof forwarded === "string" ? forwarded.split(",")[0] : req.ip ?? "").trim();
+    const ip = rawIp.replace(/^::ffff:/, "");
+    if (!ip || ip === "127.0.0.1" || ip === "::1") return;
+    const geoRes = await fetch(`https://ipwho.is/${ip}`, {
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!geoRes.ok) return;
+    const geo = await geoRes.json() as any;
+    if (geo.success && geo.country_code) {
+      await db.update(teachersTable)
+        .set({ registrationCountry: geo.country, registrationCountryCode: geo.country_code })
+        .where(eq(teachersTable.id, teacherId));
+    }
+  } catch { /* silently skip — never block registration */ }
+}
+
 const router: IRouter = Router();
 
 router.post("/auth/register", registerLimiter, async (req, res) => {
@@ -488,6 +508,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     delete req.session.studentAccountId;
     req.session.teacherId = teacher.id;
     stampTeacherSession(req);
+    void detectAndSaveCountry(teacher.id, req);
 
     void logIslamicEvent({
       userId: teacher.id,
@@ -1473,6 +1494,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
           })
           .returning();
         teacher = created;
+        void detectAndSaveCountry(teacher.id, req);
       }
     }
 

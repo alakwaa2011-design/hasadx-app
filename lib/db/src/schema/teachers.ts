@@ -30,6 +30,9 @@ export const teachersTable = pgTable("teachers", {
   teamsAccessToken: text("teams_access_token"),
   teamsRefreshToken: text("teams_refresh_token"),
   teamsTokenExpiry: timestamp("teams_token_expiry"),
+  // Geo: country detected from IP at registration time
+  registrationCountry: text("registration_country"),
+  registrationCountryCode: text("registration_country_code"),
   // Traffic acquisition / attribution
   acquisitionSource: text("acquisition_source"),
   acquisitionMedium: text("acquisition_medium"),
