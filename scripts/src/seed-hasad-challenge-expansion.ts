@@ -858,7 +858,7 @@ const NEW_CATEGORIES_IN_EXISTING: ExistingSectionAdd[] = [
     ],
   },
   {
-    sectionName: "أحاديث شريفة وفقه",
+    sectionName: "سيرة نبوية وتاريخ إسلامي",
     categories: [
       {
         name: "سيرة الصحابيات",
@@ -920,7 +920,7 @@ const NEW_CATEGORIES_IN_EXISTING: ExistingSectionAdd[] = [
     ],
   },
   {
-    sectionName: "تاريخ عام",
+    sectionName: "تاريخ وحضارات",
     categories: [
       {
         name: "شخصيات تاريخية مؤثرة",
@@ -952,7 +952,7 @@ const NEW_CATEGORIES_IN_EXISTING: ExistingSectionAdd[] = [
     ],
   },
   {
-    sectionName: "فن وثقافة",
+    sectionName: "ترفيه وفنون",
     categories: [
       {
         name: "فنون تشكيلية",
@@ -984,7 +984,7 @@ const NEW_CATEGORIES_IN_EXISTING: ExistingSectionAdd[] = [
     ],
   },
   {
-    sectionName: "أكلات وعادات",
+    sectionName: "بيئة وطبيعة",
     categories: [
       {
         name: "مشروبات وحلويات",
@@ -1019,7 +1019,7 @@ const NEW_CATEGORIES_IN_EXISTING: ExistingSectionAdd[] = [
 
 const TOPUPS: TopUp[] = [
   {
-    sectionName: "أحاديث شريفة وفقه",
+    sectionName: "سيرة نبوية وتاريخ إسلامي",
     categoryName: "فقه العبادات",
     questions: [
       ["كم عدد الصلوات المفروضة في اليوم؟", "٣", "٤", "٥", "٦", "easy", 2],
@@ -1173,7 +1173,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "تاريخ عام",
+    sectionName: "تاريخ وحضارات",
     categoryName: "حضارات قديمة",
     questions: [
       ["متى انتهت إمبراطورية الرومان الغربية تقريباً؟", "٤٧٦م", "٦٢٢م", "١٤٥٣م", "١٧٨٩م", "medium", 0],
@@ -1189,7 +1189,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "تاريخ عام",
+    sectionName: "تاريخ وحضارات",
     categoryName: "تاريخ حديث",
     questions: [
       ["متى انتهت الحرب العالمية الأولى؟", "١٩١٤", "١٩١٨", "١٩٣٩", "١٩٤٥", "easy", 1],
@@ -1202,7 +1202,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "فن وثقافة",
+    sectionName: "ترفيه وفنون",
     categoryName: "سينما ومشاهير",
     questions: [
       ["من بطل فيلم 'تيتانيك'؟", "براد بيت", "ليوناردو دي كابريو", "توم كروز", "ويل سميث", "easy", 1],
@@ -1216,7 +1216,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "فن وثقافة",
+    sectionName: "ترفيه وفنون",
     categoryName: "موسيقى وأغانٍ عربية",
     questions: [
       ["من 'كوكب الشرق'؟", "أم كلثوم", "فيروز", "وردة", "أسمهان", "easy", 0],
@@ -1232,7 +1232,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "أكلات وعادات",
+    sectionName: "بيئة وطبيعة",
     categoryName: "أطباق عربية وعالمية",
     questions: [
       ["ما اسم الطبق الأشهر في الإمارات والسعودية بالأرز واللحم؟", "الكبسة", "البيتزا", "السوشي", "الكسكس", "easy", 0],
@@ -1246,7 +1246,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "أكلات وعادات",
+    sectionName: "بيئة وطبيعة",
     categoryName: "عادات شعوب",
     questions: [
       ["ما اسم تحية اليابانيين التقليدية؟", "المصافحة", "الانحناء (Bow)", "العناق", "تقبيل الخدين", "easy", 1],
@@ -1325,7 +1325,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "أكلات وعادات",
+    sectionName: "بيئة وطبيعة",
     categoryName: "عادات شعوب",
     questions: [
       ["ما اسم عادة 'الأوريغامي' وأين أصلها؟", "فن طي الورق الياباني", "رقصة هندية", "طبق مكسيكي", "زي تركي", "medium", 0],
@@ -1351,7 +1351,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "أحاديث شريفة وفقه",
+    sectionName: "سيرة نبوية وتاريخ إسلامي",
     categoryName: "فقه العبادات",
     questions: [
       ["ما اسم سجود يكون لتدارك خطأ في الصلاة؟", "سجود التلاوة", "سجود الشكر", "سجود السهو", "سجود الفتح", "medium", 2],
@@ -1380,7 +1380,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "اقتصاد وأعمال",
+    sectionName: "ثقافة عامة ومعلومات",
     categoryName: "عملات ومال",
     questions: [
       ["ما عملة المملكة العربية السعودية؟", "الدرهم", "الريال السعودي", "الدينار", "الجنيه", "easy", 1],
@@ -1394,7 +1394,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "ألعاب وترفيه",
+    sectionName: "ترفيه وفنون",
     categoryName: "ألعاب فيديو شهيرة",
     questions: [
       ["ما اسم اللعبة الشهيرة 'ماين كرافت'؟", "Minecraft", "Roblox", "Fortnite", "PUBG", "easy", 0],
@@ -1404,7 +1404,7 @@ const TOPUPS: TopUp[] = [
     ],
   },
   {
-    sectionName: "أديان وحضارات",
+    sectionName: "تاريخ وحضارات",
     categoryName: "حضارات قديمة عريقة",
     questions: [
       ["ما اسم الحضارة التي بنت أهرام الجيزة؟", "البابلية", "الفرعونية المصرية", "الإغريقية", "الفينيقية", "easy", 1],
