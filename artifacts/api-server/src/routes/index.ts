@@ -61,6 +61,7 @@ import teamsRouter from "./teams";
 import xpRouter from "./xp";
 import soloChallengesRouter from "./solo-challenges";
 import secretGameRouter from "./secret-game";
+import directMessagesRouter from "./direct-messages";
 
 const router: IRouter = Router();
 
@@ -129,4 +130,5 @@ router.use(classroomRouter);
 router.use(teamsRouter);
 router.use(soloChallengesRouter);
 router.use(secretGameRouter);
+router.use(directMessagesRouter);
 export default router;

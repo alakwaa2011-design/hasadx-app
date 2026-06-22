@@ -14,6 +14,7 @@ import { BillingTab } from "@/components/admin/billing-tab";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { RealtimeTab } from "@/components/admin/realtime-tab";
 import { RewardsTab } from "@/components/admin/rewards-tab";
+import { MessagesTab } from "@/components/admin/messages-tab";
 import { AdminOnOffPill } from "@/components/admin/admin-on-off-pill";
 import { useThemeUpdater } from "@/lib/theme-provider";
 import { Card, Button, Input } from "@/components/ui-elements";
@@ -87,7 +88,7 @@ interface StatsData {
   shared_question_count: number;
 }
 
-type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime";
+type Tab = "stats" | "teachers" | "students" | "content" | "appearance" | "feedback" | "online" | "activities" | "organize" | "maraqui" | "ai-chat" | "letrly" | "billing" | "activity-log" | "rewards" | "realtime" | "messages";
 
 interface FeedbackItem {
   id: number;
@@ -1331,7 +1332,8 @@ export default function AdminPage() {
               {
                 title: lang === "ar" ? "النظام" : "System",
                 tabs: [
-                  { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: MessageSquare },
+                  { key: "messages" as Tab, label: lang === "ar" ? "الرسائل" : "Messages", icon: MessageSquare },
+                  { key: "feedback" as Tab, label: lang === "ar" ? "الملاحظات" : "Feedback", icon: Reply },
                   { key: "ai-chat" as Tab, label: lang === "ar" ? "محادثات المساعد" : "AI Chats", icon: Sparkles },
                   { key: "realtime" as Tab, label: lang === "ar" ? "اللحظي" : "Realtime", icon: Activity },
                   { key: "activity-log" as Tab, label: lang === "ar" ? "سجل النشاط" : "Activity Log", icon: Activity },
@@ -1383,6 +1385,8 @@ export default function AdminPage() {
         {activeTab === "billing" && <BillingTab />}
 
         {activeTab === "rewards" && <RewardsTab />}
+
+        {activeTab === "messages" && <MessagesTab />}
 
         {activeTab === "online" && (
           <div className="space-y-4">

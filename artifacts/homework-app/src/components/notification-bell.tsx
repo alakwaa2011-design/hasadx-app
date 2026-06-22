@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { Bell, Check, CheckCheck, FileText } from "lucide-react";
+import { Bell, Check, CheckCheck, FileText, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -16,7 +16,11 @@ interface Notification {
   createdAt: string;
 }
 
-export function NotificationBell() {
+interface NotificationBellProps {
+  onDirectMessageClick?: () => void;
+}
+
+export function NotificationBell({ onDirectMessageClick }: NotificationBellProps = {}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [, setLocation] = useLocation();
@@ -66,7 +70,10 @@ export function NotificationBell() {
 
   function handleNotifClick(n: Notification) {
     if (!n.isRead) markRead.mutate(n.id);
-    if (n.type === "maraqui_approval") {
+    if (n.type === "direct_message") {
+      onDirectMessageClick?.();
+      setOpen(false);
+    } else if (n.type === "maraqui_approval") {
       setLocation("/teacher/admin?tab=maraqui");
       setOpen(false);
     } else if (n.assignmentId) {
@@ -142,8 +149,15 @@ export function NotificationBell() {
                       !n.isRead ? "bg-primary/5" : ""
                     }`}
                   >
-                    <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${!n.isRead ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      <FileText className="w-4 h-4" />
+                    <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
+                      n.type === "direct_message"
+                        ? !n.isRead ? "bg-[#1E4D35]/15 text-[#1E4D35]" : "bg-muted text-muted-foreground"
+                        : !n.isRead ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {n.type === "direct_message"
+                        ? <MessageSquare className="w-4 h-4" />
+                        : <FileText className="w-4 h-4" />
+                      }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm truncate ${!n.isRead ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>

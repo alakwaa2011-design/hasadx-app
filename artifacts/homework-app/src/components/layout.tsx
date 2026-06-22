@@ -12,6 +12,7 @@ import {
   Gamepad2,
   Languages,
   MessageSquarePlus,
+  MessageSquare,
   Menu,
   X,
   Home,
@@ -31,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { NotificationBell } from "./notification-bell";
+import { DirectMessageDrawer, useDmUnreadCount } from "./direct-message-drawer";
 import { XpToastListener } from "./xp-toast-listener";
 import { XpPill } from "./xp-pill";
 import { AuthSideRail } from "./auth-side-rail";
@@ -80,6 +82,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
   const theme = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [dmOpen, setDmOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { data: user, isLoading: teacherLoading } = useGetCurrentTeacher({
     query: { retry: false } as any,
@@ -96,6 +99,8 @@ export function Layout({ children, noHeader }: LayoutProps) {
     },
   });
 
+  const isTeacherAdmin = Boolean((user as any)?.isAdmin) || (user as any)?.role === "admin";
+  const dmUnreadCount = useDmUnreadCount(!!user && !isTeacherAdmin);
   const { colorScheme, setColorScheme } = useDarkMode();
   const toggleLang = () => setLang(lang === "ar" ? "en" : "ar");
   const cycleColorScheme = () => {
@@ -225,7 +230,31 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         redundant. */}
                     <AdminUiSwitcher />
                     <XpPill />
-                    <NotificationBell />
+                    {!isTeacherAdmin && (
+                      <button
+                        onClick={() => setDmOpen(true)}
+                        className="relative p-2 rounded-lg text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                        title={lang === "ar" ? "رسائل المسؤول" : "Admin messages"}
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                        {dmUnreadCount > 0 && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#C9A050] text-[#1E4D35] text-[9px] font-black rounded-full flex items-center justify-center shadow-sm"
+                          >
+                            {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
+                          </motion.span>
+                        )}
+                      </button>
+                    )}
+                    <NotificationBell onDirectMessageClick={() => {
+                      if (isTeacherAdmin) {
+                        setLocation("/teacher/admin?tab=messages");
+                      } else {
+                        setDmOpen(true);
+                      }
+                    }} />
                     <div className="h-5 w-px bg-white/20 mx-1" />
 
                     <div className="relative" ref={userMenuRef}>
@@ -767,6 +796,10 @@ export function StudentLoginLayout({ children }: LayoutProps) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {user && !isTeacherAdmin && (
+        <DirectMessageDrawer open={dmOpen} onClose={() => setDmOpen(false)} />
+      )}
     </div>
   );
 }
