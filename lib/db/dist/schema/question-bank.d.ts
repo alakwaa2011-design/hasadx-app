@@ -382,8 +382,9 @@ export declare const questionBankTable: import("drizzle-orm/pg-core").PgTableWit
 }>;
 export declare const insertQuestionBankSchema: z.ZodObject<{
     teacherId: z.ZodInt;
-    subject: z.ZodString;
     categoryId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    subject: z.ZodString;
     isShared: z.ZodOptional<z.ZodBoolean>;
     hiddenByAdmin: z.ZodOptional<z.ZodBoolean>;
     hiddenAt: z.ZodOptional<z.ZodNullable<z.ZodDate>>;
@@ -397,7 +398,6 @@ export declare const insertQuestionBankSchema: z.ZodObject<{
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     points: z.ZodOptional<z.ZodNumber>;
-    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     allowMultipleAnswers: z.ZodOptional<z.ZodBoolean>;
     repeatQuestion: z.ZodOptional<z.ZodBoolean>;
     tags: z.ZodOptional<z.ZodNullable<z.ZodString>>;

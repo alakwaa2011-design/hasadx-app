@@ -7,12 +7,14 @@ const SEED_KEY = "secret_game_v1";
 const CATEGORIES_DATA: Array<{
   nameAr: string;
   icon: string;
+  coverImageUrl: string;
   sortOrder: number;
   items: Array<{ nameAr: string; imageUrl: string; difficulty: string }>;
 }> = [
   {
     nameAr: "الحيوانات",
     icon: "🐾",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/300px-Lion_waiting_in_Namibia.jpg",
     sortOrder: 1,
     items: [
       { nameAr: "أسد", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/300px-Lion_waiting_in_Namibia.jpg", difficulty: "easy" },
@@ -38,6 +40,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "الأنبياء",
     icon: "🌙",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Masjid_Al_Nabawi.jpg/300px-Masjid_Al_Nabawi.jpg",
     sortOrder: 2,
     items: [
       { nameAr: "موسى", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Crossing_the_Red_Sea_by_the_Israelites.jpg/300px-Crossing_the_Red_Sea_by_the_Israelites.jpg", difficulty: "easy" },
@@ -60,6 +63,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "سور القرآن",
     icon: "📖",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Quran_reading.jpg/300px-Quran_reading.jpg",
     sortOrder: 3,
     items: [
       { nameAr: "الفاتحة", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Al-Fatiha.jpg/300px-Al-Fatiha.jpg", difficulty: "easy" },
@@ -82,6 +86,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "المدن",
     icon: "🌍",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Kuwait_Towers01.jpg/300px-Kuwait_Towers01.jpg",
     sortOrder: 4,
     items: [
       { nameAr: "مكة المكرمة", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Kaaba_2010.jpg/300px-Kaaba_2010.jpg", difficulty: "easy" },
@@ -104,6 +109,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "معالم العالم",
     icon: "🏛️",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/300px-Tour_Eiffel_Wikimedia_Commons.jpg",
     sortOrder: 5,
     items: [
       { nameAr: "برج إيفل", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons.jpg/300px-Tour_Eiffel_Wikimedia_Commons.jpg", difficulty: "easy" },
@@ -123,6 +129,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "الأعلام",
     icon: "🏴",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Flag_of_Saudi_Arabia.svg/300px-Flag_of_Saudi_Arabia.svg.png",
     sortOrder: 6,
     items: [
       { nameAr: "علم السعودية", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Flag_of_Saudi_Arabia.svg/300px-Flag_of_Saudi_Arabia.svg.png", difficulty: "easy" },
@@ -142,6 +149,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "الرياضة",
     icon: "⚽",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Swimming_Torinoaug09.jpg/300px-Swimming_Torinoaug09.jpg",
     sortOrder: 7,
     items: [
       { nameAr: "كرة القدم", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Football_in_Bloomington%2C_Indiana%2C_1996.jpg/300px-Football_in_Bloomington%2C_Indiana%2C_1996.jpg", difficulty: "easy" },
@@ -159,6 +167,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "الفواكه",
     icon: "🍎",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/300px-Red_Apple.jpg",
     sortOrder: 8,
     items: [
       { nameAr: "تفاحة", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/300px-Red_Apple.jpg", difficulty: "easy" },
@@ -181,6 +190,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "المركبات",
     icon: "🚗",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Container_ship_Cosco_Shipping_Pisces.jpg/300px-Container_ship_Cosco_Shipping_Pisces.jpg",
     sortOrder: 9,
     items: [
       { nameAr: "سيارة", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/2006_BMW_M5_%28E60%29%2C_front_8.26.19.jpg/300px-2006_BMW_M5_%28E60%29%2C_front_8.26.19.jpg", difficulty: "easy" },
@@ -198,6 +208,7 @@ const CATEGORIES_DATA: Array<{
   {
     nameAr: "شخصيات تاريخية",
     icon: "👑",
+    coverImageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Avicenna-miniature.jpg/300px-Avicenna-miniature.jpg",
     sortOrder: 10,
     items: [
       { nameAr: "صلاح الدين", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Saladin_and_Guy.jpg/300px-Saladin_and_Guy.jpg", difficulty: "medium" },
@@ -230,7 +241,7 @@ export async function seedSecretGameIfNeeded(): Promise<void> {
     for (const cat of CATEGORIES_DATA) {
       const [inserted] = await db
         .insert(secretGameCategoriesTable)
-        .values({ nameAr: cat.nameAr, icon: cat.icon, sortOrder: cat.sortOrder })
+        .values({ nameAr: cat.nameAr, icon: cat.icon, coverImageUrl: cat.coverImageUrl, sortOrder: cat.sortOrder })
         .returning();
 
       if (inserted) {

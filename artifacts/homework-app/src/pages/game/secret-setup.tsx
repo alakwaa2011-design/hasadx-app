@@ -44,6 +44,7 @@ const EMOJI_OPTIONS = ["📋", "🎯", "🌍", "🔬", "📚", "🧮", "🏛️"
 function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCategoryModalProps) {
   const [nameAr, setNameAr] = useState(existing?.nameAr ?? "");
   const [icon, setIcon] = useState(existing?.icon ?? "📋");
+  const [coverImageUrl, setCoverImageUrl] = useState((existing as any)?.coverImageUrl ?? "");
   const [isPublic, setIsPublic] = useState(existing?.isPublic ?? false);
   const [items, setItems] = useState<ItemDraft[]>(
     existing?.items && existing.items.length >= 2
@@ -75,7 +76,7 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
       const r = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nameAr: nameAr.trim(), icon, isPublic, items: validItems }),
+        body: JSON.stringify({ nameAr: nameAr.trim(), icon, isPublic, coverImageUrl: coverImageUrl.trim() || undefined, items: validItems }),
       });
       const data = await r.json();
       if (!r.ok) { toast.error(data.error ?? "خطأ في الحفظ"); return; }
@@ -144,6 +145,19 @@ function CustomCategoryModal({ teacherId, existing, onClose, onSaved }: CustomCa
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-white/60 text-xs mb-1 block">صورة الغلاف (اختياري)</label>
+            <div className="flex items-center gap-1.5">
+              <Image className="w-3.5 h-3.5 text-white/30 flex-shrink-0" />
+              <input
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+                placeholder="رابط صورة تمثل الفئة (يُعرض على بطاقة الفئة)"
+                className="flex-1 bg-white/5 border border-white/10 text-white/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-400/50"
+              />
             </div>
           </div>
 

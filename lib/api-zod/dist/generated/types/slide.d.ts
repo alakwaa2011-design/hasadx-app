@@ -12,13 +12,6 @@ export interface Slide {
     background?: string | null;
     backgroundImage?: string | null;
     notes?: string | null;
-    activityType?: string | null;
-    gameSuggestion?: string | null;
-    strategyStage?: string | null;
-    linkedActivityId?: string | null;
-    linkedActivityType?: string | null;
-    linkedActivityUrl?: string | null;
-    activityCreationStatus?: "idle" | "creating" | "created" | "unsupported" | "failed" | null;
     elements: SlideElement[];
 }
 //# sourceMappingURL=slide.d.ts.map

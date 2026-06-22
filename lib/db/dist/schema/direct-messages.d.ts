@@ -1,11 +1,10 @@
-import { z } from "zod/v4";
-export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "categories";
+export declare const directMessagesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "direct_messages";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "categories";
+            tableName: "direct_messages";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -20,43 +19,9 @@ export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        name: import("drizzle-orm/pg-core").PgColumn<{
-            name: "name";
-            tableName: "categories";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        color: import("drizzle-orm/pg-core").PgColumn<{
-            name: "color";
-            tableName: "categories";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: true;
-            hasDefault: true;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        teacherId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "teacher_id";
-            tableName: "categories";
+        senderId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "sender_id";
+            tableName: "direct_messages";
             dataType: "number";
             columnType: "PgInteger";
             data: number;
@@ -71,15 +36,49 @@ export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithC
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        isPublic: import("drizzle-orm/pg-core").PgColumn<{
-            name: "is_public";
-            tableName: "categories";
-            dataType: "boolean";
-            columnType: "PgBoolean";
-            data: boolean;
-            driverParam: boolean;
+        recipientId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "recipient_id";
+            tableName: "direct_messages";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
             notNull: true;
-            hasDefault: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        content: import("drizzle-orm/pg-core").PgColumn<{
+            name: "content";
+            tableName: "direct_messages";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        readAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "read_at";
+            tableName: "direct_messages";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -90,7 +89,7 @@ export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithC
         }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "categories";
+            tableName: "direct_messages";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -108,15 +107,5 @@ export declare const categoriesTable: import("drizzle-orm/pg-core").PgTableWithC
     };
     dialect: "pg";
 }>;
-export declare const insertCategorySchema: z.ZodObject<{
-    name: z.ZodString;
-    isPublic: z.ZodOptional<z.ZodBoolean>;
-    teacherId: z.ZodInt;
-    color: z.ZodOptional<z.ZodString>;
-}, {
-    out: {};
-    in: {};
-}>;
-export type InsertCategory = z.infer<typeof insertCategorySchema>;
-export type Category = typeof categoriesTable.$inferSelect;
-//# sourceMappingURL=categories.d.ts.map
+export type DirectMessage = typeof directMessagesTable.$inferSelect;
+//# sourceMappingURL=direct-messages.d.ts.map

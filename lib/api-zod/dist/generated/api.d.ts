@@ -27,18 +27,30 @@ export declare const RegisterTeacherBody: zod.ZodObject<{
     phone: zod.ZodOptional<zod.ZodString>;
     password: zod.ZodString;
     role: zod.ZodDefault<zod.ZodEnum<["teacher", "organizer"]>>;
+    acquisitionSource: zod.ZodOptional<zod.ZodString>;
+    acquisitionMedium: zod.ZodOptional<zod.ZodString>;
+    acquisitionCampaign: zod.ZodOptional<zod.ZodString>;
+    acquisitionReferrer: zod.ZodOptional<zod.ZodString>;
 }, "strip", zod.ZodTypeAny, {
     name: string;
     password: string;
     role: "teacher" | "organizer";
     email?: string | undefined;
     phone?: string | undefined;
+    acquisitionSource?: string | undefined;
+    acquisitionMedium?: string | undefined;
+    acquisitionCampaign?: string | undefined;
+    acquisitionReferrer?: string | undefined;
 }, {
     name: string;
     password: string;
     email?: string | undefined;
     phone?: string | undefined;
     role?: "teacher" | "organizer" | undefined;
+    acquisitionSource?: string | undefined;
+    acquisitionMedium?: string | undefined;
+    acquisitionCampaign?: string | undefined;
+    acquisitionReferrer?: string | undefined;
 }>;
 /**
  * @summary Teacher login

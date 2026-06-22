@@ -5,6 +5,7 @@ export const secretGameCategoriesTable = pgTable("secret_game_categories", {
   id: serial("id").primaryKey(),
   nameAr: text("name_ar").notNull(),
   icon: text("icon").notNull().default("🎯"),
+  coverImageUrl: text("cover_image_url"),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   isCustom: boolean("is_custom").notNull().default(false),

@@ -53,6 +53,23 @@ export declare const secretGameCategoriesTable: import("drizzle-orm/pg-core").Pg
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        coverImageUrl: import("drizzle-orm/pg-core").PgColumn<{
+            name: "cover_image_url";
+            tableName: "secret_game_categories";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         sortOrder: import("drizzle-orm/pg-core").PgColumn<{
             name: "sort_order";
             tableName: "secret_game_categories";

@@ -178,9 +178,9 @@ export declare const messages: import("drizzle-orm/pg-core").PgTableWithColumns<
 }>;
 export declare const insertMessageSchema: z.ZodObject<{
     role: z.ZodString;
+    content: z.ZodString;
     costMicroUsd: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     conversationId: z.ZodInt;
-    content: z.ZodString;
     model: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     tokensIn: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     tokensOut: z.ZodOptional<z.ZodNullable<z.ZodInt>>;

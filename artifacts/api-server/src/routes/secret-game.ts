@@ -36,12 +36,12 @@ router.get("/secret-game/categories", async (req, res) => {
         isActive: secretGameCategoriesTable.isActive,
         createdAt: secretGameCategoriesTable.createdAt,
         itemCount: count(secretGameItemsTable.id),
-        coverImageUrl: sql<string | null>`(
-          SELECT image_url FROM secret_game_items
-          WHERE category_id = ${secretGameCategoriesTable.id}
-            AND image_url IS NOT NULL
-          ORDER BY id
-          LIMIT 1
+        coverImageUrl: sql<string | null>`COALESCE(
+          ${secretGameCategoriesTable.coverImageUrl},
+          (SELECT image_url FROM secret_game_items
+           WHERE category_id = ${secretGameCategoriesTable.id}
+             AND image_url IS NOT NULL
+           ORDER BY id LIMIT 1)
         )`,
       })
       .from(secretGameCategoriesTable)
@@ -143,7 +143,7 @@ router.post("/secret-game/custom-categories", async (req, res) => {
     const teacherId = requireTeacher(req, res);
     if (!teacherId) return;
 
-    const { nameAr, icon, isPublic, items } = req.body ?? {};
+    const { nameAr, icon, isPublic, coverImageUrl, items } = req.body ?? {};
     if (!nameAr || typeof nameAr !== "string" || !nameAr.trim()) {
       return res.status(400).json({ error: "اسم الفئة مطلوب" });
     }
@@ -162,6 +162,7 @@ router.post("/secret-game/custom-categories", async (req, res) => {
       .values({
         nameAr: nameAr.trim(),
         icon: typeof icon === "string" && icon.trim() ? icon.trim() : "📋",
+        coverImageUrl: typeof coverImageUrl === "string" && coverImageUrl.trim() ? coverImageUrl.trim() : null,
         isCustom: true,
         isPublic: isPublic === true,
         teacherId,
@@ -206,12 +207,13 @@ router.put("/secret-game/custom-categories/:id", async (req, res) => {
       return res.status(403).json({ error: "غير مسموح بتعديل هذه الفئة" });
     }
 
-    const { nameAr, icon, isPublic, items } = req.body ?? {};
+    const { nameAr, icon, isPublic, coverImageUrl, items } = req.body ?? {};
 
     const updates: Partial<typeof secretGameCategoriesTable.$inferInsert> = {};
     if (typeof nameAr === "string" && nameAr.trim()) updates.nameAr = nameAr.trim();
     if (typeof icon === "string" && icon.trim()) updates.icon = icon.trim();
     if (typeof isPublic === "boolean") updates.isPublic = isPublic;
+    if (typeof coverImageUrl === "string") updates.coverImageUrl = coverImageUrl.trim() || null;
 
     if (Object.keys(updates).length > 0) {
       await db
