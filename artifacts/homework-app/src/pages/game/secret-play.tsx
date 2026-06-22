@@ -356,7 +356,7 @@ export default function SecretPlay() {
                     style={{ borderColor: s?.color ?? "#4b5563", background: "#0d0d1a" }}
                   >
                     {s?.image ? (
-                      <img src={s.image} alt={s.name} className="w-full h-44 object-cover" />
+                      <img src={`/api/image-proxy?url=${encodeURIComponent(s.image)}`} alt={s.name} className="w-full h-44 object-cover" />
                     ) : (
                       <div
                         className="w-full h-44 flex items-center justify-center"
@@ -454,7 +454,7 @@ export default function SecretPlay() {
                   <div key={t} className="rounded-2xl p-3 border" style={{ background: `${teams[t].color}15`, borderColor: `${teams[t].color}40` }}>
                     <p className="text-xs font-bold mb-2" style={{ color: teams[t].color }}>{teams[t].name} كان سرّه:</p>
                     {endData.secrets[t].image && (
-                      <img src={endData.secrets[t].image!} alt={endData.secrets[t].name} className="w-full h-20 object-cover rounded-xl mb-2" />
+                      <img src={`/api/image-proxy?url=${encodeURIComponent(endData.secrets[t].image!)}`} alt={endData.secrets[t].name} className="w-full h-20 object-cover rounded-xl mb-2" />
                     )}
                     <p className="text-white font-black text-lg">{endData.secrets[t].name}</p>
                   </div>

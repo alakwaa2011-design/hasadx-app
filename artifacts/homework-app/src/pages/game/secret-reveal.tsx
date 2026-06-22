@@ -101,7 +101,9 @@ export default function SecretReveal() {
   const isProphet = data.categoryId === PROPHETS_CATEGORY_ID;
   const displayName = isProphet ? `${data.secret.name} عليه السلام` : data.secret.name;
   const bg = data.teamColor;
-  const hasImage = !!data.secret.image && !imgError;
+  const rawImage = data.secret.image;
+  const proxiedImage = rawImage ? `/api/image-proxy?url=${encodeURIComponent(rawImage)}` : null;
+  const hasImage = !!proxiedImage && !imgError;
 
   return (
     <div
@@ -149,7 +151,7 @@ export default function SecretReveal() {
             <div className="flex-1 relative overflow-hidden" style={{ minHeight: "65vh" }}>
               {hasImage ? (
                 <img
-                  src={data.secret.image!}
+                  src={proxiedImage!}
                   alt={displayName}
                   className="absolute inset-0 w-full h-full object-cover"
                   onError={() => setImgError(true)}

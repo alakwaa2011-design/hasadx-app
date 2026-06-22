@@ -349,4 +349,31 @@ router.get("/secret-game/reveal/:token", (req, res) => {
   }
 });
 
+router.get("/image-proxy", async (req, res) => {
+  try {
+    const url = req.query.url as string | undefined;
+    if (!url) return res.status(400).end();
+    const parsed = new URL(url);
+    const allowed = ["upload.wikimedia.org", "commons.wikimedia.org", "en.wikipedia.org", "ar.wikipedia.org"];
+    if (!allowed.some((h) => parsed.hostname === h || parsed.hostname.endsWith("." + h))) {
+      return res.status(403).end();
+    }
+    const imgRes = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Referer": "https://en.wikipedia.org/",
+        "Accept": "image/*,*/*;q=0.8",
+      },
+    });
+    if (!imgRes.ok) return res.status(imgRes.status).end();
+    const ct = imgRes.headers.get("content-type") ?? "image/jpeg";
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buf = await imgRes.arrayBuffer();
+    res.end(Buffer.from(buf));
+  } catch {
+    res.status(500).end();
+  }
+});
+
 export default router;

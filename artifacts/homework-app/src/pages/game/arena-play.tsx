@@ -2734,7 +2734,7 @@ function QuestionModal({
           )}
 
           {/* Helpers — split by team, cream theme */}
-          {state.teamOrder.some(
+          {active.question.type !== "secret" && state.teamOrder.some(
             (side) => state.teams[side]?.helpers.length > 0,
           ) && (
             <div className="grid grid-cols-2 gap-3 w-full max-w-[900px] mx-auto">
@@ -2831,6 +2831,7 @@ function QuestionModal({
             </div>
           )}
           {/* Utility row — soft cream pills */}
+          {active.question.type !== "secret" && (
           <div className="flex gap-1.5 flex-wrap justify-center">
             <motion.button
               whileHover={{ scale: 1.04, y: -1 }}
@@ -2851,8 +2852,10 @@ function QuestionModal({
               <AlertTriangle className="w-3 h-3" /> إبلاغ
             </motion.button>
           </div>
+          )}
 
           {/* Action buttons — timer + reveal + resolve, animated */}
+          {active.question.type !== "secret" && (
           <div className="flex flex-wrap gap-2 pt-1 pb-2 w-full max-w-[900px]">
             {!timerRunning && !active.revealed && (
               <motion.button
@@ -2990,6 +2993,7 @@ function QuestionModal({
               </motion.div>
             )}
           </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -4641,6 +4645,7 @@ function SecretArenaActivity({
   const [tokenB, setTokenB] = React.useState<string>("");
   const [endData, setEndData] = React.useState<SecretArenaEndData | null>(null);
   const [lastAnswer, setLastAnswer] = React.useState<"yes" | "no" | null>(null);
+  const [qrTeam, setQrTeam] = React.useState<"A" | "B">("A");
   const [dismissProgress, setDismissProgress] = React.useState(100);
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
@@ -4818,7 +4823,7 @@ function SecretArenaActivity({
                 <p className="text-[11px] text-gray-400">{qCount} سؤال</p>
                 {endData.secrets[t].image && (
                   <img
-                    src={endData.secrets[t].image!}
+                    src={`/api/image-proxy?url=${encodeURIComponent(endData.secrets[t].image!)}`}
                     alt={endData.secrets[t].name}
                     className="w-14 h-14 rounded-xl object-cover"
                   />
@@ -4886,34 +4891,64 @@ function SecretArenaActivity({
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>
 
-      {/* QR codes */}
+      {/* QR codes — one team at a time */}
       {(gameState.phase === "waiting_scan" || !gameState.teams.A.scanned || !gameState.teams.B.scanned) && (
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          {(["A", "B"] as const).map((t) => {
-            const url = t === "A" ? revealUrlA : revealUrlB;
-            const team = gameState.teams[t];
-            const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
-            return (
-              <div key={t} className="flex flex-col items-center gap-2 p-3 rounded-xl border" style={{ borderColor: `${tInfo?.color ?? "#888"}40`, background: `${tInfo?.color ?? "#888"}08` }}>
-                <p className="text-xs font-bold" style={{ color: tInfo?.color ?? "#888" }}>{team.name}</p>
-                <div className="bg-white p-1.5 rounded-lg">
-                  <QRCodeLib value={url} size={90} />
-                </div>
-                <p className="text-xs text-gray-400">{team.scanned ? "✅ تم المسح" : "امسح الباركود"}</p>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        <div className="mb-4">
+          {/* Team selector tabs */}
+          <div className="flex gap-2 mb-3">
+            {(["A", "B"] as const).map((t) => {
+              const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
+              const scanned = gameState.teams[t].scanned;
+              return (
+                <button
+                  key={t}
+                  onClick={() => setQrTeam(t)}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold transition-all"
+                  style={{
+                    background: qrTeam === t ? (tInfo?.color ?? "#7c3aed") : "#f3f4f6",
+                    color: qrTeam === t ? "#fff" : "#6b7280",
+                    border: `1.5px solid ${qrTeam === t ? (tInfo?.color ?? "#7c3aed") : "#e5e7eb"}`,
+                  }}
+                >
+                  {gameState.teams[t].name}{scanned ? " ✅" : ""}
+                </button>
+              );
+            })}
+          </div>
 
-      {gameState.phase === "waiting_scan" && (
-        <div className="flex justify-center mb-3">
-          <button
-            onClick={() => socketRef.current?.emit("secret:force_start", { pin })}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
-          >
-            بدء اللعبة فوراً
-          </button>
+          {/* Single team QR */}
+          {gameState.teams[qrTeam].scanned ? (
+            <div className="text-center py-4 text-green-600 font-bold text-sm">
+              ✅ {gameState.teams[qrTeam].name} مسح الباركود بنجاح
+            </div>
+          ) : (
+            <div
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border"
+              style={{
+                borderColor: `${(qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888"}40`,
+                background: `${(qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888"}08`,
+              }}
+            >
+              <p className="text-xs font-bold" style={{ color: (qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888" }}>
+                {gameState.teams[qrTeam].name}
+              </p>
+              <div className="bg-white p-2 rounded-xl">
+                <QRCodeLib value={qrTeam === "A" ? revealUrlA : revealUrlB} size={130} />
+              </div>
+              <p className="text-xs text-gray-400">امسح الباركود لرؤية سرّك</p>
+            </div>
+          )}
+
+          {gameState.phase === "waiting_scan" && (
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => socketRef.current?.emit("secret:force_start", { pin })}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-colors"
+              >
+                بدء اللعبة فوراً
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -4969,8 +5004,6 @@ function SecretArenaActivity({
             </div>
           </div>
 
-          {/* Guess entry */}
-          <GuessEntry pin={pin} teams={gameState.teams} teamInfo={teamInfo} socketRef={socketRef} answerer={answerer} answererTeam={answererTeam} />
         </div>
       )}
     </div>
