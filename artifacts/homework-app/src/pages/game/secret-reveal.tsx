@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Shield, Camera, Hash } from "lucide-react";
 
 interface RevealData {
   team: "A" | "B";
   teamName: string;
   teamColor: string;
   secret: { id: number; name: string; image: string | null };
+  categoryId: number;
   pin: string;
 }
 
-const DEFAULT_HIDE_SECONDS = 30;
+const PROPHETS_CATEGORY_ID = 2;
+const AUTO_HIDE_SECONDS = 30;
 
 export default function SecretReveal() {
   const [location] = useLocation();
@@ -24,356 +25,169 @@ export default function SecretReveal() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const [imgError, setImgError] = useState(false);
-
-  const [autoHideSeconds, setAutoHideSeconds] = useState(DEFAULT_HIDE_SECONDS);
-  const [countdown, setCountdown] = useState(DEFAULT_HIDE_SECONDS);
-  const [screenshotWarning, setScreenshotWarning] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const socketRef = useRef<import("socket.io-client").Socket | null>(null);
+  const [autoHideSeconds, setAutoHideSeconds] = useState(AUTO_HIDE_SECONDS);
 
   useEffect(() => {
-    if (!token) {
-      setError("رمز غير صالح");
-      setLoading(false);
-      return;
-    }
+    if (!token) { setError("رمز غير صالح"); setLoading(false); return; }
     fetch(`/api/secret-game/reveal/${encodeURIComponent(token)}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.error) {
-          setError(d.error);
-          return;
-        }
+        if (d.error) { setError(d.error); return; }
         setData(d as RevealData);
       })
-      .catch(() => setError("تعذّر الاتصال بالخادم"))
+      .catch(() => setError("تعذّر الاتصال"))
       .finally(() => setLoading(false));
   }, [token]);
 
   useEffect(() => {
-    if (!data || confirmed) return;
+    if (!data) return;
     const setupSocket = async () => {
       try {
         const { io } = await import("socket.io-client");
-        const socket = io({
-          path: "/api/socket.io",
-          transports: ["websocket", "polling"],
-        });
+        const socket = io({ path: "/api/socket.io", transports: ["websocket", "polling"] });
         socketRef.current = socket;
-
         socket.on("connect", () => {
-          socket.emit(
-            "secret:scan_confirm",
-            { pin: data.pin, team: data.team },
-            (res: { ok?: boolean; hideDuration?: number; error?: string }) => {
-              if (res?.hideDuration && res.hideDuration > 0) {
-                setAutoHideSeconds(res.hideDuration);
-                setCountdown(res.hideDuration);
-              }
+          socket.emit("secret:scan_confirm", { pin: data.pin, team: data.team },
+            (res: { ok?: boolean; hideDuration?: number }) => {
+              if (res?.hideDuration && res.hideDuration > 0) setAutoHideSeconds(res.hideDuration);
             },
           );
         });
-
         socket.on("secret:hide_duration_changed", ({ duration }: { duration: number }) => {
-          const d = Number(duration);
-          if (d > 0) {
-            setAutoHideSeconds(d);
-            setCountdown((prev) => {
-              if (!revealed) return d;
-              return Math.min(prev, d);
-            });
-          }
+          if (duration > 0) setAutoHideSeconds(duration);
         });
-
-        socket.on("secret:force_hide", () => {
-          setRevealed(false);
-        });
-
-        setConfirmed(true);
+        socket.on("secret:force_hide", () => setRevealed(false));
       } catch {}
     };
     setupSocket();
+    return () => { socketRef.current?.disconnect(); socketRef.current = null; };
+  }, [data]);
 
-    return () => {
-      socketRef.current?.disconnect();
-      socketRef.current = null;
-    };
-  }, [data, confirmed]);
-
+  // Auto-hide countdown (silent — no UI)
   useEffect(() => {
-    if (!revealed) {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      setCountdown(autoHideSeconds);
-      return;
-    }
-
-    setCountdown(autoHideSeconds);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (!revealed) return;
+    let remaining = autoHideSeconds;
     countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current!);
-          setRevealed(false);
-          return autoHideSeconds;
-        }
-        return prev - 1;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(countdownRef.current!);
+        setRevealed(false);
+      }
     }, 1000);
-
-    return () => {
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
   }, [revealed, autoHideSeconds]);
-
-  const revealedRef = useRef(revealed);
-  useEffect(() => {
-    revealedRef.current = revealed;
-  }, [revealed]);
-
-  useEffect(() => {
-    const triggerWarning = () => {
-      if (!revealedRef.current) return;
-      setScreenshotWarning(true);
-      setTimeout(() => setScreenshotWarning(false), 3000);
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") triggerWarning();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "p")) {
-        e.preventDefault();
-        triggerWarning();
-      }
-      if (e.key === "PrintScreen") {
-        triggerWarning();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   if (loading) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "#0a1f18" }}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          className="w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full"
-        />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0d0d1a" }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          className="w-10 h-10 border-4 border-purple-400 border-t-transparent rounded-full" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-6"
-        style={{ background: "#0a1f18" }}
-      >
-        <div className="text-center" dir="rtl">
-          <Shield className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <p className="text-xl text-red-300 font-bold">
-            {error ?? "خطأ غير معروف"}
-          </p>
-          <p className="text-emerald-300/60 mt-2 text-sm">
-            الرمز منتهي الصلاحية أو غير صالح
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: "#0d0d1a" }}>
+        <p className="text-xl text-red-300 font-bold text-center dir-rtl">{error ?? "خطأ غير معروف"}</p>
       </div>
     );
   }
 
-  const teamLetter = data.team === "A" ? "أ" : "ب";
+  const isProphet = data.categoryId === PROPHETS_CATEGORY_ID;
+  const displayName = isProphet ? `${data.secret.name} عليه السلام` : data.secret.name;
   const bg = data.teamColor;
-  const countdownPct = (countdown / autoHideSeconds) * 100;
-  const countdownColor =
-    countdown > autoHideSeconds * 0.5 ? bg : countdown > autoHideSeconds * 0.25 ? "#f59e0b" : "#ef4444";
+  const hasImage = !!data.secret.image && !imgError;
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6 select-none overflow-hidden"
+      className="min-h-screen flex flex-col select-none"
       dir="rtl"
-      style={{
-        background: `radial-gradient(ellipse at center, ${bg}22 0%, #0a1f18 70%)`,
-      }}
+      style={{ background: "#0d0d1a" }}
+      onClick={() => revealed && setRevealed(false)}
     >
-      <AnimatePresence>
-        {screenshotWarning && (
+      <AnimatePresence mode="wait">
+        {!revealed ? (
+          /* ── Pre-reveal: just a tap button ── */
           <motion.div
-            key="screenshot-warning"
-            initial={{ opacity: 0, y: -60 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -60 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl"
-            style={{ background: "#ef4444", color: "white" }}
+            key="pre"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-8 p-8"
           >
-            <Camera className="w-5 h-5 flex-shrink-0" />
-            <span className="font-bold text-sm">
-              ⚠️ لا يُسمح بالتقاط الشاشة — هذا سرّك!
-            </span>
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black border-4 shadow-2xl"
+              style={{ background: `${bg}22`, borderColor: bg, color: bg }}
+            >
+              {data.team === "A" ? "أ" : "ب"}
+            </div>
+            <h1 className="text-3xl font-black text-white">{data.teamName}</h1>
+            <motion.button
+              whileTap={{ scale: 0.93 }}
+              onClick={(e) => { e.stopPropagation(); setRevealed(true); }}
+              className="w-full max-w-xs py-6 rounded-3xl font-black text-2xl text-white shadow-2xl"
+              style={{ background: bg }}
+            >
+              اضغط لترى سرّك
+            </motion.button>
+          </motion.div>
+        ) : (
+          /* ── Revealed: image + name only ── */
+          <motion.div
+            key="revealed"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col"
+          >
+            {/* Image area — fills the screen */}
+            <div className="flex-1 relative overflow-hidden" style={{ minHeight: "65vh" }}>
+              {hasImage ? (
+                <img
+                  src={data.secret.image!}
+                  alt={displayName}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={() => setImgError(true)}
+                  draggable={false}
+                />
+              ) : (
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ background: `${bg}22` }}
+                >
+                  <span className="text-[90px]">🎯</span>
+                </div>
+              )}
+              {/* Gradient overlay at bottom */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-28"
+                style={{ background: "linear-gradient(to top, #0d0d1a, transparent)" }}
+              />
+            </div>
+
+            {/* Name below */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="py-8 px-6 text-center"
+              style={{ background: "#0d0d1a" }}
+            >
+              <h2
+                className="text-5xl font-black leading-tight"
+                style={{ color: bg }}
+              >
+                {displayName}
+              </h2>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {!revealed ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center max-w-sm w-full"
-        >
-          <div
-            className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl border-4"
-            style={{ background: `${bg}33`, borderColor: bg }}
-          >
-            <span className="text-5xl font-black" style={{ color: bg }}>
-              {teamLetter}
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-white mb-2">
-            {data.teamName}
-          </h1>
-          <p className="text-emerald-200/70 mb-8 text-sm leading-relaxed">
-            أنت قائد الفريق — اضغط لترى سرّك
-          </p>
-          <p className="text-yellow-300/80 text-xs mb-6">
-            ⚠️ لا تُظهر الشاشة لأحد!
-          </p>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setRevealed(true)}
-            className="w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 shadow-2xl transition-all active:scale-95"
-            style={{ background: bg, color: "white" }}
-          >
-            <EyeOff className="w-6 h-6" />
-            اكتشف سرّك
-          </motion.button>
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center max-w-sm w-full"
-        >
-          <div
-            className="text-xs font-bold px-3 py-1 rounded-full inline-block mb-4"
-            style={{ background: `${bg}33`, color: bg }}
-          >
-            {data.teamName}
-          </div>
-
-          <div
-            className="rounded-3xl overflow-hidden mb-5 shadow-2xl border-4 pointer-events-none"
-            style={{ borderColor: bg }}
-          >
-            {data.secret.image && !imgError ? (
-              <img
-                src={data.secret.image}
-                alt={data.secret.name}
-                className="w-full h-56 object-cover"
-                onError={() => setImgError(true)}
-                draggable={false}
-                style={{ WebkitUserDrag: "none" } as React.CSSProperties}
-              />
-            ) : (
-              <div
-                className="w-full h-56 flex flex-col items-center justify-center gap-3"
-                style={{ background: `${bg}22` }}
-              >
-                <span className="text-7xl select-none">🎯</span>
-                <span
-                  className="text-2xl font-black"
-                  style={{ color: bg }}
-                >
-                  {data.secret.name}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mb-4"
-          >
-            <h2 className="text-5xl font-black text-white mb-2">
-              {data.secret.name}
-            </h2>
-            <p className="text-emerald-200/60 text-sm">
-              هذا هو سرّك — لا تخبر أحداً!
-            </p>
-          </motion.div>
-
-          <div
-            className="rounded-2xl px-4 py-3 mb-4 flex items-center justify-between"
-            style={{ background: `${bg}20`, border: `1px solid ${bg}50` }}
-          >
-            <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4" style={{ color: bg }} />
-              <span className="text-white/60 text-xs">رمز الجلسة</span>
-            </div>
-            <span
-              className="text-2xl font-black tracking-widest"
-              style={{ color: bg }}
-            >
-              {data.pin}
-            </span>
-          </div>
-
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-xs" style={{ color: countdownColor }}>
-                سيُخفى السر تلقائياً بعد{" "}
-                <span className="font-black">{countdown}</span>ث
-              </span>
-              <span className="text-white/30 text-xs">التعتيم التلقائي</span>
-            </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.1)" }}>
-              <motion.div
-                className="h-full rounded-full transition-colors duration-1000"
-                style={{
-                  width: `${countdownPct}%`,
-                  background: countdownColor,
-                }}
-              />
-            </div>
-          </div>
-
-          <div
-            className="rounded-2xl p-4 text-right text-sm leading-relaxed mb-4"
-            style={{ background: `${bg}15`, border: `1px solid ${bg}40` }}
-          >
-            <p className="text-white/80 font-bold mb-1">📌 كيف تلعب:</p>
-            <p className="text-white/60">
-              الفريق الآخر سيسألك أسئلة نعم/لا عن سرّك. أجب بصدق!
-            </p>
-            <p className="text-white/60 mt-1">
-              وأنت أيضاً اسألهم لتعرف سرّهم وتفوز!
-            </p>
-          </div>
-
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setRevealed(false)}
-            className="mt-2 flex items-center gap-2 text-white/40 text-xs mx-auto hover:text-white/60 transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            إخفاء السر الآن
-          </motion.button>
-        </motion.div>
-      )}
     </div>
   );
 }

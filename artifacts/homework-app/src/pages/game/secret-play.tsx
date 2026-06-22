@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { io as socketIO, Socket } from "socket.io-client";
-import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, HelpCircle, QrCode, RotateCcw, ChevronRight, CheckCircle2, Clock, Plus, EyeOff, Timer } from "lucide-react";
+import { Eye, RefreshCw, Trophy, AlertTriangle, Check, X, QrCode, RotateCcw, CheckCircle2, Clock, Plus, EyeOff, Timer, Monitor } from "lucide-react";
 import QRCode from "react-qr-code";
 
 function playAllReadyChime() {
@@ -119,6 +119,12 @@ export default function SecretPlay() {
   const [lastAnswer, setLastAnswer] = useState<"yes" | "no" | null>(null);
   const [wrongMsg, setWrongMsg] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [showDirect, setShowDirect] = useState(false);
+  const [directSecrets, setDirectSecrets] = useState<{
+    A: { name: string; image: string | null; color: string; teamName: string } | null;
+    B: { name: string; image: string | null; color: string; teamName: string } | null;
+  }>({ A: null, B: null });
+  const [directLoading, setDirectLoading] = useState(false);
   const [nextRoundLoading, setNextRoundLoading] = useState(false);
   const [newTokenA, setNewTokenA] = useState<string | null>(null);
   const [newTokenB, setNewTokenB] = useState<string | null>(null);
@@ -228,6 +234,26 @@ export default function SecretPlay() {
     setTimeout(() => setForceHideSent(false), 2000);
   }, [pin]);
 
+  const handleDirectReveal = useCallback(async () => {
+    if (directLoading) return;
+    const tA = newTokenA ?? tokenA;
+    const tB = newTokenB ?? tokenB;
+    if (!tA || !tB) return;
+    setDirectLoading(true);
+    try {
+      const [rA, rB] = await Promise.all([
+        fetch(`/api/secret-game/reveal/${encodeURIComponent(tA)}`).then(r => r.json()),
+        fetch(`/api/secret-game/reveal/${encodeURIComponent(tB)}`).then(r => r.json()),
+      ]);
+      setDirectSecrets({
+        A: rA.error ? null : { name: rA.secret.name, image: rA.secret.image, color: rA.teamColor, teamName: rA.teamName },
+        B: rB.error ? null : { name: rB.secret.name, image: rB.secret.image, color: rB.teamColor, teamName: rB.teamName },
+      });
+      setShowDirect(true);
+    } catch { /* ignore */ }
+    finally { setDirectLoading(false); }
+  }, [directLoading, newTokenA, newTokenB, tokenA, tokenB]);
+
   if (!pin) return null;
 
   if (!gameState) {
@@ -254,8 +280,18 @@ export default function SecretPlay() {
         </div>
         <div className="flex items-center gap-2">
           <div className="text-white/50 text-sm font-mono" dir="ltr">{pin}</div>
+          <button
+            onClick={handleDirectReveal}
+            disabled={directLoading}
+            title="عرض الصورة مباشرة على الشاشة"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50"
+          >
+            {directLoading
+              ? <RefreshCw className="w-4 h-4 animate-spin" />
+              : <Monitor className="w-4 h-4" />}
+          </button>
           <button onClick={() => setShowQR(!showQR)}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
+            className={`p-2 rounded-xl text-white transition-colors ${showQR ? "bg-purple-600 hover:bg-purple-700" : "bg-white/10 hover:bg-white/20"}`}>
             <QrCode className="w-4 h-4" />
           </button>
         </div>
@@ -291,47 +327,97 @@ export default function SecretPlay() {
         )}
       </AnimatePresence>
 
+      {/* Direct Reveal Panel */}
+      <AnimatePresence>
+        {showDirect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(10px)" }}
+          >
+            <button
+              onClick={() => setShowDirect(false)}
+              className="absolute top-4 left-4 p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
+              {(["A", "B"] as const).map((t) => {
+                const s = directSecrets[t];
+                return (
+                  <motion.div
+                    key={t}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: t === "B" ? 0.1 : 0 }}
+                    className="rounded-3xl overflow-hidden border-2 flex flex-col"
+                    style={{ borderColor: s?.color ?? "#4b5563", background: "#0d0d1a" }}
+                  >
+                    {s?.image ? (
+                      <img src={s.image} alt={s.name} className="w-full h-44 object-cover" />
+                    ) : (
+                      <div
+                        className="w-full h-44 flex items-center justify-center"
+                        style={{ background: s ? `${s.color}22` : "#1f2937" }}
+                      >
+                        <span className="text-6xl">🎯</span>
+                      </div>
+                    )}
+                    <div className="py-4 px-3 text-center">
+                      <p className="text-xs font-bold mb-1" style={{ color: s?.color ?? "#9ca3af" }}>
+                        {s?.teamName ?? teams[t].name}
+                      </p>
+                      <p className="text-white font-black text-xl leading-tight">{s?.name ?? "—"}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* QR Panel */}
       <AnimatePresence>
-        {(showQR || phase === "waiting_scan") && (
+        {showQR && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden border-b border-white/10">
             <div className="p-4">
               <p className="text-center text-white/60 text-xs mb-3">
-                {phase === "waiting_scan" ? "🔍 في انتظار مسح الباركود من قائدَي الفريقين" : "باركودات الجولة الجديدة"}
+                🔍 باركودات اكتشف السر — اضغط للإخفاء
               </p>
 
               {/* Scan progress indicator */}
-              {phase === "waiting_scan" && (
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  {(["A", "B"] as Team[]).map((t) => (
-                    <motion.div
-                      key={t}
-                      initial={false}
-                      animate={teams[t].scanned
-                        ? { scale: [1, 1.15, 1], backgroundColor: ["transparent", teams[t].color, teams[t].color] }
-                        : {}}
-                      transition={{ duration: 0.35 }}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-colors"
-                      style={{
-                        borderColor: teams[t].scanned ? teams[t].color : `${teams[t].color}40`,
-                        background: teams[t].scanned ? `${teams[t].color}25` : "transparent",
-                      }}
+              <div className="flex items-center justify-center gap-3 mb-4">
+                {(["A", "B"] as Team[]).map((t) => (
+                  <motion.div
+                    key={t}
+                    initial={false}
+                    animate={teams[t].scanned
+                      ? { scale: [1, 1.15, 1], backgroundColor: ["transparent", teams[t].color, teams[t].color] }
+                      : {}}
+                    transition={{ duration: 0.35 }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-colors"
+                    style={{
+                      borderColor: teams[t].scanned ? teams[t].color : `${teams[t].color}40`,
+                      background: teams[t].scanned ? `${teams[t].color}25` : "transparent",
+                    }}
+                  >
+                    {teams[t].scanned
+                      ? <CheckCircle2 className="w-4 h-4" style={{ color: teams[t].color }} />
+                      : <Clock className="w-4 h-4 text-white/30" />
+                    }
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color: teams[t].scanned ? teams[t].color : "rgba(255,255,255,0.4)" }}
                     >
-                      {teams[t].scanned
-                        ? <CheckCircle2 className="w-4 h-4" style={{ color: teams[t].color }} />
-                        : <Clock className="w-4 h-4 text-white/30" />
-                      }
-                      <span
-                        className="text-sm font-bold"
-                        style={{ color: teams[t].scanned ? teams[t].color : "rgba(255,255,255,0.4)" }}
-                      >
-                        {teams[t].name}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                      {teams[t].name}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
 
               <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto">
                 <QRPanel token={effectiveTokenA} teamName={teams.A.name} teamColor={teams.A.color} scanned={teams.A.scanned} />

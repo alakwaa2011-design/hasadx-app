@@ -340,6 +340,7 @@ router.get("/secret-game/reveal/:token", (req, res) => {
         name: teamState.secretName,
         image: teamState.secretImage,
       },
+      categoryId: room.categoryId,
       pin: decoded.pin,
     });
   } catch (err) {
