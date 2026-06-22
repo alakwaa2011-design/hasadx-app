@@ -29,7 +29,6 @@ import {
   TrendingUp,
   Radio,
   Layers,
-  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -813,34 +812,6 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
           </div>
         </div>
 
-        {/* Featured — video only */}
-        {topVideoByUses && (
-          <section className="mb-6">
-            <h2 className="mb-3 text-base font-extrabold tracking-tight" style={{ color: C.text }}>{isAr ? "أنشطة مميزة" : "Featured activities"}</h2>
-            <div className="max-w-sm">
-              <FeaturedCard
-                isAr={isAr}
-                dir={dir}
-                title={topVideoByUses.title}
-                badge={isAr ? "فيديو" : "Video"}
-                desc={
-                  topVideoByUses.description ??
-                  (isAr ? "درس فيديو مع أسئلة توقيت تلقائي أثناء المشاهدة." : "Video lesson with timed questions while watching.")
-                }
-                coverKind="video"
-                subject={topVideoByUses.subject}
-                usesLabel={
-                  !statsError && videoUseCount(topVideoByUses.id) > 0
-                    ? `${formatUseCount(videoUseCount(topVideoByUses.id))} ${isAr ? "استخدام" : "uses"}`
-                    : ""
-                }
-                ctaLabel={isAr ? "عرض النشاط" : "View lessons"}
-                teacher={topVideoByUses.teacherName ?? (isAr ? "مجتمع المعلمين" : "Community")}
-                onAction={() => onActiveTabChange("videos")}
-              />
-            </div>
-          </section>
-        )}
 
         {/* Trending now */}
         {trendingNow.length > 0 && (
@@ -1021,93 +992,6 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
   );
 }
 
-function FeaturedCard({
-  isAr,
-  dir,
-  title,
-  badge,
-  desc,
-  coverKind,
-  subject,
-  usesLabel,
-  teacher,
-  ctaLabel,
-  accent,
-  onAction,
-}: {
-  isAr: boolean;
-  dir: "rtl" | "ltr";
-  title: string;
-  badge: string;
-  desc: string;
-  coverKind: import("@/lib/activity-cover").ActivityCoverKind;
-  subject?: string | null;
-  usesLabel: string;
-  teacher: string;
-  ctaLabel: string;
-  accent?: "live";
-  onAction: () => void;
-}) {
-  const isLive = accent === "live";
-  return (
-    <button
-      type="button"
-      onClick={onAction}
-      className={cn(
-        "group flex w-full flex-col overflow-hidden rounded-2xl border bg-white text-start",
-        "transition-all duration-300 ease-out",
-        "hover:-translate-y-1 hover:shadow-[0_14px_40px_-12px_rgba(31,45,36,0.18)]",
-        isLive &&
-          "shadow-[0_6px_28px_-8px_rgba(91,33,182,0.22),0_2px_12px_-4px_rgba(212,166,58,0.12)] ring-1 ring-[#d4a63a]/25",
-      )}
-      style={{ borderColor: isLive ? "#d4a63a44" : C.border }}
-    >
-      <div className="relative overflow-hidden">
-        <ActivityCover
-          kind={coverKind}
-          subject={subject}
-          title={title}
-          aspect="video"
-          premium
-          livePulse={isLive}
-        >
-          <span
-            className={cn(
-              "absolute top-3 z-10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-md",
-              dir === "rtl" ? "right-3" : "left-3",
-              isLive
-                ? "border border-amber-200/30 bg-gradient-to-r from-violet-900/75 to-purple-800/70 shadow-sm"
-                : "border border-white/20 bg-black/35",
-            )}
-          >
-            {isLive && <Zap className="h-3 w-3 text-amber-200" />}
-            {badge}
-          </span>
-        </ActivityCover>
-      </div>
-      <div className="flex flex-1 flex-col px-3.5 pb-3 pt-2.5">
-        <h3 className="line-clamp-1 text-[15px] font-extrabold tracking-tight text-[#1f2d24]">{title}</h3>
-        <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-[#9aa89f]">{desc}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[#6f8176]">
-          {usesLabel ? <span className="font-semibold text-[#0a4d26]">{usesLabel}</span> : null}
-          <span className="inline-flex items-center gap-1">
-            <User className="h-3 w-3 shrink-0 opacity-70" />
-            <span className="truncate">{teacher}</span>
-          </span>
-        </div>
-        <div
-          className={cn(
-            "mt-2.5 flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-bold transition-colors",
-            "border-[#e8e1d8] text-[#0a4d26] group-hover:border-[#0a4d26]/25 group-hover:bg-[#e8f4ec]/80",
-          )}
-        >
-          {ctaLabel}
-          <ArrowLeft className={cn("h-3.5 w-3.5 opacity-70", isAr ? "" : "rotate-180")} />
-        </div>
-      </div>
-    </button>
-  );
-}
 
 function EmptyState({ isAr, icon, title }: { isAr: boolean; icon: React.ReactNode; title: string }) {
   return (
