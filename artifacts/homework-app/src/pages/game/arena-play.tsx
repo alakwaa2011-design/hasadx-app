@@ -4977,7 +4977,7 @@ function SecretArenaActivity({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-500" />
-          <span className="font-black text-gray-800 text-lg">اكتشف السر</span>
+          <span className="font-black text-gray-800 text-lg">{question.q || "اكتشف السر"}</span>
         </div>
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>
