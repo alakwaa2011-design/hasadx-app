@@ -5255,6 +5255,11 @@ function SecretArenaActivity({
                 </div>
               </div>
 
+              {/* Section label */}
+              <p className="text-[10px] font-bold text-gray-400 mb-1.5 tracking-wider uppercase">
+                🔢 عدد الأسئلة المطروحة
+              </p>
+
               {/* 12 numbered boxes — split into scoring zones */}
               {(() => {
                 const zones: { label: string; from: number; to: number; zoneColor: string }[] = [
