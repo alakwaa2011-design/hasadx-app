@@ -198,7 +198,7 @@ export function setupSecretGameSocket(io: Server) {
           currentAsker: "B",
           hideDuration: 30,
           totalQuestions: 0,
-          maxQuestions: Math.min(data.maxQuestions ?? 10, 10),
+          maxQuestions: Math.min(data.maxQuestions ?? 12, 12),
           phase: "waiting_scan",
           winner: null,
           hostSocketId: socket.id,
