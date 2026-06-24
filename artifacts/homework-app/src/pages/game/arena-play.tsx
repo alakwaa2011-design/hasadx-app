@@ -4997,27 +4997,49 @@ function SecretArenaActivity({
             })}
           </div>
 
-          {gameState.teams[qrTeam].scanned ? (
-            <div className="text-center py-4 text-green-600 font-bold text-sm">
-              ✅ {gameState.teams[qrTeam].name} مسح الباركود بنجاح
-            </div>
-          ) : (
-            <div
-              className="flex flex-col items-center gap-2 p-4 rounded-xl border"
-              style={{
-                borderColor: `${(qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888"}40`,
-                background: `${(qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888"}08`,
-              }}
-            >
-              <p className="text-xs font-bold" style={{ color: (qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#888" }}>
-                {gameState.teams[qrTeam].name}
-              </p>
-              <div className="bg-white p-2 rounded-xl">
-                <QRCodeLib value={qrTeam === "A" ? revealUrlA : revealUrlB} size={130} />
-              </div>
-              <p className="text-xs text-gray-400">امسح الباركود لرؤية سرّك</p>
-            </div>
-          )}
+          {(() => {
+            const revealUrl = qrTeam === "A" ? revealUrlA : revealUrlB;
+            const tColor = (qrTeam === "A" ? teamInfo?.A : teamInfo?.B)?.color ?? "#7c3aed";
+            const scanned = gameState.teams[qrTeam].scanned;
+            return (
+              <>
+                {scanned ? (
+                  <div className="text-center py-3 text-green-600 font-bold text-sm">
+                    ✅ {gameState.teams[qrTeam].name} مسح الباركود بنجاح
+                  </div>
+                ) : (
+                  <div
+                    className="flex flex-col items-center gap-2 p-4 rounded-xl border"
+                    style={{
+                      borderColor: `${tColor}40`,
+                      background: `${tColor}08`,
+                    }}
+                  >
+                    <p className="text-xs font-bold" style={{ color: tColor }}>
+                      {gameState.teams[qrTeam].name}
+                    </p>
+                    <div className="bg-white p-2 rounded-xl">
+                      <QRCodeLib value={revealUrl} size={130} />
+                    </div>
+                    <p className="text-xs text-gray-400">امسح الباركود لرؤية سرّك</p>
+                  </div>
+                )}
+                {/* Direct reveal button — no QR needed */}
+                <button
+                  onClick={() => window.open(revealUrl, "_blank", "noopener")}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-80 active:scale-95"
+                  style={{
+                    borderColor: `${tColor}50`,
+                    background: `${tColor}12`,
+                    color: tColor,
+                  }}
+                >
+                  <span>🖥️</span>
+                  <span>عرض السر مباشرة (بدون باركود)</span>
+                </button>
+              </>
+            );
+          })()}
 
           {gameState.phase === "waiting_scan" && (
             <div className="flex justify-center mt-3">
