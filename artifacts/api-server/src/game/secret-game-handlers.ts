@@ -331,6 +331,63 @@ export function setupSecretGameSocket(io: Server) {
       cb?.({ ok: true });
     });
 
+    socket.on("secret:team_question", (
+      data: { pin: string; team: "A" | "B" },
+      cb?: (res: { ok?: boolean; questionCount?: number; error?: string }) => void,
+    ) => {
+      const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
+      const room = rooms.get(pin);
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.phase === "ended") { cb?.({ error: "انتهت اللعبة" }); return; }
+      const team = room.teams[data.team];
+      if (team.questionCount >= room.maxQuestions) {
+        cb?.({ error: "وصل الفريق للحد الأقصى" });
+        return;
+      }
+      team.questionCount += 1;
+      room.totalQuestions += 1;
+      const state = getRoomState(room);
+      io.to(`secret:${room.pin}`).emit("secret:state", state);
+      logger.info({ pin: room.pin, team: data.team, count: team.questionCount }, "Secret team question recorded");
+      cb?.({ ok: true, questionCount: team.questionCount });
+    });
+
+    socket.on("secret:award_score", (
+      data: { pin: string; winner: "A" | "B" | null },
+      cb?: (res: { ok?: boolean; score?: number; error?: string }) => void,
+    ) => {
+      const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
+      const room = rooms.get(pin);
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.phase === "ended") { cb?.({ ok: true, score: 0 }); return; }
+
+      let score = 0;
+      if (data.winner) {
+        const qCount = room.teams[data.winner].questionCount;
+        if (qCount <= 3) score = 600;
+        else if (qCount <= 6) score = 400;
+        else if (qCount <= 9) score = 200;
+        else score = 0;
+      }
+
+      room.phase = "ended";
+      room.winner = data.winner;
+
+      io.to(`secret:${room.pin}`).emit("secret:game_over", {
+        winner: data.winner,
+        winnerName: data.winner ? room.teams[data.winner].name : "لا فائز",
+        score,
+        secrets: {
+          A: { name: room.teams.A.secretName, image: room.teams.A.secretImage },
+          B: { name: room.teams.B.secretName, image: room.teams.B.secretImage },
+        },
+        state: getRoomState(room),
+      });
+
+      logger.info({ pin: room.pin, winner: data.winner, score }, "Secret game ended — score awarded");
+      cb?.({ ok: true, score });
+    });
+
     socket.on("secret:get_state", (
       data: { pin: string },
       cb?: (res: { state?: ReturnType<typeof getRoomState>; error?: string }) => void,

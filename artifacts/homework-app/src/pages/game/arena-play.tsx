@@ -4686,23 +4686,81 @@ function SecretArenaActivity({
       );
     });
     sock.on("connect_error", () => setStatus("error"));
-    sock.on("secret:state", (s: SecretArenaGameState) => setGameState(s));
+    sock.on("secret:state", (s: SecretArenaGameState) => {
+      setGameState(s);
+      setBoxCountA(s.teams.A.questionCount);
+      setBoxCountB(s.teams.B.questionCount);
+    });
     sock.on("secret:started", (s: SecretArenaGameState) => setGameState(s));
 
     return () => { sock.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCorrect = (team: "A" | "B") => {
+  // Auto-zero: if any team reaches the question limit, end the round with 0 points
+  const autoZeroFiredRef = React.useRef(false);
+  React.useEffect(() => {
+    if (scoreResult || autoZeroFiredRef.current || !gameState) return;
+    if (boxCountA < MAX_SECRET_QUESTIONS && boxCountB < MAX_SECRET_QUESTIONS) return;
+    autoZeroFiredRef.current = true;
+    const pin = gameState.pin;
+    const zeroTeam: "A" | "B" = boxCountA >= MAX_SECRET_QUESTIONS ? "A" : "B";
+    const timer = setTimeout(() => {
+      socketRef.current?.emit("secret:award_score", { pin, winner: null }, () => {});
+      setScoreResult({ team: zeroTeam, score: 0 });
+      setTimeout(() => onAutoResolveRef.current?.(null, 0), 2000);
+    }, 1200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxCountA, boxCountB]);
+
+  const handleBoxClick = (team: "A" | "B") => {
     if (scoreResult) return;
     const count = team === "A" ? boxCountA : boxCountB;
-    const score = calcSecretScore(count);
-    setScoreResult({ team, score });
-    setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
+    const setCount = team === "A" ? setBoxCountA : setBoxCountB;
+    if (count >= MAX_SECRET_QUESTIONS) return;
+    const newCount = count + 1;
+    // Optimistic local update for snappy UX
+    setCount(newCount);
+    // Sync authoritative count to server
+    if (gameState) {
+      socketRef.current?.emit(
+        "secret:team_question",
+        { pin: gameState.pin, team },
+        (res: { ok?: boolean; questionCount?: number; error?: string }) => {
+          if (res.ok && res.questionCount !== undefined) {
+            setCount(res.questionCount);
+          }
+        },
+      );
+    }
+  };
+
+  const handleCorrect = (team: "A" | "B") => {
+    if (scoreResult) return;
+    if (!gameState) {
+      const count = team === "A" ? boxCountA : boxCountB;
+      const score = calcSecretScore(count);
+      setScoreResult({ team, score });
+      setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
+      return;
+    }
+    socketRef.current?.emit(
+      "secret:award_score",
+      { pin: gameState.pin, winner: team },
+      (res: { ok?: boolean; score?: number; error?: string }) => {
+        const score = res.score ?? calcSecretScore(team === "A" ? boxCountA : boxCountB);
+        setScoreResult({ team, score });
+        setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
+      },
+    );
   };
 
   const handleSkip = () => {
-    onAutoResolveRef.current?.(null, 0);
+    if (!gameState) { onAutoResolveRef.current?.(null, 0); return; }
+    socketRef.current?.emit("secret:award_score", { pin: gameState.pin, winner: null }, () => {
+      onAutoResolveRef.current?.(null, 0);
+    });
   };
 
   if (status === "connecting") {
@@ -4862,7 +4920,6 @@ function SecretArenaActivity({
         {(["A", "B"] as const).map((t) => {
           const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
           const count = t === "A" ? boxCountA : boxCountB;
-          const setCount = t === "A" ? setBoxCountA : setBoxCountB;
           const tColor = tInfo?.color ?? (t === "A" ? "#dc2626" : "#2563eb");
           const tName = gameState.teams[t].name;
           const dynamicScore = calcSecretScore(count);
@@ -4891,7 +4948,7 @@ function SecretArenaActivity({
                       key={boxNum}
                       type="button"
                       disabled={!isNext}
-                      onClick={() => { if (isNext) setCount(count + 1); }}
+                      onClick={() => { if (isNext) handleBoxClick(t); }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
                       style={{
                         background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
