@@ -4943,34 +4943,65 @@ function SecretArenaActivity({
                 </span>
               </div>
 
-              {/* 10 numbered boxes */}
-              <div className="flex gap-1 mb-3 flex-wrap">
-                {Array.from({ length: MAX_SECRET_QUESTIONS }, (_, i) => {
-                  const boxNum = i + 1;
-                  const isUsed = boxNum <= count;
-                  const isNext = boxNum === count + 1 && count < MAX_SECRET_QUESTIONS;
-                  return (
-                    <button
-                      key={boxNum}
-                      type="button"
-                      disabled={!isNext || !isPlaying}
-                      onClick={() => { if (isNext) handleBoxClick(t); }}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
-                      style={{
-                        background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
-                        color: isUsed ? "#fff" : isNext ? tColor : "#9ca3af",
-                        border: `1.5px solid ${isUsed ? tColor : isNext ? tColor : "#e5e7eb"}`,
-                        transform: isNext ? "scale(1.1)" : "scale(1)",
-                        cursor: isNext ? "pointer" : "default",
-                        opacity: !isUsed && !isNext ? 0.45 : 1,
-                        boxShadow: isNext ? `0 0 0 2px ${tColor}30` : "none",
-                      }}
-                    >
-                      {boxNum}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* 10 numbered boxes — split into scoring zones */}
+              {(() => {
+                const zones: { label: string; from: number; to: number; zoneColor: string }[] = [
+                  { label: "600 نقطة", from: 1, to: 3, zoneColor: "#16a34a" },
+                  { label: "400 نقطة", from: 4, to: 6, zoneColor: "#ca8a04" },
+                  { label: "200 نقطة", from: 7, to: 9, zoneColor: "#dc2626" },
+                  { label: "0 نقطة",   from: 10, to: 10, zoneColor: "#6b7280" },
+                ];
+                return (
+                  <div className="flex gap-1.5 mb-3 items-end">
+                    {zones.map((zone, zi) => (
+                      <div key={zone.label} className="flex flex-col items-center gap-0.5">
+                        {/* Zone label */}
+                        <span
+                          className="text-[9px] font-black rounded px-1 py-0.5 leading-none whitespace-nowrap"
+                          style={{ color: zone.zoneColor, background: `${zone.zoneColor}18` }}
+                        >
+                          {zone.label}
+                        </span>
+                        {/* Boxes in this zone */}
+                        <div
+                          className="flex gap-1 p-1 rounded-xl"
+                          style={{ background: `${zone.zoneColor}12`, border: `1px dashed ${zone.zoneColor}40` }}
+                        >
+                          {Array.from({ length: zone.to - zone.from + 1 }, (_, i) => {
+                            const boxNum = zone.from + i;
+                            const isUsed = boxNum <= count;
+                            const isNext = boxNum === count + 1 && count < MAX_SECRET_QUESTIONS;
+                            return (
+                              <button
+                                key={boxNum}
+                                type="button"
+                                disabled={!isNext || !isPlaying}
+                                onClick={() => { if (isNext) handleBoxClick(t); }}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
+                                style={{
+                                  background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
+                                  color: isUsed ? "#fff" : isNext ? tColor : "#9ca3af",
+                                  border: `1.5px solid ${isUsed ? tColor : isNext ? tColor : "#e5e7eb"}`,
+                                  transform: isNext ? "scale(1.1)" : "scale(1)",
+                                  cursor: isNext ? "pointer" : "default",
+                                  opacity: !isUsed && !isNext ? 0.45 : 1,
+                                  boxShadow: isNext ? `0 0 0 2px ${tColor}30` : "none",
+                                }}
+                              >
+                                {boxNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {/* Divider between zones (not after last) */}
+                        {zi < zones.length - 1 && (
+                          <div className="h-1 w-1 rounded-full mt-0.5" style={{ background: "#d1d5db" }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Correct answer button */}
               <button
