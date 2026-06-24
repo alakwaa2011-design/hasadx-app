@@ -4725,7 +4725,8 @@ function SecretArenaActivity({
   const [qrTeam, setQrTeam] = React.useState<"A" | "B">("A");
   const [boxCountA, setBoxCountA] = React.useState(0);
   const [boxCountB, setBoxCountB] = React.useState(0);
-  const [scoreResult, setScoreResult] = React.useState<{ team: "A" | "B"; score: number } | null>(null);
+  const [teamResults, setTeamResults] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
+  const [finalResult, setFinalResult] = React.useState<{ winner: "A" | "B" | null; scoreA: number; scoreB: number } | null>(null);
   const [undoFlashBox, setUndoFlashBox] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
   const [undoBtnFlash, setUndoBtnFlash] = React.useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const [showInfo, setShowInfo] = React.useState(false);
@@ -4771,8 +4772,27 @@ function SecretArenaActivity({
       setGameState(s);
       setBoxCountA(s.teams.A.questionCount);
       setBoxCountB(s.teams.B.questionCount);
+      const rA = (s.teams.A as any).resultScore as number | null | undefined;
+      const rB = (s.teams.B as any).resultScore as number | null | undefined;
+      if (rA !== undefined || rB !== undefined) {
+        setTeamResults(p => ({ A: rA ?? p.A, B: rB ?? p.B }));
+      }
     });
     sock.on("secret:started", (s: SecretArenaGameState) => setGameState(s));
+    sock.on("secret:game_over", (data: { winner: "A" | "B" | null; score: number; scores?: { A: number; B: number } }) => {
+      const scoreA = data.scores?.A ?? 0;
+      const scoreB = data.scores?.B ?? 0;
+      setTeamResults({ A: scoreA, B: scoreB });
+      setFinalResult({ winner: data.winner, scoreA, scoreB });
+      setTimeout(() => onAutoResolveRef.current?.(data.winner, data.score), 3000);
+    });
+    sock.on("secret:new_round", (s: SecretArenaGameState) => {
+      setGameState(s);
+      setBoxCountA(s.teams.A.questionCount);
+      setBoxCountB(s.teams.B.questionCount);
+      setTeamResults({ A: null, B: null });
+      setFinalResult(null);
+    });
 
     return () => { sock.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4802,22 +4822,29 @@ function SecretArenaActivity({
     );
   };
 
-  const handleCorrect = (team: "A" | "B") => {
-    if (scoreResult || !isPlaying || !gameState) return;
+  const handleTeamResult = (team: "A" | "B", score: number) => {
+    if (!isPlaying || !gameState || teamResults[team] !== null || finalResult) return;
+    setTeamResults(p => ({ ...p, [team]: score }));
     socketRef.current?.emit(
-      "secret:award_score",
-      { pin: gameState.pin, winner: team },
-      (res: { ok?: boolean; score?: number; error?: string }) => {
-        if (res.error) return; // Server rejected — do not award
-        const score = res.score ?? calcSecretScore(team === "A" ? boxCountA : boxCountB);
-        setScoreResult({ team, score });
-        setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
+      "secret:team_result",
+      { pin: gameState.pin, team, score },
+      (res: { ok?: boolean; error?: string }) => {
+        if (res.error) setTeamResults(p => ({ ...p, [team]: null }));
       },
     );
   };
 
+  const handleCorrect = (team: "A" | "B") => {
+    const score = calcSecretScore(team === "A" ? boxCountA : boxCountB);
+    handleTeamResult(team, score);
+  };
+
+  const handleGiveUp = (team: "A" | "B") => {
+    handleTeamResult(team, 0);
+  };
+
   const handleUndo = (team: "A" | "B") => {
-    if (scoreResult || !isPlaying || !gameState) return;
+    if (teamResults[team] !== null || !isPlaying || !gameState) return;
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
     if (count <= 0) return;
@@ -4842,17 +4869,6 @@ function SecretArenaActivity({
     );
   };
 
-  const handleSkip = () => {
-    if (!isPlaying || !gameState) return;
-    socketRef.current?.emit(
-      "secret:award_score",
-      { pin: gameState.pin, winner: null },
-      (res: { ok?: boolean; score?: number; error?: string }) => {
-        if (res.error) return;
-        onAutoResolveRef.current?.(null, 0);
-      },
-    );
-  };
 
   if (status === "connecting") {
     return (
@@ -4872,9 +4888,8 @@ function SecretArenaActivity({
     );
   }
 
-  if (scoreResult) {
-    const winnerInfo = scoreResult.team === "A" ? teamInfo?.A : teamInfo?.B;
-    const usedCount = scoreResult.team === "A" ? boxCountA : boxCountB;
+  if (finalResult) {
+    const winnerInfo = finalResult.winner ? teamInfo?.[finalResult.winner] : null;
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.92 }}
@@ -4889,32 +4904,52 @@ function SecretArenaActivity({
           transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.1 }}
           className="text-5xl leading-none select-none"
         >
-          🏆
+          {finalResult.winner ? "🏆" : "🤝"}
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-1">أجاب صحيح!</p>
-          <p className="text-xl font-black text-gray-800">
-            {winnerInfo?.name ?? (scoreResult.team === "A" ? "الفريق أ" : "الفريق ب")}
+          <p className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-1">
+            {finalResult.winner ? "الفائز!" : "تعادل!"}
           </p>
+          {winnerInfo && (
+            <p className="text-xl font-black text-gray-800">{winnerInfo.name}</p>
+          )}
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, type: "spring", stiffness: 280, damping: 15 }}
-          className="px-6 py-3 rounded-2xl font-black text-2xl text-white shadow-lg"
-          style={{ background: winnerInfo?.color ?? "#7c3aed" }}
-        >
-          +{scoreResult.score} نقطة
-        </motion.div>
-        <p className="text-xs text-gray-400">{usedCount} سؤال مستهلك</p>
+        {/* Both team scores */}
+        <div className="flex gap-3 w-full">
+          {(["A", "B"] as const).map(t => {
+            const info = teamInfo?.[t];
+            const score = t === "A" ? finalResult.scoreA : finalResult.scoreB;
+            const isWinner = finalResult.winner === t;
+            return (
+              <motion.div
+                key={t}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 + (t === "B" ? 0.1 : 0), type: "spring", stiffness: 280, damping: 15 }}
+                className="flex-1 rounded-2xl py-3 px-2 text-center shadow-sm"
+                style={{
+                  background: isWinner ? (info?.color ?? "#7c3aed") : "#f3f4f6",
+                  border: `2px solid ${isWinner ? (info?.color ?? "#7c3aed") : "#e5e7eb"}`,
+                }}
+              >
+                <p className="text-xs font-bold mb-0.5" style={{ color: isWinner ? "rgba(255,255,255,0.8)" : "#6b7280" }}>
+                  {info?.name ?? (t === "A" ? "الفريق أ" : "الفريق ب")}
+                </p>
+                <p className="text-xl font-black" style={{ color: isWinner ? "#fff" : "#374151" }}>
+                  {score > 0 ? `+${score}` : "0"} نقطة
+                </p>
+              </motion.div>
+            );
+          })}
+        </div>
         <div className="w-full space-y-1.5">
-          <p className="text-[11px] text-gray-400">سيتم إسناد النقاط للفريق الفائز تلقائياً…</p>
+          <p className="text-[11px] text-gray-400">سيتم إسناد النقاط تلقائياً…</p>
           <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               initial={{ width: "100%" }}
               animate={{ width: "0%" }}
-              transition={{ duration: 2.5, ease: "linear" }}
+              transition={{ duration: 3, ease: "linear" }}
               style={{ background: winnerInfo?.color ?? "#7c3aed" }}
             />
           </div>
@@ -5164,21 +5199,36 @@ function SecretArenaActivity({
               style={{ borderColor: `${tColor}30`, background: `${tColor}06` }}
             >
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-black" style={{ color: tColor }}>{tName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black" style={{ color: tColor }}>{tName}</p>
+                  {/* Per-team locked score badge */}
+                  {teamResults[t] !== null && (
+                    <span
+                      className="text-[10px] font-black rounded-full px-2 py-0.5 leading-none"
+                      style={{
+                        background: teamResults[t]! > 0 ? `${tColor}20` : "#fee2e2",
+                        color: teamResults[t]! > 0 ? tColor : "#dc2626",
+                        border: `1px solid ${teamResults[t]! > 0 ? `${tColor}40` : "#fca5a5"}`,
+                      }}
+                    >
+                      {teamResults[t]! > 0 ? `✅ +${teamResults[t]} نقطة` : "❌ 0 نقطة"}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-semibold text-gray-400">
                     {count}/{MAX_SECRET_QUESTIONS} سؤال
                   </span>
                   <button
                     type="button"
-                    disabled={count === 0 || !!scoreResult || !isPlaying}
+                    disabled={count === 0 || teamResults[t] !== null || !isPlaying}
                     onClick={() => handleUndo(t)}
                     title="تراجع عن آخر سؤال"
                     className={`flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed${btnFlash ? " undo-btn-pulse" : ""}`}
                     style={{
-                      background: count > 0 && !scoreResult && isPlaying ? `${tColor}18` : "#f3f4f6",
-                      color: count > 0 && !scoreResult && isPlaying ? tColor : "#9ca3af",
-                      border: `1px solid ${count > 0 && !scoreResult && isPlaying ? `${tColor}40` : "#e5e7eb"}`,
+                      background: count > 0 && teamResults[t] === null && isPlaying ? `${tColor}18` : "#f3f4f6",
+                      color: count > 0 && teamResults[t] === null && isPlaying ? tColor : "#9ca3af",
+                      border: `1px solid ${count > 0 && teamResults[t] === null && isPlaying ? `${tColor}40` : "#e5e7eb"}`,
                     }}
                   >
                     ↩
@@ -5212,7 +5262,7 @@ function SecretArenaActivity({
                           {Array.from({ length: zone.to - zone.from + 1 }, (_, i) => {
                             const boxNum = zone.from + i;
                             const isUsed = boxNum <= count;
-                            const isClickable = !isUsed && isPlaying && !scoreResult && count < MAX_SECRET_QUESTIONS;
+                            const isClickable = !isUsed && isPlaying && teamResults[t] === null && count < MAX_SECRET_QUESTIONS;
                             const isNext = boxNum === count + 1;
                             const isFlashing = flashBox === boxNum;
                             const zc = zone.zoneColor;
@@ -5248,7 +5298,7 @@ function SecretArenaActivity({
                 );
               })()}
 
-              {/* 0-pts zone — visible after box 12 is reachable */}
+              {/* 0-pts zone — per-team give-up */}
               <div className="flex gap-1.5 mb-3 items-end">
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="text-[9px] font-black rounded px-1 py-0.5 leading-none whitespace-nowrap" style={{ color: "#6b7280", background: "#6b728018" }}>
@@ -5257,14 +5307,14 @@ function SecretArenaActivity({
                   <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#6b728012", border: "1px dashed #6b728040" }}>
                     <button
                       type="button"
-                      disabled={!!scoreResult || !isPlaying}
-                      onClick={handleSkip}
+                      disabled={teamResults[t] !== null || !isPlaying}
+                      onClick={() => handleGiveUp(t)}
                       className="flex h-8 items-center justify-center rounded-lg px-3 text-xs font-black transition-all active:scale-90 hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed"
                       style={{
-                        background: scoreResult || !isPlaying ? "#f3f4f6" : "#6b728018",
-                        color: scoreResult || !isPlaying ? "#9ca3af" : "#6b7280",
+                        background: teamResults[t] !== null || !isPlaying ? "#f3f4f6" : "#6b728018",
+                        color: teamResults[t] !== null || !isPlaying ? "#9ca3af" : "#6b7280",
                         border: "1.5px solid #6b7280",
-                        cursor: scoreResult || !isPlaying ? "default" : "pointer",
+                        cursor: teamResults[t] !== null || !isPlaying ? "default" : "pointer",
                       }}
                     >
                       ❌ لم يتمكن
@@ -5273,30 +5323,33 @@ function SecretArenaActivity({
                 </div>
               </div>
 
-              {/* Correct answer button */}
-              <button
-                type="button"
-                disabled={count >= MAX_SECRET_QUESTIONS || !!scoreResult || !isPlaying}
-                onClick={() => handleCorrect(t)}
-                className="w-full py-2 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-40"
-                style={{ background: tColor }}
-              >
-                ✅ أجاب صحيح — +{dynamicScore} نقطة
-              </button>
+              {/* Correct answer button — per-team */}
+              {teamResults[t] === null ? (
+                <button
+                  type="button"
+                  disabled={count >= MAX_SECRET_QUESTIONS || !isPlaying}
+                  onClick={() => handleCorrect(t)}
+                  className="w-full py-2 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-40"
+                  style={{ background: tColor }}
+                >
+                  ✅ أجاب صحيح — +{dynamicScore} نقطة
+                </button>
+              ) : (
+                <div
+                  className="w-full py-2 rounded-xl text-sm font-black text-center"
+                  style={{
+                    background: teamResults[t]! > 0 ? `${tColor}15` : "#fee2e220",
+                    color: teamResults[t]! > 0 ? tColor : "#dc2626",
+                    border: `1.5px solid ${teamResults[t]! > 0 ? `${tColor}40` : "#fca5a580"}`,
+                  }}
+                >
+                  {teamResults[t]! > 0 ? `✅ تم تسجيل +${teamResults[t]} نقطة` : "❌ لم يتمكن — 0 نقطة"}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-
-      {/* Skip */}
-      <button
-        type="button"
-        disabled={!isPlaying || !!scoreResult}
-        onClick={handleSkip}
-        className="w-full mt-3 py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-40"
-      >
-        تخطّي بدون نقاط
-      </button>
     </div>
   );
 }

@@ -60,6 +60,7 @@ interface TeamState {
   questionCount: number;
   penalty: boolean;
   penaltyUntil: number;
+  resultScore: number | null; // null = still playing, number = locked final score
 }
 
 interface SecretRoom {
@@ -96,8 +97,8 @@ function getRoomState(room: SecretRoom) {
   return {
     pin: room.pin,
     teams: {
-      A: { name: room.teams.A.name, color: room.teams.A.color, scanned: room.teams.A.scanned, questionCount: room.teams.A.questionCount, penalty: room.teams.A.penalty },
-      B: { name: room.teams.B.name, color: room.teams.B.color, scanned: room.teams.B.scanned, questionCount: room.teams.B.questionCount, penalty: room.teams.B.penalty },
+      A: { name: room.teams.A.name, color: room.teams.A.color, scanned: room.teams.A.scanned, questionCount: room.teams.A.questionCount, penalty: room.teams.A.penalty, resultScore: room.teams.A.resultScore },
+      B: { name: room.teams.B.name, color: room.teams.B.color, scanned: room.teams.B.scanned, questionCount: room.teams.B.questionCount, penalty: room.teams.B.penalty, resultScore: room.teams.B.resultScore },
     },
     currentAsker: room.currentAsker,
     totalQuestions: room.totalQuestions,
@@ -192,8 +193,8 @@ export function setupSecretGameSocket(io: Server) {
           pin,
           categoryId: data.categoryId,
           teams: {
-            A: { name: data.teamAName || "الفريق الأحمر", color: data.teamAColor || "#dc2626", secretId: itemA.id, secretName: itemA.nameAr, secretImage: itemA.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 },
-            B: { name: data.teamBName || "الفريق الأزرق", color: data.teamBColor || "#2563eb", secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 },
+            A: { name: data.teamAName || "الفريق الأحمر", color: data.teamAColor || "#dc2626", secretId: itemA.id, secretName: itemA.nameAr, secretImage: itemA.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0, resultScore: null },
+            B: { name: data.teamBName || "الفريق الأزرق", color: data.teamBColor || "#2563eb", secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0, resultScore: null },
           },
           currentAsker: "B",
           hideDuration: 30,
@@ -333,8 +334,8 @@ export function setupSecretGameSocket(io: Server) {
         if (items.length < 2) { cb?.({ error: "لا توجد عناصر كافية" }); return; }
         const [itemA, itemB] = items;
         markUsed(userKey, room.categoryId, [itemA.id, itemB.id]);
-        room.teams.A = { ...room.teams.A, secretId: itemA.id, secretName: itemA.nameAr, secretImage: itemA.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 };
-        room.teams.B = { ...room.teams.B, secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 };
+        room.teams.A = { ...room.teams.A, secretId: itemA.id, secretName: itemA.nameAr, secretImage: itemA.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0, resultScore: null };
+        room.teams.B = { ...room.teams.B, secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0, resultScore: null };
         room.currentAsker = "B";
         room.totalQuestions = 0;
         room.phase = "waiting_scan";
@@ -421,6 +422,47 @@ export function setupSecretGameSocket(io: Server) {
       io.to(`secret:${room.pin}`).emit("secret:state", state);
       logger.info({ pin: room.pin, team: data.team, count: team.questionCount }, "Secret team question undone");
       cb?.({ ok: true, questionCount: team.questionCount });
+    });
+
+    socket.on("secret:team_result", (
+      data: { pin: string; team: "A" | "B"; score: number },
+      cb?: (res: { ok?: boolean; error?: string }) => void,
+    ) => {
+      const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
+      const room = rooms.get(pin);
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
+      if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد أو انتهت" }); return; }
+      if (room.teams[data.team].resultScore !== null) { cb?.({ error: "تم تسجيل نتيجة هذا الفريق مسبقاً" }); return; }
+
+      room.teams[data.team].resultScore = data.score;
+      logger.info({ pin: room.pin, team: data.team, score: data.score }, "Secret team result recorded");
+
+      // Both teams done → auto-resolve the round
+      if (room.teams.A.resultScore !== null && room.teams.B.resultScore !== null) {
+        const scoreA = room.teams.A.resultScore;
+        const scoreB = room.teams.B.resultScore;
+        const winner = scoreA > scoreB ? "A" : scoreB > scoreA ? "B" : null;
+        const winnerScore = winner ? (winner === "A" ? scoreA : scoreB) : 0;
+        room.phase = "ended";
+        room.winner = winner;
+        io.to(`secret:${room.pin}`).emit("secret:game_over", {
+          winner,
+          winnerName: winner ? room.teams[winner].name : "تعادل",
+          score: winnerScore,
+          scores: { A: scoreA, B: scoreB },
+          secrets: {
+            A: { name: room.teams.A.secretName, image: room.teams.A.secretImage },
+            B: { name: room.teams.B.secretName, image: room.teams.B.secretImage },
+          },
+          state: getRoomState(room),
+        });
+        logger.info({ pin: room.pin, winner, scoreA, scoreB }, "Secret game ended — both teams submitted results");
+      } else {
+        io.to(`secret:${room.pin}`).emit("secret:state", getRoomState(room));
+      }
+
+      cb?.({ ok: true });
     });
 
     socket.on("secret:award_score", (
