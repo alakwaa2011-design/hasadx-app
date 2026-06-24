@@ -4802,16 +4802,16 @@ function SecretArenaActivity({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boxCountA, boxCountB, isPlaying]);
 
-  const handleBoxClick = (team: "A" | "B") => {
+  const handleBoxClick = (team: "A" | "B", targetBox: number) => {
     if (scoreResult || !isPlaying) return;
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
-    if (count >= MAX_SECRET_QUESTIONS) return;
-    // Optimistic local update for snappy UX (only in playing phase)
-    setCount(count + 1);
+    if (count >= MAX_SECRET_QUESTIONS || targetBox <= count) return;
+    // Optimistic local update for snappy UX
+    setCount(targetBox);
     socketRef.current?.emit(
       "secret:team_question",
-      { pin: gameState!.pin, team },
+      { pin: gameState!.pin, team, targetCount: targetBox },
       (res: { ok?: boolean; questionCount?: number; error?: string }) => {
         if (res.error) {
           // Revert optimistic update on server rejection
@@ -5215,22 +5215,23 @@ function SecretArenaActivity({
                           {Array.from({ length: zone.to - zone.from + 1 }, (_, i) => {
                             const boxNum = zone.from + i;
                             const isUsed = boxNum <= count;
-                            const isNext = boxNum === count + 1 && count < MAX_SECRET_QUESTIONS;
+                            const isClickable = !isUsed && isPlaying && !scoreResult && count < MAX_SECRET_QUESTIONS;
+                            const isNext = boxNum === count + 1;
                             const isFlashing = flashBox === boxNum;
                             return (
                               <button
                                 key={boxNum}
                                 type="button"
-                                disabled={!isNext || !isPlaying}
-                                onClick={() => { if (isNext) handleBoxClick(t); }}
+                                disabled={!isClickable}
+                                onClick={() => handleBoxClick(t, boxNum)}
                                 className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all${isFlashing ? " undo-box-flash" : ""}`}
                                 style={{
                                   background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
-                                  color: isUsed ? "#fff" : isNext ? tColor : "#9ca3af",
-                                  border: `1.5px solid ${isUsed ? tColor : isNext ? tColor : "#e5e7eb"}`,
+                                  color: isUsed ? "#fff" : isClickable ? tColor : "#9ca3af",
+                                  border: `1.5px solid ${isUsed ? tColor : isClickable ? `${tColor}60` : "#e5e7eb"}`,
                                   transform: isNext ? "scale(1.1)" : "scale(1)",
-                                  cursor: isNext ? "pointer" : "default",
-                                  opacity: !isUsed && !isNext ? 0.45 : 1,
+                                  cursor: isClickable ? "pointer" : "default",
+                                  opacity: !isUsed && !isClickable ? 0.35 : 1,
                                   boxShadow: isNext ? `0 0 0 2px ${tColor}30` : "none",
                                 }}
                               >

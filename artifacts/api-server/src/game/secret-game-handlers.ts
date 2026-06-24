@@ -332,7 +332,7 @@ export function setupSecretGameSocket(io: Server) {
     });
 
     socket.on("secret:team_question", (
-      data: { pin: string; team: "A" | "B" },
+      data: { pin: string; team: "A" | "B"; targetCount?: number },
       cb?: (res: { ok?: boolean; questionCount?: number; error?: string }) => void,
     ) => {
       const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
@@ -345,8 +345,12 @@ export function setupSecretGameSocket(io: Server) {
         cb?.({ error: "وصل الفريق للحد الأقصى" });
         return;
       }
-      team.questionCount += 1;
-      room.totalQuestions += 1;
+      const target = data.targetCount !== undefined
+        ? Math.min(Math.max(data.targetCount, team.questionCount + 1), room.maxQuestions)
+        : team.questionCount + 1;
+      const delta = target - team.questionCount;
+      team.questionCount = target;
+      room.totalQuestions += delta;
       const state = getRoomState(room);
       io.to(`secret:${room.pin}`).emit("secret:state", state);
       logger.info({ pin: room.pin, team: data.team, count: team.questionCount }, "Secret team question recorded");
