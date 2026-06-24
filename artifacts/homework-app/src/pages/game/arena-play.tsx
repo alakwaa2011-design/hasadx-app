@@ -1013,6 +1013,35 @@ export default function ArenaPlay() {
                   </span>
                 </div>
 
+                {/* Rules reminder for اكتشف السر categories */}
+                {isSecret && (
+                  <div
+                    dir="rtl"
+                    style={{
+                      margin: "0 10px 6px",
+                      padding: "6px 8px",
+                      borderRadius: "10px",
+                      background: "#f5f3ff",
+                      border: "1px solid #ddd6fe",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "3px",
+                    }}
+                  >
+                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>قواعد اكتشف السر</p>
+                    {[
+                      { icon: "🔄", text: "لا تعيد سؤالاً طرحه الفريق الآخر" },
+                      { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
+                      { icon: "✌️", text: "ذكر الاسم خطأً يمنح الخصم سؤالَين" },
+                    ].map(({ icon, text }) => (
+                      <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
+                        <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
+                        <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Buttons — 2 cols × N rows */}
                 <div
                   style={{
@@ -4889,12 +4918,32 @@ function SecretArenaActivity({
   return (
     <div className="w-full" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-purple-500" />
           <span className="font-black text-gray-800 text-lg">اكتشف السر</span>
         </div>
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
+      </div>
+
+      {/* Rules panel */}
+      <div
+        className="rounded-xl border mb-4"
+        style={{ background: "#f5f3ff", borderColor: "#ddd6fe", padding: "8px 12px" }}
+      >
+        <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 قواعد اكتشف السر</p>
+        <div className="flex flex-col gap-1">
+          {[
+            { icon: "🔄", text: "لا تعيد سؤالاً سبق للفريق الآخر طرحه" },
+            { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
+            { icon: "✌️", text: "ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان" },
+          ].map(({ icon, text }) => (
+            <div key={text} className="flex gap-2 items-start">
+              <span className="text-[11px] leading-4 shrink-0">{icon}</span>
+              <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* QR codes — one team at a time */}
