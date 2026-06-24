@@ -2,7 +2,7 @@ import { Server, Socket } from "socket.io";
 import { createHmac } from "crypto";
 import { logger } from "../lib/logger";
 import { db, secretGameCategoriesTable, secretGameItemsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, notInArray, and } from "drizzle-orm";
 
 async function categoryAccessible(categoryId: number, teacherId?: number): Promise<boolean> {
   const [cat] = await db
@@ -108,14 +108,45 @@ function getRoomState(room: SecretRoom) {
   };
 }
 
-async function pickRandomItems(categoryId: number, count: number) {
-  const items = await db
-    .select()
-    .from(secretGameItemsTable)
+// Per-user used items: key = teacherId (number) or socket.id (string)
+const usedItemsTracking = new Map<number | string, Map<number, Set<number>>>();
+
+function getUsedIds(userKey: number | string, categoryId: number): number[] {
+  return Array.from(usedItemsTracking.get(userKey)?.get(categoryId) ?? []);
+}
+
+function markUsed(userKey: number | string, categoryId: number, ids: number[]): void {
+  if (!usedItemsTracking.has(userKey)) usedItemsTracking.set(userKey, new Map());
+  const byCategory = usedItemsTracking.get(userKey)!;
+  if (!byCategory.has(categoryId)) byCategory.set(categoryId, new Set());
+  const used = byCategory.get(categoryId)!;
+  for (const id of ids) used.add(id);
+}
+
+function resetUsed(userKey: number | string, categoryId: number): void {
+  usedItemsTracking.get(userKey)?.delete(categoryId);
+}
+
+async function pickRandomItems(
+  categoryId: number,
+  count: number,
+  excludeIds: number[] = [],
+) {
+  // Try picking from items NOT yet used
+  const available = excludeIds.length > 0
+    ? await db.select().from(secretGameItemsTable)
+        .where(and(eq(secretGameItemsTable.categoryId, categoryId), notInArray(secretGameItemsTable.id, excludeIds)))
+        .orderBy(sql`RANDOM()`).limit(count)
+    : await db.select().from(secretGameItemsTable)
+        .where(eq(secretGameItemsTable.categoryId, categoryId))
+        .orderBy(sql`RANDOM()`).limit(count);
+
+  if (available.length >= count) return available;
+
+  // All items exhausted — reset and pick freely
+  return db.select().from(secretGameItemsTable)
     .where(eq(secretGameItemsTable.categoryId, categoryId))
-    .orderBy(sql`RANDOM()`)
-    .limit(count);
-  return items;
+    .orderBy(sql`RANDOM()`).limit(count);
 }
 
 export function setupSecretGameSocket(io: Server) {
@@ -140,13 +171,21 @@ export function setupSecretGameSocket(io: Server) {
           cb?.({ error: "لا يمكن الوصول إلى هذه الفئة" });
           return;
         }
-        const items = await pickRandomItems(data.categoryId, 2);
+        const userKey: number | string = teacherId ?? socket.id;
+        const excludeIds = getUsedIds(userKey, data.categoryId);
+        let items = await pickRandomItems(data.categoryId, 2, excludeIds);
+        // If exhausted, reset history and retry
+        if (items.length < 2) {
+          resetUsed(userKey, data.categoryId);
+          items = await pickRandomItems(data.categoryId, 2, []);
+        }
         if (items.length < 2) {
           cb?.({ error: "لا توجد عناصر كافية في هذه الفئة" });
           return;
         }
         const pin = uniquePin();
         const [itemA, itemB] = items;
+        markUsed(userKey, data.categoryId, [itemA.id, itemB.id]);
         const tokenA = generateRevealToken(pin, "A", itemA.id);
         const tokenB = generateRevealToken(pin, "B", itemB.id);
         const room: SecretRoom = {
@@ -283,9 +322,17 @@ export function setupSecretGameSocket(io: Server) {
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
       if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
       try {
-        const items = await pickRandomItems(room.categoryId, 2);
+        const teacherId: number | undefined = (socket.request as any).session?.teacherId;
+        const userKey: number | string = teacherId ?? socket.id;
+        const excludeIds = getUsedIds(userKey, room.categoryId);
+        let items = await pickRandomItems(room.categoryId, 2, excludeIds);
+        if (items.length < 2) {
+          resetUsed(userKey, room.categoryId);
+          items = await pickRandomItems(room.categoryId, 2, []);
+        }
         if (items.length < 2) { cb?.({ error: "لا توجد عناصر كافية" }); return; }
         const [itemA, itemB] = items;
+        markUsed(userKey, room.categoryId, [itemA.id, itemB.id]);
         room.teams.A = { ...room.teams.A, secretId: itemA.id, secretName: itemA.nameAr, secretImage: itemA.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 };
         room.teams.B = { ...room.teams.B, secretId: itemB.id, secretName: itemB.nameAr, secretImage: itemB.imageUrl, scanned: false, questionCount: 0, penalty: false, penaltyUntil: 0 };
         room.currentAsker = "B";
