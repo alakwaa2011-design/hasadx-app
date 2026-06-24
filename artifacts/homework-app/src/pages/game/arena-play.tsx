@@ -90,20 +90,26 @@ const SLOTS: ArenaCardSlot[] = [1, 2];
 /** Returns the difficulty tiers available for a given sub-category.
  *  Static categories: always [200,400,600].
  *  DB-backed categories: add 800 only when the organizer explicitly enables it
- *  AND the sub-category has 800-pt questions. */
+ *  AND the sub-category has 800-pt questions.
+ *  Secret categories (اكتشف السر): only difficulty 200 has questions, so [200]
+ *  is returned; higher tiers with no questions are filtered out. */
 function subDifficulties(
   subId: string,
   sub: ArenaSubCategory,
   show800 = false,
 ): ArenaDifficulty[] {
-  if (
+  const allDiffs: ArenaDifficulty[] =
     show800 &&
     subId.startsWith("db-") &&
     (sub.questions[800]?.length ?? 0) > 0
-  ) {
-    return [200, 400, 600, 800];
-  }
-  return BASE_POINT_VALUES;
+      ? [200, 400, 600, 800]
+      : BASE_POINT_VALUES;
+  return allDiffs.filter((pts) => (sub.questions[pts]?.length ?? 0) > 0);
+}
+
+/** True when a sub-category is of "اكتشف السر" (secret) type. */
+function isSecretSubCategory(sub: ArenaSubCategory): boolean {
+  return sub.questions[200]?.[0]?.type === "secret";
 }
 
 type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
@@ -921,6 +927,7 @@ export default function ArenaPlay() {
               sub.cover?.color ?? sec?.cover?.color ?? "#2d5e3f";
             const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
             const diffs = subDifficulties(subId, sub, show800);
+            const isSecret = isSecretSubCategory(sub);
 
             return (
               <motion.div
@@ -1097,7 +1104,7 @@ export default function ArenaPlay() {
                                 }}
                               />
                             )}
-                            <span className="relative">{used ? "—" : pts}</span>
+                            <span className="relative">{used ? "—" : isSecret ? "▶" : pts}</span>
                           </motion.button>
                         ))}
                       </React.Fragment>
