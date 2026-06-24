@@ -5270,6 +5270,31 @@ function SecretArenaActivity({
                 );
               })()}
 
+              {/* 0-pts zone — visible after box 12 is reachable */}
+              <div className="flex gap-1.5 mb-3 items-end">
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-[9px] font-black rounded px-1 py-0.5 leading-none whitespace-nowrap" style={{ color: "#6b7280", background: "#6b728018" }}>
+                    0 نقطة
+                  </span>
+                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#6b728012", border: "1px dashed #6b728040" }}>
+                    <button
+                      type="button"
+                      disabled={!!scoreResult || !isPlaying}
+                      onClick={handleSkip}
+                      className="flex h-8 items-center justify-center rounded-lg px-3 text-xs font-black transition-all active:scale-90 hover:scale-105 disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={{
+                        background: scoreResult || !isPlaying ? "#f3f4f6" : "#6b728018",
+                        color: scoreResult || !isPlaying ? "#9ca3af" : "#6b7280",
+                        border: "1.5px solid #6b7280",
+                        cursor: scoreResult || !isPlaying ? "default" : "pointer",
+                      }}
+                    >
+                      ❌ لم يتمكن
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Correct answer button */}
               <button
                 type="button"
