@@ -4757,6 +4757,27 @@ function SecretArenaActivity({
     );
   };
 
+  const handleUndo = (team: "A" | "B") => {
+    if (scoreResult || !isPlaying || !gameState) return;
+    const count = team === "A" ? boxCountA : boxCountB;
+    const setCount = team === "A" ? setBoxCountA : setBoxCountB;
+    if (count <= 0) return;
+    // Optimistic local update
+    setCount(count - 1);
+    socketRef.current?.emit(
+      "secret:undo_question",
+      { pin: gameState.pin, team },
+      (res: { ok?: boolean; questionCount?: number; error?: string }) => {
+        if (res.error) {
+          // Revert on server rejection
+          setCount(count);
+        } else if (res.ok && res.questionCount !== undefined) {
+          setCount(res.questionCount);
+        }
+      },
+    );
+  };
+
   const handleSkip = () => {
     if (!isPlaying || !gameState) return;
     socketRef.current?.emit(
@@ -4938,9 +4959,25 @@ function SecretArenaActivity({
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-black" style={{ color: tColor }}>{tName}</p>
-                <span className="text-[11px] font-semibold text-gray-400">
-                  {count}/{MAX_SECRET_QUESTIONS} سؤال
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold text-gray-400">
+                    {count}/{MAX_SECRET_QUESTIONS} سؤال
+                  </span>
+                  <button
+                    type="button"
+                    disabled={count === 0 || !!scoreResult || !isPlaying}
+                    onClick={() => handleUndo(t)}
+                    title="تراجع عن آخر سؤال"
+                    className="flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{
+                      background: count > 0 && !scoreResult && isPlaying ? `${tColor}18` : "#f3f4f6",
+                      color: count > 0 && !scoreResult && isPlaying ? tColor : "#9ca3af",
+                      border: `1px solid ${count > 0 && !scoreResult && isPlaying ? `${tColor}40` : "#e5e7eb"}`,
+                    }}
+                  >
+                    ↩
+                  </button>
+                </div>
               </div>
 
               {/* 10 numbered boxes — split into scoring zones */}

@@ -353,6 +353,25 @@ export function setupSecretGameSocket(io: Server) {
       cb?.({ ok: true, questionCount: team.questionCount });
     });
 
+    socket.on("secret:undo_question", (
+      data: { pin: string; team: "A" | "B" },
+      cb?: (res: { ok?: boolean; questionCount?: number; error?: string }) => void,
+    ) => {
+      const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
+      const room = rooms.get(pin);
+      if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
+      if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد" }); return; }
+      const team = room.teams[data.team];
+      if (team.questionCount <= 0) { cb?.({ error: "لا يوجد ما يمكن التراجع عنه" }); return; }
+      team.questionCount -= 1;
+      room.totalQuestions = Math.max(0, room.totalQuestions - 1);
+      const state = getRoomState(room);
+      io.to(`secret:${room.pin}`).emit("secret:state", state);
+      logger.info({ pin: room.pin, team: data.team, count: team.questionCount }, "Secret team question undone");
+      cb?.({ ok: true, questionCount: team.questionCount });
+    });
+
     socket.on("secret:award_score", (
       data: { pin: string; winner: "A" | "B" | null },
       cb?: (res: { ok?: boolean; score?: number; error?: string }) => void,
