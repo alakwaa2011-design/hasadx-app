@@ -4737,7 +4737,14 @@ function SecretArenaActivity({
   }>({ A: null, B: null });
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
-  const revealTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Auto-hide inline reveal after 5 seconds
+  React.useEffect(() => {
+    const hasReveal = inlineReveal.A !== null || inlineReveal.B !== null;
+    if (!hasReveal) return;
+    const timer = setTimeout(() => setInlineReveal({ A: null, B: null }), 5000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlineReveal.A !== null, inlineReveal.B !== null]);
 
   const BASE = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -5146,20 +5153,15 @@ function SecretArenaActivity({
                           teamColor: string;
                           teamName: string;
                         };
-                        const team = qrTeam;
                         setInlineReveal((p) => ({
                           ...p,
-                          [team]: {
+                          [qrTeam]: {
                             name: data.secret.name,
                             image: data.secret.image,
                             teamColor: data.teamColor,
                             teamName: data.teamName,
                           },
                         }));
-                        if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
-                        revealTimerRef.current = setTimeout(() => {
-                          setInlineReveal((p) => ({ ...p, [team]: null }));
-                        }, 5000);
                       } catch { /* silent */ }
                     }}
                     className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-80 active:scale-95"
