@@ -4780,28 +4780,6 @@ function SecretArenaActivity({
 
   const isPlaying = gameState?.phase === "playing";
 
-  // Auto-zero: only when playing — if any team reaches the question limit, end the round with 0 points
-  const autoZeroFiredRef = React.useRef(false);
-  React.useEffect(() => {
-    if (scoreResult || autoZeroFiredRef.current || !gameState || !isPlaying) return;
-    if (boxCountA < MAX_SECRET_QUESTIONS && boxCountB < MAX_SECRET_QUESTIONS) return;
-    autoZeroFiredRef.current = true;
-    const pin = gameState.pin;
-    const zeroTeam: "A" | "B" = boxCountA >= MAX_SECRET_QUESTIONS ? "A" : "B";
-    const timer = setTimeout(() => {
-      socketRef.current?.emit(
-        "secret:award_score",
-        { pin, winner: null },
-        (res: { ok?: boolean; score?: number; error?: string }) => {
-          if (res.error) { autoZeroFiredRef.current = false; return; }
-          setScoreResult({ team: zeroTeam, score: 0 });
-          setTimeout(() => onAutoResolveRef.current?.(null, 0), 2000);
-        },
-      );
-    }, 1200);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxCountA, boxCountB, isPlaying]);
 
   const handleBoxClick = (team: "A" | "B", targetBox: number) => {
     if (scoreResult || !isPlaying) return;
