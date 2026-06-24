@@ -5189,13 +5189,12 @@ function SecretArenaActivity({
                 </div>
               </div>
 
-              {/* 10 numbered boxes — split into scoring zones */}
+              {/* 12 numbered boxes — split into scoring zones */}
               {(() => {
                 const zones: { label: string; from: number; to: number; zoneColor: string }[] = [
-                  { label: "600 نقطة", from: 1, to: 3, zoneColor: "#16a34a" },
-                  { label: "400 نقطة", from: 4, to: 6, zoneColor: "#ca8a04" },
-                  { label: "200 نقطة", from: 7, to: 9, zoneColor: "#dc2626" },
-                  { label: "0 نقطة",   from: 10, to: 10, zoneColor: "#6b7280" },
+                  { label: "600 نقطة", from: 1,  to: 10, zoneColor: "#16a34a" },
+                  { label: "400 نقطة", from: 11, to: 11, zoneColor: "#ca8a04" },
+                  { label: "200 نقطة", from: 12, to: 12, zoneColor: "#dc2626" },
                 ];
                 return (
                   <div className="flex gap-1.5 mb-3 items-end">
