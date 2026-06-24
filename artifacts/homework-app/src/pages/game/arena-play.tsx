@@ -4653,6 +4653,8 @@ function SecretArenaActivity({
   const [boxCountA, setBoxCountA] = React.useState(0);
   const [boxCountB, setBoxCountB] = React.useState(0);
   const [scoreResult, setScoreResult] = React.useState<{ team: "A" | "B"; score: number } | null>(null);
+  const [undoFlashBox, setUndoFlashBox] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
+  const [undoBtnFlash, setUndoBtnFlash] = React.useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
 
@@ -4762,6 +4764,11 @@ function SecretArenaActivity({
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
     if (count <= 0) return;
+    // Flash the box that is being un-filled and pulse the undo button
+    setUndoFlashBox((prev) => ({ ...prev, [team]: count }));
+    setUndoBtnFlash((prev) => ({ ...prev, [team]: true }));
+    setTimeout(() => setUndoFlashBox((prev) => ({ ...prev, [team]: null })), 420);
+    setTimeout(() => setUndoBtnFlash((prev) => ({ ...prev, [team]: false })), 380);
     // Optimistic local update
     setCount(count - 1);
     socketRef.current?.emit(
@@ -4950,6 +4957,8 @@ function SecretArenaActivity({
           const tColor = tInfo?.color ?? (t === "A" ? "#dc2626" : "#2563eb");
           const tName = gameState.teams[t].name;
           const dynamicScore = calcSecretScore(count);
+          const flashBox = t === "A" ? undoFlashBox.A : undoFlashBox.B;
+          const btnFlash = t === "A" ? undoBtnFlash.A : undoBtnFlash.B;
 
           return (
             <div
@@ -4968,7 +4977,7 @@ function SecretArenaActivity({
                     disabled={count === 0 || !!scoreResult || !isPlaying}
                     onClick={() => handleUndo(t)}
                     title="تراجع عن آخر سؤال"
-                    className="flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className={`flex items-center justify-center w-6 h-6 rounded-md text-xs font-bold transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed${btnFlash ? " undo-btn-pulse" : ""}`}
                     style={{
                       background: count > 0 && !scoreResult && isPlaying ? `${tColor}18` : "#f3f4f6",
                       color: count > 0 && !scoreResult && isPlaying ? tColor : "#9ca3af",
@@ -5008,13 +5017,14 @@ function SecretArenaActivity({
                             const boxNum = zone.from + i;
                             const isUsed = boxNum <= count;
                             const isNext = boxNum === count + 1 && count < MAX_SECRET_QUESTIONS;
+                            const isFlashing = flashBox === boxNum;
                             return (
                               <button
                                 key={boxNum}
                                 type="button"
                                 disabled={!isNext || !isPlaying}
                                 onClick={() => { if (isNext) handleBoxClick(t); }}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all${isFlashing ? " undo-box-flash" : ""}`}
                                 style={{
                                   background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
                                   color: isUsed ? "#fff" : isNext ? tColor : "#9ca3af",
