@@ -1032,7 +1032,7 @@ export default function ArenaPlay() {
                     {[
                       { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
                       { icon: "🔢", text: "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله" },
-                      { icon: "🏆", text: "عند التخمين الصحيح اضغط "أجاب صحيح"" },
+                      { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح"' },
                     ].map(({ icon, text }) => (
                       <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
                         <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
