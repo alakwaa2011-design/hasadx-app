@@ -1546,6 +1546,7 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
   /* Only count 200/400/600 in the badge — 800 is optional/bonus */
   const counts = (sub.questions[200]?.length ?? 0) + (sub.questions[400]?.length ?? 0) + (sub.questions[600]?.length ?? 0);
   const has800 = (sub.questions[800]?.length ?? 0) > 0 && sub.id.startsWith("db-");
+  const isSecret = sub.questions[200]?.[0]?.type === "secret";
   return (
     <div
       className={`rounded-2xl overflow-hidden border-2 transition-all duration-300 relative flex flex-col ${dimmed ? "opacity-35 scale-[0.98]" : ""}`}
@@ -1610,6 +1611,16 @@ function CategoryCard({ sub, cover, teams, takenByIdx, onToggle, editable, onEdi
             <div className="px-2.5 py-1 rounded-full font-black text-[11px] sm:text-xs shadow-xl" style={{ background: winningTeam.color, color: "white" }}>
               {winningTeam.emoji} {winningTeam.name}
             </div>
+          </div>
+        )}
+
+        {/* Secret-discovery badge — shift down when edit button occupies top-start corner */}
+        {isSecret && (
+          <div
+            className={`absolute px-1.5 py-0.5 rounded-full text-[9px] font-black ${editable ? "top-8 start-1.5" : "top-1.5 start-1.5"}`}
+            style={{ background: "#7c3aed", color: "white", boxShadow: "0 2px 8px rgba(124,58,237,0.5)" }}
+          >
+            🔍 اكتشف السر
           </div>
         )}
       </div>
