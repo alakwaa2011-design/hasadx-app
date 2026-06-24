@@ -5044,19 +5044,26 @@ function SecretArenaActivity({
       {/* QR codes — one team at a time */}
       {(gameState.phase === "waiting_scan" || !gameState.teams.A.scanned || !gameState.teams.B.scanned) && (
         <div className="mb-4">
-          {/* Toggle button */}
+          {/* Toggle button — prominent */}
           <button
             type="button"
             onClick={() => setShowQr((v) => !v)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold mb-2 transition-all"
-            style={{
-              background: showQr ? "#f3f4f6" : "#f3f4f6",
-              border: "1.5px solid #e5e7eb",
+            className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-base transition-all active:scale-95 shadow-md mb-2"
+            style={showQr ? {
+              background: "#f3f4f6",
+              border: "2px solid #e5e7eb",
               color: "#6b7280",
+            } : {
+              background: "linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)",
+              border: "2px solid transparent",
+              color: "#fff",
+              boxShadow: "0 4px 18px rgba(124,58,237,0.35)",
             }}
           >
-            <span>📷 {showQr ? "إخفاء الباركود" : "عرض الباركود للمسح"}</span>
-            <span>{showQr ? "▲" : "▼"}</span>
+            <span className="text-2xl leading-none">{showQr ? "✕" : "📷"}</span>
+            <span className="text-base tracking-wide">
+              {showQr ? "إخفاء الباركود" : "عرض الباركود للمسح"}
+            </span>
           </button>
 
           {showQr && (
