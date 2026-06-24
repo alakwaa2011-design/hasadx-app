@@ -156,6 +156,7 @@ export default function ArenaPlay() {
   const [showReport, setShowReport] = useState(false);
   const [friendActive, setFriendActive] = useState(false);
   const [friendSeconds, setFriendSeconds] = useState(60);
+  const [openInfoSub, setOpenInfoSub] = useState<string | null>(null);
   const [shuraVotes, setShuraVotes] = useState<{ a: number; b: number }>({
     a: 0,
     b: 0,
@@ -1013,44 +1014,69 @@ export default function ArenaPlay() {
                   </span>
                 </div>
 
-                {/* Rules + How-to for اكتشف السر categories */}
+                {/* Info toggle button for اكتشف السر categories */}
                 {isSecret && (
-                  <div
-                    dir="rtl"
-                    style={{
-                      margin: "0 10px 6px",
-                      padding: "6px 8px",
-                      borderRadius: "10px",
-                      background: "#f5f3ff",
-                      border: "1px solid #ddd6fe",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "3px",
-                    }}
-                  >
-                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>🎮 طريقة اللعب</p>
-                    {[
-                      { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
-                      { icon: "🔢", text: "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله" },
-                      { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح"' },
-                    ].map(({ icon, text }) => (
-                      <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-                        <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
-                        <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
+                  <div dir="rtl" style={{ margin: "0 10px 6px" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenInfoSub((prev) => (prev === sub.id ? null : sub.id));
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "3px 8px",
+                        borderRadius: "8px",
+                        background: openInfoSub === sub.id ? "#ede9fe" : "#f5f3ff",
+                        border: "1px solid #ddd6fe",
+                        cursor: "pointer",
+                        fontSize: "9px",
+                        fontWeight: 700,
+                        color: "#7c3aed",
+                      }}
+                    >
+                      <span style={{ fontSize: "11px" }}>ℹ️</span>
+                      <span>{openInfoSub === sub.id ? "إخفاء التعليمات" : "طريقة اللعب والقواعد"}</span>
+                    </button>
+                    {openInfoSub === sub.id && (
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          padding: "6px 8px",
+                          borderRadius: "10px",
+                          background: "#f5f3ff",
+                          border: "1px solid #ddd6fe",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "3px",
+                        }}
+                      >
+                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>🎮 طريقة اللعب</p>
+                        {[
+                          { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
+                          { icon: "🔢", text: "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله" },
+                          { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح"' },
+                        ].map(({ icon, text }) => (
+                          <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
+                            <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
+                            <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
+                          </div>
+                        ))}
+                        <div style={{ borderTop: "1px solid #ddd6fe", margin: "4px 0 2px" }} />
+                        <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>📋 القواعد</p>
+                        {[
+                          { icon: "🔄", text: "لا تعيد سؤالاً طرحه الفريق الآخر" },
+                          { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
+                          { icon: "✌️", text: "ذكر الاسم خطأً يمنح الخصم سؤالَين" },
+                        ].map(({ icon, text }) => (
+                          <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
+                            <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
+                            <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    <div style={{ borderTop: "1px solid #ddd6fe", margin: "4px 0 2px" }} />
-                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>📋 القواعد</p>
-                    {[
-                      { icon: "🔄", text: "لا تعيد سؤالاً طرحه الفريق الآخر" },
-                      { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
-                      { icon: "✌️", text: "ذكر الاسم خطأً يمنح الخصم سؤالَين" },
-                    ].map(({ icon, text }) => (
-                      <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
-                        <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
-                        <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
-                      </div>
-                    ))}
+                    )}
                   </div>
                 )}
 
@@ -4703,6 +4729,7 @@ function SecretArenaActivity({
   const [scoreResult, setScoreResult] = React.useState<{ team: "A" | "B"; score: number } | null>(null);
   const [undoFlashBox, setUndoFlashBox] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
   const [undoBtnFlash, setUndoBtnFlash] = React.useState<{ A: boolean; B: boolean }>({ A: false, B: false });
+  const [showInfo, setShowInfo] = React.useState(false);
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
 
@@ -4938,39 +4965,55 @@ function SecretArenaActivity({
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>
 
-      {/* How-to + Rules panel */}
-      <div
-        className="rounded-xl border mb-4"
-        style={{ background: "#f5f3ff", borderColor: "#ddd6fe", padding: "8px 12px" }}
-      >
-        <p className="text-[10px] font-black text-purple-700 mb-1.5">🎮 طريقة اللعب</p>
-        <div className="flex flex-col gap-1 mb-2">
-          {[
-            { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
-            { icon: "🔢", text: "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله" },
-            { icon: "🏆", text: "عند التخمين الصحيح اضغط \"أجاب صحيح\" للفريق الفائز" },
-            { icon: "💡", text: "النقاط: 1-3 أسئلة = 600 | 4-6 = 400 | 7-9 = 200 | 10 = 0" },
-          ].map(({ icon, text }) => (
-            <div key={text} className="flex gap-2 items-start">
-              <span className="text-[11px] leading-4 shrink-0">{icon}</span>
-              <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+      {/* Info toggle button */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowInfo((v) => !v)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold transition-colors"
+          style={{
+            background: showInfo ? "#ede9fe" : "#f5f3ff",
+            borderColor: "#ddd6fe",
+            color: "#7c3aed",
+          }}
+        >
+          <span>ℹ️</span>
+          <span>{showInfo ? "إخفاء التعليمات" : "طريقة اللعب والقواعد"}</span>
+        </button>
+        {showInfo && (
+          <div
+            className="mt-2 rounded-xl border"
+            style={{ background: "#f5f3ff", borderColor: "#ddd6fe", padding: "8px 12px" }}
+          >
+            <p className="text-[10px] font-black text-purple-700 mb-1.5">🎮 طريقة اللعب</p>
+            <div className="flex flex-col gap-1 mb-2">
+              {[
+                { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
+                { icon: "🔢", text: "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله" },
+                { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح" للفريق الفائز' },
+                { icon: "💡", text: "النقاط: 1-3 أسئلة = 600 | 4-6 = 400 | 7-9 = 200 | 10 = 0" },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex gap-2 items-start">
+                  <span className="text-[11px] leading-4 shrink-0">{icon}</span>
+                  <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="border-t mb-2" style={{ borderColor: "#ddd6fe" }} />
-        <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 القواعد</p>
-        <div className="flex flex-col gap-1">
-          {[
-            { icon: "🔄", text: "لا تعيد سؤالاً سبق للفريق الآخر طرحه" },
-            { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
-            { icon: "✌️", text: "ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان" },
-          ].map(({ icon, text }) => (
-            <div key={text} className="flex gap-2 items-start">
-              <span className="text-[11px] leading-4 shrink-0">{icon}</span>
-              <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+            <div className="border-t mb-2" style={{ borderColor: "#ddd6fe" }} />
+            <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 القواعد</p>
+            <div className="flex flex-col gap-1">
+              {[
+                { icon: "🔄", text: "لا تعيد سؤالاً سبق للفريق الآخر طرحه" },
+                { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
+                { icon: "✌️", text: "ذكر الاسم صراحةً وكان خطأً → الخصم يحق له سؤالان" },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex gap-2 items-start">
+                  <span className="text-[11px] leading-4 shrink-0">{icon}</span>
+                  <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* QR codes — one team at a time */}
