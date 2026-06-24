@@ -1013,7 +1013,7 @@ export default function ArenaPlay() {
                   </span>
                 </div>
 
-                {/* Rules reminder for اكتشف السر categories */}
+                {/* Rules + How-to for اكتشف السر categories */}
                 {isSecret && (
                   <div
                     dir="rtl"
@@ -1028,7 +1028,19 @@ export default function ArenaPlay() {
                       gap: "3px",
                     }}
                   >
-                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>قواعد اكتشف السر</p>
+                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>🎮 طريقة اللعب</p>
+                    {[
+                      { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
+                      { icon: "🔢", text: "كل فريق يسأل سؤالاً، اضغط المربع لتسجيله" },
+                      { icon: "🏆", text: "عند التخمين الصحيح اضغط "أجاب صحيح"" },
+                    ].map(({ icon, text }) => (
+                      <div key={text} style={{ display: "flex", gap: "4px", alignItems: "flex-start" }}>
+                        <span style={{ fontSize: "9px", lineHeight: "14px", flexShrink: 0 }}>{icon}</span>
+                        <span style={{ fontSize: "9px", color: "#6b21a8", lineHeight: "14px" }}>{text}</span>
+                      </div>
+                    ))}
+                    <div style={{ borderTop: "1px solid #ddd6fe", margin: "4px 0 2px" }} />
+                    <p style={{ fontSize: "9px", fontWeight: 800, color: "#7c3aed", marginBottom: "2px" }}>📋 القواعد</p>
                     {[
                       { icon: "🔄", text: "لا تعيد سؤالاً طرحه الفريق الآخر" },
                       { icon: "✅", text: "الإجابة: نعم أو لا فقط" },
@@ -4926,12 +4938,27 @@ function SecretArenaActivity({
         <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" dir="ltr">{pin}</div>
       </div>
 
-      {/* Rules panel */}
+      {/* How-to + Rules panel */}
       <div
         className="rounded-xl border mb-4"
         style={{ background: "#f5f3ff", borderColor: "#ddd6fe", padding: "8px 12px" }}
       >
-        <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 قواعد اكتشف السر</p>
+        <p className="text-[10px] font-black text-purple-700 mb-1.5">🎮 طريقة اللعب</p>
+        <div className="flex flex-col gap-1 mb-2">
+          {[
+            { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
+            { icon: "🔢", text: "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله" },
+            { icon: "🏆", text: "عند التخمين الصحيح اضغط \"أجاب صحيح\" للفريق الفائز" },
+            { icon: "💡", text: "النقاط: 1-3 أسئلة = 600 | 4-6 = 400 | 7-9 = 200 | 10 = 0" },
+          ].map(({ icon, text }) => (
+            <div key={text} className="flex gap-2 items-start">
+              <span className="text-[11px] leading-4 shrink-0">{icon}</span>
+              <span className="text-[11px] text-purple-900 leading-4">{text}</span>
+            </div>
+          ))}
+        </div>
+        <div className="border-t mb-2" style={{ borderColor: "#ddd6fe" }} />
+        <p className="text-[10px] font-black text-purple-700 mb-1.5">📋 القواعد</p>
         <div className="flex flex-col gap-1">
           {[
             { icon: "🔄", text: "لا تعيد سؤالاً سبق للفريق الآخر طرحه" },
