@@ -159,7 +159,7 @@ const CATEGORIES_DATA: Array<{
       { nameAr: "التنس", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/2019-French-Open-Day-1-Womens-Singles-First-Round-Maria_Sharapova_vs_Rebecca_Peterson.jpg/300px-2019-French-Open-Day-1-Womens-Singles-First-Round-Maria_Sharapova_vs_Rebecca_Peterson.jpg", difficulty: "easy" },
       { nameAr: "كرة الطائرة", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Volleyball_Vak_Lechi-Spartak_Volley_2013_04.jpg/300px-Volleyball_Vak_Lechi-Spartak_Volley_2013_04.jpg", difficulty: "medium" },
       { nameAr: "الجودو", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Judo_uchi_mata.jpg/300px-Judo_uchi_mata.jpg", difficulty: "medium" },
-      { nameAr: "الجمناستيك", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Alexandra_Raisman_2012_Olympics_floor_exercise.jpg/300px-Alexandra_Raisman_2012_Olympics_floor_exercise.jpg", difficulty: "medium" },
+      { nameAr: "كرة اليد", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Men%27s_handball_at_the_2016_Summer_Olympics%2C_France_vs_Brazil_06.jpg/300px-Men%27s_handball_at_the_2016_Summer_Olympics%2C_France_vs_Brazil_06.jpg", difficulty: "medium" },
       { nameAr: "الغوص", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Scuba_diving.jpg/300px-Scuba_diving.jpg", difficulty: "medium" },
       { nameAr: "ركوب الخيل", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Competitive_horseback_riding.jpg/300px-Competitive_horseback_riding.jpg", difficulty: "hard" },
     ],
