@@ -929,6 +929,11 @@ export default function ArenaPlay() {
             const emoji = sub.cover?.emoji ?? sec?.emoji ?? "📚";
             const diffs = subDifficulties(subId, sub, show800);
             const isSecret = isSecretSubCategory(sub);
+            const secretDisplayName = isSecret
+              ? (sub.questions[200]?.[0]?.q ?? "")
+                  .replace(/^اكتشف السر\s*[—–-]\s*/u, "")
+                  .trim() || sub.name
+              : sub.name;
 
             return (
               <motion.div
@@ -960,7 +965,7 @@ export default function ArenaPlay() {
                   {imgUrl ? (
                   <img
                     src={imgUrl}
-                    alt={sub.name}
+                    alt={secretDisplayName}
                     loading="lazy"
                     decoding="async"
                     className="absolute inset-0 w-full h-full"
@@ -1010,7 +1015,7 @@ export default function ArenaPlay() {
                       maxWidth: "100%",
                     }}
                   >
-                    {sub.name}
+                    {secretDisplayName}
                   </span>
                 </div>
 
