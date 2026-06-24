@@ -956,7 +956,7 @@ export default function ArenaSetup() {
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-base sm:text-lg font-extrabold truncate" style={{ color: "#1f4d4f" }}>مكتبة الفئات البصرية</h2>
-                      <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — كل فئة بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
+                      <p className="text-xs sm:text-sm" style={{ color: "#5b6b87" }}>اختر 3 فئات لكل فريق — الفئات العادية بـ <strong style={{ color: "#a07f37" }}>6 بطاقات</strong> (200×2، 400×2، 600×2) · فئات <strong style={{ color: "#7c3aed" }}>اكتشف السر</strong> بطاقتان بدرجات ديناميكية · يمكن إضافة <strong style={{ color: "#c9a14b" }}>800⭐</strong> عبر فئة مخصصة</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
