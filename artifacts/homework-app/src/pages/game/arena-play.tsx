@@ -4729,6 +4729,10 @@ function SecretArenaActivity({
   const [undoFlashBox, setUndoFlashBox] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
   const [undoBtnFlash, setUndoBtnFlash] = React.useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const [showInfo, setShowInfo] = React.useState(false);
+  const [inlineReveal, setInlineReveal] = React.useState<{
+    A: { name: string; image?: string; teamColor: string; teamName: string } | null;
+    B: { name: string; image?: string; teamColor: string; teamName: string } | null;
+  }>({ A: null, B: null });
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
 
@@ -5066,19 +5070,68 @@ function SecretArenaActivity({
                     <p className="text-xs text-gray-400">امسح الباركود لرؤية سرّك</p>
                   </div>
                 )}
-                {/* Direct reveal button — no QR needed */}
-                <button
-                  onClick={() => window.open(revealUrl, "_blank", "noopener")}
-                  className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-80 active:scale-95"
-                  style={{
-                    borderColor: `${tColor}50`,
-                    background: `${tColor}12`,
-                    color: tColor,
-                  }}
-                >
-                  <span>🖥️</span>
-                  <span>عرض السر مباشرة (بدون باركود)</span>
-                </button>
+                {/* Inline reveal — no QR needed */}
+                {inlineReveal[qrTeam] ? (
+                  <div
+                    className="mt-2 rounded-xl border overflow-hidden"
+                    style={{ borderColor: `${tColor}40` }}
+                  >
+                    {inlineReveal[qrTeam]!.image && (
+                      <img
+                        src={`/api/image-proxy?url=${encodeURIComponent(inlineReveal[qrTeam]!.image!)}`}
+                        alt={inlineReveal[qrTeam]!.name}
+                        className="w-full object-cover"
+                        style={{ maxHeight: "180px" }}
+                      />
+                    )}
+                    <div
+                      className="text-center py-2 px-3 font-black text-base"
+                      style={{ background: `${tColor}10`, color: tColor }}
+                    >
+                      {inlineReveal[qrTeam]!.name}
+                    </div>
+                    <button
+                      onClick={() => setInlineReveal((p) => ({ ...p, [qrTeam]: null }))}
+                      className="w-full py-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      إخفاء السر
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      const token = qrTeam === "A" ? tokenA : tokenB;
+                      if (!token) return;
+                      try {
+                        const res = await fetch(`/api/secret-game/reveal/${encodeURIComponent(token)}`);
+                        if (!res.ok) return;
+                        const data = await res.json() as {
+                          secret: { name: string; image?: string };
+                          teamColor: string;
+                          teamName: string;
+                        };
+                        setInlineReveal((p) => ({
+                          ...p,
+                          [qrTeam]: {
+                            name: data.secret.name,
+                            image: data.secret.image,
+                            teamColor: data.teamColor,
+                            teamName: data.teamName,
+                          },
+                        }));
+                      } catch { /* silent */ }
+                    }}
+                    className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-80 active:scale-95"
+                    style={{
+                      borderColor: `${tColor}50`,
+                      background: `${tColor}12`,
+                      color: tColor,
+                    }}
+                  >
+                    <span>🖥️</span>
+                    <span>عرض السر هنا (بدون باركود)</span>
+                  </button>
+                )}
               </>
             );
           })()}
