@@ -143,6 +143,7 @@ export default function ArenaPlay() {
   // After organiser picks the winning team we optionally show a player chooser
   // so a single individual gets credit (display only — total still goes to team).
   const [pendingWinner, setPendingWinner] = useState<TeamSide | null>(null);
+  const [pendingCustomPts, setPendingCustomPts] = useState<number | undefined>(undefined);
   const [showShare, setShowShare] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showRestartConfirm, setShowRestartConfirm] = useState(false);
@@ -1339,7 +1340,7 @@ export default function ArenaPlay() {
   };
 
   // Two-step resolve: if the winning team has a roster, pause for player pick.
-  const requestResolve = (winner: TeamSide | null) => {
+  const requestResolve = (winner: TeamSide | null, customPts?: number) => {
     if (!active) return;
     // Trap rule: if no one answered correctly but a trap was active,
     // award the points to the team who set the trap.
@@ -1349,17 +1350,19 @@ export default function ArenaPlay() {
         : winner;
     if (effectiveWinner && state.teams[effectiveWinner].players.length > 0) {
       setPendingWinner(effectiveWinner);
+      setPendingCustomPts(customPts);
       return;
     }
-    finalizeResolve(effectiveWinner, undefined);
+    finalizeResolve(effectiveWinner, undefined, customPts);
   };
 
   const finalizeResolve = (
     winner: TeamSide | null,
     player: string | undefined,
+    customPts?: number,
   ) => {
     if (!active) return;
-    const pts = active.difficulty * active.multiplier;
+    const pts = customPts ?? (active.difficulty * active.multiplier);
     const key = cardKey({
       subCategoryId: active.subCategoryId,
       difficulty: active.difficulty,
@@ -1403,6 +1406,7 @@ export default function ArenaPlay() {
     });
     setTimerRunning(false);
     setPendingWinner(null);
+    setPendingCustomPts(undefined);
   };
 
   const closeQuestionUnresolved = () => {
@@ -2072,8 +2076,8 @@ export default function ArenaPlay() {
           <PlayerPickerOverlay
             team={state.teams[pendingWinner]}
             side={pendingWinner}
-            onPick={(player) => finalizeResolve(pendingWinner, player)}
-            onSkip={() => finalizeResolve(pendingWinner, undefined)}
+            onPick={(player) => finalizeResolve(pendingWinner, player, pendingCustomPts)}
+            onSkip={() => finalizeResolve(pendingWinner, undefined, pendingCustomPts)}
           />
         )}
       </AnimatePresence>
@@ -2356,7 +2360,7 @@ function QuestionModal({
   onStopTimer: () => void;
   onReveal: () => void;
   onTransfer: () => void;
-  onResolve: (winner: TeamSide | null) => void;
+  onResolve: (winner: TeamSide | null, customPts?: number) => void;
   onClose: () => void;
   onUseHelper: (side: TeamSide, helperId: HelperId) => void;
   canUseHelper: (side: TeamSide, helperId: HelperId) => boolean;
@@ -2625,13 +2629,14 @@ function QuestionModal({
               question={active.question}
               revealed={active.revealed}
               awardedPts={active.difficulty * active.multiplier}
-              onAutoResolve={(winner) =>
+              onAutoResolve={(winner, customPts) =>
                 onResolve(
                   winner === null
                     ? null
                     : winner === "A"
                     ? active.answeringTeam
                     : getNextTeam(state.teamOrder, active.answeringTeam),
+                  customPts,
                 )
               }
               teamInfo={{
@@ -3952,7 +3957,7 @@ function InteractiveActivity({
 }: {
   question: ArenaQuestion;
   revealed: boolean;
-  onAutoResolve?: (winner: "A" | "B" | null) => void;
+  onAutoResolve?: (winner: "A" | "B" | null, customPts?: number) => void;
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
   awardedPts?: number;
 }) {
@@ -4617,51 +4622,39 @@ interface SecretArenaGameState {
   phase: "waiting_scan" | "playing" | "guessing" | "ended";
   winner: "A" | "B" | null;
 }
-interface SecretArenaEndData {
-  winner: "A" | "B" | null;
-  winnerName: string;
-  secrets: { A: { name: string; image: string | null }; B: { name: string; image: string | null } };
+const MAX_SECRET_QUESTIONS = 10;
+
+function calcSecretScore(used: number): number {
+  if (used <= 3) return 600;
+  if (used <= 6) return 400;
+  if (used <= 9) return 200;
+  return 0;
 }
 
 function SecretArenaActivity({
   question,
   onAutoResolve,
   teamInfo,
-  awardedPts,
 }: {
   question: ArenaQuestion;
-  onAutoResolve?: (winner: "A" | "B" | null) => void;
+  onAutoResolve?: (winner: "A" | "B" | null, customPts?: number) => void;
   teamInfo?: { A: { name: string; color: string }; B: { name: string; color: string } };
   awardedPts?: number;
 }) {
   const payload = (question.payload ?? {}) as Partial<SecretPayload>;
   const categoryId = payload.categoryId ?? 1;
-  const maxQ = payload.maxQuestions ?? 20;
 
   const socketRef = React.useRef<ReturnType<typeof socketIOClient> | null>(null);
   const [status, setStatus] = React.useState<"connecting" | "ready" | "error">("connecting");
   const [gameState, setGameState] = React.useState<SecretArenaGameState | null>(null);
   const [tokenA, setTokenA] = React.useState<string>("");
   const [tokenB, setTokenB] = React.useState<string>("");
-  const [endData, setEndData] = React.useState<SecretArenaEndData | null>(null);
   const [qrTeam, setQrTeam] = React.useState<"A" | "B">("A");
-  const [dismissProgress, setDismissProgress] = React.useState(100);
+  const [boxCountA, setBoxCountA] = React.useState(0);
+  const [boxCountB, setBoxCountB] = React.useState(0);
+  const [scoreResult, setScoreResult] = React.useState<{ team: "A" | "B"; score: number } | null>(null);
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
-
-  React.useEffect(() => {
-    if (!endData) return;
-    setDismissProgress(100);
-    const start = Date.now();
-    const DURATION = 4000;
-    const id = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const pct = Math.max(0, 100 - (elapsed / DURATION) * 100);
-      setDismissProgress(pct);
-      if (elapsed >= DURATION) clearInterval(id);
-    }, 50);
-    return () => clearInterval(id);
-  }, [endData]);
 
   const BASE = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -4676,12 +4669,9 @@ function SecretArenaActivity({
       const teamBColor = teamInfo?.B.color ?? "#2563eb";
       sock.emit(
         "secret:create",
-        { categoryId, maxQuestions: maxQ, teamAName, teamAColor, teamBName, teamBColor },
+        { categoryId, maxQuestions: MAX_SECRET_QUESTIONS, teamAName, teamAColor, teamBName, teamBColor },
         (res: { pin?: string; tokenA?: string; tokenB?: string; error?: string }) => {
-          if (res.error || !res.pin) {
-            setStatus("error");
-            return;
-          }
+          if (res.error || !res.pin) { setStatus("error"); return; }
           setTokenA(res.tokenA ?? "");
           setTokenB(res.tokenB ?? "");
           sock.emit(
@@ -4696,27 +4686,24 @@ function SecretArenaActivity({
       );
     });
     sock.on("connect_error", () => setStatus("error"));
-
     sock.on("secret:state", (s: SecretArenaGameState) => setGameState(s));
     sock.on("secret:started", (s: SecretArenaGameState) => setGameState(s));
-    sock.on("secret:question_asked", (s: SecretArenaGameState) => {
-      setGameState(s);
-    });
-    sock.on("secret:answered", ({ state }: { answer: "yes" | "no"; state: SecretArenaGameState }) => {
-      setGameState(state);
-    });
-    sock.on("secret:wrong_guess", ({ state }: { state: SecretArenaGameState }) => setGameState(state));
-    sock.on("secret:game_over", (data: SecretArenaEndData & { state: SecretArenaGameState }) => {
-      setGameState(data.state);
-      setEndData(data);
-      setTimeout(() => onAutoResolveRef.current?.(data.winner), 4000);
-    });
 
-    return () => {
-      sock.disconnect();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { sock.disconnect(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleCorrect = (team: "A" | "B") => {
+    if (scoreResult) return;
+    const count = team === "A" ? boxCountA : boxCountB;
+    const score = calcSecretScore(count);
+    setScoreResult({ team, score });
+    setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
+  };
+
+  const handleSkip = () => {
+    onAutoResolveRef.current?.(null, 0);
+  };
 
   if (status === "connecting") {
     return (
@@ -4736,126 +4723,53 @@ function SecretArenaActivity({
     );
   }
 
-  if (endData) {
-    const winnerColor =
-      endData.winner === "A"
-        ? teamInfo?.A.color
-        : endData.winner === "B"
-        ? teamInfo?.B.color
-        : undefined;
+  if (scoreResult) {
+    const winnerInfo = scoreResult.team === "A" ? teamInfo?.A : teamInfo?.B;
+    const usedCount = scoreResult.team === "A" ? boxCountA : boxCountB;
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
-        className="flex flex-col items-center gap-5 py-4 text-center"
+        className="flex flex-col items-center gap-4 py-4 text-center"
         dir="rtl"
       >
-        {/* Trophy / emoji */}
         <motion.div
           initial={{ scale: 0, rotate: -15 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.1 }}
-          className="text-6xl leading-none select-none"
+          className="text-5xl leading-none select-none"
         >
-          {endData.winner ? "🏆" : "🤝"}
+          🏆
         </motion.div>
-
-        {/* Result headline */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="space-y-1"
-        >
-          <p className="text-[11px] font-bold uppercase tracking-widest text-purple-500">
-            انتهت جولة اكتشف السر
-          </p>
-          <p className="text-2xl font-black text-gray-800">
-            {endData.winner ? `${endData.winnerName} عرف السر!` : "تعادل — أحسنتما!"}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <p className="text-xs font-bold uppercase tracking-widest text-purple-500 mb-1">أجاب صحيح!</p>
+          <p className="text-xl font-black text-gray-800">
+            {winnerInfo?.name ?? (scoreResult.team === "A" ? "الفريق أ" : "الفريق ب")}
           </p>
         </motion.div>
-
-        {/* Team stat cards */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="flex gap-3 w-full"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, type: "spring", stiffness: 280, damping: 15 }}
+          className="px-6 py-3 rounded-2xl font-black text-2xl text-white shadow-lg"
+          style={{ background: winnerInfo?.color ?? "#7c3aed" }}
         >
-          {(["A", "B"] as const).map((t) => {
-            const isWinner = endData.winner === t;
-            const tColor = t === "A" ? teamInfo?.A.color : teamInfo?.B.color;
-            const tName =
-              t === "A"
-                ? (teamInfo?.A.name ?? "الفريق أ")
-                : (teamInfo?.B.name ?? "الفريق ب");
-            const qCount = gameState?.teams[t].questionCount ?? 0;
-            return (
-              <div
-                key={t}
-                className="flex-1 rounded-2xl p-3 border-2 flex flex-col items-center gap-2"
-                style={{
-                  borderColor: isWinner ? (tColor ?? "#888") : "#e5e7eb",
-                  background: isWinner ? `${tColor ?? "#888"}12` : "#f9fafb",
-                  boxShadow: isWinner
-                    ? `0 4px 16px -4px ${tColor ?? "#888"}44`
-                    : "none",
-                }}
-              >
-                {isWinner && (
-                  <span className="text-xl leading-none">🥇</span>
-                )}
-                <p className="text-sm font-black" style={{ color: tColor ?? "#888" }}>
-                  {tName}
-                </p>
-                {isWinner && awardedPts != null && (
-                  <span
-                    className="text-xs font-black px-2 py-0.5 rounded-full"
-                    style={{ background: `${tColor ?? "#a855f7"}20`, color: tColor ?? "#a855f7" }}
-                  >
-                    +{awardedPts} نقطة
-                  </span>
-                )}
-                <p className="text-[11px] text-gray-400">{qCount} سؤال</p>
-                {endData.secrets[t].image && (
-                  <img
-                    src={`/api/image-proxy?url=${encodeURIComponent(endData.secrets[t].image!)}`}
-                    alt={endData.secrets[t].name}
-                    className="w-14 h-14 rounded-xl object-cover"
-                  />
-                )}
-                <p className="text-xs font-bold text-gray-600 leading-tight text-center">
-                  {endData.secrets[t].name}
-                </p>
-              </div>
-            );
-          })}
+          +{scoreResult.score} نقطة
         </motion.div>
-
-        {/* Auto-dismiss countdown progress bar */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="w-full space-y-1.5"
-        >
-          <p className="text-[11px] text-gray-400">
-            {endData.winner
-              ? "سيتم إسناد النقاط للفريق الفائز تلقائياً…"
-              : "انتهت الجولة بالتعادل — لا تُسند نقاط"}
-          </p>
+        <p className="text-xs text-gray-400">{usedCount} سؤال مستهلك</p>
+        <div className="w-full space-y-1.5">
+          <p className="text-[11px] text-gray-400">سيتم إسناد النقاط للفريق الفائز تلقائياً…</p>
           <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
+            <motion.div
               className="h-full rounded-full"
-              style={{
-                width: `${dismissProgress}%`,
-                background: winnerColor ?? "#a855f7",
-                transition: "width 50ms linear",
-              }}
+              initial={{ width: "100%" }}
+              animate={{ width: "0%" }}
+              transition={{ duration: 2.5, ease: "linear" }}
+              style={{ background: winnerInfo?.color ?? "#7c3aed" }}
             />
           </div>
-        </motion.div>
+        </div>
       </motion.div>
     );
   }
@@ -4887,7 +4801,6 @@ function SecretArenaActivity({
       {/* QR codes — one team at a time */}
       {(gameState.phase === "waiting_scan" || !gameState.teams.A.scanned || !gameState.teams.B.scanned) && (
         <div className="mb-4">
-          {/* Team selector tabs */}
           <div className="flex gap-2 mb-3">
             {(["A", "B"] as const).map((t) => {
               const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
@@ -4909,7 +4822,6 @@ function SecretArenaActivity({
             })}
           </div>
 
-          {/* Single team QR */}
           {gameState.teams[qrTeam].scanned ? (
             <div className="text-center py-4 text-green-600 font-bold text-sm">
               ✅ {gameState.teams[qrTeam].name} مسح الباركود بنجاح
@@ -4945,53 +4857,81 @@ function SecretArenaActivity({
         </div>
       )}
 
-      {gameState.phase === "playing" && (
-        <div className="space-y-3">
-          {/* Question counters */}
-          <div className="flex gap-2">
-            {(["A", "B"] as const).map((t) => {
-              const team = gameState.teams[t];
-              const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
-              return (
-                <div key={t} className="flex-1 rounded-xl p-2 text-center border" style={{
-                  borderColor: `${tInfo?.color ?? "#888"}30`,
-                  background: `${tInfo?.color ?? "#888"}08`,
-                }}>
-                  <p className="text-xs font-bold" style={{ color: tInfo?.color ?? "#888" }}>{team.name}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{team.questionCount}/{gameState.maxQuestions} سؤال</p>
-                </div>
-              );
-            })}
-          </div>
+      {/* Per-team question boxes + correct answer buttons */}
+      <div className="space-y-3 mt-2">
+        {(["A", "B"] as const).map((t) => {
+          const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
+          const count = t === "A" ? boxCountA : boxCountB;
+          const setCount = t === "A" ? setBoxCountA : setBoxCountB;
+          const tColor = tInfo?.color ?? (t === "A" ? "#dc2626" : "#2563eb");
+          const tName = gameState.teams[t].name;
+          const dynamicScore = calcSecretScore(count);
 
-          {/* Award points — teacher picks the winning team manually */}
-          <p className="text-[11px] text-center text-gray-400 font-bold">من عرف السر أولاً؟</p>
-          <div className="grid grid-cols-2 gap-3">
-            {(["A", "B"] as const).map((t) => {
-              const team = gameState.teams[t];
-              const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
-              return (
-                <button
-                  key={t}
-                  onClick={() => onAutoResolveRef.current?.(t)}
-                  className="py-4 rounded-2xl font-black text-white text-sm shadow-lg active:scale-95 transition-transform"
-                  style={{ background: tInfo?.color ?? "#7c3aed" }}
-                >
-                  🏆 {team.name}
-                </button>
-              );
-            })}
-          </div>
+          return (
+            <div
+              key={t}
+              className="rounded-2xl border p-3"
+              style={{ borderColor: `${tColor}30`, background: `${tColor}06` }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-black" style={{ color: tColor }}>{tName}</p>
+                <span className="text-[11px] font-semibold text-gray-400">
+                  {count}/{MAX_SECRET_QUESTIONS} سؤال
+                </span>
+              </div>
 
-          {/* Skip — no points */}
-          <button
-            onClick={() => onAutoResolveRef.current?.(null)}
-            className="w-full py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors"
-          >
-            تخطّي بدون نقاط
-          </button>
-        </div>
-      )}
+              {/* 10 numbered boxes */}
+              <div className="flex gap-1 mb-3 flex-wrap">
+                {Array.from({ length: MAX_SECRET_QUESTIONS }, (_, i) => {
+                  const boxNum = i + 1;
+                  const isUsed = boxNum <= count;
+                  const isNext = boxNum === count + 1 && count < MAX_SECRET_QUESTIONS;
+                  return (
+                    <button
+                      key={boxNum}
+                      type="button"
+                      disabled={!isNext}
+                      onClick={() => { if (isNext) setCount(count + 1); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
+                      style={{
+                        background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
+                        color: isUsed ? "#fff" : isNext ? tColor : "#9ca3af",
+                        border: `1.5px solid ${isUsed ? tColor : isNext ? tColor : "#e5e7eb"}`,
+                        transform: isNext ? "scale(1.1)" : "scale(1)",
+                        cursor: isNext ? "pointer" : "default",
+                        opacity: !isUsed && !isNext ? 0.45 : 1,
+                        boxShadow: isNext ? `0 0 0 2px ${tColor}30` : "none",
+                      }}
+                    >
+                      {boxNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Correct answer button */}
+              <button
+                type="button"
+                disabled={count >= MAX_SECRET_QUESTIONS || !!scoreResult}
+                onClick={() => handleCorrect(t)}
+                className="w-full py-2 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-40"
+                style={{ background: tColor }}
+              >
+                ✅ أجاب صحيح — +{dynamicScore} نقطة
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Skip */}
+      <button
+        type="button"
+        onClick={handleSkip}
+        className="w-full mt-3 py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors"
+      >
+        تخطّي بدون نقاط
+      </button>
     </div>
   );
 }
