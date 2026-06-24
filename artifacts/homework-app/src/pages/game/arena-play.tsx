@@ -5076,6 +5076,12 @@ function SecretArenaActivity({
                     className="mt-2 rounded-xl border overflow-hidden"
                     style={{ borderColor: `${tColor}40` }}
                   >
+                    <div
+                      className="text-center py-2 px-3 font-black text-base"
+                      style={{ background: tColor, color: "#ffffff" }}
+                    >
+                      {inlineReveal[qrTeam]!.name}
+                    </div>
                     {inlineReveal[qrTeam]!.image && (
                       <img
                         src={`/api/image-proxy?url=${encodeURIComponent(inlineReveal[qrTeam]!.image!)}`}
@@ -5084,12 +5090,6 @@ function SecretArenaActivity({
                         style={{ maxHeight: "180px" }}
                       />
                     )}
-                    <div
-                      className="text-center py-2 px-3 font-black text-base"
-                      style={{ background: `${tColor}10`, color: tColor }}
-                    >
-                      {inlineReveal[qrTeam]!.name}
-                    </div>
                     <button
                       onClick={() => setInlineReveal((p) => ({ ...p, [qrTeam]: null }))}
                       className="w-full py-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
