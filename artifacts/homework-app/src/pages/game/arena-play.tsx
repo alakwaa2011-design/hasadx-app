@@ -4802,7 +4802,7 @@ function SecretArenaActivity({
 
 
   const handleBoxClick = (team: "A" | "B", targetBox: number) => {
-    if (scoreResult || !isPlaying) return;
+    if (teamResults[team] !== null || !isPlaying) return;
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
     if (count >= MAX_SECRET_QUESTIONS || targetBox <= count) return;
