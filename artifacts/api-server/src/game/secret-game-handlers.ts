@@ -361,7 +361,7 @@ export function setupSecretGameSocket(io: Server) {
       const room = rooms.get(pin);
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
       if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
-      if (room.phase === "ended") { cb?.({ ok: true, score: 0 }); return; }
+      if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد أو انتهت" }); return; }
 
       let score = 0;
       if (data.winner) {

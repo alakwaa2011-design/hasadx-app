@@ -4697,56 +4697,54 @@ function SecretArenaActivity({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-zero: if any team reaches the question limit, end the round with 0 points
+  const isPlaying = gameState?.phase === "playing";
+
+  // Auto-zero: only when playing — if any team reaches the question limit, end the round with 0 points
   const autoZeroFiredRef = React.useRef(false);
   React.useEffect(() => {
-    if (scoreResult || autoZeroFiredRef.current || !gameState) return;
+    if (scoreResult || autoZeroFiredRef.current || !gameState || !isPlaying) return;
     if (boxCountA < MAX_SECRET_QUESTIONS && boxCountB < MAX_SECRET_QUESTIONS) return;
     autoZeroFiredRef.current = true;
     const pin = gameState.pin;
     const zeroTeam: "A" | "B" = boxCountA >= MAX_SECRET_QUESTIONS ? "A" : "B";
     const timer = setTimeout(() => {
-      socketRef.current?.emit("secret:award_score", { pin, winner: null }, () => {});
-      setScoreResult({ team: zeroTeam, score: 0 });
-      setTimeout(() => onAutoResolveRef.current?.(null, 0), 2000);
+      socketRef.current?.emit(
+        "secret:award_score",
+        { pin, winner: null },
+        (res: { ok?: boolean; score?: number; error?: string }) => {
+          if (res.error) { autoZeroFiredRef.current = false; return; }
+          setScoreResult({ team: zeroTeam, score: 0 });
+          setTimeout(() => onAutoResolveRef.current?.(null, 0), 2000);
+        },
+      );
     }, 1200);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxCountA, boxCountB]);
+  }, [boxCountA, boxCountB, isPlaying]);
 
   const handleBoxClick = (team: "A" | "B") => {
-    if (scoreResult) return;
+    if (scoreResult || !isPlaying) return;
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
     if (count >= MAX_SECRET_QUESTIONS) return;
-    // Optimistic local update for snappy UX
+    // Optimistic local update for snappy UX (only in playing phase)
     setCount(count + 1);
-    // Sync authoritative count to server
-    if (gameState) {
-      socketRef.current?.emit(
-        "secret:team_question",
-        { pin: gameState.pin, team },
-        (res: { ok?: boolean; questionCount?: number; error?: string }) => {
-          if (res.error) {
-            // Revert optimistic update on server rejection
-            setCount(count);
-          } else if (res.ok && res.questionCount !== undefined) {
-            setCount(res.questionCount);
-          }
-        },
-      );
-    }
+    socketRef.current?.emit(
+      "secret:team_question",
+      { pin: gameState!.pin, team },
+      (res: { ok?: boolean; questionCount?: number; error?: string }) => {
+        if (res.error) {
+          // Revert optimistic update on server rejection
+          setCount(count);
+        } else if (res.ok && res.questionCount !== undefined) {
+          setCount(res.questionCount);
+        }
+      },
+    );
   };
 
   const handleCorrect = (team: "A" | "B") => {
-    if (scoreResult) return;
-    if (!gameState) {
-      const count = team === "A" ? boxCountA : boxCountB;
-      const score = calcSecretScore(count);
-      setScoreResult({ team, score });
-      setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
-      return;
-    }
+    if (scoreResult || !isPlaying || !gameState) return;
     socketRef.current?.emit(
       "secret:award_score",
       { pin: gameState.pin, winner: team },
@@ -4760,7 +4758,7 @@ function SecretArenaActivity({
   };
 
   const handleSkip = () => {
-    if (!gameState) { onAutoResolveRef.current?.(null, 0); return; }
+    if (!isPlaying || !gameState) return;
     socketRef.current?.emit(
       "secret:award_score",
       { pin: gameState.pin, winner: null },
@@ -4955,7 +4953,7 @@ function SecretArenaActivity({
                     <button
                       key={boxNum}
                       type="button"
-                      disabled={!isNext}
+                      disabled={!isNext || !isPlaying}
                       onClick={() => { if (isNext) handleBoxClick(t); }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all"
                       style={{
@@ -4977,7 +4975,7 @@ function SecretArenaActivity({
               {/* Correct answer button */}
               <button
                 type="button"
-                disabled={count >= MAX_SECRET_QUESTIONS || !!scoreResult}
+                disabled={count >= MAX_SECRET_QUESTIONS || !!scoreResult || !isPlaying}
                 onClick={() => handleCorrect(t)}
                 className="w-full py-2 rounded-xl text-sm font-black text-white transition-all active:scale-95 disabled:opacity-40"
                 style={{ background: tColor }}
@@ -4992,8 +4990,9 @@ function SecretArenaActivity({
       {/* Skip */}
       <button
         type="button"
+        disabled={!isPlaying || !!scoreResult}
         onClick={handleSkip}
-        className="w-full mt-3 py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors"
+        className="w-full mt-3 py-2 rounded-xl text-xs font-bold text-gray-400 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-40"
       >
         تخطّي بدون نقاط
       </button>
