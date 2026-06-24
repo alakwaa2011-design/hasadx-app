@@ -597,7 +597,9 @@ export default function ArenaContentAdmin() {
                   )}
                   {subs.map(sub => {
                     const active = sub.id === selectedSubId;
-                    const count = acts.filter(a => a.categoryId === sub.id).length;
+                    const subActs = acts.filter(a => a.categoryId === sub.id);
+                    const count = subActs.length;
+                    const isSecret = subActs.some(a => a.type === "secret");
                     return (
                       <button
                         key={sub.id}
@@ -611,7 +613,17 @@ export default function ArenaContentAdmin() {
                       >
                         <CoverTile imageUrl={sub.coverImageUrl} color={sub.coverColor} emoji={sub.emoji} size="sm" />
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm truncate" style={{ color: active ? BRAND.green : "#1f2937" }}>{sub.name}</div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="font-bold text-sm truncate" style={{ color: active ? BRAND.green : "#1f2937" }}>{sub.name}</div>
+                            {isSecret && (
+                              <span
+                                className="shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                                style={{ background: "#7c3aed", color: "white", boxShadow: "0 2px 8px rgba(124,58,237,0.5)" }}
+                              >
+                                🔍 اكتشف السر
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-gray-500">
                             {count} سؤال
                             {count < 6 && <span className="text-amber-600 font-bold"> · ينقص {6 - count}</span>}
