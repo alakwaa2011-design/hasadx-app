@@ -4699,10 +4699,7 @@ interface SecretArenaGameState {
 const MAX_SECRET_QUESTIONS = 10;
 
 function calcSecretScore(used: number): number {
-  if (used <= 3) return 600;
-  if (used <= 6) return 400;
-  if (used <= 9) return 200;
-  return 0;
+  return Math.max(60, 600 - (used - 1) * 60);
 }
 
 function SecretArenaActivity({
@@ -4990,7 +4987,7 @@ function SecretArenaActivity({
                 { icon: "📱", text: "يرى الطلاب السر على هواتفهم بعد مسح QR" },
                 { icon: "🔢", text: "كل فريق يسأل سؤالاً بالتناوب — اضغط المربع لتسجيله" },
                 { icon: "🏆", text: 'عند التخمين الصحيح اضغط "أجاب صحيح" للفريق الفائز' },
-                { icon: "💡", text: "النقاط: 1-3 أسئلة = 600 | 4-6 = 400 | 7-9 = 200 | 10 = 0" },
+                { icon: "💡", text: "النقاط تتدرج: سؤال 1 = 600 ← تنقص 60 لكل سؤال ← سؤال 10 = 60" },
               ].map(({ icon, text }) => (
                 <div key={text} className="flex gap-2 items-start">
                   <span className="text-[11px] leading-4 shrink-0">{icon}</span>

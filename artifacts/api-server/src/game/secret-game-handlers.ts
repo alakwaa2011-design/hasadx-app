@@ -385,10 +385,7 @@ export function setupSecretGameSocket(io: Server) {
       let score = 0;
       if (data.winner) {
         const qCount = room.teams[data.winner].questionCount;
-        if (qCount <= 3) score = 600;
-        else if (qCount <= 6) score = 400;
-        else if (qCount <= 9) score = 200;
-        else score = 0;
+        score = Math.max(60, 600 - (qCount - 1) * 60);
       }
 
       room.phase = "ended";
