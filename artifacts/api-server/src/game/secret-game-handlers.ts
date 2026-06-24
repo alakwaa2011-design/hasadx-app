@@ -338,7 +338,8 @@ export function setupSecretGameSocket(io: Server) {
       const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
       const room = rooms.get(pin);
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
-      if (room.phase === "ended") { cb?.({ error: "انتهت اللعبة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
+      if (room.phase !== "playing") { cb?.({ error: "اللعبة لم تبدأ بعد" }); return; }
       const team = room.teams[data.team];
       if (team.questionCount >= room.maxQuestions) {
         cb?.({ error: "وصل الفريق للحد الأقصى" });
@@ -359,6 +360,7 @@ export function setupSecretGameSocket(io: Server) {
       const pin = (data.pin ?? socketToPin.get(socket.id) ?? "").toUpperCase();
       const room = rooms.get(pin);
       if (!room) { cb?.({ error: "لا توجد غرفة" }); return; }
+      if (room.hostSocketId !== socket.id) { cb?.({ error: "المضيف فقط يستطيع ذلك" }); return; }
       if (room.phase === "ended") { cb?.({ ok: true, score: 0 }); return; }
 
       let score = 0;

@@ -4719,16 +4719,18 @@ function SecretArenaActivity({
     const count = team === "A" ? boxCountA : boxCountB;
     const setCount = team === "A" ? setBoxCountA : setBoxCountB;
     if (count >= MAX_SECRET_QUESTIONS) return;
-    const newCount = count + 1;
     // Optimistic local update for snappy UX
-    setCount(newCount);
+    setCount(count + 1);
     // Sync authoritative count to server
     if (gameState) {
       socketRef.current?.emit(
         "secret:team_question",
         { pin: gameState.pin, team },
         (res: { ok?: boolean; questionCount?: number; error?: string }) => {
-          if (res.ok && res.questionCount !== undefined) {
+          if (res.error) {
+            // Revert optimistic update on server rejection
+            setCount(count);
+          } else if (res.ok && res.questionCount !== undefined) {
             setCount(res.questionCount);
           }
         },
@@ -4749,6 +4751,7 @@ function SecretArenaActivity({
       "secret:award_score",
       { pin: gameState.pin, winner: team },
       (res: { ok?: boolean; score?: number; error?: string }) => {
+        if (res.error) return; // Server rejected — do not award
         const score = res.score ?? calcSecretScore(team === "A" ? boxCountA : boxCountB);
         setScoreResult({ team, score });
         setTimeout(() => onAutoResolveRef.current?.(team, score), 2500);
@@ -4758,9 +4761,14 @@ function SecretArenaActivity({
 
   const handleSkip = () => {
     if (!gameState) { onAutoResolveRef.current?.(null, 0); return; }
-    socketRef.current?.emit("secret:award_score", { pin: gameState.pin, winner: null }, () => {
-      onAutoResolveRef.current?.(null, 0);
-    });
+    socketRef.current?.emit(
+      "secret:award_score",
+      { pin: gameState.pin, winner: null },
+      (res: { ok?: boolean; score?: number; error?: string }) => {
+        if (res.error) return;
+        onAutoResolveRef.current?.(null, 0);
+      },
+    );
   };
 
   if (status === "connecting") {
