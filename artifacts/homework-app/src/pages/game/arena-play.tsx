@@ -5218,21 +5218,22 @@ function SecretArenaActivity({
                             const isClickable = !isUsed && isPlaying && !scoreResult && count < MAX_SECRET_QUESTIONS;
                             const isNext = boxNum === count + 1;
                             const isFlashing = flashBox === boxNum;
+                            const zc = zone.zoneColor;
                             return (
                               <button
                                 key={boxNum}
                                 type="button"
                                 disabled={!isClickable}
                                 onClick={() => handleBoxClick(t, boxNum)}
-                                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all${isFlashing ? " undo-box-flash" : ""}`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black transition-all active:scale-90${isFlashing ? " undo-box-flash" : ""}${isClickable ? " hover:scale-110" : ""}`}
                                 style={{
-                                  background: isUsed ? tColor : isNext ? `${tColor}25` : "#f3f4f6",
-                                  color: isUsed ? "#fff" : isClickable ? tColor : "#9ca3af",
-                                  border: `1.5px solid ${isUsed ? tColor : isClickable ? `${tColor}60` : "#e5e7eb"}`,
+                                  background: isUsed ? zc : isClickable ? `${zc}20` : "#f3f4f6",
+                                  color: isUsed ? "#fff" : isClickable ? zc : "#9ca3af",
+                                  border: `1.5px solid ${isUsed ? zc : isClickable ? zc : "#e5e7eb"}`,
                                   transform: isNext ? "scale(1.1)" : "scale(1)",
                                   cursor: isClickable ? "pointer" : "default",
-                                  opacity: !isUsed && !isClickable ? 0.35 : 1,
-                                  boxShadow: isNext ? `0 0 0 2px ${tColor}30` : "none",
+                                  opacity: !isUsed && !isClickable ? 0.3 : 1,
+                                  boxShadow: isNext ? `0 0 0 2px ${zc}40` : "none",
                                 }}
                               >
                                 {boxNum}
