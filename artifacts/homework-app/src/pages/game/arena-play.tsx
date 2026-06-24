@@ -4737,6 +4737,7 @@ function SecretArenaActivity({
   }>({ A: null, B: null });
   const onAutoResolveRef = React.useRef(onAutoResolve);
   onAutoResolveRef.current = onAutoResolve;
+  const revealTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const BASE = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -5121,12 +5122,16 @@ function SecretArenaActivity({
                         style={{ maxHeight: "180px" }}
                       />
                     )}
-                    <button
-                      onClick={() => setInlineReveal((p) => ({ ...p, [qrTeam]: null }))}
-                      className="w-full py-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      إخفاء السر
-                    </button>
+                    {/* Auto-hide progress bar */}
+                    <div className="w-full h-1 bg-gray-100 overflow-hidden">
+                      <div
+                        className="h-full"
+                        style={{
+                          background: tColor,
+                          animation: "secret-reveal-shrink 5s linear forwards",
+                        }}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -5141,15 +5146,20 @@ function SecretArenaActivity({
                           teamColor: string;
                           teamName: string;
                         };
+                        const team = qrTeam;
                         setInlineReveal((p) => ({
                           ...p,
-                          [qrTeam]: {
+                          [team]: {
                             name: data.secret.name,
                             image: data.secret.image,
                             teamColor: data.teamColor,
                             teamName: data.teamName,
                           },
                         }));
+                        if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+                        revealTimerRef.current = setTimeout(() => {
+                          setInlineReveal((p) => ({ ...p, [team]: null }));
+                        }, 5000);
                       } catch { /* silent */ }
                     }}
                     className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-80 active:scale-95"
