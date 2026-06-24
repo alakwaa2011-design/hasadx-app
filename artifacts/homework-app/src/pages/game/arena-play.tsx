@@ -4729,6 +4729,7 @@ function SecretArenaActivity({
   const [undoFlashBox, setUndoFlashBox] = React.useState<{ A: number | null; B: number | null }>({ A: null, B: null });
   const [undoBtnFlash, setUndoBtnFlash] = React.useState<{ A: boolean; B: boolean }>({ A: false, B: false });
   const [showInfo, setShowInfo] = React.useState(false);
+  const [showQr, setShowQr] = React.useState(false);
   const [inlineReveal, setInlineReveal] = React.useState<{
     A: { name: string; image?: string; teamColor: string; teamName: string } | null;
     B: { name: string; image?: string; teamColor: string; teamName: string } | null;
@@ -5022,6 +5023,23 @@ function SecretArenaActivity({
       {/* QR codes — one team at a time */}
       {(gameState.phase === "waiting_scan" || !gameState.teams.A.scanned || !gameState.teams.B.scanned) && (
         <div className="mb-4">
+          {/* Toggle button */}
+          <button
+            type="button"
+            onClick={() => setShowQr((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold mb-2 transition-all"
+            style={{
+              background: showQr ? "#f3f4f6" : "#f3f4f6",
+              border: "1.5px solid #e5e7eb",
+              color: "#6b7280",
+            }}
+          >
+            <span>📷 {showQr ? "إخفاء الباركود" : "عرض الباركود للمسح"}</span>
+            <span>{showQr ? "▲" : "▼"}</span>
+          </button>
+
+          {showQr && (
+          <>
           <div className="flex gap-2 mb-3">
             {(["A", "B"] as const).map((t) => {
               const tInfo = t === "A" ? teamInfo?.A : teamInfo?.B;
@@ -5146,6 +5164,7 @@ function SecretArenaActivity({
               </button>
             </div>
           )}
+          </>)}
         </div>
       )}
 
