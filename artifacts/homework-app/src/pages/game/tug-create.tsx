@@ -61,6 +61,8 @@ export default function TugCreate() {
   const [targetClass, setTargetClass] = useState("");
   const [questionCount, setQuestionCount] = useState(10);
   const [selectedSource, setSelectedSource] = useState<"bank" | "assignment" | null>(null);
+  // Activity title carried into Class Mode's top banner (assignment title when known).
+  const [sourceTitle, setSourceTitle] = useState<string | null>(null);
 
   // Bank
   const [bankOpen, setBankOpen] = useState(false);
@@ -104,6 +106,7 @@ export default function TugCreate() {
           .slice(0, 20);
         if (qs.length > 0) {
           setQuestions(qs);
+          if (typeof data.title === "string" && data.title.trim()) setSourceTitle(data.title.trim());
           toast.success(ar ? `تم تحميل ${qs.length} سؤال من العرض!` : `Loaded ${qs.length} questions!`);
         }
       } catch { /* ignore */ }
@@ -197,6 +200,7 @@ export default function TugCreate() {
       setQuestions(sliced);
       setQuestionCount(sliced.length);
       setSelectedSource("assignment");
+      setSourceTitle(assignmentTitle);
       setAssignOpen(false);
       toast.success(ar ? `تم استيراد ${qs.length} سؤال من "${assignmentTitle}"` : `Imported ${qs.length} questions from "${assignmentTitle}"`);
     } catch { toast.error(ar ? "حدث خطأ" : "Error"); }
@@ -528,7 +532,7 @@ export default function TugCreate() {
                         {ar ? `${questions.length} سؤال محمّل جاهز للانطلاق!` : `${questions.length} questions ready!`}
                       </p>
                       <button
-                        onClick={() => { setQuestions([]); setSelectedSource(null); setQuestionCount(10); }}
+                        onClick={() => { setQuestions([]); setSelectedSource(null); setSourceTitle(null); setQuestionCount(10); }}
                         className="p-1.5 rounded-lg hover:bg-red-100 transition-colors text-red-400 shrink-0">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -591,7 +595,7 @@ export default function TugCreate() {
                   return;
                 }
                 try {
-                  sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration }));
+                  sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration, title: sourceTitle || undefined }));
                 } catch { /* storage full/blocked — navigation will show the setup prompt */ }
                 setLocation("/game/tug/class");
               }}
