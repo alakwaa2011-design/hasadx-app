@@ -91,6 +91,7 @@ const SoloPlayPage = lazy(() => import("@/pages/solo-play"));
 const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
+const TugClass = lazy(() => import("@/pages/game/tug-class"));
 const HotSeatCreate = lazy(() => import("@/pages/game/hotseat-create"));
 const WameethCreate = lazy(() => import("@/pages/game/wameeth-create"));
 const HotSeatHost = lazy(() => import("@/pages/game/hotseat-host"));
@@ -385,6 +386,7 @@ function Router() {
         <Route path="/game/tug/create" component={TugCreate} />
         <Route path="/game/tug/join/:pin?" component={TugJoin} />
         <Route path="/game/tug/play/:pin" component={TugPlay} />
+        <Route path="/game/tug/class" component={TugClass} />
         {/* HotSeat Routes */}
         <Route path="/game/hotseat/create" component={HotSeatCreate} />
         <Route path="/game/hotseat/join/:pin?" component={HotSeatJoin} />

@@ -990,6 +990,31 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
   const lastImpulseId = useRef<number | null>(null);
   const animRef = useRef(0);
   const mountedRef = useRef(true);
+  // ── Dynamic camera ──
+  // The viewBox itself is animated: it pans toward the leading team and pushes
+  // in slightly when someone nears victory, then eases back. Purely visual —
+  // the scene geometry and game state are untouched. Base frame: 100 72 800 288.
+  const [cam, setCam] = useState({ x: 100, w: 800 });
+  const camXRef = useRef(0);   // smoothed pan offset (viewBox units)
+  const camZRef = useRef(0);   // smoothed zoom factor 0..1
+  const displayPosRef = useRef(ropePos);
+  const celebRef = useRef<{ on: boolean; side: "blue" | "red" | null }>({ on: false, side: null });
+  celebRef.current = { on: isCelebrating, side: winnerSide ?? null };
+  // Motion-sensitivity: freeze the camera at its base frame for users who ask
+  // the OS to reduce motion (classic anti-motion-sickness accessibility).
+  const reducedMotionRef = useRef(false);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+      reducedMotionRef.current = mq.matches;
+      const onChange = (e: MediaQueryListEvent) => { reducedMotionRef.current = e.matches; };
+      mq.addEventListener?.("change", onChange);
+      return () => mq.removeEventListener?.("change", onChange);
+    } catch {
+      // matchMedia unavailable — keep camera enabled
+      return undefined;
+    }
+  }, []);
 
   useEffect(() => {
     if (!impulse || impulse.id === lastImpulseId.current) return;
@@ -1011,8 +1036,40 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
       setDisplayPos((prev) => {
         const target = ropePosRef.current;
         const next = prev + (target - prev) * 0.14;
-        return Math.abs(target - next) < 0.05 ? target : next;
+        const eased = Math.abs(target - next) < 0.05 ? target : next;
+        displayPosRef.current = eased;
+        return eased;
       });
+
+      // Camera: ease pan/zoom toward targets derived from the current position.
+      {
+        const pos = displayPosRef.current;
+        const celeb = celebRef.current;
+        // Pan follows the leading team (blue = left = negative).
+        let panTarget = Math.max(-40, Math.min(40, (pos - 50) * 1.35));
+        // Zoom builds only when a team pushes past ±25 from centre — the
+        // "something is about to happen" push-in. Max ≈ 7.5% tighter frame.
+        let zoomTarget = Math.max(0, Math.min(1, (Math.abs(pos - 50) - 25) / 25));
+        if (celeb.on && celeb.side) {
+          panTarget = celeb.side === "blue" ? -34 : 34;
+          zoomTarget = 0.55;
+        }
+        if (reducedMotionRef.current) { panTarget = 0; zoomTarget = 0; }
+        camXRef.current += (panTarget - camXRef.current) * 0.045;
+        camZRef.current += (zoomTarget - camZRef.current) * 0.05;
+        // Snap-to-rest: once within a hair of the target, land exactly on it so
+        // the viewBox attribute stops changing entirely between rounds (no
+        // endless sub-pixel churn → zero repaint cost while the scene idles).
+        if (Math.abs(panTarget - camXRef.current) < 0.04) camXRef.current = panTarget;
+        if (Math.abs(zoomTarget - camZRef.current) < 0.002) camZRef.current = zoomTarget;
+        const w = 800 - camZRef.current * 60;
+        // Centre the zoom, apply pan, and clamp inside the drawn content (0–1000).
+        const rawX = 100 + (800 - w) / 2 + camXRef.current;
+        const x = Math.max(55, Math.min(945 - w, rawX));
+        setCam((prev) =>
+          Math.abs(prev.x - x) < 0.05 && Math.abs(prev.w - w) < 0.05 ? prev : { x, w }
+        );
+      }
       // Spring the kick back to rest with a slight overshoot → stretch & rebound.
       if (kickPosRef.current !== 0 || kickVelRef.current !== 0) {
         kickVelRef.current += -kickPosRef.current * 0.2;
@@ -1056,10 +1113,14 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl select-none border-2 border-white/20 shadow-xl">
-      {/* viewBox crops the empty upper sky and side margins → camera pushes in
-          ~25% on the action while keeping the original 2.78 aspect ratio so the
-          surrounding layout is untouched. */}
-      <svg viewBox="100 72 800 288" className="w-full h-auto block">
+      {/* Live camera: base frame (100 72 800 288) crops the empty sky ~25%;
+          on top of that the rAF loop pans toward the leading team and pushes
+          in near a win. Height follows width (aspect 2.78 held constant) and
+          the bottom edge stays anchored at y=360 so the ground never drifts. */}
+      <svg
+        viewBox={`${cam.x.toFixed(2)} ${(360 - cam.w * 0.36).toFixed(2)} ${cam.w.toFixed(2)} ${(cam.w * 0.36).toFixed(2)}`}
+        className="w-full h-auto block"
+      >
         <Arena />
         <CenterLine />
 

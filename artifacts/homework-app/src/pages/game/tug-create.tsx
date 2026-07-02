@@ -577,6 +577,39 @@ export default function TugCreate() {
             </motion.button>
           </div>
 
+          {/* ── CLASS MODE — one screen, no phones: hand the prepared questions
+                 to the local engine via sessionStorage and go ── */}
+          <div className="flex justify-center mb-5">
+            <motion.button
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => {
+                if (questions.length === 0) {
+                  toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
+                  return;
+                }
+                try {
+                  sessionStorage.setItem("tug-class-setup", JSON.stringify({ questions, duration }));
+                } catch { /* storage full/blocked — navigation will show the setup prompt */ }
+                setLocation("/game/tug/class");
+              }}
+              disabled={questions.length === 0}
+              className="flex items-center justify-center gap-3 font-black text-base transition-all"
+              style={{
+                width: "min(820px, 100%)",
+                height: 56,
+                borderRadius: 18,
+                background: questions.length > 0 ? "#ffffff" : "#f1f5f9",
+                border: questions.length > 0 ? `2px solid ${BLUE}` : "2px solid #e2e8f0",
+                color: questions.length > 0 ? BLUE : "#94a3b8",
+                boxShadow: questions.length > 0 ? "0 4px 14px rgba(59,91,219,0.18)" : "none",
+                cursor: questions.length > 0 ? "pointer" : "not-allowed",
+              }}
+            >
+              🏫 {ar ? "وضع الصف — شاشة واحدة بدون جوالات" : "Class Mode — one screen, no phones"}
+            </motion.button>
+          </div>
+
           {/* ── BOTTOM INFO STRIP ── */}
           <div className="flex flex-wrap justify-center gap-3">
             {[
