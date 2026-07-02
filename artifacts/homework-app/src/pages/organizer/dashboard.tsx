@@ -290,7 +290,7 @@ export default function OrganizerDashboard() {
       },
       {
         href: "/game/escape/create",
-        title: lang === "ar" ? "قبو حصاد" : "Hasad Vault",
+        title: lang === "ar" ? "غرفة الهروب" : "Escape Room",
         subtitle:
           lang === "ar"
             ? "غرفة هروب تعليمية — فكّكوا الأقفال بالإجابات واهربوا قبل انتهاء الوقت"

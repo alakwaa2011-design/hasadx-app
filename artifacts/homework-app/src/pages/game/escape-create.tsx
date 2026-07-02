@@ -189,7 +189,7 @@ export default function EscapeCreate() {
 
   const requireQuestions = () => {
     if (questions.length < 3) {
-      toast.error(ar ? "قبو حصاد يحتاج 3 أسئلة على الأقل" : "The vault needs at least 3 questions");
+      toast.error(ar ? "غرفة الهروب تحتاج 3 أسئلة على الأقل" : "The escape room needs at least 3 questions");
       return false;
     }
     return true;
@@ -263,7 +263,7 @@ export default function EscapeCreate() {
             <motion.h1 initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               className="mb-1 text-3xl font-black text-white sm:text-4xl"
               style={{ textShadow: "0 0 26px rgba(247,201,72,0.35)" }}>
-              {ar ? "قبو حصاد" : "Hasad Vault"}
+              {ar ? "غرفة الهروب" : "Escape Room"}
             </motion.h1>
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
               className="text-sm font-bold text-amber-100/70 sm:text-base">

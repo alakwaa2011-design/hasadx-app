@@ -54,8 +54,8 @@ export default function TeacherGamesPage() {
       items: [
         {
           icon: <Lock />,
-          titleAr: "قبو حصاد",
-          titleEn: "Hasad Vault",
+          titleAr: "غرفة الهروب",
+          titleEn: "Escape Room",
           to: "/game/escape/create",
           iconBg: "bg-amber-500/10",
           iconColor: "text-amber-600",

@@ -19,6 +19,7 @@ import {
   ColorGameIcon,
   TugWarIcon,
   WheelIcon,
+  EscapeVaultIcon,
 } from "@/components/game-icons";
 
 import { createPortal } from "react-dom";
@@ -1814,6 +1815,7 @@ function CompetitiveTab({
       return;
     }
     else if (type === "tug_of_war") setLocation("/game/tug/create");
+    else if (type === "escape_room") setLocation("/game/escape/create");
     else if (type === "rocket_race") setLocation("/game/rocket/create");
     else if (type === "wheel_of_fortune") setLocation("/game/wheel/create");
     else if (type === "hotseat") setLocation("/game/hotseat/create");
@@ -1878,6 +1880,18 @@ function CompetitiveTab({
       type: "tug_of_war",
       available: true,
       pill: lang === "ar" ? "جماعي" : "Team play",
+    },
+    {
+      icon: <EscapeVaultIcon size={56} />,
+      title: lang === "ar" ? "غرفة الهروب" : "Escape Room",
+      desc:
+        lang === "ar"
+          ? "فكّكوا الأقفال بالإجابات الصحيحة واهربوا قبل انتهاء الوقت — كل خطأ يُطلق الإنذار. وضع صفّي تعاوني أو فردي بالأجهزة."
+          : "Break the locks with correct answers and escape before time runs out — every mistake trips the alarm. Class co-op or individual devices.",
+      color: "from-amber-500 to-yellow-700",
+      type: "escape_room",
+      available: true,
+      pill: lang === "ar" ? "جديد · تعاوني" : "New · Co-op",
     },
     {
       icon: <WheelIcon size={52} />,
@@ -2112,7 +2126,7 @@ function CompetitiveTab({
             >
               <div className="flex items-start gap-3 mb-3">
                 <div
-                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat","million"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
+                  className={`shrink-0 rounded-2xl shadow-lg flex items-center justify-center text-2xl ${(["knowledge_race","wheel_of_fortune","hack","tug_of_war","escape_room","color_game","flag_quiz","capitals","memory_match","multiplication","stroop","scramble_words","letrly","rocket_race","video_lesson","hotseat","million"] as string[]).includes(game.type) ? "" : `w-14 h-14 bg-gradient-to-br ${game.color}`}`}
                 >
                   {game.icon}
                 </div>
@@ -2139,6 +2153,7 @@ function CompetitiveTab({
                       ? "اختر واجباً وابدأ ←"
                       : "Pick assignment & start →"
                     : game.type === "tug_of_war" ||
+                        game.type === "escape_room" ||
                         game.type === "video_lesson" ||
                         game.type === "rocket_race" ||
                         game.type === "hotseat"

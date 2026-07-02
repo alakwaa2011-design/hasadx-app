@@ -1,18 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// «قبو حصاد» — DEVICE MODE host screen (teacher).
+// «غرفة الهروب» — DEVICE MODE host screen (teacher).
 // Lobby: PIN + QR + live joiner list. Playing: live escape leaderboard —
 // every student's lock progress streams in via escape:progress snapshots.
+// Standard host controls (Wameeth-style): join bar with PIN/link/QR always
+// available, mute, and fullscreen.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Check, Play, LogOut, Loader2, Users } from "lucide-react";
+import {
+  Copy, Check, Play, LogOut, Loader2, Users,
+  Volume2, VolumeX, Maximize, Minimize,
+} from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
 import { GameQRCode } from "@/components/game-qr-code";
-import { VaultBackdrop, ESCAPE_BG, GOLD } from "@/components/game/escape-shared";
+import { HostJoinBar } from "@/components/host-join-bar";
+import { EscapeSoundEngine, VaultBackdrop, ESCAPE_BG, GOLD } from "@/components/game/escape-shared";
 
 interface HostPlayer {
   name: string;
@@ -41,6 +47,40 @@ export default function EscapeHost() {
   const startedRef = useRef(false);
 
   const joinUrl = useMemo(() => `${window.location.origin}/game/escape/play?pin=${pin}`, [pin]);
+
+  // ── Sound (ambient + music on the big screen, like other host pages) ──
+  const soundRef = useRef<EscapeSoundEngine | null>(null);
+  const getSound = useCallback(() => {
+    if (!soundRef.current) soundRef.current = new EscapeSoundEngine();
+    return soundRef.current;
+  }, []);
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem("escape-muted") === "1"; } catch { return false; }
+  });
+  useEffect(() => () => { soundRef.current?.destroy(); }, []);
+  useEffect(() => {
+    const s = getSound();
+    if (phase === "playing" && !s.muted) { s.startAmbient(); s.startMusic(); }
+    else { s.stopAmbient(); s.stopMusic(); }
+  }, [phase, getSound]);
+  const toggleMute = () => {
+    const s = getSound();
+    s.setMuted(!s.muted);
+    setMuted(s.muted);
+    if (!s.muted && phase === "playing") { s.startAmbient(); s.startMusic(); }
+  };
+
+  // ── Fullscreen (standard host control) ──
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  };
 
   useEffect(() => {
     if (!pin) { setPhase("error"); return; }
@@ -83,8 +123,8 @@ export default function EscapeHost() {
 
   const copyInvite = async () => {
     const text = ar
-      ? `🔐 قبو حصاد — غرفة الهروب\n🔑 الرمز: ${pin}\n🔗 ${joinUrl}`
-      : `🔐 Hasad Vault — escape room\n🔑 PIN: ${pin}\n🔗 ${joinUrl}`;
+      ? `🔐 غرفة الهروب\n🔑 الرمز: ${pin}\n🔗 ${joinUrl}`
+      : `🔐 Escape Room\n🔑 PIN: ${pin}\n🔗 ${joinUrl}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -115,11 +155,25 @@ export default function EscapeHost() {
       <div className="relative flex min-h-screen flex-col text-white" dir={dir} style={{ background: ESCAPE_BG }}>
         <VaultBackdrop danger={false} />
 
+        {/* Standard host controls: mute + fullscreen (Wameeth-style) */}
+        <div className="fixed top-3 z-50 flex gap-2" style={{ insetInlineEnd: 12 }}>
+          <button onClick={toggleMute}
+            className="rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50"
+            aria-label={muted ? "unmute" : "mute"}>
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+          <button onClick={toggleFullscreen}
+            className="rounded-full border border-white/20 bg-black/35 p-2 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/50"
+            aria-label={isFullscreen ? "exit fullscreen" : "fullscreen"}>
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </button>
+        </div>
+
         <div className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6">
           {/* Header */}
           <div className="mb-5 text-center">
             <h1 className="text-2xl font-black sm:text-3xl" style={{ textShadow: "0 0 22px rgba(247,201,72,0.35)" }}>
-              🔐 {ar ? "قبو حصاد" : "Hasad Vault"}
+              🔐 {ar ? "غرفة الهروب" : "Escape Room"}
             </h1>
             {title && (
               <p className="mx-auto mt-1 w-fit max-w-[85vw] truncate rounded-full border border-amber-300/30 bg-black/35 px-4 py-1 text-sm font-black text-amber-200">
@@ -210,6 +264,9 @@ export default function EscapeHost() {
           {/* ── LIVE BOARD ── */}
           {phase === "playing" && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              {/* Join bar stays visible so late students can still enter */}
+              <HostJoinBar pin={pin} joinUrl={joinUrl} variant="dark" />
+
               {/* Summary strip */}
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-black">
                 <span className="rounded-full bg-white/10 px-3.5 py-1.5">👥 {players.length} {ar ? "لاعباً" : "players"}</span>

@@ -83,10 +83,10 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
     const s = getSound();
     s.setMuted(!s.muted);
     setMuted(s.muted);
-    if (!s.muted && state.status === "playing") s.startAmbient();
+    if (!s.muted && state.status === "playing") { s.startAmbient(); s.startMusic(); }
   };
 
-  const title = setup.title || (ar ? "قبو حصاد" : "Hasad Vault");
+  const title = setup.title || (ar ? "غرفة الهروب" : "Escape Room");
   const minutes = Math.round(setup.totalTime / 60);
   const danger = state.status === "playing" && state.timeLeft <= 60;
 
@@ -193,7 +193,7 @@ function ClassRun({ setup, onReplay }: { setup: EscapeSetup; onReplay: () => voi
             className="w-full max-w-md rounded-3xl border border-amber-300/25 bg-[#0d1626]/95 p-6 text-center shadow-2xl"
             style={{ direction: ar ? "rtl" : "ltr" }}>
             <div className="mb-2 text-5xl">🔐</div>
-            <h1 className="mb-1 text-2xl font-black">{ar ? "قبو حصاد — وضع الصف" : "Hasad Vault — Class Mode"}</h1>
+            <h1 className="mb-1 text-2xl font-black">{ar ? "غرفة الهروب — وضع الصف" : "Escape Room — Class Mode"}</h1>
             <p className="mx-auto mb-3 w-fit max-w-full truncate rounded-full border border-amber-300/35 bg-black/30 px-4 py-1 text-sm font-black text-amber-200" title={title}>
               📖 {title}
             </p>
@@ -242,10 +242,10 @@ export default function EscapeClass() {
       <Layout>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
           <div className="text-6xl">🔐</div>
-          <h2 className="text-2xl font-black">{ar ? "قبو حصاد" : "Hasad Vault"}</h2>
+          <h2 className="text-2xl font-black">{ar ? "غرفة الهروب" : "Escape Room"}</h2>
           <p className="max-w-sm text-muted-foreground">
             {ar
-              ? "جهّز 3 أسئلة على الأقل من صفحة إنشاء قبو حصاد ثم اختر «وضع الصف»."
+              ? "جهّز 3 أسئلة على الأقل من صفحة إنشاء غرفة الهروب ثم اختر «وضع الصف»."
               : "Prepare at least 3 questions from the vault create page, then choose Class Mode."}
           </p>
           <button onClick={() => setLocation("/game/escape/create")}

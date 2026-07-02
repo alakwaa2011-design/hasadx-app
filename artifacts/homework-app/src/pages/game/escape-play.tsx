@@ -172,7 +172,7 @@ export default function EscapePlay() {
     const s = getSound();
     s.setMuted(!s.muted);
     setMuted(s.muted);
-    if (!s.muted && state?.status === "playing") s.startAmbient();
+    if (!s.muted && state?.status === "playing") { s.startAmbient(); s.startMusic(); }
   };
 
   const beginRun = () => {
@@ -181,7 +181,7 @@ export default function EscapePlay() {
     setPhase("playing");
   };
 
-  const displayTitle = title || (ar ? "قبو حصاد" : "Hasad Vault");
+  const displayTitle = title || (ar ? "غرفة الهروب" : "Escape Room");
 
   return (
     <div className="relative flex min-h-screen flex-col select-none text-white" dir={dir} style={{ background: ESCAPE_BG }}>
@@ -206,7 +206,7 @@ export default function EscapePlay() {
             🔐
           </motion.div>
           <h1 className="text-2xl font-black" style={{ textShadow: "0 0 22px rgba(247,201,72,0.35)" }}>
-            {ar ? "قبو حصاد" : "Hasad Vault"}
+            {ar ? "غرفة الهروب" : "Escape Room"}
           </h1>
           <p className="-mt-2 text-sm font-bold text-white/60">
             {ar ? "أدخل الرمز واسمك للانضمام إلى غرفة الهروب" : "Enter the PIN and your name to join the escape room"}

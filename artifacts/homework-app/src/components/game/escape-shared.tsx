@@ -8,7 +8,7 @@
 // Identity: Hasad gold (#F7C948 / #D9A521) glowing inside a deep midnight
 // vault (#0b1220 → #131c33). Everything is SVG/CSS/Web Audio — no assets.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   currentQuestion, escapeProgress, revealedCode,
@@ -105,7 +105,69 @@ export class EscapeSoundEngine {
   setMuted(m: boolean) {
     this.muted = m;
     try { localStorage.setItem("escape-muted", m ? "1" : "0"); } catch (_) {}
-    if (m) this.stopAmbient();
+    if (m) { this.stopAmbient(); this.stopMusic(); }
+  }
+
+  // ── MUSIC: driving heist-style loop — pulsing minor bassline, urgent
+  //    arpeggio and ticking hats. Doubles the pace in the final minute. ──
+  private musicTimer: number | null = null;
+  private musicStep = 0;
+  private musicFast = false;
+
+  /** 16-step pattern in E minor. One step ≈ a 16th note. */
+  private playMusicStep(step: number) {
+    if (this.muted) return;
+    const s = step % 32;
+    // Bass pulse — four-on-the-floor with an octave jump every second bar.
+    if (s % 4 === 0) {
+      const f = s >= 16 && s % 8 === 4 ? 82.4 * 2 : 82.4; // E2 / E3
+      this.tone(f, 0.16, "square", 0.055);
+      this.freqRamp(150, 60, 0.07, "sine", 0.09); // kick thump
+    }
+    // Ticking hats on off-beats.
+    if (s % 2 === 0) this.noise(0.015, s % 8 === 6 ? 0.045 : 0.022);
+    // Arpeggio: E minor riff cycling across two bars (heist tension).
+    const riff = [164.8, 196, 246.9, 196, 164.8, 246.9, 329.6, 246.9]; // E3 G3 B3 … E4
+    if (s % 2 === 1) {
+      const note = riff[((s - 1) / 2) % riff.length];
+      this.tone(note, 0.11, "triangle", 0.045);
+    }
+    // Rising sting at the top of every 2-bar loop.
+    if (s === 0) this.freqRamp(660, 990, 0.18, "sine", 0.02);
+  }
+
+  private musicInterval(): number {
+    return this.musicFast ? 95 : 130; // ≈158 / 115 BPM feel
+  }
+
+  startMusic() {
+    if (this.muted || this.musicTimer !== null) return;
+    try {
+      this.getCtx(); // ensure the context is alive before scheduling
+      this.musicStep = 0;
+      this.musicTimer = window.setInterval(() => {
+        this.playMusicStep(this.musicStep++);
+      }, this.musicInterval());
+    } catch (_) {}
+  }
+
+  /** Final-minute overdrive: restart the sequencer at the faster tempo. */
+  setMusicFast(fast: boolean) {
+    if (this.musicFast === fast) return;
+    this.musicFast = fast;
+    if (this.musicTimer !== null) {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = window.setInterval(() => {
+        this.playMusicStep(this.musicStep++);
+      }, this.musicInterval());
+    }
+  }
+
+  stopMusic() {
+    if (this.musicTimer !== null) {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
   }
 
   // ── AMBIENT: low vault drone + faint air hiss, loops forever ──────────────
@@ -226,6 +288,7 @@ export class EscapeSoundEngine {
 
   destroy() {
     this.stopAmbient();
+    this.stopMusic();
     try { this.ctx?.close(); } catch (_) {}
     this.ctx = null;
     this.compressor = null;
@@ -594,6 +657,27 @@ export function EscapeGameView({
   const letters = ar ? OPTION_LETTERS_AR : OPTION_LETTERS_EN;
   const big = variant === "class";
 
+  // ── Option shuffling: a fresh random layout on EVERY question presentation
+  //    (including when a missed question rotates back). shuffleSeq bumps each
+  //    time the phase enters "question", which re-keys the card + options.
+  const [shuffle, setShuffle] = useState<{ order: number[]; seq: number }>({ order: [], seq: 0 });
+  useEffect(() => {
+    if (state.phase !== "question" || !question) return;
+    const idxs = question.options.map((_, i) => i);
+    for (let i = idxs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    }
+    setShuffle((s) => ({ order: idxs, seq: s.seq + 1 }));
+    // Intentionally NOT depending on `question` (stable per lockIndex/qPos):
+    // reshuffle exactly when a question presentation starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.phase === "question", state.lockIndex, state.qPos]);
+  const displayOrder = question && shuffle.order.length === question.options.length
+    ? shuffle.order
+    : (question ? question.options.map((_, i) => i) : []);
+  const shuffleKey = `${state.lockIndex}-${state.qPos}-${shuffle.seq}`;
+
   // ── 1s master tick drives the engine clock ──
   useEffect(() => {
     if (state.status !== "playing") return;
@@ -603,11 +687,16 @@ export function EscapeGameView({
 
   // ── Sounds bound to state transitions ──
   useEffect(() => {
-    if (state.status === "playing") sound.startAmbient();
-    else sound.stopAmbient();
+    if (state.status === "playing") { sound.startAmbient(); sound.startMusic(); }
+    else { sound.stopAmbient(); sound.stopMusic(); }
     // Cleanup covers unmount (e.g. the page swaps to the ceremony screen).
-    return () => sound.stopAmbient();
+    return () => { sound.stopAmbient(); sound.stopMusic(); };
   }, [state.status, sound]);
+
+  // Final-minute music overdrive.
+  useEffect(() => {
+    sound.setMusicFast(urgent && state.status === "playing");
+  }, [urgent, state.status, sound]);
 
   const lastAlarm = useRef(state.alarmSeq);
   useEffect(() => {
@@ -739,9 +828,10 @@ export function EscapeGameView({
         </motion.div>
       ) : question && !lost && state.status === "playing" ? (
         <>
-          {/* Question card */}
+          {/* Question card — keyed by shuffleKey so a returning question
+              (after a wrong answer) also exits and re-enters fresh */}
           <motion.div
-            key={`${state.lockIndex}-${state.qPos}`}
+            key={shuffleKey}
             initial={{ opacity: 0, y: 10 }}
             animate={state.phase === "feedback" && state.correct === false
               ? { opacity: 1, y: 0, x: [0, -8, 7, -5, 0] }
@@ -755,38 +845,45 @@ export function EscapeGameView({
             </p>
           </motion.div>
 
-          {/* Options 2×2 with letter badges (Hasad answer identity) */}
+          {/* Options 2×2 with letter badges (Hasad answer identity).
+              Positions are RE-SHUFFLED on every presentation, so the correct
+              answer never sits in a memorable spot. On a wrong answer the
+              correct option is NOT revealed — the student must think. */}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
-            {question.options.map((opt, idx) => {
+            {displayOrder.map((idx, pos) => {
+              const opt = question.options[idx];
               const removedOpt = state.removed.includes(idx);
               const inFeedback = state.phase === "feedback";
-              const isCorrect = inFeedback && idx === question.correct;
-              const isWrongPick = inFeedback && idx === state.selected && !state.correct;
+              const isPick = inFeedback && idx === state.selected;
+              const isCorrectPick = isPick && state.correct === true;
+              const isWrongPick = isPick && state.correct === false;
               const clickable = state.phase === "question" && !removedOpt;
               return (
                 <motion.button
-                  key={idx}
+                  key={`${shuffleKey}-${pos}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: removedOpt || (inFeedback && !isPick) ? 0.35 : 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: pos * 0.05 }}
                   whileTap={clickable ? { scale: 0.96 } : undefined}
                   onClick={() => clickable && dispatch({ type: "answer", index: idx })}
                   disabled={!clickable}
                   className={`relative flex items-center gap-2.5 rounded-xl border-2 px-3 text-start font-black text-white transition-all ${big ? "min-h-[58px] py-2.5 sm:min-h-[64px]" : "min-h-[52px] py-2"}`}
                   style={{
                     touchAction: "manipulation",
-                    background: isCorrect ? "#1a5c30" : isWrongPick ? "#5c1212" : OPTION_GRADIENT[idx % 4],
-                    borderColor: isCorrect ? "#4ade80" : isWrongPick ? "#f87171" : "rgba(255,255,255,0.18)",
-                    opacity: removedOpt || (inFeedback && !isCorrect && !isWrongPick) ? 0.35 : 1,
+                    background: isCorrectPick ? "#1a5c30" : isWrongPick ? "#5c1212" : OPTION_GRADIENT[pos % 4],
+                    borderColor: isCorrectPick ? "#4ade80" : isWrongPick ? "#f87171" : "rgba(255,255,255,0.18)",
                     cursor: clickable ? "pointer" : "default",
                     boxShadow: removedOpt ? "none" : "0 4px 14px rgba(0,0,0,0.35)",
                   }}
                 >
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-black"
                     style={{ background: "rgba(255,255,255,0.16)", borderColor: "rgba(255,255,255,0.3)" }}>
-                    {letters[idx]}
+                    {letters[pos]}
                   </span>
                   <span className={`flex-1 leading-snug ${big ? "text-base sm:text-lg" : "text-sm sm:text-base"} ${removedOpt ? "line-through" : ""}`}>
                     {opt}
                   </span>
-                  {isCorrect && <span className="text-lg">✓</span>}
+                  {isCorrectPick && <span className="text-lg">✓</span>}
                   {isWrongPick && <span className="text-lg">✗</span>}
                   {removedOpt && <span className="text-lg">🚫</span>}
                 </motion.button>
