@@ -260,6 +260,72 @@ class TugSoundEngine {
     this.urgent  = false;
   }
 
+  // ── REFEREE WHISTLE: short trill then a long blast (class-mode kickoff) ───
+  playWhistle() {
+    for (let i = 0; i < 5; i++)
+      this.tone(i % 2 === 0 ? 2350 : 2120, 0.05, "square", 0.15, i * 0.045);
+    this.noise(0.04, 0.05);
+    for (let i = 0; i < 11; i++)
+      this.tone(i % 2 === 0 ? 2350 : 2120, 0.05, "square", 0.17, 0.38 + i * 0.045);
+    this.noise(0.05, 0.05, 0.38);
+  }
+
+  // ── LIVE CROWD BED ────────────────────────────────────────────────────────
+  // A looping band-passed noise "stadium murmur" whose energy follows the
+  // match (rope distance from centre + streaks). Continuous, so it lives in
+  // dedicated nodes instead of the one-shot helpers above.
+  private crowdSrc: AudioBufferSourceNode | null = null;
+  private crowdGain: GainNode | null = null;
+  private crowdFilter: BiquadFilterNode | null = null;
+  private crowdLfo: OscillatorNode | null = null;
+
+  startCrowd() {
+    if (this.muted || this.crowdSrc) return;
+    try {
+      const ctx = this.getCtx();
+      const dur = 2.4;
+      const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer; src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass"; bp.frequency.value = 820; bp.Q.value = 0.55;
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      // Slow swell LFO so the murmur breathes like a real crowd.
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 0.21; lfoGain.gain.value = 0.010;
+      lfo.connect(lfoGain); lfoGain.connect(g.gain);
+      src.connect(bp); bp.connect(g); g.connect(this.getDest());
+      src.start(); lfo.start();
+      g.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 1.2);
+      this.crowdSrc = src; this.crowdGain = g; this.crowdFilter = bp; this.crowdLfo = lfo;
+    } catch (_) {}
+  }
+
+  /** 0 = quiet murmur … 1 = roaring crowd. Eased over ~0.6s. */
+  setCrowdExcitement(x: number) {
+    if (!this.crowdGain || !this.crowdFilter) return;
+    try {
+      const ctx = this.getCtx();
+      const level = Math.max(0, Math.min(1, x));
+      this.crowdGain.gain.cancelScheduledValues(ctx.currentTime);
+      this.crowdGain.gain.linearRampToValueAtTime(0.03 + level * 0.085, ctx.currentTime + 0.6);
+      this.crowdFilter.frequency.linearRampToValueAtTime(700 + level * 950, ctx.currentTime + 0.6);
+    } catch (_) {}
+  }
+
+  stopCrowd() {
+    try {
+      this.crowdSrc?.stop(); this.crowdLfo?.stop();
+      this.crowdSrc?.disconnect(); this.crowdGain?.disconnect();
+      this.crowdFilter?.disconnect(); this.crowdLfo?.disconnect();
+    } catch (_) {}
+    this.crowdSrc = null; this.crowdGain = null; this.crowdFilter = null; this.crowdLfo = null;
+  }
+
   // ── HEARTBEAT: low "lub-dub" while the rope sits in the danger zone ──────
   playHeartbeat() {
     this.freqRamp(95, 42, 0.14, "sine", 0.32);
@@ -293,6 +359,13 @@ class TugSoundEngine {
       this.tone(f, 0.08, "triangle", 0.17 - i * 0.01, i * 0.030));
     this.noise(0.032, 0.12, 0.12);
     this.tone(2093, 0.28, "sine", 0.13, 0.16);
+  }
+
+  // ── BRACE: low rope creak while a team digs in before the pull resolves ──
+  playBrace() {
+    this.freqRamp(140, 88, 0.30, "sawtooth", 0.055);
+    this.freqRamp(96, 70, 0.34, "triangle", 0.07, 0.03);
+    this.noiseLow(0.10, 0.05, 0.02);
   }
 
   // ── ROPE PULL IMPACT ──────────────────────────────────────────────────────
@@ -409,6 +482,7 @@ class TugSoundEngine {
   }
   destroy() {
     this.stopBackground();
+    this.stopCrowd();
     try { this.ctx?.close(); } catch (_) {}
     this.ctx = null;
     this.compressor = null;
@@ -649,6 +723,8 @@ function TugCharacters({
   isCelebrating,
   winnerSide,
   impulse,
+  intro,
+  brace,
 }: {
   ropePos: number;
   isPulling: boolean;
@@ -656,6 +732,10 @@ function TugCharacters({
   isCelebrating: boolean;
   winnerSide: "blue" | "red" | null;
   impulse: TugImpulse | null;
+  /** Pre-match choreography (class mode): teams off-screen → sprint in. */
+  intro?: "waiting" | "run";
+  /** Anticipation: this team locked an answer and digs in before it resolves. */
+  brace?: "blue" | "red" | null;
 }) {
   // Screen-shake restart without remounting the scene: drop the class for one
   // frame, then re-apply it so the CSS animation replays on every impulse.
@@ -687,12 +767,19 @@ function TugCharacters({
           isCelebrating={isCelebrating}
           winnerSide={winnerSide}
           impulse={impulse}
+          intro={intro}
+          brace={brace}
         />
       </div>
-      {/* ── Cloth ribbon marker: two slim fabric tails hanging from the rope centre ── */}
+      {/* ── Cloth ribbon marker: two slim fabric tails hanging from the rope centre ──
+          Hidden during the pre-match show (no rope on the field yet). */}
       <motion.div
         className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2"
-        style={{ top: "64%", transformOrigin: "center top" }}
+        style={{
+          top: "64%", transformOrigin: "center top",
+          opacity: intro === "waiting" ? 0 : 1,
+          transition: intro === "run" ? "opacity 0.4s ease 1.25s" : "opacity 0.3s ease",
+        }}
         animate={{ rotate: isPulling ? [-5, 4, -4, 5, -5] : [-2, 2, -2] }}
         transition={{ repeat: Infinity, duration: isPulling ? 1.3 : 3.5, ease: "easeInOut" }}
       >

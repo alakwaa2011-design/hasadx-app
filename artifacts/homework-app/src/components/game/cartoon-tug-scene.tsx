@@ -19,6 +19,18 @@ interface CartoonTugSceneProps {
   winnerSide: "blue" | "red" | null;
   /** Transient reactive nudge fired on each answer / big pull (presentational only). */
   impulse?: TugImpulse | null;
+  /**
+   * Match-presentation choreography (class mode):
+   * "waiting" — teams are still in the tunnels (off-screen), rope not laid yet;
+   * "run"     — teams sprint onto the field, then the rope drops into their hands;
+   * undefined — normal play, everyone in position (online mode unchanged).
+   */
+  intro?: "waiting" | "run";
+  /**
+   * Anticipation: this team just LOCKED an answer and is digging in before the
+   * pull resolves — they crouch and lean into the rope for a beat.
+   */
+  brace?: "blue" | "red" | null;
 }
 
 interface CharProps {
@@ -548,7 +560,7 @@ function Character({ side, index, slideX, isPulling, isUrgent, isCelebrating, is
   );
 }
 
-function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating, stretch = 0, shake = false }: { slideX: number; isPulling: boolean; pullCycle: number; isCelebrating: boolean; stretch?: number; shake?: boolean }) {
+function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating, stretch = 0, shake = false, strain = 0 }: { slideX: number; isPulling: boolean; pullCycle: number; isCelebrating: boolean; stretch?: number; shake?: boolean; strain?: number }) {
   const shoulderY = GROUND_Y - 55 - 50;
   const ropeGripY = shoulderY + 25;
 
@@ -739,6 +751,52 @@ function TwistedRope({ slideX, isPulling, pullCycle, isCelebrating, stretch = 0,
             return <line key={i} x1={px - 3} y1={ropeGripY - 5} x2={px + 3} y2={ropeGripY + 5} stroke="#FFD700" strokeWidth={1.5} opacity={0.4} />;
           })}
         </motion.g>
+      )}
+
+      {/* ── Fraying fibres: near a wall the rope looks about to SNAP —
+          little strands spring out along the middle section and quiver. ── */}
+      {strain > 0 && !isCelebrating && (
+        <g opacity={Math.min(1, strain * 1.2)}>
+          {[0.36, 0.43, 0.5, 0.57, 0.64].map((t, i) => {
+            const [px, py] = getPoint(t);
+            const up = i % 2 === 0 ? -1 : 1;
+            const quiver = Math.sin(pullCycle * 9 + i * 2.1) * 1.4 * strain;
+            const len = 5 + (i % 3) * 2 + strain * 3;
+            return (
+              <g key={i}>
+                <path
+                  d={`M${px},${py + up * 3} q${2 + quiver},${up * (len * 0.7)} ${5 + quiver},${up * len}`}
+                  stroke="#C9A050" strokeWidth={1.1} fill="none" strokeLinecap="round" opacity={0.85}
+                />
+                <path
+                  d={`M${px + 2},${py - up * 3} q${-2 - quiver},${-up * (len * 0.5)} ${-4 - quiver},${-up * (len * 0.8)}`}
+                  stroke="#8D6E3C" strokeWidth={0.9} fill="none" strokeLinecap="round" opacity={0.7}
+                />
+              </g>
+            );
+          })}
+        </g>
+      )}
+
+      {/* ── Friction sparks: a fast pull makes the centre marker spit sparks. ── */}
+      {shake && !isCelebrating && (
+        <g transform={`translate(${CENTER_X + slideX}, ${ropeGripY})`}>
+          {[
+            { a: -2.6, l: 13, c: "#FFD54F" }, { a: -1.9, l: 17, c: "#FFB74D" },
+            { a: -1.1, l: 12, c: "#FFE082" }, { a: -0.5, l: 16, c: "#FFD54F" },
+            { a: 0.4, l: 14, c: "#FFB74D" }, { a: 1.2, l: 11, c: "#FFE082" },
+          ].map((s, i) => (
+            <motion.line
+              key={i}
+              x1={0} y1={0}
+              x2={Math.cos(s.a) * s.l} y2={Math.sin(s.a) * s.l - 6}
+              stroke={s.c} strokeWidth={1.6} strokeLinecap="round"
+              initial={{ opacity: 0.95, scale: 0.3 }}
+              animate={{ opacity: 0, scale: 1.25, x: Math.cos(s.a) * 7, y: Math.sin(s.a) * 5 - 4 }}
+              transition={{ duration: 0.4 + (i % 3) * 0.08, ease: "easeOut" }}
+            />
+          ))}
+        </g>
       )}
     </g>
   );
@@ -973,8 +1031,14 @@ function VictoryTrophy({ x, pullCycle, accent }: { x: number; pullCycle: number;
   );
 }
 
-export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide, impulse }: CartoonTugSceneProps) {
+export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, winnerSide, impulse, intro, brace }: CartoonTugSceneProps) {
   const [pullCycle, setPullCycle] = useState(0);
+  // Entrance is skipped entirely for motion-sensitive users (teams simply
+  // appear in position, rope laid) — checked once at mount.
+  const [reducedIntro] = useState(() => {
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; }
+  });
+  const introMode = reducedIntro ? undefined : intro;
   // Smoothed rope position — eases toward the real ropePos so team progress
   // glides instead of snapping. Purely presentational; never sent anywhere.
   const [displayPos, setDisplayPos] = useState(ropePos);
@@ -1136,20 +1200,83 @@ export function CartoonTugScene({ ropePos, isPulling, isUrgent, isCelebrating, w
 
         <DustCloud isPulling={isPulling} pullCycle={pullCycle} slideX={slideX} burst={burstOn} />
 
+        {/* Blue team — sprints in from the LEFT tunnel during the pre-match show.
+            Outer runner leads, inner follows; a light bob sells the run. */}
         {[1, 0].map(i => (
-          <Character key={`blue-${i}`} side="blue" index={i} slideX={slideX}
-            isPulling={isPulling} isUrgent={isUrgent} isCelebrating={isCelebrating}
-            isWinnerSide={winnerSide === "blue"} isLosingSide={blueIsLosing}
-            pullCycle={pullCycle} fatigue={blueFatigue} />
+          <motion.g
+            key={`blue-${i}`}
+            initial={false}
+            animate={
+              introMode === "waiting"
+                ? { x: -340, y: 0 }
+                : introMode === "run"
+                  ? { x: 0, y: [0, -7, 0, -6, 0, -3, 0] }
+                  : brace === "blue"
+                    ? { x: -5, y: 3 }   // dig in: lean into the pull, sink a hair
+                    : { x: 0, y: 0 }
+            }
+            transition={
+              introMode === "run"
+                ? { x: { duration: 0.9, ease: "easeOut", delay: i === 1 ? 0 : 0.22 }, y: { duration: 0.9, delay: i === 1 ? 0 : 0.22 } }
+                : introMode === "waiting"
+                  ? { duration: 0 }
+                  : { duration: 0.18, ease: "easeOut" }
+            }
+          >
+            <Character side="blue" index={i} slideX={slideX}
+              isPulling={isPulling} isUrgent={isUrgent} isCelebrating={isCelebrating}
+              isWinnerSide={winnerSide === "blue"} isLosingSide={blueIsLosing}
+              pullCycle={pullCycle} fatigue={blueFatigue} />
+          </motion.g>
         ))}
 
-        <TwistedRope slideX={slideX} isPulling={isPulling} pullCycle={pullCycle} isCelebrating={isCelebrating} stretch={kickStretch} shake={burstOn} />
+        {/* The rope drops onto the field once both teams arrive, with a little bounce. */}
+        <motion.g
+          initial={false}
+          animate={
+            introMode === "waiting"
+              ? { opacity: 0, y: -34 }
+              : introMode === "run"
+                ? { opacity: 1, y: [-34, 5, 0] }
+                : { opacity: 1, y: 0 }
+          }
+          transition={
+            introMode === "run"
+              ? { delay: 1.05, duration: 0.5, ease: "easeOut" }
+              : { duration: 0 }
+          }
+        >
+          <TwistedRope slideX={slideX} isPulling={isPulling} pullCycle={pullCycle} isCelebrating={isCelebrating} stretch={kickStretch} shake={burstOn}
+            strain={Math.max(0, Math.min(1, (Math.abs(ropePos - 50) - 30) / 20))} />
+        </motion.g>
 
+        {/* Red team — mirrors blue from the RIGHT tunnel. */}
         {[1, 0].map(i => (
-          <Character key={`red-${i}`} side="red" index={i} slideX={slideX}
-            isPulling={isPulling} isUrgent={isUrgent} isCelebrating={isCelebrating}
-            isWinnerSide={winnerSide === "red"} isLosingSide={redIsLosing}
-            pullCycle={pullCycle} fatigue={redFatigue} />
+          <motion.g
+            key={`red-${i}`}
+            initial={false}
+            animate={
+              introMode === "waiting"
+                ? { x: 340, y: 0 }
+                : introMode === "run"
+                  ? { x: 0, y: [0, -7, 0, -6, 0, -3, 0] }
+                  : brace === "red"
+                    ? { x: 5, y: 3 }
+                    : { x: 0, y: 0 }
+            }
+            transition={
+              introMode === "run"
+                ? { x: { duration: 0.9, ease: "easeOut", delay: i === 1 ? 0 : 0.22 }, y: { duration: 0.9, delay: i === 1 ? 0 : 0.22 } }
+                : introMode === "waiting"
+                  ? { duration: 0 }
+                  : { duration: 0.18, ease: "easeOut" }
+            }
+          >
+            <Character side="red" index={i} slideX={slideX}
+              isPulling={isPulling} isUrgent={isUrgent} isCelebrating={isCelebrating}
+              isWinnerSide={winnerSide === "red"} isLosingSide={redIsLosing}
+              pullCycle={pullCycle} fatigue={redFatigue} />
+          </motion.g>
         ))}
 
         {/* Trophy floating above the winning team */}
