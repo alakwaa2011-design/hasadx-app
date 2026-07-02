@@ -31,7 +31,7 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-ALLOWED_ORIGINS = "https://hasadx.com,https://www.hasadx.com"
+ALLOWED_ORIGINS = "https://hasadx.com,https://www.hasadx.com,https://hasaadx.com,https://www.hasaadx.com,https://mn-s-h-sd.replit.app"
 
 [userenv.shared]
 GOOGLE_CLIENT_ID = "281565681069-37f3c0p8lijijjmj3nie7a2hs3iilm7f.apps.googleusercontent.com"
