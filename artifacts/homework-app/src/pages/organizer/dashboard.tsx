@@ -18,6 +18,7 @@ import {
   ColorGameIcon,
   TugWarIcon,
   WheelIcon,
+  EscapeVaultIcon,
 } from "@/components/game-icons";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -62,6 +63,7 @@ import {
   PartyPopper,
   Lightbulb,
   Library,
+  Lock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -285,6 +287,18 @@ export default function OrganizerDashboard() {
         svgIcon: <TugWarIcon size={52} />,
         accent: "#94a3b8",
         tag: lang === "ar" ? "بث مباشر · فريقان" : "Live · Two teams",
+      },
+      {
+        href: "/game/escape/create",
+        title: lang === "ar" ? "قبو حصاد" : "Hasad Vault",
+        subtitle:
+          lang === "ar"
+            ? "غرفة هروب تعليمية — فكّكوا الأقفال بالإجابات واهربوا قبل انتهاء الوقت"
+            : "Educational escape room — break the locks with answers and escape in time",
+        Icon: Lock,
+        svgIcon: <EscapeVaultIcon size={52} />,
+        accent: "#f7c948",
+        tag: lang === "ar" ? "تعاوني · صف أو أجهزة" : "Co-op · Class or devices",
       },
       {
         href: "/game/wheel/create",

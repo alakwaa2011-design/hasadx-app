@@ -92,6 +92,10 @@ const TugCreate = lazy(() => import("@/pages/game/tug-create"));
 const TugJoin = lazy(() => import("@/pages/game/tug-join"));
 const TugPlay = lazy(() => import("@/pages/game/tug-play"));
 const TugClass = lazy(() => import("@/pages/game/tug-class"));
+const EscapeCreate = lazy(() => import("@/pages/game/escape-create"));
+const EscapeClass = lazy(() => import("@/pages/game/escape-class"));
+const EscapeHost = lazy(() => import("@/pages/game/escape-host"));
+const EscapePlay = lazy(() => import("@/pages/game/escape-play"));
 const HotSeatCreate = lazy(() => import("@/pages/game/hotseat-create"));
 const WameethCreate = lazy(() => import("@/pages/game/wameeth-create"));
 const HotSeatHost = lazy(() => import("@/pages/game/hotseat-host"));
@@ -387,6 +391,10 @@ function Router() {
         <Route path="/game/tug/join/:pin?" component={TugJoin} />
         <Route path="/game/tug/play/:pin" component={TugPlay} />
         <Route path="/game/tug/class" component={TugClass} />
+        <Route path="/game/escape/create" component={EscapeCreate} />
+        <Route path="/game/escape/class" component={EscapeClass} />
+        <Route path="/game/escape/host/:pin" component={EscapeHost} />
+        <Route path="/game/escape/play" component={EscapePlay} />
         {/* HotSeat Routes */}
         <Route path="/game/hotseat/create" component={HotSeatCreate} />
         <Route path="/game/hotseat/join/:pin?" component={HotSeatJoin} />

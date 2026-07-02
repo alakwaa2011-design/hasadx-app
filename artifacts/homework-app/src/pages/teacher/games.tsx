@@ -16,6 +16,7 @@ import {
   User,
   ChevronRight,
   Eye,
+  Lock,
 } from "lucide-react";
 
 interface GameItem {
@@ -43,6 +44,24 @@ export default function TeacherGamesPage() {
   const isAr = lang === "ar";
 
   const sections: Section[] = [
+    {
+      key: "cooperative",
+      titleAr: "مغامرات تعاونية",
+      titleEn: "Cooperative Adventures",
+      descAr: "الصف كله فريق واحد ضد التحدي — تعاونوا لتفوزوا",
+      descEn: "The whole class is one crew against the challenge — cooperate to win",
+      accent: "from-amber-500 to-yellow-600",
+      items: [
+        {
+          icon: <Lock />,
+          titleAr: "قبو حصاد",
+          titleEn: "Hasad Vault",
+          to: "/game/escape/create",
+          iconBg: "bg-amber-500/10",
+          iconColor: "text-amber-600",
+        },
+      ],
+    },
     {
       key: "competitive",
       titleAr: "ألعاب تنافسية",

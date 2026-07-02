@@ -579,6 +579,49 @@ export const TugWarIcon = ({ size = 60 }: { size?: number }) => {
   );
 };
 
+export const EscapeVaultIcon = ({ size = 56 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id={`${uid}esc-door`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#26324f"/><stop offset="100%" stopColor="#131c33"/>
+        </linearGradient>
+        <linearGradient id={`${uid}esc-gold`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F7C948"/><stop offset="100%" stopColor="#B8860B"/>
+        </linearGradient>
+        <radialGradient id={`${uid}esc-glow`} cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="#F7C948" stopOpacity="0.4"/>
+          <stop offset="100%" stopColor="#F7C948" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      {/* Vault door frame */}
+      <rect x="8" y="8" width="84" height="84" rx="14" fill={`url(#${uid}esc-door)`} stroke="#3b4a6e" strokeWidth="2.5"/>
+      <rect x="15" y="15" width="70" height="70" rx="10" fill="none" stroke="#3b4a6e" strokeWidth="1.6" strokeDasharray="4 4"/>
+      {/* Corner rivets */}
+      {[[16,16],[84,16],[16,84],[84,84]].map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r="2.6" fill="#5a6c94"/>
+      ))}
+      {/* Golden glow behind the wheel */}
+      <circle cx="50" cy="50" r="30" fill={`url(#${uid}esc-glow)`}/>
+      {/* Locking wheel */}
+      <circle cx="50" cy="50" r="22" fill="none" stroke={`url(#${uid}esc-gold)`} strokeWidth="5"/>
+      {[0, 60, 120, 180, 240, 300].map((a) => (
+        <line key={a}
+          x1={50 + Math.cos(a * Math.PI / 180) * 7} y1={50 + Math.sin(a * Math.PI / 180) * 7}
+          x2={50 + Math.cos(a * Math.PI / 180) * 19} y2={50 + Math.sin(a * Math.PI / 180) * 19}
+          stroke={`url(#${uid}esc-gold)`} strokeWidth="4.5" strokeLinecap="round"/>
+      ))}
+      <circle cx="50" cy="50" r="8" fill={`url(#${uid}esc-gold)`} stroke="#8a6508" strokeWidth="1.6"/>
+      <circle cx="50" cy="50" r="3" fill="#fff" opacity="0.85"/>
+      {/* Keyhole plate */}
+      <rect x="66" y="62" width="16" height="20" rx="4" fill="#1a2540" stroke="#F7C948" strokeWidth="1.6"/>
+      <circle cx="74" cy="69" r="2.6" fill="#F7C948"/>
+      <rect x="72.8" y="70.5" width="2.4" height="6" rx="1.2" fill="#F7C948"/>
+    </svg>
+  );
+};
+
 export const WheelIcon = ({ size = 52 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <path d="M50,50 L50,4 A46,46 0 0,1 82.5,17.5 Z" fill="#225739"/>
