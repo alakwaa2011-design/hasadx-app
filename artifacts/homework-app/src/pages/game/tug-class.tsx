@@ -1,19 +1,25 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tug-of-war "Class Mode" (وضع الصف): one screen for the whole class.
-// The shared arena (scene, camera, impulses, power meter) sits in the middle;
-// each team gets its OWN question panel on its physical side with a fully
-// independent state slice driven by the pure reducer in tug-class-engine.ts.
-// No sockets, no server — everything runs locally on the teacher's screen.
+// Tug-of-war "Class Mode" (وضع الصف) — Broadcast Stadium layout.
+//
+// The screen reads like a live match broadcast: the arena is the HERO on top
+// (full width, stadium lighting), and below it two "team dugouts" face the
+// field, separated by a glowing centre corridor that leans toward whichever
+// team currently controls the rope. Each dugout has its own colour identity,
+// floor lighting, local effects and a fully independent question ROUTE:
+// both teams play ALL the prepared questions, but each in its own random
+// order (questionOrder), so they never open on the same question.
+// No sockets, no server — everything runs locally on the class screen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useReducer, useRef, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { Volume2, VolumeX } from "lucide-react";
 import {
   TugSoundEngine, Confetti, PowerPullFlash, CountdownOverlay, TimerRing,
-  TugArena, KAHOOT_SHAPES, WAMID_GRADIENT, WAMID_BORDER, type TugImpulse,
+  StadiumBackdrop, TugCharacters, TugPowerMeter,
+  KAHOOT_SHAPES, WAMID_GRADIENT, WAMID_BORDER, type TugImpulse,
 } from "@/components/game/tug-shared";
 import {
   classReducer, createClassState, currentQuestion,
@@ -32,28 +38,102 @@ function readSetup(): ClassSetup | null {
     const raw = sessionStorage.getItem(TUG_CLASS_SETUP_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ClassSetup>;
-    if (!Array.isArray(parsed.questions) || parsed.questions.length === 0) return null;
+    // 2+ questions ⇒ the half-rotation guarantees different opening questions.
+    if (!Array.isArray(parsed.questions) || parsed.questions.length < 2) return null;
     return { questions: parsed.questions, duration: parsed.duration || 20 };
   } catch {
     return null;
   }
 }
 
-// ── One team's question panel — renders ONLY its own state slice and can only
-//    dispatch actions tagged with its own TeamId (isolation by construction). ──
-function TeamPanel({
-  team, name, t, question, duration, onAnswer, ar,
+const TEAM_RGB: Record<TeamId, string> = { blue: "59,130,246", red: "239,68,68" };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Centre corridor — the visual divider between the two dugouts. A vertical
+// light beam that rises toward the rope's centre; its colour and intensity
+// follow whoever controls the rope, so the divider itself tells the story.
+// ─────────────────────────────────────────────────────────────────────────────
+function CenterCorridor({ rope }: { rope: number }) {
+  // rope 0 = blue wall, 100 = red wall. Blend the beam colour accordingly.
+  const t = rope / 100;
+  const r = Math.round(59 + (239 - 59) * t);
+  const g = Math.round(130 + (68 - 130) * t);
+  const b = Math.round(246 + (68 - 246) * t);
+  const strength = Math.min(1, Math.abs(rope - 50) / 40); // 0 tied → 1 near a wall
+  const leader: TeamId | null = rope < 48 ? "blue" : rope > 52 ? "red" : null;
+
+  return (
+    <div className="relative flex h-full min-h-0 flex-col items-center justify-start overflow-visible">
+      {/* Rising light beam pointing at the arena centre */}
+      <div
+        className="absolute inset-y-0 left-1/2 w-[3px] -translate-x-1/2 rounded-full"
+        style={{
+          background: `linear-gradient(to top, transparent, rgba(${r},${g},${b},${0.25 + strength * 0.55}) 40%, rgba(${r},${g},${b},${0.5 + strength * 0.5}))`,
+          boxShadow: `0 0 ${14 + strength * 22}px rgba(${r},${g},${b},${0.35 + strength * 0.45})`,
+        }}
+      />
+      {/* Dashed walkway lights */}
+      {[14, 34, 54, 74].map((top, i) => (
+        <motion.span
+          key={top}
+          className="absolute left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full"
+          style={{ top: `${top}%`, background: `rgba(${r},${g},${b},0.85)` }}
+          animate={{ opacity: [0.25, 1, 0.25], scale: [0.8, 1.2, 0.8] }}
+          transition={{ repeat: Infinity, duration: 1.6, delay: i * 0.22 }}
+        />
+      ))}
+      {/* VS medallion */}
+      <div
+        className="relative z-10 mt-2 flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-black text-white backdrop-blur-md"
+        style={{
+          borderColor: `rgba(${r},${g},${b},0.75)`,
+          background: "radial-gradient(circle at 32% 28%, rgba(255,255,255,0.16), rgba(10,16,40,0.92))",
+          boxShadow: `0 0 ${12 + strength * 18}px rgba(${r},${g},${b},${0.3 + strength * 0.5}), inset 0 1px 0 rgba(255,255,255,0.2)`,
+        }}
+      >
+        VS
+      </div>
+      {/* Control chevron under the medallion — points at the leading side */}
+      <AnimatePresence mode="wait">
+        {leader && (
+          <motion.span
+            key={leader}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0, x: leader === "blue" ? [-2, -6, -2] : [2, 6, 2] }}
+            exit={{ opacity: 0 }}
+            transition={{ x: { repeat: Infinity, duration: 1.1 }, opacity: { duration: 0.3 } }}
+            className="relative z-10 mt-1.5 text-base font-black"
+            style={{ color: `rgb(${r},${g},${b})`, textShadow: `0 0 10px rgba(${r},${g},${b},0.8)` }}
+          >
+            {leader === "blue" ? "◀" : "▶"}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// One team's dugout — its own colour identity, floor light, local effects.
+// Renders ONLY its own state slice and can only dispatch actions tagged with
+// its own TeamId (isolation by construction, made visible by design).
+// ─────────────────────────────────────────────────────────────────────────────
+function TeamZone({
+  team, name, t, question, qTotal, duration, inDanger, onAnswer, ar,
 }: {
   team: TeamId;
   name: string;
   t: TeamState;
   question: ClassQuestion | null;
+  qTotal: number;
   duration: number;
+  inDanger: boolean;
   onAnswer: (index: number) => void;
   ar: boolean;
 }) {
   const isBlue = team === "blue";
-  const accent = isBlue ? "rgba(59,130,246," : "rgba(239,68,68,";
+  const rgb = TEAM_RGB[team];
+  const feedbackKey = `${t.qIndex}-${t.phase}`;
 
   const optionStyle = (idx: number): { bg: string; border: string; dim: boolean; crossed: boolean } => {
     const baseGrad = WAMID_GRADIENT[idx] || WAMID_GRADIENT[0];
@@ -67,34 +147,122 @@ function TeamPanel({
   };
 
   return (
-    <section
-      className="flex min-h-0 flex-col gap-2 rounded-2xl border p-2.5 sm:p-3 select-none"
+    <motion.section
+      // Wrong answer → the WHOLE zone recoils; correct → a proud little lift.
+      animate={
+        t.phase === "feedback"
+          ? t.correct
+            ? { y: [0, -5, 0], transition: { duration: 0.4 } }
+            : { x: [0, -7, 6, -4, 0], transition: { duration: 0.45 } }
+          : { x: 0, y: 0 }
+      }
+      className="relative flex min-h-0 flex-col gap-2 overflow-hidden rounded-3xl border-2 p-2.5 sm:p-3.5 select-none"
       style={{
         touchAction: "manipulation",
-        borderColor: `${accent}0.4)`,
+        // Perspective tilt: each dugout leans toward the field's centre line.
+        transform: `perspective(1400px) rotateY(${isBlue ? 2.5 : -2.5}deg)`,
+        transformOrigin: isBlue ? "right center" : "left center",
+        borderColor: t.phase === "feedback"
+          ? (t.correct ? "rgba(74,222,128,0.85)" : "rgba(248,113,113,0.8)")
+          : `rgba(${rgb},0.4)`,
         background: isBlue
-          ? "linear-gradient(160deg, rgba(7,42,113,0.5), rgba(13,27,62,0.72))"
-          : "linear-gradient(160deg, rgba(127,29,29,0.5), rgba(62,13,27,0.72))",
-        boxShadow: `0 14px 36px rgba(0,0,0,0.3), 0 0 20px ${accent}0.14)`,
+          ? "linear-gradient(165deg, rgba(9,32,84,0.88), rgba(7,17,48,0.95))"
+          : "linear-gradient(195deg, rgba(84,14,20,0.88), rgba(44,8,14,0.95))",
+        boxShadow: t.phase === "feedback" && t.correct
+          ? `0 16px 44px rgba(0,0,0,0.35), 0 0 34px rgba(74,222,128,0.35)`
+          : `0 16px 44px rgba(0,0,0,0.35), 0 0 24px rgba(${rgb},${inDanger ? 0.08 : 0.18})`,
+        opacity: inDanger ? 0.96 : 1,
+        transition: "border-color 0.35s ease, box-shadow 0.35s ease",
       }}
     >
-      {/* Header: team name · score · streak · timer */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xl leading-none">{isBlue ? "🔵" : "🔴"}</span>
-          <span className="truncate text-sm sm:text-base font-black text-white">{name}</span>
+      {/* Floor spotlight — every dugout has its own stage light */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+        style={{ background: `radial-gradient(ellipse at 50% 115%, rgba(${rgb},0.34), transparent 68%)` }}
+      />
+      {/* Crowd shimmer strip along the top edge */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-8 opacity-40"
+        style={{
+          backgroundImage: `radial-gradient(circle at 8% 50%, rgba(${rgb},0.6) 1.5px, transparent 2px), radial-gradient(circle at 26% 30%, rgba(255,255,255,0.5) 1.2px, transparent 2px), radial-gradient(circle at 47% 60%, rgba(${rgb},0.55) 1.4px, transparent 2px), radial-gradient(circle at 66% 35%, rgba(255,255,255,0.45) 1.2px, transparent 2px), radial-gradient(circle at 88% 55%, rgba(${rgb},0.6) 1.5px, transparent 2px)`,
+        }}
+      />
+      {/* Danger dimmer: the threatened side darkens and pulses a warning */}
+      {inDanger && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 z-10 rounded-3xl"
+          animate={{ opacity: [0.16, 0.4, 0.16] }}
+          transition={{ repeat: Infinity, duration: 1 }}
+          style={{ background: "rgba(0,0,0,0.4)", boxShadow: "inset 0 0 44px rgba(239,68,68,0.5)" }}
+        />
+      )}
+      {/* Correct answer → light pulse rushes UP toward the arena from this zone only */}
+      <AnimatePresence>
+        {t.phase === "feedback" && t.correct && (
+          <motion.div
+            key={feedbackKey}
+            className="pointer-events-none absolute inset-x-8 top-0 z-10 h-full rounded-full"
+            initial={{ opacity: 0.55, y: "60%", scaleY: 0.4 }}
+            animate={{ opacity: 0, y: "-70%", scaleY: 1.1 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            style={{ background: `linear-gradient(to top, transparent, rgba(${rgb},0.4), rgba(74,222,128,0.5))`, filter: "blur(14px)" }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Banner header: crest · name · LED score · streak · timer ── */}
+      <div className="relative z-20 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg"
+            style={{ background: `rgba(${rgb},0.22)`, border: `1.5px solid rgba(${rgb},0.5)` }}
+          >
+            {isBlue ? "🔵" : "🔴"}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm sm:text-base font-black text-white leading-tight">{name}</p>
+            <p className="text-[10px] font-bold" style={{ color: `rgba(${rgb},0.9)` }}>
+              {t.phase === "exhausted"
+                ? (ar ? "أنهى أسئلته" : "Finished")
+                : `${ar ? "سؤال" : "Q"} ${Math.min(t.qIndex + 1, qTotal)} / ${qTotal}`}
+            </p>
+          </div>
           {t.streak >= 3 && (
             <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 0.6 }}
-              className="inline-flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-black text-white shadow-lg">
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-black text-white shadow-lg">
               🔥 {t.streak}x
             </motion.span>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="rounded-xl bg-black/25 px-2.5 py-1 text-lg sm:text-xl font-black text-amber-300"
-            style={{ fontVariantNumeric: "tabular-nums" }}>
+        <div className="relative flex shrink-0 items-center gap-2">
+          {/* LED-style scoreboard */}
+          <span
+            className="rounded-lg border px-2.5 py-1 text-lg sm:text-2xl font-black tracking-wider"
+            style={{
+              fontVariantNumeric: "tabular-nums",
+              color: "#F7C948",
+              borderColor: "rgba(247,201,72,0.35)",
+              background: "rgba(0,0,0,0.55)",
+              textShadow: "0 0 12px rgba(247,201,72,0.6)",
+            }}
+          >
             {t.score}
           </span>
+          {/* Zone-local floating "+N" */}
+          <AnimatePresence>
+            {t.phase === "feedback" && t.correct && t.lastGain > 0 && (
+              <motion.span
+                key={feedbackKey}
+                initial={{ opacity: 1, y: 0, scale: 0.9 }}
+                animate={{ opacity: 0, y: -34, scale: 1.3 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+                className="pointer-events-none absolute -top-2 right-8 z-30 text-xl font-black text-green-300 drop-shadow-lg"
+              >
+                +{t.lastGain}
+              </motion.span>
+            )}
+          </AnimatePresence>
           {t.phase === "question" && (
             <TimerRing timeLeft={t.timeLeft} total={duration} isUrgent={t.timeLeft <= 5} />
           )}
@@ -102,49 +270,46 @@ function TeamPanel({
       </div>
 
       {t.phase === "exhausted" || !question ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
+        <div className="relative z-20 flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
           <span className="text-4xl">🏁</span>
-          <p className="font-black text-white text-base">
-            {ar ? "أنهيتم جميع الأسئلة!" : "All questions done!"}
-          </p>
+          <p className="text-base font-black text-white">{ar ? "أنهيتم جميع الأسئلة!" : "All questions done!"}</p>
           <p className="text-sm font-bold text-white/60">
-            {ar ? "بانتظار الفريق الآخر…" : "Waiting for the other team…"}
+            {ar ? "شجّعوا الحبل — النتيجة تتحدد الآن!" : "Cheer for the rope — it decides now!"}
           </p>
         </div>
       ) : (
         <>
           {/* Question card */}
-          <div className="rounded-xl border-2 border-amber-300/25 bg-black/30 px-3 py-2.5 backdrop-blur-sm">
-            <p className="text-center text-sm sm:text-base lg:text-lg font-black leading-snug text-white">
-              <span className="me-1.5 text-amber-300/80 text-xs font-black">
-                {t.qIndex + 1}
-              </span>
+          <div className="relative z-20 rounded-2xl border-2 bg-black/35 px-3 py-2.5 backdrop-blur-sm"
+            style={{ borderColor: `rgba(${rgb},0.3)` }}>
+            <p className="text-center text-sm sm:text-lg lg:text-xl font-black leading-snug text-white">
               {question.text}
             </p>
           </div>
 
-          {/* Options 2×2 — Kahoot shapes + وميض gradients (same as online mode) */}
-          <div className="grid flex-1 grid-cols-2 gap-1.5 sm:gap-2">
+          {/* Options 2×2 — Kahoot shapes + وميض gradients */}
+          <div className="relative z-20 grid flex-1 grid-cols-2 gap-1.5 sm:gap-2">
             {question.options.map((opt, idx) => {
               const s = optionStyle(idx);
               const clickable = t.phase === "question" && t.selected === null;
               return (
                 <motion.button
                   key={idx}
-                  whileTap={clickable ? { scale: 0.96 } : undefined}
+                  whileTap={clickable ? { scale: 0.95 } : undefined}
                   onClick={() => clickable && onAnswer(idx)}
                   disabled={!clickable}
-                  className="relative flex min-h-[52px] items-center gap-2 rounded-xl border-2 px-2.5 py-2 text-start font-bold text-white transition-all"
+                  className="relative flex min-h-[54px] items-center gap-2 rounded-xl border-2 px-2.5 py-2 text-start font-bold text-white transition-all"
                   style={{
                     touchAction: "manipulation",
                     background: s.bg,
                     borderColor: s.border,
-                    opacity: s.dim ? 0.45 : 1,
+                    opacity: s.dim ? 0.4 : 1,
                     cursor: clickable ? "pointer" : "default",
+                    boxShadow: s.dim ? "none" : "0 4px 12px rgba(0,0,0,0.3)",
                   }}
                 >
                   <span className="text-base leading-none opacity-90">{KAHOOT_SHAPES[idx]}</span>
-                  <span className={`flex-1 text-sm sm:text-base leading-snug ${s.crossed ? "line-through opacity-70" : ""}`}>
+                  <span className={`flex-1 text-sm sm:text-base lg:text-lg leading-snug ${s.crossed ? "line-through opacity-70" : ""}`}>
                     {opt}
                   </span>
                   {t.phase === "feedback" && idx === question.correct && <span className="text-lg">✓</span>}
@@ -154,8 +319,8 @@ function TeamPanel({
             })}
           </div>
 
-          {/* Feedback strip — independent per panel */}
-          <div className="h-6 text-center">
+          {/* Feedback strip — independent per zone */}
+          <div className="relative z-20 h-6 text-center">
             {t.phase === "feedback" && (
               <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                 className={`text-sm font-black ${t.correct ? "text-green-300" : "text-red-300"}`}>
@@ -169,11 +334,13 @@ function TeamPanel({
           </div>
         </>
       )}
-    </section>
+    </motion.section>
   );
 }
 
-// ── The running game (mounted fresh per round via key — replay = remount) ──
+// ─────────────────────────────────────────────────────────────────────────────
+// The running game (mounted fresh per round via key — replay = remount)
+// ─────────────────────────────────────────────────────────────────────────────
 function ClassGame({
   setup, blueName, redName, onExit,
 }: {
@@ -239,6 +406,16 @@ function ClassGame({
     else getSound().playWrong();
   }, [state.lastImpulse, getSound]);
 
+  // Danger heartbeat when the rope sits near a wall (like the online mode).
+  const dangerSide: TeamId | null =
+    state.status === "playing" ? (state.rope >= 80 ? "blue" : state.rope <= 20 ? "red" : null) : null;
+  useEffect(() => {
+    if (!dangerSide) return;
+    getSound().playHeartbeat();
+    const h = setInterval(() => getSound().playHeartbeat(), 900);
+    return () => clearInterval(h);
+  }, [dangerSide, getSound]);
+
   // Urgent music when either team is in its final 5 seconds.
   const urgent = state.status === "playing" && (["blue", "red"] as const).some((id) => {
     const t = state.teams[id];
@@ -282,23 +459,35 @@ function ClassGame({
         {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
       </button>
 
-      {/* Physical LTR: blue is ALWAYS on the left to match the arena scene. */}
+      {/* Physical LTR everywhere below: blue is ALWAYS on the left,
+          matching the blue side of the arena scene. */}
       <div className="flex flex-1 flex-col" style={{ direction: "ltr" }}>
-        <TugArena
-          ropePos={state.rope}
-          blueScore={state.teams.blue.score}
-          redScore={state.teams.red.score}
-          blueCount={1}
-          redCount={1}
-          blueLabel={blueName}
-          redLabel={redName}
-          lang={lang}
-          isPulling={isPulling}
-          isUrgent={urgent}
-          isCelebrating={state.status === "finished"}
-          winnerSide={state.winner === "draw" ? null : state.winner}
-          impulse={impulse}
-        />
+
+        {/* ── THE HERO: full-width arena + power meter, nothing competing with it ── */}
+        <section className="relative overflow-hidden rounded-b-[2rem] border-b border-white/10 px-3 pb-2 pt-1 shadow-[0_18px_56px_rgba(0,0,0,0.32)] sm:px-5">
+          <StadiumBackdrop active={isPulling} />
+          {state.status === "finished" && (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-1/2"
+              style={{ background: "linear-gradient(to bottom, transparent 0%, rgba(13,27,62,0.55) 70%, rgba(13,27,62,0.9) 100%)" }}
+            />
+          )}
+          <div className="relative z-10 mx-auto max-w-6xl">
+            <div className="min-h-[190px] sm:min-h-[300px] lg:min-h-[380px]">
+              <TugCharacters
+                ropePos={state.rope}
+                isPulling={isPulling}
+                isUrgent={urgent}
+                isCelebrating={state.status === "finished"}
+                winnerSide={state.winner === "draw" ? null : state.winner}
+                impulse={impulse}
+              />
+            </div>
+            <div className="pb-1">
+              <TugPowerMeter position={state.rope} />
+            </div>
+          </div>
+        </section>
 
         {state.status === "finished" ? (
           <div className="mx-auto w-full max-w-2xl px-4 py-4 text-center text-white" style={{ direction: ar ? "rtl" : "ltr" }}>
@@ -373,18 +562,24 @@ function ClassGame({
             </motion.div>
           </div>
         ) : (
-          /* Two fully isolated team panels — blue left, red right, matching the scene. */
-          <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-2 gap-2 p-2 sm:gap-3 sm:p-3">
-            <TeamPanel
+          /* ── THE DUGOUTS: two isolated team zones + glowing centre corridor.
+                Blue left, red right — always matching the scene above. ── */
+          <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-[1fr_56px_1fr] gap-1 p-2 sm:grid-cols-[1fr_72px_1fr] sm:gap-2 sm:p-3">
+            <TeamZone
               team="blue" name={blueName} t={state.teams.blue}
               question={currentQuestion(state, "blue")}
+              qTotal={state.questions.length}
               duration={setup.duration} ar={ar}
+              inDanger={dangerSide === "blue"}
               onAnswer={(index) => dispatch({ type: "answer", team: "blue", index })}
             />
-            <TeamPanel
+            <CenterCorridor rope={state.rope} />
+            <TeamZone
               team="red" name={redName} t={state.teams.red}
               question={currentQuestion(state, "red")}
+              qTotal={state.questions.length}
               duration={setup.duration} ar={ar}
+              inDanger={dangerSide === "red"}
               onAnswer={(index) => dispatch({ type: "answer", team: "red", index })}
             />
           </div>
@@ -401,11 +596,16 @@ function ClassGame({
             <h1 className="mb-1 text-2xl font-black">{ar ? "وضع الصف" : "Class Mode"}</h1>
             <p className="mb-4 text-sm font-bold text-white/65 leading-relaxed">
               {ar
-                ? "اعرض الشاشة أمام الصف وقسّم الطلاب لفريقين: الأزرق يسار الشاشة والأحمر يمينها. لكل فريق أسئلته ومؤقته الخاص!"
-                : "Show this screen to the class and split students into two teams: blue on the left, red on the right. Each team gets its own questions and timer!"}
+                ? "اعرض الشاشة أمام الصف وقسّم الطلاب لفريقين: الأزرق يسار الشاشة والأحمر يمينها. كلا الفريقين يلعب كل الأسئلة، لكن بترتيب عشوائي مختلف ومؤقت ووتيرة مستقلة!"
+                : "Show this screen to the class and split students into two teams: blue on the left, red on the right. Both teams play all the questions — each in its own random order, timer and pace!"}
             </p>
-            <div className="mb-4 flex items-center justify-center gap-3 text-xs font-black text-white/70">
-              <span className="rounded-full bg-white/10 px-3 py-1">📚 {setup.questions.length} {ar ? "سؤال" : "questions"}</span>
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs font-black text-white/70">
+              <span className="rounded-full bg-white/10 px-3 py-1">
+                📚 {state.questions.length} {ar ? "سؤالاً لكل فريق" : "questions per team"}
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1">
+                🔀 {ar ? "بترتيب عشوائي مختلف" : "different random order"}
+              </span>
               <span className="rounded-full bg-white/10 px-3 py-1">⏱ {setup.duration} {ar ? "ثانية/سؤال" : "sec/question"}</span>
             </div>
             <motion.button whileTap={{ scale: 0.97 }}
@@ -442,8 +642,8 @@ export default function TugClass() {
           <h2 className="text-2xl font-black">{ar ? "وضع الصف" : "Class Mode"}</h2>
           <p className="max-w-sm text-muted-foreground">
             {ar
-              ? "جهّز الأسئلة أولاً من صفحة إنشاء شد الحبل ثم اختر «وضع الصف»."
-              : "Prepare questions first from the tug create page, then choose Class Mode."}
+              ? "جهّز سؤالين على الأقل من صفحة إنشاء شد الحبل ثم اختر «وضع الصف» — كل فريق يلعب كل الأسئلة بترتيبه العشوائي الخاص."
+              : "Prepare at least two questions from the tug create page, then choose Class Mode — each team plays all questions in its own random order."}
           </p>
           <button onClick={() => setLocation("/game/tug/create")}
             className="rounded-xl bg-indigo-600 px-6 py-3 font-bold text-white">

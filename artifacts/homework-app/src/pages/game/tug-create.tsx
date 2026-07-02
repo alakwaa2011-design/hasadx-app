@@ -584,8 +584,10 @@ export default function TugCreate() {
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               whileTap={{ scale: 0.99 }}
               onClick={() => {
-                if (questions.length === 0) {
-                  toast.error(ar ? "أضف أسئلة أولاً (من بنك الأسئلة أو من واجب)" : "Add questions first");
+                if (questions.length < 2) {
+                  // Class mode gives each team ALL questions in its own random
+                  // order — 2+ ensures the teams never open on the same one.
+                  toast.error(ar ? "وضع الصف يحتاج سؤالين على الأقل" : "Class Mode needs at least 2 questions");
                   return;
                 }
                 try {

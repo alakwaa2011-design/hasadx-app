@@ -18,6 +18,13 @@ export interface ClassQuestion {
 }
 
 export interface TeamState {
+  /**
+   * This team's OWN random route through the SHARED question list: a full
+   * permutation of indices into `state.questions`. Every team sees every
+   * question — only the order differs.
+   */
+  questionOrder: number[];
+  /** Position within questionOrder (NOT a question id). */
   qIndex: number;
   selected: number | null;
   correct: boolean | null;
@@ -26,6 +33,8 @@ export interface TeamState {
   feedbackLeft: number;
   score: number;
   streak: number;
+  /** Points earned by the LAST answer — drives the zone-local score popup. */
+  lastGain: number;
 }
 
 export interface ClassImpulse {
@@ -38,6 +47,7 @@ export interface ClassState {
   status: "idle" | "countdown" | "playing" | "finished";
   countdown: number;
   rope: number; // 0..100 — the only shared resource
+  /** The single shared question source — both teams play ALL of these. */
   questions: ClassQuestion[];
   duration: number; // seconds per question
   teams: Record<TeamId, TeamState>;
@@ -59,7 +69,8 @@ const SCORE_BASE = 10;
 const SCORE_SPEED_BONUS = 5;
 const FEEDBACK_SECS = 2;    // how long each panel shows its own feedback
 
-const freshTeam = (duration: number): TeamState => ({
+const freshTeam = (duration: number, questionOrder: number[]): TeamState => ({
+  questionOrder,
   qIndex: 0,
   selected: null,
   correct: null,
@@ -68,16 +79,48 @@ const freshTeam = (duration: number): TeamState => ({
   feedbackLeft: 0,
   score: 0,
   streak: 0,
+  lastGain: 0,
 });
 
-export function createClassState(questions: ClassQuestion[], duration: number): ClassState {
+/**
+ * Build the two independent routes through the same question list.
+ * Both are FULL permutations of 0..count-1 — no question is ever dropped.
+ *
+ * Blue gets a Fisher–Yates shuffle; red gets the SAME shuffle rotated by
+ * half the list. The rotation guarantees that at any equal position the two
+ * teams look at different questions (for count ≥ 2) — so they never open on
+ * the same question, and a collision can only happen when their paces drift.
+ */
+export function buildQuestionOrders(
+  count: number,
+  rng: () => number = Math.random,
+): Record<TeamId, number[]> {
+  const blue = Array.from({ length: count }, (_, i) => i);
+  for (let i = count - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [blue[i], blue[j]] = [blue[j], blue[i]];
+  }
+  const shift = Math.floor(count / 2);
+  const red = blue.map((_, i) => blue[(i + shift) % count]);
+  return { blue, red };
+}
+
+export function createClassState(
+  questions: ClassQuestion[],
+  duration: number,
+  rng: () => number = Math.random,
+): ClassState {
+  const orders = buildQuestionOrders(questions.length, rng);
   return {
     status: "idle",
     countdown: 3,
     rope: 50,
     questions,
     duration,
-    teams: { blue: freshTeam(duration), red: freshTeam(duration) },
+    teams: {
+      blue: freshTeam(duration, orders.blue),
+      red: freshTeam(duration, orders.red),
+    },
     winner: null,
     winKind: null,
     lastImpulse: null,
@@ -87,7 +130,8 @@ export function createClassState(questions: ClassQuestion[], duration: number): 
 
 export function currentQuestion(state: ClassState, team: TeamId): ClassQuestion | null {
   const t = state.teams[team];
-  return t.qIndex < state.questions.length ? state.questions[t.qIndex] : null;
+  if (t.qIndex >= t.questionOrder.length) return null;
+  return state.questions[t.questionOrder[t.qIndex]] ?? null;
 }
 
 const clampRope = (r: number) => Math.max(0, Math.min(100, r));
@@ -109,7 +153,7 @@ function advanceTeam(state: ClassState, id: TeamId): ClassState {
   const t = state.teams[id];
   const nextIndex = t.qIndex + 1;
   const next: TeamState =
-    nextIndex >= state.questions.length
+    nextIndex >= t.questionOrder.length
       ? { ...t, qIndex: nextIndex, phase: "exhausted", selected: null, correct: null, feedbackLeft: 0 }
       : {
           ...t,
@@ -133,7 +177,7 @@ function tickTeam(state: ClassState, id: TeamId): ClassState {
     // Time out ⇒ counts as a miss: no rope movement, streak resets.
     const timedOut: TeamState = {
       ...t, timeLeft: 0, phase: "feedback", selected: null, correct: false,
-      streak: 0, feedbackLeft: FEEDBACK_SECS,
+      streak: 0, feedbackLeft: FEEDBACK_SECS, lastGain: 0,
     };
     return { ...state, teams: { ...state.teams, [id]: timedOut } };
   }
@@ -168,7 +212,7 @@ export function classReducer(state: ClassState, action: ClassAction): ClassState
       if (state.status !== "playing") return state;
       const t = state.teams[action.team];
       if (t.phase !== "question" || t.selected !== null) return state;
-      const q = state.questions[t.qIndex];
+      const q = state.questions[t.questionOrder[t.qIndex]];
       if (!q || action.index < 0 || action.index >= q.options.length) return state;
 
       const correct = action.index === q.correct;
@@ -177,14 +221,16 @@ export function classReducer(state: ClassState, action: ClassAction): ClassState
       // Blue pulls the rope toward 0, red toward 100.
       const rope = clampRope(state.rope + (action.team === "blue" ? -pull : pull));
 
+      const gain = correct ? SCORE_BASE + (fast ? SCORE_SPEED_BONUS : 0) : 0;
       const answered: TeamState = {
         ...t,
         selected: action.index,
         correct,
         phase: "feedback",
         feedbackLeft: FEEDBACK_SECS,
-        score: t.score + (correct ? SCORE_BASE + (fast ? SCORE_SPEED_BONUS : 0) : 0),
+        score: t.score + gain,
         streak: correct ? t.streak + 1 : 0,
+        lastGain: gain,
       };
       const impulseSeq = state.impulseSeq + 1;
       const next: ClassState = {
