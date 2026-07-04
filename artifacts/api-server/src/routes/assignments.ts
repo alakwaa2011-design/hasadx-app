@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable, soloChallengeScoresTable } from "@workspace/db";
-import { eq, sql, and, ne, notInArray, inArray, isNull, or, desc } from "drizzle-orm";
+import { db, assignmentsTable, questionsTable, teachersTable, notificationsTable, gameHistoryTable, dismissedSharedTable, studentsTable, submissionsTable, teacherClassesTable, videoLessonsTable, videoQuestionsTable, videoSubmissionsTable, soloChallengesTable } from "@workspace/db";
+import { eq, sql, and, ne, notInArray, inArray, isNull, or } from "drizzle-orm";
 import {
   CreateAssignmentBody,
   GetAssignmentParams,
@@ -1502,134 +1502,10 @@ router.post("/assignments/:id/import", async (req, res) => {
 });
 
 // ─── Solo Challenge Routes ────────────────────────────────────────────────────
-
-/** Convert assignment title to a URL-friendly slug (supports Arabic). */
-function soloTitleToSlug(title: string): string {
-  return title
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\u0600-\u06FFa-zA-Z0-9\-]/g, "")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80) || "challenge";
-}
-
-/** Append -2, -3 ... until slug is unique in solo_challenges table. */
-async function soloUniqueSlug(base: string): Promise<string> {
-  let slug = base;
-  let suffix = 2;
-  while (true) {
-    const [existing] = await db
-      .select({ id: soloChallengesTable.id })
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-    if (!existing) return slug;
-    slug = `${base}-${suffix++}`;
-  }
-}
-
-/* POST /api/solo-challenges
-   Teacher creates (or retrieves existing) a permanent solo challenge link. */
-router.post("/solo-challenges", async (req, res) => {
-  try {
-    const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
-
-    const assignmentId = Number(req.body?.assignmentId);
-    if (!assignmentId) return res.status(400).json({ message: "معرّف الواجب مطلوب" });
-
-    const [assignment] = await db
-      .select({ id: assignmentsTable.id, title: assignmentsTable.title, teacherId: assignmentsTable.teacherId })
-      .from(assignmentsTable)
-      .where(and(eq(assignmentsTable.id, assignmentId), eq(assignmentsTable.teacherId, teacherId)))
-      .limit(1);
-
-    if (!assignment) return res.status(404).json({ message: "الواجب غير موجود أو لا تملكه" });
-
-    // Return existing link if already created
-    const [existing] = await db
-      .select()
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.assignmentId, assignmentId))
-      .limit(1);
-
-    if (existing) {
-      return res.json({ slug: existing.slug, playCount: existing.playCount, assignmentTitle: existing.assignmentTitle });
-    }
-
-    const base = soloTitleToSlug(assignment.title);
-    const slug = await soloUniqueSlug(base);
-
-    const [created] = await db
-      .insert(soloChallengesTable)
-      .values({ slug, assignmentId, teacherId, assignmentTitle: assignment.title })
-      .returning();
-
-    res.json({ slug: created.slug, playCount: 0, assignmentTitle: created.assignmentTitle });
-  } catch (err) {
-    console.error("Create solo challenge error:", err);
-    req.log?.error(err, "Create solo challenge error");
-    res.status(500).json({ message: "خطأ في إنشاء الرابط" });
-  }
-});
-
-/* GET /api/solo-challenges/by-assignment/:assignmentId
-   Teacher checks if a solo link exists for their assignment. */
-router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
-  try {
-    const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
-
-    const assignmentId = Number(req.params.assignmentId);
-    const [row] = await db
-      .select()
-      .from(soloChallengesTable)
-      .where(and(eq(soloChallengesTable.assignmentId, assignmentId), eq(soloChallengesTable.teacherId, teacherId)))
-      .limit(1);
-
-    res.json(row ?? null);
-  } catch (err) {
-    console.error("Get solo challenge error:", err);
-    res.status(500).json({ message: "خطأ" });
-  }
-});
-
-/* GET /api/solo-challenges/:slug/participants
-   Teacher-auth: return all participants sorted by score DESC, correctCount DESC. */
-router.get("/solo-challenges/:slug/participants", async (req, res) => {
-  try {
-    const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
-
-    const slug = req.params.slug;
-    const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-
-    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
-    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
-
-    const rows = await db
-      .select({
-        playerName: soloChallengeScoresTable.playerName,
-        score: soloChallengeScoresTable.score,
-        correctCount: soloChallengeScoresTable.correctCount,
-        timeTaken: soloChallengeScoresTable.timeTaken,
-        playedAt: soloChallengeScoresTable.playedAt,
-      })
-      .from(soloChallengeScoresTable)
-      .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount));
-
-    res.json(rows);
-  } catch (err) {
-    req.log?.error(err, "Get solo challenge participants error");
-    res.status(500).json({ message: "خطأ" });
-  }
-});
+// NOTE: Creation, by-assignment lookup, participants, and notes endpoints for
+// /solo-challenges live in routes/solo-challenges.ts (the actively-maintained,
+// feature-complete implementation). Only the /deadline endpoint remains here
+// since it has no equivalent there.
 
 /* PATCH /api/solo-challenges/:slug/deadline
    Teacher: set or clear the challenge expiry time. */
@@ -1662,36 +1538,6 @@ router.patch("/solo-challenges/:slug/deadline", async (req, res) => {
   } catch (err) {
     req.log?.error(err, "Update solo challenge deadline error");
     res.status(500).json({ message: "خطأ في حفظ الموعد" });
-  }
-});
-
-/* PATCH /api/solo-challenges/:slug/notes
-   Teacher: update the notes shown to players before starting. */
-router.patch("/solo-challenges/:slug/notes", async (req, res) => {
-  try {
-    const teacherId = (req.session as any)?.teacherId;
-    if (!teacherId) return res.status(401).json({ message: "غير مصرح" });
-
-    const slug = req.params.slug;
-    const notes = req.body?.notes != null ? String(req.body.notes).slice(0, 1000) : null;
-
-    const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-
-    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
-    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
-
-    await db.update(soloChallengesTable)
-      .set({ notes: notes || null })
-      .where(eq(soloChallengesTable.slug, slug));
-
-    res.json({ ok: true });
-  } catch (err) {
-    req.log?.error(err, "Update solo challenge notes error");
-    res.status(500).json({ message: "خطأ في حفظ الملاحظات" });
   }
 });
 
