@@ -6,7 +6,7 @@ import {
   soloChallengesTable,
   soloChallengeScoresTable,
 } from "@workspace/db";
-import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
 import {
   createGame,
   type GameQuestion,
@@ -364,7 +364,11 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
       })
       .from(soloChallengeScoresTable)
       .where(eq(soloChallengeScoresTable.slug, req.params.slug))
-      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount));
+      .orderBy(
+        desc(soloChallengeScoresTable.correctCount),
+        asc(soloChallengeScoresTable.timeTaken),
+        desc(soloChallengeScoresTable.score),
+      );
 
     res.json(rows);
   } catch (err) {
@@ -673,11 +677,16 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
         correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)
       .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount))
+      .orderBy(
+        desc(soloChallengeScoresTable.correctCount),
+        asc(soloChallengeScoresTable.timeTaken),
+        desc(soloChallengeScoresTable.score),
+      )
       .limit(limit);
 
     res.json(rows);
