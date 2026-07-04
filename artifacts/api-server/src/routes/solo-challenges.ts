@@ -514,6 +514,11 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       questionCount = cnt?.count ?? 0;
     }
 
+    const effectiveQuestionCount =
+      challenge.questionsPerParticipant != null && challenge.questionsPerParticipant < questionCount
+        ? challenge.questionsPerParticipant
+        : questionCount;
+
     res.json({
       slug: challenge.slug,
       assignmentTitle: challenge.assignmentTitle,
@@ -521,7 +526,8 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       expiresAt: challenge.expiresAt ?? null,
       isExpired,
       playCount: challenge.playCount,
-      questionCount,
+      questionCount: effectiveQuestionCount,
+      totalQuestionCount: questionCount,
       questionsPerParticipant: challenge.questionsPerParticipant ?? null,
       timePerQuestion: challenge.timePerQuestion ?? 20,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
