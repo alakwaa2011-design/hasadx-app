@@ -168,6 +168,7 @@ export default function SoloChallengeCreatePage() {
   const [timePerQuestion, setTimePerQuestion] = useState(20);
   const [leaderboardDisplay, setLeaderboardDisplay] = useState<"top3" | "top20" | "all">("top20");
   const [expiresAt, setExpiresAt] = useState("");
+  const [questionsPerParticipant, setQuestionsPerParticipant] = useState<number | "">("");
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -236,12 +237,18 @@ export default function SoloChallengeCreatePage() {
       if (!res.ok) throw new Error(data.message);
 
       // Apply settings if changed
-      if (notes || expiresAt || timePerQuestion !== 20 || leaderboardDisplay !== "top20") {
+      if (notes || expiresAt || timePerQuestion !== 20 || leaderboardDisplay !== "top20" || questionsPerParticipant !== "") {
         await fetch(`${API}/api/solo-challenges/${encodeURIComponent(data.slug)}/settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ notes: notes || null, expiresAt: expiresAt || null, timePerQuestion, leaderboardDisplay }),
+          body: JSON.stringify({
+            notes: notes || null,
+            expiresAt: expiresAt || null,
+            timePerQuestion,
+            leaderboardDisplay,
+            questionsPerParticipant: questionsPerParticipant === "" ? null : questionsPerParticipant,
+          }),
         });
       }
 
@@ -272,6 +279,7 @@ export default function SoloChallengeCreatePage() {
           timePerQuestion,
           leaderboardDisplay,
           expiresAt: expiresAt || null,
+          questionsPerParticipant: questionsPerParticipant === "" ? null : questionsPerParticipant,
         }),
       });
       const data = await res.json();
@@ -396,6 +404,8 @@ export default function SoloChallengeCreatePage() {
               timePerQuestion={timePerQuestion} onTime={setTimePerQuestion}
               leaderboardDisplay={leaderboardDisplay} onLd={setLeaderboardDisplay}
               expiresAt={expiresAt} onExpires={setExpiresAt}
+              questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
+              maxQuestions={selectedAssignment?.questionCount}
             />
 
             <button
@@ -539,6 +549,8 @@ export default function SoloChallengeCreatePage() {
               timePerQuestion={timePerQuestion} onTime={setTimePerQuestion}
               leaderboardDisplay={leaderboardDisplay} onLd={setLeaderboardDisplay}
               expiresAt={expiresAt} onExpires={setExpiresAt}
+              questionsPerParticipant={questionsPerParticipant} onQpp={setQuestionsPerParticipant}
+              maxQuestions={questions.filter(q => q.text.trim() && q.optionA && q.optionB && q.optionC && q.optionD).length}
             />
 
             {/* Create button */}
@@ -562,11 +574,15 @@ function SettingsPanel({
   timePerQuestion, onTime,
   leaderboardDisplay, onLd,
   expiresAt, onExpires,
+  questionsPerParticipant, onQpp,
+  maxQuestions,
 }: {
   notes: string; onNotes: (v: string) => void;
   timePerQuestion: number; onTime: (v: number) => void;
   leaderboardDisplay: "top3" | "top20" | "all"; onLd: (v: "top3" | "top20" | "all") => void;
   expiresAt: string; onExpires: (v: string) => void;
+  questionsPerParticipant: number | ""; onQpp: (v: number | "") => void;
+  maxQuestions?: number;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -635,6 +651,34 @@ function SettingsPanel({
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* Questions per participant */}
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
+                  <Zap className="w-3.5 h-3.5" />
+                  عدد الأسئلة لكل متسابق (اختياري)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={maxQuestions && maxQuestions > 0 ? maxQuestions : undefined}
+                  value={questionsPerParticipant}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    if (raw === "") { onQpp(""); return; }
+                    let n = Number(raw);
+                    if (isNaN(n)) return;
+                    n = Math.max(1, n);
+                    if (maxQuestions && maxQuestions > 0) n = Math.min(n, maxQuestions);
+                    onQpp(n);
+                  }}
+                  placeholder={maxQuestions ? `كل الأسئلة (${maxQuestions})` : "كل الأسئلة"}
+                  className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  إن حددت رقماً، سيحصل كل متسابق على عدد عشوائي من الأسئلة بترتيب عشوائي مستقل — بحيث تختلف الأسئلة وترتيبها من متسابق لآخر. اتركه فارغاً ليرى الجميع كل الأسئلة.
+                </p>
               </div>
 
               {/* Leaderboard display */}

@@ -21,6 +21,9 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   questions: jsonb("questions"),
   /** Seconds allocated per question (clamped 5–120 by the game engine). */
   timePerQuestion: integer("time_per_question").default(20),
+  /** Optional cap on how many questions each participant answers, randomly
+   *  selected (and shuffled) per run from the full bank. Null = all questions. */
+  questionsPerParticipant: integer("questions_per_participant"),
   /** How many entries to show in the leaderboard: 'top3' | 'top20' | 'all' */
   leaderboardDisplay: text("leaderboard_display").default("top20"),
   playCount: integer("play_count").notNull().default(0),

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable, soloChallengesTable, soloChallengeScoresTable } from "@workspace/db";
+import { db, assignmentsTable, teachersTable, platformSettingsTable, questionsTable, videoLessonsTable, soloChallengesTable } from "@workspace/db";
 import { eq, and, sql, desc, ne, inArray, or } from "drizzle-orm";
 import { createGame, addBotPlayers, type GameQuestion, getActiveGamesCount, getGame } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
@@ -349,169 +349,12 @@ router.post("/public/ai-generate", async (req, res) => {
   }
 });
 
-// ─── Solo Challenge Public Routes ────────────────────────────────────────────
-
-/* GET /api/solo-challenges/:slug
-   Public: returns challenge metadata. */
-router.get("/solo-challenges/:slug", async (req, res) => {
-  try {
-    const slug = req.params.slug;
-    const [challenge] = await db
-      .select()
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-
-    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
-
-    const questionCount = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(questionsTable)
-      .where(and(
-        eq(questionsTable.assignmentId, challenge.assignmentId),
-        sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
-      ))
-      .then(r => r[0]?.count ?? 0);
-
-    const now = new Date();
-    const isExpired = !!(challenge.expiresAt && challenge.expiresAt < now);
-
-    res.json({
-      slug: challenge.slug,
-      assignmentTitle: challenge.assignmentTitle,
-      notes: challenge.notes ?? null,
-      expiresAt: challenge.expiresAt ?? null,
-      isExpired,
-      playCount: challenge.playCount,
-      questionCount,
-    });
-  } catch (err) {
-    console.error("Get solo challenge slug error:", err);
-    res.status(500).json({ message: "خطأ" });
-  }
-});
-
-/* POST /api/solo-challenges/:slug/start
-   Public: create a solo Wameeth game session and return its PIN. */
-router.post("/solo-challenges/:slug/start", async (req, res) => {
-  try {
-    const slug = req.params.slug;
-    const [challenge] = await db
-      .select()
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-
-    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
-
-    if (challenge.expiresAt && challenge.expiresAt < new Date()) {
-      return res.status(410).json({ message: "انتهت مدة هذه المسابقة", isExpired: true });
-    }
-
-    const dbQuestions = await db
-      .select()
-      .from(questionsTable)
-      .where(eq(questionsTable.assignmentId, challenge.assignmentId));
-
-    const gameQuestions: GameQuestion[] = dbQuestions
-      .filter(q => ["mcq", "true_false", "fill_blank", "dictation"].includes(q.questionType))
-      .map(q => ({
-        id: q.id,
-        text: q.text,
-        questionType: q.questionType as string,
-        optionA: q.optionA ?? null,
-        optionB: q.optionB ?? null,
-        optionC: q.optionC ?? null,
-        optionD: q.optionD ?? null,
-        correctAnswer: q.correctAnswer ?? "",
-        points: q.points ?? 1,
-        duration: 20,
-        imageUrl: q.imageUrl ?? null,
-        readAloud: q.readAloud ?? false,
-      }));
-
-    if (gameQuestions.length === 0) {
-      return res.status(400).json({ message: "لا توجد أسئلة في هذا الواجب" });
-    }
-
-    const game = createGame(
-      challenge.assignmentId,
-      challenge.assignmentTitle,
-      "guest",
-      0,
-      gameQuestions,
-      20,
-      true,
-      "solo" as any,
-    );
-
-    startGameFromRest(game.pin);
-
-    await db
-      .update(soloChallengesTable)
-      .set({ playCount: sql`${soloChallengesTable.playCount} + 1` })
-      .where(eq(soloChallengesTable.slug, slug));
-
-    res.json({ pin: game.pin, title: challenge.assignmentTitle, questionCount: gameQuestions.length });
-  } catch (err) {
-    console.error("Solo challenge start error:", err);
-    res.status(500).json({ message: "خطأ في بدء اللعبة" });
-  }
-});
-
-/* POST /api/solo-challenges/:slug/score
-   Public: record a completed game score. */
-router.post("/solo-challenges/:slug/score", async (req, res) => {
-  try {
-    const slug = req.params.slug;
-    const playerName = String(req.body?.playerName || "").trim().slice(0, 60);
-    // Frontend sends "points" (the Hasad scoring system name); fall back to "score"
-    const score = Number(req.body?.points ?? req.body?.score ?? 0);
-    const correctCount = Number(req.body?.correctCount ?? 0);
-    const timeTaken = req.body?.timeTaken != null ? Number(req.body.timeTaken) : null;
-
-    if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
-
-    const [challenge] = await db
-      .select({ id: soloChallengesTable.id })
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
-      .limit(1);
-
-    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
-
-    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount, timeTaken });
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("Solo challenge score error:", err);
-    res.status(500).json({ message: "خطأ في تسجيل الدرجة" });
-  }
-});
-
-/* GET /api/solo-challenges/:slug/leaderboard
-   Public: all scores for this challenge, sorted by score DESC then correctCount DESC. */
-router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
-  try {
-    const slug = req.params.slug;
-    const rows = await db
-      .select({
-        playerName: soloChallengeScoresTable.playerName,
-        score: soloChallengeScoresTable.score,
-        correctCount: soloChallengeScoresTable.correctCount,
-        timeTaken: soloChallengeScoresTable.timeTaken,
-        playedAt: soloChallengeScoresTable.playedAt,
-      })
-      .from(soloChallengeScoresTable)
-      .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(desc(soloChallengeScoresTable.score), desc(soloChallengeScoresTable.correctCount));
-
-    res.json(rows);
-  } catch (err) {
-    console.error("Solo challenge leaderboard error:", err);
-    res.status(500).json({ message: "خطأ" });
-  }
-});
+// NOTE: Public solo-challenge routes (GET/POST /solo-challenges/:slug, /start,
+// /score, /leaderboard) live in routes/solo-challenges.ts, which is the
+// canonical, actively-maintained implementation (it also supports standalone
+// challenges and per-participant randomized question subsets). They must NOT
+// be duplicated here — this router is mounted before soloChallengesRouter in
+// routes/index.ts, so duplicate handlers here would silently shadow it.
 
 /* GET /s/:shortSlug
    Short-form social-share page (e.g. hasadx.com/s/eid-quiz-k4x2).

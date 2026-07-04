@@ -174,6 +174,23 @@ export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        questionsPerParticipant: import("drizzle-orm/pg-core").PgColumn<{
+            name: "questions_per_participant";
+            tableName: "solo_challenges";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         leaderboardDisplay: import("drizzle-orm/pg-core").PgColumn<{
             name: "leaderboard_display";
             tableName: "solo_challenges";

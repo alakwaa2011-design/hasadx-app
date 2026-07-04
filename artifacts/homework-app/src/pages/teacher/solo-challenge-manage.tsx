@@ -26,6 +26,7 @@ interface ChallengeTeacherData {
   expiresAt: string | null;
   questions: unknown[] | null;
   timePerQuestion: number | null;
+  questionsPerParticipant: number | null;
   leaderboardDisplay: string | null;
   playCount: number;
   createdAt: string;
@@ -65,6 +66,7 @@ export default function SoloChallengeManagePage() {
   const [editExpires, setEditExpires] = useState("");
   const [editTime, setEditTime] = useState(20);
   const [editLd, setEditLd] = useState<"top3" | "top20" | "all">("top20");
+  const [editQpp, setEditQpp] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
 
@@ -84,6 +86,7 @@ export default function SoloChallengeManagePage() {
       setParticipants(Array.isArray(parts) ? parts : []);
       setEditNotes(chal.notes ?? "");
       setEditTime(chal.timePerQuestion ?? 20);
+      setEditQpp(chal.questionsPerParticipant ?? "");
       const ld = chal.leaderboardDisplay ?? "top20";
       setEditLd(["top3","top20","all"].includes(ld) ? ld : "top20");
       setEditExpires(
@@ -114,6 +117,7 @@ export default function SoloChallengeManagePage() {
           expiresAt: editExpires || null,
           timePerQuestion: editTime,
           leaderboardDisplay: editLd,
+          questionsPerParticipant: editQpp === "" ? null : editQpp,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
@@ -125,6 +129,7 @@ export default function SoloChallengeManagePage() {
         expiresAt: editExpires ? new Date(editExpires).toISOString() : null,
         timePerQuestion: editTime,
         leaderboardDisplay: editLd,
+        questionsPerParticipant: editQpp === "" ? null : editQpp,
         isExpired: editExpires ? new Date(editExpires) < new Date() : false,
       } : prev);
     } catch (err: any) {
@@ -306,6 +311,35 @@ export default function SoloChallengeManagePage() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            {/* Questions per participant */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
+                <Zap className="w-3.5 h-3.5" />
+                عدد الأسئلة لكل متسابق (اختياري)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={challenge.questionCount > 0 ? challenge.questionCount : undefined}
+                value={editQpp}
+                onChange={e => {
+                  const raw = e.target.value;
+                  if (raw === "") { setEditQpp(""); mark(); return; }
+                  let n = Number(raw);
+                  if (isNaN(n)) return;
+                  n = Math.max(1, n);
+                  if (challenge.questionCount > 0) n = Math.min(n, challenge.questionCount);
+                  setEditQpp(n);
+                  mark();
+                }}
+                placeholder={`كل الأسئلة (${challenge.questionCount})`}
+                className="w-full px-3 py-2 rounded-xl bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                إن حددت رقماً، سيحصل كل متسابق على عدد عشوائي من الأسئلة بترتيب عشوائي مستقل. اتركه فارغاً ليرى الجميع كل الأسئلة.
+              </p>
             </div>
 
             {/* Leaderboard display */}

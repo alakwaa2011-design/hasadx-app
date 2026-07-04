@@ -48,6 +48,16 @@ function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 6);
 }
 
+/** Fisher–Yates shuffle — returns a new array, does not mutate the input. */
+function shuffleArray<T>(arr: T[]): T[] {
+  const result = arr.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 async function uniqueSlug(base: string): Promise<string> {
   let slug = base;
   let suffix = 2;
@@ -130,6 +140,7 @@ router.get("/solo-challenges", async (req, res) => {
         notes: soloChallengesTable.notes,
         expiresAt: soloChallengesTable.expiresAt,
         timePerQuestion: soloChallengesTable.timePerQuestion,
+        questionsPerParticipant: soloChallengesTable.questionsPerParticipant,
         leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
         playCount: soloChallengesTable.playCount,
         createdAt: soloChallengesTable.createdAt,
@@ -226,6 +237,14 @@ router.post("/solo-challenges/standalone", async (req, res) => {
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && isNaN(expiresAt.getTime())) return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
 
+    let questionsPerParticipant: number | null = null;
+    if (req.body?.questionsPerParticipant != null && req.body?.questionsPerParticipant !== "") {
+      const n = Number(req.body.questionsPerParticipant);
+      if (isNaN(n) || !Number.isInteger(n)) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق غير صالح" });
+      if (n < 1 || n > questions.length) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب أن يكون بين 1 وعدد الأسئلة الكلي" });
+      questionsPerParticipant = n;
+    }
+
     const base = titleToSlug(title);
     const slug = await uniqueSlug(base);
     const shortSlug = `${arabicToLatinSlug(title)}-${randomSuffix()}`;
@@ -240,6 +259,7 @@ router.post("/solo-challenges/standalone", async (req, res) => {
         assignmentTitle: title,
         questions,
         timePerQuestion,
+        questionsPerParticipant,
         leaderboardDisplay,
         notes,
         expiresAt,
@@ -360,7 +380,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
     if (!teacherId) return;
 
     const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId, questions: soloChallengesTable.questions })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
@@ -400,6 +420,35 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       if (!qs) return res.status(400).json({ message: "يجب وجود سؤال واحد صالح على الأقل" });
       if (qs.length > 100) return res.status(400).json({ message: "الحد الأقصى 100 سؤال" });
       update.questions = qs;
+    }
+    if ("questionsPerParticipant" in req.body) {
+      if (req.body.questionsPerParticipant === null || req.body.questionsPerParticipant === "") {
+        update.questionsPerParticipant = null;
+      } else {
+        const n = Number(req.body.questionsPerParticipant);
+        if (isNaN(n) || !Number.isInteger(n) || n < 1) {
+          return res.status(400).json({ message: "عدد الأسئلة لكل متسابق غير صالح" });
+        }
+        let totalQuestions: number;
+        if (challenge.assignmentId === null) {
+          totalQuestions = Array.isArray(update.questions)
+            ? (update.questions as unknown[]).length
+            : (Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0);
+        } else {
+          const [cnt] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(questionsTable)
+            .where(and(
+              eq(questionsTable.assignmentId, challenge.assignmentId),
+              sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
+            ));
+          totalQuestions = cnt?.count ?? 0;
+        }
+        if (n > totalQuestions) {
+          return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب ألا يتجاوز عدد الأسئلة الكلي" });
+        }
+        update.questionsPerParticipant = n;
+      }
     }
 
     if (Object.keys(update).length === 0) return res.json({ ok: true });
@@ -473,6 +522,7 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       isExpired,
       playCount: challenge.playCount,
       questionCount,
+      questionsPerParticipant: challenge.questionsPerParticipant ?? null,
       timePerQuestion: challenge.timePerQuestion ?? 20,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
     });
@@ -532,6 +582,11 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
     }
 
     if (gameQuestions.length === 0) return res.status(400).json({ message: "لا توجد أسئلة في هذه المسابقة" });
+
+    const perParticipant = challenge.questionsPerParticipant;
+    if (perParticipant != null && perParticipant > 0 && perParticipant < gameQuestions.length) {
+      gameQuestions = shuffleArray(gameQuestions).slice(0, perParticipant);
+    }
 
     const game = createGame(
       challenge.assignmentId ?? 0,
