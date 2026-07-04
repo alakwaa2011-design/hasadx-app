@@ -10,13 +10,12 @@ import { useLocation, useRoute } from "wouter";
 import { Layout } from "@/components/layout";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Copy, Check, Play, LogOut, Loader2, Users,
+  Play, LogOut, Loader2, Users,
   Volume2, VolumeX, Maximize, Minimize,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { getSocket } from "@/lib/socket";
 import { toast } from "@/components/ui/sonner";
-import { GameQRCode } from "@/components/game-qr-code";
 import { HostJoinBar } from "@/components/host-join-bar";
 import { EscapeSoundEngine, VaultBackdrop, ESCAPE_BG, GOLD } from "@/components/game/escape-shared";
 
@@ -43,7 +42,6 @@ export default function EscapeHost() {
   const [phase, setPhase] = useState<"connecting" | "lobby" | "playing" | "error">("connecting");
   const [players, setPlayers] = useState<HostPlayer[]>([]);
   const [title, setTitle] = useState<string | undefined>(undefined);
-  const [copied, setCopied] = useState(false);
   const startedRef = useRef(false);
 
   const joinUrl = useMemo(() => `${window.location.origin}/game/escape/play?pin=${pin}`, [pin]);
@@ -121,19 +119,6 @@ export default function EscapeHost() {
     };
   }, [pin]);
 
-  const copyInvite = async () => {
-    const text = ar
-      ? `🔐 غرفة الهروب\n🔑 الرمز: ${pin}\n🔗 ${joinUrl}`
-      : `🔐 Escape Room\n🔑 PIN: ${pin}\n🔗 ${joinUrl}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error(ar ? "تعذّر النسخ" : "Copy failed");
-    }
-  };
-
   const startGame = () => {
     if (players.length === 0) {
       toast.error(ar ? "انتظر انضمام طالب واحد على الأقل" : "Wait for at least one student");
@@ -209,16 +194,8 @@ export default function EscapeHost() {
                   style={{ color: GOLD, textShadow: "0 0 26px rgba(247,201,72,0.55)", fontVariantNumeric: "tabular-nums" }}>
                   {pin}
                 </p>
-                <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-                  <GameQRCode url={joinUrl} pin={pin} size={150} />
-                  <div className="flex w-full max-w-[280px] flex-col gap-2">
-                    <button onClick={copyInvite}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-black backdrop-blur-sm transition-colors hover:bg-white/15">
-                      {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                      {copied ? (ar ? "تم النسخ!" : "Copied!") : (ar ? "نسخ الرابط والرمز" : "Copy link & PIN")}
-                    </button>
-                    <p className="break-all rounded-xl bg-black/40 px-3 py-2 text-[11px] text-white/45" dir="ltr">{joinUrl}</p>
-                  </div>
+                <div className="mt-4 flex justify-center">
+                  <HostJoinBar pin={pin} joinUrl={joinUrl} variant="dark" />
                 </div>
               </div>
 

@@ -301,12 +301,12 @@ export default function EscapeCreate() {
               </h2>
 
               {/* Escape time */}
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex shrink-0 items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-400" />
                   <span className="text-sm font-bold text-gray-700">{ar ? "زمن الهروب" : "Escape time"}</span>
                 </div>
-                <div className="ms-3 flex gap-1 rounded-xl bg-gray-100 p-1">
+                <div className="ms-3 flex flex-wrap items-center gap-1 rounded-xl bg-gray-100 p-1">
                   {[5, 8, 10, 15].map(m => (
                     <button key={m} onClick={() => setTotalMinutes(m)}
                       className="rounded-lg px-3 py-1.5 text-xs font-black transition-all"
@@ -317,16 +317,35 @@ export default function EscapeCreate() {
                       {m}{ar ? "د" : "m"}
                     </button>
                   ))}
+                  <div className="flex items-center gap-1 rounded-lg px-2 py-1"
+                    style={{ background: ![5, 8, 10, 15].includes(totalMinutes) ? GOLD : "transparent" }}>
+                    <input
+                      type="number"
+                      min={2}
+                      max={30}
+                      value={totalMinutes}
+                      onChange={e => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isFinite(v)) setTotalMinutes(Math.max(2, Math.min(30, v)));
+                      }}
+                      className="w-10 rounded bg-transparent text-center text-xs font-black outline-none"
+                      style={{ color: ![5, 8, 10, 15].includes(totalMinutes) ? "#fff" : "#6b7280" }}
+                      aria-label={ar ? "زمن مخصص بالدقائق" : "Custom time in minutes"}
+                    />
+                    <span className="text-[10px] font-black" style={{ color: ![5, 8, 10, 15].includes(totalMinutes) ? "#fff" : "#9ca3af" }}>
+                      {ar ? "مخصص" : "custom"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Lock count */}
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-gray-400" />
                   <span className="text-sm font-bold text-gray-700">{ar ? "عدد الأقفال" : "Locks"}</span>
                 </div>
-                <div className="ms-3 flex gap-1 rounded-xl bg-gray-100 p-1">
+                <div className="ms-3 flex flex-wrap items-center gap-1 rounded-xl bg-gray-100 p-1">
                   {[3, 4, 5].map(n => (
                     <button key={n} onClick={() => setLockCount(n)}
                       className="rounded-lg px-3.5 py-1.5 text-xs font-black transition-all"
@@ -337,6 +356,25 @@ export default function EscapeCreate() {
                       {n}
                     </button>
                   ))}
+                  <div className="flex items-center gap-1 rounded-lg px-2 py-1"
+                    style={{ background: ![3, 4, 5].includes(lockCount) ? GOLD : "transparent" }}>
+                    <input
+                      type="number"
+                      min={2}
+                      max={6}
+                      value={lockCount}
+                      onChange={e => {
+                        const v = parseInt(e.target.value, 10);
+                        if (Number.isFinite(v)) setLockCount(Math.max(2, Math.min(6, v)));
+                      }}
+                      className="w-8 rounded bg-transparent text-center text-xs font-black outline-none"
+                      style={{ color: ![3, 4, 5].includes(lockCount) ? "#fff" : "#6b7280" }}
+                      aria-label={ar ? "عدد أقفال مخصص" : "Custom lock count"}
+                    />
+                    <span className="text-[10px] font-black" style={{ color: ![3, 4, 5].includes(lockCount) ? "#fff" : "#9ca3af" }}>
+                      {ar ? "مخصص" : "custom"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
