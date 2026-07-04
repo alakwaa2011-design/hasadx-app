@@ -21,7 +21,12 @@ interface ChallengeInfo {
   isExpired: boolean;
   playCount: number;
   questionCount: number;
+  leaderboardDisplay?: string;
 }
+
+type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
+
+const medals = ["🥇", "🥈", "🥉"];
 
 export default function SoloPlayPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -34,6 +39,8 @@ export default function SoloPlayPage() {
   const [playerName, setPlayerName] = useState("");
   const [nameError, setNameError] = useState("");
   const [starting, setStarting] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
 
   // Load challenge metadata
   useEffect(() => {
@@ -45,6 +52,18 @@ export default function SoloPlayPage() {
         else setInfo(data);
       })
       .catch(() => setLoadError(lang === "ar" ? "تعذّر تحميل المسابقة" : "Failed to load challenge"));
+  }, [slug]);
+
+  // Load leaderboard (shown up-front too, before playing)
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug)}/leaderboard`)
+      .then(r => r.json())
+      .then(data => {
+        setLeaderboard(Array.isArray(data) ? data : []);
+        setLeaderboardLoaded(true);
+      })
+      .catch(() => setLeaderboardLoaded(true));
   }, [slug]);
 
   const handleStart = async () => {
@@ -207,6 +226,64 @@ export default function SoloPlayPage() {
               <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.85)" }} dir="rtl">
                 {info!.notes}
               </p>
+            </div>
+          )}
+
+          {/* Leaderboard — shown up-front, before playing */}
+          {(leaderboardLoaded ? leaderboard.length > 0 : true) && (
+            <div className="mx-6 mt-5 rounded-2xl overflow-hidden"
+              style={{ background: "rgba(232,184,75,0.05)", border: "1px solid rgba(232,184,75,0.18)" }}>
+              <div className="px-4 py-2.5 flex items-center gap-2"
+                style={{ borderBottom: "1px solid rgba(232,184,75,0.12)" }}>
+                <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                <h3 className="font-black text-white text-sm">
+                  {lang === "ar"
+                    ? info?.leaderboardDisplay === "top3"
+                      ? "المتصدرون الثلاثة"
+                      : info?.leaderboardDisplay === "all"
+                        ? "جدول المتصدرين"
+                        : "أفضل 20 لاعب"
+                    : info?.leaderboardDisplay === "top3"
+                      ? "Top 3 Players"
+                      : info?.leaderboardDisplay === "all"
+                        ? "Full Leaderboard"
+                        : "Top 20 Players"}
+                </h3>
+                <div className="ms-auto flex items-center gap-3">
+                  <span className="text-[10px] font-bold" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    {lang === "ar" ? "صحيح" : "Correct"}
+                  </span>
+                  <span className="text-[10px] font-bold" style={{ color: "rgba(232,184,75,0.6)" }}>
+                    {lang === "ar" ? "النقاط" : "Points"}
+                  </span>
+                </div>
+              </div>
+              <div className="px-2 py-1.5 space-y-0.5 max-h-44 overflow-y-auto">
+                {!leaderboardLoaded ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                  </div>
+                ) : (
+                  leaderboard.slice(0, 20).map((entry, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1 rounded-lg">
+                      <span className="w-6 text-center text-xs font-black shrink-0"
+                        style={{ color: i < 3 ? "#E8B84B" : "rgba(255,255,255,0.4)" }}>
+                        {i < 3 ? medals[i] : i + 1}
+                      </span>
+                      <span className="flex-1 text-xs font-bold truncate text-white/75">
+                        {entry.playerName}
+                      </span>
+                      <span className="text-[11px] font-bold w-7 text-center" style={{ color: "rgba(255,255,255,0.38)" }}>
+                        {entry.correctCount ?? "—"}
+                      </span>
+                      <span className="font-black text-xs w-16 text-end"
+                        style={{ color: i === 0 ? "#E8B84B" : "rgba(255,255,255,0.8)" }}>
+                        {entry.score > 0 ? entry.score.toLocaleString() : "—"}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
