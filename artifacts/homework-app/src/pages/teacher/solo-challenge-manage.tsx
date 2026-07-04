@@ -69,6 +69,8 @@ export default function SoloChallengeManagePage() {
   const [editQpp, setEditQpp] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
+  const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
+  const isAdmin = Boolean((user as any)?.isAdmin);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -153,6 +155,24 @@ export default function SoloChallengeManagePage() {
     } catch {
       toast.error("فشل الحذف");
       setDeleting(false);
+    }
+  };
+
+  const deleteParticipant = async (participant: Participant) => {
+    if (!confirm(`هل تريد حذف نتيجة "${participant.playerName}"؟ لا يمكن التراجع.`)) return;
+    setDeletingParticipantId(participant.id);
+    try {
+      const res = await fetch(
+        `${API}/api/solo-challenges/${encodeURIComponent(slug!)}/participants/${participant.id}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message);
+      setParticipants(prev => prev.filter(p => p.id !== participant.id));
+      toast.success("تم حذف المشارك");
+    } catch (err: any) {
+      toast.error(err.message || "فشل الحذف");
+    } finally {
+      setDeletingParticipantId(null);
     }
   };
 
@@ -449,6 +469,18 @@ export default function SoloChallengeManagePage() {
                       {p.correctCount}/{challenge.questionCount} صحيح • {fmtTime(p.timeTaken)}
                     </p>
                   </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => deleteParticipant(p)}
+                      disabled={deletingParticipantId === p.id}
+                      title="حذف المشارك (المسؤول فقط)"
+                      className="p-2 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      {deletingParticipantId === p.id
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

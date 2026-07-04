@@ -5,6 +5,7 @@ import {
   questionsTable,
   soloChallengesTable,
   soloChallengeScoresTable,
+  teachersTable,
 } from "@workspace/db";
 import { eq, and, desc, asc, sql, isNull, or } from "drizzle-orm";
 import {
@@ -76,6 +77,18 @@ function requireTeacher(req: any, res: any): number | null {
   const teacherId = req.session?.teacherId;
   if (!teacherId) { res.status(401).json({ message: "غير مصرح" }); return null; }
   return teacherId;
+}
+
+async function requireAdmin(req: any, res: any): Promise<boolean> {
+  const teacherId = req.session?.teacherId;
+  if (!teacherId) { res.status(401).json({ message: "غير مصرح" }); return false; }
+  const [teacher] = await db
+    .select({ isAdmin: teachersTable.isAdmin })
+    .from(teachersTable)
+    .where(eq(teachersTable.id, teacherId))
+    .limit(1);
+  if (!teacher?.isAdmin) { res.status(403).json({ message: "هذا الإجراء متاح للمسؤول فقط" }); return false; }
+  return true;
 }
 
 type SoloQuestion = {
@@ -374,6 +387,33 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Get participants error");
     res.status(500).json({ message: "خطأ في جلب المشاركين" });
+  }
+});
+
+// ── DELETE /api/solo-challenges/:slug/participants/:id  (admin only) ────────
+router.delete("/solo-challenges/:slug/participants/:id", async (req, res) => {
+  try {
+    if (!(await requireAdmin(req, res))) return;
+
+    const scoreId = Number(req.params.id);
+    if (!Number.isInteger(scoreId)) return res.status(400).json({ message: "معرّف غير صالح" });
+
+    const [existing] = await db
+      .select({ id: soloChallengeScoresTable.id })
+      .from(soloChallengeScoresTable)
+      .where(and(
+        eq(soloChallengeScoresTable.id, scoreId),
+        eq(soloChallengeScoresTable.slug, req.params.slug),
+      ))
+      .limit(1);
+
+    if (!existing) return res.status(404).json({ message: "المشارك غير موجود" });
+
+    await db.delete(soloChallengeScoresTable).where(eq(soloChallengeScoresTable.id, scoreId));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err, "Delete participant error");
+    res.status(500).json({ message: "خطأ في حذف المشارك" });
   }
 });
 
