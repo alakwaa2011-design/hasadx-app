@@ -54,6 +54,20 @@ export default function SoloPlayPage() {
       .catch(() => setLoadError(lang === "ar" ? "تعذّر تحميل المسابقة" : "Failed to load challenge"));
   }, [slug]);
 
+  // Replay on this device → reuse the name entered on the first attempt.
+  // Key/shape mirror the "hasad_solo_first_<slug>" entry written in
+  // solo-challenge-results.tsx (first-attempt-only scoring).
+  useEffect(() => {
+    if (!slug || typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(`hasad_solo_first_${slug}`);
+      if (raw) {
+        const saved = JSON.parse(raw) as { name?: string };
+        if (saved?.name) setPlayerName(saved.name);
+      }
+    } catch { /* ignore malformed/blocked storage */ }
+  }, [slug]);
+
   // Load leaderboard (shown up-front too, before playing)
   useEffect(() => {
     if (!slug) return;
