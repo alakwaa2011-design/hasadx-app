@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, ChevronLeft, Copy, Share2, ExternalLink, Users, Clock,
   Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2,
-  Loader2, Check, Save, Edit3, BarChart2, Medal,
+  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw,
 } from "lucide-react";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ interface ChallengeTeacherData {
   timePerQuestion: number | null;
   questionsPerParticipant: number | null;
   leaderboardDisplay: string | null;
+  maxAttempts: number | null;
   playCount: number;
   createdAt: string;
   isStandalone: boolean;
@@ -67,6 +68,7 @@ export default function SoloChallengeManagePage() {
   const [editTime, setEditTime] = useState(20);
   const [editLd, setEditLd] = useState<"top3" | "top20" | "all">("top20");
   const [editQpp, setEditQpp] = useState<number | "">("");
+  const [editMaxAttempts, setEditMaxAttempts] = useState(1);
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
@@ -91,6 +93,7 @@ export default function SoloChallengeManagePage() {
       setEditQpp(chal.questionsPerParticipant ?? "");
       const ld = chal.leaderboardDisplay ?? "top20";
       setEditLd(["top3","top20","all"].includes(ld) ? ld : "top20");
+      setEditMaxAttempts(chal.maxAttempts ?? 1);
       setEditExpires(
         chal.expiresAt ? new Date(chal.expiresAt).toISOString().slice(0, 16) : ""
       );
@@ -120,6 +123,7 @@ export default function SoloChallengeManagePage() {
           timePerQuestion: editTime,
           leaderboardDisplay: editLd,
           questionsPerParticipant: editQpp === "" ? null : editQpp,
+          maxAttempts: editMaxAttempts,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
@@ -132,6 +136,7 @@ export default function SoloChallengeManagePage() {
         timePerQuestion: editTime,
         leaderboardDisplay: editLd,
         questionsPerParticipant: editQpp === "" ? null : editQpp,
+        maxAttempts: editMaxAttempts,
         isExpired: editExpires ? new Date(editExpires) < new Date() : false,
       } : prev);
     } catch (err: any) {
@@ -388,6 +393,60 @@ export default function SoloChallengeManagePage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Attempts allowed */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
+                <RotateCw className="w-3.5 h-3.5" />
+                السماح باحتساب المحاولات
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 1, label: "مرة واحدة فقط" },
+                  { value: 2, label: "مرتان (يختار اللاعب)" },
+                  { value: 3, label: "3 (أفضل نتيجة)" },
+                ].map(o => (
+                  <button
+                    key={o.value}
+                    onClick={() => { setEditMaxAttempts(o.value); mark(); }}
+                    className={cn(
+                      "flex-1 py-2 px-2 rounded-xl text-xs font-bold border-2 transition-colors min-w-[90px]",
+                      editMaxAttempts === o.value
+                        ? "bg-amber-500 border-amber-500 text-white"
+                        : "border-border text-muted-foreground hover:border-amber-400",
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              {editMaxAttempts > 1 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground">تخصيص العدد (2-10):</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={editMaxAttempts}
+                    onChange={e => {
+                      let n = Number(e.target.value);
+                      if (isNaN(n)) return;
+                      n = Math.max(2, Math.min(10, n));
+                      setEditMaxAttempts(n);
+                      mark();
+                    }}
+                    className="w-16 px-2 py-1 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm text-center"
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {editMaxAttempts === 1
+                  ? "تُحتسب المحاولة الأولى فقط لكل مشارك، وإعادة اللعب لا تغيّر النتيجة."
+                  : editMaxAttempts === 2
+                    ? "يمكن للمشارك إعادة المحاولة مرة واحدة، وبعد المحاولة الثانية يختار بنفسه أي نتيجة يعتمدها."
+                    : `يجب على المشارك إكمال ${editMaxAttempts} محاولات، وسيتم اعتماد أفضل نتيجة تلقائياً.`}
+              </p>
             </div>
 
             {/* Expiry */}

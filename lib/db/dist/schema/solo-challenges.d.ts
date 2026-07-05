@@ -208,6 +208,23 @@ export declare const soloChallengesTable: import("drizzle-orm/pg-core").PgTableW
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        maxAttempts: import("drizzle-orm/pg-core").PgColumn<{
+            name: "max_attempts";
+            tableName: "solo_challenges";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         playCount: import("drizzle-orm/pg-core").PgColumn<{
             name: "play_count";
             tableName: "solo_challenges";

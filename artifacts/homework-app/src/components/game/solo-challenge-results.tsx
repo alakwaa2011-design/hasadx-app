@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Share2, Loader2, RotateCcw } from "lucide-react";
+import { Trophy, Share2, Loader2, RotateCcw, Lock, Award, ListChecks } from "lucide-react";
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
 
@@ -18,6 +18,42 @@ function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ── Multi-attempt scoring ────────────────────────────────────────────────────
+// Teachers can configure how many attempts (maxAttempts) count toward a solo
+// challenge's score:
+//   1  (default) → only the first attempt ever counts; replays don't change it.
+//   2             → after the 2nd attempt, the player manually picks which of
+//                   the two results to keep as their final score.
+//   >2            → the player must complete all N attempts; the best result
+//                   (by correct answers, then points, then speed) is picked
+//                   automatically and submitted.
+//
+// LocalStorage keys (per challenge slug):
+//   hasad_solo_final_<slug>    → the finalized/locked-in result (all modes)
+//   hasad_solo_first_<slug>    → legacy key from before multi-attempt support;
+//                                still read as a fallback for old finalized scores.
+//   hasad_solo_attempts_<slug> → array of in-progress attempts (maxAttempts > 1
+//                                only), cleared once a final score is locked in.
+type AttemptRecord = {
+  score: number; // correct answers count
+  total: number;
+  name: string;
+  points?: number;
+  timeTaken?: number; // seconds
+};
+
+function pickBestAttempt(attempts: AttemptRecord[]): AttemptRecord {
+  return attempts.reduce((best, cur) => {
+    if (cur.score !== best.score) return cur.score > best.score ? cur : best;
+    const curPts = cur.points ?? 0;
+    const bestPts = best.points ?? 0;
+    if (curPts !== bestPts) return curPts > bestPts ? cur : best;
+    const curTime = cur.timeTaken ?? Infinity;
+    const bestTime = best.timeTaken ?? Infinity;
+    return curTime < bestTime ? cur : best;
+  });
 }
 
 export function SoloChallengeResults({
@@ -56,29 +92,13 @@ export function SoloChallengeResults({
       ? sessionStorage.getItem("solo_leaderboard_display")
       : null,
   );
-
-  // ── First-attempt-only scoring ──────────────────────────────────────────────
-  // We store the first completed score in localStorage so that replays on the
-  // same device always show (and share) the first result, not an inflated one.
-  // Key: "hasad_solo_first_<slug>" → {score, total, name, points?, timeTaken?}
-  type FirstScore = {
-    score: number;
-    total: number;
-    name: string;
-    points?: number;
-    timeTaken?: number; // seconds
-  };
-  const lsKey = soloSlug ? `hasad_solo_first_${soloSlug}` : null;
-
-  const [firstScore] = useState<FirstScore | null>(() => {
-    if (!lsKey || typeof window === "undefined") return null;
-    try {
-      const raw = localStorage.getItem(lsKey);
-      return raw ? (JSON.parse(raw) as FirstScore) : null;
-    } catch { return null; }
+  const [maxAttempts] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const n = Number(sessionStorage.getItem("solo_challenge_max_attempts"));
+    return Number.isFinite(n) && n >= 1 ? n : 1;
   });
 
-  // Compute elapsed time from sessionStorage start timestamp (first attempt only).
+  // Compute elapsed time from sessionStorage start timestamp for this attempt.
   const [elapsedSec] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
     const t = sessionStorage.getItem("solo_challenge_start_time");
@@ -86,60 +106,123 @@ export function SoloChallengeResults({
     return Math.round((Date.now() - Number(t)) / 1000);
   });
 
-  // isReplay = true when this device has already completed this challenge.
-  const isReplay = firstScore !== null;
+  const finalKey = soloSlug ? `hasad_solo_final_${soloSlug}` : null;
+  const legacyFirstKey = soloSlug ? `hasad_solo_first_${soloSlug}` : null;
+  const attemptsKey = soloSlug ? `hasad_solo_attempts_${soloSlug}` : null;
 
-  // The score we display and share: always the first attempt.
-  const displayCorrect  = isReplay ? firstScore!.score       : correctCount;
-  const displayTotal    = isReplay ? firstScore!.total       : totalQuestions;
-  const displayPoints   = isReplay ? (firstScore!.points  ?? 0) : myScore;
-  const displayTimeSec  = isReplay ? (firstScore!.timeTaken ?? 0) : elapsedSec;
-  // ────────────────────────────────────────────────────────────────────────────
+  // Did this device already have a locked-in final score BEFORE this playthrough?
+  const [existingFinal] = useState<AttemptRecord | null>(() => {
+    if (!finalKey || typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(finalKey) || (legacyFirstKey ? localStorage.getItem(legacyFirstKey) : null);
+      return raw ? (JSON.parse(raw) as AttemptRecord) : null;
+    } catch { return null; }
+  });
+
+  const [currentAttempt] = useState<AttemptRecord>(() => ({
+    score: correctCount,
+    total: totalQuestions,
+    name: soloPlayerName || myName || (isAr ? "لاعب" : "Player"),
+    points: myScore,
+    timeTaken: elapsedSec,
+  }));
+
+  // One-time (per mount) resolution of what happens with this playthrough.
+  const [outcome] = useState<{
+    phase: "final" | "interim" | "choose";
+    display: AttemptRecord;
+    attempts: AttemptRecord[];
+    isNew: boolean; // true when this playthrough is what produced `display`
+  }>(() => {
+    if (existingFinal) {
+      return { phase: "final", display: existingFinal, attempts: [], isNew: false };
+    }
+
+    let priorAttempts: AttemptRecord[] = [];
+    if (attemptsKey && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(attemptsKey);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed)) priorAttempts = parsed;
+      } catch { /* ignore malformed storage */ }
+    }
+    const updatedAttempts = [...priorAttempts, currentAttempt].slice(0, Math.max(maxAttempts, 1));
+
+    if (maxAttempts <= 1) {
+      return { phase: "final", display: currentAttempt, attempts: updatedAttempts, isNew: true };
+    }
+    if (updatedAttempts.length < maxAttempts) {
+      return { phase: "interim", display: currentAttempt, attempts: updatedAttempts, isNew: true };
+    }
+    if (maxAttempts === 2) {
+      return { phase: "choose", display: currentAttempt, attempts: updatedAttempts, isNew: true };
+    }
+    // maxAttempts > 2: all attempts complete → auto-pick the best one.
+    const best = pickBestAttempt(updatedAttempts);
+    return { phase: "final", display: best, attempts: updatedAttempts, isNew: true };
+  });
+
+  const [phase, setPhase] = useState(outcome.phase);
+  const [display, setDisplay] = useState(outcome.display);
+  const [choosing, setChoosing] = useState(false);
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!soloSlug || !lsKey) return;
-    const API = import.meta.env.VITE_API_URL || "";
-    const playerName = soloPlayerName || myName || "لاعب";
+  const API = import.meta.env.VITE_API_URL || "";
 
-    if (!isReplay) {
-      // First attempt → save to localStorage and submit to leaderboard.
-      const entry: FirstScore = {
-        score: correctCount,
-        total: totalQuestions,
-        name: playerName,
-        points: myScore,
-        timeTaken: elapsedSec,
-      };
-      try { localStorage.setItem(lsKey, JSON.stringify(entry)); } catch { /* storage full */ }
-
-      fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ playerName, points: myScore, correctCount, timeTaken: elapsedSec }),
+  const fetchLeaderboard = () => {
+    if (!soloSlug) return;
+    fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`)
+      .then((r) => r.json())
+      .then((data) => {
+        setLeaderboard(Array.isArray(data) ? data : []);
+        setLeaderboardLoaded(true);
       })
-        .catch(() => {})
-        .finally(() => {
-          fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`)
-            .then((r) => r.json())
-            .then((data) => {
-              setLeaderboard(Array.isArray(data) ? data : []);
-              setLeaderboardLoaded(true);
-            })
-            .catch(() => setLeaderboardLoaded(true));
-        });
+      .catch(() => setLeaderboardLoaded(true));
+  };
+
+  const submitScore = (entry: AttemptRecord) => {
+    if (!soloSlug) return;
+    return fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        playerName: entry.name,
+        points: entry.points ?? 0,
+        correctCount: entry.score,
+        timeTaken: entry.timeTaken ?? 0,
+      }),
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!soloSlug) return;
+
+    if (phase === "interim") {
+      if (attemptsKey) {
+        try { localStorage.setItem(attemptsKey, JSON.stringify(outcome.attempts)); } catch { /* storage full */ }
+      }
+      fetchLeaderboard();
+    } else if (phase === "choose") {
+      if (attemptsKey) {
+        try { localStorage.setItem(attemptsKey, JSON.stringify(outcome.attempts)); } catch { /* storage full */ }
+      }
+      fetchLeaderboard();
     } else {
-      // Replay → skip score submission; just refresh the leaderboard.
-      fetch(`${API}/api/solo-challenges/${encodeURIComponent(soloSlug)}/leaderboard`)
-        .then((r) => r.json())
-        .then((data) => {
-          setLeaderboard(Array.isArray(data) ? data : []);
-          setLeaderboardLoaded(true);
-        })
-        .catch(() => setLeaderboardLoaded(true));
+      // phase === "final"
+      if (outcome.isNew) {
+        if (finalKey) {
+          try { localStorage.setItem(finalKey, JSON.stringify(outcome.display)); } catch { /* storage full */ }
+        }
+        if (attemptsKey) {
+          try { localStorage.removeItem(attemptsKey); } catch { /* ignore */ }
+        }
+        Promise.resolve(submitScore(outcome.display)).finally(fetchLeaderboard);
+      } else {
+        fetchLeaderboard();
+      }
     }
 
     sessionStorage.removeItem("solo_challenge_slug");
@@ -148,12 +231,39 @@ export function SoloChallengeResults({
     sessionStorage.removeItem("solo_challenge_title");
     sessionStorage.removeItem("solo_challenge_start_time");
     sessionStorage.removeItem("solo_leaderboard_display");
+    sessionStorage.removeItem("solo_challenge_max_attempts");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleChoose = (chosen: AttemptRecord) => {
+    if (choosing) return;
+    setChoosing(true);
+    if (finalKey) {
+      try { localStorage.setItem(finalKey, JSON.stringify(chosen)); } catch { /* storage full */ }
+    }
+    if (attemptsKey) {
+      try { localStorage.removeItem(attemptsKey); } catch { /* ignore */ }
+    }
+    Promise.resolve(submitScore(chosen)).finally(() => {
+      setDisplay(chosen);
+      setPhase("final");
+      setChoosing(false);
+      fetchLeaderboard();
+    });
+  };
+
   if (!soloSlug) return null;
 
-  const displayName = soloPlayerName || myName || (isAr ? "لاعب" : "Player");
+  const displayName = display.name || soloPlayerName || myName || (isAr ? "لاعب" : "Player");
+  const displayCorrect = display.score;
+  const displayTotal = display.total;
+  const displayPoints = display.points ?? 0;
+  const displayTimeSec = display.timeTaken ?? 0;
+  // isReplay = the final score was already locked in before this playthrough
+  // started (a genuine replay, as opposed to just having finished the round
+  // that produced this final score).
+  const isReplay = !outcome.isNew;
+
   const pct =
     displayTotal > 0 ? Math.round((displayCorrect / displayTotal) * 100) : 0;
 
@@ -251,6 +361,148 @@ export function SoloChallengeResults({
 
   const medals = ["🥇", "🥈", "🥉"];
 
+  // ── Interim phase: attempt saved, more attempts remain, no submission yet ──
+  if (phase === "interim") {
+    const attemptNum = outcome.attempts.length;
+    return (
+      <div
+        className="min-h-screen p-4 sm:p-8 flex items-center justify-center"
+        style={{
+          background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)",
+        }}
+        dir={dir}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 130, damping: 18 }}
+          className="w-full max-w-sm sm:max-w-md rounded-2xl sm:rounded-3xl text-center p-5 sm:p-8"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(147,197,253,0.35)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+          }}
+        >
+          <ListChecks className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-blue-300" />
+          <h1 className="mt-3 text-xl sm:text-2xl font-black text-blue-200">
+            {isAr
+              ? `أكملت المحاولة ${attemptNum} من ${maxAttempts}`
+              : `Completed attempt ${attemptNum} of ${maxAttempts}`}
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-bold text-white/60">
+            {isAr
+              ? "لم تُحتسب نتيجتك النهائية بعد — أكمل باقي المحاولات"
+              : "Your final score isn't decided yet — finish the remaining attempts"}
+          </p>
+
+          <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-xl py-3 px-2" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>{isAr ? "صحيح" : "Correct"}</p>
+              <p className="font-black text-base sm:text-xl text-white leading-none">{displayCorrect}<span className="text-white/40 text-xs font-bold">{" / "}{displayTotal || "—"}</span></p>
+            </div>
+            <div className="rounded-xl py-3 px-2" style={{ background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)" }}>
+              <p className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>{isAr ? "النقاط" : "Points"}</p>
+              <p className="font-black text-base sm:text-xl text-green-300 leading-none">{displayPoints > 0 ? displayPoints.toLocaleString() : "—"}</p>
+            </div>
+            <div className="rounded-xl py-3 px-2" style={{ background: "rgba(147,197,253,0.08)", border: "1px solid rgba(147,197,253,0.2)" }}>
+              <p className="text-[10px] sm:text-xs font-bold mb-1" style={{ color: "rgba(255,255,255,0.5)" }}>{isAr ? "الوقت" : "Time"}</p>
+              <p className="font-black text-base sm:text-xl text-blue-300 leading-none">{displayTimeSec > 0 ? fmtTime(displayTimeSec) : "—"}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleRetry}
+            className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl sm:rounded-2xl text-base font-black text-white transition-all duration-200 active:scale-[0.97] hover:brightness-110"
+            style={{
+              background: "linear-gradient(135deg,#2563EB 0%,#3B82F6 50%,#2563EB 100%)",
+              boxShadow: "0 10px 30px rgba(59,130,246,0.35)",
+            }}
+          >
+            <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
+            {isAr ? `العب المحاولة ${attemptNum + 1}` : `Play attempt ${attemptNum + 1}`}
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Choose phase: maxAttempts === 2, both attempts done, player picks ──────
+  if (phase === "choose") {
+    return (
+      <div
+        className="min-h-screen p-4 sm:p-8 flex items-center justify-center"
+        style={{
+          background: "linear-gradient(160deg, #0D2118 0%, #1A3A28 50%, #0F2A1C 100%)",
+        }}
+        dir={dir}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 130, damping: 18 }}
+          className="w-full max-w-sm sm:max-w-lg rounded-2xl sm:rounded-3xl text-center p-5 sm:p-8"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(232,184,75,0.35)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.55)",
+          }}
+        >
+          <Award className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-amber-300" />
+          <h1 className="mt-3 text-xl sm:text-2xl font-black text-amber-300">
+            {isAr ? "أكملت محاولتيك — اختر نتيجتك" : "Both attempts done — choose your score"}
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-bold text-white/60">
+            {isAr ? "لن تتمكن من التغيير بعد الاختيار" : "You won't be able to change it afterward"}
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {outcome.attempts.map((att, i) => {
+              const p = att.total > 0 ? Math.round((att.score / att.total) * 100) : 0;
+              return (
+                <button
+                  key={i}
+                  disabled={choosing}
+                  onClick={() => handleChoose(att)}
+                  className="w-full text-start rounded-xl sm:rounded-2xl p-4 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(232,184,75,0.25)",
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm sm:text-base font-black text-white">
+                      {isAr ? `المحاولة ${i + 1}` : `Attempt ${i + 1}`}
+                    </span>
+                    <span className="text-xs font-bold text-amber-300">{p}%</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 text-xs sm:text-sm">
+                    <span className="text-white/70">
+                      {isAr ? "صحيح: " : "Correct: "}
+                      <b className="text-white">{att.score}/{att.total}</b>
+                    </span>
+                    <span className="text-white/70">
+                      {isAr ? "النقاط: " : "Points: "}
+                      <b className="text-green-300">{(att.points ?? 0).toLocaleString()}</b>
+                    </span>
+                    {att.timeTaken ? (
+                      <span className="text-white/70">
+                        {isAr ? "الوقت: " : "Time: "}
+                        <b className="text-blue-300">{fmtTime(att.timeTaken)}</b>
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 text-[11px] font-bold text-amber-400/80">
+                    {choosing ? (isAr ? "جارٍ الحفظ..." : "Saving...") : (isAr ? "اعتماد هذه النتيجة ←" : "→ Keep this score")}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen p-4 sm:p-8 relative overflow-hidden"
@@ -326,9 +578,9 @@ export function SoloChallengeResults({
             {displayName}
           </p>
 
-          {/* First-attempt badge — shown on replay to remind the player that
-              what they see is their original score, not the current attempt. */}
-          {isReplay && (
+          {/* Final-score badge — communicates why this score is the one
+              displayed/shared, tailored to how it was decided. */}
+          {isReplay ? (
             <div className="mt-2 flex justify-center">
               <span
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold"
@@ -338,10 +590,28 @@ export function SoloChallengeResults({
                   color: "#E8B84B",
                 }}
               >
-                🔒 {isAr ? "نتيجتك الأولى المحفوظة" : "Your saved first score"}
+                <Lock className="w-3 h-3" /> {isAr ? "نتيجتك النهائية المحفوظة" : "Your saved final score"}
               </span>
             </div>
-          )}
+          ) : maxAttempts === 2 ? (
+            <div className="mt-2 flex justify-center">
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.35)", color: "#E8B84B" }}
+              >
+                <Lock className="w-3 h-3" /> {isAr ? "النتيجة التي اخترتها" : "The score you chose"}
+              </span>
+            </div>
+          ) : maxAttempts > 2 ? (
+            <div className="mt-2 flex justify-center">
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold"
+                style={{ background: "rgba(232,184,75,0.12)", border: "1px solid rgba(232,184,75,0.35)", color: "#E8B84B" }}
+              >
+                <Award className="w-3 h-3" /> {isAr ? `أفضل نتيجة من ${maxAttempts} محاولات` : `Best of ${maxAttempts} attempts`}
+              </span>
+            </div>
+          ) : null}
 
           {/* Stats: correct/total | percentage | rank */}
           <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">

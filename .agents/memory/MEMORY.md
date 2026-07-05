@@ -1,3 +1,4 @@
 - [Proxy path prefix collision](proxy-path-collision.md) — adding a short prefix to artifact.toml breaks all React routes sharing that letter (e.g. /s breaks /solo, /student, /solve).
 - [Solo challenge data](solo-challenge-data.md) — وميض فردي results live ONLY in solo_challenge_scores (not game_history); a score-write bug = permanent loss. Distinct from gameMode='solo' live games.
 - [Route shadowing from duplicate handlers](route-shadowing-duplicate-handlers.md) — a duplicate path handler in an earlier-mounted router silently shadows a newer one; typecheck won't catch it, only live curl will.
+- [drizzle-kit push TUI hang](drizzle-push-tui-hang.md) — interactive constraint-rename prompts hang forever in the agent shell; psql ALTER TABLE is a valid fallback for simple additive columns.

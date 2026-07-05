@@ -155,6 +155,7 @@ router.get("/solo-challenges", async (req, res) => {
         timePerQuestion: soloChallengesTable.timePerQuestion,
         questionsPerParticipant: soloChallengesTable.questionsPerParticipant,
         leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
+        maxAttempts: soloChallengesTable.maxAttempts,
         playCount: soloChallengesTable.playCount,
         createdAt: soloChallengesTable.createdAt,
       })
@@ -246,6 +247,14 @@ router.post("/solo-challenges/standalone", async (req, res) => {
     const timePerQuestion = Math.max(5, Math.min(120, Number(req.body?.timePerQuestion) || 20));
     const ld = req.body?.leaderboardDisplay;
     const leaderboardDisplay = ["top3", "top20", "all"].includes(ld) ? ld : "top20";
+    let maxAttempts = 1;
+    if (req.body?.maxAttempts != null) {
+      const ma = Number(req.body.maxAttempts);
+      if (!Number.isInteger(ma) || ma < 1 || ma > 10) {
+        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 1 و10" });
+      }
+      maxAttempts = ma;
+    }
     const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 1000) || null : null;
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && isNaN(expiresAt.getTime())) return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
@@ -274,6 +283,7 @@ router.post("/solo-challenges/standalone", async (req, res) => {
         timePerQuestion,
         questionsPerParticipant,
         leaderboardDisplay,
+        maxAttempts,
         notes,
         expiresAt,
       })
@@ -455,6 +465,13 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
         update.leaderboardDisplay = req.body.leaderboardDisplay;
       }
     }
+    if ("maxAttempts" in req.body) {
+      const ma = Number(req.body.maxAttempts);
+      if (!Number.isInteger(ma) || ma < 1 || ma > 10) {
+        return res.status(400).json({ message: "عدد المحاولات يجب أن يكون بين 1 و10" });
+      }
+      update.maxAttempts = ma;
+    }
     if ("title" in req.body && challenge.assignmentId === null) {
       const t = String(req.body.title || "").trim();
       if (t.length > 0 && t.length <= 200) update.assignmentTitle = t;
@@ -575,6 +592,7 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       questionsPerParticipant: challenge.questionsPerParticipant ?? null,
       timePerQuestion: challenge.timePerQuestion ?? 20,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
+      maxAttempts: challenge.maxAttempts ?? 1,
     });
   } catch (err) {
     req.log.error(err, "Get solo challenge slug error");

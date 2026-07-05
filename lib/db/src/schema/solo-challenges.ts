@@ -26,6 +26,11 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   questionsPerParticipant: integer("questions_per_participant"),
   /** How many entries to show in the leaderboard: 'top3' | 'top20' | 'all' */
   leaderboardDisplay: text("leaderboard_display").default("top20"),
+  /** How many attempts count toward the final score, per device/participant.
+   *  1 (default) = only the first attempt counts, replays don't change it.
+   *  2 = after the 2nd attempt, the participant manually picks which score to keep.
+   *  >2 = participant must play all N attempts, then the best result is auto-picked. */
+  maxAttempts: integer("max_attempts").notNull().default(1),
   playCount: integer("play_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({

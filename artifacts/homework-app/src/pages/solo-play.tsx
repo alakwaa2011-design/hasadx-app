@@ -22,6 +22,7 @@ interface ChallengeInfo {
   playCount: number;
   questionCount: number;
   leaderboardDisplay?: string;
+  maxAttempts?: number;
 }
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
@@ -41,6 +42,7 @@ export default function SoloPlayPage() {
   const [starting, setStarting] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoaded, setLeaderboardLoaded] = useState(false);
+  const [attemptProgress, setAttemptProgress] = useState<{ used: number; max: number; isFinal: boolean } | null>(null);
 
   // Load challenge metadata
   useEffect(() => {
@@ -54,19 +56,33 @@ export default function SoloPlayPage() {
       .catch(() => setLoadError(lang === "ar" ? "تعذّر تحميل المسابقة" : "Failed to load challenge"));
   }, [slug]);
 
-  // Replay on this device → reuse the name entered on the first attempt.
-  // Key/shape mirror the "hasad_solo_first_<slug>" entry written in
-  // solo-challenge-results.tsx (first-attempt-only scoring).
+  // Replay on this device → reuse the name entered on a previous attempt, and
+  // show attempt progress if this challenge allows more than one attempt.
+  // Keys written in solo-challenge-results.tsx:
+  //  - "hasad_solo_final_<slug>": the finalized/chosen score (multi-attempt mode)
+  //  - "hasad_solo_first_<slug>": legacy single-attempt key (kept for back-compat)
+  //  - "hasad_solo_attempts_<slug>": array of in-progress attempts (multi-attempt mode)
   useEffect(() => {
     if (!slug || typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem(`hasad_solo_first_${slug}`);
-      if (raw) {
-        const saved = JSON.parse(raw) as { name?: string };
+      const finalRaw = localStorage.getItem(`hasad_solo_final_${slug}`) || localStorage.getItem(`hasad_solo_first_${slug}`);
+      if (finalRaw) {
+        const saved = JSON.parse(finalRaw) as { name?: string };
         if (saved?.name) setPlayerName(saved.name);
+        setAttemptProgress({ used: 0, max: 0, isFinal: true });
+        return;
+      }
+      const attemptsRaw = localStorage.getItem(`hasad_solo_attempts_${slug}`);
+      if (attemptsRaw) {
+        const attempts = JSON.parse(attemptsRaw) as Array<{ name?: string }>;
+        if (Array.isArray(attempts) && attempts.length > 0) {
+          const last = attempts[attempts.length - 1];
+          if (last?.name) setPlayerName(last.name);
+          setAttemptProgress({ used: attempts.length, max: info?.maxAttempts ?? 0, isFinal: false });
+        }
       }
     } catch { /* ignore malformed/blocked storage */ }
-  }, [slug]);
+  }, [slug, info?.maxAttempts]);
 
   // Load leaderboard (shown up-front too, before playing)
   useEffect(() => {
@@ -102,6 +118,7 @@ export default function SoloPlayPage() {
       sessionStorage.setItem("solo_challenge_player", name);
       sessionStorage.setItem("solo_challenge_title", info?.assignmentTitle ?? "");
       sessionStorage.setItem("solo_challenge_start_time", String(Date.now()));
+      sessionStorage.setItem("solo_challenge_max_attempts", String(info?.maxAttempts ?? 1));
       if (data.shortSlug) sessionStorage.setItem("solo_challenge_short_slug", data.shortSlug);
       if (data.leaderboardDisplay) sessionStorage.setItem("solo_leaderboard_display", data.leaderboardDisplay);
 
@@ -239,6 +256,19 @@ export default function SoloPlayPage() {
               <FileText className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" />
               <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.85)" }} dir="rtl">
                 {info!.notes}
+              </p>
+            </div>
+          )}
+
+          {/* Attempt progress hint (multi-attempt challenges only) */}
+          {attemptProgress && !attemptProgress.isFinal && attemptProgress.max > 1 && (
+            <div className="mx-6 mt-5 rounded-xl px-4 py-3 flex items-center gap-2.5"
+              style={{ background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.3)" }}>
+              <Clock className="w-4 h-4 shrink-0 text-blue-300" />
+              <p className="text-xs font-bold text-blue-200">
+                {lang === "ar"
+                  ? `أكملت ${attemptProgress.used} من ${attemptProgress.max} محاولات مسموحة`
+                  : `Completed ${attemptProgress.used} of ${attemptProgress.max} allowed attempts`}
               </p>
             </div>
           )}
