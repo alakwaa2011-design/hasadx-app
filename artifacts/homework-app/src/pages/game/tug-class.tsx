@@ -1232,13 +1232,13 @@ function ClassGame({
           >
             {/* Phones: zones flex to fit. sm+: fixed width pinned to the screen
                 edges, with ALL remaining space becoming the centre field. */}
-            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(300px,40vw,540px)]">
+            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,44vw,580px)]">
               {blueOnRight ? redZone : blueZone}
             </div>
-            <div className="w-10 shrink-0 sm:w-auto sm:min-w-[60px] sm:flex-1">
+            <div className="w-8 shrink-0 sm:w-auto sm:min-w-[40px] sm:flex-1">
               <CenterField rope={state.rope} blueOnRight={blueOnRight} />
             </div>
-            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(300px,40vw,540px)]">
+            <div className="flex min-w-0 flex-1 sm:flex-none sm:w-[clamp(310px,44vw,580px)]">
               {blueOnRight ? blueZone : redZone}
             </div>
           </div>
