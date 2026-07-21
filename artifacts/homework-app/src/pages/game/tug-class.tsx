@@ -550,7 +550,7 @@ function TeamZone({
             <p className="break-words text-base font-black leading-tight text-white sm:text-lg lg:text-xl">
               {name}
             </p>
-            <p className="text-[11px] font-bold" style={{ color: `rgba(${rgb},0.9)` }}>
+            <p className="text-[11px] font-bold text-white/70">
               {t.phase === "exhausted"
                 ? (ar ? "أنهى أسئلته" : "Finished")
                 : `${ar ? "سؤال" : "Q"} ${Math.min(t.qIndex + 1, qTotal)} / ${qTotal}`}
