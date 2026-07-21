@@ -768,7 +768,6 @@ function ClassGame({
       // Referee whistle = kickoff. The crowd bed fades in with the match.
       getSound().playWhistle();
       getSound().startBackground();
-      getSound().startCrowd();
       pushTicker(ar ? "🏁 انطلقت المباراة — شدّوا!" : "🏁 The match is ON — pull!");
       setGoFlash(true);
       const h = setTimeout(() => setGoFlash(false), 1000);
@@ -776,7 +775,6 @@ function ClassGame({
     }
     if (state.status === "finished") {
       getSound().stopBackground();
-      getSound().stopCrowd();
       if (state.winner === "draw") getSound().playApplause();
       else getSound().playWin();
     }
@@ -808,7 +806,7 @@ function ClassGame({
     const t = state.teams[id];
     return t.phase === "question" && t.timeLeft <= 5;
   });
-  useEffect(() => { getSound().setUrgency(urgent); }, [urgent, getSound]);
+  useEffect(() => { getSound().setUrgency(false); }, [getSound]);
 
   const teamNameOf = useCallback(
     (t: TeamId) => (t === "blue" ? blueName : redName),
@@ -907,7 +905,6 @@ function ClassGame({
         megaSeq.current += 1;
         setMegaPull({ team: id, id: megaSeq.current });
         getSound().playPowerPull();
-        getSound().setCrowdExcitement(1);
         pushTicker(
           ar ? `⚡ الشدّة الكبرى! ${teamNameOf(id)} لا يُوقَف!` : `⚡ MEGA PULL! ${teamNameOf(id)} is unstoppable!`,
           id,
@@ -932,7 +929,6 @@ function ClassGame({
         comebackSeq.current += 1;
         setComeback({ team: id, id: comebackSeq.current });
         getSound().playBoost();
-        getSound().setCrowdExcitement(1);
         pushTicker(
           ar ? `🔥 عودة أسطورية من ${teamNameOf(id)}!` : `🔥 Legendary comeback by ${teamNameOf(id)}!`,
           id,
@@ -946,20 +942,12 @@ function ClassGame({
     return () => clearTimeout(h);
   }, [comeback]);
 
-  // Crowd excitement follows the match: rope drama + streaks + danger.
-  useEffect(() => {
-    if (state.status !== "playing") return;
-    const drama = Math.abs(state.rope - 50) / 45;
-    const heat = Math.max(state.teams.blue.streak, state.teams.red.streak) * 0.07;
-    getSound().setCrowdExcitement(Math.min(1, drama + heat + (dangerSide ? 0.3 : 0)));
-  }, [state.rope, state.teams, state.status, dangerSide, getSound]);
-
   const toggleMute = () => {
     const s = getSound();
     s.setMuted(!s.muted);
     setMuted(s.muted);
-    if (s.muted) { s.stopBackground(); s.stopCrowd(); }
-    else if (state.status === "playing") { s.startBackground(); s.startCrowd(); }
+    if (s.muted) { s.stopBackground(); }
+    else if (state.status === "playing") { s.startBackground(); }
   };
 
   // ── Match-star stats (presentational only; engine untouched): best streak
