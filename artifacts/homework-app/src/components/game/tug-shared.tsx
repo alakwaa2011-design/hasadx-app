@@ -150,7 +150,7 @@ class TugSoundEngine {
 
   // ── BACKGROUND MUSIC ─────────────────────────────────────────────────────
   // Sports-arena competitive track — 4/4, 8th-note steps
-  // Key: G minor  |  Normal: 126 BPM  |  Urgent: 152 BPM
+  // Key: G minor  |  Normal: 140 BPM  |  Urgent: 160 BPM
   // Layers: kick · snare · hi-hats · bass · chord stabs · lead melody
   startBackground() {
     if (this.started) return;
@@ -160,7 +160,7 @@ class TugSoundEngine {
     const play = () => {
       if (!this.started) return;
       try {
-        const bpm = this.urgent ? 152 : 126;
+        const bpm = this.urgent ? 160 : 140;
         const t8  = (60 / bpm) / 2;           // one 8th-note in seconds
         const b   = step % 8;
         const bar = Math.floor(step / 8);
