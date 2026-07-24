@@ -833,7 +833,6 @@ router.post("/islamic/challenges", async (req, res) => {
 });
 
 router.get("/islamic/challenges/by-pin/:pin", async (req, res) => {
-  if (!(await requireAccess(req, res))) return;
   const [c] = await db.select().from(islamicChallengesTable).where(eq(islamicChallengesTable.pin, req.params.pin)).limit(1);
   if (!c) {
     res.status(404).json({ message: "التحدي غير موجود" });
@@ -846,9 +845,8 @@ router.get("/islamic/challenges/by-pin/:pin", async (req, res) => {
 });
 
 router.post("/islamic/challenges/:id/submit", async (req, res) => {
-  if (!(await requireAccess(req, res))) return;
   const id = parseInt(req.params.id);
-  const userId = req.session.teacherId!;
+  const userId = req.session?.teacherId ?? null;
   const { score, timeMs, correct, role } = req.body || {};
   const [c] = await db.select().from(islamicChallengesTable).where(eq(islamicChallengesTable.id, id)).limit(1);
   if (!c) {
@@ -858,11 +856,13 @@ router.post("/islamic/challenges/:id/submit", async (req, res) => {
   const numScore = Math.max(0, Math.min(1000, Number(score) || 0));
   const numTime = Math.max(0, Math.min(60 * 60 * 1000, Number(timeMs) || 0));
   const numCorrect = Math.max(0, Math.min(50, Number(correct) || 0));
-  if (role === "creator" && c.creatorId !== userId) {
-    res.status(403).json({ message: "لست منشئ هذا التحدي" });
-    return;
+  if (role === "creator") {
+    if (!userId || c.creatorId !== userId) {
+      res.status(403).json({ message: "لست منشئ هذا التحدي" });
+      return;
+    }
   }
-  if (role === "opponent" && c.opponentId && c.opponentId !== userId) {
+  if (role === "opponent" && c.opponentId && userId && c.opponentId !== userId) {
     res.status(403).json({ message: "هذا التحدي تم تسجيل خصم آخر فيه" });
     return;
   }
@@ -876,11 +876,11 @@ router.post("/islamic/challenges/:id/submit", async (req, res) => {
     patch.creatorTimeMs = numTime;
     patch.creatorCorrect = numCorrect;
   } else {
-    if (userId === c.creatorId) {
+    if (userId && userId === c.creatorId) {
       res.status(400).json({ message: "لا يمكنك لعب تحدي من إنشائك كخصم" });
       return;
     }
-    patch.opponentId = userId;
+    if (userId) patch.opponentId = userId;
     patch.opponentName = (req.body?.opponentName as string) || null;
     patch.opponentScore = numScore;
     patch.opponentTimeMs = numTime;
@@ -888,8 +888,8 @@ router.post("/islamic/challenges/:id/submit", async (req, res) => {
     patch.status = "completed";
     patch.completedAt = new Date();
     if ((c.creatorScore || 0) > numScore) patch.winnerId = c.creatorId;
-    else if (numScore > (c.creatorScore || 0)) patch.winnerId = userId;
-    else patch.winnerId = (c.creatorTimeMs || 0) <= numTime ? c.creatorId : userId;
+    else if (numScore > (c.creatorScore || 0)) patch.winnerId = userId ?? null;
+    else patch.winnerId = (c.creatorTimeMs || 0) <= numTime ? c.creatorId : (userId ?? null);
   }
   const [updated] = await db.update(islamicChallengesTable).set(patch).where(eq(islamicChallengesTable.id, id)).returning();
   res.json(updated);

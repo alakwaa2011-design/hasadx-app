@@ -371,6 +371,8 @@ export function IslamicChallengePlay() {
   const [selected, setSelected] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [opName, setOpName] = useState("");
+  const [nameReady, setNameReady] = useState(role === "creator");
+  const [loadError, setLoadError] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(TIMER_SECONDS);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const totalStartRef = useRef(Date.now());
@@ -379,12 +381,12 @@ export function IslamicChallengePlay() {
   useEffect(() => {
     api<{ challenge: Challenge; questions: Q[] }>(`/islamic/challenges/by-pin/${pin}`)
       .then((r) => { setChallenge(r.challenge); setQuestions(r.questions); })
-      .catch(() => setLocation("/islamic"));
+      .catch((e: Error) => setLoadError(e.message || "التحدي غير موجود"));
   }, [pin]);
 
-  /* Auto-start timer whenever question changes and data is loaded */
+  /* Auto-start timer whenever question changes, data is loaded, and name is ready */
   useEffect(() => {
-    if (!questions.length || revealed || done) return;
+    if (!questions.length || revealed || done || !nameReady) return;
     setSecondsLeft(TIMER_SECONDS);
     questionStartRef.current = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
@@ -441,8 +443,55 @@ export function IslamicChallengePlay() {
     }
   }
 
+  if (loadError) {
+    return (
+      <IslamicShell title="تحدي حصاد">
+        <IslamicCard>
+          <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {loadError}</p>
+          <div style={{ textAlign: "center" }}>
+            <GhostButton onClick={() => window.history.back()}>رجوع</GhostButton>
+          </div>
+        </IslamicCard>
+      </IslamicShell>
+    );
+  }
+
   if (!challenge || questions.length === 0) {
     return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard></IslamicShell>;
+  }
+
+  /* Opponent must enter their name before the game starts */
+  if (role === "opponent" && !nameReady) {
+    return (
+      <IslamicShell title="تحدي حصاد">
+        <IslamicCard glow>
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>⚔️</div>
+            <div style={{ fontSize: "clamp(16px, 5vw, 20px)", fontWeight: 800, color: ISLAMIC_GOLD, marginBottom: 4 }}>
+              أنت مدعو لتحدي!
+            </div>
+            <div style={{ fontSize: 14, opacity: 0.85 }}>أدخل اسمك ليظهر للخصم</div>
+          </div>
+          <input
+            value={opName}
+            onChange={(e) => setOpName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && opName.trim()) { totalStartRef.current = Date.now(); setNameReady(true); } }}
+            placeholder="اسمك…"
+            style={{
+              display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8",
+              border: `1px solid ${ISLAMIC_GOLD}`, borderRadius: 8, padding: "12px 14px",
+              marginBottom: 14, fontFamily: "inherit", fontSize: 18, textAlign: "center", boxSizing: "border-box",
+            }}
+          />
+          <GoldButton
+            disabled={!opName.trim()}
+            onClick={() => { totalStartRef.current = Date.now(); setNameReady(true); }}
+          >
+            ابدأ التحدي ⚔️
+          </GoldButton>
+        </IslamicCard>
+      </IslamicShell>
+    );
   }
 
   if (done) {
@@ -480,13 +529,6 @@ export function IslamicChallengePlay() {
           <div style={{ height: "100%", width: `${timerPct}%`, background: timerColor, borderRadius: 4, transition: "width 1s linear, background 0.5s" }} />
         </div>
       </div>
-
-      {role === "opponent" && idx === 0 && !opName && (
-        <IslamicCard style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: "clamp(13px, 3.5vw, 15px)" }}>اسمك للظهور للخصم:</p>
-          <input value={opName} onChange={(e) => setOpName(e.target.value)} style={{ display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8", border: `1px solid ${ISLAMIC_GOLD}`, borderRadius: 8, padding: 10, marginTop: 6, fontFamily: "inherit", fontSize: 16 }} />
-        </IslamicCard>
-      )}
 
       <IslamicCard style={{ marginBottom: 16 }}>
         <div style={{ fontSize: "clamp(17px, 5vw, 22px)", fontWeight: 700, lineHeight: 1.8, textAlign: "center", marginBottom: 16, wordBreak: "break-word" }}>{q.questionText}</div>
@@ -542,10 +584,12 @@ export function IslamicTournamentPlay() {
   const totalStartRef = useRef(Date.now());
   const questionStartRef = useRef(Date.now());
 
+  const [tourLoadError, setTourLoadError] = useState("");
+
   useEffect(() => {
     api<Tournament>(`/islamic/tournaments/${pin}`)
       .then(setTournament)
-      .catch(() => setLocation("/islamic"));
+      .catch((e: Error) => setTourLoadError(e.message || "البطولة غير موجودة"));
   }, [pin]);
 
   useEffect(() => {
@@ -601,6 +645,19 @@ export function IslamicTournamentPlay() {
       setSelected(null);
       setRevealed(false);
     }
+  }
+
+  if (tourLoadError) {
+    return (
+      <IslamicShell title="تحدي الفرق">
+        <IslamicCard>
+          <p style={{ textAlign: "center", color: "#fca5a5", fontSize: 18, marginBottom: 16 }}>❌ {tourLoadError}</p>
+          <div style={{ textAlign: "center" }}>
+            <GhostButton onClick={() => window.history.back()}>رجوع</GhostButton>
+          </div>
+        </IslamicCard>
+      </IslamicShell>
+    );
   }
 
   if (!tournament) {
