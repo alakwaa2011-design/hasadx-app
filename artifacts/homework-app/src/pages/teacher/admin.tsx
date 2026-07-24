@@ -424,6 +424,7 @@ export default function AdminPage() {
   const [showQuranSection, setShowQuranSection] = useState(false);
   const [showGeneralCertificates, setShowGeneralCertificates] = useState(false);
   const [showMaraqui, setShowMaraqui] = useState(false);
+  const [showSecretGame, setShowSecretGame] = useState(false);
   const [classroomEnabled, setClassroomEnabled] = useState(false);
   const [classroomAllowedEmails, setClassroomAllowedEmails] = useState<string[]>([]);
   const [classroomEmailsInput, setClassroomEmailsInput] = useState("");
@@ -771,6 +772,7 @@ export default function AdminPage() {
           setShowQuranSection(ps.showQuranSection ?? false);
           setShowGeneralCertificates(ps.showGeneralCertificates ?? false);
           setShowMaraqui(ps.showMaraqui ?? false);
+          setShowSecretGame(ps.showSecretGame ?? false);
           setTeacherXpRewardsEnabled(ps.teacherXpRewardsEnabled ?? true);
           if (ps.arenaImportSources) setArenaImportSources(ps.arenaImportSources);
           setClassroomEnabled(ps.classroomEnabled ?? false);
@@ -2643,6 +2645,13 @@ export default function AdminPage() {
                     value: showMaraqui,
                     set: setShowMaraqui,
                     label: lang === "ar" ? "إظهار لعبة مَراقي للجميع" : "Show Maraqui game to everyone",
+                    desc: lang === "ar" ? "مخفية افتراضياً لجميع المستخدمين (تظل ظاهرة لك دائماً كمسؤول). فعّلها لإظهارها للمعلمين والطلاب." : "Hidden by default for all users (always visible to you as admin). Enable to show it to teachers and students.",
+                  },
+                  {
+                    key: "showSecretGame",
+                    value: showSecretGame,
+                    set: setShowSecretGame,
+                    label: lang === "ar" ? "إظهار لعبة «اكتشف السر» للجميع" : "Show «Discover the Secret» game to everyone",
                     desc: lang === "ar" ? "مخفية افتراضياً لجميع المستخدمين (تظل ظاهرة لك دائماً كمسؤول). فعّلها لإظهارها للمعلمين والطلاب." : "Hidden by default for all users (always visible to you as admin). Enable to show it to teachers and students.",
                   },
                 ] as const).map(t2 => (

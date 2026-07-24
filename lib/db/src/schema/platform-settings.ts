@@ -56,6 +56,7 @@ export const platformSettingsTable = pgTable("platform_settings", {
   showQuranSection: boolean("show_quran_section").notNull().default(false),
   showGeneralCertificates: boolean("show_general_certificates").notNull().default(false),
   showMaraqui: boolean("show_maraqui").notNull().default(false),
+  showSecretGame: boolean("show_secret_game").notNull().default(false),
   /* Google Classroom integration — globally enabled by an admin from
      the admin panel. Off by default until the admin configures Azure /
      Google credentials and explicitly turns it on. When `false` the

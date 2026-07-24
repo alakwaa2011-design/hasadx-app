@@ -228,6 +228,7 @@ router.get("/public/settings", async (req, res) => {
         showQuranSection: platformSettingsTable.showQuranSection,
         showGeneralCertificates: platformSettingsTable.showGeneralCertificates,
         showMaraqui: platformSettingsTable.showMaraqui,
+        showSecretGame: platformSettingsTable.showSecretGame,
         classroomEnabled: platformSettingsTable.classroomEnabled,
       })
       .from(platformSettingsTable)
@@ -251,6 +252,7 @@ router.get("/public/settings", async (req, res) => {
       showQuranSection: row?.showQuranSection ?? false,
       showGeneralCertificates: row?.showGeneralCertificates ?? false,
       showMaraqui: row?.showMaraqui ?? false,
+      showSecretGame: row?.showSecretGame ?? false,
       classroomEnabled: row?.classroomEnabled ?? false,
     });
   } catch (err) {

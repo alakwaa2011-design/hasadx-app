@@ -424,6 +424,23 @@ export declare const platformSettingsTable: import("drizzle-orm/pg-core").PgTabl
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        showSecretGame: import("drizzle-orm/pg-core").PgColumn<{
+            name: "show_secret_game";
+            tableName: "platform_settings";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         classroomEnabled: import("drizzle-orm/pg-core").PgColumn<{
             name: "classroom_enabled";
             tableName: "platform_settings";

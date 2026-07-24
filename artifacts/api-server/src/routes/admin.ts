@@ -621,6 +621,7 @@ async function getPlatformSettings() {
     showQuranSection: row?.showQuranSection ?? false,
     showGeneralCertificates: row?.showGeneralCertificates ?? false,
     showMaraqui: row?.showMaraqui ?? false,
+    showSecretGame: row?.showSecretGame ?? false,
     classroomEnabled: row?.classroomEnabled ?? false,
     classroomAllowedEmails: row?.classroomAllowedEmails ?? [],
     arenaImportSources: row?.arenaImportSources ?? { ...DEFAULT_ARENA_IMPORT_SOURCES },
@@ -671,6 +672,7 @@ router.patch("/admin/platform-settings", async (req, res) => {
       showQuranSection,
       showGeneralCertificates,
       showMaraqui,
+      showSecretGame,
       classroomEnabled,
       classroomAllowedEmails,
       arenaImportSources,
@@ -723,6 +725,7 @@ router.patch("/admin/platform-settings", async (req, res) => {
     if (showQuranSection !== undefined) update.showQuranSection = coerceBodyBool(showQuranSection);
     if (showGeneralCertificates !== undefined) update.showGeneralCertificates = coerceBodyBool(showGeneralCertificates);
     if (showMaraqui !== undefined) update.showMaraqui = coerceBodyBool(showMaraqui);
+    if (showSecretGame !== undefined) update.showSecretGame = coerceBodyBool(showSecretGame);
     if (classroomEnabled !== undefined) update.classroomEnabled = coerceBodyBool(classroomEnabled);
     if (classroomAllowedEmails !== undefined) {
       if (!Array.isArray(classroomAllowedEmails)) {

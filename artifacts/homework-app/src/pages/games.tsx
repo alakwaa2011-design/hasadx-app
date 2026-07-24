@@ -25,6 +25,7 @@ export default function GamesPage() {
   const ChevronIcon = lang === "ar" ? ArrowLeft : ArrowRight;
 
   const [maraquiVisible, setMaraquiVisible] = useState(false);
+  const [secretVisible, setSecretVisible] = useState(false);
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -34,12 +35,13 @@ export default function GamesPage() {
       if (cancelled) return;
       const isAdmin = Boolean(me?.isAdmin) || me?.role === "admin";
       setMaraquiVisible(isAdmin || Boolean(ps?.showMaraqui));
+      setSecretVisible(isAdmin || Boolean(ps?.showSecretGame));
     });
     return () => { cancelled = true; };
   }, []);
 
   const games: GameCard[] = [
-    {
+    ...(secretVisible ? [{
       href: "/game/secret",
       icon: Eye,
       title: lang === "ar" ? "اكتشف السر" : "Discover the Secret",
@@ -48,7 +50,7 @@ export default function GamesPage() {
         : "Two teams scan secret QR codes and ask yes/no questions to discover each other's secret",
       iconBg: "bg-purple-500/10",
       iconColor: "text-purple-600",
-    },
+    }] : []),
     {
       href: "/game/hack",
       icon: Terminal,

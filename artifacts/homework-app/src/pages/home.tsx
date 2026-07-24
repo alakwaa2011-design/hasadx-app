@@ -848,6 +848,7 @@ export default function Home() {
     showTugGame: false,
     showCapitalsGame: true,
     showMaraqui: false,
+    showSecretGame: false,
   });
   const {
     guestLimit,
@@ -904,6 +905,9 @@ export default function Home() {
             : {}),
           ...(d?.showMaraqui !== undefined
             ? { showMaraqui: d.showMaraqui }
+            : {}),
+          ...(d?.showSecretGame !== undefined
+            ? { showSecretGame: d.showSecretGame }
             : {}),
         }));
       });
@@ -1517,7 +1521,10 @@ export default function Home() {
           : "Two teams scan secret QR codes and ask yes/no questions to discover each other's secret",
       iconBg: "bg-purple-500/10",
       iconColor: "text-purple-600",
-      visible: true,
+      visible:
+        Boolean(teacherData?.isAdmin) ||
+        teacherData?.role === "admin" ||
+        Boolean(platformSettings.showSecretGame),
     },
     {
       href: "/game/flags",
