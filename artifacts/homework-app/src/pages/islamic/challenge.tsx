@@ -916,22 +916,37 @@ export function IslamicTournamentHost() {
       {sorted.map((team, i) => {
         const ts = data.teamScores[team];
         const isDone = ts?.status === "done";
+        const isWinner = i === 0 && data.status === "completed";
         return (
-          <IslamicCard key={team} glow={i === 0 && isDone} style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 28, minWidth: 36, textAlign: "center" }}>{medals[i] || `${i + 1}`}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800, fontSize: 16, color: i === 0 ? ISLAMIC_GOLD : "#fefce8" }}>{team}</div>
-              {isDone && (
-                <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
-                  {ts.correct}/{data.questions.length} صحيحة · {Math.round(ts.timeMs / 1000)}ث
-                </div>
-              )}
-              {!isDone && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 2 }}>لم يكمل بعد…</div>}
+          <IslamicCard key={team} glow={i === 0 && isDone} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 28, minWidth: 36, textAlign: "center" }}>{medals[i] || `${i + 1}`}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: i === 0 ? ISLAMIC_GOLD : "#fefce8" }}>{team}</div>
+                {isDone && (
+                  <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
+                    {ts.correct}/{data.questions.length} صحيحة · {Math.round(ts.timeMs / 1000)}ث
+                  </div>
+                )}
+                {!isDone && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 2 }}>لم يكمل بعد…</div>}
+              </div>
+              <div style={{ textAlign: "center", minWidth: 56 }}>
+                <div style={{ fontSize: 26, fontWeight: 900, color: ISLAMIC_GOLD }}>{ts?.score ?? 0}</div>
+                <div style={{ fontSize: 11, opacity: 0.7 }}>نقطة</div>
+              </div>
             </div>
-            <div style={{ textAlign: "center", minWidth: 56 }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: ISLAMIC_GOLD }}>{ts?.score ?? 0}</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>نقطة</div>
-            </div>
+            {isWinner && (
+              <div style={{ marginTop: 14 }}>
+                <ShareResultCard
+                  headline={team}
+                  subline={data.name}
+                  score={ts?.score ?? 0}
+                  correct={ts?.correct ?? 0}
+                  total={data.questions.length}
+                  outcome="win"
+                />
+              </div>
+            )}
           </IslamicCard>
         );
       })}
