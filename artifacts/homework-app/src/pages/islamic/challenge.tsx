@@ -355,6 +355,137 @@ export function IslamicChallengeJoin() {
   );
 }
 
+/* ── Shareable result card ───────────────────────────────────── */
+function ShareResultCard({
+  headline,
+  subline,
+  score,
+  correct,
+  total,
+  outcome,
+}: {
+  headline: string;
+  subline?: string;
+  score: number;
+  correct: number;
+  total: number;
+  outcome: "win" | "lose" | "draw" | "done";
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const outcomeEmoji = outcome === "win" ? "🏆" : outcome === "draw" ? "🤝" : outcome === "done" ? "✅" : "😤";
+  const outcomeLabel = outcome === "win" ? "فزت!" : outcome === "draw" ? "تعادل!" : outcome === "done" ? "أكملت التحدي" : "أحسنت المحاولة";
+
+  async function share() {
+    const text =
+      `${outcomeEmoji} ${outcomeLabel}\n` +
+      `👤 ${headline}\n` +
+      (subline ? `📚 ${subline}\n` : "") +
+      `🏅 النقاط: ${score}\n` +
+      `✔️ الإجابات الصحيحة: ${correct}/${total}\n` +
+      `\nحصادX · منصة التعلم التفاعلية`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "نتيجتي في حصادX", text });
+        return;
+      } catch {
+        /* user cancelled or share not supported — fall through */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  return (
+    <div
+      style={{
+        background: "linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%)",
+        border: `2px solid ${ISLAMIC_GOLD}`,
+        borderRadius: 20,
+        padding: "28px 24px 20px",
+        textAlign: "center",
+        boxShadow: `0 0 40px rgba(251,191,36,0.25), 0 8px 32px rgba(0,0,0,0.4)`,
+        position: "relative",
+        overflow: "hidden",
+        marginBottom: 16,
+      }}
+    >
+      {/* decorative corner stars */}
+      {["topleft","topright","bottomleft","bottomright"].map((pos) => (
+        <div key={pos} style={{
+          position: "absolute",
+          top: pos.startsWith("top") ? 8 : undefined,
+          bottom: pos.startsWith("bottom") ? 8 : undefined,
+          left: pos.endsWith("left") ? 8 : undefined,
+          right: pos.endsWith("right") ? 8 : undefined,
+          color: ISLAMIC_GOLD, fontSize: 14, opacity: 0.5,
+        }}>✦</div>
+      ))}
+
+      <div style={{ fontSize: 52, marginBottom: 4 }}>{outcomeEmoji}</div>
+      <div style={{ fontSize: 22, fontWeight: 900, color: ISLAMIC_GOLD, marginBottom: 2 }}>{outcomeLabel}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#fefce8", marginBottom: subline ? 2 : 12 }}>{headline}</div>
+      {subline && <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.9, marginBottom: 12 }}>{subline}</div>}
+
+      {/* score + accuracy row */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 16 }}>
+        <div style={{
+          background: "rgba(0,0,0,0.25)", borderRadius: 12, padding: "10px 18px",
+          border: "1px solid rgba(251,191,36,0.4)",
+        }}>
+          <div style={{ fontSize: 32, fontWeight: 900, color: ISLAMIC_GOLD, lineHeight: 1 }}>{score}</div>
+          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>نقطة</div>
+        </div>
+        <div style={{
+          background: "rgba(0,0,0,0.25)", borderRadius: 12, padding: "10px 18px",
+          border: "1px solid rgba(251,191,36,0.4)",
+        }}>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#86efac", lineHeight: 1 }}>{correct}/{total}</div>
+          <div style={{ fontSize: 11, color: "#fde68a", marginTop: 2 }}>إجابة صحيحة</div>
+        </div>
+      </div>
+
+      {/* accuracy bar */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#fde68a", marginBottom: 4 }}>
+          <span>الدقة</span><span>{pct}%</span>
+        </div>
+        <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.12)" }}>
+          <div style={{
+            height: "100%", borderRadius: 4,
+            width: `${pct}%`,
+            background: pct >= 70 ? ISLAMIC_GOLD : pct >= 40 ? "#fb923c" : "#ef4444",
+            transition: "width 1s ease",
+          }} />
+        </div>
+      </div>
+
+      <button
+        onClick={share}
+        style={{
+          background: copied ? "#16a34a" : ISLAMIC_GOLD,
+          color: copied ? "#fff" : "#1f2937",
+          border: "none", borderRadius: 10,
+          padding: "10px 28px", fontSize: 15, fontWeight: 800,
+          cursor: "pointer", fontFamily: "inherit",
+          boxShadow: copied ? "0 0 16px #16a34a" : `0 0 16px ${ISLAMIC_GOLD}55`,
+          transition: "all 0.3s",
+        }}
+      >
+        {copied ? "✓ تم النسخ!" : "📤 شارك النتيجة"}
+      </button>
+    </div>
+  );
+}
+
 /* ── 3. Play challenge (1v1) with auto-start 20s timer ──────── */
 export function IslamicChallengePlay() {
   const [, params] = useRoute("/islamic/challenge/play/:pin");
@@ -498,17 +629,27 @@ export function IslamicChallengePlay() {
     const isCreator = role === "creator";
     const oppScore = isCreator ? challenge.opponentScore : challenge.creatorScore;
     const oppDone = isCreator ? challenge.status === "completed" : true;
+    const myName = role === "creator" ? "أنت (المنشئ)" : opName || "أنت";
+    const outcome = !oppDone ? "done" : score > oppScore ? "win" : score < oppScore ? "lose" : "draw";
     return (
       <IslamicShell title="نتيجة التحدي">
-        <IslamicCard glow>
-          <div style={{ textAlign: "center", fontSize: 20, lineHeight: 2 }}>
-            <div>نقاطك: <strong style={{ color: ISLAMIC_GOLD }}>{score}</strong></div>
-            {oppDone && <div>نقاط الخصم: <strong>{oppScore}</strong></div>}
-            {oppDone && (score > oppScore ? <div style={{ color: ISLAMIC_GOLD, fontWeight: 900 }}>🏆 فُزت!</div> : score < oppScore ? <div>الخصم فاز هذه المرة</div> : <div>تعادل!</div>)}
-            {!oppDone && <div style={{ opacity: 0.85 }}>في انتظار الخصم…</div>}
-            <div style={{ marginTop: 12 }}><GhostButton onClick={() => setLocation("/islamic")}>الرئيسية</GhostButton></div>
-          </div>
-        </IslamicCard>
+        <ShareResultCard
+          headline={myName}
+          subline={oppDone ? (score > oppScore ? "فزت على خصمك! 🎉" : score < oppScore ? `خصمك حصل على ${oppScore} نقطة` : "تعادل مع خصمك") : "في انتظار نتيجة الخصم…"}
+          score={score}
+          correct={correct}
+          total={questions.length}
+          outcome={outcome}
+        />
+        {oppDone && (
+          <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "12px 16px" }}>
+            <div style={{ fontSize: 14, opacity: 0.8 }}>نقاط الخصم</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: score > oppScore ? "#fca5a5" : "#86efac" }}>{oppScore}</div>
+          </IslamicCard>
+        )}
+        <div style={{ textAlign: "center" }}>
+          <GhostButton onClick={() => setLocation("/islamic")}>الرئيسية</GhostButton>
+        </div>
       </IslamicShell>
     );
   }
@@ -667,18 +808,20 @@ export function IslamicTournamentPlay() {
   if (done) {
     return (
       <IslamicShell title="انتهت جولتك!">
-        <IslamicCard glow>
-          <div style={{ textAlign: "center", fontSize: 20, lineHeight: 2 }}>
-            <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
-            <div>فريق: <strong style={{ color: ISLAMIC_GOLD }}>{teamName}</strong></div>
-            <div>النقاط: <strong style={{ color: ISLAMIC_GOLD, fontSize: 28 }}>{score}</strong></div>
-            <div>الإجابات الصحيحة: <strong>{correct}/{tournament.questions.length}</strong></div>
-            <div style={{ marginTop: 16, fontSize: 14, opacity: 0.8 }}>في انتظار نتائج الفرق الأخرى…</div>
-            <div style={{ marginTop: 16 }}>
-              <GoldButton onClick={() => setLocation(`/islamic/tournament/host/${pin}`)}>🏆 لوحة النتائج</GoldButton>
-            </div>
-          </div>
+        <ShareResultCard
+          headline={teamName}
+          subline={`بطولة: ${tournament.name}`}
+          score={score}
+          correct={correct}
+          total={tournament.questions.length}
+          outcome="done"
+        />
+        <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "10px 16px" }}>
+          <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.85 }}>في انتظار نتائج الفرق الأخرى…</div>
         </IslamicCard>
+        <div style={{ textAlign: "center" }}>
+          <GoldButton onClick={() => setLocation(`/islamic/tournament/host/${pin}`)}>🏆 لوحة النتائج</GoldButton>
+        </div>
       </IslamicShell>
     );
   }
