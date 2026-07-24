@@ -1,3 +1,4 @@
+import html2canvas from "html2canvas";
 import { useEffect, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
@@ -372,9 +373,32 @@ function ShareResultCard({
   outcome: "win" | "lose" | "draw" | "done";
 }) {
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const outcomeEmoji = outcome === "win" ? "🏆" : outcome === "draw" ? "🤝" : outcome === "done" ? "✅" : "😤";
   const outcomeLabel = outcome === "win" ? "فزت!" : outcome === "draw" ? "تعادل!" : outcome === "done" ? "أكملت التحدي" : "أحسنت المحاولة";
+
+  async function downloadImage() {
+    if (!cardRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      link.download = `hasadx-result-${Date.now()}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      /* silently ignore capture errors */
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function share() {
     const text =
@@ -406,6 +430,7 @@ function ShareResultCard({
 
   return (
     <div
+      ref={cardRef}
       style={{
         background: "linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%)",
         border: `2px solid ${ISLAMIC_GOLD}`,
@@ -468,20 +493,44 @@ function ShareResultCard({
         </div>
       </div>
 
-      <button
-        onClick={share}
-        style={{
-          background: copied ? "#16a34a" : ISLAMIC_GOLD,
-          color: copied ? "#fff" : "#1f2937",
-          border: "none", borderRadius: 10,
-          padding: "10px 28px", fontSize: 15, fontWeight: 800,
-          cursor: "pointer", fontFamily: "inherit",
-          boxShadow: copied ? "0 0 16px #16a34a" : `0 0 16px ${ISLAMIC_GOLD}55`,
-          transition: "all 0.3s",
-        }}
-      >
-        {copied ? "✓ تم النسخ!" : "📤 شارك النتيجة"}
-      </button>
+      {/* branding — visible in downloaded image */}
+      <div style={{ fontSize: 11, color: "#fde68a", opacity: 0.55, marginBottom: 14, letterSpacing: 1 }}>
+        حصادX · منصة التعلم التفاعلية
+      </div>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={share}
+          style={{
+            background: copied ? "#16a34a" : ISLAMIC_GOLD,
+            color: copied ? "#fff" : "#1f2937",
+            border: "none", borderRadius: 10,
+            padding: "10px 22px", fontSize: 15, fontWeight: 800,
+            cursor: "pointer", fontFamily: "inherit",
+            boxShadow: copied ? "0 0 16px #16a34a" : `0 0 16px ${ISLAMIC_GOLD}55`,
+            transition: "all 0.3s",
+          }}
+        >
+          {copied ? "✓ تم النسخ!" : "📤 شارك النتيجة"}
+        </button>
+        <button
+          onClick={downloadImage}
+          disabled={downloading}
+          style={{
+            background: downloading ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.15)",
+            color: ISLAMIC_GOLD,
+            border: `1.5px solid ${ISLAMIC_GOLD}`,
+            borderRadius: 10,
+            padding: "10px 22px", fontSize: 15, fontWeight: 800,
+            cursor: downloading ? "not-allowed" : "pointer",
+            fontFamily: "inherit",
+            transition: "all 0.3s",
+            opacity: downloading ? 0.7 : 1,
+          }}
+        >
+          {downloading ? "⏳ جاري الحفظ…" : "🖼️ حفظ كصورة"}
+        </button>
+      </div>
     </div>
   );
 }
