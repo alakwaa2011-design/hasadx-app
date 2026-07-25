@@ -965,7 +965,10 @@ export function IslamicTournamentHost() {
       {sorted.map((team, i) => {
         const ts = data.teamScores[team];
         const isDone = ts?.status === "done";
-        const isWinner = i === 0 && data.status === "completed";
+        const topScore = data.teamScores[sorted[0]]?.score ?? 0;
+        const teamScore = ts?.score ?? 0;
+        const shareOutcome: "win" | "lose" | "draw" =
+          i === 0 ? "win" : teamScore === topScore ? "draw" : "lose";
         return (
           <IslamicCard key={team} glow={i === 0 && isDone} style={{ marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -984,15 +987,15 @@ export function IslamicTournamentHost() {
                 <div style={{ fontSize: 11, opacity: 0.7 }}>نقطة</div>
               </div>
             </div>
-            {isWinner && (
+            {isDone && data.status === "completed" && (
               <div style={{ marginTop: 14 }}>
                 <ShareResultCard
                   headline={team}
                   subline={data.name}
-                  score={ts?.score ?? 0}
+                  score={teamScore}
                   correct={ts?.correct ?? 0}
                   total={data.questions.length}
-                  outcome="win"
+                  outcome={shareOutcome}
                 />
               </div>
             )}
