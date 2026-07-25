@@ -775,12 +775,29 @@ export function IslamicTournamentPlay() {
   const questionStartRef = useRef(Date.now());
 
   const [tourLoadError, setTourLoadError] = useState("");
+  const [completedTournament, setCompletedTournament] = useState<Tournament | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     api<Tournament>(`/islamic/tournaments/${pin}`)
       .then(setTournament)
       .catch((e: Error) => setTourLoadError(e.message || "البطولة غير موجودة"));
   }, [pin]);
+
+  useEffect(() => {
+    if (!done) return;
+    const poll = () => {
+      api<Tournament>(`/islamic/tournaments/${pin}`).then((t) => {
+        setCompletedTournament(t);
+        if (t.status === "completed") {
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        }
+      }).catch(() => {});
+    };
+    poll();
+    pollRef.current = setInterval(poll, 4000);
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [done, pin]);
 
   useEffect(() => {
     if (!tournament || !tournament.questions.length || revealed || done) return;
@@ -855,19 +872,32 @@ export function IslamicTournamentPlay() {
   }
 
   if (done) {
+    const finalT = completedTournament ?? tournament;
+    const isCompleted = finalT.status === "completed";
+    const sorted = [...finalT.teamNames].sort((a, b) => {
+      const sa = finalT.teamScores[a]?.score ?? 0;
+      const sb = finalT.teamScores[b]?.score ?? 0;
+      return sb - sa;
+    });
+    const finalOutcome: "win" | "lose" | "done" = isCompleted
+      ? sorted[0] === teamName ? "win" : "lose"
+      : "done";
+
     return (
       <IslamicShell title="انتهت جولتك!">
         <ShareResultCard
           headline={teamName}
-          subline={`بطولة: ${tournament.name}`}
+          subline={`بطولة: ${finalT.name}`}
           score={score}
           correct={correct}
-          total={tournament.questions.length}
-          outcome="done"
+          total={finalT.questions.length}
+          outcome={finalOutcome}
         />
-        <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "10px 16px" }}>
-          <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.85 }}>في انتظار نتائج الفرق الأخرى…</div>
-        </IslamicCard>
+        {!isCompleted && (
+          <IslamicCard style={{ marginBottom: 12, textAlign: "center", padding: "10px 16px" }}>
+            <div style={{ fontSize: 13, color: "#fde68a", opacity: 0.85 }}>في انتظار نتائج الفرق الأخرى…</div>
+          </IslamicCard>
+        )}
         <div style={{ textAlign: "center" }}>
           <GoldButton onClick={() => setLocation(`/islamic/tournament/host/${pin}`)}>🏆 لوحة النتائج</GoldButton>
         </div>
