@@ -17,7 +17,7 @@ interface Challenge {
   id: number; pin: string; categoryId: number; creatorId: number;
   opponentId: number | null; status: string; creatorScore: number; opponentScore: number;
   creatorTimeMs: number; opponentTimeMs: number; creatorCorrect: number; opponentCorrect: number;
-  winnerId: number | null;
+  winnerId: number | null; startedAt: string | null;
 }
 interface Tournament {
   id: number; pin: string; name: string; categoryId: number;
@@ -28,6 +28,9 @@ interface Tournament {
 }
 
 const TIMER_SECONDS = 20;
+/** Seconds after server-set startedAt before either player sees Q1.
+ *  Gives creator's 2s poll time to fire, so both start within <200ms of each other. */
+const SYNC_DELAY_MS = 4000;
 
 /* ── Shared category picker ──────────────────────────────────── */
 function CategoryPicker({ onPick, title, expertsOnly }: { onPick: (id: number) => void; title: string; expertsOnly?: boolean }) {
@@ -554,19 +557,57 @@ export function IslamicChallengePlay() {
   const [nameReady, setNameReady] = useState(role === "creator");
   const [loadError, setLoadError] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(TIMER_SECONDS);
+  const [waitingForOpponent, setWaitingForOpponent] = useState(role === "creator");
+  const [joiningErr, setJoiningErr] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const totalStartRef = useRef(Date.now());
   const questionStartRef = useRef(Date.now());
 
   useEffect(() => {
     api<{ challenge: Challenge; questions: Q[] }>(`/islamic/challenges/by-pin/${pin}`)
-      .then((r) => { setChallenge(r.challenge); setQuestions(r.questions); })
+      .then((r) => {
+        setChallenge(r.challenge);
+        setQuestions(r.questions);
+        /* If the opponent already joined before creator opened the page, start countdown */
+        if (role === "creator" && (r.challenge.status === "active" || r.challenge.status === "completed")) {
+          setWaitingForOpponent(false);
+          startSyncCountdown(r.challenge.startedAt);
+        }
+      })
       .catch((e: Error) => setLoadError(e.message || "التحدي غير موجود"));
   }, [pin]);
 
-  /* Auto-start timer whenever question changes, data is loaded, and name is ready */
+  /* Creator polls every 2 s until the opponent joins (status → "active") */
   useEffect(() => {
-    if (!questions.length || revealed || done || !nameReady) return;
+    if (role !== "creator" || !waitingForOpponent || !challenge) return;
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await api<{ challenge: Challenge; questions: Q[] }>(`/islamic/challenges/by-pin/${pin}`);
+        if (r.challenge.status === "active" || r.challenge.status === "completed") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setChallenge(r.challenge);
+          setWaitingForOpponent(false);
+          startSyncCountdown(r.challenge.startedAt);
+        }
+      } catch { /* ignore transient errors */ }
+    }, 2000);
+    return () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+  }, [role, waitingForOpponent, challenge?.id]);
+
+  /* Cleanup countdown interval on unmount */
+  useEffect(() => {
+    return () => { if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; } };
+  }, []);
+
+  /* Auto-start timer whenever question changes, data is loaded, countdown done, and both sides are ready */
+  useEffect(() => {
+    if (!questions.length || revealed || done || !nameReady || waitingForOpponent || countdownSec !== null) return;
     setSecondsLeft(TIMER_SECONDS);
     questionStartRef.current = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
@@ -582,7 +623,31 @@ export function IslamicChallengePlay() {
       });
     }, 1000);
     return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
-  }, [idx, questions.length, done]);
+  }, [idx, questions.length, done, nameReady, waitingForOpponent, countdownSec]);
+
+  /** Starts a synchronized countdown for both players.
+   *  Both derive the target from the server's startedAt + SYNC_DELAY_MS,
+   *  so they unlock Q1 at the same wall-clock moment regardless of poll lag. */
+  function startSyncCountdown(startedAtStr: string | null) {
+    const targetStart = startedAtStr
+      ? new Date(startedAtStr).getTime() + SYNC_DELAY_MS
+      : Date.now() + 3000;
+    totalStartRef.current = targetStart;
+    const remaining = targetStart - Date.now();
+    if (remaining <= 200) return; // Already at or past target — start immediately
+    setCountdownSec(Math.ceil(remaining / 1000));
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      const left = targetStart - Date.now();
+      if (left <= 200) {
+        clearInterval(countdownRef.current!);
+        countdownRef.current = null;
+        setCountdownSec(null);
+      } else {
+        setCountdownSec(Math.ceil(left / 1000));
+      }
+    }, 100);
+  }
 
   function autoAnswer() {
     setSelected(null);
@@ -623,6 +688,25 @@ export function IslamicChallengePlay() {
     }
   }
 
+  async function joinAndStart() {
+    if (!opName.trim() || !challenge) return;
+    setJoiningErr("");
+    setJoining(true);
+    try {
+      const joined = await api<Challenge>(`/islamic/challenges/${challenge.id}/join`, {
+        method: "POST",
+        body: JSON.stringify({ opponentName: opName.trim() }),
+      });
+      setChallenge(joined);
+      setNameReady(true);
+      startSyncCountdown(joined.startedAt);
+    } catch (e) {
+      setJoiningErr(e instanceof Error ? e.message : "تعذر الانضمام للتحدي");
+    } finally {
+      setJoining(false);
+    }
+  }
+
   if (loadError) {
     return (
       <IslamicShell title="تحدي حصاد">
@@ -640,6 +724,60 @@ export function IslamicChallengePlay() {
     return <IslamicShell><IslamicCard><p style={{ textAlign: "center" }}>جاري التحميل…</p></IslamicCard></IslamicShell>;
   }
 
+  /* Creator waiting for opponent to join */
+  if (role === "creator" && waitingForOpponent) {
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}islamic/challenge/play/${pin}`;
+    return (
+      <IslamicShell title="تحدي حصاد">
+        <IslamicCard glow>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 12, animation: "pulse 1.5s ease-in-out infinite" }}>⚔️</div>
+            <div style={{ fontSize: "clamp(17px, 5vw, 22px)", fontWeight: 800, color: ISLAMIC_GOLD, marginBottom: 8 }}>
+              في انتظار الخصم…
+            </div>
+            <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 20, lineHeight: 1.7 }}>
+              شارك الرابط أو الرمز مع خصمك، وسيبدأ التحدي تلقائياً عند انضمامه
+            </div>
+            <div style={{ fontSize: "clamp(28px, 9vw, 40px)", fontWeight: 900, color: ISLAMIC_GOLD, letterSpacing: 4, marginBottom: 12 }}>
+              {pin}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              <GoldButton onClick={() => navigator.clipboard?.writeText(url)}>نسخ الرابط</GoldButton>
+              <GhostButton onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`تحدي حصاد: ${url}`)}`)}> واتساب</GhostButton>
+            </div>
+            <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0.7, fontSize: 13 }}>
+              <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: ISLAMIC_GOLD, animation: "pulse 1s ease-in-out infinite" }} />
+              يتم التحقق تلقائياً…
+            </div>
+          </div>
+        </IslamicCard>
+      </IslamicShell>
+    );
+  }
+
+  /* Synchronized countdown — shown to both players between "join" and Q1 */
+  if (nameReady && !waitingForOpponent && countdownSec !== null) {
+    return (
+      <IslamicShell title="تحدي حصاد">
+        <IslamicCard glow>
+          <div style={{ textAlign: "center", padding: "24px 0" }}>
+            <div style={{ fontSize: 14, color: ISLAMIC_GOLD, opacity: 0.9, marginBottom: 16, letterSpacing: 1 }}>
+              يبدأ التحدي بعد…
+            </div>
+            <div style={{
+              fontSize: "clamp(72px, 20vw, 100px)", fontWeight: 900, color: ISLAMIC_GOLD,
+              lineHeight: 1, textShadow: `0 0 40px ${ISLAMIC_GOLD}88`,
+              animation: "pulse 0.9s ease-in-out infinite",
+            }}>
+              {countdownSec}
+            </div>
+            <div style={{ fontSize: 16, marginTop: 16, opacity: 0.7 }}>⚔️ استعد!</div>
+          </div>
+        </IslamicCard>
+      </IslamicShell>
+    );
+  }
+
   /* Opponent must enter their name before the game starts */
   if (role === "opponent" && !nameReady) {
     return (
@@ -655,7 +793,7 @@ export function IslamicChallengePlay() {
           <input
             value={opName}
             onChange={(e) => setOpName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && opName.trim()) { totalStartRef.current = Date.now(); setNameReady(true); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && opName.trim() && !joining) joinAndStart(); }}
             placeholder="اسمك…"
             style={{
               display: "block", width: "100%", background: "rgba(0,0,0,0.3)", color: "#fefce8",
@@ -663,11 +801,12 @@ export function IslamicChallengePlay() {
               marginBottom: 14, fontFamily: "inherit", fontSize: 18, textAlign: "center", boxSizing: "border-box",
             }}
           />
+          {joiningErr && <p style={{ color: "#fca5a5", fontSize: 13, marginBottom: 10, textAlign: "center" }}>{joiningErr}</p>}
           <GoldButton
-            disabled={!opName.trim()}
-            onClick={() => { totalStartRef.current = Date.now(); setNameReady(true); }}
+            disabled={!opName.trim() || joining}
+            onClick={joinAndStart}
           >
-            ابدأ التحدي ⚔️
+            {joining ? "جاري الانضمام…" : "ابدأ التحدي ⚔️"}
           </GoldButton>
         </IslamicCard>
       </IslamicShell>

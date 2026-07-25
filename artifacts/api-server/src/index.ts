@@ -458,6 +458,13 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "Solo challenge enhancement migrations failed");
   }
+
+  try {
+    await db.execute(sql`ALTER TABLE islamic_challenges ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ`);
+    logger.info("Islamic challenges started_at migration applied");
+  } catch (err) {
+    logger.error(err, "Islamic challenges started_at migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

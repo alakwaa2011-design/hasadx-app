@@ -844,6 +844,57 @@ router.get("/islamic/challenges/by-pin/:pin", async (req, res) => {
   res.json({ challenge: c, questions: ordered.map((q) => ({ id: q.id, questionText: q.questionText, audioUrl: q.audioUrl, options: [q.optionA, q.optionB, q.optionC, q.optionD].sort(() => Math.random() - 0.5), correctAnswer: q.correctAnswer })) });
 });
 
+router.post("/islamic/challenges/:id/join", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ message: "id غير صالح" }); return; }
+  const { opponentName } = req.body || {};
+  const userId = req.session?.teacherId ?? null;
+
+  /* Read first only to guard creator-joining-own-challenge; the status guard is enforced atomically below */
+  const [existing] = await db.select({ creatorId: islamicChallengesTable.creatorId }).from(islamicChallengesTable).where(eq(islamicChallengesTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ message: "التحدي غير موجود" }); return; }
+  if (userId && userId === existing.creatorId) {
+    res.status(400).json({ message: "لا يمكنك الانضمام لتحدي من إنشائك كخصم" });
+    return;
+  }
+
+  /* Atomic conditional update: only succeeds if status is still "waiting".
+     This prevents two concurrent requests from both joining the same challenge. */
+  const startedAt = new Date();
+  const patch: Record<string, unknown> = { status: "active", startedAt };
+  if (opponentName) patch.opponentName = String(opponentName).slice(0, 100);
+  if (userId) patch.opponentId = userId;
+
+  const [updated] = await db
+    .update(islamicChallengesTable)
+    .set(patch)
+    .where(and(eq(islamicChallengesTable.id, id), eq(islamicChallengesTable.status, "waiting")))
+    .returning();
+
+  if (!updated) {
+    /* Update didn't match — challenge is no longer "waiting". Read to determine why. */
+    const [current] = await db.select().from(islamicChallengesTable).where(eq(islamicChallengesTable.id, id)).limit(1);
+    if (!current) { res.status(404).json({ message: "التحدي غير موجود" }); return; }
+
+    if (current.status === "active") {
+      /* Idempotent re-join: caller is the already-registered opponent (same userId or no userId set).
+         This handles refresh/reconnect after network interruption without blocking the opponent. */
+      const isSameOpponent = current.opponentId === null || (userId !== null && current.opponentId === userId);
+      if (isSameOpponent) {
+        res.json(current);
+        return;
+      }
+      res.status(409).json({ message: "التحدي بدأ بالفعل مع خصم آخر" });
+      return;
+    }
+
+    res.status(409).json({ message: "التحدي مكتمل" });
+    return;
+  }
+
+  res.json(updated);
+});
+
 router.post("/islamic/challenges/:id/submit", async (req, res) => {
   const id = parseInt(req.params.id);
   const userId = req.session?.teacherId ?? null;

@@ -999,6 +999,23 @@ export declare const islamicChallengesTable: import("drizzle-orm/pg-core").PgTab
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        startedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "started_at";
+            tableName: "islamic_challenges";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         completedAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "completed_at";
             tableName: "islamic_challenges";

@@ -73,6 +73,7 @@ export const islamicChallengesTable = pgTable("islamic_challenges", {
   opponentCorrect: integer("opponent_correct").notNull().default(0),
   winnerId: integer("winner_id").references(() => teachersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
 });
 
