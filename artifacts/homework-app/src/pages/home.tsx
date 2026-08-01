@@ -3030,99 +3030,334 @@ export default function Home() {
         </section>
 
         {/* ============== AI INTERACTIVE PRESENTATIONS PROMO ============== */}
-        <section className="py-16 sm:py-20 border-t border-border/60 bg-gradient-to-br from-violet-50 via-fuchsia-50 to-pink-50 dark:from-violet-950/20 dark:via-fuchsia-950/20 dark:to-pink-950/20" dir={dir}>
+        <section
+          dir={dir}
+          style={{ background: "linear-gradient(160deg,#0d1117 0%,#111827 60%,#0f172a 100%)" }}
+          className="py-16 sm:py-24 border-t border-white/[0.06]"
+        >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+              {/* ── Copy column ── */}
               <motion.div
-                initial={{ opacity: 0, x: dir === "rtl" ? 20 : -20 }}
+                initial={{ opacity: 0, x: dir === "rtl" ? 24 : -24 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.55, ease: "easeOut" }}
               >
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-xs font-bold mb-4 shadow-lg shadow-fuchsia-500/30">
-                  <span>✨</span>
-                  {lang === "ar" ? "جديد · مدعوم بالذكاء الاصطناعي" : "New · AI-Powered"}
+                {/* Badge */}
+                <div
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-5"
+                  style={{
+                    background: "rgba(201,161,75,0.12)",
+                    color: "#c9a14b",
+                    border: "1px solid rgba(201,161,75,0.28)",
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>✦</span>
+                  {lang === "ar" ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
                 </div>
-                <h2 className="text-3xl sm:text-5xl font-black mb-4 bg-gradient-to-br from-violet-700 via-fuchsia-700 to-pink-700 bg-clip-text text-transparent">
-                  {lang === "ar" ? "عروض تقديمية تفاعلية بالذكاء الاصطناعي" : "AI Interactive Presentations"}
+
+                {/* Headline */}
+                <h2
+                  className="font-black leading-tight mb-5"
+                  style={{
+                    fontSize: "clamp(1.75rem,4.5vw,2.9rem)",
+                    color: "#f1f5f9",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  {lang === "ar" ? (
+                    <>
+                      عروض تقديمية<br />
+                      <span style={{ color: "#c9a14b" }}>تفاعلية بالذكاء الاصطناعي</span>
+                    </>
+                  ) : (
+                    <>
+                      AI Interactive<br />
+                      <span style={{ color: "#c9a14b" }}>Presentations</span>
+                    </>
+                  )}
                 </h2>
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-6">
+
+                {/* Body */}
+                <p
+                  className="mb-7 leading-relaxed"
+                  style={{ color: "#94a3b8", fontSize: "clamp(0.9rem,2vw,1.05rem)" }}
+                >
                   {lang === "ar"
-                    ? "اكتب موضوع الدرس، واحصل على عرض كامل خلال ثوانٍ — يحتوي على شرائح، أسئلة تفاعلية، ألعاب صفية، نقاشات، وملاحظات للمعلم. صدّره PDF أو PowerPoint، وشاركه برابط واحد."
-                    : "Just type a topic — get a full deck in seconds with slides, interactive quizzes, classroom games, discussions, and speaker notes. Export to PDF or PowerPoint and share with a single link."}
+                    ? "اكتب موضوع الدرس، واحصل على عرض كامل خلال ثوانٍ — شرائح، أسئلة تفاعلية، ألعاب صفية، ونقاشات. صدّره PDF أو PowerPoint وشاركه برابط واحد."
+                    : "Type a topic — get a full deck in seconds with slides, quizzes, classroom games, and discussions. Export to PDF or PowerPoint and share with one link."}
                 </p>
-                <div className="flex flex-wrap gap-2 mb-6">
+
+                {/* Feature chips */}
+                <div className="flex flex-wrap gap-2 mb-8">
                   {[
-                    { ar: "شرائح ذكية", en: "Smart slides", emoji: "🎯" },
-                    { ar: "ألعاب مدمجة", en: "Built-in games", emoji: "🎮" },
-                    { ar: "أسئلة بالذكاء الاصطناعي", en: "AI questions", emoji: "🤖" },
-                    { ar: "تصدير PowerPoint", en: "PowerPoint export", emoji: "📥" },
-                    { ar: "مشاركة عامة", en: "Public sharing", emoji: "🔗" },
+                    { ar: "شرائح ذكية",           en: "Smart slides",      icon: "▣" },
+                    { ar: "ألعاب مدمجة",          en: "Built-in games",    icon: "◈" },
+                    { ar: "أسئلة بالذكاء الاصطناعي", en: "AI questions",   icon: "◎" },
+                    { ar: "تصدير PowerPoint",     en: "PowerPoint export", icon: "↓" },
+                    { ar: "مشاركة عامة",          en: "Public sharing",    icon: "⊙" },
                   ].map((f) => (
-                    <span key={f.en} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-card border border-violet-200 dark:border-violet-800/50 text-xs font-bold text-violet-900 dark:text-violet-100">
-                      <span>{f.emoji}</span>
+                    <span
+                      key={f.en}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        color: "#cbd5e1",
+                        border: "1px solid rgba(255,255,255,0.09)",
+                      }}
+                    >
+                      <span style={{ color: "#c9a14b", fontFamily: "monospace" }}>{f.icon}</span>
                       {lang === "ar" ? f.ar : f.en}
                     </span>
                   ))}
                 </div>
+
+                {/* CTAs */}
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => isLoggedIn ? setLocation("/teacher/presentations/new") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations/new"))}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold shadow-lg shadow-fuchsia-500/40 hover:shadow-xl hover:scale-[1.02] transition-all"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:scale-[1.02] hover:brightness-110"
+                    style={{
+                      background: "linear-gradient(135deg,#c9a14b,#e0bb69)",
+                      color: "#0d1117",
+                      boxShadow: "0 8px 28px rgba(201,161,75,0.30)",
+                    }}
                   >
-                    <span>✨</span>
+                    <span style={{ fontSize: 15 }}>✦</span>
                     {lang === "ar" ? "أنشئ عرضاً الآن" : "Create a presentation"}
                   </button>
                   <button
                     onClick={() => isLoggedIn ? setLocation("/teacher/presentations") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations"))}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-violet-300 dark:border-violet-700 text-violet-900 dark:text-violet-100 font-bold hover:bg-white/60 dark:hover:bg-card transition-all"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:bg-white/10"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      color: "#e2e8f0",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                    }}
                   >
                     {lang === "ar" ? "تصفح عروضي" : "Browse my decks"}
                   </button>
                 </div>
               </motion.div>
 
+              {/* ── Visual column — presentation editor mock ── */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                transition={{ duration: 0.55, delay: 0.1, ease: "easeOut" }}
                 className="relative"
               >
-                {/* Mock deck preview */}
-                <div className="relative aspect-[16/10] rounded-2xl overflow-hidden shadow-2xl shadow-fuchsia-500/30 border border-white/50">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-green-700 to-amber-600" />
-                  <div className="absolute inset-0 p-8 flex flex-col items-center justify-center text-white text-center">
-                    <div className="text-7xl mb-3">📚</div>
-                    <div className="text-2xl font-black mb-2">{lang === "ar" ? "دورة الماء في الطبيعة" : "Water Cycle"}</div>
-                    <div className="text-sm opacity-90">{lang === "ar" ? "العلوم · الصف الرابع" : "Science · Grade 4"}</div>
+                {/* Editor shell */}
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: "#1e2433",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: "0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,161,75,0.08)",
+                  }}
+                >
+                  {/* Window chrome */}
+                  <div
+                    className="flex items-center gap-2 px-4 py-2.5"
+                    style={{ background: "#161b27", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ef4444" }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#f59e0b" }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#22c55e" }} />
+                    </div>
+                    <div
+                      className="flex-1 mx-3 rounded-md px-3 py-0.5 text-[10px] font-mono text-center"
+                      style={{ background: "rgba(255,255,255,0.05)", color: "#64748b" }}
+                    >
+                      {lang === "ar" ? "عرض حصاد · دورة الماء في الطبيعة" : "Hasad Deck · Water Cycle"}
+                    </div>
+                    <div
+                      className="text-[10px] font-bold px-2 py-0.5 rounded"
+                      style={{ background: "rgba(201,161,75,0.15)", color: "#c9a14b" }}
+                    >
+                      {lang === "ar" ? "مشاركة" : "Share"}
+                    </div>
                   </div>
-                  <div className="absolute bottom-3 start-3 end-3 flex items-center justify-between text-white/80 text-xs">
-                    <span>1 / 12</span>
-                    <div className="flex gap-1">
-                      <span className="w-6 h-1 bg-white rounded-full" />
-                      <span className="w-1 h-1 bg-white/40 rounded-full" />
-                      <span className="w-1 h-1 bg-white/40 rounded-full" />
+
+                  {/* Editor body */}
+                  <div className="flex" style={{ height: 280 }}>
+                    {/* Slide panel */}
+                    <div
+                      className="flex flex-col gap-1.5 p-2 overflow-hidden"
+                      style={{ width: 80, background: "#161b27", borderInlineEnd: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      {[
+                        { active: true,  bg: "#1E4D35", label: "١" },
+                        { active: false, bg: "#1a2035", label: "٢" },
+                        { active: false, bg: "#1a2035", label: "٣" },
+                        { active: false, bg: "#1a2035", label: "٤" },
+                      ].map((s, i) => (
+                        <div
+                          key={i}
+                          className="rounded-md flex items-center justify-center text-[9px] font-bold shrink-0"
+                          style={{
+                            height: 48,
+                            background: s.bg,
+                            border: s.active ? "1.5px solid #c9a14b" : "1px solid rgba(255,255,255,0.07)",
+                            color: s.active ? "#c9a14b" : "#475569",
+                          }}
+                        >
+                          {s.label}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Main slide canvas */}
+                    <div
+                      className="flex-1 flex flex-col items-center justify-center p-6 relative"
+                      style={{ background: "#1E4D35" }}
+                    >
+                      {/* Subtle texture */}
+                      <div
+                        className="absolute inset-0 opacity-[0.04]"
+                        style={{
+                          backgroundImage: "radial-gradient(circle,#c9a14b 1px,transparent 1px)",
+                          backgroundSize: "24px 24px",
+                        }}
+                      />
+                      {/* Gold top bar */}
+                      <div
+                        className="absolute top-0 inset-x-0 h-0.5"
+                        style={{ background: "linear-gradient(90deg,transparent,#c9a14b,transparent)" }}
+                      />
+
+                      <div className="relative text-center">
+                        <div
+                          className="text-[10px] font-bold tracking-widest mb-3 uppercase"
+                          style={{ color: "rgba(201,161,75,0.75)" }}
+                        >
+                          {lang === "ar" ? "علوم الطبيعة · الصف الرابع" : "Natural Science · Grade 4"}
+                        </div>
+                        <h3
+                          className="font-black mb-3"
+                          style={{ color: "#f1f5f9", fontSize: "clamp(14px,3vw,22px)", lineHeight: 1.25 }}
+                        >
+                          {lang === "ar" ? "دورة الماء في الطبيعة" : "The Water Cycle"}
+                        </h3>
+                        {/* Divider */}
+                        <div
+                          className="mx-auto mb-3"
+                          style={{ width: 40, height: 2, background: "#c9a14b", borderRadius: 2 }}
+                        />
+                        <p
+                          className="text-[11px] sm:text-[12px] leading-relaxed max-w-[260px] mx-auto"
+                          style={{ color: "rgba(241,245,249,0.65)" }}
+                        >
+                          {lang === "ar"
+                            ? "التبخر · التكاثف · الهطول · الجريان السطحي"
+                            : "Evaporation · Condensation · Precipitation · Runoff"}
+                        </p>
+                      </div>
+
+                      {/* Slide counter */}
+                      <div
+                        className="absolute bottom-3 end-3 text-[9px] font-mono"
+                        style={{ color: "rgba(201,161,75,0.5)" }}
+                      >
+                        01 / 12
+                      </div>
+                    </div>
+
+                    {/* Properties panel */}
+                    <div
+                      className="hidden sm:flex flex-col gap-2 p-2.5"
+                      style={{ width: 110, background: "#161b27", borderInlineStart: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      <div className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: "#475569" }}>
+                        {lang === "ar" ? "المحتوى" : "Content"}
+                      </div>
+                      {[
+                        { label: lang === "ar" ? "سؤال تفاعلي" : "Quiz",     color: "#3b82f6", icon: "?" },
+                        { label: lang === "ar" ? "لعبة وميض"  : "Flash",     color: "#22c55e", icon: "⚡" },
+                        { label: lang === "ar" ? "نقاش"       : "Discussion", color: "#c9a14b", icon: "💬" },
+                        { label: lang === "ar" ? "فيديو"      : "Video",      color: "#a855f7", icon: "▷" },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex items-center gap-1.5 px-1.5 py-1.5 rounded-lg text-[9px] font-semibold cursor-default"
+                          style={{ background: `${item.color}14`, color: item.color, border: `1px solid ${item.color}22` }}
+                        >
+                          <span style={{ fontSize: 10 }}>{item.icon}</span>
+                          {item.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Bottom toolbar */}
+                  <div
+                    className="flex items-center justify-between px-4 py-2"
+                    style={{ background: "#161b27", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      {["B", "I", "≡", "⊞"].map((t) => (
+                        <div
+                          key={t}
+                          className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold"
+                          style={{ background: "rgba(255,255,255,0.06)", color: "#64748b" }}
+                        >
+                          {t}
+                        </div>
+                      ))}
+                    </div>
+                    <div
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold"
+                      style={{
+                        background: "linear-gradient(135deg,#c9a14b,#e0bb69)",
+                        color: "#0d1117",
+                        boxShadow: "0 4px 12px rgba(201,161,75,0.25)",
+                      }}
+                    >
+                      <span>✦</span>
+                      {lang === "ar" ? "ولّد بالذكاء الاصطناعي" : "Generate with AI"}
                     </div>
                   </div>
                 </div>
-                {/* Floating cards */}
-                <div className="absolute -bottom-4 -end-4 sm:-bottom-6 sm:-end-6 bg-white dark:bg-card rounded-xl shadow-2xl p-3 border border-border rotate-3 max-w-[200px]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">🎮</span>
-                    <div>
-                      <div className="text-xs font-black">{lang === "ar" ? "نشاط: وميض" : "Activity: Wameed"}</div>
-                      <div className="text-[10px] text-muted-foreground">{lang === "ar" ? "5 أسئلة جاهزة" : "5 questions ready"}</div>
-                    </div>
+
+                {/* Floating stat badge */}
+                <div
+                  className="absolute -bottom-4 -start-4 sm:-bottom-5 sm:-start-5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+                  style={{
+                    background: "#1e2433",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+                    style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}
+                  >
+                    ◈
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold" style={{ color: "#64748b" }}>{lang === "ar" ? "نشاط مُولَّد" : "AI Activity"}</div>
+                    <div className="text-xs font-black" style={{ color: "#e2e8f0" }}>{lang === "ar" ? "وميض · ٨ أسئلة" : "Flash · 8 Questions"}</div>
                   </div>
                 </div>
-                <div className="absolute -top-4 -start-4 sm:-top-6 sm:-start-6 bg-white dark:bg-card rounded-xl shadow-2xl p-3 border border-border -rotate-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">✨</span>
-                    <div className="text-xs font-black">{lang === "ar" ? "ولّد بالذكاء الاصطناعي" : "AI generated"}</div>
-                  </div>
+
+                {/* Floating export badge */}
+                <div
+                  className="absolute -top-4 -end-4 sm:-top-5 sm:-end-5 flex items-center gap-2 px-3 py-2 rounded-xl"
+                  style={{
+                    background: "#1e2433",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <span className="text-base">📥</span>
+                  <div className="text-[10px] font-black" style={{ color: "#e2e8f0" }}>PowerPoint / PDF</div>
                 </div>
               </motion.div>
+
             </div>
           </div>
         </section>
