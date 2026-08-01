@@ -2885,84 +2885,143 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Visual mock */}
+              {/* Visual mock — in-game screenshot style */}
               <div className="relative">
                 <div
-                  className="relative aspect-[4/3] rounded-[26px] overflow-hidden"
+                  className="relative rounded-[22px] overflow-hidden"
                   style={{
-                    background:
-                      "linear-gradient(160deg,#103d2a 0%,#1E4D35 50%,#265E42 100%)",
-                    border: "1px solid rgba(232,168,14,0.30)",
-                    boxShadow: "0 30px 70px rgba(0,0,0,0.35)",
+                    background: "linear-gradient(160deg,#022c22 0%,#064e3b 55%,#0a5c45 100%)",
+                    border: "1.5px solid rgba(201,161,75,0.35)",
+                    boxShadow: "0 32px 72px rgba(0,0,0,0.45), 0 0 0 1px rgba(201,161,75,0.12)",
                   }}
                 >
-                  {/* Decorative crossed swords */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.08]">
-                    <Swords className="w-[70%] h-[70%]" style={{ color: "#E8A80E" }} />
+                  {/* ── Scoreboard header ── */}
+                  <div
+                    className="px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2"
+                    style={{ background: "rgba(0,0,0,0.35)", borderBottom: "1px solid rgba(201,161,75,0.20)" }}
+                  >
+                    {/* Team A */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <div
+                        className="shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] font-black"
+                        style={{ background: "#2563eb", color: "#fff", boxShadow: "0 0 10px #2563eb88" }}
+                      >
+                        🦅
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[9px] sm:text-[10px] font-bold truncate" style={{ color: "rgba(255,255,255,0.65)" }}>الفريق الأول</div>
+                        <div className="text-base sm:text-lg font-black leading-none" style={{ color: "#60a5fa", fontVariantNumeric: "tabular-nums" }}>1٬400</div>
+                      </div>
+                    </div>
+
+                    {/* VS badge */}
+                    <div
+                      className="shrink-0 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black"
+                      style={{ background: "linear-gradient(135deg,#c9a14b,#e0bb69)", color: "#fff", boxShadow: "0 4px 12px rgba(201,161,75,0.35)" }}
+                    >
+                      VS
+                    </div>
+
+                    {/* Team B */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                      <div className="text-end min-w-0">
+                        <div className="text-[9px] sm:text-[10px] font-bold truncate" style={{ color: "rgba(255,255,255,0.65)" }}>الفريق الثاني</div>
+                        <div className="text-base sm:text-lg font-black leading-none" style={{ color: "#f87171", fontVariantNumeric: "tabular-nums" }}>800</div>
+                      </div>
+                      <div
+                        className="shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] font-black"
+                        style={{ background: "#dc2626", color: "#fff", boxShadow: "0 0 10px #dc262688" }}
+                      >
+                        🦁
+                      </div>
+                    </div>
                   </div>
 
-                  {/* VS scoreboard mock */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
-                    <div className="text-[11px] font-bold tracking-widest opacity-80 mb-3">
-                      تحدي حصاد · مباشر
-                    </div>
-                    <div className="flex items-center gap-4 sm:gap-8 w-full max-w-md">
-                      {/* Team A */}
-                      <div className="flex-1 text-center">
-                        <div
-                          className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-2"
-                          style={{ background: "rgba(232,168,14,0.20)", border: "2px solid #E8A80E" }}
-                        >
-                          <span className="text-2xl sm:text-3xl font-black" style={{ color: "#E8A80E" }}>أ</span>
-                        </div>
-                        <div className="text-xs font-bold opacity-80">الفريق الأول</div>
-                        <div className="text-3xl sm:text-4xl font-black mt-1" style={{ color: "#E8A80E" }}>
-                          7
-                        </div>
-                      </div>
-
-                      <div
-                        className="text-xl sm:text-2xl font-black px-3 py-1 rounded-lg"
-                        style={{ background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.20)" }}
-                      >
-                        VS
-                      </div>
-
-                      {/* Team B */}
-                      <div className="flex-1 text-center">
-                        <div
-                          className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-2"
-                          style={{ background: "rgba(255,255,255,0.10)", border: "2px solid rgba(255,255,255,0.40)" }}
-                        >
-                          <span className="text-2xl sm:text-3xl font-black text-white">ب</span>
-                        </div>
-                        <div className="text-xs font-bold opacity-80">الفريق الثاني</div>
-                        <div className="text-3xl sm:text-4xl font-black mt-1 text-white">
-                          5
-                        </div>
-                      </div>
-                    </div>
+                  {/* ── Turn indicator ── */}
+                  <div className="px-3 pt-2 sm:pt-2.5 flex items-center justify-center gap-1.5">
                     <div
-                      className="mt-5 px-3 py-1.5 rounded-full text-[11px] font-bold"
-                      style={{ background: "rgba(232,168,14,0.18)", color: "#E8A80E", border: "1px solid rgba(232,168,14,0.35)" }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-black"
+                      style={{ background: "rgba(37,99,235,0.22)", color: "#93c5fd", border: "1px solid rgba(37,99,235,0.4)" }}
                     >
-                      السؤال 8 من 12
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block" />
+                      دور الفريق الأول · السؤال ٣ من ١٢
+                    </div>
+                  </div>
+
+                  {/* ── Question card ── */}
+                  <div className="px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-2.5">
+                    <div
+                      className="rounded-[14px] px-3 py-3 sm:px-4 sm:py-3.5 relative"
+                      style={{
+                        background: "#ffffff",
+                        border: "1.5px solid #ebe2cd",
+                        boxShadow: "0 8px 24px -8px rgba(31,77,79,0.22)",
+                      }}
+                    >
+                      {/* Gold corner ornaments */}
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-tr-lg pointer-events-none" style={{ borderTop: "1.5px solid #c9a14b", borderRight: "1.5px solid #c9a14b" }} />
+                      <div className="absolute top-2 left-2 w-4 h-4 rounded-tl-lg pointer-events-none" style={{ borderTop: "1.5px solid #c9a14b", borderLeft: "1.5px solid #c9a14b" }} />
+                      <div className="absolute bottom-2 right-2 w-4 h-4 rounded-br-lg pointer-events-none" style={{ borderBottom: "1.5px solid #c9a14b", borderRight: "1.5px solid #c9a14b" }} />
+                      <div className="absolute bottom-2 left-2 w-4 h-4 rounded-bl-lg pointer-events-none" style={{ borderBottom: "1.5px solid #c9a14b", borderLeft: "1.5px solid #c9a14b" }} />
+
+                      {/* Category chip */}
+                      <div className="flex justify-center mb-2">
+                        <span className="text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(201,161,75,0.12)", color: "#a07f37", border: "1px solid rgba(201,161,75,0.3)" }}>
+                          🌍 جغرافيا وعالم · 600 نقطة
+                        </span>
+                      </div>
+
+                      <p className="text-center font-black text-[11px] sm:text-[13px] mb-3" style={{ color: "#1f2937", lineHeight: 1.5 }}>
+                        ما عدد دول العالم المعترف بها رسمياً؟
+                      </p>
+
+                      {/* Answer choices */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {[
+                          { label: "١٩٣ دولة", correct: true },
+                          { label: "٢١٥ دولة", correct: false },
+                          { label: "١٧٨ دولة", correct: false },
+                          { label: "٢٠٥ دول", correct: false },
+                        ].map((opt, i) => (
+                          <div
+                            key={i}
+                            className="rounded-lg px-2 py-1.5 text-center text-[10px] sm:text-[11px] font-bold"
+                            style={opt.correct ? {
+                              background: "linear-gradient(135deg,#16a34a,#15803d)",
+                              color: "#fff",
+                              boxShadow: "0 0 10px rgba(22,163,74,0.5)",
+                              border: "1.5px solid #4ade80",
+                            } : {
+                              background: "rgba(31,41,55,0.06)",
+                              color: "#374151",
+                              border: "1px solid rgba(31,41,55,0.12)",
+                            }}
+                          >
+                            {opt.label}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Correct answer reveal strip */}
+                      <div
+                        className="mt-2 rounded-lg px-2.5 py-1.5 flex items-center justify-center gap-1.5"
+                        style={{ background: "linear-gradient(135deg,rgba(201,161,75,0.10),rgba(201,161,75,0.04))", border: "1.5px solid #c9a14b" }}
+                      >
+                        <span className="text-[9px] sm:text-[10px] font-extrabold tracking-wide" style={{ color: "#a07f37" }}>✦ الإجابة الصحيحة · ١٩٣ دولة ✦</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Floating badge */}
+                {/* Floating winner badge */}
                 <div
                   className="absolute -bottom-3 -start-3 sm:-bottom-4 sm:-start-4 rounded-xl px-3 py-2 flex items-center gap-2"
-                  style={{
-                    background: "#fff",
-                    boxShadow: "0 14px 32px rgba(0,0,0,0.18)",
-                  }}
+                  style={{ background: "#fff", boxShadow: "0 14px 32px rgba(0,0,0,0.18)" }}
                 >
                   <Trophy className="w-5 h-5" style={{ color: "#E8A80E" }} />
                   <div>
-                    <div className="text-[10px] font-bold" style={{ color: "#737373" }}>الفائز</div>
-                    <div className="text-xs font-black" style={{ color: "#1E4D35" }}>الفريق الأول 🏆</div>
+                    <div className="text-[10px] font-bold" style={{ color: "#737373" }}>يتصدر الآن</div>
+                    <div className="text-xs font-black" style={{ color: "#1E4D35" }}>الفريق الأول 🦅 +600</div>
                   </div>
                 </div>
               </div>
