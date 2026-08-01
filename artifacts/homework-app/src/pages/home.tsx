@@ -3032,8 +3032,7 @@ export default function Home() {
         {/* ============== AI INTERACTIVE PRESENTATIONS PROMO ============== */}
         <section
           dir={dir}
-          style={{ background: "linear-gradient(160deg,#0d1117 0%,#111827 60%,#0f172a 100%)" }}
-          className="py-16 sm:py-24 border-t border-white/[0.06]"
+          className="border-t border-border/60 bg-[#fbfcf8] py-16 sm:py-20"
         >
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -3043,318 +3042,219 @@ export default function Home() {
                 initial={{ opacity: 0, x: dir === "rtl" ? 24 : -24 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.55, ease: "easeOut" }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
               >
-                {/* Badge */}
-                <div
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold mb-5"
-                  style={{
-                    background: "rgba(201,161,75,0.12)",
-                    color: "#c9a14b",
-                    border: "1px solid rgba(201,161,75,0.28)",
-                  }}
-                >
-                  <span style={{ fontSize: 11 }}>✦</span>
-                  {lang === "ar" ? "مدعوم بالذكاء الاصطناعي" : "AI-Powered"}
-                </div>
+                {/* Label — matches other sections */}
+                <p className="text-sm font-black text-[hsl(145,55%,32%)] mb-2">
+                  {lang === "ar" ? "عروض تقديمية تفاعلية" : "Interactive Presentations"}
+                </p>
 
-                {/* Headline */}
-                <h2
-                  className="font-black leading-tight mb-5"
-                  style={{
-                    fontSize: "clamp(1.75rem,4.5vw,2.9rem)",
-                    color: "#f1f5f9",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
+                <h2 className="font-display-display text-[1.95rem] sm:text-[2.45rem] font-black text-foreground leading-tight mb-4">
                   {lang === "ar" ? (
-                    <>
-                      عروض تقديمية<br />
-                      <span style={{ color: "#c9a14b" }}>تفاعلية بالذكاء الاصطناعي</span>
-                    </>
+                    <>أنشئ عرضاً كاملاً <span className="text-[hsl(145,55%,28%)]">بكلمة واحدة</span></>
                   ) : (
-                    <>
-                      AI Interactive<br />
-                      <span style={{ color: "#c9a14b" }}>Presentations</span>
-                    </>
+                    <>Create a full deck <span className="text-[hsl(145,55%,28%)]">in seconds</span></>
                   )}
                 </h2>
 
-                {/* Body */}
-                <p
-                  className="mb-7 leading-relaxed"
-                  style={{ color: "#94a3b8", fontSize: "clamp(0.9rem,2vw,1.05rem)" }}
-                >
+                <p className="text-[1rem] leading-8 text-muted-foreground mb-6">
                   {lang === "ar"
                     ? "اكتب موضوع الدرس، واحصل على عرض كامل خلال ثوانٍ — شرائح، أسئلة تفاعلية، ألعاب صفية، ونقاشات. صدّره PDF أو PowerPoint وشاركه برابط واحد."
                     : "Type a topic — get a full deck in seconds with slides, quizzes, classroom games, and discussions. Export to PDF or PowerPoint and share with one link."}
                 </p>
 
-                {/* Feature chips */}
+                {/* Feature chips — matches the page's chip style */}
                 <div className="flex flex-wrap gap-2 mb-8">
                   {[
-                    { ar: "شرائح ذكية",           en: "Smart slides",      icon: "▣" },
-                    { ar: "ألعاب مدمجة",          en: "Built-in games",    icon: "◈" },
-                    { ar: "أسئلة بالذكاء الاصطناعي", en: "AI questions",   icon: "◎" },
-                    { ar: "تصدير PowerPoint",     en: "PowerPoint export", icon: "↓" },
-                    { ar: "مشاركة عامة",          en: "Public sharing",    icon: "⊙" },
+                    { ar: "شرائح ذكية",              en: "Smart slides",      tone: "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]" },
+                    { ar: "ألعاب مدمجة",             en: "Built-in games",    tone: "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]" },
+                    { ar: "أسئلة بالذكاء الاصطناعي", en: "AI questions",      tone: "bg-[hsl(220,75%,95%)] text-[hsl(220,55%,42%)]" },
+                    { ar: "تصدير PowerPoint",        en: "PowerPoint export", tone: "bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)]" },
+                    { ar: "مشاركة عامة",             en: "Public sharing",    tone: "bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)]" },
                   ].map((f) => (
                     <span
                       key={f.en}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                      style={{
-                        background: "rgba(255,255,255,0.05)",
-                        color: "#cbd5e1",
-                        border: "1px solid rgba(255,255,255,0.09)",
-                      }}
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${f.tone}`}
                     >
-                      <span style={{ color: "#c9a14b", fontFamily: "monospace" }}>{f.icon}</span>
                       {lang === "ar" ? f.ar : f.en}
                     </span>
                   ))}
                 </div>
 
-                {/* CTAs */}
+                {/* CTAs — green primary matches site buttons */}
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => isLoggedIn ? setLocation("/teacher/presentations/new") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations/new"))}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:scale-[1.02] hover:brightness-110"
-                    style={{
-                      background: "linear-gradient(135deg,#c9a14b,#e0bb69)",
-                      color: "#0d1117",
-                      boxShadow: "0 8px 28px rgba(201,161,75,0.30)",
-                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(43,83,59,0.22)]"
+                    style={{ background: "hsl(145,55%,28%)" }}
                   >
-                    <span style={{ fontSize: 15 }}>✦</span>
+                    <span>✦</span>
                     {lang === "ar" ? "أنشئ عرضاً الآن" : "Create a presentation"}
                   </button>
                   <button
                     onClick={() => isLoggedIn ? setLocation("/teacher/presentations") : setLocation("/login?redirect=" + encodeURIComponent("/teacher/presentations"))}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:bg-white/10"
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      color: "#e2e8f0",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold border border-border/70 bg-white text-foreground transition-all hover:bg-muted/60"
                   >
                     {lang === "ar" ? "تصفح عروضي" : "Browse my decks"}
                   </button>
                 </div>
               </motion.div>
 
-              {/* ── Visual column — presentation editor mock ── */}
+              {/* ── Visual column — editor mock in page style ── */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: 0.1, ease: "easeOut" }}
+                transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
                 className="relative"
               >
-                {/* Editor shell */}
+                {/* Editor shell — white card matching soft-card style */}
                 <div
-                  className="rounded-2xl overflow-hidden"
+                  className="rounded-[26px] overflow-hidden"
                   style={{
-                    background: "#1e2433",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    boxShadow: "0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,161,75,0.08)",
+                    background: "#ffffff",
+                    border: "1px solid hsl(145,30%,88%)",
+                    boxShadow: "0 28px 64px rgba(43,83,59,0.12), 0 2px 8px rgba(43,83,59,0.06)",
                   }}
                 >
-                  {/* Window chrome */}
+                  {/* App toolbar */}
                   <div
-                    className="flex items-center gap-2 px-4 py-2.5"
-                    style={{ background: "#161b27", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                    className="flex items-center gap-2 px-4 py-2.5 border-b"
+                    style={{ borderColor: "hsl(145,30%,92%)", background: "#f8faf8" }}
                   >
-                    <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ef4444" }} />
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#f59e0b" }} />
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#22c55e" }} />
-                    </div>
                     <div
-                      className="flex-1 mx-3 rounded-md px-3 py-0.5 text-[10px] font-mono text-center"
-                      style={{ background: "rgba(255,255,255,0.05)", color: "#64748b" }}
+                      className="flex-1 rounded-lg px-3 py-1 text-[10px] text-center font-medium"
+                      style={{ background: "hsl(145,30%,93%)", color: "hsl(145,40%,35%)" }}
                     >
-                      {lang === "ar" ? "عرض حصاد · دورة الماء في الطبيعة" : "Hasad Deck · Water Cycle"}
+                      {lang === "ar" ? "دورة الماء في الطبيعة · حصاد" : "Water Cycle · Hasad"}
                     </div>
                     <div
-                      className="text-[10px] font-bold px-2 py-0.5 rounded"
-                      style={{ background: "rgba(201,161,75,0.15)", color: "#c9a14b" }}
+                      className="text-[10px] font-black px-2.5 py-1 rounded-lg"
+                      style={{ background: "hsl(145,55%,28%)", color: "#fff" }}
                     >
                       {lang === "ar" ? "مشاركة" : "Share"}
                     </div>
                   </div>
 
                   {/* Editor body */}
-                  <div className="flex" style={{ height: 280 }}>
-                    {/* Slide panel */}
+                  <div className="flex" style={{ height: 270 }}>
+                    {/* Slide thumbnails */}
                     <div
                       className="flex flex-col gap-1.5 p-2 overflow-hidden"
-                      style={{ width: 80, background: "#161b27", borderInlineEnd: "1px solid rgba(255,255,255,0.05)" }}
+                      style={{ width: 76, background: "#f4f6f4", borderInlineEnd: "1px solid hsl(145,30%,90%)" }}
                     >
                       {[
-                        { active: true,  bg: "#1E4D35", label: "١" },
-                        { active: false, bg: "#1a2035", label: "٢" },
-                        { active: false, bg: "#1a2035", label: "٣" },
-                        { active: false, bg: "#1a2035", label: "٤" },
+                        { active: true,  bg: "#1E4D35" },
+                        { active: false, bg: "#e8f0e8" },
+                        { active: false, bg: "#e8f0e8" },
+                        { active: false, bg: "#e8f0e8" },
                       ].map((s, i) => (
                         <div
                           key={i}
-                          className="rounded-md flex items-center justify-center text-[9px] font-bold shrink-0"
+                          className="rounded-lg shrink-0 flex items-center justify-center text-[9px] font-bold"
                           style={{
-                            height: 48,
+                            height: 46,
                             background: s.bg,
-                            border: s.active ? "1.5px solid #c9a14b" : "1px solid rgba(255,255,255,0.07)",
-                            color: s.active ? "#c9a14b" : "#475569",
+                            border: s.active ? "2px solid hsl(145,55%,28%)" : "1.5px solid hsl(145,30%,85%)",
+                            color: s.active ? "#fff" : "hsl(145,30%,60%)",
                           }}
                         >
-                          {s.label}
+                          {i + 1}
                         </div>
                       ))}
                     </div>
 
-                    {/* Main slide canvas */}
+                    {/* Main slide — green brand */}
                     <div
-                      className="flex-1 flex flex-col items-center justify-center p-6 relative"
+                      className="flex-1 flex flex-col items-center justify-center p-5 relative"
                       style={{ background: "#1E4D35" }}
                     >
-                      {/* Subtle texture */}
-                      <div
-                        className="absolute inset-0 opacity-[0.04]"
-                        style={{
-                          backgroundImage: "radial-gradient(circle,#c9a14b 1px,transparent 1px)",
-                          backgroundSize: "24px 24px",
-                        }}
-                      />
-                      {/* Gold top bar */}
                       <div
                         className="absolute top-0 inset-x-0 h-0.5"
                         style={{ background: "linear-gradient(90deg,transparent,#c9a14b,transparent)" }}
                       />
-
-                      <div className="relative text-center">
-                        <div
-                          className="text-[10px] font-bold tracking-widest mb-3 uppercase"
-                          style={{ color: "rgba(201,161,75,0.75)" }}
-                        >
-                          {lang === "ar" ? "علوم الطبيعة · الصف الرابع" : "Natural Science · Grade 4"}
+                      <div className="text-center relative">
+                        <div className="text-[9px] font-bold tracking-widest mb-2.5 uppercase" style={{ color: "rgba(201,161,75,0.8)" }}>
+                          {lang === "ar" ? "علوم · الصف الرابع" : "Science · Grade 4"}
                         </div>
-                        <h3
-                          className="font-black mb-3"
-                          style={{ color: "#f1f5f9", fontSize: "clamp(14px,3vw,22px)", lineHeight: 1.25 }}
-                        >
+                        <h3 className="font-black mb-2.5 text-white" style={{ fontSize: "clamp(13px,2.5vw,20px)", lineHeight: 1.3 }}>
                           {lang === "ar" ? "دورة الماء في الطبيعة" : "The Water Cycle"}
                         </h3>
-                        {/* Divider */}
-                        <div
-                          className="mx-auto mb-3"
-                          style={{ width: 40, height: 2, background: "#c9a14b", borderRadius: 2 }}
-                        />
-                        <p
-                          className="text-[11px] sm:text-[12px] leading-relaxed max-w-[260px] mx-auto"
-                          style={{ color: "rgba(241,245,249,0.65)" }}
-                        >
-                          {lang === "ar"
-                            ? "التبخر · التكاثف · الهطول · الجريان السطحي"
-                            : "Evaporation · Condensation · Precipitation · Runoff"}
+                        <div className="mx-auto mb-2.5" style={{ width: 36, height: 2, background: "#c9a14b", borderRadius: 2 }} />
+                        <p className="text-[10px] sm:text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.6)", maxWidth: 220 }}>
+                          {lang === "ar" ? "التبخر · التكاثف · الهطول · الجريان" : "Evaporation · Condensation · Precipitation"}
                         </p>
                       </div>
-
-                      {/* Slide counter */}
-                      <div
-                        className="absolute bottom-3 end-3 text-[9px] font-mono"
-                        style={{ color: "rgba(201,161,75,0.5)" }}
-                      >
-                        01 / 12
-                      </div>
+                      <div className="absolute bottom-2 end-3 text-[9px] font-mono" style={{ color: "rgba(201,161,75,0.45)" }}>01/12</div>
                     </div>
 
-                    {/* Properties panel */}
+                    {/* Content types panel */}
                     <div
-                      className="hidden sm:flex flex-col gap-2 p-2.5"
-                      style={{ width: 110, background: "#161b27", borderInlineStart: "1px solid rgba(255,255,255,0.05)" }}
+                      className="hidden sm:flex flex-col gap-1.5 p-2.5"
+                      style={{ width: 106, background: "#f4f6f4", borderInlineStart: "1px solid hsl(145,30%,90%)" }}
                     >
-                      <div className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: "#475569" }}>
-                        {lang === "ar" ? "المحتوى" : "Content"}
+                      <div className="text-[9px] font-black text-[hsl(145,40%,40%)] uppercase tracking-wide mb-0.5">
+                        {lang === "ar" ? "أضف محتوى" : "Add content"}
                       </div>
                       {[
-                        { label: lang === "ar" ? "سؤال تفاعلي" : "Quiz",     color: "#3b82f6", icon: "?" },
-                        { label: lang === "ar" ? "لعبة وميض"  : "Flash",     color: "#22c55e", icon: "⚡" },
-                        { label: lang === "ar" ? "نقاش"       : "Discussion", color: "#c9a14b", icon: "💬" },
-                        { label: lang === "ar" ? "فيديو"      : "Video",      color: "#a855f7", icon: "▷" },
+                        { label: lang === "ar" ? "سؤال" : "Quiz",     bg: "bg-[hsl(220,75%,95%)]", color: "text-[hsl(220,55%,42%)]" },
+                        { label: lang === "ar" ? "وميض" : "Flash",    bg: "bg-[hsl(145,55%,93%)]", color: "text-[hsl(145,55%,28%)]" },
+                        { label: lang === "ar" ? "نقاش" : "Discuss",  bg: "bg-[hsl(43,90%,93%)]",  color: "text-[hsl(38,75%,38%)]" },
+                        { label: lang === "ar" ? "فيديو" : "Video",   bg: "bg-[hsl(280,55%,95%)]", color: "text-[hsl(280,40%,42%)]" },
                       ].map((item) => (
                         <div
                           key={item.label}
-                          className="flex items-center gap-1.5 px-1.5 py-1.5 rounded-lg text-[9px] font-semibold cursor-default"
-                          style={{ background: `${item.color}14`, color: item.color, border: `1px solid ${item.color}22` }}
+                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[9px] font-bold cursor-default ${item.bg} ${item.color}`}
                         >
-                          <span style={{ fontSize: 10 }}>{item.icon}</span>
                           {item.label}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Bottom toolbar */}
+                  {/* Bottom bar */}
                   <div
-                    className="flex items-center justify-between px-4 py-2"
-                    style={{ background: "#161b27", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                    className="flex items-center justify-between px-4 py-2 border-t"
+                    style={{ borderColor: "hsl(145,30%,92%)", background: "#f8faf8" }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {["B", "I", "≡", "⊞"].map((t) => (
                         <div
                           key={t}
-                          className="w-6 h-6 rounded flex items-center justify-center text-[11px] font-bold"
-                          style={{ background: "rgba(255,255,255,0.06)", color: "#64748b" }}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold border border-border/60 bg-white text-muted-foreground"
                         >
                           {t}
                         </div>
                       ))}
                     </div>
                     <div
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-bold"
-                      style={{
-                        background: "linear-gradient(135deg,#c9a14b,#e0bb69)",
-                        color: "#0d1117",
-                        boxShadow: "0 4px 12px rgba(201,161,75,0.25)",
-                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-white"
+                      style={{ background: "hsl(145,55%,28%)", boxShadow: "0 4px 12px rgba(43,83,59,0.25)" }}
                     >
-                      <span>✦</span>
-                      {lang === "ar" ? "ولّد بالذكاء الاصطناعي" : "Generate with AI"}
+                      ✦ {lang === "ar" ? "ولّد بالذكاء الاصطناعي" : "Generate with AI"}
                     </div>
                   </div>
                 </div>
 
-                {/* Floating stat badge */}
+                {/* Floating badge — activity */}
                 <div
-                  className="absolute -bottom-4 -start-4 sm:-bottom-5 sm:-start-5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
-                  style={{
-                    background: "#1e2433",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
-                  }}
+                  className="absolute -bottom-4 -start-4 sm:-bottom-5 sm:-start-5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white border border-border/70"
+                  style={{ boxShadow: "0 14px 32px rgba(43,83,59,0.12)" }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
-                    style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa" }}
-                  >
-                    ◈
-                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-[hsl(145,55%,93%)] text-[hsl(145,55%,28%)] flex items-center justify-center text-sm font-black shrink-0">⚡</div>
                   <div>
-                    <div className="text-[10px] font-bold" style={{ color: "#64748b" }}>{lang === "ar" ? "نشاط مُولَّد" : "AI Activity"}</div>
-                    <div className="text-xs font-black" style={{ color: "#e2e8f0" }}>{lang === "ar" ? "وميض · ٨ أسئلة" : "Flash · 8 Questions"}</div>
+                    <div className="text-[10px] font-bold text-muted-foreground">{lang === "ar" ? "نشاط مُولَّد" : "AI Activity"}</div>
+                    <div className="text-xs font-black text-foreground">{lang === "ar" ? "وميض · ٨ أسئلة" : "Flash · 8 Questions"}</div>
                   </div>
                 </div>
 
-                {/* Floating export badge */}
+                {/* Floating badge — export */}
                 <div
-                  className="absolute -top-4 -end-4 sm:-top-5 sm:-end-5 flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{
-                    background: "#1e2433",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.4)",
-                  }}
+                  className="absolute -top-4 -end-4 sm:-top-5 sm:-end-5 flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border border-border/70"
+                  style={{ boxShadow: "0 14px 32px rgba(43,83,59,0.12)" }}
                 >
-                  <span className="text-base">📥</span>
-                  <div className="text-[10px] font-black" style={{ color: "#e2e8f0" }}>PowerPoint / PDF</div>
+                  <div className="w-7 h-7 rounded-lg bg-[hsl(43,90%,93%)] text-[hsl(38,75%,38%)] flex items-center justify-center text-sm shrink-0">📥</div>
+                  <div className="text-[10px] font-black text-foreground">PowerPoint / PDF</div>
                 </div>
               </motion.div>
 
