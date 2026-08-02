@@ -864,20 +864,54 @@ export function IslamicChallengePlay() {
         {q.audioUrl && <audio controls src={q.audioUrl} style={{ width: "100%", marginBottom: 12 }} />}
       </IslamicCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 10 }}>
-        {q.options.map((o) => {
+      <style>{`
+        .ch-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
+          font-family: inherit; font-size: clamp(14px, 4vw, 17px); font-weight: 600; line-height: 1.7;
+          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          border: 2px solid transparent; color: #1c1208;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+        .ch-opt:hover:not(:disabled) { transform: translateY(-3px);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
+        .ch-opt:active:not(:disabled) { transform: translateY(0); }
+        .ch-opt:disabled { cursor: default; }
+        .ch-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
+          font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
+          border: 2px solid rgba(0,0,0,0.12); }
+        .ch-opt-0 { background: #fef9c3; border-color: #fbbf24; }
+        .ch-opt-1 { background: #dbeafe; border-color: #60a5fa; }
+        .ch-opt-2 { background: #dcfce7; border-color: #4ade80; }
+        .ch-opt-3 { background: #ede9fe; border-color: #a78bfa; }
+        .ch-opt.correct { background: linear-gradient(135deg, #16a34a, #15803d) !important;
+          border-color: #4ade80 !important; color: #fff !important;
+          box-shadow: 0 0 0 3px rgba(74,222,128,0.3), 0 8px 22px rgba(22,163,74,0.4) !important; }
+        .ch-opt.correct .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .ch-opt.wrong { background: linear-gradient(135deg, #b91c1c, #7f1d1d) !important;
+          border-color: #fca5a5 !important; color: #fff !important; }
+        .ch-opt.wrong .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .ch-opt.dim { opacity: .42; }
+      `}</style>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+        {q.options.map((o, i) => {
           const isSel = selected === o;
           const isCorrect = revealed && o === q.correctAnswer;
           const isWrong = revealed && isSel && o !== q.correctAnswer;
+          const dim = revealed && !isCorrect && !isWrong;
+          const letter = ["أ", "ب", "ج", "د"][i] || String(i + 1);
+          const cls = [
+            "ch-opt",
+            !revealed ? `ch-opt-${i}` : "",
+            isCorrect ? "correct" : "",
+            isWrong ? "wrong" : "",
+            dim ? "dim" : "",
+          ].filter(Boolean).join(" ");
           return (
-            <button key={o} onClick={() => answer(o)} disabled={revealed} style={{
-              padding: "14px 12px", borderRadius: 14,
-              border: isCorrect ? `2px solid ${ISLAMIC_GOLD}` : isWrong ? "2px solid #ef4444" : "1px solid rgba(217,119,6,0.3)",
-              background: isCorrect ? ISLAMIC_GOLD : isWrong ? "#7f1d1d" : revealed && o === q.correctAnswer ? ISLAMIC_GOLD : "rgba(255,255,255,0.06)",
-              color: isCorrect ? "#1f2937" : "#fefce8", fontFamily: "inherit", fontSize: "clamp(14px, 4vw, 17px)", fontWeight: 600,
-              cursor: revealed ? "default" : "pointer", boxShadow: isCorrect ? `0 0 20px ${ISLAMIC_GOLD}` : "none",
-              minHeight: 56, wordBreak: "break-word",
-            }}>{o}</button>
+            <button key={o} onClick={() => answer(o)} disabled={revealed} className={cls}>
+              <span className="ltr" aria-hidden="true">
+                {isCorrect ? "✓" : isWrong ? "✕" : letter}
+              </span>
+              {o}
+            </button>
           );
         })}
       </div>
@@ -1065,20 +1099,54 @@ export function IslamicTournamentPlay() {
         {q.audioUrl && <audio controls src={q.audioUrl} style={{ width: "100%", marginBottom: 12 }} />}
       </IslamicCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 180px), 1fr))", gap: 10 }}>
-        {q.options.map((o) => {
+      <style>{`
+        .tour-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
+          font-family: inherit; font-size: clamp(14px, 4vw, 17px); font-weight: 600; line-height: 1.7;
+          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          border: 2px solid transparent; color: #1c1208;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+        .tour-opt:hover:not(:disabled) { transform: translateY(-3px);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
+        .tour-opt:active:not(:disabled) { transform: translateY(0); }
+        .tour-opt:disabled { cursor: default; }
+        .tour-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
+          font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
+          border: 2px solid rgba(0,0,0,0.12); }
+        .tour-opt-0 { background: #fef9c3; border-color: #fbbf24; }
+        .tour-opt-1 { background: #dbeafe; border-color: #60a5fa; }
+        .tour-opt-2 { background: #dcfce7; border-color: #4ade80; }
+        .tour-opt-3 { background: #ede9fe; border-color: #a78bfa; }
+        .tour-opt.correct { background: linear-gradient(135deg, #16a34a, #15803d) !important;
+          border-color: #4ade80 !important; color: #fff !important;
+          box-shadow: 0 0 0 3px rgba(74,222,128,0.3), 0 8px 22px rgba(22,163,74,0.4) !important; }
+        .tour-opt.correct .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .tour-opt.wrong { background: linear-gradient(135deg, #b91c1c, #7f1d1d) !important;
+          border-color: #fca5a5 !important; color: #fff !important; }
+        .tour-opt.wrong .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .tour-opt.dim { opacity: .42; }
+      `}</style>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: 12 }}>
+        {q.options.map((o, i) => {
           const isSel = selected === o;
           const isCorrect = revealed && o === q.correctAnswer;
           const isWrong = revealed && isSel && o !== q.correctAnswer;
+          const dim = revealed && !isCorrect && !isWrong;
+          const letter = ["أ", "ب", "ج", "د"][i] || String(i + 1);
+          const cls = [
+            "tour-opt",
+            !revealed ? `tour-opt-${i}` : "",
+            isCorrect ? "correct" : "",
+            isWrong ? "wrong" : "",
+            dim ? "dim" : "",
+          ].filter(Boolean).join(" ");
           return (
-            <button key={o} onClick={() => answer(o)} disabled={revealed} style={{
-              padding: "14px 12px", borderRadius: 14,
-              border: isCorrect ? `2px solid ${ISLAMIC_GOLD}` : isWrong ? "2px solid #ef4444" : "1px solid rgba(217,119,6,0.3)",
-              background: isCorrect ? ISLAMIC_GOLD : isWrong ? "#7f1d1d" : "rgba(255,255,255,0.06)",
-              color: isCorrect ? "#1f2937" : "#fefce8", fontFamily: "inherit", fontSize: "clamp(14px, 4vw, 17px)", fontWeight: 600,
-              cursor: revealed ? "default" : "pointer", boxShadow: isCorrect ? `0 0 20px ${ISLAMIC_GOLD}` : "none",
-              minHeight: 56, wordBreak: "break-word",
-            }}>{o}</button>
+            <button key={o} onClick={() => answer(o)} disabled={revealed} className={cls}>
+              <span className="ltr" aria-hidden="true">
+                {isCorrect ? "✓" : isWrong ? "✕" : letter}
+              </span>
+              {o}
+            </button>
           );
         })}
       </div>
