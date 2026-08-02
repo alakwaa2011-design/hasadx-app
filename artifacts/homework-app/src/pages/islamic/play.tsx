@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
 import { api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink, ISLAMIC_GOLD, ISLAMIC_GREEN, playCorrect, playWrong } from "./_shared";
+import AudioPlayer from "@/components/AudioPlayer";
 
 interface Q {
   id: number;
@@ -48,11 +49,11 @@ export default function IslamicPlay() {
   const [certEnabled, setCertEnabled] = useState<boolean>(false);
   const [done, setDone] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [waitingReveal, setWaitingReveal] = useState(false);
   const [categoryName, setCategoryName] = useState("");
   const [nextLevelUnlocked, setNextLevelUnlocked] = useState<number | null>(null);
 
   const startRef = useRef<number>(Date.now());
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const audioListensRef = useRef<number>(0);
 
@@ -82,6 +83,7 @@ export default function IslamicPlay() {
     startRef.current = Date.now();
     audioListensRef.current = 0;
     setAudioPenaltyExtra(0);
+    setWaitingReveal(false);
     setSecondsLeft(BASE_TIME);
     if (timerRef.current) window.clearInterval(timerRef.current);
     timerRef.current = window.setInterval(() => {
@@ -90,7 +92,13 @@ export default function IslamicPlay() {
         const remaining = Math.max(0, BASE_TIME - elapsed - audioPenaltyExtra);
         if (remaining <= 0) {
           if (timerRef.current) window.clearInterval(timerRef.current);
-          handleAnswer(null);
+          // For audio questions: freeze and wait for manual reveal instead of auto-revealing
+          const currentQ = questions[idx];
+          if (currentQ?.audioUrl) {
+            setWaitingReveal(true);
+          } else {
+            handleAnswer(null);
+          }
           return 0;
         }
         return remaining;
@@ -113,7 +121,7 @@ export default function IslamicPlay() {
   async function handleAnswer(choice: string | null) {
     if (!q || revealed) return;
     if (timerRef.current) window.clearInterval(timerRef.current);
-    if (audioRef.current) audioRef.current.pause();
+    // audio is managed by AudioPlayer component; nothing to pause here
     const elapsed = (Date.now() - startRef.current) / 1000;
     const isCorrect = choice !== null && choice === q.correctAnswer;
     setSelected(choice);
@@ -194,16 +202,9 @@ export default function IslamicPlay() {
     setWrongAttempt(null);
   }
 
-  function playAudio() {
-    if (!q?.audioUrl || !audioRef.current) return;
+  function handleAudioListen() {
     audioListensRef.current++;
     if (audioListensRef.current > 1) setAudioPenaltyExtra((p) => p + 2);
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
-  }
-
-  function pauseAudio() {
-    if (audioRef.current) audioRef.current.pause();
   }
 
   function restartFromZero() {
@@ -415,46 +416,44 @@ export default function IslamicPlay() {
       >
         <style>{`@keyframes islamicShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 50%{transform:translateX(8px)} 75%{transform:translateX(-4px)} }`}</style>
         <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 16, lineHeight: 1.8, textAlign: "center" }}>{q.questionText}</div>
-        {isQurra && q.audioUrl && (
-          <div style={{ textAlign: "center", marginBottom: 16 }}>
-            <audio ref={audioRef} src={q.audioUrl} preload="auto" />
-            <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-              <GoldButton onClick={playAudio}>▶ تشغيل</GoldButton>
-              <GhostButton onClick={pauseAudio}>⏸ إيقاف</GhostButton>
-              <GhostButton onClick={playAudio}>↻ إعادة</GhostButton>
-            </div>
-            {audioListensRef.current > 1 && (
-              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 6 }}>
-                خصم ثانيتين عن كل استماع إضافي
-              </div>
-            )}
+        {q.audioUrl && (
+          <div style={{ marginBottom: 16 }}>
+            <AudioPlayer
+              src={q.audioUrl}
+              onListen={handleAudioListen}
+              listenCount={audioListensRef.current}
+            />
           </div>
         )}
       </IslamicCard>
 
       <style>{`
-        .islamic-opt { position: relative; padding: 18px 22px 18px 60px; border-radius: 16px;
+        .islamic-opt { position: relative; padding: 16px 60px 16px 20px; border-radius: 16px;
           font-family: inherit; font-size: 17px; font-weight: 600; line-height: 1.7;
-          text-align: right; cursor: pointer; transition: all .18s ease;
-          background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
-          border: 1.5px solid rgba(217,165,33,0.25); color: #fefce8;
-          box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 12px rgba(0,0,0,0.18); }
-        .islamic-opt:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(217,165,33,0.55);
-          background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
-          box-shadow: 0 8px 22px rgba(0,0,0,0.28), 0 0 0 3px rgba(217,165,33,0.12); }
+          text-align: right; cursor: pointer; transition: all .18s ease; width: 100%;
+          border: 2px solid transparent; color: #1c1208;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+        .islamic-opt:hover:not(:disabled) { transform: translateY(-3px);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.13); filter: brightness(0.96); }
         .islamic-opt:active:not(:disabled) { transform: translateY(0); }
         .islamic-opt:disabled { cursor: default; }
-        .islamic-opt .ltr { position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-          width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
-          font-weight: 800; font-size: 15px; background: rgba(217,165,33,0.18); color: ${ISLAMIC_GOLD};
-          border: 1px solid rgba(217,165,33,0.35); }
-        .islamic-opt.correct { background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
-          border-color: #4ade80; color: #fff; box-shadow: 0 0 0 3px rgba(74,222,128,0.25), 0 8px 22px rgba(22,163,74,0.35); }
-        .islamic-opt.correct .ltr { background: rgba(255,255,255,0.22); color: #fff; border-color: rgba(255,255,255,0.4); }
-        .islamic-opt.wrong { background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%);
-          border-color: #fca5a5; color: #fff; }
-        .islamic-opt.wrong .ltr { background: rgba(255,255,255,0.22); color: #fff; border-color: rgba(255,255,255,0.4); }
-        .islamic-opt.dim { opacity: .55; }
+        .islamic-opt .ltr { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;
+          font-weight: 800; font-size: 16px; background: rgba(0,0,0,0.1); color: inherit;
+          border: 2px solid rgba(0,0,0,0.12); }
+        .opt-0 { background: #fef9c3; border-color: #fbbf24; }
+        .opt-1 { background: #dbeafe; border-color: #60a5fa; }
+        .opt-2 { background: #dcfce7; border-color: #4ade80; }
+        .opt-3 { background: #ede9fe; border-color: #a78bfa; }
+        .islamic-opt.correct { background: linear-gradient(135deg, #16a34a, #15803d) !important;
+          border-color: #4ade80 !important; color: #fff !important;
+          box-shadow: 0 0 0 3px rgba(74,222,128,0.3), 0 8px 22px rgba(22,163,74,0.4) !important; }
+        .islamic-opt.correct .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .islamic-opt.wrong { background: linear-gradient(135deg, #b91c1c, #7f1d1d) !important;
+          border-color: #fca5a5 !important; color: #fff !important; }
+        .islamic-opt.wrong .ltr { background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); }
+        .islamic-opt.dim { opacity: .42; }
+        .islamic-opt.waiting { opacity: .55; cursor: not-allowed; filter: grayscale(0.3); }
       `}</style>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
         {q.options.map((opt, i) => {
@@ -462,10 +461,17 @@ export default function IslamicPlay() {
           const isCorrect = revealed && opt === q.correctAnswer;
           const isWrongPick = revealed && isSel && opt !== q.correctAnswer;
           const dim = revealed && !isCorrect && !isWrongPick;
-          const cls = `islamic-opt${isCorrect ? " correct" : ""}${isWrongPick ? " wrong" : ""}${dim ? " dim" : ""}`;
           const letter = ["أ", "ب", "ج", "د"][i] || String(i + 1);
+          const cls = [
+            "islamic-opt",
+            !revealed && !waitingReveal ? `opt-${i}` : "",
+            isCorrect ? "correct" : "",
+            isWrongPick ? "wrong" : "",
+            dim ? "dim" : "",
+            waitingReveal && !revealed ? "waiting" : "",
+          ].filter(Boolean).join(" ");
           return (
-            <button key={opt} onClick={() => handleAnswer(opt)} disabled={revealed} className={cls}>
+            <button key={opt} onClick={() => handleAnswer(opt)} disabled={revealed || waitingReveal} className={cls}>
               <span className="ltr" aria-hidden="true">
                 {isCorrect ? "✓" : isWrongPick ? "✕" : letter}
               </span>
@@ -474,6 +480,22 @@ export default function IslamicPlay() {
           );
         })}
       </div>
+
+      {/* Audio question: time ran out — wait for manual reveal */}
+      {waitingReveal && !revealed && (
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <div style={{ background: "#fef3c7", border: "1.5px solid #d97706", borderRadius: 14,
+            padding: "14px 20px", marginBottom: 12, display: "inline-block" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
+              ⏰ انتهى الوقت — الإجابة الصحيحة مخفية
+            </div>
+            <div style={{ fontSize: 13, color: "#b45309", marginBottom: 12 }}>
+              اضغط الزر أدناه عندما تريد كشف الإجابة
+            </div>
+            <GoldButton onClick={() => handleAnswer(null)}>🔍 كشف الإجابة</GoldButton>
+          </div>
+        </div>
+      )}
 
       {revealed && (
         <div style={{ textAlign: "center", marginTop: 16 }}>

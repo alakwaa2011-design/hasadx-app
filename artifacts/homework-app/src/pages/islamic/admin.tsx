@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink, ISLAMIC_GOLD } from "./_shared";
+import AudioPicker from "@/components/AudioPicker";
 
 interface Category { id: number; sectionId: number; name: string; description: string | null; level: string; isVisible: boolean; order: number; questionCount: number; }
 interface Section { id: number; name: string; description: string | null; isVisible: boolean; order: number; categories: Category[]; }
@@ -20,6 +21,13 @@ export default function IslamicAdmin() {
   const [fixRunning, setFixRunning] = useState(false);
   const [fixMsg, setFixMsg] = useState("");
   const [editing, setEditing] = useState<Partial<Q> & { id?: number } | null>(null);
+  const [saveError, setSaveError] = useState("");
+  const questionsPanelRef = useRef<HTMLDivElement>(null);
+
+  function openCategory(c: Category) {
+    setActiveCat(c);
+    setTimeout(() => questionsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
 
   async function reload() {
     const [s, perms, acc] = await Promise.all([
@@ -70,6 +78,14 @@ export default function IslamicAdmin() {
   }
   async function saveQuestion() {
     if (!editing || !activeCat) return;
+    setSaveError("");
+    // Client-side validation
+    if (!editing.questionText?.trim()) { setSaveError("نص السؤال مطلوب"); return; }
+    if (!editing.optionA?.trim() || !editing.optionB?.trim() || !editing.optionC?.trim() || !editing.optionD?.trim()) {
+      setSaveError("يجب تعبئة الخيارات الأربعة كاملة");
+      return;
+    }
+    if (!editing.correctAnswer?.trim()) { setSaveError("يجب اختيار الإجابة الصحيحة — انقر على الدائرة بجانب الخيار الصحيح"); return; }
     const payload = {
       categoryId: activeCat.id,
       questionText: editing.questionText,
@@ -77,24 +93,21 @@ export default function IslamicAdmin() {
       optionA: editing.optionA, optionB: editing.optionB, optionC: editing.optionC, optionD: editing.optionD,
       correctAnswer: editing.correctAnswer, difficulty: editing.difficulty || "medium",
     };
-    if (editing.id) await api(`/islamic/questions/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-    else await api("/islamic/questions", { method: "POST", body: JSON.stringify(payload) });
-    setEditing(null);
-    if (activeCat) api<Q[]>(`/islamic/categories/${activeCat.id}/questions`).then(setQuestions);
-    reload();
+    try {
+      if (editing.id) await api(`/islamic/questions/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      else await api("/islamic/questions", { method: "POST", body: JSON.stringify(payload) });
+      setEditing(null);
+      setSaveError("");
+      if (activeCat) api<Q[]>(`/islamic/categories/${activeCat.id}/questions`).then(setQuestions);
+      reload();
+    } catch (err: unknown) {
+      setSaveError((err as Error).message || "فشل الحفظ — حاول مرة أخرى");
+    }
   }
   async function deleteQuestion(q: Q) {
     if (!confirm("حذف السؤال؟")) return;
     await api(`/islamic/questions/${q.id}`, { method: "DELETE" });
     if (activeCat) api<Q[]>(`/islamic/categories/${activeCat.id}/questions`).then(setQuestions);
-  }
-  async function uploadAudio(file: File): Promise<string> {
-    const r = await api<{ uploadURL: string; objectPath: string }>("/islamic/uploads/audio-url", {
-      method: "POST",
-      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "audio/mpeg" }),
-    });
-    await fetch(r.uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type || "audio/mpeg" } });
-    return r.objectPath;
   }
   async function searchTeachers() {
     if (!searchQ.trim()) { setSearchResults([]); return; }
@@ -157,9 +170,9 @@ export default function IslamicAdmin() {
     <IslamicShell title="لوحة التحكم">
       <BackLink />
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button onClick={() => setTab("content")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "content" ? ISLAMIC_GOLD : "transparent", color: "#fff", border: `1px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit" }}>المحتوى</button>
-        {isAdmin && <button onClick={() => setTab("permissions")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "permissions" ? ISLAMIC_GOLD : "transparent", color: "#fff", border: `1px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit" }}>الأذونات</button>}
-        <button onClick={() => setTab("import")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "import" ? ISLAMIC_GOLD : "transparent", color: "#fff", border: `1px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit" }}>استيراد Excel</button>
+        <button onClick={() => setTab("content")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "content" ? ISLAMIC_GOLD : "#fff", color: tab === "content" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>المحتوى</button>
+        {isAdmin && <button onClick={() => setTab("permissions")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "permissions" ? ISLAMIC_GOLD : "#fff", color: tab === "permissions" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>الأذونات</button>}
+        <button onClick={() => setTab("import")} style={{ padding: "8px 16px", borderRadius: 10, background: tab === "import" ? ISLAMIC_GOLD : "#fff", color: tab === "import" ? "#fff" : "#92400e", border: `1.5px solid ${ISLAMIC_GOLD}`, cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>استيراد Excel</button>
       </div>
 
       {tab === "content" && (
@@ -168,15 +181,15 @@ export default function IslamicAdmin() {
             <GoldButton onClick={addSection}>+ قسم جديد</GoldButton>
             {isAdmin && (
               <>
-                <GhostButton onClick={runFixAnswers} disabled={fixRunning} style={{ color: "#86efac", borderColor: "#86efac" }}>
+                <GhostButton onClick={runFixAnswers} disabled={fixRunning} style={{ color: "#166534", borderColor: "#16a34a" }}>
                   {fixRunning ? "جاري الإصلاح…" : "🔧 إصلاح الإجابات"}
                 </GhostButton>
-                <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#fca5a5", borderColor: "#fca5a5" }}>
+                <GhostButton onClick={runDedup} disabled={dedupRunning} style={{ color: "#991b1b", borderColor: "#ef4444" }}>
                   {dedupRunning ? "جاري التنظيف…" : "🧹 حذف المكررات"}
                 </GhostButton>
               </>
             )}
-            {fixMsg && <span style={{ fontSize: 13, color: "#86efac" }}>{fixMsg}</span>}
+            {fixMsg && <span style={{ fontSize: 13, color: "#166534", fontWeight: 600 }}>{fixMsg}</span>}
             {dedupMsg && <span style={{ fontSize: 13, color: ISLAMIC_GOLD }}>{dedupMsg}</span>}
           </div>
           {sections.map((s) => (
@@ -191,13 +204,20 @@ export default function IslamicAdmin() {
               </div>
               <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
                 {s.categories.map((c) => (
-                  <div key={c.id} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 12, border: activeCat?.id === c.id ? `1px solid ${ISLAMIC_GOLD}` : "1px solid rgba(217,119,6,0.15)" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{c.name} {!c.isVisible && <span style={{ fontSize: 11, opacity: 0.7 }}>(مخفي)</span>}</div>
-                    <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>{c.questionCount} سؤال</div>
+                  <div key={c.id} style={{
+                    background: activeCat?.id === c.id ? "#fef3c7" : "#ffffff",
+                    borderRadius: 12, padding: 12,
+                    border: activeCat?.id === c.id ? `2px solid ${ISLAMIC_GOLD}` : "1.5px solid #e8d8b8",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4, color: "#1c1208" }}>{c.name} {!c.isVisible && <span style={{ fontSize: 11, color: "#b45309", fontWeight: 400 }}>(مخفي)</span>}</div>
+                    <div style={{ fontSize: 12, color: "#78716c", marginBottom: 8 }}>{c.questionCount} سؤال</div>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      <button onClick={() => setActiveCat(c)} style={{ background: "transparent", color: ISLAMIC_GOLD, border: `1px solid ${ISLAMIC_GOLD}`, padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>الأسئلة</button>
-                      <button onClick={() => toggleCategoryVisibility(c)} style={{ background: "transparent", color: "#fefce8", border: "1px solid rgba(254,252,232,0.3)", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>{c.isVisible ? "إخفاء" : "إظهار"}</button>
-                      <button onClick={() => deleteCategory(c)} style={{ background: "transparent", color: "#fca5a5", border: "1px solid #fca5a5", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>حذف</button>
+                      <button onClick={() => openCategory(c)} style={{ background: activeCat?.id === c.id ? "#92400e" : ISLAMIC_GOLD, color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700 }}>
+                        {activeCat?.id === c.id ? "✓ مفتوحة" : "📝 الأسئلة"}
+                      </button>
+                      <button onClick={() => toggleCategoryVisibility(c)} style={{ background: "transparent", color: "#92400e", border: "1.5px solid #d4a96a", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>{c.isVisible ? "إخفاء" : "إظهار"}</button>
+                      <button onClick={() => deleteCategory(c)} style={{ background: "transparent", color: "#b91c1c", border: "1.5px solid #fca5a5", padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>حذف</button>
                     </div>
                   </div>
                 ))}
@@ -206,29 +226,49 @@ export default function IslamicAdmin() {
           ))}
 
           {activeCat && (
+            <div ref={questionsPanelRef} style={{ scrollMarginTop: 16 }}>
             <IslamicCard style={{ marginTop: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                <h3 style={{ fontSize: 20, color: ISLAMIC_GOLD }}>أسئلة فئة: {activeCat.name}</h3>
-                <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", difficulty: "medium" })}>+ سؤال جديد</GoldButton>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <h3 style={{ fontSize: 20, color: "#92400e", fontWeight: 900, margin: 0 }}>
+                    📝 {activeCat.name}
+                  </h3>
+                  <div style={{ fontSize: 13, color: "#78716c", marginTop: 4 }}>
+                    {questions.length} سؤال مسجّل · اضغط <strong>+ سؤال جديد</strong> لإضافة، أو <strong>تعديل</strong> بجانب أي سؤال للتغيير
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <GoldButton onClick={() => setEditing({ optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "", questionText: "", difficulty: "medium" })}>+ سؤال جديد</GoldButton>
+                  <GhostButton onClick={() => setActiveCat(null)}>✕ إغلاق</GhostButton>
+                </div>
               </div>
-              {questions.length === 0 && <p style={{ opacity: 0.7 }}>لا أسئلة</p>}
+              {questions.length === 0 && (
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#a8a29e", fontSize: 14 }}>
+                  لا توجد أسئلة في هذه الفئة بعد — اضغط "+ سؤال جديد" للبدء
+                </div>
+              )}
               {questions.map((q) => (
-                <div key={q.id} style={{ borderBottom: "1px solid rgba(217,119,6,0.15)", padding: "12px 0" }}>
-                  <div style={{ fontWeight: 600 }}>{q.questionText}</div>
-                  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>الصحيحة: {q.correctAnswer} · {q.difficulty}{q.audioUrl ? " · صوتي" : ""}</div>
+                <div key={q.id} style={{ borderBottom: "1px solid #e8d8b8", padding: "12px 0" }}>
+                  <div style={{ fontWeight: 600, color: "#1c1208" }}>{q.questionText}</div>
+                  <div style={{ fontSize: 13, color: "#78716c", marginTop: 4 }}>
+                    الصحيحة: <strong style={{ color: "#16a34a" }}>{q.correctAnswer}</strong>
+                    {" · "}{q.difficulty}
+                    {q.audioUrl && <span style={{ marginRight: 6, background: "#fef3c7", color: "#b45309", borderRadius: 4, padding: "1px 6px", fontSize: 11, fontWeight: 700 }}>🔊 صوتي</span>}
+                  </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                     <GhostButton onClick={() => setEditing(q)}>تعديل</GhostButton>
-                    <GhostButton onClick={() => deleteQuestion(q)} style={{ color: "#fca5a5" }}>حذف</GhostButton>
+                    <GhostButton onClick={() => deleteQuestion(q)} style={{ color: "#b91c1c", borderColor: "#fca5a5" }}>حذف</GhostButton>
                   </div>
                 </div>
               ))}
             </IslamicCard>
+            </div>
           )}
 
           {editing && activeCat && (
             <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setEditing(null)}>
-              <div onClick={(e) => e.stopPropagation()} style={{ background: "#0d6334", borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "90vh", overflow: "auto", border: `1px solid ${ISLAMIC_GOLD}` }}>
-                <h3 style={{ fontSize: 18, color: ISLAMIC_GOLD, marginBottom: 12 }}>{editing.id ? "تعديل سؤال" : "سؤال جديد"}</h3>
+              <div onClick={(e) => e.stopPropagation()} style={{ background: "#fffbf0", borderRadius: 20, padding: 24, maxWidth: 560, width: "100%", maxHeight: "90vh", overflow: "auto", border: "1px solid rgba(180,83,9,0.3)", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+                <h3 style={{ fontSize: 18, color: "#92400e", fontWeight: 900, marginBottom: 12 }}>{editing.id ? "تعديل سؤال" : "سؤال جديد"}</h3>
                 <textarea placeholder="نص السؤال" value={editing.questionText || ""} onChange={(e) => setEditing({ ...editing, questionText: e.target.value })} style={inpStyle} rows={3} />
                 {[
                   { label: "الخيار أ", key: "optionA" as const },
@@ -239,7 +279,7 @@ export default function IslamicAdmin() {
                   <input key={key} placeholder={label} value={(editing as any)[key] || ""} onChange={(e) => setEditing({ ...editing, [key]: e.target.value })} style={inpStyle} />
                 ))}
                 <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 6 }}>الإجابة الصحيحة:</div>
+                  <div style={{ fontSize: 13, color: "#92400e", fontWeight: 700, marginBottom: 6 }}>الإجابة الصحيحة: <span style={{ color: "#b91c1c", fontSize: 11 }}>(مطلوب — انقر على الخيار الصحيح)</span></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {[
                       { label: "أ", val: editing.optionA },
@@ -248,10 +288,10 @@ export default function IslamicAdmin() {
                       { label: "د", val: editing.optionD },
                     ].map(({ label, val }) =>
                       val ? (
-                        <label key={label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: editing.correctAnswer === val ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)", border: editing.correctAnswer === val ? "1px solid #4ade80" : "1px solid rgba(255,255,255,0.1)" }}>
-                          <input type="radio" name="correctAnswer" value={val} checked={editing.correctAnswer === val} onChange={() => setEditing({ ...editing, correctAnswer: val })} style={{ accentColor: "#4ade80" }} />
-                          <span style={{ color: ISLAMIC_GOLD, fontWeight: 700, minWidth: 20 }}>{label}</span>
-                          <span style={{ fontSize: 14 }}>{val}</span>
+                        <label key={label} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "8px 12px", borderRadius: 8, background: editing.correctAnswer === val ? "#dcfce7" : "#fff", border: editing.correctAnswer === val ? "1.5px solid #16a34a" : "1.5px solid #e8d8b8" }}>
+                          <input type="radio" name="correctAnswer" value={val} checked={editing.correctAnswer === val} onChange={() => setEditing({ ...editing, correctAnswer: val })} style={{ accentColor: "#16a34a" }} />
+                          <span style={{ color: "#92400e", fontWeight: 700, minWidth: 20 }}>{label}</span>
+                          <span style={{ fontSize: 14, color: "#1c1208" }}>{val}</span>
                         </label>
                       ) : null
                     )}
@@ -261,22 +301,23 @@ export default function IslamicAdmin() {
                   <option value="easy">سهل</option><option value="medium">متوسط</option><option value="hard">صعب</option>
                 </select>
                 <div style={{ marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, opacity: 0.85 }}>ملف صوتي (اختياري — لقسم "من القارئ"):</label>
-                  <input
-                    type="file"
-                    accept="audio/*,.mp3,.m4a"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      const url = await uploadAudio(f);
-                      setEditing({ ...editing, audioUrl: url });
-                    }}
-                    style={{ ...inpStyle, padding: 8 }}
+                  <label style={{ fontSize: 13, color: "#92400e", fontWeight: 700, display: "block", marginBottom: 6 }}>
+                    🔊 صوت مرفق (اختياري)
+                  </label>
+                  <AudioPicker
+                    value={editing.audioUrl || null}
+                    onChange={(url) => setEditing({ ...editing, audioUrl: url || undefined })}
+                    uploadEndpoint="/api/islamic/uploads/audio-url"
                   />
-                  {editing.audioUrl && <div style={{ fontSize: 12, opacity: 0.85 }}>تم الرفع: {editing.audioUrl}</div>}
                 </div>
+                {saveError && (
+                  <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8,
+                    padding: "10px 14px", marginBottom: 12, color: "#b91c1c", fontWeight: 600, fontSize: 14 }}>
+                    ⚠️ {saveError}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                  <GhostButton onClick={() => setEditing(null)}>إلغاء</GhostButton>
+                  <GhostButton onClick={() => { setEditing(null); setSaveError(""); }}>إلغاء</GhostButton>
                   <GoldButton onClick={saveQuestion}>حفظ</GoldButton>
                 </div>
               </div>
@@ -337,12 +378,13 @@ export default function IslamicAdmin() {
 const inpStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
-  background: "rgba(0,0,0,0.3)",
-  color: "#fefce8",
-  border: "1px solid rgba(217,119,6,0.3)",
+  background: "#fff",
+  color: "#1c1208",
+  border: "1px solid #e8d8b8",
   borderRadius: 8,
   padding: "10px 12px",
   marginBottom: 8,
   fontFamily: "inherit",
   fontSize: 15,
+  boxSizing: "border-box",
 };

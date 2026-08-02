@@ -13,8 +13,10 @@ import {
   type GameQuestion,
 } from "../game/manager";
 import { startGameFromRest } from "../game/socket-handlers";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const storage = new ObjectStorageService();
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -925,6 +927,37 @@ router.patch("/solo-challenges/:slug/notes", async (req, res) => {
   } catch (err) {
     req.log.error(err, "Update notes error");
     res.status(500).json({ message: "خطأ" });
+  }
+});
+
+/* ── Audio upload URL for standalone question audio ──────────────────────── */
+router.post("/solo-challenges/uploads/audio-url", async (req, res) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ message: "يجب تسجيل الدخول" });
+    return;
+  }
+  const { name, size, contentType } = req.body || {};
+  if (!name || !size || !contentType) {
+    res.status(400).json({ message: "بيانات الملف ناقصة" });
+    return;
+  }
+  const isAudio = (contentType as string).startsWith("audio/") ||
+    contentType === "application/octet-stream";
+  if (!isAudio) {
+    res.status(400).json({ message: "يُسمح برفع ملفات الصوت فقط" });
+    return;
+  }
+  if (size > 25 * 1024 * 1024) {
+    res.status(400).json({ message: "الحجم يتجاوز 25 MB" });
+    return;
+  }
+  try {
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    res.json({ uploadURL, objectPath });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get solo-challenge audio upload URL");
+    res.status(500).json({ message: "فشل توليد رابط الرفع" });
   }
 });
 

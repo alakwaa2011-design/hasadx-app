@@ -54,6 +54,7 @@ import {
   type SecretPayload,
 } from "@/data/arena-questions";
 import { getStaticCoverImage, toCoverThumb } from "@/data/arena-cover-images";
+import AudioPlayer from "@/components/AudioPlayer";
 import {
   cardKey,
   getNextTeam,
@@ -4096,15 +4097,9 @@ function InteractiveActivity({
   );
 }
 
-/** Extract YouTube video ID from a URL */
-function ytId(url: string): string | null {
-  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
-
 /**
- * AudioPlay — plays a YouTube audio embed or a direct audio URL.
- * Shows only an audio-player style UI (no video), plus the question text.
+ * AudioPlay — plays audio for a challenge question using the shared AudioPlayer.
+ * Supports yt:VIDEO_ID tokens, full YouTube URLs (legacy), and direct audio files.
  * The answer is revealed on demand like all other question types.
  */
 function AudioPlay({
@@ -4115,64 +4110,21 @@ function AudioPlay({
   revealed: boolean;
 }) {
   const src = question.videoUrl ?? "";
-  const yt = ytId(src);
-  const isYt = !!yt;
 
   return (
     <div className="w-full flex flex-col items-center gap-6">
       {/* Audio player */}
-      <div className="w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl"
+      <div className="w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl p-5"
            style={{ background: "#0d1520", border: "2px solid rgba(201,161,75,0.35)" }}>
-        {isYt ? (
-          /* YouTube embed — narrow height so it looks like an audio player */
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
-                 style={{ background: "linear-gradient(to bottom, transparent 0%, #0d1520 100%)" }}/>
-            <iframe
-              src={`https://www.youtube.com/embed/${yt}?autoplay=1&controls=1&rel=0&modestbranding=1`}
-              title="صوت السؤال"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              className="w-full"
-              style={{ height: 120, border: "none" }}
-            />
-          </div>
-        ) : (
-          /* Direct audio file */
-          <div className="p-4 flex flex-col items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                   style={{ background: "rgba(201,161,75,0.2)", border: "2px solid #c9a14b" }}>
-                🎵
-              </div>
-              <span className="text-white font-bold text-sm">صوت السؤال</span>
-            </div>
-            <audio
-              controls
-              autoPlay
-              src={src}
-              className="w-full"
-              style={{ borderRadius: 8 }}
-            />
-          </div>
-        )}
-
         {/* Animated sound-wave decoration */}
-        <div className="flex items-end justify-center gap-1 px-4 pb-3 h-8">
+        <div className="flex items-end justify-center gap-1 mb-4 h-8">
           {[3,6,10,8,12,7,4,9,11,6,3,8,10,5,7].map((h, i) => (
-            <div
-              key={i}
-              className="rounded-full"
-              style={{
-                width: 3,
-                height: h,
-                background: "#c9a14b",
-                opacity: 0.6,
-                animation: `pulse ${0.4 + i * 0.07}s ease-in-out infinite alternate`,
-              }}
-            />
+            <div key={i} className="rounded-full"
+              style={{ width: 3, height: h, background: "#c9a14b", opacity: 0.6,
+                animation: `pulse ${0.4 + i * 0.07}s ease-in-out infinite alternate` }} />
           ))}
         </div>
+        <AudioPlayer src={src} />
       </div>
 
       {/* Question description */}

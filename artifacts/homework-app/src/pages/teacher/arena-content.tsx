@@ -1119,9 +1119,18 @@ function ActivityEditor({
   const [saving, setSaving] = useState(false);
 
   // ── Audio state ──
-  const [audioMode, setAudioMode] = useState<AudioMode>("youtube");
-  const [audioUrl, setAudioUrl] = useState<string>(initial?.videoUrl ?? "");
-  const [ytInput, setYtInput] = useState(initial?.videoUrl ?? "");
+  // If existing videoUrl is stored as "yt:VIDEO_ID", reconstruct the full URL for display
+  const initVideoUrl = initial?.videoUrl ?? "";
+  const initYtInput = initVideoUrl.startsWith("yt:")
+    ? `https://www.youtube.com/watch?v=${initVideoUrl.slice(3)}`
+    : initVideoUrl;
+  const initAudioMode: AudioMode =
+    initVideoUrl.startsWith("yt:") || initVideoUrl.includes("youtube.com") || initVideoUrl.includes("youtu.be")
+      ? "youtube"
+      : initVideoUrl ? "file" : "youtube";
+  const [audioMode, setAudioMode] = useState<AudioMode>(initAudioMode);
+  const [audioUrl, setAudioUrl] = useState<string>(initVideoUrl);
+  const [ytInput, setYtInput] = useState(initYtInput);
   const [audioUploading, setAudioUploading] = useState(false);
 
   // Recording state
@@ -1290,22 +1299,27 @@ function ActivityEditor({
                   <input
                     type="url"
                     value={ytInput}
-                    onChange={(e) => { setYtInput(e.target.value); setAudioUrl(e.target.value); }}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setYtInput(raw);
+                      // Store as yt:VIDEO_ID so AudioPlayer can play it audio-only
+                      const id = ytVideoId(raw);
+                      setAudioUrl(id ? `yt:${id}` : raw);
+                    }}
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="w-full px-3 py-2 rounded-lg border-2 text-sm focus:outline-none"
                     style={{ borderColor: "rgba(34,87,57,0.3)" }}
                     dir="ltr"
                   />
                   {ytId && (
-                    <div className="rounded-lg overflow-hidden border-2" style={{ borderColor: "rgba(34,87,57,0.2)" }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${ytId}?autoplay=0&controls=1`}
-                        title="معاينة"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
-                        className="w-full"
-                        style={{ height: 120 }}
-                      />
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold"
+                      style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green, border: "1px solid rgba(34,87,57,0.2)" }}>
+                      ✓ تم التعرف على معرّف الفيديو: <span dir="ltr" className="font-mono">{ytId}</span>
+                      <span className="mr-auto text-xs font-normal opacity-70">سيُشغَّل صوتاً فقط</span>
                     </div>
+                  )}
+                  {ytInput && !ytId && (
+                    <p className="text-xs text-red-600 font-medium">⚠ رابط يوتيوب غير صالح</p>
                   )}
                 </div>
               )}

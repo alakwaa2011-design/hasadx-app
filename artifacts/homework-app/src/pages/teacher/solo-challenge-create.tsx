@@ -15,6 +15,7 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import AudioPicker from "@/components/AudioPicker";
 
 const API = import.meta.env.VITE_API_URL || "";
 
@@ -39,6 +40,8 @@ interface Question {
   correctAnswer: Correct;
   /** 1=easy, 2=medium, 3=hard. null = not tagged. */
   difficulty?: 1 | 2 | 3 | null;
+  /** Optional audio: object-storage path or "yt:VIDEO_ID" for YouTube audio */
+  audioUrl?: string | null;
 }
 
 type DiffDistribution = { easy: number; medium: number; hard: number };
@@ -51,7 +54,7 @@ interface Assignment {
 }
 
 function emptyQuestion(): Question {
-  return { text: "", type: "mcq", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", difficulty: null };
+  return { text: "", type: "mcq", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A", difficulty: null, audioUrl: null };
 }
 
 /** A question is valid when it has text + enough options for its type */
@@ -80,6 +83,9 @@ function QuestionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2 mb-2 flex-wrap">
               <span className="text-sm font-bold text-foreground">{index + 1}. {q.text}</span>
+              {q.audioUrl && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 flex-shrink-0">🔊 صوتي</span>
+              )}
               {q.difficulty && (
                 <span className={cn(
                   "text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0",
@@ -253,6 +259,16 @@ function QuestionCard({
         ))}
       </div>
       {q.type !== "tf" && <p className="text-[10px] text-muted-foreground mt-1.5">اضغط على الدائرة لاختيار الإجابة الصحيحة</p>}
+
+      {/* Audio attachment */}
+      <div className="mt-3">
+        <p className="text-[10px] font-bold text-muted-foreground mb-1">🔊 صوت مرفق (اختياري)</p>
+        <AudioPicker
+          value={q.audioUrl ?? null}
+          onChange={(url) => onChange({ ...q, audioUrl: url })}
+          uploadEndpoint="/api/solo-challenges/uploads/audio-url"
+        />
+      </div>
     </div>
   );
 }
