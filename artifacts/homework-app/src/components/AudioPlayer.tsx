@@ -8,6 +8,11 @@
  * - Handles two source types:
  *     "yt:VIDEO_ID"  → hidden YouTube IFrame Player (audio only)
  *     any other URL  → native <audio> element
+ *
+ * Props:
+ *   src          — audioUrl from question (regular path or "yt:VIDEO_ID")
+ *   onListen     — called each time user presses play/replay (for penalty tracking)
+ *   listenCount  — number of times played so far (shows penalty warning if > 1)
  */
 import { useState, useRef, useEffect } from "react";
 
@@ -18,6 +23,7 @@ type _YTPlayer = {
   playVideo(): void; pauseVideo(): void;
   seekTo(s: number, a: boolean): void; destroy(): void;
 };
+
 function _ytWin() {
   return window as unknown as {
     YT?: { Player: new (...a: unknown[]) => _YTPlayer };

@@ -76,6 +76,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { AvatarDisplay } from "@/components/avatar-display";
 import { SoloChallengeResults } from "@/components/game/solo-challenge-results";
+import AudioPlayer from "@/components/AudioPlayer";
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const WOOMEEZ_FLASH_STYLES = `
@@ -227,6 +228,7 @@ interface Question {
   duration: number;
   questionType?: string;
   imageUrl?: string | null;
+  audioUrl?: string | null;
   levelIndex?: number;
   levelName?: string;
 }
@@ -894,6 +896,8 @@ export default function GamePlay() {
   const [dictationInput, setDictationInput] = useState("");
   const [dictationListenCount, setDictationListenCount] = useState(0);
   const [dictationSpeaking, setDictationSpeaking] = useState(false);
+  const [audioListenCount, setAudioListenCount] = useState(0);
+  const audioPenaltyRef = useRef(0);
   const [myScore, setMyScore] = useState(0);
   const [myStreak, setMyStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -1080,6 +1084,15 @@ export default function GamePlay() {
     setIsSpeaking(false);
   }, []);
 
+  const handleAudioListen = useCallback(() => {
+    setAudioListenCount((c) => {
+      const next = c + 1;
+      // First listen is free; each subsequent listen costs 2 s.
+      if (next > 1) audioPenaltyRef.current += 2;
+      return next;
+    });
+  }, []);
+
   // Auto-dismiss level-transition overlay after 2 seconds
   useEffect(() => {
     if (!levelTransitionData) return;
@@ -1161,6 +1174,8 @@ export default function GamePlay() {
             setDictationInput("");
             setDictationListenCount(0);
             setDictationSpeaking(false);
+            setAudioListenCount(0);
+            audioPenaltyRef.current = 0;
             window.speechSynthesis?.cancel();
             setShowConfetti(false);
             tickPlayedRef.current = false;
@@ -1238,6 +1253,8 @@ export default function GamePlay() {
       setDictationInput("");
       setDictationListenCount(0);
       setDictationSpeaking(false);
+      setAudioListenCount(0);
+      audioPenaltyRef.current = 0;
       window.speechSynthesis?.cancel();
       setShowConfetti(false);
       tickPlayedRef.current = false;
@@ -1303,6 +1320,8 @@ export default function GamePlay() {
       setDictationInput("");
       setDictationListenCount(0);
       setDictationSpeaking(false);
+      setAudioListenCount(0);
+      audioPenaltyRef.current = 0;
       setShowConfetti(false);
       tickPlayedRef.current = false;
       setIsDoublePoints(false);
@@ -1826,7 +1845,7 @@ export default function GamePlay() {
           const startTime = Date.now();
           timerRef.current = setInterval(() => {
             const elapsed = (Date.now() - startTime) / 1000;
-            const remaining = Math.max(0, q.duration - elapsed);
+            const remaining = Math.max(0, q.duration - elapsed - audioPenaltyRef.current);
             setTimeLeft(remaining);
             if (
               remaining <= 5 &&
@@ -3374,6 +3393,20 @@ export default function GamePlay() {
                 alt=""
                 className="max-h-64 sm:max-h-80 w-full rounded-2xl border-2 border-white/20 object-contain shadow-lg"
                 style={{ maxWidth: "min(100%, 600px)" }}
+              />
+            </motion.div>
+          )}
+          {question?.audioUrl && (
+            <motion.div
+              key={question.index}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center mt-3"
+            >
+              <AudioPlayer
+                src={question.audioUrl}
+                onListen={handleAudioListen}
+                listenCount={audioListenCount}
               />
             </motion.div>
           )}
