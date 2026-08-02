@@ -1278,8 +1278,8 @@ export default function OrganizerDashboard() {
                 </h2>
                 <p className="text-sm mt-0.5" style={{ color: "#3a6a4d" }}>
                   {lang === "ar"
-                    ? "مسابقات مفتوحة للطلاب بدون جلسة — يتنافسون في وقتهم ويظهرون في قائمة المتصدرين"
-                    : "Open for students to play anytime — leaderboard included"}
+                    ? "مسابقات مفتوحة بدون جلسة — يتنافس المشاركون في وقتهم ويظهرون في قائمة المتصدرين"
+                    : "Open without a session — participants compete at their own pace with a leaderboard"}
                 </p>
               </div>
               <span
@@ -1336,8 +1336,8 @@ export default function OrganizerDashboard() {
                       </h3>
                       <p className="text-[13px] leading-relaxed" style={{ color: "#3a6a4d" }}>
                         {lang === "ar"
-                          ? "أنشئ مسابقة، شارك الرابط مع الطلاب، وتابع ترتيبهم في لوحة المتصدرين"
-                          : "Create a challenge, share the link with students, and track their scores"}
+                          ? "أنشئ مسابقة، شارك الرابط مع المشاركين، وتابع ترتيبهم في لوحة المتصدرين"
+                          : "Create a challenge, share the link with participants, and track their rankings"}
                       </p>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
