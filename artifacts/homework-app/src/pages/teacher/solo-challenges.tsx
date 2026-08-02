@@ -101,7 +101,7 @@ export default function SoloChallengesPage() {
       <div className="border-b border-border/60 bg-card sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/teacher" className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <Link href={user?.role === "organizer" ? "/organizer" : "/teacher"} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <div className="flex items-center gap-2">

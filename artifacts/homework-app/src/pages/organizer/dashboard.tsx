@@ -1253,6 +1253,128 @@ export default function OrganizerDashboard() {
             </div>
           </section>
 
+          {/* ─────────────────────────────────────────────
+               Section: مسابقة ذاتية
+          ───────────────────────────────────────────── */}
+          <section className="mb-10">
+            <div className="mb-4 flex items-end gap-3">
+              <div>
+                <div
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.18em] uppercase mb-1.5 px-2.5 py-1 rounded-full"
+                  style={{
+                    background: "rgba(245,158,11,0.14)",
+                    color: "#92400e",
+                    border: "1px solid rgba(245,158,11,0.28)",
+                  }}
+                >
+                  <Zap className="w-3 h-3" />
+                  {lang === "ar" ? "مسابقة مستقلة" : "Self-paced"}
+                </div>
+                <h2
+                  className="text-xl sm:text-2xl font-black tracking-tight"
+                  style={{ color: "#103d2a" }}
+                >
+                  {lang === "ar" ? "مسابقة ذاتية ⚡" : "Solo Challenge ⚡"}
+                </h2>
+                <p className="text-sm mt-0.5" style={{ color: "#3a6a4d" }}>
+                  {lang === "ar"
+                    ? "مسابقات مفتوحة للطلاب بدون جلسة — يتنافسون في وقتهم ويظهرون في قائمة المتصدرين"
+                    : "Open for students to play anytime — leaderboard included"}
+                </p>
+              </div>
+              <span
+                className="hidden sm:block flex-1 h-px self-end mb-2 mx-4"
+                style={{
+                  background:
+                    "linear-gradient(90deg,transparent,rgba(245,158,11,0.35),transparent)",
+                }}
+              />
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.3 }}
+            >
+              <Link href="/teacher/solo-challenges">
+                <div
+                  className="group relative rounded-2xl p-5 cursor-pointer transition-all duration-200 hover:-translate-y-1 overflow-hidden"
+                  style={{
+                    background: "linear-gradient(135deg,#fffbeb 0%,#fef3c730 100%)",
+                    border: "1.5px solid rgba(245,158,11,0.35)",
+                    boxShadow: "0 8px 24px -10px rgba(245,158,11,0.30), 0 2px 6px rgba(15,55,32,0.05)",
+                  }}
+                >
+                  <div
+                    aria-hidden
+                    className="absolute pointer-events-none"
+                    style={{
+                      top: -40,
+                      [dir === "rtl" ? "left" : "right"]: -40,
+                      width: 120,
+                      height: 120,
+                      borderRadius: "50%",
+                      background: "radial-gradient(circle,rgba(245,158,11,0.22) 0%,transparent 70%)",
+                    }}
+                  />
+                  <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div
+                      className="shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                      style={{
+                        background: "linear-gradient(135deg,#f59e0b 0%,#d97706 100%)",
+                        boxShadow: "0 6px 16px -6px rgba(245,158,11,0.60)",
+                      }}
+                    >
+                      <Zap className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className="text-[17px] font-black leading-tight mb-1 tracking-tight"
+                        style={{ color: "#103d2a" }}
+                      >
+                        {lang === "ar" ? "إدارة المسابقات الذاتية" : "Manage Solo Challenges"}
+                      </h3>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "#3a6a4d" }}>
+                        {lang === "ar"
+                          ? "أنشئ مسابقة، شارك الرابط مع الطلاب، وتابع ترتيبهم في لوحة المتصدرين"
+                          : "Create a challenge, share the link with students, and track their scores"}
+                      </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <Link
+                        href="/teacher/solo-challenges/new"
+                        onClick={e => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[12px] font-extrabold transition-all hover:brightness-110"
+                        style={{
+                          background: "linear-gradient(135deg,#f59e0b 0%,#d97706 100%)",
+                          color: "#fff",
+                          boxShadow: "0 4px 12px -4px rgba(245,158,11,0.55)",
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {lang === "ar" ? "مسابقة جديدة" : "New challenge"}
+                      </Link>
+                      <span
+                        className="inline-flex items-center gap-1 text-[12px] font-extrabold px-2.5 py-2 rounded-xl transition-all"
+                        style={{
+                          background: "rgba(245,158,11,0.12)",
+                          color: "#92400e",
+                          border: "1px solid rgba(245,158,11,0.25)",
+                        }}
+                      >
+                        {lang === "ar" ? "عرض الكل" : "View all"}
+                        <ArrowRight
+                          className="w-3.5 h-3.5"
+                          style={{ transform: dir === "rtl" ? "rotate(180deg)" : "none" }}
+                        />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
+          </section>
+
           {/* Section: live games. */}
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
