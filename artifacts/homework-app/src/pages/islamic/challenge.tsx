@@ -5,6 +5,7 @@ import {
   api, IslamicShell, IslamicCard, GoldButton, GhostButton, BackLink,
   ISLAMIC_GOLD, playCorrect, playWrong,
 } from "./_shared";
+import AudioPlayer from "@/components/AudioPlayer";
 
 interface Section {
   id: number; name: string; ownerId?: number | null;
@@ -566,6 +567,7 @@ export function IslamicChallengePlay() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const totalStartRef = useRef(Date.now());
   const questionStartRef = useRef(Date.now());
+  const audioListensRef = useRef<number>(0);
 
   useEffect(() => {
     api<{ challenge: Challenge; questions: Q[] }>(`/islamic/challenges/by-pin/${pin}`)
@@ -608,6 +610,7 @@ export function IslamicChallengePlay() {
   /* Auto-start timer whenever question changes, data is loaded, countdown done, and both sides are ready */
   useEffect(() => {
     if (!questions.length || revealed || done || !nameReady || waitingForOpponent || countdownSec !== null) return;
+    audioListensRef.current = 0;
     setSecondsLeft(TIMER_SECONDS);
     questionStartRef.current = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
@@ -653,6 +656,10 @@ export function IslamicChallengePlay() {
     setSelected(null);
     setRevealed(true);
     playWrong();
+  }
+
+  function handleAudioListen() {
+    audioListensRef.current++;
   }
 
   function answer(opt: string) {
@@ -861,7 +868,11 @@ export function IslamicChallengePlay() {
 
       <IslamicCard style={{ marginBottom: 16 }}>
         <div style={{ fontSize: "clamp(17px, 5vw, 22px)", fontWeight: 700, lineHeight: 1.8, textAlign: "center", marginBottom: 16, wordBreak: "break-word" }}>{q.questionText}</div>
-        {q.audioUrl && <audio controls src={q.audioUrl} style={{ width: "100%", marginBottom: 12 }} />}
+        {q.audioUrl && (
+          <div style={{ marginBottom: 12 }}>
+            <AudioPlayer src={q.audioUrl} onListen={handleAudioListen} listenCount={audioListensRef.current} />
+          </div>
+        )}
       </IslamicCard>
 
       <style>{`
@@ -946,6 +957,7 @@ export function IslamicTournamentPlay() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const totalStartRef = useRef(Date.now());
   const questionStartRef = useRef(Date.now());
+  const audioListensRef = useRef<number>(0);
 
   const [tourLoadError, setTourLoadError] = useState("");
   const [completedTournament, setCompletedTournament] = useState<Tournament | null>(null);
@@ -974,6 +986,7 @@ export function IslamicTournamentPlay() {
 
   useEffect(() => {
     if (!tournament || !tournament.questions.length || revealed || done) return;
+    audioListensRef.current = 0;
     setSecondsLeft(TIMER_SECONDS);
     questionStartRef.current = Date.now();
     if (timerRef.current) clearInterval(timerRef.current);
@@ -992,6 +1005,10 @@ export function IslamicTournamentPlay() {
     }, 1000);
     return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
   }, [idx, tournament?.questions.length, done]);
+
+  function handleAudioListen() {
+    audioListensRef.current++;
+  }
 
   function answer(opt: string) {
     if (revealed || !tournament) return;
@@ -1096,7 +1113,11 @@ export function IslamicTournamentPlay() {
 
       <IslamicCard style={{ marginBottom: 16 }}>
         <div style={{ fontSize: "clamp(17px, 5vw, 22px)", fontWeight: 700, lineHeight: 1.8, textAlign: "center", marginBottom: 16, wordBreak: "break-word" }}>{q.questionText}</div>
-        {q.audioUrl && <audio controls src={q.audioUrl} style={{ width: "100%", marginBottom: 12 }} />}
+        {q.audioUrl && (
+          <div style={{ marginBottom: 12 }}>
+            <AudioPlayer src={q.audioUrl} onListen={handleAudioListen} listenCount={audioListensRef.current} />
+          </div>
+        )}
       </IslamicCard>
 
       <style>{`
