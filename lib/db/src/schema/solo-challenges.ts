@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, jsonb, boolean } from "drizzle-orm/pg-core";
 import { teachersTable } from "./teachers";
 import { assignmentsTable } from "./assignments";
 
@@ -33,6 +33,21 @@ export const soloChallengesTable = pgTable("solo_challenges", {
   maxAttempts: integer("max_attempts").notNull().default(1),
   playCount: integer("play_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** Optional difficulty preset: 'easy' (30 s), 'medium' (15 s), 'hard' (8 s).
+   *  When set, overrides timePerQuestion for non-multi-level challenges. */
+  difficulty: text("difficulty"),
+  /** When true, the difficulty level also scales the base points per question. */
+  difficultyAffectsPoints: boolean("difficulty_affects_points").notNull().default(false),
+  /** When true, the challenge is split into multiple levels defined in `levels`. */
+  isMultiLevel: boolean("is_multi_level").notNull().default(false),
+  /** Level definitions for multi-level challenges.
+   *  Shape: Array<{ name: string, questionCount: number, timePerQuestion: number }> */
+  levels: jsonb("levels"),
+  /** Difficulty distribution for question-selection mode.
+   *  Shape: { easy: number, medium: number, hard: number } | null
+   *  When set, the /start handler picks questions by difficulty bucket
+   *  (questions.difficulty: 1=easy 2=medium 3=hard). */
+  difficultyDistribution: jsonb("difficulty_distribution"),
 }, (t) => ({
   slugIdx: index("solo_challenges_slug_idx").on(t.slug),
   shortSlugIdx: index("solo_challenges_short_slug_idx").on(t.shortSlug),

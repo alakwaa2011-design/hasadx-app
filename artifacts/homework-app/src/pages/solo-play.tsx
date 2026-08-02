@@ -23,6 +23,9 @@ interface ChallengeInfo {
   questionCount: number;
   leaderboardDisplay?: string;
   maxAttempts?: number;
+  difficultyDistribution?: { easy: number; medium: number; hard: number } | null;
+  isMultiLevel?: boolean;
+  levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
 }
 
 type LeaderboardEntry = { playerName: string; score: number; correctCount?: number };
@@ -220,7 +223,7 @@ export default function SoloPlayPage() {
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wide"
             style={{ background: "rgba(232,184,75,0.18)", border: "1px solid rgba(232,184,75,0.45)", color: "#E8B84B" }}>
             <Zap className="w-3.5 h-3.5" />
-            {lang === "ar" ? "لعب فردي مفتوح" : "Open Solo Play"}
+            {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
           </span>
         </div>
 
@@ -237,11 +240,28 @@ export default function SoloPlayPage() {
             <h1 className="text-xl sm:text-2xl font-black text-white leading-tight mb-1">
               {info!.assignmentTitle}
             </h1>
-            <div className="flex items-center justify-center gap-4 mt-3">
+            <div className="flex items-center justify-center gap-3 mt-3 flex-wrap">
               <span className="flex items-center gap-1 text-sm font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
                 <Zap className="w-4 h-4 text-amber-400" />
                 {info!.questionCount} {lang === "ar" ? "سؤال" : "questions"}
               </span>
+              {info!.isMultiLevel && info!.levels && info!.levels.length > 0 && (
+                <span className="flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full"
+                  style={{ background: "rgba(99,102,241,0.2)", color: "rgba(165,180,252,0.95)", border: "1px solid rgba(99,102,241,0.35)" }}>
+                  {info!.levels.length} {lang === "ar" ? "مراحل" : "levels"}
+                </span>
+              )}
+              {!info!.isMultiLevel && info!.difficultyDistribution && (() => {
+                const d = info!.difficultyDistribution!;
+                const total = d.easy + d.medium + d.hard;
+                if (total === 0) return null;
+                return (
+                  <span className="flex items-center gap-1 text-xs font-black px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(232,184,75,0.15)", color: "rgba(232,184,75,0.9)", border: "1px solid rgba(232,184,75,0.3)" }}>
+                    {total} {lang === "ar" ? "سؤال (توزيع)" : "q (mixed)"}
+                  </span>
+                );
+              })()}
               <span className="flex items-center gap-1 text-sm font-bold" style={{ color: "rgba(255,255,255,0.65)" }}>
                 <Users className="w-4 h-4 text-green-400" />
                 {info!.playCount} {lang === "ar" ? "لاعب" : "players"}

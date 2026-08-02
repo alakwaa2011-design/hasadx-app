@@ -84,6 +84,14 @@ export interface GameQuestion {
   imageUrl: string | null;
   questionType: string;
   readAloud: boolean;
+  /** Per-question duration override (seconds). Used by multi-level solo challenges. */
+  duration?: number;
+  /** Level index within a multi-level solo challenge (0-based). */
+  levelIndex?: number;
+  /** Human-readable level name, e.g. "المرحلة الأولى". */
+  levelName?: string;
+  /** Difficulty tag copied from the questions table (1=easy, 2=medium, 3=hard). */
+  difficulty?: number | null;
 }
 
 export type GiftType = "freeze" | "mystery" | "give" | "shield" | "steal";
@@ -297,7 +305,10 @@ export function createGame(
   customTeamNames?: string[],
   targetClass?: string | null,
   hackMode: boolean = false,
-  targetClasses?: string[] | null
+  targetClasses?: string[] | null,
+  /** When true, skip the initial shuffle so question ordering is preserved
+   *  (used by multi-level solo challenges where level order must be kept). */
+  preserveOrder: boolean = false,
 ): Game {
   if (games.size >= MAX_CONCURRENT_GAMES) {
     throw new Error(
@@ -307,7 +318,7 @@ export function createGame(
   const clampedDuration = Math.max(MIN_QUESTION_DURATION, Math.min(MAX_QUESTION_DURATION, questionDuration));
   const pin = generatePin();
 
-  const shuffled = shuffleArray(questions);
+  const shuffled = preserveOrder ? [...questions] : shuffleArray(questions);
 
   const clampedTeamCount = Math.max(2, Math.min(6, teamCount));
   const defaultNames = TEAM_NAMES_AR.slice(0, clampedTeamCount);

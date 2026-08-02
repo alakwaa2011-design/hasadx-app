@@ -2244,7 +2244,7 @@ function CompetitiveTab({
             </div>
           </Card>
 
-          {/* وميض حر — مسابقة فردية بالرابط */}
+          {/* مسابقة ذاتية — مسابقة فردية بالرابط */}
           <Card
             onClick={() => setLocation("/teacher/solo-challenges")}
             className="group p-4 sm:p-5 cursor-pointer transition-all hover:shadow-xl hover:border-yellow-500/45 hover:-translate-y-0.5 border-2 border-border/70 bg-gradient-to-br from-yellow-500/10 via-card to-amber-400/8"
@@ -2256,7 +2256,7 @@ function CompetitiveTab({
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
                   <h3 className="text-base sm:text-lg font-black text-foreground">
-                    {lang === "ar" ? "وميض حر" : "Free Flash"}
+                    {lang === "ar" ? "مسابقة ذاتية" : "Self Challenge"}
                   </h3>
                   <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/25">
                     {lang === "ar" ? "بالرابط" : "Link"}
@@ -3567,7 +3567,7 @@ function Section({
   );
 }
 
-/* ── Free Flash Button — per-card, stateless click ── */
+/* ── Self Challenge Button — per-card, stateless click ── */
 const BASE_URL_SOLO = import.meta.env.VITE_API_URL || "";
 function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: string }) {
   const [state, setState] = useState<"idle" | "loading" | "copied">("idle");
@@ -3599,7 +3599,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       onClick={handleClick}
       disabled={state === "loading"}
       className="text-xs font-bold px-3 py-2 min-h-[44px] border rounded-lg transition-colors inline-flex items-center gap-1.5 border-amber-400/50 text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 dark:border-amber-500/30"
-      title={lang === "ar" ? "إنشاء وميض حر ونسخ الرابط" : "Create Free Flash & copy link"}
+      title={lang === "ar" ? "إنشاء مسابقة ذاتية ونسخ الرابط" : "Create Self Challenge & copy link"}
     >
       {state === "loading" ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -3610,7 +3610,7 @@ function SoloLinkButton({ assignmentId, lang }: { assignmentId: number; lang: st
       )}
       {state === "copied"
         ? (lang === "ar" ? "تم النسخ!" : "Copied!")
-        : (lang === "ar" ? "وميض حر" : "Free Flash")}
+        : (lang === "ar" ? "مسابقة ذاتية" : "Self Challenge")}
     </button>
   );
 }
@@ -3849,7 +3849,7 @@ function AssignmentRow({
                 <Copy className="w-3.5 h-3.5" />
                 {lang === "ar" ? "نسخ رابط الواجب" : "Copy assignment link"}
               </button>
-              {/* ── Free Flash Button ── */}
+              {/* ── Self Challenge Button ── */}
               <SoloLinkButton assignmentId={assignment.id} lang={lang} />
 
               <button

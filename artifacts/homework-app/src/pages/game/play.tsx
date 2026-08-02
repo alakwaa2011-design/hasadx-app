@@ -227,6 +227,8 @@ interface Question {
   duration: number;
   questionType?: string;
   imageUrl?: string | null;
+  levelIndex?: number;
+  levelName?: string;
 }
 
 interface AnswerResult {
@@ -1001,6 +1003,10 @@ export default function GamePlay() {
   const [teacherMessage, setTeacherMessage] = useState<string | null>(null);
   const teacherMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Level transition overlay (multi-level solo challenges) ──────────────
+  const [levelTransitionData, setLevelTransitionData] = useState<{ name: string; index: number } | null>(null);
+  const currentLevelIndexRef = useRef<number | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const joinedRef = useRef(false);
   const hasJoinedOnceRef = useRef(false);
@@ -1073,6 +1079,13 @@ export default function GamePlay() {
     }
     setIsSpeaking(false);
   }, []);
+
+  // Auto-dismiss level-transition overlay after 2 seconds
+  useEffect(() => {
+    if (!levelTransitionData) return;
+    const t = setTimeout(() => setLevelTransitionData(null), 2000);
+    return () => clearTimeout(t);
+  }, [levelTransitionData]);
 
   const speakText = useCallback((text: string, isAr: boolean) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -1240,6 +1253,16 @@ export default function GamePlay() {
       pendingQuestionRef.current = q;
       setPendingQuestion(q);
       if (isSoloRef.current) {
+        // Detect level transitions for multi-level solo challenges
+        if (typeof q.levelIndex === "number") {
+          if (currentLevelIndexRef.current !== null && q.levelIndex !== currentLevelIndexRef.current) {
+            setLevelTransitionData({
+              name: q.levelName ?? `المرحلة ${q.levelIndex + 1}`,
+              index: q.levelIndex,
+            });
+          }
+          currentLevelIndexRef.current = q.levelIndex;
+        }
         // Solo: no per-question countdown — jump straight to the question.
         // The countdown effect handles setCountdownVal(0) → setPhase("question").
         setCountdownVal(0);
@@ -2464,6 +2487,59 @@ export default function GamePlay() {
     return (
       <>
         {reconnectBanner}
+        {/* Level transition overlay for multi-level solo challenges */}
+        <AnimatePresence>
+          {levelTransitionData && isSoloRef.current && (
+            <motion.div
+              key={`level-transition-${levelTransitionData.index}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.5 } }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center"
+              style={{ background: "linear-gradient(160deg, #06120C 0%, #0D2118 40%, #112A1C 100%)" }}
+              dir={dir}
+            >
+              <motion.div
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 180, damping: 22 }}
+                className="text-center px-8"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.12, 1], rotate: [0, -5, 5, 0] }}
+                  transition={{ duration: 0.7, delay: 0.15 }}
+                  className="text-7xl mb-5 select-none"
+                >
+                  🏆
+                </motion.div>
+                <motion.p
+                  initial={{ y: 12, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.25 }}
+                  className="text-amber-400 text-xs font-black tracking-[0.35em] uppercase mb-3"
+                >
+                  {lang === "ar" ? "انتقلت إلى" : "LEVEL UP"}
+                </motion.p>
+                <motion.h1
+                  initial={{ y: 18, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                  className="text-white text-3xl sm:text-4xl font-black mb-2 drop-shadow-lg"
+                >
+                  {levelTransitionData.name}
+                </motion.h1>
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 0.55, duration: 0.7, ease: "easeOut" }}
+                  className="h-[3px] rounded-full mx-auto mt-4"
+                  style={{ width: 140, background: "linear-gradient(90deg, #C9930A, #E8B84B, #C9930A)", originX: 0.5 }}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       <div
         className={`min-h-screen flex flex-col relative overflow-hidden ${hackMode ? "bg-black" : ""}`}
         style={

@@ -400,6 +400,11 @@ function shuffleAndStoreOptions(game: Game, question: GameQuestion): { optionA: 
 }
 
 function emitQuestionToRoom(io: Server, game: Game, question: GameQuestion) {
+  // Per-question duration override (multi-level solo challenges).
+  // Update game.questionDuration so scheduleQuestionTimeout uses the right value.
+  if (question.duration !== undefined && question.duration > 0) {
+    game.questionDuration = Math.max(5, Math.min(120, question.duration));
+  }
   const isDouble = isDoublePointsRound(game);
   const shuffled = shuffleAndStoreOptions(game, question);
   const baseData = {
@@ -419,6 +424,8 @@ function emitQuestionToRoom(io: Server, game: Game, question: GameQuestion) {
     giftsEnabled: game.giftsEnabled,
     gameTtsEnabled: game.ttsEnabled,
     readAloud: question.readAloud,
+    levelIndex: question.levelIndex,
+    levelName: question.levelName,
   };
 
   for (const player of game.players.values()) {

@@ -1,6 +1,6 @@
 /**
  * /teacher/solo-challenges/:slug
- * إدارة مسابقة وميض حر — إعدادات، كشف اللاعبين، الحذف
+ * إدارة مسابقة مسابقة ذاتية — إعدادات، كشف اللاعبين، الحذف
  */
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation, Link } from "wouter";
@@ -34,6 +34,9 @@ interface ChallengeTeacherData {
   isStandalone: boolean;
   isExpired: boolean;
   questionCount: number;
+  difficultyDistribution?: { easy: number; medium: number; hard: number } | null;
+  isMultiLevel?: boolean;
+  levels?: Array<{ name: string; questionCount: number; timePerQuestion: number }> | null;
 }
 
 interface Participant {
@@ -69,6 +72,7 @@ export default function SoloChallengeManagePage() {
   const [editLd, setEditLd] = useState<"top3" | "top20" | "all">("top20");
   const [editQpp, setEditQpp] = useState<number | "">("");
   const [editMaxAttempts, setEditMaxAttempts] = useState(1);
+  const [editDiffDistribution, setEditDiffDistribution] = useState<{ easy: number; medium: number; hard: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
@@ -94,6 +98,10 @@ export default function SoloChallengeManagePage() {
       const ld = chal.leaderboardDisplay ?? "top20";
       setEditLd(["top3","top20","all"].includes(ld) ? ld : "top20");
       setEditMaxAttempts(chal.maxAttempts ?? 1);
+      const rawDist = (chal as any).difficultyDistribution;
+      setEditDiffDistribution(rawDist && typeof rawDist === "object" && (rawDist.easy + rawDist.medium + rawDist.hard) > 0
+        ? { easy: Math.max(0, Number(rawDist.easy) || 0), medium: Math.max(0, Number(rawDist.medium) || 0), hard: Math.max(0, Number(rawDist.hard) || 0) }
+        : null);
       setEditExpires(
         chal.expiresAt ? new Date(chal.expiresAt).toISOString().slice(0, 16) : ""
       );
@@ -124,6 +132,7 @@ export default function SoloChallengeManagePage() {
           leaderboardDisplay: editLd,
           questionsPerParticipant: editQpp === "" ? null : editQpp,
           maxAttempts: editMaxAttempts,
+          difficultyDistribution: editDiffDistribution,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
@@ -291,197 +300,175 @@ export default function SoloChallengeManagePage() {
               </button>
             )}
           </div>
-          <div className="p-4 space-y-4">
-            {/* Notes */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
-                <FileText className="w-3.5 h-3.5" />
-                ملاحظات تظهر قبل المسابقة
-              </label>
-              <textarea
-                value={editNotes}
-                onChange={e => { setEditNotes(e.target.value); mark(); }}
-                placeholder="تعليمات أو رسالة للاعبين..."
-                rows={2}
-                maxLength={1000}
-                className="w-full px-3 py-2 rounded-xl bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm resize-none"
-              />
-            </div>
+          <div className="divide-y divide-border/30">
 
-            {/* Time per question */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
+            {/* ── Time per question ── */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <Clock className="w-3.5 h-3.5" />
-                وقت كل سؤال: <span className="text-foreground font-bold">{editTime} ثانية</span>
+                وقت كل سؤال
               </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range" min={5} max={120} step={5}
-                  value={editTime}
-                  onChange={e => { setEditTime(Number(e.target.value)); mark(); }}
-                  className="flex-1 accent-amber-500"
-                />
-                <div className="flex gap-1">
-                  {[10, 20, 30, 60].map(t => (
-                    <button
-                      key={t}
-                      onClick={() => { setEditTime(t); mark(); }}
-                      className={cn(
-                        "px-2 py-1 rounded-lg text-xs font-bold transition-colors",
-                        editTime === t ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80",
-                      )}
-                    >
-                      {t}s
-                    </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => { setEditTime(t => Math.max(5, t - 5)); mark(); }} className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors">−</button>
+                <span className="w-14 text-center text-sm font-bold tabular-nums text-foreground">{editTime} ث</span>
+                <button onClick={() => { setEditTime(t => Math.min(120, t + 5)); mark(); }} className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors">+</button>
+              </div>
+            </div>
+
+            {/* ── Difficulty distribution ── */}
+            <>
+              <div className="flex items-center justify-between px-4 py-3">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  توزيع الصعوبة
+                </label>
+                <button
+                  onClick={() => { setEditDiffDistribution(editDiffDistribution ? null : { easy: 4, medium: 4, hard: 2 }); mark(); }}
+                  className={cn("relative w-9 h-5 rounded-full transition-colors flex-shrink-0", editDiffDistribution ? "bg-amber-500" : "bg-muted")}
+                >
+                  <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all", editDiffDistribution ? "start-4" : "start-0.5")} />
+                </button>
+              </div>
+              {editDiffDistribution && (
+                <div className="px-4 pt-1 pb-3 bg-muted/20 space-y-2">
+                  <p className="text-[11px] text-muted-foreground pt-1">حدّد عدد أسئلة كل مستوى — صنّف الأسئلة أولاً.</p>
+                  {([
+                    { key: "easy" as const, label: "سهل", color: "bg-green-500" },
+                    { key: "medium" as const, label: "متوسط", color: "bg-yellow-500" },
+                    { key: "hard" as const, label: "صعب", color: "bg-red-500" },
+                  ]).map(({ key, label, color }) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={cn("text-xs font-bold px-2.5 py-0.5 rounded-full text-white", color)}>{label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: Math.max(0, d[key] - 1) } : null); mark(); }} className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/70 font-black text-sm flex items-center justify-center">−</button>
+                        <span className="w-7 text-center font-bold text-sm">{editDiffDistribution[key]}</span>
+                        <button onClick={() => { setEditDiffDistribution(d => d ? { ...d, [key]: d[key] + 1 } : null); mark(); }} className="w-6 h-6 rounded-lg bg-muted hover:bg-muted/70 font-black text-sm flex items-center justify-center">+</button>
+                      </div>
+                    </div>
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Questions per participant */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
-                <Zap className="w-3.5 h-3.5" />
-                عدد الأسئلة لكل متسابق (اختياري)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={challenge.questionCount > 0 ? challenge.questionCount : undefined}
-                value={editQpp}
-                onChange={e => {
-                  const raw = e.target.value;
-                  if (raw === "") { setEditQpp(""); mark(); return; }
-                  let n = Number(raw);
-                  if (isNaN(n)) return;
-                  n = Math.max(1, n);
-                  if (challenge.questionCount > 0) n = Math.min(n, challenge.questionCount);
-                  setEditQpp(n);
-                  mark();
-                }}
-                placeholder={`كل الأسئلة (${challenge.questionCount})`}
-                className="w-full px-3 py-2 rounded-xl bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                إن حددت رقماً، سيحصل كل متسابق على عدد عشوائي من الأسئلة بترتيب عشوائي مستقل. اتركه فارغاً ليرى الجميع كل الأسئلة.
-              </p>
-            </div>
-
-            {/* Leaderboard display */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
-                <Trophy className="w-3.5 h-3.5" />
-                عرض لوحة المتصدرين
-              </label>
-              <div className="flex gap-2">
-                {[
-                  { value: "top3", label: "أفضل 3 فقط" },
-                  { value: "top20", label: "أفضل 20" },
-                  { value: "all", label: "جميع اللاعبين" },
-                ].map(o => (
-                  <button
-                    key={o.value}
-                    onClick={() => { setEditLd(o.value as any); mark(); }}
-                    className={cn(
-                      "flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-colors",
-                      editLd === o.value
-                        ? "bg-amber-500 border-amber-500 text-white"
-                        : "border-border text-muted-foreground hover:border-amber-400",
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Attempts allowed */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
-                <RotateCw className="w-3.5 h-3.5" />
-                السماح باحتساب المحاولات
-              </label>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 1, label: "مرة واحدة فقط" },
-                  { value: 2, label: "مرتان (يختار اللاعب)" },
-                  { value: 3, label: "3 (أفضل نتيجة)" },
-                ].map(o => (
-                  <button
-                    key={o.value}
-                    onClick={() => { setEditMaxAttempts(o.value); mark(); }}
-                    className={cn(
-                      "flex-1 py-2 px-2 rounded-xl text-xs font-bold border-2 transition-colors min-w-[90px]",
-                      editMaxAttempts === o.value
-                        ? "bg-amber-500 border-amber-500 text-white"
-                        : "border-border text-muted-foreground hover:border-amber-400",
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-              {editMaxAttempts > 1 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-muted-foreground">تخصيص العدد (2-10):</span>
-                  <input
-                    type="number"
-                    min={2}
-                    max={10}
-                    value={editMaxAttempts}
-                    onChange={e => {
-                      let n = Number(e.target.value);
-                      if (isNaN(n)) return;
-                      n = Math.max(2, Math.min(10, n));
-                      setEditMaxAttempts(n);
-                      mark();
-                    }}
-                    className="w-16 px-2 py-1 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm text-center"
-                  />
+                  <p className="text-[11px] text-muted-foreground border-t border-border/30 pt-1.5">المجموع: <span className="font-bold text-foreground">{editDiffDistribution.easy + editDiffDistribution.medium + editDiffDistribution.hard} سؤال</span></p>
                 </div>
               )}
-              <p className="text-[11px] text-muted-foreground mt-1.5">
-                {editMaxAttempts === 1
-                  ? "تُحتسب المحاولة الأولى فقط لكل مشارك، وإعادة اللعب لا تغيّر النتيجة."
-                  : editMaxAttempts === 2
-                    ? "يمكن للمشارك إعادة المحاولة مرة واحدة، وبعد المحاولة الثانية يختار بنفسه أي نتيجة يعتمدها."
-                    : `يجب على المشارك إكمال ${editMaxAttempts} محاولات، وسيتم اعتماد أفضل نتيجة تلقائياً.`}
-              </p>
+            </>
+
+            {/* ── Questions per participant ── */}
+            {!editDiffDistribution && (
+              <div className="flex items-center justify-between px-4 py-3">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Zap className="w-3.5 h-3.5" />
+                  أسئلة لكل متسابق
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => {
+                      if (editQpp === "" || (editQpp as number) <= 1) { setEditQpp(""); mark(); }
+                      else { setEditQpp((editQpp as number) - 1); mark(); }
+                    }}
+                    className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors"
+                  >−</button>
+                  <span className="w-14 text-center text-sm font-bold text-foreground">
+                    {editQpp === "" ? "الكل" : String(editQpp)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const cur = editQpp === "" ? 0 : (editQpp as number);
+                      const next = cur + 1;
+                      if (challenge.questionCount > 0 && next > challenge.questionCount) return;
+                      setEditQpp(next); mark();
+                    }}
+                    className="w-7 h-7 rounded-lg bg-muted hover:bg-muted/70 font-black text-base flex items-center justify-center transition-colors"
+                  >+</button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Leaderboard ── */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <Trophy className="w-3.5 h-3.5" />
+                لوحة المتصدرين
+              </label>
+              <div className="flex rounded-lg overflow-hidden border border-border">
+                {([
+                  { value: "top3" as const, label: "أفضل 3" },
+                  { value: "top20" as const, label: "أفضل 20" },
+                  { value: "all" as const, label: "الكل" },
+                ]).map((o, idx) => (
+                  <button key={o.value} onClick={() => { setEditLd(o.value); mark(); }}
+                    className={cn("px-2.5 py-1.5 text-xs font-bold transition-colors", idx < 2 && "border-s border-border",
+                      editLd === o.value ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-muted")}
+                  >{o.label}</button>
+                ))}
+              </div>
             </div>
 
-            {/* Expiry */}
-            <div>
-              <label className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-1.5">
+            {/* ── Attempts ── */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <RotateCw className="w-3.5 h-3.5" />
+                المحاولات المسموحة
+              </label>
+              <div className="flex rounded-lg overflow-hidden border border-border">
+                {([1, 2, 3] as const).map((v, idx) => (
+                  <button key={v} onClick={() => { setEditMaxAttempts(v); mark(); }}
+                    className={cn("px-3 py-1.5 text-xs font-bold transition-colors", idx < 2 && "border-s border-border",
+                      editMaxAttempts === v ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-muted")}
+                  >{v === 1 ? "مرة" : v === 2 ? "مرتان" : "3 أفضل"}</button>
+                ))}
+              </div>
+            </div>
+            {editMaxAttempts > 1 && (
+              <div className="flex items-center justify-between px-4 py-2.5 bg-muted/20">
+                <span className="text-[11px] text-muted-foreground">
+                  {editMaxAttempts === 2 ? "يختار اللاعب بعد المحاولتين" : `يُحتسب أفضل نتيجة من ${editMaxAttempts}`}
+                </span>
+                <input type="number" min={2} max={10} value={editMaxAttempts}
+                  onChange={e => { let n = Math.max(2, Math.min(10, Number(e.target.value) || 2)); setEditMaxAttempts(n); mark(); }}
+                  className="w-14 px-2 py-1 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm text-center"
+                />
+              </div>
+            )}
+
+            {/* ── Notes ── */}
+            <div className="px-4 py-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+                <FileText className="w-3.5 h-3.5" />
+                ملاحظات للاعبين
+              </label>
+              <textarea value={editNotes} onChange={e => { setEditNotes(e.target.value); mark(); }}
+                placeholder="تعليمات أو رسالة قبل المسابقة..."
+                rows={2} maxLength={1000}
+                className="w-full px-3 py-2 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-xs resize-none text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+
+            {/* ── Expiry ── */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground shrink-0 me-3">
                 <Calendar className="w-3.5 h-3.5" />
                 موعد انتهاء المسابقة
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="datetime-local"
-                  value={editExpires}
-                  onChange={e => { setEditExpires(e.target.value); mark(); }}
-                  className="flex-1 px-3 py-2 rounded-xl bg-muted border border-border focus:outline-none focus:border-amber-500 text-sm"
-                />
+              <div className="flex items-center gap-2 min-w-0">
+                <span dir="ltr">
+                  <input type="datetime-local" lang="en" value={editExpires} onChange={e => { setEditExpires(e.target.value); mark(); }}
+                    className="text-xs px-2 py-1.5 rounded-lg bg-muted border border-border focus:outline-none focus:border-amber-500 text-foreground min-w-0" />
+                </span>
                 {editExpires && (
-                  <button
-                    onClick={() => { setEditExpires(""); mark(); }}
-                    className="px-3 py-2 rounded-xl border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    إزالة
-                  </button>
+                  <button onClick={() => { setEditExpires(""); mark(); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">إزالة</button>
                 )}
               </div>
             </div>
 
+            {/* ── Save ── */}
             {settingsDirty && (
-              <button
-                onClick={saveSettings}
-                disabled={saving}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
-              </button>
+              <div className="px-4 py-3">
+                <button onClick={saveSettings} disabled={saving}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
+                </button>
+              </div>
             )}
           </div>
         </div>

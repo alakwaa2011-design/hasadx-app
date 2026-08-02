@@ -91,13 +91,19 @@ async function requireAdmin(req: any, res: any): Promise<boolean> {
   return true;
 }
 
+const ALLOWED_QUESTION_TYPES = ["mcq", "true_false"] as const;
+type SoloQuestionType = typeof ALLOWED_QUESTION_TYPES[number];
+
 type SoloQuestion = {
   text: string;
+  questionType: SoloQuestionType;
   optionA: string;
   optionB: string;
   optionC: string;
   optionD: string;
   correctAnswer: "A" | "B" | "C" | "D";
+  /** 1=easy, 2=medium, 3=hard — matches questions.difficulty column */
+  difficulty?: number | null;
 };
 
 function validateQuestions(raw: unknown): SoloQuestion[] | null {
@@ -108,13 +114,22 @@ function validateQuestions(raw: unknown): SoloQuestion[] | null {
     const obj = q as Record<string, unknown>;
     if (typeof obj.text !== "string" || !obj.text.trim()) continue;
     if (!["A","B","C","D"].includes(obj.correctAnswer as string)) continue;
+    const rawDiff = Number(obj.difficulty);
+    const rawType = obj.questionType as string;
+    const questionType: SoloQuestionType = ALLOWED_QUESTION_TYPES.includes(rawType as SoloQuestionType)
+      ? rawType as SoloQuestionType
+      : "mcq";
+    // For true_false questions auto-fill options so they're never blank
+    const isTF = questionType === "true_false";
     valid.push({
       text: (obj.text as string).trim(),
-      optionA: typeof obj.optionA === "string" ? obj.optionA.trim() : "",
-      optionB: typeof obj.optionB === "string" ? obj.optionB.trim() : "",
-      optionC: typeof obj.optionC === "string" ? obj.optionC.trim() : "",
-      optionD: typeof obj.optionD === "string" ? obj.optionD.trim() : "",
+      questionType,
+      optionA: isTF ? "صح"  : (typeof obj.optionA === "string" ? obj.optionA.trim() : ""),
+      optionB: isTF ? "خطأ" : (typeof obj.optionB === "string" ? obj.optionB.trim() : ""),
+      optionC: isTF ? ""    : (typeof obj.optionC === "string" ? obj.optionC.trim() : ""),
+      optionD: isTF ? ""    : (typeof obj.optionD === "string" ? obj.optionD.trim() : ""),
       correctAnswer: obj.correctAnswer as "A"|"B"|"C"|"D",
+      difficulty: [1, 2, 3].includes(rawDiff) ? rawDiff : null,
     });
   }
   return valid.length > 0 ? valid : null;
@@ -124,7 +139,7 @@ function questionsToGameQuestions(qs: SoloQuestion[], duration: number): GameQue
   return qs.map((q, i) => ({
     id: -(i + 1),
     text: q.text,
-    questionType: "mcq",
+    questionType: q.questionType,
     optionA: q.optionA,
     optionB: q.optionB,
     optionC: q.optionC,
@@ -134,7 +149,50 @@ function questionsToGameQuestions(qs: SoloQuestion[], duration: number): GameQue
     duration,
     imageUrl: null,
     readAloud: false,
+    difficulty: q.difficulty ?? null,
   }));
+}
+
+// ── Multi-level + distribution helpers ─────────────────────────────────────
+
+interface ChallengeLevel {
+  name: string;
+  questionCount: number;
+  timePerQuestion: number;
+}
+
+interface DifficultyDistribution {
+  easy: number;
+  medium: number;
+  hard: number;
+}
+
+function validateDifficultyDistribution(raw: unknown): DifficultyDistribution | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const easy   = Math.max(0, Math.floor(Number(obj.easy   ?? 0)));
+  const medium = Math.max(0, Math.floor(Number(obj.medium ?? 0)));
+  const hard   = Math.max(0, Math.floor(Number(obj.hard   ?? 0)));
+  if (easy + medium + hard === 0) return null;
+  return { easy, medium, hard };
+}
+
+function validateLevels(raw: unknown): ChallengeLevel[] | null {
+  if (!Array.isArray(raw)) return null;
+  const valid: ChallengeLevel[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const obj = item as Record<string, unknown>;
+    const name = typeof obj.name === "string" ? obj.name.trim().slice(0, 50) : "";
+    const qc = Number(obj.questionCount);
+    const tpq = Number(obj.timePerQuestion);
+    if (!name) continue;
+    if (!Number.isInteger(qc) || qc < 1 || qc > 200) continue;
+    if (!Number.isInteger(tpq) || tpq < 5 || tpq > 120) continue;
+    valid.push({ name, questionCount: qc, timePerQuestion: tpq });
+  }
+  if (valid.length === 0 || valid.length > 10) return null;
+  return valid;
 }
 
 // ── GET /api/solo-challenges  (teacher: list all their challenges) ──────────
@@ -267,6 +325,10 @@ router.post("/solo-challenges/standalone", async (req, res) => {
       questionsPerParticipant = n;
     }
 
+    const isMultiLevel = Boolean(req.body?.isMultiLevel);
+    const levels = req.body?.levels != null ? (validateLevels(req.body.levels) ?? null) : null;
+    const difficultyDistribution = validateDifficultyDistribution(req.body?.difficultyDistribution);
+
     const base = titleToSlug(title);
     const slug = await uniqueSlug(base);
     const shortSlug = `${arabicToLatinSlug(title)}-${randomSuffix()}`;
@@ -281,12 +343,15 @@ router.post("/solo-challenges/standalone", async (req, res) => {
         assignmentTitle: title,
         questions,
         timePerQuestion,
-        questionsPerParticipant,
+        questionsPerParticipant: difficultyDistribution ? null : questionsPerParticipant,
         leaderboardDisplay,
         maxAttempts,
         notes,
         expiresAt,
-      })
+        isMultiLevel,
+        levels,
+        difficultyDistribution,
+      } as any)
       .returning();
 
     res.json({ slug: created.slug, shortSlug: created.shortSlug ?? null });
@@ -512,6 +577,27 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       }
     }
 
+    // Multi-level + difficulty distribution settings
+    if ("difficultyDistribution" in req.body) {
+      const dist = validateDifficultyDistribution(req.body.difficultyDistribution);
+      update.difficultyDistribution = dist;
+      // When distribution is active, clear questionsPerParticipant unless also being updated
+      if (dist && !("questionsPerParticipant" in req.body)) {
+        update.questionsPerParticipant = null;
+      }
+    }
+    if ("isMultiLevel" in req.body) {
+      update.isMultiLevel = Boolean(req.body.isMultiLevel);
+    }
+    if ("levels" in req.body) {
+      if (req.body.levels === null || (Array.isArray(req.body.levels) && req.body.levels.length === 0)) {
+        update.levels = null;
+      } else {
+        const lv = validateLevels(req.body.levels);
+        if (lv !== null) update.levels = lv;
+      }
+    }
+
     if (Object.keys(update).length === 0) return res.json({ ok: true });
 
     await db.update(soloChallengesTable).set(update as any).where(eq(soloChallengesTable.slug, req.params.slug));
@@ -593,6 +679,10 @@ router.get("/solo-challenges/:slug", async (req, res) => {
       timePerQuestion: challenge.timePerQuestion ?? 20,
       leaderboardDisplay: challenge.leaderboardDisplay ?? "top20",
       maxAttempts: challenge.maxAttempts ?? 1,
+      difficulty: (challenge as any).difficulty ?? null,
+      difficultyAffectsPoints: Boolean((challenge as any).difficultyAffectsPoints),
+      isMultiLevel: Boolean((challenge as any).isMultiLevel),
+      levels: (challenge as any).levels ?? null,
     });
   } catch (err) {
     req.log.error(err, "Get solo challenge slug error");
@@ -646,14 +736,68 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
           duration,
           imageUrl: q.imageUrl ?? null,
           readAloud: q.readAloud ?? false,
+          difficulty: q.difficulty ?? null,
         }));
     }
 
     if (gameQuestions.length === 0) return res.status(400).json({ message: "لا توجد أسئلة في هذه المسابقة" });
 
-    const perParticipant = challenge.questionsPerParticipant;
-    if (perParticipant != null && perParticipant > 0 && perParticipant < gameQuestions.length) {
-      gameQuestions = shuffleArray(gameQuestions).slice(0, perParticipant);
+    // ── Multi-level / difficulty-distribution processing ──────────────────────
+    const isMultiLvl = Boolean((challenge as any).isMultiLevel);
+    const diffDist = validateDifficultyDistribution((challenge as any).difficultyDistribution);
+    let preserveOrder = false;
+
+    if (isMultiLvl) {
+      const levelDefs = ((challenge as any).levels as ChallengeLevel[] | null);
+      if (levelDefs && levelDefs.length > 0) {
+        const shuffledAll = shuffleArray(gameQuestions);
+        const result: GameQuestion[] = [];
+        let offset = 0;
+        for (let li = 0; li < levelDefs.length; li++) {
+          const lv = levelDefs[li];
+          const lvTime = Math.max(5, Math.min(120, lv.timePerQuestion));
+          const count = Math.min(lv.questionCount, shuffledAll.length - offset);
+          if (count <= 0) break;
+          for (let qi = offset; qi < offset + count; qi++) {
+            result.push({ ...shuffledAll[qi], duration: lvTime, levelIndex: li, levelName: lv.name });
+          }
+          offset += count;
+        }
+        if (result.length > 0) {
+          gameQuestions = result;
+          preserveOrder = true;
+        }
+      }
+    } else if (diffDist) {
+      // Pick questions by difficulty bucket; fall back to untagged questions to fill gaps
+      const easyPool    = shuffleArray(gameQuestions.filter(q => q.difficulty === 1));
+      const mediumPool  = shuffleArray(gameQuestions.filter(q => q.difficulty === 2));
+      const hardPool    = shuffleArray(gameQuestions.filter(q => q.difficulty === 3));
+      const untaggedPool = shuffleArray(gameQuestions.filter(q => !q.difficulty));
+
+      let untaggedIdx = 0;
+      const takeBucket = (pool: GameQuestion[], count: number): GameQuestion[] => {
+        const picked = pool.slice(0, count);
+        const deficit = count - picked.length;
+        if (deficit > 0) {
+          const filler = untaggedPool.slice(untaggedIdx, untaggedIdx + deficit);
+          untaggedIdx += filler.length;
+          picked.push(...filler);
+        }
+        return picked;
+      };
+
+      const result = [
+        ...takeBucket(easyPool,   diffDist.easy),
+        ...takeBucket(mediumPool, diffDist.medium),
+        ...takeBucket(hardPool,   diffDist.hard),
+      ];
+      if (result.length > 0) gameQuestions = shuffleArray(result);
+    } else {
+      const perParticipant = challenge.questionsPerParticipant;
+      if (perParticipant != null && perParticipant > 0 && perParticipant < gameQuestions.length) {
+        gameQuestions = shuffleArray(gameQuestions).slice(0, perParticipant);
+      }
     }
 
     const game = createGame(
@@ -665,6 +809,12 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
       duration,
       true,
       "solo",
+      2,
+      undefined,
+      null,
+      false,
+      null,
+      preserveOrder,
     );
 
     startGameFromRest(game.pin);
