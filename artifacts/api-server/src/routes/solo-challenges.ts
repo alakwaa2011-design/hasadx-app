@@ -106,6 +106,8 @@ type SoloQuestion = {
   correctAnswer: "A" | "B" | "C" | "D";
   /** 1=easy, 2=medium, 3=hard — matches questions.difficulty column */
   difficulty?: number | null;
+  /** Audio source: object-storage path or "yt:VIDEO_ID" */
+  audioUrl?: string | null;
 };
 
 function validateQuestions(raw: unknown): SoloQuestion[] | null {
@@ -123,6 +125,8 @@ function validateQuestions(raw: unknown): SoloQuestion[] | null {
       : "mcq";
     // For true_false questions auto-fill options so they're never blank
     const isTF = questionType === "true_false";
+    const rawAudio = obj.audioUrl;
+    const audioUrl: string | null = (typeof rawAudio === "string" && rawAudio.trim()) ? rawAudio.trim() : null;
     valid.push({
       text: (obj.text as string).trim(),
       questionType,
@@ -132,6 +136,7 @@ function validateQuestions(raw: unknown): SoloQuestion[] | null {
       optionD: isTF ? ""    : (typeof obj.optionD === "string" ? obj.optionD.trim() : ""),
       correctAnswer: obj.correctAnswer as "A"|"B"|"C"|"D",
       difficulty: [1, 2, 3].includes(rawDiff) ? rawDiff : null,
+      audioUrl,
     });
   }
   return valid.length > 0 ? valid : null;
@@ -205,30 +210,27 @@ router.get("/solo-challenges", async (req, res) => {
 
     const rows = await db
       .select({
-        id: soloChallengesTable.id,
-        slug: soloChallengesTable.slug,
-        shortSlug: soloChallengesTable.shortSlug,
-        assignmentId: soloChallengesTable.assignmentId,
-        assignmentTitle: soloChallengesTable.assignmentTitle,
-        notes: soloChallengesTable.notes,
-        expiresAt: soloChallengesTable.expiresAt,
-        timePerQuestion: soloChallengesTable.timePerQuestion,
-        questionsPerParticipant: soloChallengesTable.questionsPerParticipant,
-        leaderboardDisplay: soloChallengesTable.leaderboardDisplay,
-        maxAttempts: soloChallengesTable.maxAttempts,
-        playCount: soloChallengesTable.playCount,
-        createdAt: soloChallengesTable.createdAt,
+        playerName: soloChallengeScoresTable.playerName,
+        score: soloChallengeScoresTable.score,
+        correctCount: soloChallengeScoresTable.correctCount,
+        timeTaken: soloChallengeScoresTable.timeTaken,
+        playedAt: soloChallengeScoresTable.playedAt,
       })
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.teacherId, teacherId))
-      .orderBy(desc(soloChallengesTable.createdAt));
+      .from(soloChallengeScoresTable)
+      .where(eq(soloChallengeScoresTable.slug, slug))
+      .orderBy(
+        desc(soloChallengeScoresTable.correctCount),
+        asc(soloChallengeScoresTable.timeTaken),
+        desc(soloChallengeScoresTable.score),
+      )
+      .limit(limit);
 
     const now = new Date();
-    const result = rows.map(r => ({
-      ...r,
-      isStandalone: r.assignmentId === null,
-      isExpired: r.expiresAt ? new Date(r.expiresAt) < now : false,
-    }));
+      const result = [
+        ...takeBucket(easyPool,   diffDist.easy),
+        ...takeBucket(mediumPool, diffDist.medium),
+        ...takeBucket(hardPool,   diffDist.hard),
+      ];
 
     res.json(result);
   } catch (err) {
@@ -243,7 +245,7 @@ router.post("/solo-challenges", async (req, res) => {
     const teacherId = requireTeacher(req, res);
     if (!teacherId) return;
 
-    const assignmentId = Number(req.body?.assignmentId);
+    const assignmentId = Number(req.params.assignmentId);
     if (!assignmentId) return res.status(400).json({ message: "معرّف الواجب مطلوب" });
 
     const [assignment] = await db
@@ -256,9 +258,12 @@ router.post("/solo-challenges", async (req, res) => {
 
     // Return existing link if already created
     const [existing] = await db
-      .select()
-      .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.assignmentId, assignmentId))
+      .select({ id: soloChallengeScoresTable.id })
+      .from(soloChallengeScoresTable)
+      .where(and(
+        eq(soloChallengeScoresTable.id, scoreId),
+        eq(soloChallengeScoresTable.slug, req.params.slug),
+      ))
       .limit(1);
 
     if (existing) {
@@ -274,24 +279,40 @@ router.post("/solo-challenges", async (req, res) => {
       return res.json({ slug: existing.slug, shortSlug: existing.shortSlug ?? null, playCount: existing.playCount, assignmentTitle: existing.assignmentTitle });
     }
 
-    const base = titleToSlug(assignment.title);
-    const slug = await uniqueSlug(base);
-    const shortSlug = `${arabicToLatinSlug(assignment.title)}-${randomSuffix()}`;
+    const base = titleToSlug(title);
+    const slug = req.params.slug;
+    const shortSlug = `${arabicToLatinSlug(title)}-${randomSuffix()}`;
 
     const [created] = await db
       .insert(soloChallengesTable)
-      .values({ slug, shortSlug, assignmentId, teacherId, assignmentTitle: assignment.title })
+      .values({
+        slug,
+        shortSlug,
+        assignmentId: null,
+        teacherId,
+        assignmentTitle: title,
+        questions,
+        timePerQuestion,
+        questionsPerParticipant: difficultyDistribution ? null : questionsPerParticipant,
+        leaderboardDisplay,
+        maxAttempts,
+        notes,
+        expiresAt,
+        isMultiLevel,
+        levels,
+        difficultyDistribution,
+      } as any)
       .returning();
 
-    res.json({ slug: created.slug, shortSlug: created.shortSlug ?? null, playCount: 0, assignmentTitle: created.assignmentTitle });
+    res.json({ slug: created.slug, shortSlug: created.shortSlug ?? null });
   } catch (err) {
-    req.log.error(err, "Create solo challenge error");
-    res.status(500).json({ message: "خطأ في إنشاء الرابط" });
+    req.log.error(err, "Create standalone solo challenge error");
+    res.status(500).json({ message: "خطأ في إنشاء المسابقة" });
   }
 });
 
-// ── POST /api/solo-challenges/standalone  (teacher: create with inline questions) ──
-router.post("/solo-challenges/standalone", async (req, res) => {
+// ── GET /api/solo-challenges/by-assignment/:assignmentId  (teacher) ─────────
+router.get("/solo-challenges/by-assignment/:assignmentId", async (req, res) => {
   try {
     const teacherId = requireTeacher(req, res);
     if (!teacherId) return;
@@ -315,13 +336,13 @@ router.post("/solo-challenges/standalone", async (req, res) => {
       }
       maxAttempts = ma;
     }
-    const notes = typeof req.body?.notes === "string" ? req.body.notes.slice(0, 1000) || null : null;
+    const notes = req.body?.notes != null ? String(req.body.notes).slice(0, 1000) || null : null;
     const expiresAt = req.body?.expiresAt ? new Date(req.body.expiresAt) : null;
     if (expiresAt && isNaN(expiresAt.getTime())) return res.status(400).json({ message: "تاريخ الانتهاء غير صالح" });
 
     let questionsPerParticipant: number | null = null;
     if (req.body?.questionsPerParticipant != null && req.body?.questionsPerParticipant !== "") {
-      const n = Number(req.body.questionsPerParticipant);
+        const n = Number(req.body.questionsPerParticipant);
       if (isNaN(n) || !Number.isInteger(n)) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق غير صالح" });
       if (n < 1 || n > questions.length) return res.status(400).json({ message: "عدد الأسئلة لكل متسابق يجب أن يكون بين 1 وعدد الأسئلة الكلي" });
       questionsPerParticipant = n;
@@ -332,7 +353,7 @@ router.post("/solo-challenges/standalone", async (req, res) => {
     const difficultyDistribution = validateDifficultyDistribution(req.body?.difficultyDistribution);
 
     const base = titleToSlug(title);
-    const slug = await uniqueSlug(base);
+    const slug = req.params.slug;
     const shortSlug = `${arabicToLatinSlug(title)}-${randomSuffix()}`;
 
     const [created] = await db
@@ -390,13 +411,12 @@ router.get("/solo-challenges/:slug/teacher", async (req, res) => {
     if (!teacherId) return;
 
     const [challenge] = await db
-      .select()
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
-    if (!challenge) return res.status(404).json({ message: "المسابقة غير موجودة" });
-    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
 
     const now = new Date();
     const isExpired = challenge.expiresAt ? new Date(challenge.expiresAt) < now : false;
@@ -445,7 +465,6 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
 
     const rows = await db
       .select({
-        id: soloChallengeScoresTable.id,
         playerName: soloChallengeScoresTable.playerName,
         score: soloChallengeScoresTable.score,
         correctCount: soloChallengeScoresTable.correctCount,
@@ -453,12 +472,13 @@ router.get("/solo-challenges/:slug/participants", async (req, res) => {
         playedAt: soloChallengeScoresTable.playedAt,
       })
       .from(soloChallengeScoresTable)
-      .where(eq(soloChallengeScoresTable.slug, req.params.slug))
+      .where(eq(soloChallengeScoresTable.slug, slug))
       .orderBy(
         desc(soloChallengeScoresTable.correctCount),
         asc(soloChallengeScoresTable.timeTaken),
         desc(soloChallengeScoresTable.score),
-      );
+      )
+      .limit(limit);
 
     res.json(rows);
   } catch (err) {
@@ -501,7 +521,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
     if (!teacherId) return;
 
     const [challenge] = await db
-      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId, assignmentId: soloChallengesTable.assignmentId, questions: soloChallengesTable.questions })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
@@ -524,7 +544,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       }
     }
     if ("timePerQuestion" in req.body) {
-      const t = Number(req.body.timePerQuestion);
+      const t = String(req.body.title || "").trim();
       if (!isNaN(t)) update.timePerQuestion = Math.max(5, Math.min(120, t));
     }
     if ("leaderboardDisplay" in req.body) {
@@ -544,7 +564,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       if (t.length > 0 && t.length <= 200) update.assignmentTitle = t;
     }
     if ("questions" in req.body && challenge.assignmentId === null) {
-      const qs = validateQuestions(req.body.questions);
+      const qs = validateQuestions(challenge.questions);
       if (!qs) return res.status(400).json({ message: "يجب وجود سؤال واحد صالح على الأقل" });
       if (qs.length > 100) return res.status(400).json({ message: "الحد الأقصى 100 سؤال" });
       update.questions = qs;
@@ -563,13 +583,13 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
             ? (update.questions as unknown[]).length
             : (Array.isArray(challenge.questions) ? (challenge.questions as unknown[]).length : 0);
         } else {
-          const [cnt] = await db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(questionsTable)
-            .where(and(
-              eq(questionsTable.assignmentId, challenge.assignmentId),
-              sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
-            ));
+      const [cnt] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(questionsTable)
+        .where(and(
+          eq(questionsTable.assignmentId, challenge.assignmentId!),
+          sql`${questionsTable.questionType} IN ('mcq','true_false','fill_blank','dictation')`,
+        ));
           totalQuestions = cnt?.count ?? 0;
         }
         if (n > totalQuestions) {
@@ -595,7 +615,7 @@ router.patch("/solo-challenges/:slug/settings", async (req, res) => {
       if (req.body.levels === null || (Array.isArray(req.body.levels) && req.body.levels.length === 0)) {
         update.levels = null;
       } else {
-        const lv = validateLevels(req.body.levels);
+          const lv = levelDefs[li];
         if (lv !== null) update.levels = lv;
       }
     }
@@ -622,25 +642,24 @@ router.delete("/solo-challenges/:slug", async (req, res) => {
       .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
-    if (!challenge) return res.status(404).json({ message: "المسابقة غير موجودة" });
-    if (challenge.teacherId !== teacherId) return res.status(403).json({ message: "غير مصرح" });
+    if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
 
-    await db.delete(soloChallengesTable).where(eq(soloChallengesTable.slug, req.params.slug));
+    await db.insert(soloChallengeScoresTable).values({ slug, playerName, score, correctCount, timeTaken: timeTaken ?? undefined });
     res.json({ ok: true });
   } catch (err) {
-    req.log.error(err, "Delete solo challenge error");
-    res.status(500).json({ message: "خطأ في حذف المسابقة" });
+    req.log.error(err, "Solo challenge score error");
+    res.status(500).json({ message: "خطأ في تسجيل الدرجة" });
   }
 });
 
-// ── GET /api/solo-challenges/:slug  (public: challenge metadata) ─────────────
-router.get("/solo-challenges/:slug", async (req, res) => {
+// ── GET /api/solo-challenges/:slug/leaderboard  (public: top scores) ─────────
+router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
   try {
     const slug = req.params.slug;
     const [challenge] = await db
-      .select()
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
+      .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
@@ -697,9 +716,9 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
   try {
     const slug = req.params.slug;
     const [challenge] = await db
-      .select()
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
+      .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
@@ -753,7 +772,11 @@ router.post("/solo-challenges/:slug/start", async (req, res) => {
       const levelDefs = ((challenge as any).levels as ChallengeLevel[] | null);
       if (levelDefs && levelDefs.length > 0) {
         const shuffledAll = shuffleArray(gameQuestions);
-        const result: GameQuestion[] = [];
+      const result = [
+        ...takeBucket(easyPool,   diffDist.easy),
+        ...takeBucket(mediumPool, diffDist.medium),
+        ...takeBucket(hardPool,   diffDist.hard),
+      ];
         let offset = 0;
         for (let li = 0; li < levelDefs.length; li++) {
           const lv = levelDefs[li];
@@ -851,9 +874,9 @@ router.post("/solo-challenges/:slug/score", async (req, res) => {
     if (!playerName) return res.status(400).json({ message: "الاسم مطلوب" });
 
     const [challenge] = await db
-      .select({ id: soloChallengesTable.id })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
+      .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "الرابط غير موجود" });
@@ -872,9 +895,9 @@ router.get("/solo-challenges/:slug/leaderboard", async (req, res) => {
     const slug = req.params.slug;
 
     const [challenge] = await db
-      .select({ leaderboardDisplay: soloChallengesTable.leaderboardDisplay })
+      .select({ id: soloChallengesTable.id, teacherId: soloChallengesTable.teacherId })
       .from(soloChallengesTable)
-      .where(eq(soloChallengesTable.slug, slug))
+      .where(eq(soloChallengesTable.slug, req.params.slug))
       .limit(1);
 
     if (!challenge) return res.status(404).json({ message: "المسابقة غير موجودة" });

@@ -8,13 +8,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap, ChevronLeft, Copy, Share2, ExternalLink, Users, Clock,
   Trophy, FileText, Calendar, CheckCircle, XCircle, Trash2,
-  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw,
+  Loader2, Check, Save, Edit3, BarChart2, Medal, RotateCw, Volume2, VolumeX, Music,
 } from "lucide-react";
+import AudioPicker from "@/components/AudioPicker";
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const API = import.meta.env.VITE_API_URL || "";
+
+interface SoloQuestion {
+  text: string;
+  questionType: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  difficulty?: number | null;
+  audioUrl?: string | null;
+}
 
 interface ChallengeTeacherData {
   id: number;
@@ -24,7 +37,7 @@ interface ChallengeTeacherData {
   assignmentTitle: string;
   notes: string | null;
   expiresAt: string | null;
-  questions: unknown[] | null;
+  questions: SoloQuestion[] | null;
   timePerQuestion: number | null;
   questionsPerParticipant: number | null;
   leaderboardDisplay: string | null;
@@ -78,6 +91,12 @@ export default function SoloChallengeManagePage() {
   const [deletingParticipantId, setDeletingParticipantId] = useState<number | null>(null);
   const isAdmin = Boolean((user as any)?.isAdmin);
 
+  // Questions editor (standalone only)
+  const [editQuestions, setEditQuestions] = useState<SoloQuestion[]>([]);
+  const [expandedAudio, setExpandedAudio] = useState<number | null>(null);
+  const [savingQuestions, setSavingQuestions] = useState(false);
+  const [questionsDirty, setQuestionsDirty] = useState(false);
+
   const load = useCallback(async () => {
     if (!slug) return;
     setLoading(true);
@@ -105,6 +124,9 @@ export default function SoloChallengeManagePage() {
       setEditExpires(
         chal.expiresAt ? new Date(chal.expiresAt).toISOString().slice(0, 16) : ""
       );
+      if (chal.assignmentId === null && Array.isArray(chal.questions)) {
+        setEditQuestions(chal.questions as SoloQuestion[]);
+      }
     } catch {
       toast.error("خطأ في تحميل البيانات");
     } finally {
@@ -204,6 +226,33 @@ export default function SoloChallengeManagePage() {
   };
 
   const mark = () => setSettingsDirty(true);
+
+  const saveQuestions = async () => {
+    if (!challenge) return;
+    setSavingQuestions(true);
+    try {
+      const res = await fetch(`${API}/api/solo-challenges/${encodeURIComponent(slug!)}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ questions: editQuestions }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message);
+      toast.success("تم حفظ الأسئلة");
+      setQuestionsDirty(false);
+      setExpandedAudio(null);
+      setChallenge(prev => prev ? { ...prev, questions: editQuestions, questionCount: editQuestions.length } : prev);
+    } catch (err: any) {
+      toast.error(err.message || "فشل حفظ الأسئلة");
+    } finally {
+      setSavingQuestions(false);
+    }
+  };
+
+  const updateQuestionAudio = (idx: number, audioUrl: string | null) => {
+    setEditQuestions(qs => qs.map((q, i) => i === idx ? { ...q, audioUrl: audioUrl ?? undefined } : q));
+    setQuestionsDirty(true);
+  };
 
   if (authLoading || loading) {
     return (
@@ -472,6 +521,78 @@ export default function SoloChallengeManagePage() {
             )}
           </div>
         </div>
+
+        {/* Questions editor — standalone only */}
+        {challenge.isStandalone && editQuestions.length > 0 && (
+          <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3.5 border-b border-border/40 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-muted-foreground" />
+                <h2 className="font-bold text-sm text-foreground">تعديل صوت الأسئلة</h2>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  {editQuestions.filter(q => q.audioUrl).length}/{editQuestions.length} صوتي
+                </span>
+              </div>
+              {questionsDirty && (
+                <button
+                  onClick={saveQuestions}
+                  disabled={savingQuestions}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                >
+                  {savingQuestions ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                  حفظ
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-border/30">
+              {editQuestions.map((q, idx) => (
+                <div key={idx}>
+                  <button
+                    onClick={() => setExpandedAudio(expandedAudio === idx ? null : idx)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-start"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[11px] font-black text-muted-foreground shrink-0">
+                      {idx + 1}
+                    </span>
+                    <p className="flex-1 text-xs text-foreground line-clamp-2 text-right">{q.text}</p>
+                    <span className={cn(
+                      "shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
+                      q.audioUrl
+                        ? "bg-green-500/10 text-green-600"
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {q.audioUrl
+                        ? <><Volume2 className="w-3 h-3" /> صوتي</>
+                        : <><VolumeX className="w-3 h-3" /> بلا صوت</>
+                      }
+                    </span>
+                  </button>
+                  {expandedAudio === idx && (
+                    <div className="px-4 pb-4">
+                      <AudioPicker
+                        value={q.audioUrl ?? null}
+                        onChange={(url) => updateQuestionAudio(idx, url)}
+                        uploadEndpoint="/api/islamic/teacher/uploads/audio-url"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {questionsDirty && (
+                <div className="px-4 py-3">
+                  <button
+                    onClick={saveQuestions}
+                    disabled={savingQuestions}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+                  >
+                    {savingQuestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {savingQuestions ? "جاري الحفظ..." : "حفظ تعديلات الصوت"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Participants */}
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
