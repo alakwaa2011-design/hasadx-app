@@ -78,6 +78,39 @@ router.post("/storage/uploads/request-image-url", async (req: Request, res: Resp
   }
 });
 
+router.post("/storage/uploads/request-audio-url", async (req: Request, res: Response) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const parsed = RequestUploadUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const { name, size, contentType } = parsed.data;
+  if (!contentType.startsWith("audio/")) {
+    res.status(400).json({ error: "Only audio files are allowed" });
+    return;
+  }
+  const MAX_SIZE = 30 * 1024 * 1024;
+  if (size > MAX_SIZE) {
+    res.status(400).json({ error: "Audio file exceeds 30MB limit" });
+    return;
+  }
+
+  try {
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+  } catch (error) {
+    req.log.error({ err: error }, "Error generating audio upload URL");
+    res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
 router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
   try {
     const raw = req.params.filePath;

@@ -10,6 +10,7 @@ import {
 import { useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { toast } from "@/components/ui/sonner";
+import AudioPlayer from "@/components/AudioPlayer";
 import {
   fetchArenaCategories, fetchArenaActivities,
   createArenaCategory, updateArenaCategory, deleteArenaCategory,
@@ -1312,11 +1313,16 @@ function ActivityEditor({
                     dir="ltr"
                   />
                   {ytId && (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold"
-                      style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green, border: "1px solid rgba(34,87,57,0.2)" }}>
-                      ✓ تم التعرف على معرّف الفيديو: <span dir="ltr" className="font-mono">{ytId}</span>
-                      <span className="mr-auto text-xs font-normal opacity-70">سيُشغَّل صوتاً فقط</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold"
+                        style={{ background: "rgba(34,87,57,0.08)", color: BRAND.green, border: "1px solid rgba(34,87,57,0.2)" }}>
+                        ✓ تم التعرف على معرّف الفيديو: <span dir="ltr" className="font-mono">{ytId}</span>
+                        <span className="mr-auto text-xs font-normal opacity-70">سيُشغَّل صوتاً فقط</span>
+                      </div>
+                      <div className="mt-1">
+                        <AudioPlayer src={`yt:${ytId}`} />
+                      </div>
+                    </>
                   )}
                   {ytInput && !ytId && (
                     <p className="text-xs text-red-600 font-medium">⚠ رابط يوتيوب غير صالح</p>
@@ -1349,7 +1355,9 @@ function ActivityEditor({
                     />
                   </label>
                   {audioUrl && audioMode === "file" && !audioUrl.includes("youtube") && (
-                    <audio controls src={audioUrl} className="w-full rounded-lg mt-1" />
+                    <div className="mt-1">
+                      <AudioPlayer src={audioUrl} />
+                    </div>
                   )}
                 </div>
               )}
@@ -1386,12 +1394,14 @@ function ActivityEditor({
                       </button>
                     </div>
                   )}
+                  {audioUrl && audioMode === "record" && !audioUploading && (
+                    <div className="mt-1">
+                      <AudioPlayer src={audioUrl} />
+                    </div>
+                  )}
                 </div>
               )}
 
-              {audioUrl && (
-                <p className="text-xs text-green-700 font-medium truncate">✓ رابط الصوت: {audioUrl.slice(0,60)}…</p>
-              )}
             </div>
           )}
 

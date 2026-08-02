@@ -312,10 +312,10 @@ export async function uploadImageFile(file: File): Promise<string | null> {
   }
 }
 
-/** Upload an audio file (mp3/ogg/wav/m4a/webm) — reuses the same presigned-URL flow. */
+/** Upload an audio file (mp3/ogg/wav/m4a/webm) via the dedicated audio upload endpoint. */
 export async function uploadAudioFile(file: File): Promise<string | null> {
   try {
-    const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
+    const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-audio-url`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
