@@ -1043,7 +1043,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
 
 router.post("/auth/reset-password", authLimiter, async (req, res) => {
   try {
-  const parsed = BriefPreferencesSchema.safeParse(req.body);
+    const parsed = ResetPasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       const issue = parsed.error.issues[0]?.path[0];
       const message =
@@ -1058,28 +1058,31 @@ router.post("/auth/reset-password", authLimiter, async (req, res) => {
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
     const newHash = await bcrypt.hash(newPassword, 10);
 
-    // Atomically claim the token: only one concurrent request can succeed.
-    const claimed = await db
-      .delete(trustedDevicesTable)
+    // Find the valid token record.
+    const [record] = await db
+      .select()
+      .from(passwordResetTokensTable)
       .where(
         and(
-          eq(trustedDevicesTable.revokeTokenHash, tokenHash),
-          gt(trustedDevicesTable.revokeTokenExpiresAt, new Date()),
+          eq(passwordResetTokensTable.tokenHash, tokenHash),
+          isNull(passwordResetTokensTable.usedAt),
+          gt(passwordResetTokensTable.expiresAt, new Date()),
         ),
       )
-      .returning({ id: trustedDevicesTable.id, teacherId: trustedDevicesTable.teacherId });
+      .limit(1);
 
-    if (claimed.length === 0) {
-      renderRevokePage(res, 400, {
-        title: "الرابط منتهي أو مستخدم",
-        message:
-          "الرابط غير صالح أو تم استخدامه مسبقاً. إذا كنت قلقاً على حسابك يرجى تسجيل الدخول وتغيير كلمة المرور فوراً.",
-        link: { href: `${baseUrl}/forgot-password`, label: "إعادة تعيين كلمة المرور" },
-      });
+    if (!record) {
+      res.status(400).json({ message: "رابط الاستعادة غير صالح أو منتهي الصلاحية" });
       return;
     }
 
-  const teacherId = sess?.teacherId ?? null;
+    // Mark the token as used so it cannot be replayed.
+    await db
+      .update(passwordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResetTokensTable.tokenHash, tokenHash));
+
+    const teacherId = record.teacherId;
     await db
       .update(teachersTable)
       .set({ passwordHash: newHash })
@@ -1097,9 +1100,9 @@ router.post("/auth/reset-password", authLimiter, async (req, res) => {
 
 router.get("/auth/reset-password/verify", async (req, res) => {
   try {
-    const token = parsed.success ? parsed.data.token ?? "" : "";
+    const token = (req.query.token as string) || "";
     if (!token) {
-      renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
+      res.json({ valid: false });
       return;
     }
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");

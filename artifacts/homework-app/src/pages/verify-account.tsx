@@ -32,7 +32,10 @@ export default function VerifyAccountPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [otpSent, setOtpSent] = useState(false);
+  // If the banner already sent the OTP before navigating here, skip straight to entry
+  const [otpSent, setOtpSent] = useState(() =>
+    new URLSearchParams(window.location.search).get("sent") === "1"
+  );
 
   // Redirect if not logged in
   useEffect(() => {

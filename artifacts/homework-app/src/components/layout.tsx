@@ -29,6 +29,7 @@ import {
   Star,
   Search,
   ShieldAlert,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -121,7 +122,7 @@ function VerificationNudgeBanner({
           )}
           {sent && (
             <a
-              href="/verify-account"
+              href="/verify-account?sent=1"
               className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold transition-all"
               style={{ background: "rgba(245,158,11,0.15)", color: "#92400e" }}
             >
@@ -386,6 +387,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             transition={{ duration: 0.12 }}
                             className="absolute end-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-lg py-1.5 z-50"
                           >
+                            <Link
+                              href="/teacher/settings"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
+                            >
+                              <Settings className="w-4 h-4 text-muted-foreground" />
+                              {lang === "ar" ? "الإعدادات والحساب" : "Settings & Account"}
+                            </Link>
                             <button
                               onClick={() => {
                                 cycleColorScheme();
@@ -666,6 +675,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               ? "تلقائي"
                               : "System"}
                       </button>
+                      <Link
+                        href="/teacher/settings"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 w-full transition-colors"
+                      >
+                        <Settings className="w-5 h-5" />
+                        {lang === "ar" ? "الإعدادات والحساب" : "Settings & Account"}
+                      </Link>
                       <div className="border-t border-border/40 my-1" />
                       <button
                         onClick={() => {
