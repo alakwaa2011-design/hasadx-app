@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
-import { Trophy, Flame, Star, Users, UserPlus, UserMinus, Loader2 } from "lucide-react";
+import { Trophy, Flame, Star, Users, UserPlus, UserMinus, Loader2, BadgeCheck } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -16,7 +16,7 @@ interface FollowerSummary {
 }
 
 interface ProfileResp {
-  teacher: { id: number; name: string; displaySchool: string | null; profileSlug: string | null };
+  teacher: { id: number; name: string; displaySchool: string | null; profileSlug: string | null; emailVerified: boolean };
   stats: {
     totalXp: number;
     level: number;
@@ -117,7 +117,14 @@ export default function TeacherPublicProfile() {
       <div className="max-w-3xl mx-auto p-4 space-y-4" dir="rtl">
         <Card className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 text-center">
           <div className="text-5xl">👨‍🏫</div>
-          <h1 className="text-2xl font-bold mt-2">{data.teacher.name}</h1>
+          <h1 className="text-2xl font-bold mt-2 flex items-center justify-center gap-2">
+            {data.teacher.name}
+            {data.teacher.emailVerified && (
+              <span title="حساب موثّق">
+                <BadgeCheck className="w-6 h-6 text-indigo-500 shrink-0" />
+              </span>
+            )}
+          </h1>
           {data.teacher.displaySchool && <p className="text-gray-700">{data.teacher.displaySchool}</p>}
           <p className="text-indigo-700 font-semibold mt-2">
             {data.stats.levelNameAr} · المستوى {data.stats.level}
@@ -151,8 +158,20 @@ export default function TeacherPublicProfile() {
               </Button>
             </div>
           )}
+          {data.isOwner && !data.teacher.emailVerified && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+              <BadgeCheck className="w-4 h-4 shrink-0" />
+              <span>
+                حسابك غير موثّق بعد.{" "}
+                <Link href="/teacher/settings#verify" className="font-semibold underline">
+                  وثّق حسابك الآن
+                </Link>
+                {" "}لإظهار شارة التوثيق.
+              </span>
+            </div>
+          )}
           {data.isOwner && (
-            <p className="mt-4 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-gray-500">
               هذا ملفك العام. يمكنك تعديل إعداداته من{" "}
               <Link href="/teacher/settings" className="text-indigo-700 underline">
                 الإعدادات

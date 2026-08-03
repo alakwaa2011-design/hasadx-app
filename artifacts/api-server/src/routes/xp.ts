@@ -434,6 +434,7 @@ async function publicProfileHandler(
         displaySchool: teachersTable.displaySchool,
         profileSlug: teachersTable.profileSlug,
         publicProfileEnabled: teachersTable.publicProfileEnabled,
+        emailVerified: teachersTable.emailVerified,
       })
       .from(teachersTable)
       .where(
@@ -525,6 +526,7 @@ async function publicProfileHandler(
         name: t.name,
         displaySchool: t.displaySchool,
         profileSlug: t.profileSlug,
+        emailVerified: t.emailVerified ?? false,
       },
       stats: {
         totalXp,
