@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
+import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { Trophy, Flame, Star, Users, UserPlus, UserMinus, Loader2, BadgeCheck } from "lucide-react";
@@ -120,9 +121,14 @@ export default function TeacherPublicProfile() {
           <h1 className="text-2xl font-bold mt-2 flex items-center justify-center gap-2">
             {data.teacher.name}
             {data.teacher.emailVerified && (
-              <span title="حساب موثّق">
+              <motion.span
+                title="حساب موثّق"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 18, delay: 0.2 }}
+              >
                 <BadgeCheck className="w-6 h-6 text-indigo-500 shrink-0" />
-              </span>
+              </motion.span>
             )}
           </h1>
           {data.teacher.displaySchool && <p className="text-gray-700">{data.teacher.displaySchool}</p>}
