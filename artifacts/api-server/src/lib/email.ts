@@ -4,7 +4,7 @@ const RESEND_CONNECTOR = "resend";
 
 let cachedClient: { client: Resend; expiresAt: number } | null = null;
 
-async function fetchConnectorCredentials(): Promise<{ apiKey: string } | null> {
+async function fetchConnectorCredentials(): Promise<{ apiKey: string; fromEmail?: string } | null> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken =
     process.env.REPL_IDENTITY
@@ -17,19 +17,30 @@ async function fetchConnectorCredentials(): Promise<{ apiKey: string } | null> {
 
   try {
     const response = await fetch(
-      `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=${RESEND_CONNECTOR}`,
+      `https://${hostname}/api/v2/connection?include_secrets=true`,
       { headers: { Accept: "application/json", X_REPLIT_TOKEN: xReplitToken } },
     );
     if (!response.ok) return null;
     const data = (await response.json()) as {
-      items?: Array<{ settings?: { api_key?: string } }>;
+      items?: Array<{
+        connector_name?: string;
+        id?: string;
+        settings?: { api_key?: string; from_email?: string };
+      }>;
     };
-    const apiKey = data.items?.[0]?.settings?.api_key;
-    return apiKey ? { apiKey } : null;
+    const item = data.items?.find(
+      (i) =>
+        i.connector_name === RESEND_CONNECTOR ||
+        i.id?.startsWith("conn_resend_"),
+    );
+    const apiKey = item?.settings?.api_key;
+    return apiKey ? { apiKey, fromEmail: item?.settings?.from_email } : null;
   } catch {
     return null;
   }
 }
+
+let cachedFromEmail: string | undefined;
 
 async function getResendClient(): Promise<Resend | null> {
   const envKey = process.env.RESEND_API_KEY;
@@ -44,6 +55,7 @@ async function getResendClient(): Promise<Resend | null> {
 
   const client = new Resend(creds.apiKey);
   cachedClient = { client, expiresAt: Date.now() + 5 * 60 * 1000 };
+  cachedFromEmail = creds.fromEmail;
   return client;
 }
 
@@ -67,8 +79,11 @@ export async function sendEmail(
     return { delivered: false, reason: "resend_not_configured" };
   }
 
-  const from =
-    process.env.RESEND_FROM_EMAIL || "Hassad <onboarding@resend.dev>";
+  const fromAddress =
+    process.env.RESEND_FROM_EMAIL || cachedFromEmail || "noreply@hasaadx.com";
+  const from = fromAddress.includes("<")
+    ? fromAddress
+    : `Hassad <${fromAddress}>`;
 
   try {
     const { error } = await client.emails.send({
