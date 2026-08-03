@@ -1029,7 +1029,10 @@ export default function Auth() {
         postAuthRedirect(data.teacher.role ?? null, data.teacher.isAdmin ?? null);
       },
       onError: (err: Error & { message?: string }) => {
-        if (err.message === "NEEDS_VERIFICATION") {
+        // ApiError.message is prefixed ("HTTP 403 Forbidden: NEEDS_VERIFICATION"),
+        // so check the structured data payload instead.
+        const apiErr = err as any;
+        if (apiErr?.data?.message === "NEEDS_VERIFICATION") {
           const identifier = usePhone
             ? `${selectedCountry.code}${phone}`
             : email;

@@ -5,19 +5,22 @@ import {
   useUpdateTeacherProfile,
   type TeacherProfileRole,
 } from "@workspace/api-client-react";
+import { getGetCurrentTeacherQueryKey } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Card, Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, User, Mail, Phone, Save, ArrowRight, ArrowLeft,
   Shield, Lock, Eye, EyeOff, Settings, Sun, Moon, Monitor,
   BookOpen, Crown, GraduationCap, Globe, Link as LinkIcon,
+  ShieldCheck, CheckCircle2, RotateCcw, AlertCircle,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDarkMode, type ColorScheme } from "@/lib/dark-mode";
 import { cn } from "@/lib/utils";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -54,6 +57,74 @@ export default function TeacherSettings() {
   // `role` column hasn't been backfilled yet.
   const isAdminView = isAdminUser || currentRole === "admin";
   const [savingRole, setSavingRole] = useState(false);
+
+  // ── Verification state ────────────────────────────────────────────────────
+  const [verifyOtpSent, setVerifyOtpSent] = useState(false);
+  const [verifyOtp, setVerifyOtp] = useState("");
+  const [verifySending, setVerifySending] = useState(false);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [verifySuccess, setVerifySuccess] = useState(false);
+  const [verifyCountdown, setVerifyCountdown] = useState(0);
+
+  useEffect(() => {
+    if (verifyCountdown <= 0) return;
+    const t = setTimeout(() => setVerifyCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [verifyCountdown]);
+
+  const verifyIdentifier = (user as any)?.email || (user as any)?.phone || "";
+  const verifyChannel: "email" | "sms" = (user as any)?.email ? "email" : "sms";
+  const verifyMasked = verifyChannel === "email"
+    ? verifyIdentifier.replace(/(.{2})(.+)(@.+)/, (_: string, a: string, _b: string, c: string) => `${a}***${c}`)
+    : verifyIdentifier.replace(/(\+\d{3})\d+(\d{4})/, "$1***$2");
+
+  const handleSendOtp = async () => {
+    if (verifySending || verifyCountdown > 0) return;
+    setVerifySending(true);
+    setVerifyError("");
+    try {
+      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier: verifyIdentifier }),
+      });
+      setVerifyOtpSent(true);
+      setVerifyCountdown(60);
+    } catch {
+      setVerifyError(lang === "ar" ? "تعذّر إرسال الرمز" : "Failed to send code");
+    } finally {
+      setVerifySending(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (verifyOtp.length !== 6) return;
+    setVerifyLoading(true);
+    setVerifyError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier: verifyIdentifier, otp: verifyOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setVerifyError(data.message || (lang === "ar" ? "رمز غير صحيح" : "Invalid code"));
+        setVerifyLoading(false);
+        return;
+      }
+      setVerifySuccess(true);
+      // Invalidate so nudge banner disappears across all pages
+      queryClient.invalidateQueries({ queryKey: getGetCurrentTeacherQueryKey() });
+      toast.success(lang === "ar" ? "تم التحقق من حسابك بنجاح! 🎉" : "Account verified successfully! 🎉");
+    } catch {
+      setVerifyError(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Connection error");
+      setVerifyLoading(false);
+    }
+  };
 
   const handleChangeRole = async (newRole: "teacher" | "organizer") => {
     if (newRole === currentRole) return;
@@ -636,6 +707,131 @@ export default function TeacherSettings() {
               </Button>
             </form>
           </Card>
+
+          {/* Verification Section */}
+          {(() => {
+            const isVerified = Boolean((user as any)?.emailVerified);
+            return (
+              <Card className="p-6 sm:p-8 shadow-xl border-t-4 border-t-emerald-600 mb-6">
+                <h2 className="text-lg font-extrabold text-foreground mb-1 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  {lang === "ar" ? "التحقق من الحساب" : "Account Verification"}
+                </h2>
+                <p className="text-sm text-muted-foreground mb-5">
+                  {lang === "ar"
+                    ? "تحقق من حسابك للاحتفاظ ببياناتك وتفعيل استعادة كلمة المرور."
+                    : "Verify your account to keep your data and enable password recovery."}
+                </p>
+
+                {isVerified || verifySuccess ? (
+                  <div
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold"
+                    style={{
+                      background: "rgba(22,163,74,0.10)",
+                      border: "1px solid rgba(22,163,74,0.30)",
+                      color: "#15803d",
+                    }}
+                  >
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    {lang === "ar" ? "الحساب موثّق ✓" : "Account verified ✓"}
+                  </div>
+                ) : (
+                  <>
+                    {!verifyOtpSent ? (
+                      <div className="space-y-4">
+                        <div
+                          className="rounded-xl p-4 text-sm leading-relaxed"
+                          style={{
+                            background: "rgba(245,158,11,0.08)",
+                            border: "1px solid rgba(245,158,11,0.25)",
+                            color: "#78350f",
+                          }}
+                        >
+                          {lang === "ar"
+                            ? "سنرسل رمزاً للتحقق إلى"
+                            : "We'll send a verification code to"}{" "}
+                          <span className="font-bold" dir="ltr">{verifyMasked}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full py-3 gap-2"
+                          onClick={handleSendOtp}
+                          disabled={verifySending}
+                          style={{ background: "linear-gradient(135deg,#1a4731,#2a6647)", color: "#fff" }}
+                        >
+                          {verifySending
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <ShieldCheck className="w-4 h-4" />}
+                          {verifySending
+                            ? (lang === "ar" ? "جارٍ الإرسال..." : "Sending...")
+                            : (lang === "ar" ? "تحقق الآن" : "Verify now")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-sm text-center" style={{ color: "#3a6a4d" }}>
+                          {lang === "ar" ? "تم إرسال الرمز إلى" : "Code sent to"}{" "}
+                          <span className="font-bold" dir="ltr">{verifyMasked}</span>
+                        </p>
+
+                        <div className="flex justify-center" dir="ltr">
+                          <InputOTP maxLength={6} value={verifyOtp} onChange={setVerifyOtp} onComplete={handleVerifyOtp}>
+                            <InputOTPGroup>
+                              {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <InputOTPSlot key={i} index={i} className="w-11 h-12 text-lg font-black" />
+                              ))}
+                            </InputOTPGroup>
+                          </InputOTP>
+                        </div>
+
+                        <AnimatePresence>
+                          {verifyError && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="p-3 rounded-xl bg-destructive/8 border border-destructive/20 flex items-center gap-2 text-destructive text-sm"
+                            >
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              {verifyError}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <Button
+                          type="button"
+                          className="w-full py-3 gap-2"
+                          disabled={verifyOtp.length !== 6 || verifyLoading}
+                          onClick={handleVerifyOtp}
+                          style={{ background: "linear-gradient(135deg,#1a4731,#2a6647)", color: "#fff" }}
+                        >
+                          {verifyLoading
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <CheckCircle2 className="w-4 h-4" />}
+                          {verifyLoading
+                            ? (lang === "ar" ? "جارٍ التحقق..." : "Verifying...")
+                            : (lang === "ar" ? "تأكيد الرمز" : "Confirm code")}
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={handleSendOtp}
+                          disabled={verifyCountdown > 0 || verifySending}
+                          className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-2 rounded-xl disabled:opacity-50"
+                          style={{ color: verifyCountdown > 0 ? "#9ca3af" : "#1a4731" }}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          {verifyCountdown > 0
+                            ? (lang === "ar" ? `إعادة الإرسال بعد ${verifyCountdown}ث` : `Resend in ${verifyCountdown}s`)
+                            : (lang === "ar" ? "إعادة إرسال الرمز" : "Resend code")}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card>
+            );
+          })()}
 
           {/* Security Section */}
           <Card className="p-6 sm:p-8 shadow-xl border-t-4 border-t-amber-500 mb-6">

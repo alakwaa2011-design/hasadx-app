@@ -465,6 +465,20 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "Islamic challenges started_at migration failed");
   }
+
+  // ── Teacher account verification columns ─────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS verification_otp  TEXT,
+        ADD COLUMN IF NOT EXISTS otp_expires_at    TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS verified_at       TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS email_verified    BOOLEAN NOT NULL DEFAULT FALSE
+    `);
+    logger.info("Teacher verification columns migrated");
+  } catch (err) {
+    logger.error(err, "Teacher verification column migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

@@ -558,6 +558,17 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     const identifier = body.email || body.phone!;
     const channel = body.email ? "email" : "sms";
 
+    // Reject phone-only registration when SMS delivery isn't configured — the
+    // account would be created unverified with no way to complete verification.
+    if (channel === "sms" && !isSmsConfigured()) {
+      // Roll back the inserted teacher record to keep the DB clean
+      await db.delete(teachersTable).where(eq(teachersTable.id, teacher.id));
+      res.status(503).json({
+        message: "التسجيل برقم الهاتف غير متاح حالياً. استخدم البريد الإلكتروني للتسجيل.",
+      });
+      return;
+    }
+
     if (channel === "email") {
       const { html, text } = buildOtpEmail(teacher.name, otp);
       void sendEmail({
@@ -567,12 +578,10 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         text,
       }).catch((err) => req.log.error({ err }, "OTP email send failed"));
     } else {
-      if (isSmsConfigured()) {
-        void sendSms(
-          body.phone!,
-          `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
-        ).catch((err) => req.log.error({ err }, "OTP SMS send failed"));
-      }
+      void sendSms(
+        body.phone!,
+        `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
+      ).catch((err) => req.log.error({ err }, "OTP SMS send failed"));
     }
 
     res.status(201).json({
@@ -646,8 +655,11 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    // Block login for unverified email/phone accounts (Google accounts skip this)
-    if (!teacher.verifiedAt && !teacher.googleId) {
+    // Block login only for accounts that went through the new OTP registration flow
+    // but haven't verified yet (verificationOtp is set). Legacy accounts that predate
+    // the OTP requirement have verificationOtp = null — they pass through and see a
+    // soft nudge banner instead of being hard-locked out.
+    if (!teacher.verifiedAt && !teacher.googleId && teacher.verificationOtp !== null) {
       res.status(403).json({
         message: "NEEDS_VERIFICATION",
         identifier,
@@ -1639,11 +1651,9 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
     }
 
     if (teacher.emailVerified) {
-      // Already fully verified — just ensure they're logged in
-      delete req.session.studentAccountId;
-      req.session.teacherId = teacher.id;
-      stampTeacherSession(req);
-      res.json({ teacher: { id: teacher.id, name: teacher.name, email: teacher.email, phone: teacher.phone, role: teacher.role, isAdmin: teacher.isAdmin, emailVerified: true } });
+      // Already verified — return a generic confirmation with no profile data exposed.
+      // No OTP was validated, so never create or modify a session here.
+      res.json({ ok: true });
       return;
     }
 
