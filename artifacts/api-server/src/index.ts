@@ -300,6 +300,15 @@ async function runSchemaMigrations() {
         completed_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    // OTP verification columns for teacher account verification flow.
+    // Legacy accounts keep verificationOtp=NULL and emailVerified=false (soft-nudge only).
+    await db.execute(sql`
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS verification_otp   TEXT,
+        ADD COLUMN IF NOT EXISTS otp_expires_at     TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS verified_at        TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");

@@ -769,6 +769,12 @@ function OtpVerifyScreen({
       });
       const data = await res.json();
       if (!res.ok) {
+        // If already verified, route back to login instead of staying on OTP screen
+        if (data.alreadyVerified) {
+          onBack();
+          toast.success(lang === "ar" ? "حسابك محقق بالفعل — سجّل الدخول" : "Account already verified — please sign in");
+          return;
+        }
         setError(data.message || (lang === "ar" ? "رمز غير صحيح" : "Invalid code"));
         setLoading(false);
         return;
@@ -785,16 +791,21 @@ function OtpVerifyScreen({
     setResending(true);
     setError("");
     try {
-      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ identifier }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message || (lang === "ar" ? "تعذّر إعادة الإرسال" : "Resend failed"));
+        return;
+      }
       setCountdown(60);
       toast.success(lang === "ar" ? "تم إرسال رمز جديد" : "New code sent");
     } catch {
-      setError(lang === "ar" ? "تعذّر إعادة الإرسال" : "Resend failed");
+      setError(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Connection error");
     } finally {
       setResending(false);
     }
@@ -892,6 +903,43 @@ function OtpVerifyScreen({
             ? (lang === "ar" ? `إعادة الإرسال بعد ${countdown}ث` : `Resend in ${countdown}s`)
             : (lang === "ar" ? "إعادة إرسال الرمز" : "Resend code")}
         </button>
+
+        {/* "Didn't receive the code?" help panel */}
+        <div
+          className="mt-4 rounded-xl p-3.5 text-xs leading-relaxed"
+          style={{ background: "rgba(26,71,49,0.05)", border: "1px solid rgba(26,71,49,0.12)" }}
+        >
+          <p className="font-bold mb-1.5" style={{ color: "#1a4731" }}>
+            {lang === "ar" ? "لم يصلك الرمز؟" : "Didn't receive the code?"}
+          </p>
+          <ul className="space-y-1 text-muted-foreground" style={{ listStyleType: "disc", paddingInlineStart: "1.2rem" }}>
+            {channel === "email" && (
+              <li>{lang === "ar" ? "تحقق من مجلد البريد غير المرغوب (Spam / Junk)" : "Check your spam or junk folder"}</li>
+            )}
+            <li>
+              {lang === "ar"
+                ? `الرمز صالح لمدة ${channel === "email" ? "30" : "10"} دقيقة — انتظر قليلاً ثم تحقق مجدداً`
+                : `The code is valid for ${channel === "email" ? "30" : "10"} minutes — wait a moment then check again`}
+            </li>
+            <li>
+              {lang === "ar" ? (
+                <>
+                  تحتاج مساعدة؟{" "}
+                  <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                    تواصل مع الدعم
+                  </a>
+                </>
+              ) : (
+                <>
+                  Need help?{" "}
+                  <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                    Contact support
+                  </a>
+                </>
+              )}
+            </li>
+          </ul>
+        </div>
 
         {/* Back */}
         <button
@@ -1040,6 +1088,517 @@ export default function Auth() {
           return;
         }
         setErrorMsg(err.message || t.auth.loginError);
+      },
+    }
+  });
+
+  const registerMutation = useRegisterTeacher({
+    mutation: {
+      onSuccess: (data: any) => {
+        if (data?.needsVerification) {
+          setOtpPending({ identifier: data.identifier, channel: data.channel ?? "email" });
+          return;
+        }
+        toast.success(lang === "ar" ? "تم إنشاء الحساب بنجاح" : "Account created successfully");
+        const role: TeacherProfileRole | null = data.teacher?.role ?? registerRole;
+        const isAdmin = data.teacher?.isAdmin ?? false;
+        let pendingPublish = false;
+        try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
+        if (pendingPublish) {
+          setLocation("/guest/create");
+        } else if (isAdmin || role === "admin") {
+          setLocation(getAdminLastSurfacePath() ?? "/teacher");
+        } else if (role === "organizer") {
+          setLocation("/organizer");
+        } else {
+          setLocation("/teacher");
+        }
+      },
+      onError: (err: Error & { message?: string }) => setErrorMsg(err.message || t.auth.registerError)
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+
+    if (usePhone) {
+      if (phone.length !== selectedCountry.digits) {
+        setErrorMsg(
+          lang === "ar"
+            ? `رقم الهاتف يجب أن يتكون من ${selectedCountry.digits} أرقام للدولة المختارة`
+            : `Phone number must be ${selectedCountry.digits} digits for the selected country`
+        );
+        return;
+      }
+    }
+
+    const fullPhone = usePhone ? `${selectedCountry.code}${phone}` : undefined;
+
+    if (isLogin) {
+      loginMutation.mutate({
+        data: {
+          ...(usePhone ? { phone: fullPhone } : { email }),
+          password,
+          rememberMe,
+        }
+      });
+    } else {
+      const acq = getAcquisition();
+      registerMutation.mutate({
+        data: {
+          name,
+          ...(usePhone ? { phone: fullPhone } : { email }),
+          password,
+          // Send selected role; defaults to teacher when picker was skipped.
+          role: registerRole === "organizer" ? "organizer" : "teacher",
+          ...(acq ? {
+            acquisitionSource: acq.source || undefined,
+            acquisitionMedium: acq.medium || undefined,
+            acquisitionCampaign: acq.campaign || undefined,
+            acquisitionReferrer: acq.referrer || undefined,
+          } : {}),
+        } as any
+      });
+    }
+  };
+
+  const isLoading = loginMutation.isPending || registerMutation.isPending;
+
+  const filteredCountries = countrySearch.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.includes(countrySearch) ||
+        c.nameEn.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.includes(countrySearch)
+      )
+    : COUNTRIES;
+
+  const gulfCountries = filteredCountries.filter(c => c.group === "gulf");
+  const arabCountries = filteredCountries.filter(c => c.group === "arab");
+  const worldCountries = filteredCountries.filter(c => c.group === "world");
+
+  const iconPositionClass = lang === "ar" ? "right-4" : "left-4";
+  const inputPaddingClass = lang === "ar" ? "pr-12" : "pl-12";
+
+  if (isCheckingSession) {
+    return (
+      <LoginLayout dir={dir}>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin" style={{ color: "#1a4731" }} />
+        </div>
+      </LoginLayout>
+    );
+  }
+
+  if (currentUser) {
+    return null;
+  }
+
+  // ── OTP verification screen ───────────────────────────────────────────────
+  if (otpPending) {
+    return (
+      <LoginLayout dir={dir}>
+        <OtpVerifyScreen
+          identifier={otpPending.identifier}
+          channel={otpPending.channel}
+          lang={lang}
+          dir={dir}
+          onVerified={(teacher) => {
+            toast.success(lang === "ar" ? "تم تفعيل حسابك بنجاح 🎉" : "Account verified successfully 🎉");
+            postAuthRedirect(teacher.role as TeacherProfileRole, teacher.isAdmin);
+          }}
+          onBack={() => setOtpPending(null)}
+        />
+      </LoginLayout>
+    );
+  }
+
+  // For new registrations we present a 3-button role picker (student / teacher / organizer)
+  // before showing the actual form. Login flows skip this entirely.
+  if (!isLogin && registerRole === null) {
+    return (
+      <LoginLayout dir={dir}>
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="w-full max-w-md bg-white rounded-3xl shadow-lg border p-7 sm:p-9"
+            style={{ borderColor: "hsl(40 20% 88%)" }}
+          >
+            <div className="text-center mb-7">
+              <h1 className="text-[1.65rem] font-black mb-2 leading-tight" style={{ color: "#1a4731" }}>
+                {lang === "ar" ? "كيف ستستخدم حصاد؟" : "How will you use Hasad?"}
+              </h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {lang === "ar"
+                  ? "اختر نوع حسابك للمتابعة"
+                  : "Choose your account type to continue"}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Student — go straight to PIN entry. The /game/join page also
+                  links to "create a student account" for those who want one. */}
+              <button
+                type="button"
+                onClick={() => setLocation("/game/join")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#1E4D35 0%,#2d7050 100%)",
+                  color: "#fff",
+                  boxShadow: "0 10px 28px -10px rgba(30,77,53,0.55)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
+                    <GraduationCap className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا طالب / مشارك" : "I'm a student / participant"}
+                    </p>
+                    <p className="text-white/80 text-xs mt-0.5">
+                      {lang === "ar" ? "انضم بـ PIN واحصد نقاطك" : "Join with a PIN and collect points"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+
+              {/* Teacher */}
+              <button
+                type="button"
+                onClick={() => setRegisterRole("teacher")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5 hover:shadow-md"
+                style={{
+                  background: "#fff",
+                  border: "2px solid #1a7a45",
+                  color: "#1a4731",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(26,71,49,0.10)" }}>
+                    <BookOpen className="w-6 h-6" style={{ color: "#1a4731" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا معلّم" : "I'm a teacher"}
+                    </p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {lang === "ar" ? "صفوف، واجبات، عروض، وألعاب صفّية" : "Classes, assignments, decks & class games"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-muted-foreground shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+
+              {/* Organizer */}
+              <button
+                type="button"
+                onClick={() => setRegisterRole("organizer")}
+                className="w-full group relative overflow-hidden rounded-2xl p-5 text-start transition-all hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#0a1628 0%,#1e3a5f 100%)",
+                  color: "#fff",
+                  boxShadow: "0 10px 28px -10px rgba(30,58,95,0.55)",
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(232,168,14,0.22)", border: "1px solid rgba(232,168,14,0.45)" }}>
+                    <Crown className="w-6 h-6" style={{ color: "#E8A80E" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-base">
+                      {lang === "ar" ? "أنا منظّم فعاليات" : "I'm an event organizer"}
+                    </p>
+                    <p className="text-white/80 text-xs mt-0.5">
+                      {lang === "ar" ? "مسابقات حية، تحدّيات، وفعاليات كبرى" : "Live contests, challenges & big events"}
+                    </p>
+                  </div>
+                  <ArrowLeft className="w-4 h-4 text-white/70 shrink-0" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                </div>
+              </button>
+            </div>
+
+            <Link
+              href="/login"
+              className="mt-6 flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 font-bold text-sm transition-all hover:bg-primary/5"
+              style={{ borderColor: "#1a7a45", color: "#1a7a45" }}
+            >
+              <span style={{ fontSize: "1.1em" }}>←</span>
+              {t.auth.hasAccount} {t.auth.loginNow}
+            </Link>
+
+            <TrustLinks />
+          </motion.div>
+        </div>
+      </LoginLayout>
+    );
+  }
+
+  const isOrganizerRegister = !isLogin && registerRole === "organizer";
+  const ctaLabel = isLogin
+    ? (lang === "ar" ? "الدخول إلى لوحة المعلم" : "Sign in to Teacher Dashboard")
+    : isOrganizerRegister
+      ? (lang === "ar" ? "إنشاء حساب منظّم" : "Create Organizer Account")
+      : t.auth.createAccountBtn;
+
+  return (
+    <LoginLayout dir={dir}>
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+        <div className="w-full max-w-5xl flex gap-8 items-stretch">
+
+          {/* ── Side Panel (lg+) ── */}
+          <div className="lg:w-[42%] xl:w-[40%] flex-shrink-0">
+            <SidePanel />
+          </div>
+
+          {/* ── Card ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.38 }}
+            className="flex-1 w-full"
+          >
+            <div
+              className="bg-white rounded-3xl shadow-lg border p-7 sm:p-9"
+              style={{ borderColor: "hsl(40 20% 88%)" }}
+            >
+              {/* Role Tabs (login flow only — register has its own picker step) */}
+              {isLogin && (
+                <RoleTabs onSelectStudent={() => setLocation("/student/login")} />
+              )}
+
+              {/* For register flow, show a small "back" link to switch role. */}
+              {!isLogin && registerRole && (
+                <button
+                  type="button"
+                  onClick={() => setRegisterRole(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold mb-5 transition-colors hover:opacity-80"
+                  style={{ color: "#1a4731" }}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" style={{ transform: dir === "ltr" ? "rotate(180deg)" : "none" }} />
+                  {lang === "ar" ? "تغيير نوع الحساب" : "Change account type"}
+                </button>
+              )}
+
+              {/* Heading */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={isLogin ? "login-heading" : `register-heading-${registerRole}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-6"
+                >
+                  <h1 className="text-[1.65rem] font-black mb-1.5 leading-tight" style={{ color: "#1a4731" }}>
+                    {isLogin
+                      ? (lang === "ar" ? "مرحباً بك مجدداً" : "Welcome Back")
+                      : isOrganizerRegister
+                        ? (lang === "ar" ? "إنشاء حساب منظّم" : "Create Organizer Account")
+                        : (lang === "ar" ? "إنشاء حساب معلم" : "Create Teacher Account")}
+                  </h1>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {isLogin
+                      ? (lang === "ar" ? "ادخل إلى لوحة تحكمك وتابع مع طلابك." : "Access your dashboard and continue with your students.")
+                      : isOrganizerRegister
+                        ? (lang === "ar" ? "أنشئ حسابك لإدارة المسابقات والفعاليات." : "Create your account to run contests and events.")
+                        : (lang === "ar" ? "أنشئ حسابك وابدأ رحلة التدريس التفاعلي." : "Create your account and start your interactive teaching journey.")}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Login Form */}
+              <LoginForm
+                isLogin={isLogin}
+                errorMsg={errorMsg}
+                name={name} setName={setName}
+                email={email} setEmail={setEmail}
+                phone={phone} setPhone={setPhone}
+                selectedCountry={selectedCountry} setSelectedCountry={setSelectedCountry}
+                showCountryPicker={showCountryPicker} setShowCountryPicker={setShowCountryPicker}
+                countrySearch={countrySearch} setCountrySearch={setCountrySearch}
+                password={password} setPassword={setPassword}
+                usePhone={usePhone} setUsePhone={setUsePhone}
+                rememberMe={rememberMe} setRememberMe={setRememberMe}
+                showPassword={showPassword} setShowPassword={setShowPassword}
+                isLoading={isLoading}
+                ctaLabel={ctaLabel}
+                handleSubmit={handleSubmit}
+                iconPositionClass={iconPositionClass}
+                inputPaddingClass={inputPaddingClass}
+                pickerRef={pickerRef}
+                gulfCountries={gulfCountries}
+                arabCountries={arabCountries}
+                worldCountries={worldCountries}
+                filteredCountries={filteredCountries}
+                t={t}
+                lang={lang}
+                dir={dir}
+              />
+
+              {/* Register / Login switch — full-width outlined green button */}
+              <Link
+                href={isLogin ? "/register" : "/login"}
+                className="mt-5 flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 font-bold text-sm transition-all hover:bg-primary/5 active:scale-[0.98]"
+                style={{ borderColor: "#1a7a45", color: "#1a7a45" }}
+              >
+                {isLogin ? (
+                  <>
+                    <span style={{ fontSize: "1.1em" }}>✦</span>
+                    {t.auth.noAccount} {t.auth.registerNow}
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "1.1em" }}>←</span>
+                    {t.auth.hasAccount} {t.auth.loginNow}
+                  </>
+                )}
+              </Link>
+
+              {/* Trust Links */}
+              <TrustLinks />
+            </div>
+          </motion.div>
+        </div>
+export default function Auth() {
+  const [location, setLocation] = useLocation();
+  const isLogin = location === "/login" || location === "/auth";
+  const { t, lang } = useI18n();
+  const dir = lang === "ar" ? "rtl" : "ltr";
+  useSeo(
+    isLogin
+      ? {
+          title: lang === "ar" ? "تسجيل الدخول | منصة حصاد — HasadX" : "Sign in | HasadX",
+          description:
+            lang === "ar"
+              ? "سجّل الدخول إلى منصة حصاد التعليمية لإدارة الفصول والعروض التفاعلية والمسابقات والواجبات."
+              : "Sign in to HasadX to manage classes, interactive presentations, quizzes and assignments.",
+          canonicalPath: "/login",
+          noindex: true,
+        }
+      : {
+          title: lang === "ar" ? "إنشاء حساب جديد | منصة حصاد — HasadX" : "Create account | HasadX",
+          description:
+            lang === "ar"
+              ? "أنشئ حساب معلم في منصة حصاد التعليمية وابدأ ببناء عروض تفاعلية ومسابقات تعليمية وواجبات وأنشطة بالذكاء الاصطناعي."
+              : "Create a teacher account on HasadX and start building interactive presentations, quizzes and AI-powered lessons.",
+          canonicalPath: "/register",
+          noindex: true,
+        },
+  );
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<Country>(KUWAIT);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [usePhone, setUsePhone] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  // For the registration flow we first ask the user to pick a role:
+  //   student → /student/register, teacher → form, organizer → form (role passed to API).
+  // When isLogin is true, the role picker is bypassed entirely.
+  // The home page can also pre-select the role via `?role=teacher|organizer`,
+  // skipping the picker step so the chosen card opens the matching form directly.
+  const [registerRole, setRegisterRole] = useState<"teacher" | "organizer" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const r = new URLSearchParams(window.location.search).get("role");
+    return r === "teacher" || r === "organizer" ? r : null;
+  });
+
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { captureAcquisition(); }, []);
+
+  useEffect(() => {
+    if (!showCountryPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowCountryPicker(false);
+        setCountrySearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showCountryPicker]);
+
+  const { data: currentUser, isLoading: isCheckingSession } = useGetCurrentTeacher({
+    query: { retry: false, staleTime: 0 } as any
+  });
+
+  // Centralized role-aware post-auth redirect.
+  // pendingPublish always wins; otherwise role decides the home page.
+  // Admins are sent to their last-used surface (organizer / admin / teacher)
+  // when one is remembered in localStorage; otherwise default to /teacher.
+  const redirectByRole = (
+    role: TeacherProfileRole | null | undefined,
+    isAdmin?: boolean | null,
+  ) => {
+    let pendingPublish = false;
+    try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
+    if (pendingPublish) {
+      setLocation("/guest/create");
+      return;
+    }
+    if (isAdmin || role === "admin") {
+      const lastPath = getAdminLastSurfacePath();
+      setLocation(lastPath ?? "/teacher");
+      return;
+    }
+    setLocation(role === "organizer" ? "/organizer" : "/teacher");
+  };
+
+  useEffect(() => {
+    if (currentUser && !isCheckingSession) {
+      redirectByRole(currentUser.role, currentUser.isAdmin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, isCheckingSession]);
+
+  // Backwards-compat shim used by login flow (will read role from response).
+  const postAuthRedirect = (
+    role?: TeacherProfileRole | null,
+    isAdmin?: boolean | null,
+  ) => redirectByRole(role, isAdmin);
+
+  const isPendingPublish = () => {
+    try { return localStorage.getItem("pending_publish_after_auth") === "1"; } catch { return false; }
+  };
+
+  // OTP pending state: set after registration or unverified login attempt
+  const [otpPending, setOtpPending] = useState<{
+    identifier: string;
+    channel: "email" | "sms";
+  } | null>(null);
+
+  const loginMutation = useLoginTeacher({
+    mutation: {
+      onSuccess: (data) => {
+        toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
+        postAuthRedirect(data.teacher.role ?? null, data.teacher.isAdmin ?? null);
+      },
+      onError: (err: any) => {
+        // ApiError wraps the JSON body in .data; check there first before
+        // falling back to the prefixed .message string so strict equality works.
+        const serverMsg: string = err?.data?.message ?? err?.message ?? "";
+        if (serverMsg === "NEEDS_VERIFICATION" || serverMsg.includes("NEEDS_VERIFICATION")) {
+          const identifier = usePhone
+            ? `${selectedCountry.code}${phone}`
+            : email;
+          setOtpPending({ identifier, channel: usePhone ? "sms" : "email" });
+          return;
+        }
+        // Prefer the raw server message over the "HTTP 403: …" wrapper
+        setErrorMsg(err?.data?.message || err.message || t.auth.loginError);
       },
     }
   });

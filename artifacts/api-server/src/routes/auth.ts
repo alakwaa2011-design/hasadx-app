@@ -63,8 +63,8 @@ const RESET_GENERIC_RESPONSE = {
   message: "إذا كان الحساب موجوداً، فسيتم إرسال تعليمات الاستعادة قريباً",
 };
 
-// ── OTP verification helpers ──────────────────────────────────────────────
-const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_TTL_EMAIL_MS = 30 * 60 * 1000; // 30 minutes (email)
+const OTP_TTL_MS = OTP_TTL_EMAIL_MS;      // default used for legacy paths
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
 
 function generateOtp(): string {
@@ -90,7 +90,7 @@ function buildOtpEmail(name: string, otp: string): { html: string; text: string 
               <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e5238;font-family:monospace">${otp}</span>
             </div>
           </div>
-          <p style="font-size:13px;color:#888;text-align:center;margin:0">هذا الرمز صالح لمدة <strong>10 دقائق</strong>. لا تشاركه مع أحد.</p>
+          <p style="font-size:13px;color:#888;text-align:center;margin:0">هذا الرمز صالح لمدة <strong>30 دقيقة</strong>. لا تشاركه مع أحد.</p>
         </td></tr>
         <tr><td style="background:#f8f8f8;padding:20px 40px;text-align:center">
           <p style="font-size:12px;color:#aaa;margin:0">منصة حصاد التعليمية</p>
@@ -100,7 +100,7 @@ function buildOtpEmail(name: string, otp: string): { html: string; text: string 
   </table>
 </body>
 </html>`;
-  const text = `مرحباً ${name}،\n\nرمز التحقق من حسابك في منصة حصاد هو:\n\n${otp}\n\nهذا الرمز صالح لمدة 10 دقائق. لا تشاركه مع أحد.`;
+  const text = `مرحباً ${name}،\n\nرمز التحقق من حسابك في منصة حصاد هو:\n\n${otp}\n\nهذا الرمز صالح لمدة 30 دقيقة. لا تشاركه مع أحد.`;
   return { html, text };
 }
 
@@ -490,7 +490,7 @@ const router: IRouter = Router();
 
 router.post("/auth/register", registerLimiter, async (req, res) => {
   try {
-    const body = RegisterTeacherBody.parse(req.body);
+    const body = LoginTeacherBody.parse(req.body);
 
     if (!body.email && !body.phone) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
@@ -509,7 +509,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       conditions.push(eq(teachersTable.phone, body.phone));
       // Also check legacy 8-digit Kuwait format to prevent duplicate identities
       if (body.phone.startsWith("+965")) {
-        const legacyPhone = body.phone.slice(4);
+        const legacyPhone = identifier.slice(4);
         if (/^\d{8}$/.test(legacyPhone)) {
           conditions.push(eq(teachersTable.phone, legacyPhone));
         }
@@ -533,42 +533,31 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       body.role === "organizer" ? "organizer" : "teacher";
 
     const otp = generateOtp();
-    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    const resendChannel = teacher.email ? "email" : "sms";
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+    const resendChannel = teacher.email ? "email" : "sms";
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+    const otpExpiresAt = new Date(Date.now() + (resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS));
 
     const [teacher] = await db
-      .insert(teachersTable)
-      .values({
-        name: body.name,
-        email: body.email || null,
-        phone: body.phone || null,
-        passwordHash,
-        role: requestedRole,
-        verificationOtp: otp,
-        otpExpiresAt,
-        acquisitionSource: (body as any).acquisitionSource || null,
-        acquisitionMedium: (body as any).acquisitionMedium || null,
-        acquisitionCampaign: (body as any).acquisitionCampaign || null,
-        acquisitionReferrer: (body as any).acquisitionReferrer || null,
-      })
-      .returning();
+      .select({ preferences: teachersTable.preferences })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .limit(1);
 
     void detectAndSaveCountry(teacher.id, req);
 
     // Send OTP via email or SMS
-    const identifier = body.email || body.phone!;
-    const channel = body.email ? "email" : "sms";
-
-    // Reject phone-only registration when SMS delivery isn't configured — the
-    // account would be created unverified with no way to complete verification.
-    if (channel === "sms" && !isSmsConfigured()) {
-      // Roll back the inserted teacher record to keep the DB clean
-      await db.delete(teachersTable).where(eq(teachersTable.id, teacher.id));
-      res.status(503).json({
-        message: "التسجيل برقم الهاتف غير متاح حالياً. استخدم البريد الإلكتروني للتسجيل.",
-      });
-      return;
-    }
-
+    const identifier = parsed.data.identifier;
+    const channel = teacher.email ? "email" : "sms";
     if (channel === "email") {
       const { html, text } = buildOtpEmail(teacher.name, otp);
       void sendEmail({
@@ -604,30 +593,25 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const identifier = body.email || body.phone!;
+    const identifier = parsed.data.identifier;
 
-    let teacher: typeof teachersTable.$inferSelect | undefined;
-
-    if (body.email) {
-      const rows = await db
-        .select()
-        .from(teachersTable)
-        .where(eq(teachersTable.email, identifier))
-        .limit(1);
-      teacher = rows[0];
-    } else {
-      // Primary lookup: exact match on full phone (handles new users with country code)
+    const teacher = byEmail[0] ?? byPhone[0];
+    if (isEmail) {
       const rows = await db
         .select()
         .from(teachersTable)
         .where(eq(teachersTable.phone, identifier))
         .limit(1);
       teacher = rows[0];
-
-      // Legacy fallback: original platform was Kuwait-only with 8-digit plain numbers.
-      // If the user sends "+965XXXXXXXX" and there's no exact match, try "XXXXXXXX".
+    } else {
+      const rows = await db
+        .select()
+        .from(teachersTable)
+        .where(eq(teachersTable.phone, identifier))
+        .limit(1);
+      teacher = rows[0];
       if (!teacher && identifier.startsWith("+965")) {
-        const legacyPhone = identifier.slice(4); // "+96599123456" → "99123456"
+        const legacyPhone = identifier.slice(4);
         if (/^\d{8}$/.test(legacyPhone)) {
           const legacyRows = await db
             .select()
@@ -644,7 +628,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const valid = await bcrypt.compare(body.password, teacher.passwordHash);
+    const valid = await bcrypt.compare(currentPassword, teacher.passwordHash);
     if (!valid) {
       res.status(401).json({ message: "بيانات الدخول غير صحيحة" });
       return;
@@ -655,11 +639,11 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    // Block login only for accounts that went through the new OTP registration flow
-    // but haven't verified yet (verificationOtp is set). Legacy accounts that predate
-    // the OTP requirement have verificationOtp = null — they pass through and see a
-    // soft nudge banner instead of being hard-locked out.
-    if (!teacher.verifiedAt && !teacher.googleId && teacher.verificationOtp !== null) {
+    // Block login only when an active OTP verification is in progress (verificationOtp IS NOT NULL).
+    // Legacy accounts that predate the OTP rollout have verificationOtp=NULL and are let through
+    // so they are not locked out; they'll see a soft nudge banner encouraging them to verify.
+    // Google accounts are always pre-verified so they bypass this check entirely.
+    if (!teacher.googleId && teacher.verificationOtp) {
       res.status(403).json({
         message: "NEEDS_VERIFICATION",
         identifier,
@@ -728,11 +712,11 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-  const [teacher] = await db
-    .select()
-    .from(teachersTable)
-    .where(eq(teachersTable.id, req.session.teacherId))
-    .limit(1);
+    const [teacher] = await db
+      .select({ preferences: teachersTable.preferences })
+      .from(teachersTable)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .limit(1);
 
   if (!teacher) {
     res.status(401).json({ message: "المستخدم غير موجود" });
@@ -785,33 +769,31 @@ router.patch("/auth/role", async (req, res) => {
     });
     return;
   }
-  const [updated] = await db
-    .update(teachersTable)
-    .set({ role })
-    .where(eq(teachersTable.id, req.session.teacherId))
-    .returning();
-  if (!updated) {
-    res.status(401).json({ message: "المستخدم غير موجود" });
-    return;
+    const [updated] = await db
+      .update(teachersTable)
+      .set(updateData)
+      .where(eq(teachersTable.id, req.session.teacherId))
+      .returning();
+
+    res.json({
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      phone: updated.phone,
+    });
+  } catch (error: any) {
+    req.log.error({ err: error }, "Profile update error");
+    res.status(400).json({ message: error.message || "خطأ في تحديث الملف الشخصي" });
   }
-  res.json({
-    id: updated.id,
-    name: updated.name,
-    email: updated.email,
-    phone: updated.phone,
-    isAdmin: updated.isAdmin,
-    role: updated.role,
-  });
 });
 
-router.patch("/auth/profile", async (req, res) => {
+router.patch("/auth/change-password", async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "غير مسجل الدخول" });
     return;
   }
-
   try {
-    const parsed = UpdateProfileSchema.safeParse(req.body);
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: "بيانات غير صحيحة" });
       return;
@@ -822,7 +804,7 @@ router.patch("/auth/profile", async (req, res) => {
       const [existing] = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, email))
+        .where(eq(teachersTable.phone, phone))
         .limit(1);
       if (existing && existing.id !== req.session.teacherId) {
         res.status(409).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
@@ -871,14 +853,14 @@ router.patch("/auth/change-password", async (req, res) => {
     return;
   }
   try {
-    const parsed = ChangePasswordSchema.safeParse(req.body);
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: "كلمة السر الجديدة يجب أن تكون 6 أحرف على الأقل" });
       return;
     }
     const { currentPassword, newPassword } = parsed.data;
     const [teacher] = await db
-      .select()
+      .select({ preferences: teachersTable.preferences })
       .from(teachersTable)
       .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
@@ -892,7 +874,7 @@ router.patch("/auth/change-password", async (req, res) => {
       return;
     }
     const newHash = await bcrypt.hash(newPassword, 10);
-    const teacherId = req.session.teacherId;
+  const teacherId = sess?.teacherId ?? null;
     await db
       .update(teachersTable)
       .set({ passwordHash: newHash })
@@ -922,9 +904,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
   // Always return a generic success message to avoid account enumeration,
   // regardless of whether the identifier matches an account or delivery succeeds.
   try {
-    const parsed = ForgotPasswordSchema.safeParse({
-      identifier: typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "",
-    });
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
       return;
@@ -932,12 +912,12 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
     const identifier = parsed.data.identifier;
     const isEmail = identifier.includes("@");
 
-    let teacher: typeof teachersTable.$inferSelect | undefined;
+    const teacher = byEmail[0] ?? byPhone[0];
     if (isEmail) {
       const rows = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.email, identifier.toLowerCase()))
+        .where(eq(teachersTable.phone, identifier))
         .limit(1);
       teacher = rows[0];
     } else {
@@ -975,17 +955,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
     // - If neither is possible, fall through with a generic response.
     const canEmail = !!teacher.email;
     const canSms = !!teacher.phone;
-    const channel: "email" | "sms" | null = isEmail
-      ? canEmail
-        ? "email"
-        : canSms
-          ? "sms"
-          : null
-      : canSms
-        ? "sms"
-        : canEmail
-          ? "email"
-          : null;
+    const channel = teacher.email ? "email" : "sms";
 
     if (!channel) {
       req.log.info(
@@ -996,29 +966,25 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
       return;
     }
 
-    const rawToken = crypto.randomBytes(32).toString("base64url");
-    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
-
-    await db.insert(passwordResetTokensTable).values({
-      teacherId: teacher.id,
-      tokenHash,
-      expiresAt,
-    });
-
-    const link = `${getAppBaseUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`;
+      const rawToken = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+      await db.insert(passwordResetTokensTable).values({
+        teacherId: teacher.id,
+        tokenHash: resetTokenHash,
+        expiresAt,
+      });
+      const link = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     let delivered = false;
     let deliveryReason: string | undefined;
 
     if (channel === "email") {
-      const { html, text } = buildResetEmail(teacher.name, link);
-      const result = await sendEmail({
-        to: teacher.email!,
-        subject: "استعادة كلمة المرور - منصة حصاد",
-        html,
-        text,
-      });
+      const { html, text } = buildOtpEmail(teacher.name, otp);
+    const result = await pool.query(
+      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
+      [targetSid, teacherId],
+    );
       delivered = result.delivered;
       deliveryReason = result.reason;
     } else {
@@ -1067,10 +1033,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
 
 router.post("/auth/reset-password", authLimiter, async (req, res) => {
   try {
-    const parsed = ResetPasswordSchema.safeParse({
-      token: typeof req.body?.token === "string" ? req.body.token.trim() : "",
-      newPassword: typeof req.body?.newPassword === "string" ? req.body.newPassword : "",
-    });
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
     if (!parsed.success) {
       const issue = parsed.error.issues[0]?.path[0];
       const message =
@@ -1087,23 +1050,26 @@ router.post("/auth/reset-password", authLimiter, async (req, res) => {
 
     // Atomically claim the token: only one concurrent request can succeed.
     const claimed = await db
-      .update(passwordResetTokensTable)
-      .set({ usedAt: new Date() })
+      .delete(trustedDevicesTable)
       .where(
         and(
-          eq(passwordResetTokensTable.tokenHash, tokenHash),
-          isNull(passwordResetTokensTable.usedAt),
-          gt(passwordResetTokensTable.expiresAt, new Date()),
+          eq(trustedDevicesTable.revokeTokenHash, tokenHash),
+          gt(trustedDevicesTable.revokeTokenExpiresAt, new Date()),
         ),
       )
-      .returning({ teacherId: passwordResetTokensTable.teacherId });
+      .returning({ id: trustedDevicesTable.id, teacherId: trustedDevicesTable.teacherId });
 
     if (claimed.length === 0) {
-      res.status(400).json({ message: "رابط الاستعادة غير صالح أو منتهي الصلاحية" });
+      renderRevokePage(res, 400, {
+        title: "الرابط منتهي أو مستخدم",
+        message:
+          "الرابط غير صالح أو تم استخدامه مسبقاً. إذا كنت قلقاً على حسابك يرجى تسجيل الدخول وتغيير كلمة المرور فوراً.",
+        link: { href: `${baseUrl}/forgot-password`, label: "إعادة تعيين كلمة المرور" },
+      });
       return;
     }
 
-    const teacherId = claimed[0].teacherId;
+  const teacherId = sess?.teacherId ?? null;
     await db
       .update(teachersTable)
       .set({ passwordHash: newHash })
@@ -1121,9 +1087,9 @@ router.post("/auth/reset-password", authLimiter, async (req, res) => {
 
 router.get("/auth/reset-password/verify", async (req, res) => {
   try {
-    const token = typeof req.query.token === "string" ? req.query.token.trim() : "";
+    const token = parsed.success ? parsed.data.token ?? "" : "";
     if (!token) {
-      res.json({ valid: false });
+      renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
       return;
     }
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -1194,7 +1160,7 @@ function renderRevokePage(
 router.get("/auth/devices/revoke", async (req, res) => {
   const baseUrl = getAppBaseUrl();
   try {
-    const token = typeof req.query.token === "string" ? req.query.token.trim() : "";
+    const token = parsed.success ? parsed.data.token ?? "" : "";
     if (!token) {
       renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
       return;
@@ -1239,13 +1205,8 @@ router.get("/auth/devices/revoke", async (req, res) => {
 router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
   const baseUrl = getAppBaseUrl();
   try {
-    const rawToken =
-      typeof req.body?.token === "string"
-        ? req.body.token.trim()
-        : typeof req.query.token === "string"
-        ? req.query.token.trim()
-        : "";
-    const parsed = RevokeDeviceSchema.safeParse({ token: rawToken || undefined });
+      const rawToken = crypto.randomBytes(32).toString("base64url");
+  const parsed = BriefPreferencesSchema.safeParse(req.body);
     const token = parsed.success ? parsed.data.token ?? "" : "";
     if (!token) {
       renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
@@ -1276,16 +1237,16 @@ router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
       return;
     }
 
-    const teacherId = claimed[0].teacherId;
+  const teacherId = sess?.teacherId ?? null;
 
     // Revoke ALL active sessions for this teacher.
     await revokeTeacherSessions(teacherId, null, req.log);
 
     // Auto-issue a password reset token and email it so the teacher can lock down quickly.
     const [teacher] = await db
-      .select()
+      .select({ preferences: teachersTable.preferences })
       .from(teachersTable)
-      .where(eq(teachersTable.id, teacherId))
+      .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
 
     let resetEmailSent = false;
@@ -1299,13 +1260,11 @@ router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
         expiresAt,
       });
       const link = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
-      const { html, text } = buildResetEmail(teacher.name, link);
-      const result = await sendEmail({
-        to: teacher.email,
-        subject: "تأمين الحساب: إعادة تعيين كلمة المرور - منصة حصاد",
-        html,
-        text,
-      });
+      const { html, text } = buildOtpEmail(teacher.name, otp);
+    const result = await pool.query(
+      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
+      [targetSid, teacherId],
+    );
       if (!result.delivered) {
         await db
           .update(passwordResetTokensTable)
@@ -1344,7 +1303,7 @@ router.get("/auth/sessions", async (req, res) => {
     return;
   }
   try {
-    const teacherId = req.session.teacherId;
+  const teacherId = sess?.teacherId ?? null;
     const currentSid = req.sessionID;
     const { rows } = await pool.query(
       `SELECT sid, sess, expire FROM "session"
@@ -1389,11 +1348,11 @@ router.delete("/auth/sessions", async (req, res) => {
     return;
   }
   try {
-    const teacherId = req.session.teacherId;
+  const teacherId = sess?.teacherId ?? null;
     const currentSid = req.sessionID;
     const result = await pool.query(
-      `DELETE FROM "session" WHERE (sess->>'teacherId')::int = $1 AND sid <> $2`,
-      [teacherId, currentSid],
+      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
+      [targetSid, teacherId],
     );
     res.json({
       message: "تم تسجيل الخروج من الأجهزة الأخرى",
@@ -1416,7 +1375,7 @@ router.delete("/auth/sessions/:sid", async (req, res) => {
     return;
   }
   try {
-    const teacherId = req.session.teacherId;
+  const teacherId = sess?.teacherId ?? null;
     const currentSid = req.sessionID;
     const wasCurrent = targetSid === currentSid;
     const result = await pool.query(
@@ -1534,7 +1493,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     const email = profile.email.toLowerCase();
     const displayName = profile.name?.trim() || email.split("@")[0];
 
-    let teacher: typeof teachersTable.$inferSelect | undefined;
+    const teacher = byEmail[0] ?? byPhone[0];
 
     const byGoogle = await db
       .select()
@@ -1544,11 +1503,9 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     teacher = byGoogle[0];
 
     if (!teacher) {
-      const byEmail = await db
-        .select()
-        .from(teachersTable)
-        .where(eq(teachersTable.email, email))
-        .limit(1);
+    const byEmail = identifier.includes("@")
+      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
+      : [];
       const existingByEmail = byEmail[0];
 
       if (existingByEmail) {
@@ -1651,9 +1608,9 @@ router.post("/auth/verify-otp", authLimiter, async (req, res) => {
     }
 
     if (teacher.emailVerified) {
-      // Already verified — return a generic confirmation with no profile data exposed.
-      // No OTP was validated, so never create or modify a session here.
-      res.json({ ok: true });
+      // Already verified — do NOT auto-login; require a normal password login instead.
+      // Creating a session here without checking the OTP would be an authentication bypass.
+      res.status(400).json({ message: "الحساب محقق بالفعل. سجّل الدخول باستخدام كلمة المرور", alreadyVerified: true });
       return;
     }
 
@@ -1719,20 +1676,7 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
       : [];
 
     const teacher = byEmail[0] ?? byPhone[0];
-
-    if (!teacher) {
-      res.json({ ok: true }); // Generic response to avoid account enumeration
-      return;
-    }
-
-    if (teacher.emailVerified) {
-      res.json({ ok: true }); // Already fully verified, no need to resend
-      return;
-    }
-
-    // Rate limit: must wait OTP_RESEND_COOLDOWN_MS between resends
-    if (teacher.otpExpiresAt) {
-      const sendTime = teacher.otpExpiresAt.getTime() - OTP_TTL_MS;
+      const sendTime = teacher.otpExpiresAt.getTime() - channelTtl;
       if (Date.now() - sendTime < OTP_RESEND_COOLDOWN_MS) {
         res.status(429).json({ message: "يرجى الانتظار دقيقة قبل إعادة الإرسال" });
         return;
@@ -1740,7 +1684,19 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     }
 
     const otp = generateOtp();
-    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    const resendChannel = teacher.email ? "email" : "sms";
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+    const resendChannel = teacher.email ? "email" : "sms";
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+
+      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
+    const otpExpiresAt = new Date(Date.now() + (resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS));
 
     await db
       .update(teachersTable)
@@ -1757,7 +1713,7 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
         .catch((err) => req.log.error({ err }, "OTP resend SMS failed"));
     }
 
-    res.json({ ok: true, channel });
+    res.json({ ok: true, channel: resendChannel });
   } catch (err: any) {
     req.log.error({ err }, "resend-otp error");
     res.status(400).json({ message: err.message || "خطأ في إعادة الإرسال" });
@@ -1765,3 +1721,5 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
 });
 
 export default router;
+
+const OTP_TTL_SMS_MS = 10 * 60 * 1000;   // 10 minutes (SMS)

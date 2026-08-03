@@ -73,16 +73,21 @@ export default function VerifyAccountPage() {
     setSending(true);
     setError("");
     try {
-      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ identifier }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message || (lang === "ar" ? "تعذّر إرسال الرمز" : "Failed to send code"));
+        return;
+      }
       setOtpSent(true);
       setCountdown(60);
     } catch {
-      setError(lang === "ar" ? "تعذّر إرسال الرمز" : "Failed to send code");
+      setError(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Connection error");
     } finally {
       setSending(false);
     }
@@ -248,6 +253,43 @@ export default function VerifyAccountPage() {
                     ? (lang === "ar" ? `إعادة الإرسال بعد ${countdown}ث` : `Resend in ${countdown}s`)
                     : (lang === "ar" ? "إعادة إرسال الرمز" : "Resend code")}
                 </button>
+
+                {/* "Didn't receive the code?" help panel */}
+                <div
+                  className="mt-3 rounded-xl p-3.5 text-xs leading-relaxed"
+                  style={{ background: "rgba(26,71,49,0.05)", border: "1px solid rgba(26,71,49,0.12)" }}
+                >
+                  <p className="font-bold mb-1.5" style={{ color: "#1a4731" }}>
+                    {lang === "ar" ? "لم يصلك الرمز؟" : "Didn't receive the code?"}
+                  </p>
+                  <ul className="space-y-1 text-muted-foreground" style={{ listStyleType: "disc", paddingInlineStart: "1.2rem" }}>
+                    {channel === "email" && (
+                      <li>{lang === "ar" ? "تحقق من مجلد البريد غير المرغوب (Spam / Junk)" : "Check your spam or junk folder"}</li>
+                    )}
+                    <li>
+                      {lang === "ar"
+                        ? `الرمز صالح لمدة ${channel === "email" ? "30" : "10"} دقيقة — انتظر قليلاً ثم تحقق مجدداً`
+                        : `The code is valid for ${channel === "email" ? "30" : "10"} minutes — wait a moment then check again`}
+                    </li>
+                    <li>
+                      {lang === "ar" ? (
+                        <>
+                          تحتاج مساعدة؟{" "}
+                          <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                            تواصل مع الدعم
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          Need help?{" "}
+                          <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                            Contact support
+                          </a>
+                        </>
+                      )}
+                    </li>
+                  </ul>
+                </div>
               </>
             )}
 
