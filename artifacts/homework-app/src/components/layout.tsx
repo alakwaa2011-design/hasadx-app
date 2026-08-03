@@ -28,6 +28,7 @@ import {
   Zap,
   Star,
   Search,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,6 +43,104 @@ import { useTheme } from "@/lib/theme-provider";
 import { useDarkMode } from "@/lib/dark-mode";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
+
+/* ── Verification nudge banner ──────────────────────────────────────────── */
+function VerificationNudgeBanner({
+  user,
+  lang,
+}: {
+  user: { email?: string | null; phone?: string | null; name?: string };
+  lang: string;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (dismissed) return null;
+
+  const identifier = user.email || user.phone || "";
+
+  const handleSend = async () => {
+    if (!identifier || sending || sent) return;
+    setSending(true);
+    try {
+      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier }),
+      });
+      setSent(true);
+    } catch {
+      // ignore
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.3 }}
+        className="w-full px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap"
+        style={{
+          background: "linear-gradient(135deg,#7c3aed08,#f59e0b10)",
+          borderBottom: "1px solid rgba(245,158,11,0.25)",
+        }}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <ShieldAlert className="w-4 h-4 shrink-0" style={{ color: "#d97706" }} />
+          <p className="text-[13px] font-medium leading-snug" style={{ color: "#78350f" }}>
+            {sent
+              ? (lang === "ar"
+                  ? "✅ تم إرسال رمز التحقق — تحقق من بريدك أو هاتفك وأدخل الرمز لتفعيل حسابك"
+                  : "✅ Verification code sent — check your email or phone to activate your account")
+              : (lang === "ar"
+                  ? `حسابك بحاجة للتحقق للاحتفاظ ببياناتك واستعادة كلمة المرور مستقبلاً`
+                  : `Your account needs verification to keep your data and enable password recovery`)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {!sent && identifier && (
+            <button
+              onClick={handleSend}
+              disabled={sending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-extrabold transition-all hover:brightness-110 disabled:opacity-60"
+              style={{
+                background: "linear-gradient(135deg,#f59e0b,#d97706)",
+                color: "#fff",
+                boxShadow: "0 2px 8px -4px rgba(245,158,11,0.6)",
+              }}
+            >
+              {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+              {lang === "ar" ? "تحقق الآن" : "Verify now"}
+            </button>
+          )}
+          {sent && (
+            <a
+              href="/verify-account"
+              className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold transition-all"
+              style={{ background: "rgba(245,158,11,0.15)", color: "#92400e" }}
+            >
+              {lang === "ar" ? "أدخل الرمز" : "Enter code"}
+            </a>
+          )}
+          <button
+            onClick={() => setDismissed(true)}
+            className="p-1 rounded-md opacity-60 hover:opacity-100 transition-opacity"
+            style={{ color: "#92400e" }}
+            aria-label={lang === "ar" ? "إغلاق" : "Dismiss"}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 interface StudentSession {
   id: number;
@@ -135,6 +234,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
       dir={dir}
     >
       {user && <XpToastListener />}
+
+      {/* ── Verification nudge banner for legacy/unverified accounts ─────── */}
+      {user && !(user as any).emailVerified && <VerificationNudgeBanner user={user as any} lang={lang} />}
+
       {!noHeader && !isEmbed && (
         <header
           className={cn(

@@ -43,6 +43,13 @@ export const teachersTable = pgTable("teachers", {
   profileSlug: text("profile_slug").unique(),
   publicProfileEnabled: boolean("public_profile_enabled").notNull().default(false),
   showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
+  // Account verification — OTP sent at registration to confirm email/phone ownership
+  verificationOtp: text("verification_otp"),
+  otpExpiresAt: timestamp("otp_expires_at"),
+  verifiedAt: timestamp("verified_at"),
+  // True only after completing the OTP flow (or Google login which is always verified).
+  // Legacy accounts grandfathered in have this false — they see a soft nudge banner.
+  emailVerified: boolean("email_verified").notNull().default(false),
 });
 
 export const insertTeacherSchema = createInsertSchema(teachersTable).omit({ id: true, createdAt: true });

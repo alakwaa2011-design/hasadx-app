@@ -12,8 +12,13 @@ import { Input, Button, Label } from "@/components/ui-elements";
 import {
   Loader2, Mail, Lock, User, AlertCircle, Eye, EyeOff,
   ChevronDown, Shield, BookOpen, BarChart2, Trophy, Users, ArrowLeft,
-  GraduationCap, Crown,
+  GraduationCap, Crown, ShieldCheck, RotateCcw, Phone,
 } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
 import { useSeo } from "@/lib/seo";
@@ -713,6 +718,194 @@ function LoginForm({
   );
 }
 
+/* ─────────────────────────── OTP Verification Screen ─────────────────── */
+
+function OtpVerifyScreen({
+  identifier,
+  channel,
+  lang,
+  dir,
+  onVerified,
+  onBack,
+}: {
+  identifier: string;
+  channel: "email" | "sms";
+  lang: string;
+  dir: "rtl" | "ltr";
+  onVerified: (teacher: { role: string; isAdmin: boolean }) => void;
+  onBack: () => void;
+}) {
+  const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState("");
+  const [countdown, setCountdown] = useState(0);
+
+  // Start 60-second resend cooldown on mount
+  useEffect(() => {
+    setCountdown(60);
+  }, []);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  const maskedIdentifier = channel === "email"
+    ? identifier.replace(/(.{2})(.+)(@.+)/, (_, a, _b, c) => `${a}***${c}`)
+    : identifier.replace(/(\+\d{3})\d+(\d{4})/, "$1***$2");
+
+  const handleVerify = async () => {
+    if (otp.length !== 6) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message || (lang === "ar" ? "رمز غير صحيح" : "Invalid code"));
+        setLoading(false);
+        return;
+      }
+      onVerified(data.teacher);
+    } catch {
+      setError(lang === "ar" ? "تعذّر الاتصال بالخادم" : "Connection error");
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (countdown > 0 || resending) return;
+    setResending(true);
+    setError("");
+    try {
+      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ identifier }),
+      });
+      setCountdown(60);
+      toast.success(lang === "ar" ? "تم إرسال رمز جديد" : "New code sent");
+    } catch {
+      setError(lang === "ar" ? "تعذّر إعادة الإرسال" : "Resend failed");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-10">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="w-full max-w-md bg-white rounded-3xl shadow-lg border p-7 sm:p-9"
+        style={{ borderColor: "hsl(40 20% 88%)" }}
+        dir={dir}
+      >
+        {/* Icon */}
+        <div className="flex justify-center mb-6">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg,#1e5238,#2a6647)", boxShadow: "0 8px 24px -8px rgba(30,82,56,0.45)" }}
+          >
+            <ShieldCheck className="w-8 h-8 text-white" />
+          </div>
+        </div>
+
+        <h1 className="text-2xl font-black text-center mb-2" style={{ color: "#1a4731" }}>
+          {lang === "ar" ? "تحقق من حسابك" : "Verify your account"}
+        </h1>
+        <p className="text-sm text-center text-muted-foreground mb-1 leading-relaxed">
+          {lang === "ar"
+            ? `أرسلنا رمزاً مكوناً من 6 أرقام إلى`
+            : `We sent a 6-digit code to`}
+        </p>
+        <p className="text-sm font-bold text-center mb-6" style={{ color: "#1a4731", direction: "ltr" }}>
+          {channel === "sms" && <Phone className="w-3.5 h-3.5 inline me-1" />}
+          {maskedIdentifier}
+        </p>
+
+        {/* OTP Input */}
+        <div className="flex justify-center mb-5" dir="ltr">
+          <InputOTP
+            maxLength={6}
+            value={otp}
+            onChange={setOtp}
+            onComplete={handleVerify}
+          >
+            <InputOTPGroup>
+              {[0,1,2,3,4,5].map(i => (
+                <InputOTPSlot
+                  key={i}
+                  index={i}
+                  className="w-11 h-12 text-lg font-black"
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+        </div>
+
+        {/* Error */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 p-3 rounded-xl bg-destructive/8 border border-destructive/20 flex items-center gap-2 text-destructive text-sm"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Verify button */}
+        <Button
+          type="button"
+          className="w-full h-11 font-black text-sm rounded-xl mb-3"
+          disabled={otp.length !== 6 || loading}
+          onClick={handleVerify}
+          style={{ background: "linear-gradient(135deg,#1a4731,#2a6647)", color: "#fff" }}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === "ar" ? "تحقق وادخل" : "Verify & continue")}
+        </Button>
+
+        {/* Resend */}
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={countdown > 0 || resending}
+          className="w-full flex items-center justify-center gap-2 text-sm font-semibold py-2 rounded-xl transition-all disabled:opacity-50"
+          style={{ color: countdown > 0 ? "#9ca3af" : "#1a4731" }}
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          {countdown > 0
+            ? (lang === "ar" ? `إعادة الإرسال بعد ${countdown}ث` : `Resend in ${countdown}s`)
+            : (lang === "ar" ? "إعادة إرسال الرمز" : "Resend code")}
+        </button>
+
+        {/* Back */}
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-4 w-full text-xs text-center text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {lang === "ar" ? "← العودة إلى تسجيل الدخول" : "← Back to login"}
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ─────────────────────────── Main Auth Page ─────────────────────────── */
 
 export default function Auth() {
@@ -823,25 +1016,41 @@ export default function Auth() {
     try { return localStorage.getItem("pending_publish_after_auth") === "1"; } catch { return false; }
   };
 
+  // OTP pending state: set after registration or unverified login attempt
+  const [otpPending, setOtpPending] = useState<{
+    identifier: string;
+    channel: "email" | "sms";
+  } | null>(null);
+
   const loginMutation = useLoginTeacher({
     mutation: {
       onSuccess: (data) => {
         toast.success(lang === "ar" ? "تم تسجيل الدخول بنجاح" : "Logged in successfully");
-        // Login response shape: { teacher: { ..., role, isAdmin } }
         postAuthRedirect(data.teacher.role ?? null, data.teacher.isAdmin ?? null);
       },
-      onError: (err: Error & { message?: string }) => setErrorMsg(err.message || t.auth.loginError)
+      onError: (err: Error & { message?: string }) => {
+        if (err.message === "NEEDS_VERIFICATION") {
+          const identifier = usePhone
+            ? `${selectedCountry.code}${phone}`
+            : email;
+          setOtpPending({ identifier, channel: usePhone ? "sms" : "email" });
+          return;
+        }
+        setErrorMsg(err.message || t.auth.loginError);
+      },
     }
   });
 
   const registerMutation = useRegisterTeacher({
     mutation: {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
+        if (data?.needsVerification) {
+          setOtpPending({ identifier: data.identifier, channel: data.channel ?? "email" });
+          return;
+        }
         toast.success(lang === "ar" ? "تم إنشاء الحساب بنجاح" : "Account created successfully");
-        // Route by selected role so organizers land on /organizer immediately.
-        // Newly-registered admins (rare) honor any saved last-surface.
-        const role: TeacherProfileRole | null = data.teacher.role ?? registerRole;
-        const isAdmin = data.teacher.isAdmin ?? false;
+        const role: TeacherProfileRole | null = data.teacher?.role ?? registerRole;
+        const isAdmin = data.teacher?.isAdmin ?? false;
         let pendingPublish = false;
         try { pendingPublish = localStorage.getItem("pending_publish_after_auth") === "1"; } catch {}
         if (pendingPublish) {
@@ -932,6 +1141,25 @@ export default function Auth() {
 
   if (currentUser) {
     return null;
+  }
+
+  // ── OTP verification screen ───────────────────────────────────────────────
+  if (otpPending) {
+    return (
+      <LoginLayout dir={dir}>
+        <OtpVerifyScreen
+          identifier={otpPending.identifier}
+          channel={otpPending.channel}
+          lang={lang}
+          dir={dir}
+          onVerified={(teacher) => {
+            toast.success(lang === "ar" ? "تم تفعيل حسابك بنجاح 🎉" : "Account verified successfully 🎉");
+            postAuthRedirect(teacher.role as TeacherProfileRole, teacher.isAdmin);
+          }}
+          onBack={() => setOtpPending(null)}
+        />
+      </LoginLayout>
+    );
   }
 
   // For new registrations we present a 3-button role picker (student / teacher / organizer)

@@ -63,6 +63,47 @@ const RESET_GENERIC_RESPONSE = {
   message: "إذا كان الحساب موجوداً، فسيتم إرسال تعليمات الاستعادة قريباً",
 };
 
+// ── OTP verification helpers ──────────────────────────────────────────────
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 1 minute between resends
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function buildOtpEmail(name: string, otp: string): { html: string; text: string } {
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;direction:rtl">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td align="center" style="padding:40px 16px">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <tr><td style="background:linear-gradient(135deg,#1e5238,#2a6647);padding:32px 40px;text-align:center">
+          <h1 style="color:#fff;margin:0;font-size:22px;font-weight:900">منصة حصاد</h1>
+        </td></tr>
+        <tr><td style="padding:40px">
+          <p style="font-size:16px;color:#1a1a1a;margin:0 0 8px">مرحباً ${name}،</p>
+          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 28px">شكراً لتسجيلك في منصة حصاد. أدخل الرمز التالي لتفعيل حسابك:</p>
+          <div style="text-align:center;margin:0 0 28px">
+            <div style="display:inline-block;background:#f0f9f0;border:2px solid #1e5238;border-radius:12px;padding:16px 40px">
+              <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e5238;font-family:monospace">${otp}</span>
+            </div>
+          </div>
+          <p style="font-size:13px;color:#888;text-align:center;margin:0">هذا الرمز صالح لمدة <strong>10 دقائق</strong>. لا تشاركه مع أحد.</p>
+        </td></tr>
+        <tr><td style="background:#f8f8f8;padding:20px 40px;text-align:center">
+          <p style="font-size:12px;color:#aaa;margin:0">منصة حصاد التعليمية</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text = `مرحباً ${name}،\n\nرمز التحقق من حسابك في منصة حصاد هو:\n\n${otp}\n\nهذا الرمز صالح لمدة 10 دقائق. لا تشاركه مع أحد.`;
+  return { html, text };
+}
+
 function buildPasswordChangedEmail(
   name: string,
   changedAt: Date,
@@ -490,6 +531,10 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
     // Public registration only allows teacher|organizer roles. Admin must be granted internally.
     const requestedRole =
       body.role === "organizer" ? "organizer" : "teacher";
+
+    const otp = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
     const [teacher] = await db
       .insert(teachersTable)
       .values({
@@ -498,6 +543,8 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         phone: body.phone || null,
         passwordHash,
         role: requestedRole,
+        verificationOtp: otp,
+        otpExpiresAt,
         acquisitionSource: (body as any).acquisitionSource || null,
         acquisitionMedium: (body as any).acquisitionMedium || null,
         acquisitionCampaign: (body as any).acquisitionCampaign || null,
@@ -505,25 +552,33 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       })
       .returning();
 
-    delete req.session.studentAccountId;
-    req.session.teacherId = teacher.id;
-    stampTeacherSession(req);
     void detectAndSaveCountry(teacher.id, req);
 
-    void logIslamicEvent({
-      userId: teacher.id,
-      eventType: "login",
-      metadata: { method: "register" },
-    });
+    // Send OTP via email or SMS
+    const identifier = body.email || body.phone!;
+    const channel = body.email ? "email" : "sms";
+
+    if (channel === "email") {
+      const { html, text } = buildOtpEmail(teacher.name, otp);
+      void sendEmail({
+        to: body.email!,
+        subject: "رمز تفعيل حساب حصاد",
+        html,
+        text,
+      }).catch((err) => req.log.error({ err }, "OTP email send failed"));
+    } else {
+      if (isSmsConfigured()) {
+        void sendSms(
+          body.phone!,
+          `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
+        ).catch((err) => req.log.error({ err }, "OTP SMS send failed"));
+      }
+    }
 
     res.status(201).json({
-      teacher: {
-        id: teacher.id,
-        name: teacher.name,
-        email: teacher.email,
-        phone: teacher.phone,
-        role: teacher.role,
-      },
+      needsVerification: true,
+      identifier,
+      channel,
     });
   } catch (error: any) {
     req.log.error({ err: error }, "Registration error");
@@ -588,6 +643,15 @@ router.post("/auth/login", authLimiter, async (req, res) => {
 
     if (teacher.isBlocked) {
       res.status(403).json({ message: "تم حظر حسابك. تواصل مع المسؤول" });
+      return;
+    }
+
+    // Block login for unverified email/phone accounts (Google accounts skip this)
+    if (!teacher.verifiedAt && !teacher.googleId) {
+      res.status(403).json({
+        message: "NEEDS_VERIFICATION",
+        identifier,
+      });
       return;
     }
 
@@ -676,6 +740,7 @@ router.get("/auth/me", async (req, res) => {
     profileSlug: teacher.profileSlug,
     publicProfileEnabled: teacher.publicProfileEnabled,
     showOnLeaderboard: teacher.showOnLeaderboard,
+    emailVerified: teacher.emailVerified,
   });
 });
 
@@ -1477,7 +1542,12 @@ router.post("/auth/google", authLimiter, async (req, res) => {
       if (existingByEmail) {
         const [linked] = await db
           .update(teachersTable)
-          .set({ googleId: profile.sub })
+          .set({
+            googleId: profile.sub,
+            // If account was registered by email but not yet verified, Google confirms it now
+            ...(existingByEmail.verifiedAt ? {} : { verifiedAt: new Date() }),
+            emailVerified: true,
+          })
           .where(eq(teachersTable.id, existingByEmail.id))
           .returning();
         teacher = linked;
@@ -1491,6 +1561,8 @@ router.post("/auth/google", authLimiter, async (req, res) => {
             phone: null,
             passwordHash: randomHash,
             googleId: profile.sub,
+            verifiedAt: new Date(), // Google already verified the email
+            emailVerified: true,
           })
           .returning();
         teacher = created;
@@ -1538,6 +1610,147 @@ router.post("/auth/google", authLimiter, async (req, res) => {
   } catch (error: any) {
     req.log.error({ err: error }, "Google login error (teacher)");
     res.status(500).json({ message: "خطأ في تسجيل الدخول عبر Google" });
+  }
+});
+
+// ── POST /auth/verify-otp ──────────────────────────────────────────────────
+const VerifyOtpSchema = z.object({
+  identifier: z.string().min(1).max(320),
+  otp: z.string().length(6),
+});
+
+router.post("/auth/verify-otp", authLimiter, async (req, res) => {
+  try {
+    const { identifier, otp } = VerifyOtpSchema.parse(req.body);
+
+    // Find teacher by email or phone
+    const byEmail = identifier.includes("@")
+      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
+      : [];
+    const byPhone = byEmail.length === 0
+      ? await db.select().from(teachersTable).where(eq(teachersTable.phone, identifier)).limit(1)
+      : [];
+
+    const teacher = byEmail[0] ?? byPhone[0];
+
+    if (!teacher) {
+      res.status(404).json({ message: "الحساب غير موجود" });
+      return;
+    }
+
+    if (teacher.emailVerified) {
+      // Already fully verified — just ensure they're logged in
+      delete req.session.studentAccountId;
+      req.session.teacherId = teacher.id;
+      stampTeacherSession(req);
+      res.json({ teacher: { id: teacher.id, name: teacher.name, email: teacher.email, phone: teacher.phone, role: teacher.role, isAdmin: teacher.isAdmin, emailVerified: true } });
+      return;
+    }
+
+    if (!teacher.verificationOtp || !teacher.otpExpiresAt) {
+      res.status(400).json({ message: "لا يوجد رمز تحقق نشط. اطلب رمزاً جديداً" });
+      return;
+    }
+
+    if (new Date() > teacher.otpExpiresAt) {
+      res.status(400).json({ message: "انتهت صلاحية الرمز. اطلب رمزاً جديداً" });
+      return;
+    }
+
+    if (teacher.verificationOtp !== otp) {
+      res.status(400).json({ message: "الرمز غير صحيح" });
+      return;
+    }
+
+    // Mark as verified and clear OTP
+    const [verified] = await db
+      .update(teachersTable)
+      .set({ verifiedAt: new Date(), emailVerified: true, verificationOtp: null, otpExpiresAt: null, lastLoginAt: new Date() })
+      .where(eq(teachersTable.id, teacher.id))
+      .returning();
+
+    delete req.session.studentAccountId;
+    req.session.teacherId = verified.id;
+    stampTeacherSession(req);
+
+    void detectAndSaveCountry(verified.id, req);
+    void logIslamicEvent({ userId: verified.id, eventType: "login", metadata: { method: "register" } });
+
+    res.json({
+      teacher: {
+        id: verified.id,
+        name: verified.name,
+        email: verified.email,
+        phone: verified.phone,
+        role: verified.role,
+        isAdmin: verified.isAdmin,
+      },
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "verify-otp error");
+    res.status(400).json({ message: err.message || "خطأ في التحقق" });
+  }
+});
+
+// ── POST /auth/resend-otp ──────────────────────────────────────────────────
+const ResendOtpSchema = z.object({
+  identifier: z.string().min(1).max(320),
+});
+
+router.post("/auth/resend-otp", authLimiter, async (req, res) => {
+  try {
+    const { identifier } = ResendOtpSchema.parse(req.body);
+
+    const byEmail = identifier.includes("@")
+      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
+      : [];
+    const byPhone = byEmail.length === 0
+      ? await db.select().from(teachersTable).where(eq(teachersTable.phone, identifier)).limit(1)
+      : [];
+
+    const teacher = byEmail[0] ?? byPhone[0];
+
+    if (!teacher) {
+      res.json({ ok: true }); // Generic response to avoid account enumeration
+      return;
+    }
+
+    if (teacher.emailVerified) {
+      res.json({ ok: true }); // Already fully verified, no need to resend
+      return;
+    }
+
+    // Rate limit: must wait OTP_RESEND_COOLDOWN_MS between resends
+    if (teacher.otpExpiresAt) {
+      const sendTime = teacher.otpExpiresAt.getTime() - OTP_TTL_MS;
+      if (Date.now() - sendTime < OTP_RESEND_COOLDOWN_MS) {
+        res.status(429).json({ message: "يرجى الانتظار دقيقة قبل إعادة الإرسال" });
+        return;
+      }
+    }
+
+    const otp = generateOtp();
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    await db
+      .update(teachersTable)
+      .set({ verificationOtp: otp, otpExpiresAt })
+      .where(eq(teachersTable.id, teacher.id));
+
+    const channel = teacher.email ? "email" : "sms";
+    if (channel === "email") {
+      const { html, text } = buildOtpEmail(teacher.name, otp);
+      void sendEmail({ to: teacher.email!, subject: "رمز تفعيل حساب حصاد", html, text })
+        .catch((err) => req.log.error({ err }, "OTP resend email failed"));
+    } else if (isSmsConfigured() && teacher.phone) {
+      void sendSms(teacher.phone, `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`)
+        .catch((err) => req.log.error({ err }, "OTP resend SMS failed"));
+    }
+
+    res.json({ ok: true, channel });
+  } catch (err: any) {
+    req.log.error({ err }, "resend-otp error");
+    res.status(400).json({ message: err.message || "خطأ في إعادة الإرسال" });
   }
 });
 

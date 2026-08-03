@@ -279,8 +279,6 @@ export declare const questionsTable: import("drizzle-orm/pg-core").PgTableWithCo
     dialect: "pg";
 }>;
 export declare const insertQuestionSchema: z.ZodObject<{
-    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    difficulty: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     assignmentId: z.ZodInt;
     questionType: z.ZodOptional<z.ZodString>;
     text: z.ZodString;
@@ -290,7 +288,9 @@ export declare const insertQuestionSchema: z.ZodObject<{
     optionD: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     correctAnswer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     points: z.ZodOptional<z.ZodNumber>;
+    imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     readAloud: z.ZodOptional<z.ZodBoolean>;
+    difficulty: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
     skill: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     allowMultipleAnswers: z.ZodOptional<z.ZodBoolean>;
     repeatQuestion: z.ZodOptional<z.ZodBoolean>;

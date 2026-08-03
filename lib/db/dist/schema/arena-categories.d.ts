@@ -474,11 +474,11 @@ export declare const arenaActivitiesTable: import("drizzle-orm/pg-core").PgTable
 }>;
 export declare const insertArenaCategorySchema: z.ZodObject<{
     name: z.ZodString;
+    teacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    isPublic: z.ZodOptional<z.ZodBoolean>;
+    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     coverImageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     sortOrder: z.ZodOptional<z.ZodInt>;
-    isPublic: z.ZodOptional<z.ZodBoolean>;
-    teacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-    description: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     emoji: z.ZodOptional<z.ZodString>;
     coverColor: z.ZodOptional<z.ZodString>;
     coverGradient: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -488,15 +488,15 @@ export declare const insertArenaCategorySchema: z.ZodObject<{
     in: {};
 }>;
 export declare const insertArenaActivitySchema: z.ZodObject<{
-    sortOrder: z.ZodOptional<z.ZodInt>;
-    isPublic: z.ZodOptional<z.ZodBoolean>;
     teacherId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
+    isPublic: z.ZodOptional<z.ZodBoolean>;
     categoryId: z.ZodInt;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     difficulty: z.ZodOptional<z.ZodInt>;
     type: z.ZodOptional<z.ZodString>;
     question: z.ZodString;
     videoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    sortOrder: z.ZodOptional<z.ZodInt>;
     answer: z.ZodString;
     hint: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     payload: z.ZodOptional<z.ZodNullable<z.ZodType<import("drizzle-zod").Json, unknown, z.core.$ZodTypeInternals<import("drizzle-zod").Json, unknown>>>>;
