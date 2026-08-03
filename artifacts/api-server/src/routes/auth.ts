@@ -963,7 +963,7 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
     const canSms = !!teacher.phone;
     const channel = teacher.email ? "email" : "sms";
 
-    if (!channel) {
+    if (!canEmail && !canSms) {
       req.log.info(
         { teacherId: teacher.id },
         "Password reset skipped: teacher has no email or phone on file",
@@ -972,25 +972,29 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
       return;
     }
 
-      const rawToken = crypto.randomBytes(32).toString("base64url");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
-      await db.insert(passwordResetTokensTable).values({
-        teacherId: teacher.id,
-        tokenHash: resetTokenHash,
-        expiresAt,
-      });
-      const link = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    const rawToken = crypto.randomBytes(32).toString("base64url");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    await db.insert(passwordResetTokensTable).values({
+      teacherId: teacher.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    const baseUrl = getAppBaseUrl();
+    const link = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
     let delivered = false;
     let deliveryReason: string | undefined;
 
     if (channel === "email") {
-      const { html, text } = buildOtpEmail(teacher.name, otp);
-    const result = await pool.query(
-      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
-      [targetSid, teacherId],
-    );
+      const { html, text } = buildResetEmail(teacher.name, link);
+      const result = await sendEmail({
+        to: teacher.email!,
+        subject: "إعادة تعيين كلمة المرور — منصة حصاد",
+        html,
+        text,
+      });
       delivered = result.delivered;
       deliveryReason = result.reason;
     } else {
