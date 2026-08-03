@@ -34,6 +34,8 @@ import {
   DollarSign,
   Route,
   Flame,
+  BadgeCheck,
+  ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
@@ -62,6 +64,7 @@ interface StudentProfile {
   totalScore: number;
   gamesPlayed: number;
   rank: number;
+  isVerified?: boolean;
 }
 
 interface RecentScore {
@@ -387,6 +390,28 @@ export default function StudentDashboard() {
 
           <div className="mb-6 animate-in fade-in duration-300 delay-75">
             <InstallAppButton variant="card" />
+          </div>
+
+          {/* Public profile link + verification prompt */}
+          <div className="mb-6 animate-in fade-in duration-300 delay-75 space-y-2">
+            <Link href={`/stu/${student.username}`}>
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer">
+                <span className="text-sm font-medium text-emerald-800">
+                  {lang === "ar" ? "عرض ملفك العام" : "View your public profile"}
+                </span>
+                <ExternalLink className="w-4 h-4 text-emerald-600 shrink-0" />
+              </div>
+            </Link>
+            {student.isVerified === false && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <BadgeCheck className="w-4 h-4 shrink-0" />
+                <span>
+                  {lang === "ar"
+                    ? <>حسابك غير موثّق. سجّل الدخول بـ <strong>Google</strong> لإظهار شارة التوثيق على ملفك العام.</>
+                    : <>Your account isn't verified. Sign in with <strong>Google</strong> to earn the verified badge on your public profile.</>}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8 animate-in fade-in duration-300 delay-100">

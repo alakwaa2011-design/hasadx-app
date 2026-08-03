@@ -161,6 +161,7 @@ router.get("/student-auth/me", async (req, res) => {
     gamesPlayed: student.gamesPlayed,
     rank,
     role: "student",
+    isVerified: student.googleId !== null,
   });
 });
 
@@ -358,6 +359,63 @@ router.post("/student-auth/google", authLimiter, async (req, res) => {
   } catch (error: unknown) {
     req.log.error({ err: error }, "Student Google login error");
     res.status(500).json({ message: "خطأ في تسجيل الدخول عبر Google" });
+  }
+});
+
+/** Public student profile by username. No auth required. */
+router.get("/student-auth/public/:username", async (req, res) => {
+  try {
+    const username = String(req.params.username ?? "");
+    const [student] = await db
+      .select({
+        id: studentAccountsTable.id,
+        username: studentAccountsTable.username,
+        displayName: studentAccountsTable.displayName,
+        avatar: studentAccountsTable.avatar,
+        totalScore: studentAccountsTable.totalScore,
+        gamesPlayed: studentAccountsTable.gamesPlayed,
+        googleId: studentAccountsTable.googleId,
+        createdAt: studentAccountsTable.createdAt,
+      })
+      .from(studentAccountsTable)
+      .where(eq(studentAccountsTable.username, username))
+      .limit(1);
+
+    if (!student) {
+      res.status(404).json({ message: "الطالب غير موجود" });
+      return;
+    }
+
+    const [rankResult] = await db
+      .select({ cnt: count() })
+      .from(studentAccountsTable)
+      .where(gt(studentAccountsTable.totalScore, student.totalScore));
+    const rank = (rankResult?.cnt ?? 0) + 1;
+
+    // A student is verified when they authenticated via Google (identity confirmed by Google OAuth).
+    const isVerified = student.googleId !== null;
+
+    // Determine if the viewer is the profile owner.
+    const viewerStudentId = req.session.studentAccountId ?? null;
+    const isOwner = viewerStudentId !== null && viewerStudentId === student.id;
+
+    res.json({
+      student: {
+        id: student.id,
+        username: student.username,
+        displayName: student.displayName,
+        avatar: student.avatar,
+        totalScore: student.totalScore,
+        gamesPlayed: student.gamesPlayed,
+        rank,
+        isVerified,
+        createdAt: student.createdAt,
+      },
+      isOwner,
+    });
+  } catch (err) {
+    req.log.error(err, "GET /student-auth/public/:username failed");
+    res.status(500).json({ message: "حدث خطأ" });
   }
 });
 
