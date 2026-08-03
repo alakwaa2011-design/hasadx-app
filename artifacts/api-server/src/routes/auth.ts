@@ -490,7 +490,7 @@ const router: IRouter = Router();
 
 router.post("/auth/register", registerLimiter, async (req, res) => {
   try {
-    const body = LoginTeacherBody.parse(req.body);
+    const body = RegisterTeacherBody.parse(req.body);
 
     if (!body.email && !body.phone) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
@@ -509,7 +509,7 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       conditions.push(eq(teachersTable.phone, body.phone));
       // Also check legacy 8-digit Kuwait format to prevent duplicate identities
       if (body.phone.startsWith("+965")) {
-        const legacyPhone = identifier.slice(4);
+        const legacyPhone = body.phone.slice(4);
         if (/^\d{8}$/.test(legacyPhone)) {
           conditions.push(eq(teachersTable.phone, legacyPhone));
         }
@@ -533,31 +533,31 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
       body.role === "organizer" ? "organizer" : "teacher";
 
     const otp = generateOtp();
-
-    const resendChannel = teacher.email ? "email" : "sms";
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-    const resendChannel = teacher.email ? "email" : "sms";
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-    const otpExpiresAt = new Date(Date.now() + (resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS));
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     const [teacher] = await db
-      .select({ preferences: teachersTable.preferences })
-      .from(teachersTable)
-      .where(eq(teachersTable.id, req.session.teacherId))
-      .limit(1);
+      .insert(teachersTable)
+      .values({
+        name: body.name,
+        email: body.email || null,
+        phone: body.phone || null,
+        passwordHash,
+        role: requestedRole,
+        verificationOtp: otp,
+        otpExpiresAt,
+        acquisitionSource: (body as any).acquisitionSource || null,
+        acquisitionMedium: (body as any).acquisitionMedium || null,
+        acquisitionCampaign: (body as any).acquisitionCampaign || null,
+        acquisitionReferrer: (body as any).acquisitionReferrer || null,
+      })
+      .returning();
 
     void detectAndSaveCountry(teacher.id, req);
 
     // Send OTP via email or SMS
-    const identifier = parsed.data.identifier;
-    const channel = teacher.email ? "email" : "sms";
+    const identifier = body.email || body.phone!;
+    const channel = body.email ? "email" : "sms";
+
     if (channel === "email") {
       const { html, text } = buildOtpEmail(teacher.name, otp);
       void sendEmail({
@@ -567,10 +567,12 @@ router.post("/auth/register", registerLimiter, async (req, res) => {
         text,
       }).catch((err) => req.log.error({ err }, "OTP email send failed"));
     } else {
-      void sendSms(
-        body.phone!,
-        `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
-      ).catch((err) => req.log.error({ err }, "OTP SMS send failed"));
+      if (isSmsConfigured()) {
+        void sendSms(
+          body.phone!,
+          `رمز تفعيل حساب حصاد: ${otp}\nصالح لمدة 10 دقائق.`,
+        ).catch((err) => req.log.error({ err }, "OTP SMS send failed"));
+      }
     }
 
     res.status(201).json({
@@ -593,14 +595,15 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const identifier = parsed.data.identifier;
+    const identifier = body.email || body.phone!;
 
-    const teacher = byEmail[0] ?? byPhone[0];
-    if (isEmail) {
+    let teacher: typeof teachersTable.$inferSelect | undefined;
+
+    if (body.email) {
       const rows = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.phone, identifier))
+        .where(eq(teachersTable.email, identifier))
         .limit(1);
       teacher = rows[0];
     } else {
@@ -628,7 +631,7 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    const valid = await bcrypt.compare(currentPassword, teacher.passwordHash);
+    const valid = await bcrypt.compare(body.password, teacher.passwordHash);
     if (!valid) {
       res.status(401).json({ message: "بيانات الدخول غير صحيحة" });
       return;
@@ -639,10 +642,9 @@ router.post("/auth/login", authLimiter, async (req, res) => {
       return;
     }
 
-    // Block login only when an active OTP verification is in progress (verificationOtp IS NOT NULL).
-    // Legacy accounts that predate the OTP rollout have verificationOtp=NULL and are let through
-    // so they are not locked out; they'll see a soft nudge banner encouraging them to verify.
-    // Google accounts are always pre-verified so they bypass this check entirely.
+    // Block login for new unverified accounts (have a pending OTP).
+    // Legacy accounts (verificationOtp=NULL) pass through — they see the nudge banner instead.
+    // Google accounts are always pre-verified.
     if (!teacher.googleId && teacher.verificationOtp) {
       res.status(403).json({
         message: "NEEDS_VERIFICATION",
@@ -712,11 +714,11 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
-    const [teacher] = await db
-      .select({ preferences: teachersTable.preferences })
-      .from(teachersTable)
-      .where(eq(teachersTable.id, req.session.teacherId))
-      .limit(1);
+  const [teacher] = await db
+    .select()
+    .from(teachersTable)
+    .where(eq(teachersTable.id, req.session.teacherId))
+    .limit(1);
 
   if (!teacher) {
     res.status(401).json({ message: "المستخدم غير موجود" });
@@ -769,31 +771,33 @@ router.patch("/auth/role", async (req, res) => {
     });
     return;
   }
-    const [updated] = await db
-      .update(teachersTable)
-      .set(updateData)
-      .where(eq(teachersTable.id, req.session.teacherId))
-      .returning();
-
-    res.json({
-      id: updated.id,
-      name: updated.name,
-      email: updated.email,
-      phone: updated.phone,
-    });
-  } catch (error: any) {
-    req.log.error({ err: error }, "Profile update error");
-    res.status(400).json({ message: error.message || "خطأ في تحديث الملف الشخصي" });
+  const [updated] = await db
+    .update(teachersTable)
+    .set({ role })
+    .where(eq(teachersTable.id, req.session.teacherId))
+    .returning();
+  if (!updated) {
+    res.status(401).json({ message: "المستخدم غير موجود" });
+    return;
   }
+  res.json({
+    id: updated.id,
+    name: updated.name,
+    email: updated.email,
+    phone: updated.phone,
+    isAdmin: updated.isAdmin,
+    role: updated.role,
+  });
 });
 
-router.patch("/auth/change-password", async (req, res) => {
+router.patch("/auth/profile", async (req, res) => {
   if (!req.session.teacherId) {
     res.status(401).json({ message: "غير مسجل الدخول" });
     return;
   }
+
   try {
-  const parsed = BriefPreferencesSchema.safeParse(req.body);
+    const parsed = UpdateProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: "بيانات غير صحيحة" });
       return;
@@ -804,7 +808,7 @@ router.patch("/auth/change-password", async (req, res) => {
       const [existing] = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.phone, phone))
+        .where(eq(teachersTable.email, email))
         .limit(1);
       if (existing && existing.id !== req.session.teacherId) {
         res.status(409).json({ message: "البريد الإلكتروني مستخدم بالفعل" });
@@ -853,14 +857,14 @@ router.patch("/auth/change-password", async (req, res) => {
     return;
   }
   try {
-  const parsed = BriefPreferencesSchema.safeParse(req.body);
+    const parsed = ChangePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ message: "كلمة السر الجديدة يجب أن تكون 6 أحرف على الأقل" });
       return;
     }
     const { currentPassword, newPassword } = parsed.data;
     const [teacher] = await db
-      .select({ preferences: teachersTable.preferences })
+      .select()
       .from(teachersTable)
       .where(eq(teachersTable.id, req.session.teacherId))
       .limit(1);
@@ -904,7 +908,9 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
   // Always return a generic success message to avoid account enumeration,
   // regardless of whether the identifier matches an account or delivery succeeds.
   try {
-  const parsed = BriefPreferencesSchema.safeParse(req.body);
+    const parsed = ForgotPasswordSchema.safeParse({
+      identifier: typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "",
+    });
     if (!parsed.success) {
       res.status(400).json({ message: "يجب إدخال البريد الإلكتروني أو رقم الهاتف" });
       return;
@@ -912,12 +918,12 @@ router.post("/auth/forgot-password", authLimiter, async (req, res) => {
     const identifier = parsed.data.identifier;
     const isEmail = identifier.includes("@");
 
-    const teacher = byEmail[0] ?? byPhone[0];
+    let teacher: typeof teachersTable.$inferSelect | undefined;
     if (isEmail) {
       const rows = await db
         .select()
         .from(teachersTable)
-        .where(eq(teachersTable.phone, identifier))
+        .where(eq(teachersTable.email, identifier.toLowerCase()))
         .limit(1);
       teacher = rows[0];
     } else {
@@ -1493,7 +1499,7 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     const email = profile.email.toLowerCase();
     const displayName = profile.name?.trim() || email.split("@")[0];
 
-    const teacher = byEmail[0] ?? byPhone[0];
+    let teacher: typeof teachersTable.$inferSelect | undefined;
 
     const byGoogle = await db
       .select()
@@ -1503,9 +1509,11 @@ router.post("/auth/google", authLimiter, async (req, res) => {
     teacher = byGoogle[0];
 
     if (!teacher) {
-    const byEmail = identifier.includes("@")
-      ? await db.select().from(teachersTable).where(eq(teachersTable.email, identifier)).limit(1)
-      : [];
+      const byEmail = await db
+        .select()
+        .from(teachersTable)
+        .where(eq(teachersTable.email, email))
+        .limit(1);
       const existingByEmail = byEmail[0];
 
       if (existingByEmail) {
@@ -1676,7 +1684,20 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
       : [];
 
     const teacher = byEmail[0] ?? byPhone[0];
-      const sendTime = teacher.otpExpiresAt.getTime() - channelTtl;
+
+    if (!teacher) {
+      res.json({ ok: true }); // Generic response to avoid account enumeration
+      return;
+    }
+
+    if (teacher.emailVerified) {
+      res.json({ ok: true }); // Already fully verified, no need to resend
+      return;
+    }
+
+    // Rate limit: must wait OTP_RESEND_COOLDOWN_MS between resends
+    if (teacher.otpExpiresAt) {
+      const sendTime = teacher.otpExpiresAt.getTime() - OTP_TTL_MS;
       if (Date.now() - sendTime < OTP_RESEND_COOLDOWN_MS) {
         res.status(429).json({ message: "يرجى الانتظار دقيقة قبل إعادة الإرسال" });
         return;
@@ -1684,19 +1705,7 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
     }
 
     const otp = generateOtp();
-
-    const resendChannel = teacher.email ? "email" : "sms";
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-    const resendChannel = teacher.email ? "email" : "sms";
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-
-      const channelTtl = resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS;
-    const otpExpiresAt = new Date(Date.now() + (resendChannel === "email" ? OTP_TTL_EMAIL_MS : OTP_TTL_SMS_MS));
+    const otpExpiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     await db
       .update(teachersTable)
@@ -1713,7 +1722,7 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
         .catch((err) => req.log.error({ err }, "OTP resend SMS failed"));
     }
 
-    res.json({ ok: true, channel: resendChannel });
+    res.json({ ok: true, channel });
   } catch (err: any) {
     req.log.error({ err }, "resend-otp error");
     res.status(400).json({ message: err.message || "خطأ في إعادة الإرسال" });
@@ -1721,5 +1730,3 @@ router.post("/auth/resend-otp", authLimiter, async (req, res) => {
 });
 
 export default router;
-
-const OTP_TTL_SMS_MS = 10 * 60 * 1000;   // 10 minutes (SMS)
