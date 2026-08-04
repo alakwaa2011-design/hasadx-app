@@ -549,6 +549,7 @@ router.get("/auth/me", async (req, res) => {
     aiTier: teacher.aiTier,
     hasProDesign: teacher.hasProDesign,
     displaySchool: teacher.displaySchool,
+    schoolLogo: teacher.schoolLogo,
     profileSlug: teacher.profileSlug,
     publicProfileEnabled: teacher.publicProfileEnabled,
     showOnLeaderboard: teacher.showOnLeaderboard,

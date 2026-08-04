@@ -66,15 +66,38 @@ function headerRow(): string {
   return `
           <!-- HEADER -->
           <tr>
-            <td align="center" style="background-color:${G.green};padding:20px 32px 16px;">
-              <img src="https://hasaadx.com/images/logo-hasaad.png" alt="حصاد" height="52"
-                   style="display:block;height:52px;width:auto;max-height:52px;margin:0 auto 8px;" />
-              <p style="margin:0;font-size:14px;font-weight:700;color:#FFFFFF;font-family:'Tajawal',Arial,sans-serif;">
-                منصة حصاد التعليمية
-              </p>
-              <p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.65);font-family:'Tajawal',Arial,sans-serif;">
-                تواصل فعّال بين المدرسة والأسرة
-              </p>
+            <td align="center"
+                style="background-color:${G.green};padding:14px 32px 0;border-bottom:3px solid ${G.gold};">
+              <!--[if mso]><table role="presentation" align="center" border="0" cellpadding="0" cellspacing="0"><tr><td valign="middle" style="padding-left:22px;"><![endif]-->
+              <!-- Logo+Name block — centred, logo on right, text on left (RTL) -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0"
+                     align="center" dir="rtl"
+                     style="margin:0 auto;border-collapse:collapse;">
+                <tr>
+                  <!-- Logo (right side in RTL) -->
+                  <td valign="middle" style="padding:0 0 14px 22px;">
+                    <img src="https://hasaadx.com/images/logo-hasaad.png" alt="حصاد"
+                         height="60" width="auto"
+                         style="display:block;height:60px;width:auto;border:0;outline:none;" />
+                  </td>
+                  <!-- Text (left side in RTL) -->
+                  <td valign="middle" dir="rtl"
+                      style="text-align:right;padding:0 0 14px 0;">
+                    <p style="margin:0;font-size:17px;font-weight:800;color:#FFFFFF;
+                               font-family:'Tajawal',Arial,sans-serif;
+                               line-height:1.3;white-space:nowrap;letter-spacing:0.01em;">
+                      منصة حصاد التعليمية
+                    </p>
+                    <p style="margin:5px 0 0;font-size:12px;font-weight:400;
+                               color:rgba(255,255,255,0.72);
+                               font-family:'Tajawal',Arial,sans-serif;
+                               white-space:nowrap;line-height:1.4;">
+                      تواصل فعّال بين المدرسة والأسرة
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              <!--[if mso]></td></tr></table><![endif]-->
             </td>
           </tr>`;
 }
@@ -126,6 +149,33 @@ function infoCards(cards: { label: string; value: string }[]): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Teacher → Parent: new message
 // ─────────────────────────────────────────────────────────────────────────────
+/** Optional school identity bar shown below the header when teacher has set school info */
+function schoolBannerRow(schoolName: string, schoolLogoUrl?: string): string {
+  return `
+          <!-- SCHOOL BANNER -->
+          <tr>
+            <td style="background-color:#FFFFFF;padding:12px 32px;border-bottom:1px solid ${G.border};">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0"
+                     align="center" dir="rtl" style="margin:0 auto;">
+                <tr>
+                  ${schoolLogoUrl ? `
+                  <td valign="middle" style="padding:0 0 0 12px;">
+                    <img src="${schoolLogoUrl}" alt="${esc(schoolName)}"
+                         height="36" width="auto"
+                         style="display:block;height:36px;width:auto;max-width:80px;border:0;border-radius:6px;object-fit:contain;" />
+                  </td>` : ""}
+                  <td valign="middle" dir="rtl" style="text-align:right;">
+                    <p style="margin:0;font-size:13px;font-weight:700;color:${G.text};
+                               font-family:'Tajawal',Arial,sans-serif;white-space:nowrap;">
+                      ${esc(schoolName)}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+}
+
 export interface ParentMessageEmailParams {
   teacherName: string;
   studentName: string;
@@ -136,6 +186,7 @@ export interface ParentMessageEmailParams {
   portalUrl: string;
   parentName?: string;
   schoolName?: string;
+  schoolLogoUrl?: string;
 }
 
 export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
@@ -152,6 +203,7 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
 
   return emailShell(`
           ${headerRow()}
+          ${p.schoolName ? schoolBannerRow(p.schoolName, p.schoolLogoUrl) : ""}
 
           <!-- BODY -->
           <tr>

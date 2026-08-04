@@ -49,6 +49,8 @@ export default function TeacherSettings() {
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
   const [showOnLeaderboard, setShowOnLeaderboard] = useState(true);
   const [displaySchool, setDisplaySchool] = useState("");
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
+  const [schoolLogoUploading, setSchoolLogoUploading] = useState(false);
   const [profileSlug, setProfileSlug] = useState("");
   const [savingPrivacy, setSavingPrivacy] = useState(false);
   const currentRole: TeacherProfileRole = user?.role ?? "teacher";
@@ -163,11 +165,13 @@ export default function TeacherSettings() {
         publicProfileEnabled?: boolean | null;
         showOnLeaderboard?: boolean | null;
         displaySchool?: string | null;
+        schoolLogo?: string | null;
         profileSlug?: string | null;
       };
       setPublicProfileEnabled(Boolean(u.publicProfileEnabled));
       setShowOnLeaderboard(u.showOnLeaderboard !== false);
       setDisplaySchool(u.displaySchool ?? "");
+      setSchoolLogo(u.schoolLogo ?? null);
       setProfileSlug(u.profileSlug ?? "");
     }
   }, [user]);
@@ -197,6 +201,7 @@ export default function TeacherSettings() {
         publicProfileEnabled,
         showOnLeaderboard,
         displaySchool: displaySchool.trim() ? displaySchool.trim() : null,
+        schoolLogo: schoolLogo || null,
       };
       const previousSlug =
         ((user as { profileSlug?: string | null } | undefined)?.profileSlug ?? "")
@@ -574,6 +579,81 @@ export default function TeacherSettings() {
                   placeholder={lang === "ar" ? "مثال: مدرسة الأمل" : "e.g. Hope School"}
                   disabled={savingPrivacy}
                 />
+              </div>
+
+              {/* School Logo Upload */}
+              <div>
+                <Label>
+                  {lang === "ar" ? "شعار المدرسة (اختياري)" : "School logo (optional)"}
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {lang === "ar"
+                    ? "يظهر الشعار في البريد المرسل لأولياء الأمور. حجم أقصى 2 ميغابايت."
+                    : "Logo appears in parent notification emails. Max 2 MB."}
+                </p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {schoolLogo && (
+                    <div className="relative">
+                      <img
+                        src={`${API_BASE}/api/storage${schoolLogo}`}
+                        alt="school logo"
+                        className="h-14 w-auto max-w-[120px] rounded-lg border border-border object-contain bg-white p-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSchoolLogo(null)}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none"
+                        title={lang === "ar" ? "حذف الشعار" : "Remove logo"}
+                      >×</button>
+                    </div>
+                  )}
+                  <label className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium cursor-pointer transition-colors",
+                    schoolLogoUploading || savingPrivacy
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-muted",
+                  )}>
+                    {schoolLogoUploading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" />
+                        {lang === "ar" ? "جارٍ الرفع..." : "Uploading..."}</>
+                    ) : (
+                      <>{lang === "ar" ? "رفع شعار" : "Upload logo"}</>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={schoolLogoUploading || savingPrivacy}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error(lang === "ar" ? "الملف أكبر من 2 ميغابايت" : "File exceeds 2 MB");
+                          return;
+                        }
+                        setSchoolLogoUploading(true);
+                        try {
+                          const reqRes = await fetch(`${API_BASE}/api/storage/uploads/request-image-url`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            credentials: "include",
+                            body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+                          });
+                          if (!reqRes.ok) throw new Error("upload_request_failed");
+                          const { uploadURL, objectPath } = await reqRes.json();
+                          await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+                          setSchoolLogo(objectPath);
+                          toast.success(lang === "ar" ? "تم رفع الشعار — احفظ الإعدادات لتطبيقه" : "Logo uploaded — save settings to apply");
+                        } catch {
+                          toast.error(lang === "ar" ? "تعذّر رفع الشعار" : "Failed to upload logo");
+                        } finally {
+                          setSchoolLogoUploading(false);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>

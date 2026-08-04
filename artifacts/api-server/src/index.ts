@@ -309,6 +309,10 @@ async function runSchemaMigrations() {
         ADD COLUMN IF NOT EXISTS verified_at        TIMESTAMP,
         ADD COLUMN IF NOT EXISTS email_verified     BOOLEAN NOT NULL DEFAULT FALSE
     `);
+    await db.execute(sql`
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS school_logo TEXT
+    `);
     logger.info("Schema migrations applied");
   } catch (err) {
     logger.error(err, "Schema migration failed");

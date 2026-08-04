@@ -299,6 +299,7 @@ router.patch("/me/privacy", async (req, res) => {
       showOnLeaderboard: z.boolean().optional(),
       displaySchool: z.string().max(120).nullable().optional(),
       profileSlug: slugSchema.nullable().optional(),
+      schoolLogo: z.string().max(500).nullable().optional(),
     }).strict();
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) {
@@ -316,6 +317,8 @@ router.patch("/me/privacy", async (req, res) => {
       update.displaySchool = parsed.data.displaySchool;
     if (parsed.data.profileSlug !== undefined)
       update.profileSlug = parsed.data.profileSlug;
+    if (parsed.data.schoolLogo !== undefined)
+      update.schoolLogo = parsed.data.schoolLogo;
     if (Object.keys(update).length === 0) {
       res.json({ ok: true });
       return;

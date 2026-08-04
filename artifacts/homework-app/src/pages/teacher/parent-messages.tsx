@@ -250,7 +250,7 @@ export default function ParentMessagesPage() {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.green, margin: 0 }}>التواصل مع الأهل</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.green, margin: 0 }}>مراسلات الأسرة</h1>
             <p style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>أرسل رسائل لأولياء الأمور وتابع ردودهم</p>
           </div>
           <button onClick={() => setShowCompose(true)}

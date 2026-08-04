@@ -481,6 +481,23 @@ export declare const teachersTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        schoolLogo: import("drizzle-orm/pg-core").PgColumn<{
+            name: "school_logo";
+            tableName: "teachers";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         profileSlug: import("drizzle-orm/pg-core").PgColumn<{
             name: "profile_slug";
             tableName: "teachers";
@@ -630,6 +647,7 @@ export declare const insertTeacherSchema: z.ZodObject<{
     acquisitionCampaign: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     acquisitionReferrer: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     displaySchool: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    schoolLogo: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     profileSlug: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     publicProfileEnabled: z.ZodOptional<z.ZodBoolean>;
     showOnLeaderboard: z.ZodOptional<z.ZodBoolean>;

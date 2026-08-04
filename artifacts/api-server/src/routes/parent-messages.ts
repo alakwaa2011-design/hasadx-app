@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, parentMessagesTable, parentMessageRepliesTable, studentsTable, teachersTable } from "@workspace/db";
+import { db, parentMessagesTable, parentMessageRepliesTable, studentsTable, teachersTable, notificationsTable } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { randomUUID } from "crypto";
@@ -31,7 +31,11 @@ router.post("/parent-messages", async (req, res) => {
       .where(and(eq(studentsTable.id, studentId), eq(studentsTable.teacherId, teacherId))).limit(1);
     if (!student) { res.status(404).json({ message: "الطالب غير موجود" }); return; }
 
-    const [teacher] = await db.select({ id: teachersTable.id, name: teachersTable.name, email: teachersTable.email })
+    const [teacher] = await db.select({
+        id: teachersTable.id, name: teachersTable.name,
+        email: teachersTable.email, displaySchool: teachersTable.displaySchool,
+        schoolLogo: teachersTable.schoolLogo,
+      })
       .from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
     if (!teacher) { res.status(404).json({ message: "المعلم غير موجود" }); return; }
 
@@ -45,10 +49,15 @@ router.post("/parent-messages", async (req, res) => {
 
     const baseUrl = getAppBaseUrl();
     const portalUrl = `${baseUrl}/parent/${replyToken}`;
+    const schoolLogoUrl = teacher.schoolLogo
+      ? `${baseUrl}/api/storage${teacher.schoolLogo}`
+      : undefined;
     const emailHtml = buildParentMessageEmail({
       teacherName: teacher.name, studentName: student.name,
       studentClass: student.studentClass || "", gradeLevel: student.gradeLevel || "",
       subject, body, portalUrl, parentName: parentName || undefined,
+      schoolName: teacher.displaySchool ?? undefined,
+      schoolLogoUrl,
     });
 
     const emailResult = await sendEmail({
@@ -239,6 +248,7 @@ router.get("/parent-portal/:token", async (req, res) => {
         sentAt: parentMessagesTable.sentAt, readAt: parentMessagesTable.readAt,
         replyText: parentMessagesTable.replyText, repliedAt: parentMessagesTable.repliedAt,
         tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        teacherId: parentMessagesTable.teacherId,
         studentName: studentsTable.name, studentClass: studentsTable.studentClass,
         gradeLevel: studentsTable.gradeLevel, teacherName: teachersTable.name,
       })
@@ -252,8 +262,19 @@ router.get("/parent-portal/:token", async (req, res) => {
     const expired = msg.tokenExpiresAt < new Date();
 
     if (!msg.readAt && !expired) {
-      await db.update(parentMessagesTable).set({ readAt: new Date() })
+      const readNow = new Date();
+      await db.update(parentMessagesTable).set({ readAt: readNow })
         .where(eq(parentMessagesTable.replyToken, token));
+
+      // Notify the teacher that the parent read the message
+      const dateStr = readNow.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+      const timeStr = readNow.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+      await db.insert(notificationsTable).values({
+        teacherId: msg.teacherId,
+        type: "parent_message_read",
+        title: "📩 قرأ ولي الأمر رسالتك",
+        body: `اطّلع ولي أمر ${msg.studentName} على رسالتك بتاريخ ${dateStr} الساعة ${timeStr}`,
+      });
     }
 
     // Fetch thread replies
@@ -322,6 +343,14 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
         html: emailHtml,
       });
     }
+
+    // Bell notification for the teacher
+    await db.insert(notificationsTable).values({
+      teacherId: msg.teacherId,
+      type: "parent_message_reply",
+      title: "💬 ردّ ولي الأمر على رسالتك",
+      body: `أرسل ولي أمر ${msg.studentName} رداً على رسالتك — افتح مراسلات الأسرة لعرض الرد`,
+    });
 
     res.json({ ok: true });
   } catch (err) {

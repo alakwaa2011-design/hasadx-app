@@ -40,6 +40,7 @@ export const teachersTable = pgTable("teachers", {
   acquisitionReferrer: text("acquisition_referrer"),
   // Public profile / leaderboard fields (rewards system)
   displaySchool: text("display_school"),
+  schoolLogo: text("school_logo"),
   profileSlug: text("profile_slug").unique(),
   publicProfileEnabled: boolean("public_profile_enabled").notNull().default(false),
   showOnLeaderboard: boolean("show_on_leaderboard").notNull().default(true),
