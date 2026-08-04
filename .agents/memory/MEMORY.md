@@ -3,5 +3,6 @@
 - [Route shadowing from duplicate handlers](route-shadowing-duplicate-handlers.md) — a duplicate path handler in an earlier-mounted router silently shadows a newer one; typecheck won't catch it, only live curl will.
 - [drizzle-kit push TUI hang](drizzle-push-tui-hang.md) — interactive constraint-rename prompts hang forever in the agent shell; psql ALTER TABLE is a valid fallback for simple additive columns.
 - [Resend connector credential fetch](resend-connector-fetch.md) — connectors API `connector_names=resend` filter returns 0 items; fetch unfiltered and match client-side or OTP emails silently fail.
+- [Runtime schema migrations required](runtime-schema-migrations.md) — new tables/columns must also be added to runSchemaMigrations in the api-server entrypoint, or prod fails with "does not exist".
 - [Solo challenge difficulty and multi-level](solo-challenge-difficulty-levels.md) — difficulty preset (easy/med/hard) + per-question duration via GameQuestion.duration; multi-level uses preserveOrder in createGame and level-transition overlay in play.tsx.
 - [API server slow build & restart](api-server-slow-build.md) — workflow restart timeouts are usually the 2-min esbuild bundle, not a crash; use 300s timeout and test dist manually to tell them apart.

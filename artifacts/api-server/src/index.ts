@@ -488,6 +488,76 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "Teacher verification column migration failed");
   }
+
+  // ── Parent-report: students contact columns ───────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE students
+        ADD COLUMN IF NOT EXISTS parent_email TEXT,
+        ADD COLUMN IF NOT EXISTS parent_name  TEXT
+    `);
+    logger.info("students.parent_email / parent_name columns migrated");
+  } catch (err) {
+    logger.error(err, "students parent contact column migration failed");
+  }
+
+  // ── Parent-report: parent_messages table ─────────────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS parent_messages (
+        id               SERIAL PRIMARY KEY,
+        teacher_id       INTEGER NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+        student_id       INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+        subject          TEXT NOT NULL DEFAULT '',
+        body             TEXT NOT NULL,
+        parent_email     TEXT NOT NULL,
+        parent_name      TEXT,
+        sent_at          TIMESTAMP NOT NULL DEFAULT NOW(),
+        read_at          TIMESTAMP,
+        reply_text       TEXT,
+        replied_at       TIMESTAMP,
+        reply_token      TEXT NOT NULL,
+        token_expires_at TIMESTAMP NOT NULL,
+        is_archived      BOOLEAN NOT NULL DEFAULT false,
+        created_at       TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS parent_messages_teacher_idx
+        ON parent_messages(teacher_id)
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS parent_messages_student_idx
+        ON parent_messages(student_id)
+    `);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS parent_messages_token_unique
+        ON parent_messages(reply_token)
+    `);
+    logger.info("parent_messages table migrated");
+  } catch (err) {
+    logger.error(err, "parent_messages table migration failed");
+  }
+
+  // ── Parent-report: parent_message_replies table ───────────────────────────
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS parent_message_replies (
+        id         SERIAL PRIMARY KEY,
+        message_id INTEGER NOT NULL REFERENCES parent_messages(id) ON DELETE CASCADE,
+        sender     TEXT NOT NULL,
+        body       TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE INDEX IF NOT EXISTS pmr_message_idx
+        ON parent_message_replies(message_id)
+    `);
+    logger.info("parent_message_replies table migrated");
+  } catch (err) {
+    logger.error(err, "parent_message_replies table migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

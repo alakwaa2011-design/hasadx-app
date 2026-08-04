@@ -403,7 +403,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
                             >
                               <Mail className="w-4 h-4 text-emerald-600" />
-                              {lang === "ar" ? "الرسائل" : "Parent Messages"}
+                              {lang === "ar" ? "التواصل مع الأهل" : "Parent Messages"}
                             </Link>
                             <Link
                               href="/teacher/settings"
@@ -699,7 +699,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 w-full transition-colors"
                       >
                         <Mail className="w-5 h-5 text-emerald-600" />
-                        {lang === "ar" ? "الرسائل" : "Parent Messages"}
+                        {lang === "ar" ? "التواصل مع الأهل" : "Parent Messages"}
                       </Link>
                       <Link
                         href="/teacher/settings"
@@ -882,6 +882,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
     </div>
   );
 }
+
 
 export function StudentLoginLayout({ children }: LayoutProps) {
   const { lang, setLang, dir } = useI18n();

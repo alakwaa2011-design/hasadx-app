@@ -6,7 +6,7 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, Button } from "@/components/ui-elements";
 import { ClassSelector, getRememberedTargetClass } from "@/components/teacher/class-selector";
-import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal } from "lucide-react";
+import { ArrowRight, ArrowLeft, Trash2, Users, FileText, CheckCircle, Star, Image, Lock, Globe, GraduationCap, Copy, Eye, EyeOff, Pencil, Save, X, MessageSquare, Gamepad2, Plus, Minus, Download, Calendar, BarChart3, TrendingUp, Award, User, UsersRound, CopyPlus, Database, Brain, Printer, UserX, AlertCircle, Loader2, Zap, Check, Trophy, Clock, Medal, Send, Mail } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts";
 import { getSocket, disconnectSocket } from "@/lib/socket";
 import { useI18n } from "@/lib/i18n";
@@ -78,6 +78,9 @@ export default function TeacherAssignmentDetail() {
   const [reportSub, setReportSub] = useState<any | null>(null);
   const [reportNote, setReportNote] = useState("");
   const [reportParentEmail, setReportParentEmail] = useState("");
+  const [reportParentName, setReportParentName] = useState<string | null>(null);
+  const [reportStudentDbId, setReportStudentDbId] = useState<number | null>(null);
+  const [reportIdError, setReportIdError] = useState<string | null>(null);
   const [reportSending, setReportSending] = useState(false);
   const [reportStudents, setReportStudents] = useState<Array<{ id: number; name: string; parentEmail: string | null; parentName: string | null }> | null>(null);
   const [soloParticipantsLoading, setSoloParticipantsLoading] = useState(false);
@@ -531,6 +534,95 @@ export default function TeacherAssignmentDetail() {
         imageUrl: q.imageUrl || null,
       })),
     });
+  };
+
+  const openReportModal = async (sub: (typeof sortedFilteredSubmissions)[0]) => {
+    setReportSub(sub);
+    setReportNote("");
+    setReportParentEmail("");
+    setReportParentName(null);
+    setReportStudentDbId(null);
+    setReportIdError(null);
+
+    // Reject submissions without a stable student DB id — name matching is
+    // unsafe because duplicate names could route a report to the wrong parent.
+    const subStudentId: number | null = (sub as any).studentId ?? null;
+    if (subStudentId === null) {
+      setReportIdError(
+        "لا يمكن تحديد هوية هذا الطالب بشكل دقيق — التسليم لم يُربط بحساب طالب." +
+        " لإرسال التقرير، اطلب من الطالب تسجيل الدخول أو أضف معلوماته من صفحة الطلاب.",
+      );
+      return;
+    }
+
+    let students = reportStudents;
+    if (!students) {
+      try {
+        const res = await fetch(`${BASE}/api/students`, { credentials: "include" });
+        if (res.ok) {
+          students = await res.json();
+          setReportStudents(students!);
+        } else {
+          setReportStudents([]);
+          students = [];
+        }
+      } catch {
+        setReportStudents([]);
+        students = [];
+      }
+    }
+
+    const match = (students || []).find(st => st.id === subStudentId);
+    setReportStudentDbId(subStudentId);
+    setReportParentEmail(match?.parentEmail || "");
+    setReportParentName(match?.parentName || null);
+  };
+
+  const sendReport = async () => {
+    if (!reportSub || !assignment) return;
+
+    // Hard block: no stable student identity
+    if (reportIdError || reportStudentDbId === null) {
+      toast.error(
+        lang === "ar"
+          ? "لا يمكن إرسال التقرير — هوية الطالب غير محددة"
+          : "Cannot send — student identity is ambiguous",
+      );
+      return;
+    }
+
+    const finalPoints = reportSub.teacherAdjustedPoints !== null && reportSub.teacherAdjustedPoints !== undefined
+      ? reportSub.teacherAdjustedPoints : reportSub.earnedPoints;
+    const scorePct = Math.round(reportSub.score);
+    const locale_ = lang === "ar" ? "ar-EG" : "en-US";
+    const date = new Date(reportSub.submittedAt).toLocaleDateString(locale_);
+
+    const subject = `تقرير واجب: ${assignment.title}`;
+    const body = `نتيجة الطالب/ة ${reportSub.studentName} في الواجب "${assignment.title}":\n\n• الدرجة: ${scorePct}%\n• النقاط: ${finalPoints} / ${reportSub.totalPoints}\n• تاريخ التسليم: ${date}${reportNote.trim() ? `\n\nملاحظة المعلم:\n${reportNote.trim()}` : ""}`;
+
+    setReportSending(true);
+    try {
+      const res = await fetch(`${BASE}/api/parent-messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          studentId: reportStudentDbId,
+          subject,
+          body,
+          parentEmail: reportParentEmail,
+          parentName: reportParentName || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.message || "حدث خطأ أثناء الإرسال"); return; }
+      toast.success(lang === "ar" ? "✓ تم إرسال التقرير إلى ولي الأمر" : "Report sent to parent ✓");
+      setReportSub(null);
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر إرسال التقرير" : "Failed to send report");
+    } finally {
+      setReportSending(false);
+    }
   };
 
   const locale = lang === "ar" ? "ar-EG" : "en-US";
@@ -1820,7 +1912,7 @@ export default function TeacherAssignmentDetail() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="mt-2.5 flex justify-end gap-2">
+                              <div className="mt-2.5 flex justify-end gap-2 flex-wrap">
                                 <button
                                   onClick={() => setDetailSubId(sub.id)}
                                   className="px-2.5 py-1 rounded-lg text-xs font-bold text-foreground hover:bg-muted transition-colors flex items-center gap-1 border border-border"
@@ -1838,6 +1930,13 @@ export default function TeacherAssignmentDetail() {
                                 >
                                   <Pencil className="w-3 h-3" />
                                   {t.assignmentDetail.editGrade}
+                                </button>
+                                <button
+                                  onClick={() => openReportModal(sub)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center gap-1 border border-emerald-200 dark:border-emerald-800"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  {lang === "ar" ? "إرسال لولي الأمر" : "Send to parent"}
                                 </button>
                               </div>
                             )}
@@ -2267,6 +2366,141 @@ export default function TeacherAssignmentDetail() {
                   <Loader2 className={`w-3 h-3 ${soloParticipantsLoading ? "animate-spin" : "opacity-0"}`} />
                   {lang === "ar" ? "تحديث" : "Refresh"}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ── Send Report to Parent Modal ─────────────────────── */}
+      <AnimatePresence>
+        {reportSub !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            onClick={() => !reportSending && setReportSub(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", damping: 22 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-card rounded-2xl shadow-2xl w-full max-w-md border border-border flex flex-col"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-black text-foreground">إرسال التقرير لولي الأمر</h2>
+                  <p className="text-xs text-muted-foreground truncate">{reportSub.studentName}</p>
+                </div>
+                <button
+                  onClick={() => setReportSub(null)}
+                  disabled={reportSending}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors disabled:opacity-40"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {/* Hard block: anonymous submission — identity cannot be verified */}
+                {reportIdError ? (
+                  <div className="flex items-start gap-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-3">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    <span className="font-bold leading-relaxed">{reportIdError}</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Score preview card */}
+                    {(() => {
+                      const finalPoints = reportSub.teacherAdjustedPoints !== null && reportSub.teacherAdjustedPoints !== undefined
+                        ? reportSub.teacherAdjustedPoints : reportSub.earnedPoints;
+                      const scorePct = Math.round(reportSub.score);
+                      const scoreColor = scorePct >= 80 ? "text-green-600 bg-green-50 dark:bg-green-900/20 border-green-200" : scorePct >= 50 ? "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200" : "text-red-600 bg-red-50 dark:bg-red-900/20 border-red-200";
+                      return (
+                        <div className="rounded-xl border-2 border-border bg-muted/20 p-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground">الواجب</span>
+                            <span className="text-xs font-bold text-foreground truncate max-w-[60%] text-left">{assignment?.title}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground">الطالب/ة</span>
+                            <span className="text-xs font-bold text-foreground">{reportSub.studentName}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground">النقاط</span>
+                            <span className="text-xs font-black text-foreground">{finalPoints} / {reportSub.totalPoints}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-muted-foreground">الدرجة</span>
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-lg border ${scoreColor}`}>{scorePct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Parent email status */}
+                    {reportParentEmail ? (
+                      <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-bold">سيُرسل إلى: {reportParentEmail}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-2">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span className="font-bold">لا يوجد بريد ولي أمر مسجل لهذا الطالب — يمكن إضافته من صفحة الطلاب.</span>
+                      </div>
+                    )}
+
+                    {/* Teacher note */}
+                    <div>
+                      <label className="block text-xs font-bold text-foreground mb-1.5">
+                        ملاحظة إضافية للمعلم <span className="text-muted-foreground font-normal">(اختياري)</span>
+                      </label>
+                      <textarea
+                        value={reportNote}
+                        onChange={e => setReportNote(e.target.value)}
+                        placeholder="أضف ملاحظة أو توجيهاً لولي الأمر..."
+                        rows={3}
+                        maxLength={500}
+                        className="w-full px-3 py-2.5 rounded-xl bg-background border-2 border-border text-sm font-medium focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all resize-none"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-left mt-0.5">{reportNote.length}/500</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 px-5 pb-5">
+                <button
+                  onClick={() => setReportSub(null)}
+                  disabled={reportSending}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-muted text-muted-foreground font-bold text-sm hover:bg-muted/80 transition-colors disabled:opacity-50"
+                >
+                  إلغاء
+                </button>
+                {!reportIdError && (
+                  <button
+                    onClick={sendReport}
+                    disabled={!reportParentEmail || reportSending}
+                    title={!reportParentEmail ? "لا يوجد بريد ولي أمر مسجل لهذا الطالب" : undefined}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {reportSending ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> جارٍ الإرسال...</>
+                    ) : (
+                      <><Send className="w-4 h-4" /> إرسال التقرير</>
+                    )}
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

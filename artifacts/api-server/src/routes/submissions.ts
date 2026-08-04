@@ -1017,6 +1017,7 @@ router.get("/assignments/:id/submissions", async (req, res) => {
     res.json(
       submissions.map((s) => ({
         id: s.id,
+        studentId: s.studentId,
         studentName: s.studentName,
         studentClass: s.studentClass,
         score: s.score,

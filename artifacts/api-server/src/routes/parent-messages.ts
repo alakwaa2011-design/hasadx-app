@@ -51,12 +51,24 @@ router.post("/parent-messages", async (req, res) => {
       subject, body, portalUrl, parentName: parentName || undefined,
     });
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: parentEmail,
       subject: `رسالة من معلم ${student.name} — ${subject}`,
       html: emailHtml,
       text: `رسالة من المعلم ${teacher.name} بخصوص ${student.name}:\n\n${body}\n\nللرد: ${portalUrl}`,
     });
+
+    if (!emailResult.delivered) {
+      // Roll back — remove the record so the teacher isn't shown false success
+      await db.delete(parentMessagesTable).where(eq(parentMessagesTable.id, msg.id));
+      const reason = emailResult.reason || "send_failed";
+      console.error("parent-messages email delivery failed:", reason);
+      res.status(502).json({
+        message: `تعذّر إرسال البريد الإلكتروني إلى ولي الأمر — ${reason === "resend_not_configured" ? "خدمة البريد غير مُهيأة على هذا الخادم" : reason}. لم تُحفظ الرسالة.`,
+        reason,
+      });
+      return;
+    }
 
     if (!student.parentEmail && parentEmail) {
       await db.update(studentsTable)
