@@ -139,6 +139,7 @@ export default function WheelCreate() {
 
   const [saving, setSaving] = useState(false);
   const [launching, setLaunching] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Import from assignment
   const [importOpen, setImportOpen] = useState(false);
@@ -416,149 +417,84 @@ export default function WheelCreate() {
 
   return (
     <Layout>
-      <div dir={dir} className="min-h-[calc(100dvh-4rem)] py-6 px-3 sm:px-4 max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
+      <div dir={dir} className="min-h-[calc(100dvh-4rem)] py-6 px-3 sm:px-4 max-w-5xl mx-auto">
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
             <div
-              className="w-16 h-16 rounded-2xl shadow-lg flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})`,
-              }}
+              className="w-12 h-12 rounded-2xl shadow-md flex items-center justify-center shrink-0"
+              style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}
             >
-              <WheelIcon size={36} />
+              <WheelIcon size={28} />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-foreground">
-                {ar ? "عجلة الحظ" : "Wheel of Fortune"}
+              <h1 className="text-xl sm:text-2xl font-black text-foreground leading-tight">
+                {ar ? "عجلة التحدي" : "Wheel of Challenge"}
               </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {ar
-                  ? "أدر العجلة على شاشة الفصل، اقرأ السؤال، ومنح النقاط للفرق."
-                  : "Spin the wheel on the class display, read the question, and award points to teams."}
+              <p className="text-xs text-muted-foreground">
+                {ar ? "أدر العجلة واقرأ السؤال ومنح النقاط للفرق" : "Spin · Read · Award points"}
               </p>
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setSavedOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm"
-            >
-              <FolderOpen className="w-4 h-4" />
-              {ar ? "قوالبي" : "My Templates"}
-            </button>
-          </div>
+          <button
+            onClick={() => setSavedOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 transition-all font-bold text-sm shrink-0"
+          >
+            <FolderOpen className="w-4 h-4" />
+            {ar ? "قوالبي" : "Templates"}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* LEFT — Setup column (lg=2) */}
+
+          {/* ══ LEFT — content (2 cols) ══ */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Basics card */}
-            <Card className="p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-bold text-foreground mb-1.5">
-                    {ar ? "عنوان اللعبة" : "Game Title"}
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    placeholder={ar ? "مثال: مراجعة الفصل الأول" : "e.g. Chapter 1 Review"}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none text-base"
-                  />
-                </div>
 
-                {/* Import from assignment — prominent button replacing language buttons */}
-                <div className="sm:col-span-2">
-                  <button
-                    type="button"
-                    onClick={() => { setImportOpen(true); loadAssignmentsForImport(); }}
-                    className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl border-2 font-black text-base transition-all hover:scale-[1.01] active:scale-100 shadow-sm"
-                    style={{
-                      background: `linear-gradient(135deg, ${BRAND_PRIMARY}12, ${BRAND_GOLD}18)`,
-                      borderColor: `${BRAND_PRIMARY}50`,
-                      color: BRAND_PRIMARY,
-                    }}
-                  >
-                    <FileDown className="w-5 h-5 shrink-0" style={{ color: BRAND_GOLD }} />
-                    <span>{ar ? "استيراد أسئلة من واجب" : "Import Questions from Assignment"}</span>
-                  </button>
-                </div>
-
-                <div>
-                  <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4" />
-                    {ar ? "المادة (اختياري)" : "Subject (optional)"}
-                  </label>
-                  <input
-                    type="text"
-                    value={subject}
-                    onChange={e => setSubject(e.target.value)}
-                    placeholder={ar ? "مثال: العلوم" : "e.g. Science"}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <Globe className="w-4 h-4" />
-                    {ar ? "لغة المحتوى" : "Content language"}
-                  </label>
-                  <select
-                    value={contentLang}
-                    onChange={e => setContentLang(e.target.value as "ar" | "en")}
-                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
-                  >
-                    <option value="ar">العربية</option>
-                    <option value="en">English</option>
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="text-sm font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <GraduationCap className="w-4 h-4" />
-                    {ar ? "الصف (اختياري)" : "Grade (optional)"}
-                  </label>
-                  {gradeLevels.length > 0 ? (
-                    <select
-                      value={gradeLevel}
-                      onChange={e => setGradeLevel(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
-                    >
-                      <option value="">{ar ? "بدون تحديد" : "Any grade"}</option>
-                      {gradeLevels.map(g => (
-                        <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={gradeLevel}
-                      onChange={e => setGradeLevel(e.target.value)}
-                      placeholder={ar ? "مثال: الصف الخامس" : "e.g. Grade 5"}
-                      className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none"
-                    />
-                  )}
-                </div>
+            {/* Title + import */}
+            <Card className="p-4">
+              <label className="block text-sm font-bold text-foreground mb-1.5">
+                {ar ? "عنوان اللعبة" : "Game Title"}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder={ar ? "مثال: مراجعة الفصل الأول" : "e.g. Chapter 1 Review"}
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setImportOpen(true); loadAssignmentsForImport(); }}
+                  title={ar ? "استيراد من واجب" : "Import from assignment"}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 font-bold text-sm transition-all hover:scale-[1.02] shrink-0"
+                  style={{ background: `${BRAND_PRIMARY}10`, borderColor: `${BRAND_PRIMARY}40`, color: BRAND_PRIMARY }}
+                >
+                  <FileDown className="w-4 h-4" style={{ color: BRAND_GOLD }} />
+                  {ar ? "استيراد" : "Import"}
+                </button>
               </div>
             </Card>
 
             {/* AI generate card */}
-            <Card className="p-5">
+            <Card className="p-4">
               <button
                 type="button"
                 onClick={() => setAiOpen(o => !o)}
-                className="w-full flex items-center justify-between mb-3"
+                className="w-full flex items-center justify-between"
               >
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" style={{ color: BRAND_GOLD }} />
-                  <h3 className="text-lg font-black text-foreground">
-                    {ar ? "توليد الأسئلة بالذكاء الاصطناعي" : "AI Question Generation"}
+                  <Sparkles className="w-4 h-4" style={{ color: BRAND_GOLD }} />
+                  <h3 className="text-base font-black text-foreground">
+                    {ar ? "توليد الأسئلة بالذكاء الاصطناعي" : "Generate with AI"}
                   </h3>
                 </div>
                 <span className="text-xs text-muted-foreground font-bold">
-                  {aiOpen ? (ar ? "إخفاء" : "Hide") : (ar ? "إظهار" : "Show")}
+                  {aiOpen ? "▲" : "▼"}
                 </span>
               </button>
+
               <AnimatePresence initial={false}>
                 {aiOpen && (
                   <motion.div
@@ -567,72 +503,53 @@ export default function WheelCreate() {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="space-y-3 pt-1">
-                      <div>
-                        <label className="block text-sm font-bold text-foreground mb-1.5">
-                          {ar ? "الموضوع" : "Topic"}
-                        </label>
-                        <input
-                          type="text"
-                          value={aiTopic}
-                          onChange={e => setAiTopic(e.target.value)}
-                          placeholder={ar ? "مثال: الكسور والأعداد العشرية" : "e.g. Fractions and decimals"}
-                          className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-sm font-bold text-foreground mb-1.5">
-                            {ar ? "عدد القطاعات" : "Segments"}
-                          </label>
-                          <select
-                            value={aiCount}
-                            onChange={e => setAiCount(parseInt(e.target.value, 10))}
-                            className="w-full px-3 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
-                          >
-                            {[6, 8, 10, 12, 14, 16].map(n => (
-                              <option key={n} value={n}>{n}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-bold text-foreground mb-1.5">
-                            {ar ? "الصعوبة" : "Difficulty"}
-                          </label>
-                          <select
-                            value={aiDifficulty}
-                            onChange={e => setAiDifficulty(e.target.value as typeof aiDifficulty)}
-                            className="w-full px-3 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold"
-                          >
-                            <option value="easy">{ar ? "سهل" : "Easy"}</option>
-                            <option value="medium">{ar ? "متوسط" : "Medium"}</option>
-                            <option value="hard">{ar ? "صعب" : "Hard"}</option>
-                            <option value="mixed">{ar ? "مختلط" : "Mixed"}</option>
-                          </select>
-                        </div>
-                        <div className="col-span-2 sm:col-span-1">
-                          <label className="block text-sm font-bold text-foreground mb-1.5">
-                            {ar ? "قطاعات مكافآت" : "Bonus tiles"}
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setAiBonus(b => !b)}
-                            className={`w-full py-2.5 rounded-xl border-2 font-bold transition-all ${aiBonus ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}
-                          >
-                            {aiBonus ? (ar ? "مفعّل" : "On") : (ar ? "متوقّف" : "Off")}
-                          </button>
-                        </div>
+                    <div className="pt-3 space-y-3">
+                      <input
+                        type="text"
+                        value={aiTopic}
+                        onChange={e => setAiTopic(e.target.value)}
+                        placeholder={ar ? "الموضوع — مثال: الكسور والأعداد العشرية" : "Topic — e.g. Fractions and decimals"}
+                        className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background focus:border-primary outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <select
+                          value={aiCount}
+                          onChange={e => setAiCount(parseInt(e.target.value, 10))}
+                          className="flex-1 px-3 py-2 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold text-sm"
+                        >
+                          {[6, 8, 10, 12, 14, 16].map(n => (
+                            <option key={n} value={n}>{n} {ar ? "قطاع" : "segments"}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={aiDifficulty}
+                          onChange={e => setAiDifficulty(e.target.value as typeof aiDifficulty)}
+                          className="flex-1 px-3 py-2 rounded-xl border-2 border-border bg-background focus:border-primary outline-none font-bold text-sm"
+                        >
+                          <option value="easy">{ar ? "سهل" : "Easy"}</option>
+                          <option value="medium">{ar ? "متوسط" : "Medium"}</option>
+                          <option value="hard">{ar ? "صعب" : "Hard"}</option>
+                          <option value="mixed">{ar ? "مختلط" : "Mixed"}</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setAiBonus(b => !b)}
+                          title={ar ? "قطاعات مكافآت" : "Bonus tiles"}
+                          className={`px-3 py-2 rounded-xl border-2 font-bold text-sm transition-all ${aiBonus ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}
+                        >
+                          <Gift className="w-4 h-4" />
+                        </button>
                       </div>
                       <button
                         type="button"
                         disabled={generating}
                         onClick={generateAI}
-                        className="w-full py-3 rounded-xl font-black text-white text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
+                        className="w-full py-2.5 rounded-xl font-black text-white text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                         style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}
                       >
                         {generating
-                          ? <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جارٍ التوليد…" : "Generating…"}</>
-                          : <><Wand2 className="w-5 h-5" /> {ar ? "ولّد القطاعات" : "Generate Segments"}</>}
+                          ? <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جارٍ التوليد…" : "Generating…"}</>
+                          : <><Wand2 className="w-4 h-4" /> {ar ? "ولّد القطاعات" : "Generate Segments"}</>}
                       </button>
                     </div>
                   </motion.div>
@@ -641,79 +558,75 @@ export default function WheelCreate() {
             </Card>
 
             {/* Segments editor */}
-            <Card className="p-5">
+            <Card className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-black text-foreground">
+                <h3 className="text-base font-black text-foreground">
                   {ar ? `القطاعات (${segments.length})` : `Segments (${segments.length})`}
                 </h3>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => addManualSegment("question")}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/15 text-primary text-sm font-bold border border-primary/30 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/15 text-primary text-sm font-bold border border-primary/30 transition-all"
                   >
-                    <Plus className="w-4 h-4" /> {ar ? "سؤال" : "Question"}
+                    <Plus className="w-3.5 h-3.5" /> {ar ? "سؤال" : "Question"}
                   </button>
                   <button
                     type="button"
                     onClick={() => addManualSegment("bonus")}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold border transition-all"
-                    style={{ background: `${BRAND_GOLD}20`, color: BRAND_GOLD, borderColor: `${BRAND_GOLD}66` }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold border transition-all"
+                    style={{ background: `${BRAND_GOLD}18`, color: BRAND_GOLD, borderColor: `${BRAND_GOLD}55` }}
                   >
-                    <Gift className="w-4 h-4" /> {ar ? "مكافأة" : "Bonus"}
+                    <Gift className="w-3.5 h-3.5" /> {ar ? "مكافأة" : "Bonus"}
                   </button>
                 </div>
               </div>
 
               {segments.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground">
-                  <div className="flex justify-center mb-3"><WheelIcon size={52} /></div>
-                  <p className="font-bold mb-1">
-                    {ar ? "لا توجد قطاعات بعد" : "No segments yet"}
-                  </p>
-                  <p className="text-sm">
-                    {ar ? "ولّدها بالذكاء الاصطناعي أو أضفها يدوياً." : "Generate with AI or add them manually."}
-                  </p>
+                <div className="py-10 text-center text-muted-foreground">
+                  <div className="flex justify-center mb-3 opacity-40"><WheelIcon size={48} /></div>
+                  <p className="font-bold text-sm mb-1">{ar ? "لا توجد قطاعات بعد" : "No segments yet"}</p>
+                  <p className="text-xs">{ar ? "ولّدها بالذكاء الاصطناعي أو أضفها يدوياً" : "Generate with AI or add manually"}</p>
                 </div>
               ) : (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {colorPreview.map((s, idx) => (
                     <div
                       key={s.id}
-                      className="rounded-xl border-2 bg-card p-3 sm:p-4"
+                      className="rounded-xl border-2 bg-card p-3"
                       style={{ borderColor: `${s.color}40` }}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2.5">
                         <div
-                          className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md"
+                          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow"
                           style={{ background: s.color }}
                         >
                           {idx + 1}
                         </div>
-                        <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full"
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded-full"
                               style={s.kind === "bonus"
                                 ? { background: `${BRAND_GOLD}20`, color: BRAND_GOLD }
                                 : { background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
                               {s.kind === "bonus"
-                                ? <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" /> {ar ? "مكافأة" : "Bonus"}</span>
-                                : <span className="inline-flex items-center gap-1"><HelpCircle className="w-3 h-3" /> {ar ? "سؤال" : "Question"}</span>}
+                                ? <span className="inline-flex items-center gap-0.5"><Gift className="w-2.5 h-2.5" /> {ar ? "مكافأة" : "Bonus"}</span>
+                                : <span className="inline-flex items-center gap-0.5"><HelpCircle className="w-2.5 h-2.5" /> {ar ? "سؤال" : "Q"}</span>}
                             </span>
                             <select
                               value={s.points}
                               onChange={e => updateSegment(s.id, { points: parseInt(e.target.value, 10) })}
-                              className="text-xs font-bold rounded-lg px-2 py-1 border border-border bg-background"
+                              className="text-xs font-bold rounded-md px-1.5 py-0.5 border border-border bg-background"
                             >
                               {(s.kind === "bonus" ? [0, 100, 200] : POINT_OPTIONS).map(p => (
-                                <option key={p} value={p}>{p} {ar ? "نقطة" : "pts"}</option>
+                                <option key={p} value={p}>{p} {ar ? "ن" : "pt"}</option>
                               ))}
                             </select>
                             {s.kind === "bonus" && (
                               <select
                                 value={s.bonusType ?? "lucky"}
                                 onChange={e => updateSegment(s.id, { bonusType: e.target.value as BonusType })}
-                                className="text-xs font-bold rounded-lg px-2 py-1 border border-border bg-background"
+                                className="text-xs font-bold rounded-md px-1.5 py-0.5 border border-border bg-background"
                               >
                                 {BONUS_TYPES.map(b => (
                                   <option key={b} value={b}>{bonusLabel(b, contentLang)}</option>
@@ -726,7 +639,7 @@ export default function WheelCreate() {
                               className="ms-auto text-muted-foreground hover:text-red-500 transition-colors"
                               aria-label="remove"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           <textarea
@@ -736,25 +649,25 @@ export default function WheelCreate() {
                             placeholder={s.kind === "question"
                               ? (ar ? "نص السؤال…" : "Question text…")
                               : (ar ? "عنوان المكافأة…" : "Bonus label…")}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm resize-none"
+                            className="w-full px-3 py-1.5 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm resize-none"
                           />
                           {s.kind === "question" && (
-                            <>
+                            <div className="flex gap-1.5">
                               <input
                                 type="text"
                                 value={s.answer ?? ""}
                                 onChange={e => updateSegment(s.id, { answer: e.target.value })}
-                                placeholder={ar ? "الإجابة الصحيحة…" : "Correct answer…"}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
+                                placeholder={ar ? "الإجابة الصحيحة" : "Correct answer"}
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
                               />
                               <input
                                 type="text"
                                 value={s.explanation ?? ""}
                                 onChange={e => updateSegment(s.id, { explanation: e.target.value })}
-                                placeholder={ar ? "شرح موجز (اختياري)" : "Brief explanation (optional)"}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-xs text-muted-foreground"
+                                placeholder={ar ? "شرح (اختياري)" : "Explanation (opt.)"}
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background focus:border-primary outline-none text-xs text-muted-foreground"
                               />
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -765,116 +678,166 @@ export default function WheelCreate() {
             </Card>
           </div>
 
-          {/* RIGHT — Game settings + actions */}
-          <div className="space-y-4">
-            <Card className="p-5">
-              <h3 className="text-lg font-black text-foreground mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5" style={{ color: BRAND_PRIMARY }} />
-                {ar ? "إعدادات الفرق" : "Team Settings"}
+          {/* ══ RIGHT — settings + actions ══ */}
+          <div className="space-y-3">
+
+            {/* Teams */}
+            <Card className="p-4">
+              <h3 className="text-sm font-black text-foreground mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4" style={{ color: BRAND_PRIMARY }} />
+                {ar ? "الفرق" : "Teams"}
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-foreground mb-2">
-                    {ar ? "عدد الفرق" : "Number of teams"}
-                  </label>
-                  <div className="flex gap-2">
-                    {[2, 3, 4, 5, 6].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setConfig(c => ({ ...c, teamCount: n }))}
-                        className={`flex-1 h-10 rounded-xl font-black text-base border-2 transition-all ${config.teamCount === n ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"}`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-3">
+                {/* Team count */}
+                <div className="flex gap-1.5">
+                  {[2, 3, 4, 5, 6].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setConfig(c => ({ ...c, teamCount: n }))}
+                      className={`flex-1 h-9 rounded-lg font-black text-sm border-2 transition-all ${config.teamCount === n ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/40"}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-foreground mb-2">
-                    {ar ? "أسماء الفرق" : "Team names"}
-                  </label>
-                  <div className="space-y-2">
-                    {config.teamNames.map((name, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        value={name}
-                        onChange={e => {
-                          const next = [...config.teamNames];
-                          next[i] = e.target.value;
-                          setConfig(c => ({ ...c, teamNames: next }));
-                        }}
-                        placeholder={defaultTeamName(i, contentLang)}
-                        className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
-                      />
-                    ))}
-                  </div>
+                {/* Team names */}
+                <div className="space-y-1.5">
+                  {config.teamNames.map((name, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      value={name}
+                      onChange={e => {
+                        const next = [...config.teamNames];
+                        next[i] = e.target.value;
+                        setConfig(c => ({ ...c, teamNames: next }));
+                      }}
+                      placeholder={defaultTeamName(i, contentLang)}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
+                    />
+                  ))}
                 </div>
               </div>
             </Card>
 
-            <Card className="p-5">
-              <h3 className="text-lg font-black text-foreground mb-3">
-                {ar ? "إعدادات الدوران" : "Spin Settings"}
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-bold text-foreground">
-                      {ar ? "مدة الدوران" : "Spin duration"}
-                    </label>
-                    <span className="text-sm font-black" style={{ color: BRAND_PRIMARY }}>
-                      {config.spinSeconds}s
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={3}
-                    max={10}
-                    value={config.spinSeconds}
-                    onChange={e => setConfig(c => ({ ...c, spinSeconds: parseInt(e.target.value, 10) }))}
-                    className="w-full accent-primary"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setConfig(c => ({ ...c, soundOn: !c.soundOn }))}
-                  className={`w-full py-2.5 rounded-xl font-bold border-2 transition-all ${config.soundOn ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}
-                >
-                  {config.soundOn
-                    ? (ar ? "🔊 الصوت مفعّل" : "🔊 Sound on")
-                    : (ar ? "🔇 الصوت متوقّف" : "🔇 Sound off")}
-                </button>
-              </div>
+            {/* Advanced settings — collapsible */}
+            <Card className="p-4">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(o => !o)}
+                className="w-full flex items-center justify-between"
+              >
+                <span className="text-sm font-black text-muted-foreground">
+                  {ar ? "إعدادات إضافية" : "More settings"}
+                </span>
+                <span className="text-xs text-muted-foreground">{advancedOpen ? "▲" : "▼"}</span>
+              </button>
+              <AnimatePresence initial={false}>
+                {advancedOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-3 space-y-3">
+                      {/* Spin duration */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-bold text-foreground">
+                            {ar ? "مدة الدوران" : "Spin duration"}
+                          </label>
+                          <span className="text-xs font-black" style={{ color: BRAND_PRIMARY }}>{config.spinSeconds}s</span>
+                        </div>
+                        <input
+                          type="range" min={3} max={10}
+                          value={config.spinSeconds}
+                          onChange={e => setConfig(c => ({ ...c, spinSeconds: parseInt(e.target.value, 10) }))}
+                          className="w-full accent-primary"
+                        />
+                      </div>
+                      {/* Sound */}
+                      <button
+                        type="button"
+                        onClick={() => setConfig(c => ({ ...c, soundOn: !c.soundOn }))}
+                        className={`w-full py-2 rounded-xl font-bold text-sm border-2 transition-all ${config.soundOn ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted/30 text-muted-foreground"}`}
+                      >
+                        {config.soundOn ? (ar ? "🔊 الصوت مفعّل" : "🔊 Sound on") : (ar ? "🔇 الصوت متوقّف" : "🔇 Sound off")}
+                      </button>
+                      {/* Language */}
+                      <div>
+                        <label className="text-xs font-bold text-foreground block mb-1">
+                          {ar ? "لغة المحتوى" : "Content language"}
+                        </label>
+                        <select
+                          value={contentLang}
+                          onChange={e => setContentLang(e.target.value as "ar" | "en")}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none font-bold text-sm"
+                        >
+                          <option value="ar">العربية</option>
+                          <option value="en">English</option>
+                        </select>
+                      </div>
+                      {/* Subject */}
+                      <input
+                        type="text"
+                        value={subject}
+                        onChange={e => setSubject(e.target.value)}
+                        placeholder={ar ? "المادة (اختياري)" : "Subject (optional)"}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
+                      />
+                      {/* Grade */}
+                      {gradeLevels.length > 0 ? (
+                        <select
+                          value={gradeLevel}
+                          onChange={e => setGradeLevel(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none font-bold text-sm"
+                        >
+                          <option value="">{ar ? "الصف (اختياري)" : "Grade (optional)"}</option>
+                          {gradeLevels.map(g => (
+                            <option key={g.gradeLevel} value={g.gradeLevel}>{g.gradeLevel}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={gradeLevel}
+                          onChange={e => setGradeLevel(e.target.value)}
+                          placeholder={ar ? "الصف (اختياري)" : "Grade (optional)"}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:border-primary outline-none text-sm"
+                        />
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Card>
 
             {/* Actions */}
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                disabled={launching || segments.length < 2}
-                onClick={launchPlay}
-                className="w-full py-4 rounded-2xl font-black text-white text-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-xl"
-                style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}
-              >
-                {launching
-                  ? <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جارٍ الإطلاق…" : "Launching…"}</>
-                  : <><Play className="w-5 h-5" /> {ar ? "ابدأ اللعب" : "Start Playing"}</>}
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={saveTemplate}
-                className="w-full py-2.5 rounded-xl font-bold bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60"
-              >
-                {saving
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جارٍ الحفظ…" : "Saving…"}</>
-                  : editingTemplateId !== null
-                    ? <><Check className="w-4 h-4" /> {ar ? "تحديث القالب" : "Update Template"}</>
-                    : <><Save className="w-4 h-4" /> {ar ? "احفظ في المكتبة" : "Save to Library"}</>}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={launching || segments.length < 2}
+              onClick={launchPlay}
+              className="w-full py-3.5 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${BRAND_PRIMARY}, ${BRAND_GOLD})` }}
+            >
+              {launching
+                ? <><Loader2 className="w-5 h-5 animate-spin" /> {ar ? "جارٍ الإطلاق…" : "Launching…"}</>
+                : <><Play className="w-5 h-5" /> {ar ? "ابدأ اللعب" : "Start Playing"}</>}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={saveTemplate}
+              className="w-full py-2 rounded-xl font-bold bg-card border-2 border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center gap-2 transition-all disabled:opacity-60 text-sm"
+            >
+              {saving
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> {ar ? "جارٍ الحفظ…" : "Saving…"}</>
+                : editingTemplateId !== null
+                  ? <><Check className="w-4 h-4" /> {ar ? "تحديث القالب" : "Update"}</>
+                  : <><Save className="w-4 h-4" /> {ar ? "احفظ في المكتبة" : "Save to Library"}</>}
+            </button>
           </div>
         </div>
 
@@ -977,7 +940,7 @@ export default function WheelCreate() {
               >
                 <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                   <h3 className="text-lg font-black text-foreground">
-                    {ar ? "قوالب عجلة الحظ" : "Wheel Templates"}
+                    {ar ? "قوالب عجلة التحدي" : "Wheel Templates"}
                   </h3>
                   <button
                     onClick={() => setSavedOpen(false)}

@@ -1288,8 +1288,8 @@ export default function TeacherDashboard() {
                       key: "wheel_of_fortune" as const,
                       icon: <WheelIcon size={56} />,
                       svgIcon: true,
-                      titleAr: "عجلة الحظ",
-                      titleEn: "Wheel of Fortune",
+                      titleAr: "عجلة التحدي",
+                      titleEn: "Wheel of Challenge",
                       descAr:
                         "أدر العجلة لاختيار سؤال عشوائي — الفرق تتنافس على النقاط.",
                       descEn:
@@ -1895,7 +1895,7 @@ function CompetitiveTab({
     },
     {
       icon: <WheelIcon size={52} />,
-      title: lang === "ar" ? "عجلة الحظ" : "Wheel of Fortune",
+      title: lang === "ar" ? "عجلة التحدي" : "Wheel of Challenge",
       desc:
         lang === "ar"
           ? "أدر العجلة على شاشة الفصل، اقرأ السؤال، ومنح النقاط للفرق — أسئلة جاهزة بالذكاء الاصطناعي."

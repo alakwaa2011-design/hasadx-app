@@ -302,7 +302,7 @@ export default function OrganizerDashboard() {
       },
       {
         href: "/game/wheel/create",
-        title: lang === "ar" ? "عجلة الحظ" : "Wheel of Fortune",
+        title: lang === "ar" ? "عجلة التحدي" : "Wheel of Challenge",
         subtitle:
           lang === "ar"
             ? "أدِر العجلة لاختيار الفائز، السؤال أو الجائزة"

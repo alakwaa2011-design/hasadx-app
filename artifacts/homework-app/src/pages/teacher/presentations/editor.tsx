@@ -4446,7 +4446,7 @@ function HasadGameInspector({
   );
   const labelMap: Record<string, string> = {
     kahoot: isAr ? "وميض" : "Wameedh",
-    wheel: isAr ? "عجلة الحظ" : "Wheel",
+    wheel: isAr ? "عجلة التحدي" : "Wheel",
     millionaire: isAr ? "من سيربح المليون" : "Millionaire",
     "flag-quiz": isAr ? "اختبار الأعلام" : "Flag quiz",
     capitals: isAr ? "العواصم" : "Capitals",

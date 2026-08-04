@@ -2135,7 +2135,7 @@ export default function AdminPage() {
                                 { label: "خطط دروس", value: teacher.lessonPlanCount ?? 0, color: "bg-lime-50 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300", icon: "📋" },
                                 { label: "فيديوهات", value: teacher.videoLessonCount ?? 0, color: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", icon: "🎬" },
                                 { label: "شد الحبل", value: teacher.tugTemplateCount ?? 0, color: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300", icon: "🪢" },
-                                { label: "عجلة الحظ", value: teacher.wheelTemplateCount ?? 0, color: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300", icon: "🎡" },
+                                { label: "عجلة التحدي", value: teacher.wheelTemplateCount ?? 0, color: "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300", icon: "🎡" },
                                 { label: "الصواريخ", value: teacher.rocketTemplateCount ?? 0, color: "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300", icon: "🚀" },
                                 { label: "ألغاز حروف", value: teacher.letrlyPuzzleCount ?? 0, color: "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300", icon: "🔤" },
                                 { label: "مجموعات", value: teacher.collectionCount ?? 0, color: "bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300", icon: "📦" },

@@ -85,7 +85,7 @@ export default function AboutPage() {
               <FeatureItem
                 icon={<Trophy className="w-5 h-5" />}
                 title="مسابقات تعليمية"
-                body="مسابقات حصاد ذات أسلوب لعبي محفّز، تشمل تحدي حصاد، عجلة الحظ، اختبارات تنافسية، وتحديات جماعية بثلاثية الأبعاد."
+                body="مسابقات حصاد ذات أسلوب لعبي محفّز، تشمل تحدي حصاد، عجلة التحدي، اختبارات تنافسية، وتحديات جماعية بثلاثية الأبعاد."
               />
               <FeatureItem
                 icon={<ClipboardList className="w-5 h-5" />}

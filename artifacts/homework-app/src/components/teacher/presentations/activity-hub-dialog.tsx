@@ -26,7 +26,7 @@ const HASAD_GAMES = [
   { id: "tug_of_war", emoji: "🪢", nameAr: "شد الحبل", nameEn: "Tug of War", descAr: "فرق تتنافس بسحب الحبل", descEn: "Team tug battle" },
   { id: "million", emoji: "💰", nameAr: "من سيحصد المليون", nameEn: "Who Gets the Million", descAr: "سلم أسئلة متدرج", descEn: "Million ladder quiz" },
   { id: "rocket_race", emoji: "🚀", nameAr: "سباق الصواريخ", nameEn: "Rocket Race", descAr: "سباق سريع بالإجابات", descEn: "Answer-powered race" },
-  { id: "wheel", emoji: "🎡", nameAr: "عجلة الحظ", nameEn: "Wheel of Fortune", descAr: "اختيار عشوائي ممتع", descEn: "Spin and play" },
+  { id: "wheel", emoji: "🎡", nameAr: "عجلة التحدي", nameEn: "Wheel of Challenge", descAr: "اختيار عشوائي ممتع", descEn: "Spin and play" },
 ] as const;
 type HasadGameId = (typeof HASAD_GAMES)[number]["id"];
 

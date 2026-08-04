@@ -622,7 +622,7 @@ const HASAD_GAME_META: Record<string, { emoji: string; nameAr: string; nameEn: s
   knowledge_race: { emoji: "⚡", nameAr: "وميض", nameEn: "Wameeth" },
   tug_of_war: { emoji: "🪢", nameAr: "شد الحبل", nameEn: "Tug of War" },
   quiz:     { emoji: "🏆", nameAr: "مسابقة تفاعلية",   nameEn: "Interactive Quiz" },
-  wheel:    { emoji: "🎡", nameAr: "عجلة الحظ",         nameEn: "Wheel of Fortune" },
+  wheel:    { emoji: "🎡", nameAr: "عجلة التحدي",         nameEn: "Wheel of Challenge" },
   million:  { emoji: "💰", nameAr: "من سيربح المليون",  nameEn: "Who Wants a Million" },
   flags:    { emoji: "🚩", nameAr: "اختبار الأعلام",    nameEn: "Flag Quiz" },
   matching: { emoji: "🔗", nameAr: "مطابقة",            nameEn: "Matching" },
