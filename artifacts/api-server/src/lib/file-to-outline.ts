@@ -277,7 +277,7 @@ function estimateSlideCount(ef: ExtractedFile): number {
 }
 
 /* ── Main entry point ────────────────────────────────────────────── */
-const FILE_OUTLINE_MODEL = "gpt-4o";
+const FILE_OUTLINE_MODEL = "gpt-5";
 
 export async function fileToOutline(
   ef: ExtractedFile,
