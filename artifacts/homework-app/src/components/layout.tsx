@@ -292,16 +292,22 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   <img
                     src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
                     alt="حصاد"
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover"
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover"
                   />
                 )}
-                <span
-                  className={cn(
-                    "text-sm sm:text-base font-extrabold tracking-tight",
-                    user ? "text-white" : "text-foreground",
-                  )}
-                >
-                  {lang === "ar" ? "حصاد" : "Hasad"}
+                <span className="flex flex-col leading-none" style={{ gap: 1 }}>
+                  <span
+                    className="font-extrabold text-sm sm:text-base"
+                    style={{ color: "#C9A050", letterSpacing: "0.5px" }}
+                  >
+                    حصاد
+                  </span>
+                  <span
+                    className="font-bold text-[9px] tracking-[3px] uppercase"
+                    style={{ color: "#C9A050", opacity: 0.8 }}
+                  >
+                    HASAADX
+                  </span>
                 </span>
               </Link>
 
@@ -838,7 +844,10 @@ export function Layout({ children, noHeader }: LayoutProps) {
                 alt="حصاد"
                 className="w-5 h-5 rounded object-cover opacity-70"
               />
-              <span className="font-semibold text-sm opacity-70">حصاد</span>
+              <span className="flex flex-col leading-none">
+                <span className="font-bold text-xs" style={{ color: "#C9A050", opacity: 0.75 }}>حصاد</span>
+                <span className="font-semibold text-[8px] tracking-[2px] uppercase" style={{ color: "#C9A050", opacity: 0.55 }}>HASAADX</span>
+              </span>
             </div>
             <Link
               href="/feedback"
@@ -898,8 +907,9 @@ export function StudentLoginLayout({ children }: LayoutProps) {
                 />
               )}
               {!theme.logoUrl && (
-                <span className="font-bold text-lg text-white drop-shadow-sm">
-                  حصاد
+                <span className="flex flex-col leading-none">
+                  <span className="font-extrabold text-base" style={{ color: "#C9A050" }}>حصاد</span>
+                  <span className="font-bold text-[9px] tracking-[3px] uppercase" style={{ color: "#C9A050", opacity: 0.8 }}>HASAADX</span>
                 </span>
               )}
             </Link>

@@ -163,7 +163,10 @@ function LoginLayout({ children, dir }: { children: ReactNode; dir: "rtl" | "ltr
             alt="حصاد"
             className="w-9 h-9 rounded-xl object-cover shadow-sm"
           />
-          <span className="text-xl font-extrabold" style={{ color: "#1a4731" }}>حصاد</span>
+          <span className="flex flex-col leading-none">
+            <span className="font-extrabold text-lg" style={{ color: "#C9A050" }}>حصاد</span>
+            <span className="font-bold text-[9px] tracking-[3px] uppercase" style={{ color: "#C9A050", opacity: 0.75 }}>HASAADX</span>
+          </span>
         </Link>
         <Link
           href="/"
@@ -269,7 +272,10 @@ function SidePanel() {
             alt="حصاد"
             className="w-11 h-11 rounded-2xl object-cover ring-2 ring-white/15 shadow-xl"
           />
-          <span className="text-2xl font-black text-white tracking-wide">حصاد</span>
+          <span className="flex flex-col leading-none">
+            <span className="font-black text-2xl" style={{ color: "#C9A050" }}>حصاد</span>
+            <span className="font-bold text-[10px] tracking-[4px] uppercase" style={{ color: "#C9A050", opacity: 0.8 }}>HASAADX</span>
+          </span>
         </div>
 
         <h2 className="text-[1.75rem] xl:text-3xl font-black text-white leading-tight mb-3">

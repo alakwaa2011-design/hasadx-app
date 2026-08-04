@@ -87,15 +87,16 @@
             }
             #hasad-splash .logo-wrap {
                 display: flex;
+                flex-direction: column;
                 align-items: center;
-                gap: 10px;
+                gap: 12px;
             }
             #hasad-splash .logo-icon {
-                width: 64px;
-                height: 64px;
-                border-radius: 18px;
+                width: 96px;
+                height: 96px;
+                border-radius: 24px;
                 overflow: hidden;
-                box-shadow: 0 8px 28px rgba(30,77,53,0.28);
+                box-shadow: 0 12px 40px rgba(30,77,53,0.22);
                 flex-shrink: 0;
             }
             #hasad-splash .logo-icon img {
@@ -105,10 +106,25 @@
                 display: block;
             }
             #hasad-splash .logo-text {
-                font-size: 32px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1px;
+            }
+            #hasad-splash .logo-text-ar {
+                font-size: 30px;
                 font-weight: 800;
-                color: #1a3d2a;
-                letter-spacing: -0.5px;
+                color: #C9A050;
+                letter-spacing: 1px;
+                line-height: 1.1;
+            }
+            #hasad-splash .logo-text-en {
+                font-size: 11px;
+                font-weight: 700;
+                color: #C9A050;
+                letter-spacing: 4px;
+                text-transform: uppercase;
+                opacity: 0.85;
             }
             #hasad-splash .tagline {
                 font-size: 14px;
@@ -161,7 +177,10 @@
                     <div class="logo-icon">
                         <img src="/images/logo-icon.png" alt="حصاد" />
                     </div>
-                    <span class="logo-text">حصاد</span>
+                    <div class="logo-text">
+                        <span class="logo-text-ar">حصاد</span>
+                        <span class="logo-text-en">H A S A A D X</span>
+                    </div>
                 </div>
                 <span class="tagline">منصة التعليم التفاعلي</span>
                 <div class="bar-wrap">
