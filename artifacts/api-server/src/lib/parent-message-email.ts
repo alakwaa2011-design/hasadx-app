@@ -51,7 +51,7 @@ function emailShell(content: string): string {
   <div style="padding: 24px 16px;">
     <div class="wrapper">
       <div class="header">
-        <div class="header-logo">حصاد</div>
+        <img src="https://hasaadx.com/images/logo-hasaad.png" alt="حصاد" height="48" style="display:block; margin-bottom:6px; max-height:48px; width:auto;" />
         <div class="header-sub">منصة التعليم التفاعلي</div>
       </div>
       ${content}
