@@ -74,6 +74,12 @@ export default function TeacherAssignmentDetail() {
   // Leaderboard
   const [soloLeaderboardOpen, setSoloLeaderboardOpen] = useState(false);
   const [soloParticipants, setSoloParticipants] = useState<Array<{ playerName: string; score: number; correctCount: number; timeTaken: number | null; playedAt: string }>>([]);
+  // Send-to-parent report state
+  const [reportSub, setReportSub] = useState<any | null>(null);
+  const [reportNote, setReportNote] = useState("");
+  const [reportParentEmail, setReportParentEmail] = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const [reportStudents, setReportStudents] = useState<Array<{ id: number; name: string; parentEmail: string | null; parentName: string | null }> | null>(null);
   const [soloParticipantsLoading, setSoloParticipantsLoading] = useState(false);
   // Deadline
   const [soloDeadlineOpen, setSoloDeadlineOpen] = useState(false);

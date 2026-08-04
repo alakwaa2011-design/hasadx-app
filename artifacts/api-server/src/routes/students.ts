@@ -25,6 +25,8 @@ const CreateStudentBody = z.object({
   gradeLevel: z.string().nullish(),
   studentClass: z.string().nullish(),
   parentPhone: z.string().nullish(),
+  parentName: z.string().nullish(),
+  parentEmail: z.string().nullish(),
   notes: z.string().nullish(),
   accountUsername: z.string().nullish(),
 });
@@ -34,6 +36,8 @@ const UpdateStudentBody = z.object({
   gradeLevel: z.string().nullish(),
   studentClass: z.string().nullish(),
   parentPhone: z.string().nullish(),
+  parentName: z.string().nullish(),
+  parentEmail: z.string().nullish(),
   notes: z.string().nullish(),
   accountUsername: z.string().nullish(),
 });

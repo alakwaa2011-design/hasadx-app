@@ -196,6 +196,8 @@ const InstallPage = lazy(() => import("@/pages/install"));
 const SoloChallengesPage = lazy(() => import("@/pages/teacher/solo-challenges"));
 const SoloChallengeCreate = lazy(() => import("@/pages/teacher/solo-challenge-create"));
 const SoloChallengeManage = lazy(() => import("@/pages/teacher/solo-challenge-manage"));
+const ParentMessagesPage = lazy(() => import("@/pages/teacher/parent-messages"));
+const ParentPortalPage = lazy(() => import("@/pages/parent-portal"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -369,7 +371,10 @@ function Router() {
         <Route path="/teacher/create-video-lesson" component={CreateVideoLesson} />
         <Route path="/teacher/video-lesson/:id/live" component={VideoLive} />
         <Route path="/teacher/video-lesson/:id" component={VideoLessonDetail} />
+        <Route path="/teacher/parent-messages" component={ParentMessagesPage} />
         <Route path="/teacher" component={TeacherDashboard} />
+        {/* Parent Portal — public, no auth */}
+        <Route path="/parent/:token" component={ParentPortalPage} />
 
         {/* Organizer Dashboard */}
         <Route path="/organizer" component={OrganizerDashboard} />

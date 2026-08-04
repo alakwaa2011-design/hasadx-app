@@ -1027,7 +1027,7 @@ export default function Auth() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showCountryPicker]);
 
-  const { data: currentUser, isLoading: isCheckingSession } = useGetCurrentTeacher({
+  const { data: currentUser, isLoading: isCheckingSession, isError: sessionCheckFailed, isFetching: isRefetchingSession } = useGetCurrentTeacher({
     query: { retry: false, staleTime: 0 } as any
   });
 
@@ -1053,12 +1053,24 @@ export default function Auth() {
     setLocation(role === "organizer" ? "/organizer" : "/teacher");
   };
 
+  // Guard: fire the session-based redirect only once, and only after a
+  // CONFIRMED fresh session check. Redirecting off cached data while the
+  // refetch is still in flight (or after it 401'd) causes a ping-pong loop
+  // with the dashboard's error redirect ("Maximum update depth exceeded").
+  const didRedirectRef = useRef(false);
   useEffect(() => {
-    if (currentUser && !isCheckingSession) {
+    if (
+      currentUser &&
+      !isCheckingSession &&
+      !isRefetchingSession &&
+      !sessionCheckFailed &&
+      !didRedirectRef.current
+    ) {
+      didRedirectRef.current = true;
       redirectByRole(currentUser.role, currentUser.isAdmin);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, isCheckingSession]);
+  }, [currentUser, isCheckingSession, isRefetchingSession, sessionCheckFailed]);
 
   // Backwards-compat shim used by login flow (will read role from response).
   const postAuthRedirect = (

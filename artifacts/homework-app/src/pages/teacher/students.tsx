@@ -17,7 +17,7 @@ import {
   UserPlus, Check, AlertTriangle, Search, ArrowLeft,
   BookOpen, ListPlus, FileSpreadsheet, FileText, Upload, Loader2,
   ClipboardList, KeyRound, Eye, EyeOff, RefreshCw,
-  Layers, UserCheck, TrendingUp,
+  Layers, UserCheck, TrendingUp, Mail, User,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useI18n } from "@/lib/i18n";
@@ -31,6 +31,8 @@ interface Student {
   gradeLevel: string | null;
   studentClass: string | null;
   parentPhone: string | null;
+  parentName: string | null;
+  parentEmail: string | null;
   notes: string | null;
   accountUsername: string | null;
   createdAt: string;
@@ -107,6 +109,11 @@ function StudentRow({
       {student.parentPhone && (
         <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
           <Phone size={11} />{student.parentPhone}
+        </span>
+      )}
+      {student.parentEmail && (
+        <span title={student.parentEmail} className="hidden sm:flex items-center gap-1 text-xs text-emerald-600">
+          <Mail size={11} />
         </span>
       )}
 
@@ -567,7 +574,7 @@ export default function StudentsPage() {
   const [showStudentForm, setShowStudentForm] = useState(false);
   const [studentFormFolder, setStudentFormFolder] = useState("");
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [form, setForm] = useState({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+  const [form, setForm] = useState({ name: "", parentPhone: "", parentName: "", parentEmail: "", notes: "", accountUsername: "" });
   const [saving, setSaving] = useState(false);
 
   const [showBulkForm, setShowBulkForm] = useState(false);
@@ -942,6 +949,8 @@ export default function StudentsPage() {
           gradeLevel: folder,
           studentClass: folder,
           parentPhone: form.parentPhone.trim() || null,
+          parentName: form.parentName.trim() || null,
+          parentEmail: form.parentEmail.trim() || null,
           notes: form.notes.trim() || null,
           accountUsername: form.accountUsername.trim() || null,
         }),
@@ -951,7 +960,7 @@ export default function StudentsPage() {
         toast.success(editingStudent ? "تم التحديث" : "تمت الإضافة");
         setShowStudentForm(false);
         setEditingStudent(null);
-        setForm({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+        setForm({ name: "", parentPhone: "", parentName: "", parentEmail: "", notes: "", accountUsername: "" });
         fetchStudents();
       } else {
         toast.error(data.message || "حدث خطأ");
@@ -1079,14 +1088,14 @@ export default function StudentsPage() {
   const openAddStudent = (folder: string) => {
     setStudentFormFolder(folder);
     setEditingStudent(null);
-    setForm({ name: "", parentPhone: "", notes: "", accountUsername: "" });
+    setForm({ name: "", parentPhone: "", parentName: "", parentEmail: "", notes: "", accountUsername: "" });
     setShowStudentForm(true);
   };
 
   const openEditStudent = (s: Student) => {
     setStudentFormFolder(s.gradeLevel || UNGROUPED);
     setEditingStudent(s);
-    setForm({ name: s.name, parentPhone: s.parentPhone || "", notes: s.notes || "", accountUsername: s.accountUsername || "" });
+    setForm({ name: s.name, parentPhone: s.parentPhone || "", parentName: s.parentName || "", parentEmail: s.parentEmail || "", notes: s.notes || "", accountUsername: s.accountUsername || "" });
     setShowStudentForm(true);
   };
 
@@ -1559,6 +1568,32 @@ export default function StudentsPage() {
                       className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       placeholder="اختياري"
                     />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                        <User size={12} className="text-emerald-600" /> اسم ولي الأمر
+                      </label>
+                      <input
+                        value={form.parentName}
+                        onChange={(e) => setForm({ ...form, parentName: e.target.value })}
+                        className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                        placeholder="اختياري"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                        <Mail size={12} className="text-emerald-600" /> إيميل ولي الأمر
+                      </label>
+                      <input
+                        value={form.parentEmail}
+                        onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
+                        type="email"
+                        dir="ltr"
+                        className="w-full border border-border bg-background text-foreground rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                        placeholder="example@mail.com"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">

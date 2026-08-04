@@ -333,6 +333,7 @@ export default function DashboardOverview({
               },
               {
                 done: stats.totalStudents > 0,
+                locked: classes.length === 0,
                 title: isAr ? "أضِف الطلاب" : "Add students",
                 desc: isAr
                   ? "ادعُ طلابك بمشاركة رابط الفصل"
@@ -507,10 +508,12 @@ export default function DashboardOverview({
                         padding: isMobile ? "10px 12px" : "12px 14px",
                         background: step.done
                           ? "rgba(30,77,53,0.05)"
+                          : (step as any).locked
+                          ? "rgba(0,0,0,0.02)"
                           : C.surface,
-                        border: `1px solid ${step.done ? "rgba(30,77,53,0.15)" : C.border}`,
+                        border: `1px solid ${step.done ? "rgba(30,77,53,0.15)" : (step as any).locked ? "rgba(0,0,0,0.07)" : C.border}`,
                         borderRadius: 11,
-                        opacity: step.done ? 0.7 : 1,
+                        opacity: step.done ? 0.7 : (step as any).locked ? 0.45 : 1,
                         transition: "all 0.2s ease",
                       }}
                     >
@@ -521,8 +524,10 @@ export default function DashboardOverview({
                           borderRadius: "50%",
                           background: step.done
                             ? C.green
+                            : (step as any).locked
+                            ? "rgba(0,0,0,0.07)"
                             : "rgba(232,168,14,0.16)",
-                          color: step.done ? "#fff" : C.gold,
+                          color: step.done ? "#fff" : (step as any).locked ? C.muted : C.gold,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -542,7 +547,7 @@ export default function DashboardOverview({
                           style={{
                             fontSize: isMobile ? 13 : 13.5,
                             fontWeight: 800,
-                            color: C.text,
+                            color: (step as any).locked ? C.muted : C.text,
                             textDecoration: step.done ? "line-through" : "none",
                             lineHeight: 1.3,
                           }}
@@ -557,11 +562,13 @@ export default function DashboardOverview({
                               marginTop: 2,
                             }}
                           >
-                            {step.desc}
+                            {(step as any).locked
+                              ? (isAr ? "أكمل الخطوة السابقة أولاً" : "Complete the previous step first")
+                              : step.desc}
                           </div>
                         )}
                       </div>
-                      {!step.done && (
+                      {!step.done && !(step as any).locked && (
                         <button
                           onClick={step.onClick}
                           style={{

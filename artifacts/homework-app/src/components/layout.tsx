@@ -30,6 +30,7 @@ import {
   Search,
   ShieldAlert,
   Settings,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
@@ -397,6 +398,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                             className="absolute end-0 top-full mt-1.5 w-52 bg-card border border-border rounded-xl shadow-lg py-1.5 z-50"
                           >
                             <Link
+                              href="/teacher/parent-messages"
+                              onClick={() => setUserMenuOpen(false)}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
+                            >
+                              <Mail className="w-4 h-4 text-emerald-600" />
+                              {lang === "ar" ? "الرسائل" : "Parent Messages"}
+                            </Link>
+                            <Link
                               href="/teacher/settings"
                               onClick={() => setUserMenuOpen(false)}
                               className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors w-full"
@@ -684,6 +693,14 @@ export function Layout({ children, noHeader }: LayoutProps) {
                               ? "تلقائي"
                               : "System"}
                       </button>
+                      <Link
+                        href="/teacher/parent-messages"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted active:bg-muted/80 w-full transition-colors"
+                      >
+                        <Mail className="w-5 h-5 text-emerald-600" />
+                        {lang === "ar" ? "الرسائل" : "Parent Messages"}
+                      </Link>
                       <Link
                         href="/teacher/settings"
                         onClick={() => setMobileMenuOpen(false)}

@@ -209,28 +209,27 @@ router.get("/solo-challenges", async (req, res) => {
     if (!teacherId) return;
 
     const rows = await db
-      .select({
-        playerName: soloChallengeScoresTable.playerName,
-        score: soloChallengeScoresTable.score,
-        correctCount: soloChallengeScoresTable.correctCount,
-        timeTaken: soloChallengeScoresTable.timeTaken,
-        playedAt: soloChallengeScoresTable.playedAt,
-      })
-      .from(soloChallengeScoresTable)
-      .where(eq(soloChallengeScoresTable.slug, slug))
-      .orderBy(
-        desc(soloChallengeScoresTable.correctCount),
-        asc(soloChallengeScoresTable.timeTaken),
-        desc(soloChallengeScoresTable.score),
-      )
-      .limit(limit);
+      .select()
+      .from(soloChallengesTable)
+      .where(eq(soloChallengesTable.teacherId, teacherId))
+      .orderBy(desc(soloChallengesTable.createdAt));
 
     const now = new Date();
-      const result = [
-        ...takeBucket(easyPool,   diffDist.easy),
-        ...takeBucket(mediumPool, diffDist.medium),
-        ...takeBucket(hardPool,   diffDist.hard),
-      ];
+    const result = rows.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      shortSlug: c.shortSlug ?? null,
+      assignmentId: c.assignmentId,
+      assignmentTitle: c.assignmentTitle,
+      notes: c.notes ?? null,
+      expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
+      timePerQuestion: c.timePerQuestion ?? null,
+      leaderboardDisplay: c.leaderboardDisplay ?? null,
+      playCount: c.playCount,
+      createdAt: c.createdAt.toISOString(),
+      isStandalone: c.assignmentId === null,
+      isExpired: c.expiresAt ? c.expiresAt.getTime() < now.getTime() : false,
+    }));
 
     res.json(result);
   } catch (err) {

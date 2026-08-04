@@ -10,6 +10,8 @@ export const studentsTable = pgTable("students", {
   gradeLevel: text("grade_level"),
   studentClass: text("student_class"),
   parentPhone: text("parent_phone"),
+  parentName: text("parent_name"),
+  parentEmail: text("parent_email"),
   notes: text("notes"),
   accountUsername: text("account_username"),
   studentAccountId: integer("student_account_id").unique().references(() => studentAccountsTable.id, { onDelete: "set null" }),
