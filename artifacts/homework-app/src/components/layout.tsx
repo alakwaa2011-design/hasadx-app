@@ -275,7 +275,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
               <Link
                 href="/"
                 className="flex items-center group rounded-lg px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
-                style={{ gap: 8 }}
+                style={{ gap: 4 }}
               >
                 {theme.logoUrl ? (
                   <img
