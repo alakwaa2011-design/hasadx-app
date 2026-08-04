@@ -31,7 +31,10 @@ vi.mock("@workspace/db", () => {
     },
     arenaCategoriesTable: stub,
     arenaActivitiesTable: stub,
+    arenaQuestionReportsTable: stub,
     teachersTable: stub,
+    platformSettingsTable: stub,
+    DEFAULT_ARENA_IMPORT_SOURCES: { manual: true, ai: true, homework: true, file: true },
   };
 });
 
@@ -69,12 +72,14 @@ beforeEach(() => {
 // POST /arena-content/activities DB call order:
 //   1. db.select → category lookup
 //   2. db.select → isAdmin check (via isAdmin())
-//   3. db.insert → activity insert
+//   3. db.select → getArenaImportSources() — returns [] so DEFAULT_ARENA_IMPORT_SOURCES is used
+//   4. db.insert → activity insert
 
 describe("arena-content — activity difficulty validation (POST)", () => {
   it("accepts difficulty 200", async () => {
     pushQueue([{ id: 7, teacherId: 1, isPublic: false }]); // category
     pushQueue([{ isAdmin: false }]);                         // isAdmin
+    pushQueue([]);                                           // getArenaImportSources → uses default (all enabled)
     pushQueue([{ id: 42, difficulty: 200, categoryId: 7 }]); // insert result
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/arena-content/activities")
@@ -86,6 +91,7 @@ describe("arena-content — activity difficulty validation (POST)", () => {
   it("accepts difficulty 400", async () => {
     pushQueue([{ id: 7, teacherId: 1, isPublic: false }]);
     pushQueue([{ isAdmin: false }]);
+    pushQueue([]); // getArenaImportSources
     pushQueue([{ id: 43, difficulty: 400, categoryId: 7 }]);
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/arena-content/activities")
@@ -97,6 +103,7 @@ describe("arena-content — activity difficulty validation (POST)", () => {
   it("accepts difficulty 600", async () => {
     pushQueue([{ id: 7, teacherId: 1, isPublic: false }]);
     pushQueue([{ isAdmin: false }]);
+    pushQueue([]); // getArenaImportSources
     pushQueue([{ id: 44, difficulty: 600, categoryId: 7 }]);
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/arena-content/activities")
@@ -108,6 +115,7 @@ describe("arena-content — activity difficulty validation (POST)", () => {
   it("accepts difficulty 800", async () => {
     pushQueue([{ id: 7, teacherId: 1, isPublic: false }]);
     pushQueue([{ isAdmin: false }]);
+    pushQueue([]); // getArenaImportSources
     pushQueue([{ id: 45, difficulty: 800, categoryId: 7 }]);
     const res = await request(makeApp({ teacherId: 1 }))
       .post("/api/arena-content/activities")

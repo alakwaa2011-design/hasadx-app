@@ -74,13 +74,22 @@ function makeUpdateChain(table: string): any {
 
 vi.mock("@workspace/db", () => {
   const mkStub = (name: string) => ({ __tableName: name });
+  const makeDb = () => ({
+    select: () => makeSelectChain(calls.selectResults.shift() ?? []),
+    insert: (tbl: unknown) => makeInsertChain(tableName(tbl)),
+    update: (tbl: unknown) => makeUpdateChain(tableName(tbl)),
+    delete: () => makeSelectChain([]),
+  });
+  const dbInstance = {
+    ...makeDb(),
+    /* The assignments POST route wraps its inserts in a transaction.
+       We implement it as a pass-through that provides the same mock
+       interface to the callback, so the recorded calls/returning
+       results work identically to the non-transaction path. */
+    transaction: async (fn: (tx: ReturnType<typeof makeDb>) => unknown) => fn(makeDb()),
+  };
   return {
-    db: {
-      select: () => makeSelectChain(calls.selectResults.shift() ?? []),
-      insert: (tbl: unknown) => makeInsertChain(tableName(tbl)),
-      update: (tbl: unknown) => makeUpdateChain(tableName(tbl)),
-      delete: () => makeSelectChain([]),
-    },
+    db: dbInstance,
     assignmentsTable: mkStub("assignments"),
     questionsTable: mkStub("questions"),
     teachersTable: mkStub("teachers"),
@@ -89,8 +98,19 @@ vi.mock("@workspace/db", () => {
     dismissedSharedTable: mkStub("dismissed_shared"),
     studentsTable: mkStub("students"),
     submissionsTable: mkStub("submissions"),
+    activityLogsTable: mkStub("activity_logs"),
   };
 });
+
+/* Stub out XP and activity-logger side effects so they don't consume
+   queue slots or throw from missing table stubs. */
+vi.mock("../lib/xp/socket", () => ({
+  awardXpInTxAndNotifyAfterCommit: vi.fn(async () => ({ runAfterCommit: async () => {} })),
+}));
+
+vi.mock("../lib/activity-logger", () => ({
+  logActivity: vi.fn(),
+}));
 
 vi.mock("@workspace/billing", () => ({
   featureAccess: {
