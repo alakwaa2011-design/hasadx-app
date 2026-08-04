@@ -51,7 +51,7 @@ const RevokeDeviceSchema = z
   })
   .partial();
 import { authLimiter, registerLimiter } from "../lib/rate-limiter";
-import { esc } from "../lib/html-escape";
+import { esc, safeUrl } from "../lib/html-escape";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { isSmsConfigured, sendSms } from "../lib/sms";
 import { parseUserAgent, lookupIpLocations } from "../lib/device-info";
@@ -297,7 +297,7 @@ function buildNewDeviceLoginEmail(
         إذا لم يكن هذا أنت، افتح صفحة الجلسات النشطة وأنهِ هذه الجلسة فوراً.
       </p>
       <p style="text-align:center; margin:24px 0;">
-        <a href="${esc(sessionsLink)}" style="display:inline-block; background:#dc2626; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
+        <a href="${safeUrl(sessionsLink)}" style="display:inline-block; background:#dc2626; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
           مراجعة الجلسات النشطة
         </a>
       </p>
@@ -423,7 +423,7 @@ function buildResetEmail(name: string, link: string) {
         لقد طلبت إعادة تعيين كلمة المرور الخاصة بحسابك في منصة حصاد. اضغط على الزر أدناه لاختيار كلمة مرور جديدة. هذا الرابط صالح لمدة ساعة واحدة فقط ويمكن استخدامه مرة واحدة.
       </p>
       <p style="text-align:center; margin:24px 0;">
-        <a href="${esc(link)}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
+        <a href="${safeUrl(link)}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
           إعادة تعيين كلمة المرور
         </a>
       </p>
@@ -1140,7 +1140,7 @@ function renderRevokePage(
   },
 ) {
   const formHtml = opts.form
-    ? `<form method="POST" action="${escapeHtml(opts.form.actionUrl)}" style="text-align:center; margin:24px 0;">
+    ? `<form method="POST" action="${safeUrl(opts.form.actionUrl)}" style="text-align:center; margin:24px 0;">
         <input type="hidden" name="token" value="${escapeHtml(opts.form.token)}" />
         <button type="submit" style="display:inline-block; background:#dc2626; color:#ffffff; border:none; cursor:pointer; padding:12px 24px; border-radius:10px; font-weight:bold; font-size:16px;">
           نعم، قم بتأمين حسابي الآن
@@ -1148,7 +1148,7 @@ function renderRevokePage(
       </form>`
     : "";
   const linkHtml = opts.link
-    ? `<p style="text-align:center; margin:24px 0;"><a href="${escapeHtml(opts.link.href)}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">${escapeHtml(opts.link.label)}</a></p>`
+    ? `<p style="text-align:center; margin:24px 0;"><a href="${safeUrl(opts.link.href)}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">${escapeHtml(opts.link.label)}</a></p>`
     : "";
   res
     .status(status)
