@@ -69,6 +69,12 @@ function riyadhWeekString(d = new Date()): string {
 }
 
 import { esc as escHtml } from "../html-escape";
+import {
+  buildBadgeEmailHtml,
+  buildThresholdEmailHtml,
+  buildLevelUpEmailHtml,
+  buildQuestCompleteEmailHtml,
+} from "./email-helpers";
 
 export function isXpEnabled(): boolean {
   // Default: enabled unless explicitly disabled
@@ -923,7 +929,7 @@ async function queueBadgeEmail(
     .values({
       toEmail: t.email,
       subject: `🏅 ${badgeName} — شارة جديدة في حصاد`,
-      htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! حصلت على شارة <strong>${escHtml(badgeName)}</strong> على منصة حصاد.</p></div>`,
+      htmlBody: buildBadgeEmailHtml(t.name, badgeName),
       textBody: `تهانينا ${t.name}! حصلت على شارة ${badgeName}.`,
       kind: "badge_awarded",
       refKey: `${teacherId}:${badgeId}`,
@@ -950,7 +956,7 @@ async function queueThresholdEmail(
     .values({
       toEmail: t.email,
       subject: `🎁 جائزة جديدة في حصاد: ${label}`,
-      htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! بلغت أحد العتبات في حصاد وفُتحت لك جائزة: <strong>${escHtml(label)}</strong>.</p></div>`,
+      htmlBody: buildThresholdEmailHtml(t.name, label),
       textBody: `تهانينا ${t.name}! جائزة جديدة: ${label}.`,
       kind: "threshold_granted",
       refKey: `${teacherId}:${rewardId}`,
@@ -996,7 +1002,7 @@ async function notifyLevelUp(
       .values({
         toEmail: t.email,
         subject: `🎉 ترقّيت إلى مستوى ${levelNameAr} في حصاد`,
-        htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>تهانينا! لقد ترقّيت إلى المستوى <strong>${newLevel} — ${escHtml(levelNameAr)}</strong> في منصة حصاد.</p><p>افتح منصة حصاد لاكتشاف المزايا الجديدة.</p></div>`,
+        htmlBody: buildLevelUpEmailHtml(t.name, newLevel, levelNameAr),
         textBody: `مرحباً ${t.name}، ترقّيت إلى المستوى ${newLevel} — ${levelNameAr}.`,
         kind: "level_up",
         refKey: `${teacherId}:level:${newLevel}`,
@@ -1067,7 +1073,7 @@ async function notifyQuestComplete(
       .values({
         toEmail: t.email,
         subject: `✅ أكملت مهمة أسبوعية في حصاد: ${questNameAr}`,
-        htmlBody: `<div dir="rtl"><p>مرحباً ${escHtml(t.name)}،</p><p>أكملت المهمة <strong>${escHtml(questNameAr)}</strong> وحصلت على <strong>${rewardXp} نقطة</strong> مكافأة.</p></div>`,
+        htmlBody: buildQuestCompleteEmailHtml(t.name, questNameAr, rewardXp),
         textBody: `${t.name}، أكملت مهمة "${questNameAr}" وحصلت على ${rewardXp} نقطة.`,
         kind: "quest_complete",
         refKey: `${teacherId}:quest:${questId}`,
