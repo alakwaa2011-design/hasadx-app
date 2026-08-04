@@ -3,9 +3,10 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/hasad-mobile-editor/MobileEditor.tsx": () => import("../components/mockups/hasad-mobile-editor/MobileEditor.tsx"),
   "./components/mockups/homepage-atelier/Atelier.tsx": () => import("../components/mockups/homepage-atelier/Atelier.tsx"),
+  "./components/mockups/homepage-bayan/Bayan.tsx": () => import("../components/mockups/homepage-bayan/Bayan.tsx"),
+  "./components/mockups/homepage-bayan-v2/BayanV2.tsx": () => import("../components/mockups/homepage-bayan-v2/BayanV2.tsx"),
   "./components/mockups/homepage-madrasa/Madrasa.tsx": () => import("../components/mockups/homepage-madrasa/Madrasa.tsx"),
   "./components/mockups/image-inspector/ImageInspectorMockup.tsx": () => import("../components/mockups/image-inspector/ImageInspectorMockup.tsx"),
-  "./components/mockups/homepage-bayan-v2/BayanV2.tsx": () => import("../components/mockups/homepage-bayan-v2/BayanV2.tsx"),
   "./components/mockups/teacher-dashboard/OldDashboardDesign.tsx": () => import("../components/mockups/teacher-dashboard/OldDashboardDesign.tsx"),
   "./components/mockups/teacher-dashboard/ProposedDesign.tsx": () => import("../components/mockups/teacher-dashboard/ProposedDesign.tsx"),
   "./components/mockups/teacher-dashboard-v2/AtelierDesktop.tsx": () => import("../components/mockups/teacher-dashboard-v2/AtelierDesktop.tsx"),
@@ -13,7 +14,6 @@ export const modules: ModuleMap = {
   "./components/mockups/teacher-dashboard-v2/Desktop.tsx": () => import("../components/mockups/teacher-dashboard-v2/Desktop.tsx"),
   "./components/mockups/teacher-dashboard-v2/Mobile.tsx": () => import("../components/mockups/teacher-dashboard-v2/Mobile.tsx"),
   "./components/mockups/teacher-dashboard-v2/SnapMobile.tsx": () => import("../components/mockups/teacher-dashboard-v2/SnapMobile.tsx"),
-  "./components/mockups/homepage-bayan/Bayan.tsx": () => import("../components/mockups/homepage-bayan/Bayan.tsx"),
   "./components/mockups/tug-scene/CartoonPreview.tsx": () => import("../components/mockups/tug-scene/CartoonPreview.tsx"),
   "./components/mockups/tug-scene/FullGamePreview.tsx": () => import("../components/mockups/tug-scene/FullGamePreview.tsx")
 };
