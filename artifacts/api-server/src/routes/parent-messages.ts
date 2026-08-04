@@ -53,7 +53,7 @@ router.post("/parent-messages", async (req, res) => {
 
     const emailResult = await sendEmail({
       to: parentEmail,
-      subject: `رسالة من معلم ${student.name} — ${subject}`,
+      subject: `منصة حصاد | رسالة بخصوص ${student.name}`,
       html: emailHtml,
       text: `رسالة من المعلم ${teacher.name} بخصوص ${student.name}:\n\n${body}\n\nللرد: ${portalUrl}`,
     });
@@ -169,8 +169,10 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
       parentEmail: parentMessagesTable.parentEmail, parentName: parentMessagesTable.parentName,
       subject: parentMessagesTable.subject, replyToken: parentMessagesTable.replyToken,
       tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+      studentName: studentsTable.name,
     })
       .from(parentMessagesTable)
+      .leftJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
       .where(and(eq(parentMessagesTable.id, id), eq(parentMessagesTable.teacherId, teacherId))).limit(1);
     if (!msg) { res.status(404).json({ message: "الرسالة غير موجودة" }); return; }
 
@@ -185,11 +187,11 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
     const portalUrl = `${baseUrl}/parent/${msg.replyToken}`;
     const emailHtml = buildParentThreadReplyEmail({
       teacherName: teacher?.name || "المعلم", parentName: msg.parentName || undefined,
-      replyText: body.trim(), portalUrl,
+      studentName: msg.studentName ?? undefined, replyText: body.trim(), portalUrl,
     });
     await sendEmail({
       to: msg.parentEmail,
-      subject: `ردّ المعلم على رسالتك — ${msg.subject}`,
+      subject: `منصة حصاد | رد المعلم بخصوص ${msg.studentName ?? ""}`,
       html: emailHtml,
     });
 

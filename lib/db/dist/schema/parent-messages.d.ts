@@ -1,11 +1,10 @@
-import { z } from "zod/v4";
-export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
-    name: "students";
+export declare const parentMessagesTable: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "parent_messages";
     schema: undefined;
     columns: {
         id: import("drizzle-orm/pg-core").PgColumn<{
             name: "id";
-            tableName: "students";
+            tableName: "parent_messages";
             dataType: "number";
             columnType: "PgSerial";
             data: number;
@@ -20,32 +19,49 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        name: import("drizzle-orm/pg-core").PgColumn<{
-            name: "name";
-            tableName: "students";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
+        teacherId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "teacher_id";
+            tableName: "parent_messages";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        gradeLevel: import("drizzle-orm/pg-core").PgColumn<{
-            name: "grade_level";
-            tableName: "students";
+        studentId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "student_id";
+            tableName: "parent_messages";
+            dataType: "number";
+            columnType: "PgInteger";
+            data: number;
+            driverParam: string | number;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        subject: import("drizzle-orm/pg-core").PgColumn<{
+            name: "subject";
+            tableName: "parent_messages";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
@@ -54,48 +70,14 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        studentClass: import("drizzle-orm/pg-core").PgColumn<{
-            name: "student_class";
-            tableName: "students";
+        body: import("drizzle-orm/pg-core").PgColumn<{
+            name: "body";
+            tableName: "parent_messages";
             dataType: "string";
             columnType: "PgText";
             data: string;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        parentPhone: import("drizzle-orm/pg-core").PgColumn<{
-            name: "parent_phone";
-            tableName: "students";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        parentName: import("drizzle-orm/pg-core").PgColumn<{
-            name: "parent_name";
-            tableName: "students";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
-            driverParam: string;
-            notNull: false;
+            notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
             isAutoincrement: false;
@@ -107,7 +89,24 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
         }, {}, {}>;
         parentEmail: import("drizzle-orm/pg-core").PgColumn<{
             name: "parent_email";
-            tableName: "students";
+            tableName: "parent_messages";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        parentName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "parent_name";
+            tableName: "parent_messages";
             dataType: "string";
             columnType: "PgText";
             data: string;
@@ -122,47 +121,30 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        notes: import("drizzle-orm/pg-core").PgColumn<{
-            name: "notes";
-            tableName: "students";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
+        sentAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "sent_at";
+            tableName: "parent_messages";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
+            notNull: true;
+            hasDefault: true;
             isPrimaryKey: false;
             isAutoincrement: false;
             hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
+            enumValues: undefined;
             baseColumn: never;
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        accountUsername: import("drizzle-orm/pg-core").PgColumn<{
-            name: "account_username";
-            tableName: "students";
-            dataType: "string";
-            columnType: "PgText";
-            data: string;
+        readAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "read_at";
+            tableName: "parent_messages";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
             driverParam: string;
-            notNull: false;
-            hasDefault: false;
-            isPrimaryKey: false;
-            isAutoincrement: false;
-            hasRuntimeDefault: false;
-            enumValues: [string, ...string[]];
-            baseColumn: never;
-            identity: undefined;
-            generated: undefined;
-        }, {}, {}>;
-        studentAccountId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "student_account_id";
-            tableName: "students";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
             notNull: false;
             hasDefault: false;
             isPrimaryKey: false;
@@ -173,13 +155,64 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
-        teacherId: import("drizzle-orm/pg-core").PgColumn<{
-            name: "teacher_id";
-            tableName: "students";
-            dataType: "number";
-            columnType: "PgInteger";
-            data: number;
-            driverParam: string | number;
+        replyText: import("drizzle-orm/pg-core").PgColumn<{
+            name: "reply_text";
+            tableName: "parent_messages";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        repliedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "replied_at";
+            tableName: "parent_messages";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        replyToken: import("drizzle-orm/pg-core").PgColumn<{
+            name: "reply_token";
+            tableName: "parent_messages";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        tokenExpiresAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "token_expires_at";
+            tableName: "parent_messages";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
             notNull: true;
             hasDefault: false;
             isPrimaryKey: false;
@@ -190,9 +223,26 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        isArchived: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_archived";
+            tableName: "parent_messages";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
-            tableName: "students";
+            tableName: "parent_messages";
             dataType: "date";
             columnType: "PgTimestamp";
             data: Date;
@@ -210,21 +260,6 @@ export declare const studentsTable: import("drizzle-orm/pg-core").PgTableWithCol
     };
     dialect: "pg";
 }>;
-export declare const insertStudentSchema: z.ZodObject<{
-    name: z.ZodString;
-    teacherId: z.ZodInt;
-    gradeLevel: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    studentClass: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    parentPhone: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    parentName: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    parentEmail: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    accountUsername: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    studentAccountId: z.ZodOptional<z.ZodNullable<z.ZodInt>>;
-}, {
-    out: {};
-    in: {};
-}>;
-export type InsertStudent = z.infer<typeof insertStudentSchema>;
-export type Student = typeof studentsTable.$inferSelect;
-//# sourceMappingURL=students.d.ts.map
+export type ParentMessage = typeof parentMessagesTable.$inferSelect;
+export type InsertParentMessage = typeof parentMessagesTable.$inferInsert;
+//# sourceMappingURL=parent-messages.d.ts.map

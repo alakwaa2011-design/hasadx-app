@@ -73,4 +73,6 @@ export * from "./xp";
 export * from "./solo-challenges";
 export * from "./secret-game";
 export * from "./direct-messages";
+export * from "./parent-messages";
+export * from "./parent-message-replies";
 //# sourceMappingURL=index.d.ts.map
