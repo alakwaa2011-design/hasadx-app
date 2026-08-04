@@ -31,34 +31,34 @@ router.post("/parent-messages", async (req, res) => {
       .where(and(eq(studentsTable.id, studentId), eq(studentsTable.teacherId, teacherId))).limit(1);
     if (!student) { res.status(404).json({ message: "الطالب غير موجود" }); return; }
 
-    const [teacher] = await db.select({
-        id: teachersTable.id, name: teachersTable.name,
-        email: teachersTable.email, displaySchool: teachersTable.displaySchool,
-        schoolLogo: teachersTable.schoolLogo,
-      })
-      .from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+    const [teacher] = await db.select({ email: teachersTable.email, name: teachersTable.name })
+      .from(teachersTable).where(eq(teachersTable.id, msg.teacherId)).limit(1);
     if (!teacher) { res.status(404).json({ message: "المعلم غير موجود" }); return; }
 
     const replyToken = randomUUID();
     const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-    const [msg] = await db.insert(parentMessagesTable).values({
-      teacherId, studentId, subject, body, parentEmail,
-      parentName: parentName || null, replyToken, tokenExpiresAt,
-    }).returning();
+    const [msg] = await db
+      .select({
+        id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId,
+        repliedAt: parentMessagesTable.repliedAt, tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        studentName: studentsTable.name, parentName: parentMessagesTable.parentName,
+        subject: parentMessagesTable.subject,
+      })
+      .from(parentMessagesTable)
+      .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
+      .where(eq(parentMessagesTable.replyToken, token)).limit(1);
 
-    const baseUrl = getAppBaseUrl();
-    const portalUrl = `${baseUrl}/parent/${replyToken}`;
+      const baseUrl = getAppBaseUrl();
+    const portalUrl = `${baseUrl}/parent/${msg.replyToken}`;
     const schoolLogoUrl = teacher.schoolLogo
       ? `${baseUrl}/api/storage${teacher.schoolLogo}`
       : undefined;
-    const emailHtml = buildParentMessageEmail({
-      teacherName: teacher.name, studentName: student.name,
-      studentClass: student.studentClass || "", gradeLevel: student.gradeLevel || "",
-      subject, body, portalUrl, parentName: parentName || undefined,
-      schoolName: teacher.displaySchool ?? undefined,
-      schoolLogoUrl,
-    });
+      const emailHtml = buildTeacherReplyNotificationEmail({
+        teacherName: teacher.name, studentName: msg.studentName,
+        parentName: msg.parentName || "ولي الأمر", replyText: replyText.trim(),
+        inboxUrl: `${baseUrl}/teacher/parent-messages`,
+      });
 
     const emailResult = await sendEmail({
       to: parentEmail,
@@ -135,16 +135,23 @@ router.get("/parent-messages/:id/thread", async (req, res) => {
   try {
     const teacherId = req.session.teacherId;
     if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
-
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
 
-    const [msg] = await db.select().from(parentMessagesTable)
-      .where(and(eq(parentMessagesTable.id, id), eq(parentMessagesTable.teacherId, teacherId))).limit(1);
+    const [msg] = await db
+      .select({
+        id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId,
+        repliedAt: parentMessagesTable.repliedAt, tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        studentName: studentsTable.name, parentName: parentMessagesTable.parentName,
+        subject: parentMessagesTable.subject,
+      })
+      .from(parentMessagesTable)
+      .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
+      .where(eq(parentMessagesTable.replyToken, token)).limit(1);
     if (!msg) { res.status(404).json({ message: "الرسالة غير موجودة" }); return; }
 
     const replies = await db.select().from(parentMessageRepliesTable)
-      .where(eq(parentMessageRepliesTable.messageId, id))
+      .where(eq(parentMessageRepliesTable.messageId, msg.id))
       .orderBy(asc(parentMessageRepliesTable.createdAt));
 
     // Migrate old single-reply into thread (backward compat)
@@ -168,36 +175,50 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
   try {
     const teacherId = req.session.teacherId;
     if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
-
     const id = parseInt(req.params.id, 10);
     const { body } = req.body;
     if (!body?.trim()) { res.status(400).json({ message: "الرد فارغ" }); return; }
 
-    const [msg] = await db.select({
-      id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId,
-      parentEmail: parentMessagesTable.parentEmail, parentName: parentMessagesTable.parentName,
-      subject: parentMessagesTable.subject, replyToken: parentMessagesTable.replyToken,
-      tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
-      studentName: studentsTable.name,
-    })
+    const [msg] = await db
+      .select({
+        id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId,
+        repliedAt: parentMessagesTable.repliedAt, tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        studentName: studentsTable.name, parentName: parentMessagesTable.parentName,
+        subject: parentMessagesTable.subject,
+      })
       .from(parentMessagesTable)
-      .leftJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
-      .where(and(eq(parentMessagesTable.id, id), eq(parentMessagesTable.teacherId, teacherId))).limit(1);
-    if (!msg) { res.status(404).json({ message: "الرسالة غير موجودة" }); return; }
+      .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
+      .where(eq(parentMessagesTable.replyToken, token)).limit(1);
 
-    const [teacher] = await db.select({ name: teachersTable.name })
-      .from(teachersTable).where(eq(teachersTable.id, teacherId)).limit(1);
+    if (!msg) { res.status(404).json({ message: "الرابط غير صالح" }); return; }
+    if (msg.tokenExpiresAt < new Date()) { res.status(410).json({ message: "انتهت صلاحية هذا الرابط" }); return; }
+
+    // Insert reply into thread table
+    await db.insert(parentMessageRepliesTable)
+      .values({ messageId: msg.id, sender: "parent", body: replyText.trim() });
+
+    // Also update legacy fields for backward compat (only if not set yet)
+    if (!msg.repliedAt) {
+      await db.update(parentMessagesTable)
+        .set({ replyText: replyText.trim(), repliedAt: new Date() })
+        .where(eq(parentMessagesTable.replyToken, token));
+    }
+
+    // Notify teacher
+    const [teacher] = await db.select({ email: teachersTable.email, name: teachersTable.name })
+      .from(teachersTable).where(eq(teachersTable.id, msg.teacherId)).limit(1);
 
     const [reply] = await db.insert(parentMessageRepliesTable)
       .values({ messageId: id, sender: "teacher", body: body.trim() }).returning();
 
     // Send notification email to parent
-    const baseUrl = getAppBaseUrl();
+      const baseUrl = getAppBaseUrl();
     const portalUrl = `${baseUrl}/parent/${msg.replyToken}`;
-    const emailHtml = buildParentThreadReplyEmail({
-      teacherName: teacher?.name || "المعلم", parentName: msg.parentName || undefined,
-      studentName: msg.studentName ?? undefined, replyText: body.trim(), portalUrl,
-    });
+      const emailHtml = buildTeacherReplyNotificationEmail({
+        teacherName: teacher.name, studentName: msg.studentName,
+        parentName: msg.parentName || "ولي الأمر", replyText: replyText.trim(),
+        inboxUrl: `${baseUrl}/teacher/parent-messages`,
+      });
     await sendEmail({
       to: msg.parentEmail,
       subject: `منصة حصاد | رد المعلم بخصوص ${msg.studentName ?? ""}`,
@@ -243,18 +264,13 @@ router.get("/parent-portal/:token", async (req, res) => {
     const { token } = req.params;
     const [msg] = await db
       .select({
-        id: parentMessagesTable.id, subject: parentMessagesTable.subject,
-        body: parentMessagesTable.body, parentName: parentMessagesTable.parentName,
-        sentAt: parentMessagesTable.sentAt, readAt: parentMessagesTable.readAt,
-        replyText: parentMessagesTable.replyText, repliedAt: parentMessagesTable.repliedAt,
-        tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
-        teacherId: parentMessagesTable.teacherId,
-        studentName: studentsTable.name, studentClass: studentsTable.studentClass,
-        gradeLevel: studentsTable.gradeLevel, teacherName: teachersTable.name,
+        id: parentMessagesTable.id, teacherId: parentMessagesTable.teacherId,
+        repliedAt: parentMessagesTable.repliedAt, tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
+        studentName: studentsTable.name, parentName: parentMessagesTable.parentName,
+        subject: parentMessagesTable.subject,
       })
       .from(parentMessagesTable)
       .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
-      .innerJoin(teachersTable, eq(parentMessagesTable.teacherId, teachersTable.id))
       .where(eq(parentMessagesTable.replyToken, token)).limit(1);
 
     if (!msg) { res.status(404).json({ message: "الرابط غير صالح أو منتهي الصلاحية" }); return; }
@@ -274,6 +290,7 @@ router.get("/parent-portal/:token", async (req, res) => {
         type: "parent_message_read",
         title: "📩 قرأ ولي الأمر رسالتك",
         body: `اطّلع ولي أمر ${msg.studentName} على رسالتك بتاريخ ${dateStr} الساعة ${timeStr}`,
+        messageId: msg.id,
       });
     }
 
@@ -350,6 +367,7 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
       type: "parent_message_reply",
       title: "💬 ردّ ولي الأمر على رسالتك",
       body: `أرسل ولي أمر ${msg.studentName} رداً على رسالتك — افتح مراسلات الأسرة لعرض الرد`,
+      messageId: msg.id,
     });
 
     res.json({ ok: true });
@@ -358,5 +376,6 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
     res.status(500).json({ message: "حدث خطأ" });
   }
 });
+
 
 export default router;

@@ -562,6 +562,16 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "parent_message_replies table migration failed");
   }
+
+  // ── Notifications: message_id column ─────────────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS message_id INTEGER
+    `);
+    logger.info("notifications.message_id column migrated");
+  } catch (err) {
+    logger.error(err, "notifications.message_id column migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

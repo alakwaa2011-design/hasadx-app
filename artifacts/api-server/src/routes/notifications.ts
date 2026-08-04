@@ -23,6 +23,7 @@ router.get("/notifications", async (req, res) => {
     title: n.title,
     body: n.body,
     assignmentId: n.assignmentId,
+    messageId: n.messageId,
     isRead: n.isRead,
     createdAt: n.createdAt.toISOString(),
   })));

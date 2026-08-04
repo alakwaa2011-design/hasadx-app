@@ -12,6 +12,7 @@ interface Notification {
   title: string;
   body: string;
   assignmentId: number | null;
+  messageId: number | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -75,6 +76,12 @@ export function NotificationBell({ onDirectMessageClick }: NotificationBellProps
       setOpen(false);
     } else if (n.type === "maraqui_approval") {
       setLocation("/teacher/admin?tab=maraqui");
+      setOpen(false);
+    } else if (
+      (n.type === "parent_message_read" || n.type === "parent_message_reply") &&
+      n.messageId
+    ) {
+      setLocation(`/teacher/parent-messages?message=${n.messageId}`);
       setOpen(false);
     } else if (n.assignmentId) {
       setLocation(`/teacher/assignment/${n.assignmentId}`);

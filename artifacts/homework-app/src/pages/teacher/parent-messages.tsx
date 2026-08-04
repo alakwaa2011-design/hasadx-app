@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useSearch } from "wouter";
 import { Layout } from "@/components/layout";
 import {
   MessageSquare, Plus, Send, X, Search, Loader2,
@@ -91,6 +92,13 @@ function statusBadge(msg: Message) {
 }
 
 export default function ParentMessagesPage() {
+  const searchStr = useSearch();
+  const targetMessageId = useMemo(() => {
+    const params = new URLSearchParams(searchStr);
+    const v = params.get("message");
+    return v ? parseInt(v, 10) : null;
+  }, [searchStr]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,6 +135,24 @@ export default function ParentMessagesPage() {
   }, [fetchMessages]);
 
   useEffect(() => { fetchMessages(tab === "archived"); }, [tab, fetchMessages]);
+
+  // Auto-open a specific thread when arriving from a notification link
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (loading || !targetMessageId || messages.length === 0) return;
+    const found = messages.find(m => m.id === targetMessageId);
+    if (found) {
+      autoOpenedRef.current = true;
+      setExpandedId(targetMessageId);
+      fetchThread(targetMessageId);
+      // Scroll to the message after a short delay
+      setTimeout(() => {
+        const el = document.getElementById(`msg-${targetMessageId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
+  }, [loading, messages, targetMessageId]);
 
   // Auto-fill parent info
   useEffect(() => {
@@ -302,7 +328,7 @@ export default function ParentMessagesPage() {
               const thread = threads[msg.id] || [];
               const tLoading = threadLoading[msg.id];
               return (
-                <motion.div key={msg.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                <motion.div key={msg.id} id={`msg-${msg.id}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                   style={{ background: isOpen ? "#f0f7f3" : C.card, border: `1px solid ${isOpen ? C.green : C.border}`, borderRadius: 14, overflow: "hidden", transition: "border-color 0.15s" }}>
 
                   {/* Message Header */}
