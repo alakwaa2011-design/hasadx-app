@@ -159,13 +159,13 @@ function LoginLayout({ children, dir }: { children: ReactNode; dir: "rtl" | "ltr
       <header className="flex items-center justify-between px-5 sm:px-8 py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
             alt="حصاد"
             className="w-9 h-9 rounded-xl object-cover shadow-sm"
           />
-          <span className="flex flex-col leading-none">
-            <span className="font-extrabold text-lg" style={{ color: "#C9A050" }}>حصاد</span>
-            <span className="font-bold text-[9px] tracking-[3px] uppercase" style={{ color: "#C9A050", opacity: 0.75 }}>HASAADX</span>
+          <span className="flex flex-col leading-none items-center" style={{ gap: 2 }}>
+            <span className="block font-extrabold text-lg text-center" style={{ color: "#C9A050" }}>حــصــاد</span>
+            <span className="block font-black text-[11px] uppercase w-full text-center" style={{ color: "#C9A050", letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
           </span>
         </Link>
         <Link
@@ -268,13 +268,13 @@ function SidePanel() {
       <div>
         <div className="flex items-center gap-3.5 mb-12">
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
             alt="حصاد"
             className="w-11 h-11 rounded-2xl object-cover ring-2 ring-white/15 shadow-xl"
           />
-          <span className="flex flex-col leading-none">
-            <span className="font-black text-2xl" style={{ color: "#C9A050" }}>حصاد</span>
-            <span className="font-bold text-[10px] tracking-[4px] uppercase" style={{ color: "#C9A050", opacity: 0.8 }}>HASAADX</span>
+          <span className="flex flex-col leading-none items-center" style={{ gap: 2 }}>
+            <span className="block font-black text-2xl text-center" style={{ color: "#C9A050" }}>حــصــاد</span>
+            <span className="block font-black text-[12px] uppercase w-full text-center" style={{ color: "#C9A050", letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
           </span>
         </div>
 

@@ -273,14 +273,9 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   to free vertical space on dashboards where every pixel
                   counts; the name itself anchors the brand. */}
               <Link
-                href={
-                  user
-                    ? location.startsWith("/organizer")
-                      ? "/organizer"
-                      : "/teacher"
-                    : "/"
-                }
-                className="flex items-center gap-2 group rounded-lg px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
+                href="/"
+                className="flex items-center group rounded-lg px-1.5 py-1 -mx-1.5 hover:bg-muted/50 transition-colors"
+                style={{ gap: 8 }}
               >
                 {theme.logoUrl ? (
                   <img
@@ -290,23 +285,23 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   />
                 ) : (
                   <img
-                    src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                    src={`${import.meta.env.BASE_URL}images/logo-mark-transparent.png`}
                     alt="حصاد"
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover"
+                    className="w-9 h-9 sm:w-10 sm:h-10 object-contain flex-shrink-0"
                   />
                 )}
-                <span className="flex flex-col leading-none" style={{ gap: 1 }}>
+                <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
                   <span
-                    className="font-extrabold text-sm sm:text-base"
-                    style={{ color: "#C9A050", letterSpacing: "0.5px" }}
+                    className="block font-extrabold text-sm sm:text-base text-center"
+                    style={{ color: "#C9A050" }}
                   >
-                    حصاد
+                    حــصــاد
                   </span>
                   <span
-                    className="font-bold text-[9px] tracking-[3px] uppercase"
-                    style={{ color: "#C9A050", opacity: 0.8 }}
+                    className="block font-black text-[11px] sm:text-[12px] uppercase w-full text-center"
+                    style={{ color: "#C9A050", letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}
                   >
-                    HASAADX
+                    HASAAD
                   </span>
                 </span>
               </Link>
@@ -840,13 +835,13 @@ export function Layout({ children, noHeader }: LayoutProps) {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <img
-                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                 alt="حصاد"
                 className="w-5 h-5 rounded object-cover opacity-70"
               />
-              <span className="flex flex-col leading-none">
-                <span className="font-bold text-xs" style={{ color: "#C9A050", opacity: 0.75 }}>حصاد</span>
-                <span className="font-semibold text-[8px] tracking-[2px] uppercase" style={{ color: "#C9A050", opacity: 0.55 }}>HASAADX</span>
+              <span className="flex flex-col leading-none items-center" style={{ gap: 1 }}>
+                <span className="block font-bold text-xs text-center" style={{ color: "#C9A050", opacity: 0.75 }}>حــصــاد</span>
+                <span className="block font-black text-[8px] uppercase w-full text-center" style={{ color: "#C9A050", opacity: 0.8, letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
               </span>
             </div>
             <Link
@@ -901,15 +896,15 @@ export function StudentLoginLayout({ children }: LayoutProps) {
                 />
               ) : (
                 <img
-                  src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                  src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                   alt="حصاد"
                   className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover"
                 />
               )}
               {!theme.logoUrl && (
-                <span className="flex flex-col leading-none">
-                  <span className="font-extrabold text-base" style={{ color: "#C9A050" }}>حصاد</span>
-                  <span className="font-bold text-[9px] tracking-[3px] uppercase" style={{ color: "#C9A050", opacity: 0.8 }}>HASAADX</span>
+                <span className="flex flex-col leading-none items-center" style={{ gap: 2 }}>
+                  <span className="block font-extrabold text-base text-center" style={{ color: "#C9A050" }}>حــصــاد</span>
+                  <span className="block font-black text-[10px] uppercase w-full text-center" style={{ color: "#C9A050", letterSpacing: "0.38em", marginInlineEnd: "-0.38em" }}>HASAAD</span>
                 </span>
               )}
             </Link>

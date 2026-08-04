@@ -801,7 +801,7 @@ export function SoloChallengeResults({
           }}
         >
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
             alt=""
             aria-hidden
             className="w-9 h-9 rounded-lg object-cover opacity-90 shrink-0"

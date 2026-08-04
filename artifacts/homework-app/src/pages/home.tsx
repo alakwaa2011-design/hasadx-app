@@ -3779,7 +3779,7 @@ export default function Home() {
             <div>
               <div className="mb-3 flex items-center gap-2.5">
                 <img
-                  src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                  src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                   alt="حصاد"
                   className="h-8 w-8 rounded-lg object-cover"
                 />

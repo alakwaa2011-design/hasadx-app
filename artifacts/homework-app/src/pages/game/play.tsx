@@ -3122,7 +3122,7 @@ export default function GamePlay() {
             >
               <div className="flex items-center gap-2">
                 <img
-                  src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                  src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                   alt="حصاد"
                   className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover ring-1 ring-white/15 group-hover:ring-[#E8B84B]/40 transition"
                   style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}
@@ -4019,7 +4019,7 @@ export default function GamePlay() {
               aria-label="حصاد"
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                 alt=""
                 aria-hidden
                 className="w-4 h-4 rounded object-cover opacity-70 group-hover:opacity-100 transition-opacity"

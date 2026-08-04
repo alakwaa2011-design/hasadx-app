@@ -784,7 +784,7 @@ function BrandLogoBlock({ isAr, onHome }: { isAr: boolean; onHome: () => void })
         }}
       >
         <img
-          src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+          src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
           alt=""
           className="h-11 w-11 rounded-[10px] object-cover ring-1 ring-[rgba(212,166,58,0.35)]"
         />
@@ -1082,7 +1082,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasad"}
             >
               <img
-                src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+                src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
                 alt=""
                 className="h-9 w-9 shrink-0 rounded-lg object-cover ring-2 ring-[rgba(212,166,58,0.25)]"
               />

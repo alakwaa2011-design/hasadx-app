@@ -28,7 +28,7 @@ function StudentLoginLayout({
       <header className="flex items-center justify-between px-5 sm:px-8 py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
             alt={isAr ? "حصاد" : "Hasad"}
             className="w-9 h-9 rounded-xl object-cover shadow-sm"
           />
@@ -90,7 +90,7 @@ function StudentSidePanel({ lang }: { lang: string }) {
       <div>
         <div className="flex items-center gap-3 mb-10">
           <img
-            src={`${import.meta.env.BASE_URL}images/logo-icon.png`}
+            src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
             alt={isAr ? "حصاد" : "Hasad"}
             className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/20 shadow-lg"
           />
