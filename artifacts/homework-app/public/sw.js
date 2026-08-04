@@ -2,7 +2,7 @@
 // installs aggressively) is forced to drop the previous cache. Old SW
 // installs were serving stale hashed bundles after deploys, producing a
 // blank /organizer screen in Chrome only.
-const CACHE_NAME = "hasadx-v6-2026-08-04";
+const CACHE_NAME = "hasadx-v7-2026-08-04";
 
 // JS/CSS are Vite-hashed and change on every deploy. We *must* go to the
 // network first for them — a cached miss for a no-longer-existing hash
