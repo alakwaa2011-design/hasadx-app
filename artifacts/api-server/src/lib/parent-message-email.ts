@@ -9,15 +9,7 @@ const BRAND = {
   border: "#e5e0d8",
 };
 
-/** Escape user-controlled text before interpolating into email HTML. */
-function esc(s: string | null | undefined): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { esc } from "./html-escape";
 
 function emailShell(content: string): string {
   return `<!DOCTYPE html>
