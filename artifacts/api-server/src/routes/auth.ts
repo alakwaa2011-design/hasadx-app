@@ -51,6 +51,7 @@ const RevokeDeviceSchema = z
   })
   .partial();
 import { authLimiter, registerLimiter } from "../lib/rate-limiter";
+import { esc } from "../lib/html-escape";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { isSmsConfigured, sendSms } from "../lib/sms";
 import { parseUserAgent, lookupIpLocations } from "../lib/device-info";
@@ -83,11 +84,11 @@ function buildOtpEmail(name: string, otp: string): { html: string; text: string 
           <h1 style="color:#fff;margin:0;font-size:22px;font-weight:900">منصة حصاد</h1>
         </td></tr>
         <tr><td style="padding:40px">
-          <p style="font-size:16px;color:#1a1a1a;margin:0 0 8px">مرحباً ${name}،</p>
+          <p style="font-size:16px;color:#1a1a1a;margin:0 0 8px">مرحباً ${esc(name)}،</p>
           <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 28px">شكراً لتسجيلك في منصة حصاد. أدخل الرمز التالي لتفعيل حسابك:</p>
           <div style="text-align:center;margin:0 0 28px">
             <div style="display:inline-block;background:#f0f9f0;border:2px solid #1e5238;border-radius:12px;padding:16px 40px">
-              <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e5238;font-family:monospace">${otp}</span>
+              <span style="font-size:36px;font-weight:900;letter-spacing:8px;color:#1e5238;font-family:monospace">${esc(otp)}</span>
             </div>
           </div>
           <p style="font-size:13px;color:#888;text-align:center;margin:0">هذا الرمز صالح لمدة <strong>30 دقيقة</strong>. لا تشاركه مع أحد.</p>
@@ -125,7 +126,7 @@ function buildPasswordChangedEmail(
   <body style="font-family: -apple-system, Segoe UI, Tahoma, sans-serif; background:#f6f7fb; padding:24px; color:#1f2937;">
     <div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:16px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
       <h1 style="margin:0 0 12px; font-size:20px; color:#0f172a;">تنبيه أمني: تم تغيير كلمة المرور</h1>
-      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${safeName}،</p>
+      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${esc(safeName)}،</p>
       <p style="margin:0 0 16px; line-height:1.7;">
         نُعلمك بأنه تم ${action} لحسابك في منصة حصاد بتاريخ:
       </p>
@@ -280,14 +281,14 @@ function buildNewDeviceLoginEmail(
   <body style="font-family: -apple-system, Segoe UI, Tahoma, sans-serif; background:#f6f7fb; padding:24px; color:#1f2937;">
     <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:16px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
       <h1 style="margin:0 0 12px; font-size:20px; color:#0f172a;">تنبيه أمني: تسجيل دخول من جهاز جديد</h1>
-      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${safeName}،</p>
+      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${esc(safeName)}،</p>
       <p style="margin:0 0 16px; line-height:1.7;">
         رصدنا تسجيل دخول جديد إلى حسابك في منصة حصاد من جهاز أو متصفح لم نتعرف عليه سابقاً.
       </p>
       <table style="width:100%; border-collapse:collapse; background:#f1f5f9; border-radius:8px; overflow:hidden; margin:0 0 18px;">
-        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a; width:35%;">الوقت</td><td style="padding:10px 14px;">${when}</td></tr>
-        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a; background:#e2e8f0;">عنوان IP</td><td style="padding:10px 14px; background:#e2e8f0;">${ipAddress}</td></tr>
-        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a;">المتصفح/الجهاز</td><td style="padding:10px 14px;">${browser}</td></tr>
+        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a; width:35%;">الوقت</td><td style="padding:10px 14px;">${esc(when)}</td></tr>
+        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a; background:#e2e8f0;">عنوان IP</td><td style="padding:10px 14px; background:#e2e8f0;">${esc(ipAddress)}</td></tr>
+        <tr><td style="padding:10px 14px; font-weight:bold; color:#0f172a;">المتصفح/الجهاز</td><td style="padding:10px 14px;">${esc(browser)}</td></tr>
       </table>
       <p style="margin:0 0 16px; line-height:1.7;">
         إذا كنت أنت من قام بتسجيل الدخول، فلا حاجة لأي إجراء.
@@ -296,14 +297,14 @@ function buildNewDeviceLoginEmail(
         إذا لم يكن هذا أنت، افتح صفحة الجلسات النشطة وأنهِ هذه الجلسة فوراً.
       </p>
       <p style="text-align:center; margin:24px 0;">
-        <a href="${sessionsLink}" style="display:inline-block; background:#dc2626; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
+        <a href="${esc(sessionsLink)}" style="display:inline-block; background:#dc2626; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
           مراجعة الجلسات النشطة
         </a>
       </p>
       <p style="margin:0 0 8px; line-height:1.7; font-size:13px; color:#475569;">
         إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:
       </p>
-      <p style="word-break:break-all; font-size:12px; color:#334155; background:#f1f5f9; padding:10px; border-radius:8px;">${sessionsLink}</p>
+      <p style="word-break:break-all; font-size:12px; color:#334155; background:#f1f5f9; padding:10px; border-radius:8px;">${esc(sessionsLink)}</p>
       <p style="margin:18px 0 0; line-height:1.7; font-size:13px; color:#b91c1c;">
         ننصح أيضاً بتغيير كلمة المرور إذا شككت بأي نشاط مريب على حسابك.
       </p>
@@ -417,19 +418,19 @@ function buildResetEmail(name: string, link: string) {
   <body style="font-family: -apple-system, Segoe UI, Tahoma, sans-serif; background:#f6f7fb; padding:24px; color:#1f2937;">
     <div style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:16px; padding:28px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
       <h1 style="margin:0 0 12px; font-size:20px; color:#0f172a;">استعادة كلمة المرور</h1>
-      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${safeName}،</p>
+      <p style="margin:0 0 16px; line-height:1.7;">مرحباً ${esc(safeName)}،</p>
       <p style="margin:0 0 16px; line-height:1.7;">
         لقد طلبت إعادة تعيين كلمة المرور الخاصة بحسابك في منصة حصاد. اضغط على الزر أدناه لاختيار كلمة مرور جديدة. هذا الرابط صالح لمدة ساعة واحدة فقط ويمكن استخدامه مرة واحدة.
       </p>
       <p style="text-align:center; margin:24px 0;">
-        <a href="${link}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
+        <a href="${esc(link)}" style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:10px; font-weight:bold;">
           إعادة تعيين كلمة المرور
         </a>
       </p>
       <p style="margin:0 0 8px; line-height:1.7; font-size:13px; color:#475569;">
         إذا لم يعمل الزر، انسخ الرابط التالي والصقه في المتصفح:
       </p>
-      <p style="word-break:break-all; font-size:12px; color:#334155; background:#f1f5f9; padding:10px; border-radius:8px;">${link}</p>
+      <p style="word-break:break-all; font-size:12px; color:#334155; background:#f1f5f9; padding:10px; border-radius:8px;">${esc(link)}</p>
       <p style="margin:18px 0 0; line-height:1.7; font-size:13px; color:#64748b;">
         إذا لم تطلب إعادة التعيين، يمكنك تجاهل هذه الرسالة وستبقى كلمة مرورك كما هي.
       </p>

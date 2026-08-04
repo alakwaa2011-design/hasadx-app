@@ -68,15 +68,7 @@ function riyadhWeekString(d = new Date()): string {
   return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-/** Escape user-controlled strings before embedding in email HTML bodies. */
-function escHtml(s: string): string {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { esc as escHtml } from "../html-escape";
 
 export function isXpEnabled(): boolean {
   // Default: enabled unless explicitly disabled
