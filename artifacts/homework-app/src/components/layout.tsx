@@ -56,6 +56,7 @@ function VerificationNudgeBanner({
   const [dismissed, setDismissed] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   if (dismissed) return null;
 
@@ -64,16 +65,21 @@ function VerificationNudgeBanner({
   const handleSend = async () => {
     if (!identifier || sending || sent) return;
     setSending(true);
+    setSendError(null);
     try {
-      await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ identifier }),
       });
-      setSent(true);
+      if (res.ok) {
+        setSent(true);
+      } else {
+        setSendError(lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send code, please try again");
+      }
     } catch {
-      // ignore
+      setSendError(lang === "ar" ? "تعذّر إرسال الرمز، حاول مجدداً" : "Failed to send code, please try again");
     } finally {
       setSending(false);
     }
@@ -94,8 +100,10 @@ function VerificationNudgeBanner({
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <ShieldAlert className="w-4 h-4 shrink-0" style={{ color: "#d97706" }} />
-          <p className="text-[13px] font-medium leading-snug" style={{ color: "#78350f" }}>
-            {sent
+          <p className="text-[13px] font-medium leading-snug" style={{ color: sendError ? "#dc2626" : "#78350f" }}>
+            {sendError
+              ? sendError
+              : sent
               ? (lang === "ar"
                   ? "✅ تم إرسال رمز التحقق — تحقق من بريدك أو هاتفك وأدخل الرمز لتفعيل حسابك"
                   : "✅ Verification code sent — check your email or phone to activate your account")
