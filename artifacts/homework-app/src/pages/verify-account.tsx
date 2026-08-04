@@ -278,14 +278,14 @@ export default function VerifyAccountPage() {
                       {lang === "ar" ? (
                         <>
                           تحتاج مساعدة؟{" "}
-                          <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                          <a href="mailto:hasaadx.contact@gmail.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
                             تواصل مع الدعم
                           </a>
                         </>
                       ) : (
                         <>
                           Need help?{" "}
-                          <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                          <a href="mailto:hasaadx.contact@gmail.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
                             Contact support
                           </a>
                         </>

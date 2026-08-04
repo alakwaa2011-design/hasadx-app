@@ -761,3 +761,17 @@ id = "MSbR2_tJpzvnAXl1RHj0W"
 uri = "file://artifacts/homework-app/public/images/preview-combined-white.png"
 type = "image"
 title = "HASAD X + عربي - خلفية بيضاء"
+
+[[outputs]]
+id = "i2o51PuNA3mAaYH73fx_Q"
+uri = "file://hasaadx-brand-package.zip"
+type = "unspecified"
+title = "HASAADX Brand Package — حزمة الهوية البصرية"
+description = "SVGs + دليل الهوية | 10 ملفات"
+
+[[outputs]]
+id = "wgIFERhqZKrkF7Ao_8zyH"
+uri = "file://brand/brand-guidelines.html"
+type = "unspecified"
+title = "دليل الهوية البصرية — Brand Guidelines"
+description = "ألوان، خطوط، نسخ الشعار، قواعد الاستخدام"

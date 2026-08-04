@@ -17,6 +17,20 @@ interface State {
   error: Error | null;
 }
 
+/** Returns true if the error is a Vite/browser chunk-load failure (stale deploy). */
+function isChunkLoadError(error: Error): boolean {
+  const msg = error.message?.toLowerCase() ?? "";
+  return (
+    msg.includes("failed to fetch dynamically imported module") ||
+    msg.includes("importing a module script failed") ||
+    msg.includes("error loading dynamically imported module") ||
+    msg.includes("unable to preload css") ||
+    (error.name === "TypeError" && msg.includes("import"))
+  );
+}
+
+const RELOAD_KEY = "eb_chunk_reload";
+
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -27,10 +41,23 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (typeof window !== "undefined") {
       console.error("[ErrorBoundary]", this.props.label ?? "", error, info);
+
+      // Auto-reload once on chunk load errors (stale deploy).
+      // Guard against infinite loops with a sessionStorage flag.
+      if (isChunkLoadError(error)) {
+        const alreadyReloaded = sessionStorage.getItem(RELOAD_KEY) === "1";
+        if (!alreadyReloaded) {
+          sessionStorage.setItem(RELOAD_KEY, "1");
+          window.location.reload();
+          return;
+        }
+      }
     }
   }
 
   handleRetry = () => {
+    // Clear the reload guard so a manual retry can trigger auto-reload again.
+    sessionStorage.removeItem(RELOAD_KEY);
     try {
       this.props.onReset?.();
     } catch {
@@ -45,6 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     const label = this.props.label ?? "هذه الصفحة";
     const message = error.message || "خطأ غير متوقع";
+    const isChunk = isChunkLoadError(error);
 
     return (
       <div
@@ -60,30 +88,38 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="w-8 h-8 text-amber-300" />
           </div>
           <h2 className="text-2xl font-extrabold mb-2 text-amber-100">
-            حدث خطأ في {label}
+            {isChunk ? "تحديث جديد متاح" : `حدث خطأ في ${label}`}
           </h2>
           <p className="text-white/70 mb-1 text-sm">
-            لا تقلق — بياناتك الأخرى آمنة. جرّب إعادة المحاولة، وإن استمرت
-            المشكلة عُد للصفحة الرئيسية.
+            {isChunk
+              ? "تم تحديث المنصة. اضغط على إعادة التحميل لتفتح النسخة الجديدة."
+              : "لا تقلق — بياناتك الأخرى آمنة. جرّب إعادة المحاولة، وإن استمرت المشكلة عُد للصفحة الرئيسية."}
           </p>
-          <div className="mt-3 mb-5 px-4 py-2 rounded-lg bg-rose-500/10 border border-rose-400/30 text-rose-200/90 text-xs font-mono break-all text-start">
-            {message}
-          </div>
-          <div className="flex flex-wrap gap-3 justify-center">
+          {!isChunk && (
+            <div className="mt-3 mb-5 px-4 py-2 rounded-lg bg-rose-500/10 border border-rose-400/30 text-rose-200/90 text-xs font-mono break-all text-start">
+              {message}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3 justify-center mt-5">
             <button
-              onClick={this.handleRetry}
+              onClick={() => {
+                sessionStorage.removeItem(RELOAD_KEY);
+                window.location.reload();
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-              إعادة المحاولة
+              {isChunk ? "إعادة التحميل" : "إعادة المحاولة"}
             </button>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors"
-            >
-              <Home className="w-4 h-4" />
-              الصفحة الرئيسية
-            </Link>
+            {!isChunk && (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold transition-colors"
+              >
+                <Home className="w-4 h-4" />
+                الصفحة الرئيسية
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -234,7 +234,7 @@ function TrustLinks() {
         <span className="opacity-30">·</span>
         <Link href="/faq" className="hover:text-muted-foreground transition-colors">الأسئلة الشائعة</Link>
         <span className="opacity-30">·</span>
-        <a href="mailto:support@hasadx.com" className="hover:text-muted-foreground transition-colors">مساعدة</a>
+        <a href="mailto:hasaadx.contact@gmail.com" className="hover:text-muted-foreground transition-colors">مساعدة</a>
       </div>
       <div className="flex items-center justify-center gap-1.5 mt-3 text-xs font-medium" style={{ color: "#1a4731", opacity: 0.65 }}>
         <Shield className="w-3 h-3" />
@@ -925,14 +925,14 @@ function OtpVerifyScreen({
               {lang === "ar" ? (
                 <>
                   تحتاج مساعدة؟{" "}
-                  <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                  <a href="mailto:hasaadx.contact@gmail.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
                     تواصل مع الدعم
                   </a>
                 </>
               ) : (
                 <>
                   Need help?{" "}
-                  <a href="mailto:support@hasadx.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
+                  <a href="mailto:hasaadx.contact@gmail.com" className="underline font-semibold" style={{ color: "#1a4731" }}>
                     Contact support
                   </a>
                 </>
