@@ -692,7 +692,7 @@ router.patch("/auth/change-password", async (req, res) => {
       return;
     }
     const newHash = await bcrypt.hash(newPassword, 10);
-  const teacherId = sess?.teacherId ?? null;
+    const teacherId = req.session.teacherId!;
     await db
       .update(teachersTable)
       .set({ passwordHash: newHash })
@@ -987,7 +987,7 @@ function renderRevokePage(
 router.get("/auth/devices/revoke", async (req, res) => {
   const baseUrl = getAppBaseUrl();
   try {
-    const token = parsed.success ? parsed.data.token ?? "" : "";
+    const token = typeof req.query.token === "string" ? req.query.token : "";
     if (!token) {
       renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
       return;
@@ -1032,8 +1032,7 @@ router.get("/auth/devices/revoke", async (req, res) => {
 router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
   const baseUrl = getAppBaseUrl();
   try {
-      const rawToken = crypto.randomBytes(32).toString("base64url");
-  const parsed = BriefPreferencesSchema.safeParse(req.body);
+    const parsed = RevokeDeviceSchema.safeParse(req.body);
     const token = parsed.success ? parsed.data.token ?? "" : "";
     if (!token) {
       renderRevokePage(res, 400, { title: "رابط غير صالح", message: "الرابط مفقود أو غير صالح." });
@@ -1064,16 +1063,16 @@ router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
       return;
     }
 
-  const teacherId = sess?.teacherId ?? null;
+  const teacherId = claimed[0].teacherId;
 
     // Revoke ALL active sessions for this teacher.
     await revokeTeacherSessions(teacherId, null, req.log);
 
     // Auto-issue a password reset token and email it so the teacher can lock down quickly.
     const [teacher] = await db
-      .select({ preferences: teachersTable.preferences })
+      .select()
       .from(teachersTable)
-      .where(eq(teachersTable.id, req.session.teacherId))
+      .where(eq(teachersTable.id, teacherId))
       .limit(1);
 
     let resetEmailSent = false;
@@ -1087,16 +1086,14 @@ router.post("/auth/devices/revoke", authLimiter, async (req, res) => {
         expiresAt,
       });
       const link = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
-      const { html, text } = buildOtpEmail(teacher.name, otp);
-    const result = await pool.query(
-      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
-      [targetSid, teacherId],
-    );
+      const { html, text } = buildResetEmail(teacher.name, link);
+      const result = await sendEmail({
+        to: teacher.email,
+        subject: "تنبيه أمني: تم إلغاء جهاز مشبوه - منصة حصاد",
+        html,
+        text,
+      });
       if (!result.delivered) {
-        await db
-          .update(passwordResetTokensTable)
-          .set({ usedAt: new Date() })
-          .where(eq(passwordResetTokensTable.tokenHash, resetTokenHash));
         req.log.warn({ teacherId, reason: result.reason }, "Security reset email not delivered");
       } else {
         resetEmailSent = true;
@@ -1130,7 +1127,7 @@ router.get("/auth/sessions", async (req, res) => {
     return;
   }
   try {
-  const teacherId = sess?.teacherId ?? null;
+    const teacherId = req.session.teacherId!;
     const currentSid = req.sessionID;
     const { rows } = await pool.query(
       `SELECT sid, sess, expire FROM "session"
@@ -1175,11 +1172,11 @@ router.delete("/auth/sessions", async (req, res) => {
     return;
   }
   try {
-  const teacherId = sess?.teacherId ?? null;
+    const teacherId = req.session.teacherId!;
     const currentSid = req.sessionID;
     const result = await pool.query(
-      `DELETE FROM "session" WHERE sid = $1 AND (sess->>'teacherId')::int = $2`,
-      [targetSid, teacherId],
+      `DELETE FROM "session" WHERE (sess->>'teacherId')::int = $1 AND sid <> $2`,
+      [teacherId, currentSid],
     );
     res.json({
       message: "تم تسجيل الخروج من الأجهزة الأخرى",
@@ -1202,7 +1199,7 @@ router.delete("/auth/sessions/:sid", async (req, res) => {
     return;
   }
   try {
-  const teacherId = sess?.teacherId ?? null;
+    const teacherId = req.session.teacherId!;
     const currentSid = req.sessionID;
     const wasCurrent = targetSid === currentSid;
     const result = await pool.query(
