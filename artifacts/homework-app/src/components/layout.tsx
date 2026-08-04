@@ -929,10 +929,6 @@ export function StudentLoginLayout({ children }: LayoutProps) {
       </header>
 
       <main className="flex-1">{children}</main>
-
-      {user && !isTeacherAdmin && (
-        <DirectMessageDrawer open={dmOpen} onClose={() => setDmOpen(false)} />
-      )}
     </div>
   );
 }

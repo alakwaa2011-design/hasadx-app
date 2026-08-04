@@ -1744,7 +1744,7 @@ export default function Home() {
       </AnimatePresence>
 
       <main className="overflow-hidden bg-background font-display" dir="rtl">
-        {/* ============== NEW LANDING DESIGN ============== */}
+        {/* -------------- NEW LANDING DESIGN -------------- */}
         <div
           dir="rtl"
           className="landing-grid-bg"
@@ -2739,7 +2739,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ============== TOOLS ============== */}
+        {/* -------------- TOOLS -------------- */}
         <section
           className="border-t border-border/60 bg-[#fbfcf8]"
           id="tools"
@@ -2791,7 +2791,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== HASAD CHALLENGE (group / audience competition) ============== */}
+        {/* -------------- HASAD CHALLENGE (group / audience competition) -------------- */}
         <section
           className="border-t border-border/60"
           dir="rtl"
@@ -3029,7 +3029,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== AI INTERACTIVE PRESENTATIONS PROMO ============== */}
+        {/* -------------- AI INTERACTIVE PRESENTATIONS PROMO -------------- */}
         <section
           dir={dir}
           className="border-t border-border/60 bg-[#fbfcf8] py-16 sm:py-20"
@@ -3262,10 +3262,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== READY QUIZZES (preserved) ============== */}
+        {/* -------------- READY QUIZZES (preserved) -------------- */}
         <ReadyQuizzesSection lang={lang} dir={dir} />
 
-        {/* ============== INTERACTIVE VIDEO (text-only — visual moved to hero) ============== */}
+        {/* -------------- INTERACTIVE VIDEO (text-only — visual moved to hero) -------------- */}
         <section className="border-t border-border/60 bg-[#fbfcf8]" hidden>
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
@@ -3396,7 +3396,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== FLOW + LIVE STATS ============== */}
+        {/* -------------- FLOW + LIVE STATS -------------- */}
         <section id="how-it-works" className="border-t border-border/60">
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -3495,7 +3495,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== GAMES ============== */}
+        {/* -------------- GAMES -------------- */}
         <section id="games" className="border-t border-border/60 bg-[#fbfcf8]">
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -3562,7 +3562,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============== FINAL CTA ============== */}
+        {/* -------------- FINAL CTA -------------- */}
         <section className="border-t border-border/60">
           <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
             <div className="cta-panel rounded-[34px] p-7 text-white shadow-[0_28px_70px_rgba(26,54,40,0.22)] sm:p-10 lg:p-12">
@@ -3602,7 +3602,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* ============== INSTALL MODAL (preserved) ============== */}
+      {/* -------------- INSTALL MODAL (preserved) -------------- */}
       <AnimatePresence>
         {showInstallModal && (
           <motion.div
@@ -3772,7 +3772,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* ============== FOOTER ============== */}
+      {/* -------------- FOOTER -------------- */}
       <footer className="bg-[hsl(145,30%,12%)] py-10 text-white" dir={dir}>
         <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">

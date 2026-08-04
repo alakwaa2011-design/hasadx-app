@@ -250,6 +250,7 @@ interface LeaderboardEntry {
   score: number;
   streak: number;
   lastAnswer?: { correct: boolean; points: number };
+  teamName?: string;
 }
 
 interface OtherPlayer {
