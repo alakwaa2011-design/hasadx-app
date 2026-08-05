@@ -8,7 +8,7 @@ import {
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, RotateCcw,
+  ArrowLeft, Printer, RotateCcw, Palette,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
@@ -108,6 +108,10 @@ interface Settings {
   fontFamily: FontFamily;
   fontSizePt: number;
   showWatermark: boolean;
+  /** Custom accent color (hex). Defaults to Hasaad green. */
+  themeColor?: string;
+  /** Base64 school logo shown in the header. */
+  logoUrl?: string;
 }
 
 const MAX_CUSTOM_FIELDS = 6;
@@ -193,7 +197,18 @@ const DEFAULT_SETTINGS: Settings = {
   fontFamily: "default",
   fontSizePt: 12,
   showWatermark: true,
+  themeColor: undefined,
+  logoUrl: undefined,
 };
+
+const THEME_PRESETS = [
+  { color: "#225739", label: "أخضر حصاد" },
+  { color: "#1a3a6b", label: "أزرق رسمي" },
+  { color: "#5C2D0E", label: "بني دافئ" },
+  { color: "#4a1a6b", label: "أرجواني" },
+  { color: "#1A1A2E", label: "أسود راقٍ" },
+  { color: "#7b1a1a", label: "أحمر" },
+];
 
 export default function WorksheetCreate() {
   const { lang } = useI18n();
@@ -669,24 +684,6 @@ export default function WorksheetCreate() {
                 className="w-full px-3 py-2 rounded-lg border bg-background"
               />
             </Field>
-            <Field label={ar ? "لغة المحتوى" : "Content Language"}>
-              <div className="flex gap-2">
-                {(["ar", "en"] as const).map(l => (
-                  <button
-                    key={l}
-                    onClick={() => setContentLang(l)}
-                    className="flex-1 px-3 py-2 rounded-lg border text-sm font-bold"
-                    style={{
-                      background: contentLang === l ? BRAND_PRIMARY : "transparent",
-                      color: contentLang === l ? "#fff" : BRAND_PRIMARY,
-                      borderColor: `${BRAND_PRIMARY}55`,
-                    }}
-                  >
-                    {l === "ar" ? "العربية" : "English"}
-                  </button>
-                ))}
-              </div>
-            </Field>
             <Field label={ar ? "المادة (اختياري)" : "Subject (optional)"}>
               <input
                 value={subject}
@@ -725,11 +722,11 @@ export default function WorksheetCreate() {
                   className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
                 />
               </Field>
-              <Field label={ar ? "القسم / الشعبة" : "Section / Class"}>
+              <Field label={ar ? "القسم" : "Section"}>
                 <input
                   value={settings.section ?? ""}
                   onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
-                  placeholder={ar ? "مثال: 5/أ" : "e.g., 5A"}
+                  placeholder={ar ? "مثال: قسم اللغة العربية" : "e.g., English Department"}
                   maxLength={100}
                   className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
                 />
@@ -816,6 +813,110 @@ export default function WorksheetCreate() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Design card — theme color + school logo */}
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
+              <Palette className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-sm font-bold" style={{ color: BRAND_PRIMARY }}>{ar ? "تصميم الورقة" : "Worksheet Design"}</div>
+              <div className="text-[11px] text-muted-foreground">{ar ? "لون الورقة وشعار المدرسة" : "Accent color & school logo"}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Color theme */}
+            <div>
+              <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
+                {ar ? "لون الورقة" : "Accent color"}
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {THEME_PRESETS.map(p => (
+                  <button
+                    key={p.color}
+                    title={p.label}
+                    onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
+                    className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                    style={{
+                      background: p.color,
+                      borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
+                      boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
+                    }}
+                  />
+                ))}
+                {/* Custom color input */}
+                <label
+                  className="w-8 h-8 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                  style={{ borderColor: `${BRAND_PRIMARY}55` }}
+                  title={ar ? "لون مخصص" : "Custom color"}
+                >
+                  <input
+                    type="color"
+                    className="sr-only"
+                    value={settings.themeColor ?? BRAND_PRIMARY}
+                    onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))}
+                  />
+                  <span className="text-[10px] font-bold" style={{ color: BRAND_PRIMARY }}>+</span>
+                </label>
+              </div>
+              {settings.themeColor && (
+                <button
+                  onClick={() => setSettings(s => ({ ...s, themeColor: undefined }))}
+                  className="text-[11px] text-muted-foreground hover:text-destructive"
+                >
+                  {ar ? "إعادة الافتراضي" : "Reset to default"}
+                </button>
+              )}
+            </div>
+
+            {/* Logo upload */}
+            <div>
+              <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
+                {ar ? "شعار المدرسة (اختياري)" : "School logo (optional)"}
+              </label>
+              {settings.logoUrl ? (
+                <div className="flex items-center gap-3">
+                  <img src={settings.logoUrl} alt="logo" className="h-12 w-auto rounded border border-border object-contain" />
+                  <button
+                    onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))}
+                    className="text-[11px] text-red-500 hover:underline"
+                  >
+                    {ar ? "حذف الشعار" : "Remove"}
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/30 transition-colors" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
+                  <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
+                  <span>{ar ? "اضغط لرفع الشعار (PNG/JPG)" : "Click to upload logo (PNG/JPG)"}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                    className="sr-only"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 500 * 1024) {
+                        toast.error(ar ? "حجم الشعار يجب أن يكون أقل من 500 كيلوبايت" : "Logo must be under 500 KB");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        const url = ev.target?.result as string;
+                        setSettings(s => ({ ...s, logoUrl: url }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {ar ? "يظهر في الترويسة أعلى الورقة · الحد الأقصى 500 كيلوبايت" : "Shown in the header · max 500 KB"}
+              </p>
             </div>
           </div>
         </Card>

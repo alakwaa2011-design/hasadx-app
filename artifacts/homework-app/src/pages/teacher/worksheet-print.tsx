@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { Loader2, Printer, ArrowLeft, Edit3, FileType } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
@@ -37,6 +37,10 @@ export interface Settings {
   fontFamily?: FontFamily;
   fontSizePt?: number;
   showWatermark?: boolean;
+  /** Custom accent color (hex). Defaults to Hasaad green. */
+  themeColor?: string;
+  /** Base64 or URL of school logo — shown in the header identity panel. */
+  logoUrl?: string;
 }
 
 export interface WorksheetData {
@@ -68,21 +72,69 @@ function resolveFont(fam: FontFamily | undefined, lang: "ar" | "en"): string {
   }
 }
 
-// Heading font is chosen separately so titles always look elegant
-// (Reem Kufi for Arabic, Inter for Latin) regardless of the body font.
+// Heading font is chosen separately so titles always look professional
+// (Cairo for Arabic — the standard for official worksheets and exams,
+//  Inter for Latin) regardless of the body font.
 function resolveHeadingFont(lang: "ar" | "en"): string {
   return lang === "ar"
-    ? `'Reem Kufi', 'Amiri', 'Cairo', sans-serif`
+    ? `'Cairo', 'Noto Naskh Arabic', 'Tajawal', sans-serif`
     : `'Inter', 'Source Sans Pro', sans-serif`;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Pagination helper — splits questions across A4 pages by estimating
+// their rendered height in mm. Refined via measurement after render.
+// ─────────────────────────────────────────────────────────────────
+function paginateByEstimate(
+  questions: Question[],
+  fontSizePt: number,
+  columns: 1 | 2,
+  firstPageAvailMm: number,
+  otherPageAvailMm: number,
+): Question[][] {
+  if (questions.length === 0) return [[]];
+  const lineH = fontSizePt * 0.352778 * 1.85; // pt → mm
+  const chars = columns === 2 ? 22 : 44;
+  const GAP = 5;
+  const est = (q: Question): number => {
+    const promptLines = Math.max(1, Math.ceil((q.prompt?.length ?? 0) / chars));
+    const base = 10 + promptLines * lineH;
+    switch (q.type) {
+      case "mcq": return base + q.options.filter(Boolean).length * lineH * 1.3;
+      case "true_false": return base + lineH * 1.1;
+      case "short_answer": return base + (q.lines ?? 2) * 9;
+      case "fill_blank": return base + 3;
+      case "matching": return base + q.pairs.length * lineH * 1.3;
+    }
+  };
+  const pages: Question[][] = [];
+  let page: Question[] = [];
+  let used = 0;
+  let limit = firstPageAvailMm;
+  if (columns === 2) {
+    for (let i = 0; i < questions.length; i += 2) {
+      const h = Math.max(est(questions[i]), i + 1 < questions.length ? est(questions[i + 1]) : 0) + GAP;
+      if (page.length > 0 && used + h > limit) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
+      page.push(questions[i]);
+      if (i + 1 < questions.length) page.push(questions[i + 1]);
+      used += h;
+    }
+  } else {
+    for (const q of questions) {
+      const h = est(q) + GAP;
+      if (page.length > 0 && used + h > limit) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
+      page.push(q);
+      used += h;
+    }
+  }
+  if (page.length > 0) pages.push(page);
+  return pages.length > 0 ? pages : [questions];
+}
+
 /**
- * Reusable printable view. Render this wherever you have a fully-formed
- * `WorksheetData` in memory — the print page (loads by id) and the
- * worksheet-create preview overlay (passes the local draft) both use it.
- *
- * The wrapper element gets id `ws-printable-root` so the Word exporter
- * can grab the right subtree without including the toolbar.
+ * Reusable printable view. Supports automatic A4 pagination, custom
+ * theme color, and school logo in the header. The wrapper element gets
+ * id `ws-printable-root` so the Word exporter can grab the right subtree.
  */
 export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   const ar = data.language === "ar";
@@ -91,9 +143,11 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   const headingFont = resolveHeadingFont(data.language);
   const fontSizePt = Math.min(18, Math.max(9, data.settings.fontSizePt ?? 12));
   const showWatermark = data.settings.showWatermark !== false;
+  const themeColor = data.settings.themeColor ?? BRAND_PRIMARY;
+  const logoUrl = data.settings.logoUrl;
 
   const labels = ar
-    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "الشعبة", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "صح", false: "خطأ", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
+    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "صح", false: "خطأ", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
     : { name: "Name", date: "Date", clazz: "Class", section: "Section", school: "School", teacher: "Teacher", instructions: "Instructions", answerKey: "Answer Key", question: "Q", true: "True", false: "False", correct: "Answer:", goodLuck: "✦ Good luck!" };
 
   const customFields = (data.settings.customFields ?? []).filter(
@@ -103,96 +157,179 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
     !!data.settings.schoolName ||
     !!data.settings.section ||
     !!data.settings.teacherName ||
+    !!logoUrl ||
     customFields.length > 0;
+
+  // ── Pagination state (estimate first, refined by measurement) ──
+  const cols = data.settings.columns;
+  const [pages, setPages] = useState<Question[][]>(() =>
+    paginateByEstimate(data.questions, fontSizePt, cols, 190, 250),
+  );
+  const measureRef = useRef<HTMLDivElement>(null);
+  const lastKeyRef = useRef("");
+
+  // After each render, measure actual heights and re-paginate
+  useLayoutEffect(() => {
+    const key = [
+      data.questions.map(q => q.id).join(","),
+      cols, fontSizePt,
+      data.settings.schoolName ?? "", data.settings.section ?? "",
+      data.settings.teacherName ?? "", logoUrl ? "logo" : "",
+      data.settings.includeName ? "n" : "",
+      data.settings.includeDate ? "d" : "",
+      data.settings.includeClass ? "c" : "",
+      data.settings.instructions ?? "",
+    ].join("|");
+    if (key === lastKeyRef.current) return;
+    const root = measureRef.current;
+    if (!root) return;
+    const qEls = Array.from(root.querySelectorAll("[data-q-measure]")) as HTMLElement[];
+    if (qEls.length !== data.questions.length) return;
+    const headerEl = root.querySelector("[data-header-measure]") as HTMLElement | null;
+    lastKeyRef.current = key;
+
+    const PX_MM = 3.7795;
+    const contentH = (297 - 18 - 16) * PX_MM;
+    const headerH = headerEl ? headerEl.offsetHeight : 60 * PX_MM;
+    const footerH = 12 * PX_MM;
+    const firstPageH = Math.max(contentH - headerH - footerH, 80 * PX_MM);
+    const otherPageH = Math.max(contentH - footerH - 12 * PX_MM, 150 * PX_MM);
+    const GAP = 4 * PX_MM;
+    const heights = qEls.map(el => el.offsetHeight + GAP);
+    const newPages: Question[][] = [];
+    let page: Question[] = [];
+    let usedH = 0;
+    let limit = firstPageH;
+    if (cols === 2) {
+      for (let i = 0; i < data.questions.length; i += 2) {
+        const rowH = Math.max(heights[i] ?? 0, heights[i + 1] ?? 0);
+        if (page.length > 0 && usedH + rowH > limit) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
+        page.push(data.questions[i]);
+        if (i + 1 < data.questions.length) page.push(data.questions[i + 1]);
+        usedH += rowH;
+      }
+    } else {
+      for (let i = 0; i < data.questions.length; i++) {
+        const h = heights[i];
+        if (page.length > 0 && usedH + h > limit) { newPages.push(page); page = []; usedH = 0; limit = otherPageH; }
+        page.push(data.questions[i]);
+        usedH += h;
+      }
+    }
+    if (page.length > 0) newPages.push(page);
+    if (newPages.length > 0) setPages(newPages);
+  });
+
+  // ── Header JSX (shared between page 1 render and measurement div) ──
+  const headerJsx = (
+    <header className="ws-header">
+      <div className={`ws-headgrid${hasIdentity ? "" : " ws-headgrid-titleonly"}`}>
+        {hasIdentity && (
+          <div className="ws-headside ws-headside-start">
+            {logoUrl && (
+              <div className="ws-logo-wrap">
+                <img src={logoUrl} alt={ar ? "شعار المدرسة" : "School logo"} className="ws-logo-img" />
+              </div>
+            )}
+            {data.settings.schoolName && (
+              <IdentityCell label={labels.school} value={data.settings.schoolName} icon={<IconSchool />} />
+            )}
+            {data.settings.section && (
+              <IdentityCell label={labels.section} value={data.settings.section} icon={<IconSection />} />
+            )}
+            {data.settings.teacherName && (
+              <IdentityCell label={labels.teacher} value={data.settings.teacherName} icon={<IconTeacher />} />
+            )}
+            {customFields.map((f, i) => (
+              <IdentityCell key={`cf-${i}`} label={f.label.trim() || (ar ? "حقل" : "Field")} value={f.value} icon={<IconField />} />
+            ))}
+          </div>
+        )}
+        <div className="ws-headcenter">
+          <h1 className="ws-title">{data.title}</h1>
+          {(data.subject || data.gradeLevel) && (
+            <div className="ws-kicker-center">{[data.subject, data.gradeLevel].filter(Boolean).join(" · ")}</div>
+          )}
+          <DoubleDivider />
+        </div>
+        {hasIdentity && <div className="ws-headside ws-headside-end" aria-hidden="true" />}
+      </div>
+      {(data.settings.includeName || data.settings.includeDate || data.settings.includeClass) && (
+        <div className="ws-fields">
+          {data.settings.includeName && <FieldLine label={labels.name} icon={<IconUser />} />}
+          {data.settings.includeClass && <FieldLine label={labels.clazz} icon={<IconClass />} short />}
+          {data.settings.includeDate && <FieldLine label={labels.date} icon={<IconDate />} short />}
+        </div>
+      )}
+      {data.settings.headerNote && <p className="ws-subtitle">{data.settings.headerNote}</p>}
+      {data.settings.instructions && (
+        <div className="ws-instructions">
+          <IconLightbulb />
+          <div><strong>{labels.instructions}</strong><span> {data.settings.instructions}</span></div>
+        </div>
+      )}
+    </header>
+  );
+
+  const qColWidth = cols === 2 ? "calc((174mm - 8mm) / 2)" : "174mm";
 
   return (
     <>
-      <PrintStyles fontFamily={fontFamily} headingFont={headingFont} fontSizePt={fontSizePt} lang={data.language} />
+      <PrintStyles fontFamily={fontFamily} headingFont={headingFont} fontSizePt={fontSizePt} lang={data.language} themeColor={themeColor} />
+
+      {/* ── Hidden measurement div ───────────────────────────────── */}
+      <div
+        ref={measureRef}
+        aria-hidden="true"
+        className="print-host"
+        style={{ position: "absolute", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}
+        dir={dir}
+      >
+        <div data-header-measure style={{ width: "174mm" }}>{headerJsx}</div>
+        {data.questions.map((q, i) => (
+          <div key={q.id} data-q-measure style={{ width: qColWidth }}>
+            <QuestionView index={i + 1} q={q} ar={ar} labels={labels} />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Visible paginated pages ──────────────────────────────── */}
       <div id="ws-printable-root" className="print-host bg-neutral-200 min-h-screen py-6 px-2 flex flex-col items-center" dir={dir}>
-        <article className="ws-page" lang={data.language}>
-          {showWatermark && <WatermarkLayer ar={ar} />}
-          <CornerOrnaments />
-          <div className="ws-content">
-            {/* Header — identity panel pinned to the START side, title
-                 centered in the middle column. The brand band has been
-                 removed so nothing competes with the worksheet title. */}
-            <header className="ws-header">
-              <div className={`ws-headgrid${hasIdentity ? "" : " ws-headgrid-titleonly"}`}>
-                {hasIdentity && (
-                  <div className="ws-headside ws-headside-start">
-                    {data.settings.schoolName && (
-                      <IdentityCell label={labels.school} value={data.settings.schoolName} icon={<IconSchool />} />
-                    )}
-                    {data.settings.section && (
-                      <IdentityCell label={labels.section} value={data.settings.section} icon={<IconSection />} />
-                    )}
-                    {data.settings.teacherName && (
-                      <IdentityCell label={labels.teacher} value={data.settings.teacherName} icon={<IconTeacher />} />
-                    )}
-                    {customFields.map((f, i) => (
-                      <IdentityCell
-                        key={`cf-${i}`}
-                        label={f.label.trim() || (ar ? "حقل" : "Field")}
-                        value={f.value}
-                        icon={<IconField />}
-                      />
-                    ))}
+
+        {pages.map((pageQs, pi) => {
+          const pageNum = pi + 1;
+          const isFirst = pi === 0;
+          const isLast = pi === pages.length - 1;
+          return (
+            <article key={pageNum} className="ws-page" lang={data.language}>
+              {showWatermark && <WatermarkLayer ar={ar} />}
+              <CornerOrnaments />
+              <div className="ws-content">
+                {isFirst ? (
+                  headerJsx
+                ) : (
+                  /* Slim continuation header for pages 2+ */
+                  <div className="ws-cont-header">
+                    <span className="ws-cont-title">{data.title}</span>
+                    <span className="ws-cont-page">{ar ? `صفحة ${pageNum}` : `Page ${pageNum}`}</span>
                   </div>
                 )}
-
-                <div className="ws-headcenter">
-                  <h1 className="ws-title">{data.title}</h1>
-                  {(data.subject || data.gradeLevel) && (
-                    <div className="ws-kicker-center">
-                      {[data.subject, data.gradeLevel].filter(Boolean).join(" · ")}
-                    </div>
-                  )}
-                  <DoubleDivider />
-                </div>
-
-                {hasIdentity && <div className="ws-headside ws-headside-end" aria-hidden="true" />}
+                <section className="ws-questions" style={{ columnCount: cols === 2 ? 2 : 1 }}>
+                  {pageQs.map(q => {
+                    const idx = data.questions.indexOf(q);
+                    return <QuestionView key={q.id} index={idx + 1} q={q} ar={ar} labels={labels} />;
+                  })}
+                </section>
+                <FooterStrip
+                  note={isLast ? data.settings.footerNote : undefined}
+                  goodLuck={isLast ? labels.goodLuck : ""}
+                />
               </div>
+            </article>
+          );
+        })}
 
-              {(data.settings.includeName || data.settings.includeDate || data.settings.includeClass) && (
-                <div className="ws-fields">
-                  {data.settings.includeName && <FieldLine label={labels.name} icon={<IconUser />} />}
-                  {data.settings.includeClass && <FieldLine label={labels.clazz} icon={<IconClass />} short />}
-                  {data.settings.includeDate && <FieldLine label={labels.date} icon={<IconDate />} short />}
-                </div>
-              )}
-
-              {data.settings.headerNote && (
-                <p className="ws-subtitle">{data.settings.headerNote}</p>
-              )}
-
-              {data.settings.instructions && (
-                <div className="ws-instructions">
-                  <IconLightbulb />
-                  <div>
-                    <strong>{labels.instructions}</strong>
-                    <span> {data.settings.instructions}</span>
-                  </div>
-                </div>
-              )}
-            </header>
-
-            {/* Questions */}
-            <section
-              className="ws-questions"
-              style={{ columnCount: data.settings.columns === 2 ? 2 : 1 }}
-            >
-              {data.questions.map((q, i) => (
-                <QuestionView key={q.id} index={i + 1} q={q} ar={ar} labels={labels} />
-              ))}
-            </section>
-
-            <FooterStrip
-              note={data.settings.footerNote}
-              goodLuck={labels.goodLuck}
-            />
-          </div>
-        </article>
-
+        {/* ── Answer key page ──────────────────────────────────── */}
         {data.settings.includeAnswerKey && (
           <article className="ws-page" lang={data.language}>
             {showWatermark && <WatermarkLayer ar={ar} />}
@@ -638,10 +775,11 @@ function matchingDisplayOrder(n: number): number[] {
   return order;
 }
 
-function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily: string; headingFont: string; fontSizePt: number; lang: "ar" | "en" }) {
+function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: { fontFamily: string; headingFont: string; fontSizePt: number; lang: "ar" | "en"; themeColor: string }) {
   const isAr = lang === "ar";
   const startSide = isAr ? "right" : "left";
   const endSide = isAr ? "left" : "right";
+  const TC = themeColor; // shorthand
   return (
     <style>{`
       /* High-quality Arabic + Latin fonts, including elegant heading
@@ -660,7 +798,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         font-size: ${fontSizePt}pt;
         line-height: 1.85;
         page-break-after: always;
-        overflow: hidden;
+        overflow: visible;
         border-radius: 4px;
       }
       .ws-page:last-of-type { page-break-after: auto; margin-bottom: 0; }
@@ -683,7 +821,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         font-family: ${headingFont};
         font-weight: 800;
         font-size: 200pt;
-        color: ${BRAND_PRIMARY};
+        color: ${TC};
         opacity: 0.05;
         transform: rotate(-22deg);
         white-space: nowrap;
@@ -728,8 +866,8 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         display: inline-block;
         font-size: ${Math.max(8.5, fontSizePt - 2)}pt;
         font-weight: 700;
-        color: ${BRAND_PRIMARY};
-        background: ${BRAND_PRIMARY}10;
+        color: ${TC};
+        background: ${TC}10;
         padding: 3px 12px;
         border-radius: 999px;
         letter-spacing: 0.02em;
@@ -740,7 +878,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         font-family: ${headingFont};
         font-size: ${fontSizePt + 12}pt;
         font-weight: 800;
-        color: ${BRAND_PRIMARY};
+        color: ${TC};
         margin: 0;
         text-align: center;
         line-height: 1.2;
@@ -764,27 +902,27 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       }
       .ws-divider-thin {
         width: 40%; height: 1px;
-        background: repeating-linear-gradient(to right, ${BRAND_PRIMARY} 0 6px, transparent 6px 12px);
+        background: repeating-linear-gradient(to right, ${TC} 0 6px, transparent 6px 12px);
       }
-      .ws-divider.gold .ws-divider-thick { background: ${BRAND_PRIMARY}; }
+      .ws-divider.gold .ws-divider-thick { background: ${TC}; }
       .ws-divider.gold .ws-divider-thin { background: repeating-linear-gradient(to right, ${BRAND_GOLD} 0 6px, transparent 6px 12px); }
 
       .ws-school-cell {
         display: flex; align-items: center; gap: 8px;
-        background: linear-gradient(135deg, ${BRAND_PRIMARY}0d 0%, ${BRAND_GOLD}10 100%);
-        border-${startSide}: 3px solid ${BRAND_PRIMARY};
+        background: linear-gradient(135deg, ${TC}0d 0%, ${BRAND_GOLD}10 100%);
+        border-${startSide}: 3px solid ${TC};
         padding: 5px 10px;
         border-radius: 4px;
       }
       .ws-school-icon {
         display: inline-flex; align-items: center; justify-content: center;
-        color: ${BRAND_PRIMARY};
+        color: ${TC};
         flex: 0 0 auto;
       }
       .ws-school-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
       .ws-school-label {
         font-weight: 700;
-        color: ${BRAND_PRIMARY};
+        color: ${TC};
         font-size: ${Math.max(8, fontSizePt - 3)}pt;
         letter-spacing: 0.02em;
       }
@@ -802,11 +940,11 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       }
       .ws-field-line {
         display: flex; align-items: center; gap: 6px;
-        border-bottom: 1px dashed ${BRAND_PRIMARY}55;
+        border-bottom: 1px dashed ${TC}55;
         padding: 4px 4px 6px;
       }
-      .ws-field-icon { color: ${BRAND_PRIMARY}; flex: 0 0 auto; display: inline-flex; }
-      .ws-field-label { font-weight: 700; color: ${BRAND_PRIMARY}; white-space: nowrap; flex: 0 0 auto; }
+      .ws-field-icon { color: ${TC}; flex: 0 0 auto; display: inline-flex; }
+      .ws-field-label { font-weight: 700; color: ${TC}; white-space: nowrap; flex: 0 0 auto; }
       .ws-field-rule { flex: 1; height: 14px; }
 
       .ws-instructions {
@@ -819,7 +957,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         border-radius: 4px;
         line-height: 1.6;
       }
-      .ws-instructions strong { color: ${BRAND_PRIMARY}; margin-${endSide}: 4px; }
+      .ws-instructions strong { color: ${TC}; margin-${endSide}: 4px; }
 
       /* Questions */
       .ws-questions {
@@ -832,7 +970,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         margin-bottom: 6mm;
         padding: 4mm 4mm 4mm 5mm;
         border-${startSide}: 3px solid ${BRAND_GOLD};
-        background: linear-gradient(180deg, #ffffff 0%, ${BRAND_PRIMARY}04 100%);
+        background: linear-gradient(180deg, #ffffff 0%, ${TC}04 100%);
         border-radius: 0 6px 6px 0;
         ${isAr ? "border-radius: 6px 0 0 6px;" : ""}
       }
@@ -841,7 +979,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         flex: 0 0 auto;
         display: inline-flex; align-items: center; justify-content: center;
         width: 26px; height: 26px;
-        background: ${BRAND_PRIMARY};
+        background: ${TC};
         color: white;
         border-radius: 50%;
         font-weight: 800;
@@ -855,8 +993,8 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         display: inline-flex; align-items: center; gap: 4px;
         font-size: ${Math.max(7.5, fontSizePt - 3.5)}pt;
         font-weight: 700;
-        color: ${BRAND_PRIMARY};
-        background: ${BRAND_PRIMARY}0e;
+        color: ${TC};
+        background: ${TC}0e;
         padding: 1.5px 7px 1.5px 5px;
         border-radius: 999px;
         letter-spacing: 0.02em;
@@ -887,7 +1025,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       .ws-bubble {
         display: inline-block;
         width: 14px; height: 14px;
-        border: 1.6px solid ${BRAND_PRIMARY}88;
+        border: 1.6px solid ${TC}88;
         border-radius: 50%;
         flex: 0 0 auto;
         background: white;
@@ -907,7 +1045,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       .ws-lines { padding-${startSide}: 36px; margin-top: 2mm; }
       .ws-line {
         display: block;
-        border-bottom: 1px dotted ${BRAND_PRIMARY}66;
+        border-bottom: 1px dotted ${TC}66;
         height: 8mm;
       }
 
@@ -915,7 +1053,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       .ws-fill-rule {
         display: block;
         height: 8mm;
-        border-bottom: 1.5px dashed ${BRAND_PRIMARY};
+        border-bottom: 1.5px dashed ${TC};
       }
 
       .ws-match {
@@ -933,7 +1071,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       .ws-match-col li {
         display: flex; align-items: center; gap: 7px;
         background: white;
-        border: 1px solid ${BRAND_PRIMARY}22;
+        border: 1px solid ${TC}22;
         border-radius: 6px;
         padding: 4px 9px;
         font-weight: 500;
@@ -947,7 +1085,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         font-size: ${Math.max(8.5, fontSizePt - 2.5)}pt;
         flex: 0 0 auto;
       }
-      .ws-match-num { background: ${BRAND_PRIMARY}; color: white; }
+      .ws-match-num { background: ${TC}; color: white; }
       .ws-match-letter { background: ${BRAND_GOLD}; color: white; }
       .ws-match-text { flex: 1; }
       .ws-match-tab { flex: 0 0 0; }
@@ -962,7 +1100,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
       .ws-footer {
         margin-top: auto;
         padding-top: 6mm;
-        border-top: 1px dashed ${BRAND_PRIMARY}44;
+        border-top: 1px dashed ${TC}44;
         text-align: center;
         font-size: ${Math.max(8, fontSizePt - 2.5)}pt;
         color: #6a7370;
@@ -980,13 +1118,47 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         font-style: italic;
       }
 
+      /* Continuation header — slim bar on pages 2+ */
+      .ws-cont-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 3mm 0 4mm;
+        margin-bottom: 4mm;
+        border-bottom: 2px solid ${TC}22;
+      }
+      .ws-cont-title {
+        font-family: ${headingFont};
+        font-weight: 800;
+        font-size: ${Math.max(10, fontSizePt)}pt;
+        color: ${TC};
+      }
+      .ws-cont-page {
+        font-size: ${Math.max(8, fontSizePt - 2)}pt;
+        font-weight: 700;
+        color: ${TC}88;
+        background: ${TC}0d;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+
+      /* School logo in the header identity panel */
+      .ws-logo-wrap {
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 3mm;
+      }
+      .ws-logo-img {
+        max-height: 18mm; max-width: 40mm;
+        object-fit: contain;
+      }
+
       /* Answer key tweaks */
       .ws-answer { margin-bottom: 4mm; padding: 3mm 4mm; }
-      .ws-answer .ws-q-num { background: ${BRAND_GOLD}; box-shadow: 0 0 0 2px ${BRAND_PRIMARY}55; }
+      .ws-answer .ws-q-num { background: ${BRAND_GOLD}; box-shadow: 0 0 0 2px ${TC}55; }
       .ws-answer-line {
         margin-top: 2mm;
         padding-${startSide}: 36px;
-        color: ${BRAND_PRIMARY};
+        color: ${TC};
         font-size: ${Math.max(9.5, fontSizePt - 0.5)}pt;
       }
       .ws-answer-line strong { color: ${BRAND_GOLD}; margin-${endSide}: 4px; }

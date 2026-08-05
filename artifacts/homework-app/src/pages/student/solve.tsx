@@ -1197,11 +1197,19 @@ export default function StudentSolve() {
                           </span>
                         </div>
                         <div className="px-4 py-3 flex flex-wrap gap-4 text-sm">
-                          <div>
+                          <div className="w-full">
                             <span className="text-muted-foreground text-xs font-medium">{t.solve.yourAnswer} </span>
-                            <span className={`font-bold ${ans.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {ans.selectedAnswer}
-                            </span>
+                            {ans.selectedAnswer?.startsWith("data:image") ? (
+                              <img
+                                src={ans.selectedAnswer}
+                                alt={lang === "ar" ? "رسمتك" : "Your drawing"}
+                                className="max-w-full rounded-xl border border-border mt-1"
+                              />
+                            ) : (
+                              <span className={`font-bold ${ans.isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {ans.selectedAnswer}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
