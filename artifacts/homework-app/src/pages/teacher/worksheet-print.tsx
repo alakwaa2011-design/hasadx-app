@@ -11,6 +11,7 @@ import {
   PlayfulHeader, ClipboardHeader, MastheadHeader,
   type HeaderProps,
 } from "./worksheet-themes";
+import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -29,27 +30,45 @@ export interface CustomField { label: string; value: string }
 
 export interface Settings {
   instructions?: string;
+
   includeName: boolean;
+
   includeDate: boolean;
+
   includeClass: boolean;
+
   includeAnswerKey: boolean;
+
   columns: 1 | 2;
+
   headerNote?: string;
+
   footerNote?: string;
+
   schoolName?: string;
+
   section?: string;
+
   teacherName?: string;
   /** Optional teacher-defined extra header fields (label + value). */
+
   customFields?: CustomField[];
+
   fontFamily?: FontFamily;
+
   fontSizePt?: number;
+
   showWatermark?: boolean;
   /** Custom accent color (hex). Defaults to Hasaad green. */
+
   themeColor?: string;
   /** Base64 or URL of school logo — shown in the header identity panel. */
+
   logoUrl?: string;
   /** Design template ID — auto-selected by AI, overrideable by teacher. */
   template?: ThemeId;
+  /** Free-form canvas overlay elements (text, shapes) placed by the teacher. */
+  layout?: CanvasLayout;
 }
 
 export interface WorksheetData {
@@ -351,7 +370,7 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   // The page class includes the theme modifier when a theme is active
   const pageClass = `ws-page${themeId ? ` ws-theme-${themeId}` : ""}`;
   // Use theme background for the screen wrapper tint
-  const hostBg = themeId ? "bg-neutral-200" : "bg-neutral-200";
+  const hostBg = "bg-neutral-200";
 
   return (
     <>
@@ -399,6 +418,8 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
               {/* Classic corner ornaments only for no-theme or themes that keep them */}
               {!themeId && <CornerOrnaments />}
               {themeId === "arabic_ink" && <CornerOrnaments />}
+              {/* Canvas overlay elements (text, shapes placed via the canvas editor) */}
+              {isFirst && <CanvasLayerRenderer layout={data.settings.layout} />}
               <div className="ws-content">
                 {isFirst ? (
                   page1Header

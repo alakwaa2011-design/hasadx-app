@@ -17,6 +17,8 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
+import WorksheetCanvasEditor from "@/pages/teacher/worksheet-canvas-editor";
+import type { CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -94,29 +96,47 @@ interface CustomField { label: string; value: string }
 
 interface Settings {
   instructions?: string;
+
   includeName: boolean;
+
   includeDate: boolean;
+
   includeClass: boolean;
+
   includeAnswerKey: boolean;
+
   columns: 1 | 2;
+
   headerNote?: string;
+
   footerNote?: string;
   // Header identity fields, typography, and Hasaad watermark control.
+
   schoolName?: string;
+
   section?: string;
+
   teacherName?: string;
   // Teacher-defined extra header fields (label + value pairs). These render
   // alongside school/section/teacher in the printable header.
+
   customFields?: CustomField[];
+
   fontFamily: FontFamily;
+
   fontSizePt: number;
+
   showWatermark: boolean;
   /** Custom accent color (hex). Defaults to Hasaad green. */
+
   themeColor?: string;
   /** Base64 school logo shown in the header. */
+
   logoUrl?: string;
   /** Design template ID — auto-selected by AI, overrideable by teacher. */
   template?: ThemeId;
+  /** Free-form canvas overlay elements (text, shapes). */
+  layout?: CanvasLayout;
 }
 
 const MAX_CUSTOM_FIELDS = 6;
@@ -288,6 +308,9 @@ export default function WorksheetCreate() {
   // <WorksheetPrintView /> with the current draft. The teacher can return
   // to editing or export to Word/PDF without persisting anything.
   const [previewing, setPreviewing] = useState(false);
+
+  // Canvas editor overlay — free-form text/shape placement.
+  const [canvasEditorOpen, setCanvasEditorOpen] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
@@ -1404,6 +1427,39 @@ export default function WorksheetCreate() {
         {/* Action bar */}
         <div className="sticky bottom-3 flex flex-wrap gap-2 justify-end p-3 rounded-2xl border shadow-lg backdrop-blur"
           style={{ background: "rgba(255,255,255,0.92)", borderColor: `${BRAND_PRIMARY}22` }}>
+
+          {/* Canvas editor button — opens the free-form overlay editor */}
+          <button
+            onClick={() => {
+              if (!canSave) {
+                toast.error(ar ? "أكمل العنوان وأضف سؤالًا واحدًا على الأقل" : "Add a title and at least one question");
+                return;
+              }
+              setCanvasEditorOpen(true);
+            }}
+            disabled={!canSave}
+            className="px-4 py-2.5 rounded-xl font-bold border flex items-center gap-2 disabled:opacity-50"
+            style={{
+              borderColor: settings.layout?.elements?.length
+                ? `${BRAND_PRIMARY}88`
+                : `${BRAND_PRIMARY}44`,
+              color: BRAND_PRIMARY,
+              background: settings.layout?.elements?.length ? `${BRAND_PRIMARY}12` : "transparent",
+            }}
+            title={ar ? "محرر التصميم الحر (نصوص وأشكال)" : "Canvas editor (text & shapes)"}
+          >
+            <Layers className="w-4 h-4" />
+            {ar ? "تصميم حر" : "Canvas"}
+            {(settings.layout?.elements?.length ?? 0) > 0 && (
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: BRAND_PRIMARY, color: "white" }}
+              >
+                {settings.layout!.elements.length}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => {
               if (!canSave) {
@@ -1440,6 +1496,27 @@ export default function WorksheetCreate() {
           </button>
         </div>
       </div>
+
+      {/* Canvas editor overlay — free-form text and shapes */}
+      <AnimatePresence>
+        {canvasEditorOpen && (
+          <WorksheetCanvasEditor
+            ar={ar}
+            data={{
+              id: editingId ?? 0,
+              title: title.trim() || (ar ? "ورقة عمل" : "Worksheet"),
+              language: contentLang,
+              gradeLevel: gradeLevel.trim() || null,
+              subject: subject.trim() || null,
+              questions,
+              settings,
+            }}
+            initialLayout={settings.layout ?? { elements: [] }}
+            onSave={(layout) => setSettings(s => ({ ...s, layout }))}
+            onClose={() => setCanvasEditorOpen(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Preview-without-save overlay. Renders the same WorksheetPrintView
           the print page uses, fed by the in-memory draft, so the teacher
