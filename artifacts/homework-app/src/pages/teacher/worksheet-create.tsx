@@ -8,7 +8,7 @@ import {
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, RotateCcw, Palette, LayoutTemplate, ChevronDown,
+  ArrowLeft, Printer, RotateCcw, Palette, LayoutTemplate, ChevronDown, Layers,
 } from "lucide-react";
 import {
   type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,

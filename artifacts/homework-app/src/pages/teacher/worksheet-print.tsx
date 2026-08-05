@@ -227,8 +227,8 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   const logoUrl = data.settings.logoUrl;
 
   const labels = ar
-    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "صح", false: "خطأ", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
-    : { name: "Name", date: "Date", clazz: "Class", section: "Section", school: "School", teacher: "Teacher", instructions: "Instructions", answerKey: "Answer Key", question: "Q", true: "True", false: "False", correct: "Answer:", goodLuck: "✦ Good luck!" };
+    ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "✓", false: "✗", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
+    : { name: "Name", date: "Date", clazz: "Class", section: "Section", school: "School", teacher: "Teacher", instructions: "Instructions", answerKey: "Answer Key", question: "Q", true: "✓", false: "✗", correct: "Answer:", goodLuck: "✦ Good luck!" };
 
   const customFields = (data.settings.customFields ?? []).filter(
     f => (f?.label?.trim() ?? "") || (f?.value?.trim() ?? ""),
@@ -761,9 +761,9 @@ function questionIcon(type: Question["type"]) {
 
 function questionTypeLabel(type: Question["type"], ar: boolean) {
   if (ar) {
-    return { mcq: "اختيار من متعدد", true_false: "صح / خطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين" }[type];
+    return { mcq: "اختيار من متعدد", true_false: "ضع (✓) أمام الصواب و(✗) أمام الخطأ", short_answer: "إجابة قصيرة", fill_blank: "أكمل الفراغ", matching: "وصّل بين العمودين" }[type];
   }
-  return { mcq: "Multiple choice", true_false: "True / False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
+  return { mcq: "Multiple choice", true_false: "Mark (✓) for True and (✗) for False", short_answer: "Short answer", fill_blank: "Fill in the blank", matching: "Matching" }[type];
 }
 
 function QuestionView({
@@ -797,8 +797,14 @@ function QuestionView({
       )}
       {q.type === "true_false" && (
         <div className="ws-tf">
-          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.true}</span>
-          <span className="ws-tf-opt"><span className="ws-bubble" /> {labels.false}</span>
+          <span className="ws-tf-opt">
+            <span className="ws-tf-sym ws-tf-sym-check">{labels.true}</span>
+            <span>{ar ? "صواب" : "True"}</span>
+          </span>
+          <span className="ws-tf-opt">
+            <span className="ws-tf-sym ws-tf-sym-cross">{labels.false}</span>
+            <span>{ar ? "خطأ" : "False"}</span>
+          </span>
         </div>
       )}
       {q.type === "short_answer" && (
@@ -1149,14 +1155,27 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
       .ws-mcq-text { flex: 1; }
 
       .ws-tf {
-        display: flex; gap: 30px;
+        display: flex; gap: 24px;
         padding-${startSide}: 36px;
         margin-top: 2mm;
+        align-items: center;
       }
       .ws-tf-opt {
-        display: inline-flex; align-items: center; gap: 7px;
-        font-weight: 600;
+        display: inline-flex; align-items: center; gap: 8px;
+        font-weight: 700;
       }
+      .ws-tf-sym {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 22px; height: 22px;
+        border: 1.8px solid currentColor;
+        border-radius: 4px;
+        font-size: ${Math.max(11, fontSizePt)}pt;
+        font-weight: 900;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+      .ws-tf-sym-check { color: #1a7a3f; }
+      .ws-tf-sym-cross  { color: #c0392b; }
 
       .ws-lines { padding-${startSide}: 36px; margin-top: 2mm; }
       .ws-line {
