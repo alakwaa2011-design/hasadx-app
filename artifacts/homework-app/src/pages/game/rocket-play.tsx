@@ -7,26 +7,55 @@ import { getRocketSocket } from "@/lib/rocket-socket";
 import { toast } from "@/components/ui/sonner";
 
 const GOLD = "#D9A521";
-const SPACE_BG = "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)";
+const CYAN = "#54d8ff";
+const SPACE_BG = "radial-gradient(120% 85% at 50% 0%, #131f5e 0%, #090e33 48%, #030514 100%)";
+
+/* Cinematic keyframes — injected once at root. GPU-friendly transforms/opacity only. */
+const RR_KEYFRAMES = `
+@keyframes rrShakeSoft{0%,100%{transform:translate3d(0,0,0) scale(1.015)}20%{transform:translate3d(-3px,2px,0) scale(1.015)}40%{transform:translate3d(3px,-2px,0) scale(1.015)}60%{transform:translate3d(-2px,-2px,0) scale(1.015)}80%{transform:translate3d(2px,2px,0) scale(1.015)}}
+@keyframes rrShakeHard{0%,100%{transform:translate3d(0,0,0) scale(1.03)}10%{transform:translate3d(-9px,5px,0) scale(1.03)}25%{transform:translate3d(8px,-5px,0) scale(1.03)}40%{transform:translate3d(-6px,-6px,0) scale(1.03)}55%{transform:translate3d(6px,4px,0) scale(1.03)}70%{transform:translate3d(-4px,3px,0) scale(1.03)}85%{transform:translate3d(2px,-2px,0) scale(1.03)}}
+@keyframes rrSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes rrShine{0%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(240%) skewX(-18deg)}}
+@keyframes rrScan{0%{top:-25%}100%{top:125%}}
+@keyframes rrFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes rrPulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes rrRing{0%{transform:translate(-50%,-50%) scale(.25);opacity:.95}100%{transform:translate(-50%,-50%) scale(3);opacity:0}}
+@keyframes rrWrongShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-7px)}35%{transform:translateX(6px)}55%{transform:translateX(-4px)}75%{transform:translateX(3px)}}
+@keyframes rrGateShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+`;
 
 // Pre-generated star data for consistent scrolling (module-level = stable positions)
 const STAR_LAYERS = [
-  // Slow far layer (120 stars spread across 200% height)
-  Array.from({ length: 120 }, (_, i) => ({
+  // Far layer — tiny, slow
+  Array.from({ length: 110 }, (_, i) => ({
     id: i, x: ((i * 73 + 17) % 100), y: ((i * 91 + 33) % 200),
-    size: 0.5 + (i % 3) * 0.5, twinkle: i % 4 === 0,
+    size: 0.5 + (i % 3) * 0.45, twinkle: i % 4 === 0,
   })),
-  // Fast near layer (60 larger stars)
-  Array.from({ length: 60 }, (_, i) => ({
+  // Mid layer
+  Array.from({ length: 70 }, (_, i) => ({
     id: i + 200, x: ((i * 57 + 41) % 100), y: ((i * 113 + 11) % 200),
-    size: 1.5 + (i % 3) * 0.7, twinkle: i % 3 === 0,
+    size: 1.1 + (i % 3) * 0.6, twinkle: i % 3 === 0,
+  })),
+  // Near layer — bigger, fastest (strongest parallax)
+  Array.from({ length: 42 }, (_, i) => ({
+    id: i + 400, x: ((i * 37 + 7) % 100), y: ((i * 131 + 23) % 200),
+    size: 1.8 + (i % 3) * 0.8, twinkle: i % 2 === 0,
   })),
 ];
 const PHASE_BACKGROUNDS = [
-  "linear-gradient(180deg, #050818 0%, #0d1230 40%, #1a0f2e 100%)", // Phase 1: Deep Space
-  "linear-gradient(180deg, #150505 0%, #2d0a00 40%, #3d1000 100%)", // Phase 2: Asteroid Field
-  "linear-gradient(180deg, #020f15 0%, #003028 40%, #001a20 100%)", // Phase 3: Crystal Planet
+  "radial-gradient(140% 95% at 50% -10%, #1a2a7a 0%, #0d1445 38%, #060930 62%, #02040f 100%)", // Deep Space
+  "radial-gradient(140% 95% at 50% -10%, #64270a 0%, #3d1404 40%, #1d0801 70%, #0b0300 100%)", // Asteroid Field
+  "radial-gradient(140% 95% at 50% -10%, #045d63 0%, #023a46 40%, #011f2c 70%, #000c14 100%)", // Crystal Planet
 ];
+// Ambient dust motes drifting over everything (module-level = stable)
+const DUST_MOTES = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  x: ((i * 53 + 29) % 100),
+  size: 2 + (i % 3) * 1.5,
+  dur: 9 + (i % 5) * 3,
+  delay: (i * 1.7) % 8,
+  drift: (i % 2 === 0 ? 1 : -1) * (18 + (i % 4) * 12),
+}));
 
 type QType = "mcq" | "true_false" | "fill_blank";
 
@@ -273,16 +302,40 @@ class RocketSoundEngine {
     this.tone(1000, 0.5, "sine", 0.08, 0.6);
   }
 
+  /** Filtered noise burst — used for impacts, explosions and steam hisses. */
+  private noiseBurst(dur: number, vol = 0.2, delay = 0, freq = 1200, type: BiquadFilterType = "lowpass") {
+    if (!this.ctx || this.muted) return;
+    try {
+      const buf = this.ctx.createBuffer(1, Math.max(1, Math.floor(this.ctx.sampleRate * dur)), this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = this.ctx.createBufferSource(); src.buffer = buf;
+      const filt = this.ctx.createBiquadFilter(); filt.type = type; filt.frequency.value = freq;
+      const g = this.ctx.createGain();
+      const t = this.ctx.currentTime + delay;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(filt); filt.connect(g); g.connect(this.ctx.destination);
+      src.start(t); src.stop(t + dur + 0.05);
+    } catch { /* ignore */ }
+  }
+
   playCorrect() {
     const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
     notes.forEach((f, i) => this.tone(f, 0.18, "sine", 0.15, i * 0.07));
     notes.forEach((f, i) => this.tone(f, 0.25, "sine", 0.07, i * 0.07 + 0.5));
+    // Sparkle shimmer on top
+    [2093, 2637, 3136].forEach((f, i) => this.tone(f, 0.12, "sine", 0.05, 0.3 + i * 0.06));
   }
 
   playWrong() {
+    // Metallic impact + engine sputter + steam hiss
+    this.noiseBurst(0.22, 0.28, 0, 900);
     this.tone(250, 0.1, "sawtooth", 0.12);
     this.tone(200, 0.12, "sawtooth", 0.1, 0.05);
     this.tone(150, 0.15, "triangle", 0.1, 0.1);
+    this.tone(80, 0.3, "sine", 0.16, 0.02);
+    this.noiseBurst(0.4, 0.06, 0.18, 4500, "highpass");
   }
 
   playBoost() {
@@ -313,34 +366,45 @@ class RocketSoundEngine {
   }
 }
 
-// ─── Confetti ────────────────────────────────────────────────────────────────
+// ─── Confetti — glowing stars, streamers & sparks ────────────────────────────
 function Confetti() {
-  const pieces = Array.from({ length: 90 }, (_, i) => ({
+  const pieces = Array.from({ length: 110 }, (_, i) => ({
     id: i,
     x: Math.random() * 100,
-    color: ["#D9A521", "#ef4444", "#3b82f6", "#22c55e", "#a855f7", "#f97316", "#ec4899", "#06b6d4"][
+    color: ["#D9A521", "#ff5d5d", "#54d8ff", "#4ade80", "#c084fc", "#fb923c", "#f472b6", "#facc15"][
       Math.floor(Math.random() * 8)
     ],
     delay: Math.random() * 2.5,
-    dur: 2.5 + Math.random() * 2,
-    size: 7 + Math.random() * 8,
-    rotation: Math.random() * 360,
-    shape: Math.random() > 0.5 ? "rect" : "circle",
+    dur: 2.6 + Math.random() * 2.2,
+    size: 6 + Math.random() * 10,
+    rotation: Math.random() * 720,
+    sway: (Math.random() - 0.5) * 120,
+    shape: i % 5 === 0 ? "star" : i % 3 === 0 ? "streamer" : i % 2 === 0 ? "rect" : "circle",
   }));
   return (
     <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 200, overflow: "hidden" }}>
       {pieces.map(p => (
         <motion.div
           key={p.id}
-          initial={{ y: -30, x: `${p.x}vw`, opacity: 1, rotate: 0, scale: 1 }}
-          animate={{ y: "110vh", opacity: [1, 1, 0.7, 0], rotate: p.rotation + 540, scale: [1, 0.8, 0.6] }}
+          initial={{ y: -40, x: `${p.x}vw`, opacity: 1, rotate: 0, scale: 1 }}
+          animate={{
+            y: "112vh",
+            x: [`${p.x}vw`, `calc(${p.x}vw + ${p.sway}px)`, `${p.x}vw`],
+            opacity: [1, 1, 0.85, 0],
+            rotate: p.rotation + 720,
+            scale: [1, 0.9, 0.7],
+          }}
           transition={{ duration: p.dur, delay: p.delay, ease: "easeIn" }}
           style={{
             position: "absolute",
-            width: p.size,
-            height: p.shape === "rect" ? p.size * 0.45 : p.size,
+            width: p.shape === "streamer" ? p.size * 0.35 : p.size,
+            height: p.shape === "streamer" ? p.size * 2.2 : p.shape === "rect" ? p.size * 0.45 : p.size,
             background: p.color,
             borderRadius: p.shape === "circle" ? "50%" : 2,
+            clipPath: p.shape === "star"
+              ? "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)"
+              : undefined,
+            boxShadow: p.shape === "star" || p.shape === "circle" ? `0 0 ${p.size}px ${p.color}90` : undefined,
           }}
         />
       ))}
@@ -348,99 +412,241 @@ function Confetti() {
   );
 }
 
-// ─── Boost particles ─────────────────────────────────────────────────────────
+// ─── Boost burst — shockwave ring + radial spark storm + speed streaks ───────
+const BOOST_SPARKS = Array.from({ length: 22 }, (_, i) => ({
+  id: i,
+  angle: (i / 22) * 360 + (i % 3) * 7,
+  dist: 120 + (i % 5) * 55,
+  size: 3 + (i % 4) * 2.2,
+  hue: i % 3 === 0 ? "#ffe14d" : i % 3 === 1 ? "#54d8ff" : "#ffffff",
+  delay: (i % 6) * 0.025,
+}));
 function BoostParticles({ active }: { active: boolean }) {
   if (!active) return null;
-  const emojis = ["⚡", "🔥", "✨", "💫", "🚀", "⭐"];
   return (
     <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 150, overflow: "hidden" }}>
-      {emojis.map((e, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 1, y: "50vh", x: `${15 + i * 14}vw` }}
-          animate={{ opacity: 0, y: "5vh" }}
-          transition={{ duration: 0.7, delay: i * 0.06, ease: "easeOut" }}
-          style={{ position: "absolute", fontSize: 26 + i * 2 }}
-        >
-          {e}
-        </motion.div>
+      {/* Expanding shockwave rings */}
+      {[0, 0.12].map((d, i) => (
+        <div
+          key={`ring-${i}`}
+          style={{
+            position: "absolute", left: "50%", top: "45%",
+            width: 180, height: 180, borderRadius: "50%",
+            border: `${3 - i}px solid ${i === 0 ? "rgba(255,225,77,0.9)" : "rgba(84,216,255,0.8)"}`,
+            boxShadow: `0 0 30px ${i === 0 ? "rgba(255,225,77,0.5)" : "rgba(84,216,255,0.45)"}`,
+            animation: `rrRing 0.75s ease-out ${d}s forwards`,
+            opacity: 0,
+          }}
+        />
       ))}
+      {/* Radial spark storm from centre */}
+      {BOOST_SPARKS.map(s => {
+        const rad = (s.angle * Math.PI) / 180;
+        return (
+          <motion.div
+            key={s.id}
+            initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            animate={{
+              opacity: 0,
+              x: Math.cos(rad) * s.dist,
+              y: Math.sin(rad) * s.dist,
+              scale: 0.2,
+            }}
+            transition={{ duration: 0.65, delay: s.delay, ease: "easeOut" }}
+            style={{
+              position: "absolute", left: "50%", top: "45%",
+              width: s.size, height: s.size, borderRadius: "50%",
+              background: s.hue,
+              boxShadow: `0 0 ${s.size * 3}px ${s.hue}`,
+            }}
+          />
+        );
+      })}
+      {/* Vertical speed streaks racing past */}
+      {[12, 28, 46, 62, 80, 92].map((x, i) => (
+        <motion.div
+          key={`streak-${i}`}
+          initial={{ opacity: 0, y: "-15vh" }}
+          animate={{ opacity: [0, 0.9, 0], y: "115vh" }}
+          transition={{ duration: 0.5, delay: i * 0.05, ease: "easeIn" }}
+          style={{
+            position: "absolute", left: `${x}%`, top: 0,
+            width: 2.5, height: "22vh",
+            background: "linear-gradient(180deg, transparent, rgba(84,216,255,0.95), transparent)",
+            borderRadius: 2,
+          }}
+        />
+      ))}
+      {/* Golden flash vignette */}
+      <motion.div
+        initial={{ opacity: 0.5 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 45%, rgba(255,225,77,0.28) 0%, rgba(84,216,255,0.08) 45%, transparent 75%)",
+        }}
+      />
     </div>
   );
 }
 
-// ─── Enhanced Rocket SVG with continuous motion ───────────────────────────────
+// ─── Premium spaceship — layered hull, glass cockpit, nav lights, tri-flame ──
 function RocketIcon({
   color, isPlayer, size = 50, boosted = false, mega = false,
 }: {
   color: string; isPlayer?: boolean; size?: number; boosted?: boolean; mega?: boolean;
 }) {
-  const flameColor = mega ? "#00ffff" : boosted ? "#fff176" : "#ff6b1a";
-  const glowStrength = mega ? 20 : isPlayer ? 12 : 6;
+  const uid = `${color.replace("#", "")}${mega ? "m" : ""}${boosted ? "b" : ""}`;
+  const flameOuter = mega ? "#42fff4" : boosted ? "#ffe14d" : "#ff7a1a";
+  const flameMid = mega ? "#b7fff9" : boosted ? "#fff3a8" : "#ffc247";
+  const glowStrength = mega ? 22 : isPlayer ? 13 : 6;
+  const smallShip = size < 26; // skip fine detail on tiny rockets for perf + clarity
   return (
     <motion.div
-      animate={{ y: boosted ? [-4, 4, -4] : [-3, 3, -3] }}
-      transition={{ repeat: Infinity, duration: boosted ? 0.25 : 0.8, ease: "easeInOut" }}
+      animate={boosted
+        ? { y: [-5, 5, -5], rotate: [-2, 2, -2] }
+        : { y: [-3, 3, -3], rotate: [-0.8, 0.8, -0.8] }}
+      transition={{ repeat: Infinity, duration: boosted ? 0.22 : 2.4, ease: "easeInOut" }}
+      style={{ willChange: "transform" }}
     >
       <svg
         width={size}
         height={size * 1.6}
         viewBox="0 0 60 96"
         style={{
+          overflow: "visible",
           filter: isPlayer
-            ? `drop-shadow(0 0 ${glowStrength}px ${color}) drop-shadow(0 4px 20px rgba(255,255,255,0.4))`
+            ? `drop-shadow(0 0 ${glowStrength}px ${color}) drop-shadow(0 4px 22px rgba(255,255,255,0.35))`
             : `drop-shadow(0 2px 8px ${color}80)`,
         }}
       >
-        {/* Mega glow ring */}
-        {mega && (
-          <motion.circle cx="30" cy="78" r="24"
-            animate={{ opacity: [0.2, 0.5, 0.2], r: [22, 26, 22] }}
-            transition={{ repeat: Infinity, duration: 1.0 }}
-            fill="none" stroke={color} strokeWidth="2" />
-        )}
-        {/* Exhaust flame */}
-        <motion.g
-          animate={{ scaleY: boosted ? [1, 1.6, 0.8, 1.4, 1] : mega ? [1, 1.4, 0.85, 1.3, 1] : [1, 1.2, 0.9, 1.15, 1] }}
-          transition={{ repeat: Infinity, duration: boosted ? 0.12 : mega ? 0.18 : 0.25 }}
-          style={{ originX: "30px", originY: "78px" }}
-        >
-          {mega && <path d="M14 80 Q30 110 46 80 Q40 97 30 100 Q20 97 14 80 Z" fill="#7fffff" opacity="0.5" />}
-          <path d="M20 78 Q30 100 40 78 Q35 90 30 92 Q25 90 20 78 Z" fill={flameColor} opacity="0.95" />
-          <path d="M23 78 Q30 90 37 78 Q33 86 30 88 Q27 86 23 78 Z" fill={mega ? "#b2ffff" : "#ffd54f"} opacity="0.95" />
-          <path d="M26 78 Q30 84 34 78 Q32 82 30 83 Q28 82 26 78 Z" fill="#fff9c4" opacity="0.9" />
-        </motion.g>
-        {/* Body */}
         <defs>
-          <linearGradient id={`rg-${color.replace("#","")}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.7" />
-            <stop offset="40%" stopColor="#fff" stopOpacity="0.2" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.9" />
+          {/* Metallic hull: dark edge → tint → light streak → tint → dark edge */}
+          <linearGradient id={`rrHull-${uid}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#000" stopOpacity="0.55" />
+            <stop offset="26%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="46%" stopColor="#fff" stopOpacity="0.65" />
+            <stop offset="58%" stopColor="#fff" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#000" stopOpacity="0.5" />
           </linearGradient>
+          <radialGradient id={`rrGlass-${uid}`} cx="0.35" cy="0.3" r="1">
+            <stop offset="0%" stopColor="#e6ffff" />
+            <stop offset="45%" stopColor={mega ? "#4de8e0" : "#5ec9ff"} />
+            <stop offset="100%" stopColor={mega ? "#014d4d" : "#014a7c"} />
+          </radialGradient>
+          <radialGradient id={`rrEngineGlow-${uid}`} cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stopColor={flameMid} stopOpacity="0.9" />
+            <stop offset="100%" stopColor={flameOuter} stopOpacity="0" />
+          </radialGradient>
         </defs>
-        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={color} />
-        <path d="M30 4 L44 30 L44 70 Q44 80 30 80 Q16 80 16 70 L16 30 Z" fill={`url(#rg-${color.replace("#","")})`} />
-        {/* Window */}
-        <circle cx="30" cy="40" r="8" fill={mega ? "#80ffff" : "#b3e5fc"} stroke="#fff" strokeWidth="2.5" opacity="0.95" />
-        <circle cx="30" cy="40" r="5" fill={mega ? "#008080" : "#0288d1"} opacity="0.7" />
-        <circle cx="28" cy="38" r="2" fill="#fff" opacity="0.5" />
-        {/* Standard fins */}
-        <path d="M16 62 L4 82 L16 78 Z" fill={color} opacity="0.9" />
-        <path d="M44 62 L56 82 L44 78 Z" fill={color} opacity="0.9" />
-        {/* Mega extra wing fins */}
+
+        {/* Mega aura ring */}
+        {mega && (
+          <motion.circle cx="30" cy="50" r="30"
+            animate={{ opacity: [0.15, 0.45, 0.15] }}
+            transition={{ repeat: Infinity, duration: 1.1 }}
+            fill="none" stroke="#42fff4" strokeWidth="1.5" strokeDasharray="4 6" />
+        )}
+
+        {/* Speed trail when boosted — streaks trailing behind the exhaust */}
+        {boosted && (
+          <motion.g
+            animate={{ opacity: [0.9, 0.35, 0.9] }}
+            transition={{ repeat: Infinity, duration: 0.18 }}
+          >
+            <rect x="21" y="82" width="2" height="18" rx="1" fill={CYAN} opacity="0.75" />
+            <rect x="29" y="86" width="2.5" height="24" rx="1" fill="#fff" opacity="0.8" />
+            <rect x="37" y="82" width="2" height="18" rx="1" fill={CYAN} opacity="0.75" />
+          </motion.g>
+        )}
+
+        {/* Engine glow halo behind flame */}
+        <motion.circle
+          cx="30" cy="80" r={boosted ? 15 : 10}
+          fill={`url(#rrEngineGlow-${uid})`}
+          animate={{ opacity: boosted ? [0.9, 1, 0.9] : [0.55, 0.85, 0.55] }}
+          transition={{ repeat: Infinity, duration: boosted ? 0.15 : 0.5 }}
+        />
+
+        {/* Tri-layer exhaust flame */}
+        <motion.g
+          animate={{ scaleY: boosted ? [1, 1.7, 0.85, 1.5, 1] : mega ? [1, 1.45, 0.85, 1.3, 1] : [1, 1.22, 0.9, 1.15, 1] }}
+          transition={{ repeat: Infinity, duration: boosted ? 0.11 : mega ? 0.18 : 0.26 }}
+          style={{ originX: "30px", originY: "77px" }}
+        >
+          {(mega || boosted) && (
+            <path d="M14 79 Q30 112 46 79 Q40 99 30 103 Q20 99 14 79 Z" fill={mega ? "#7fffff" : "#ffd34d"} opacity="0.4" />
+          )}
+          <path d="M19 78 Q30 102 41 78 Q36 91 30 94 Q24 91 19 78 Z" fill={flameOuter} opacity="0.95" />
+          <path d="M23 78 Q30 92 37 78 Q33 87 30 89 Q27 87 23 78 Z" fill={flameMid} opacity="0.95" />
+          <path d="M26.5 78 Q30 85 33.5 78 Q32 82.5 30 83.5 Q28 82.5 26.5 78 Z" fill="#fff" opacity="0.95" />
+        </motion.g>
+
+        {/* Rear thruster housing */}
+        <path d="M21 72 L39 72 L37 79 L23 79 Z" fill="#1a1d29" />
+        <rect x="24" y="74" width="12" height="2.2" rx="1.1" fill={flameMid} opacity="0.8" />
+
+        {/* Wing fins — swept, with edge light */}
+        <path d="M17 46 L2 76 L17 70 Z" fill={color} />
+        <path d="M17 46 L2 76 L17 70 Z" fill="#000" opacity="0.35" />
+        <path d="M43 46 L58 76 L43 70 Z" fill={color} />
+        <path d="M43 46 L58 76 L43 70 Z" fill="#fff" opacity="0.14" />
+        {/* Fin edge glow strips */}
+        <path d="M6 68 L2 76 L8 73.5 Z" fill={CYAN} opacity="0.85" />
+        <path d="M54 68 L58 76 L52 73.5 Z" fill={CYAN} opacity="0.85" />
+
+        {/* Mega extra canards */}
         {mega && <>
-          <path d="M16 50 L0 68 L16 66 Z" fill={color} opacity="0.65" />
-          <path d="M44 50 L60 68 L44 66 Z" fill={color} opacity="0.65" />
-          <rect x="20" y="44" width="20" height="2" fill="#7fffff" opacity="0.55" rx="1" />
-          <rect x="20" y="66" width="20" height="3" fill="#7fffff" opacity="0.55" rx="1" />
+          <path d="M18 34 L6 50 L18 48 Z" fill={color} opacity="0.75" />
+          <path d="M42 34 L54 50 L42 48 Z" fill={color} opacity="0.75" />
         </>}
-        {/* Nose */}
-        <path d="M30 4 L24 16 L36 16 Z" fill="#fff" opacity="0.9" />
-        {/* Stripes */}
-        <rect x="20" y="50" width="20" height="3" fill="#fff" opacity="0.35" rx="1" />
-        <rect x="20" y="58" width="20" height="2" fill="#fff" opacity="0.25" rx="1" />
-        {/* Player badge */}
-        {isPlayer && <circle cx="30" cy="8" r={mega ? 7 : 5} fill={GOLD} opacity="0.9" />}
+
+        {/* Main hull — sleek teardrop */}
+        <path d="M30 2 Q45 22 44 46 L44 66 Q44 74 30 75 Q16 74 16 66 L16 46 Q15 22 30 2 Z" fill={color} />
+        <path d="M30 2 Q45 22 44 46 L44 66 Q44 74 30 75 Q16 74 16 66 L16 46 Q15 22 30 2 Z" fill={`url(#rrHull-${uid})`} />
+
+        {/* Panel seams */}
+        {!smallShip && <>
+          <path d="M17 50 L43 50" stroke="#000" strokeWidth="0.8" opacity="0.28" />
+          <path d="M18 60 L42 60" stroke="#000" strokeWidth="0.8" opacity="0.22" />
+          <path d="M22 12 Q21 30 21 48" stroke="#fff" strokeWidth="0.7" opacity="0.22" fill="none" />
+        </>}
+
+        {/* Racing stripe */}
+        <path d="M28 6 L32 6 L33 72 L27 72 Z" fill="#fff" opacity="0.22" />
+
+        {/* Nose cone — polished tip */}
+        <path d="M30 2 Q37 12 38 22 L22 22 Q23 12 30 2 Z" fill="#fff" opacity="0.85" />
+        <path d="M30 2 Q34 8 35.5 15 L24.5 15 Q26 8 30 2 Z" fill={GOLD} opacity="0.9" />
+
+        {/* Glass cockpit with reflection */}
+        <circle cx="30" cy="38" r="8.5" fill="#0a0e1a" opacity="0.9" />
+        <circle cx="30" cy="38" r="7.2" fill={`url(#rrGlass-${uid})`} />
+        <ellipse cx="27.4" cy="35.4" rx="3" ry="2" fill="#fff" opacity="0.75" />
+        {!smallShip && <circle cx="30" cy="38" r="8.5" fill="none" stroke="#fff" strokeWidth="1" opacity="0.5" />}
+
+        {/* Blinking nav lights on fin tips */}
+        <motion.circle cx="4" cy="74" r="1.8" fill="#ff5d5d"
+          animate={{ opacity: [1, 0.15, 1] }} transition={{ repeat: Infinity, duration: 1.4 }} />
+        <motion.circle cx="56" cy="74" r="1.8" fill="#4ade80"
+          animate={{ opacity: [0.15, 1, 0.15] }} transition={{ repeat: Infinity, duration: 1.4 }} />
+
+        {/* Engine intake lights along the hull */}
+        {!smallShip && (
+          <motion.g animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 0.9 }}>
+            <rect x="18.5" y="54" width="2.2" height="5" rx="1.1" fill={CYAN} opacity="0.9" />
+            <rect x="39.3" y="54" width="2.2" height="5" rx="1.1" fill={CYAN} opacity="0.9" />
+          </motion.g>
+        )}
+
+        {/* Player crown badge */}
+        {isPlayer && (
+          <g>
+            <circle cx="30" cy="8" r={mega ? 7 : 5.5} fill={GOLD} opacity="0.95" />
+            <path d="M27 9.5 L27 6.5 L28.5 8 L30 6 L31.5 8 L33 6.5 L33 9.5 Z" fill="#fff" />
+          </g>
+        )}
       </svg>
     </motion.div>
   );
@@ -464,10 +670,10 @@ function WarpField({ boosting }: { boosting: boolean }) {
             key={w.id}
             animate={{
               scaleX: [0.02, 1],
-              opacity: [0, boosting ? 0.8 : 0.28, 0],
+              opacity: [0, boosting ? 0.85 : 0.24, 0],
             }}
             transition={{
-              duration: boosting ? w.dur * 0.45 : w.dur,
+              duration: boosting ? w.dur * 0.4 : w.dur,
               delay: w.delay,
               repeat: Infinity,
               ease: "easeIn",
@@ -476,12 +682,12 @@ function WarpField({ boosting }: { boosting: boolean }) {
               position: "absolute",
               left: 0, top: -1,
               width: `${w.len}vw`,
-              height: boosting ? 3 : 1.5,
+              height: boosting ? 3.5 : 1.5,
               transformOrigin: "left center",
               transform: `rotate(${w.angle}deg)`,
               background: boosting
-                ? "linear-gradient(90deg, rgba(80,200,255,0.01) 0%, rgba(120,220,255,0.92) 100%)"
-                : "linear-gradient(90deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.8) 100%)",
+                ? "linear-gradient(90deg, rgba(80,200,255,0.01) 0%, rgba(160,230,255,0.55) 70%, #ffffff 100%)"
+                : "linear-gradient(90deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.75) 100%)",
               borderRadius: 2,
             }}
           />
@@ -491,85 +697,235 @@ function WarpField({ boosting }: { boosting: boolean }) {
   );
 }
 
-// ─── Shooting star (decorative) ───────────────────────────────────────────────
+// ─── Comet — glowing head + long ion tail ─────────────────────────────────────
 function ShootingStar({ x, y, delay }: { x: number; y: number; delay: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: 0, y: 0, scaleX: 0 }}
-      animate={{ opacity: [0, 1, 0], x: -120, y: 60, scaleX: [0, 1, 0.5] }}
-      transition={{ duration: 1.2, delay, repeat: Infinity, repeatDelay: 5 + delay * 2 }}
-      style={{
-        position: "absolute", left: `${x}%`, top: `${y}%`,
-        width: 80, height: 1.5, background: "linear-gradient(90deg, transparent, #fff, #fff9)",
-        borderRadius: 2, pointerEvents: "none",
-      }}
-    />
+      initial={{ opacity: 0, x: 0, y: 0 }}
+      animate={{ opacity: [0, 1, 1, 0], x: -190, y: 95 }}
+      transition={{ duration: 1.5, delay, repeat: Infinity, repeatDelay: 6 + delay * 2, ease: "easeOut" }}
+      style={{ position: "absolute", left: `${x}%`, top: `${y}%`, pointerEvents: "none" }}
+    >
+      <div style={{ position: "relative", transform: "rotate(26deg)" }}>
+        <div style={{
+          width: 110, height: 2,
+          background: "linear-gradient(90deg, rgba(84,216,255,0.9), rgba(255,255,255,0.35), transparent)",
+          borderRadius: 2,
+        }} />
+        <div style={{
+          width: 70, height: 1,
+          marginTop: -4,
+          background: "linear-gradient(90deg, rgba(255,255,255,0.5), transparent)",
+          borderRadius: 2,
+        }} />
+        <div style={{
+          position: "absolute", left: -4, top: -3, width: 8, height: 8, borderRadius: "50%",
+          background: "#fff",
+          boxShadow: "0 0 12px 4px rgba(160,230,255,0.9)",
+        }} />
+      </div>
+    </motion.div>
   );
 }
 
-// ─── Continuously scrolling star background ────────────────────────────────
+// ─── Distant spiral galaxy + ringed planet + moon (per-phase dressing) ────────
+function PlanetScape({ phase }: { phase: number }) {
+  if (phase === 1) {
+    // Molten planet looming on the horizon
+    return (
+      <>
+        <div style={{
+          position: "absolute", bottom: "-16%", left: "-8%",
+          width: "52vmin", height: "52vmin", borderRadius: "50%",
+          background: "radial-gradient(circle at 34% 30%, #ff9a3d 0%, #d94f10 34%, #7a2404 62%, #3d0f00 100%)",
+          boxShadow: "0 0 90px 22px rgba(255,110,20,0.30), inset -18px -22px 60px rgba(0,0,0,0.65)",
+          opacity: 0.85,
+        }} />
+        <motion.div
+          animate={{ opacity: [0.35, 0.7, 0.35] }}
+          transition={{ repeat: Infinity, duration: 4 }}
+          style={{
+            position: "absolute", bottom: "-16%", left: "-8%",
+            width: "52vmin", height: "52vmin", borderRadius: "50%",
+            background: "radial-gradient(circle at 60% 20%, transparent 55%, rgba(255,140,40,0.35) 78%, transparent 92%)",
+          }} />
+      </>
+    );
+  }
+  if (phase === 2) {
+    // Frozen crystal planet + small moon
+    return (
+      <>
+        <div style={{
+          position: "absolute", top: "6%", right: "-10%",
+          width: "44vmin", height: "44vmin", borderRadius: "50%",
+          background: "radial-gradient(circle at 36% 32%, #c9fff8 0%, #4fd8cc 30%, #0a7a86 60%, #033040 100%)",
+          boxShadow: "0 0 70px 16px rgba(60,220,210,0.22), inset -16px -20px 55px rgba(0,10,20,0.6)",
+          opacity: 0.8,
+        }} />
+        <div style={{
+          position: "absolute", top: "22%", right: "12%",
+          width: "9vmin", height: "9vmin", borderRadius: "50%",
+          background: "radial-gradient(circle at 38% 34%, #e8fbff 0%, #9dd4e0 40%, #33606e 100%)",
+          boxShadow: "inset -6px -7px 16px rgba(0,10,20,0.55)",
+          opacity: 0.7,
+        }} />
+      </>
+    );
+  }
+  // Phase 0 — gas giant with tilted ring + tiny moon + spiral galaxy
+  return (
+    <>
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ repeat: Infinity, duration: 240, ease: "linear" }}
+        style={{
+          position: "absolute", top: "8%", left: "6%",
+          width: "34vmin", height: "34vmin",
+          background: "conic-gradient(from 0deg, transparent 0%, rgba(150,120,255,0.35) 12%, transparent 26%, rgba(84,216,255,0.28) 42%, transparent 58%, rgba(190,120,255,0.3) 74%, transparent 92%)",
+          borderRadius: "50%",
+          filter: "blur(9px)",
+          opacity: 0.55,
+        }} />
+      <div style={{
+        position: "absolute", top: "20.5%", left: "18.5%",
+        width: "6vmin", height: "6vmin", borderRadius: "50%",
+        background: "radial-gradient(circle at 40% 35%, #fff 0%, #cbb8ff 45%, #4a3d8f 100%)",
+        boxShadow: "0 0 24px 8px rgba(180,150,255,0.5)",
+        opacity: 0.8,
+      }} />
+      {/* Ringed gas giant near horizon */}
+      <div style={{ position: "absolute", bottom: "2%", right: "-6%", width: "36vmin", height: "36vmin", opacity: 0.75 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 30%, #a7c4ff 0%, #4a67d4 35%, #22307a 65%, #0c1030 100%)",
+          boxShadow: "0 0 55px 12px rgba(90,130,255,0.25), inset -15px -18px 50px rgba(0,0,20,0.65)",
+        }} />
+        <div style={{
+          position: "absolute", left: "-26%", top: "40%", width: "152%", height: "18%",
+          borderRadius: "50%",
+          border: "2.5px solid rgba(180,200,255,0.4)",
+          borderTopColor: "transparent",
+          transform: "rotate(-14deg)",
+          boxShadow: "0 3px 14px rgba(140,170,255,0.25)",
+        }} />
+      </div>
+      <div style={{
+        position: "absolute", top: "38%", right: "20%",
+        width: "3.4vmin", height: "3.4vmin", borderRadius: "50%",
+        background: "radial-gradient(circle at 38% 34%, #f5f7ff 0%, #b8c2d9 45%, #3d4763 100%)",
+        boxShadow: "inset -4px -5px 10px rgba(0,0,20,0.5)",
+        opacity: 0.65,
+      }} />
+    </>
+  );
+}
+
+// ─── Ambient dust motes drifting upward everywhere ────────────────────────────
+function AmbientDust({ tint }: { tint: string }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 3 }}>
+      {DUST_MOTES.map(m => (
+        <motion.div
+          key={m.id}
+          animate={{ y: ["104vh", "-6vh"], x: [0, m.drift], opacity: [0, 0.55, 0.55, 0] }}
+          transition={{ duration: m.dur, delay: m.delay, repeat: Infinity, ease: "linear" }}
+          style={{
+            position: "absolute", left: `${m.x}%`, top: 0,
+            width: m.size, height: m.size, borderRadius: "50%",
+            background: tint,
+            boxShadow: `0 0 ${m.size * 2.5}px ${tint}`,
+            filter: "blur(0.4px)",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Deep parallax space backdrop: nebulae, galaxy, planets, 3 star layers ────
 function StarField({ phase = 0 }: { phase?: number }) {
-  const starColor = phase === 0 ? "#fff" : phase === 1 ? "#ffa07a" : "#88ffee";
-  const glowColor = phase === 0 ? "rgba(180,160,255,0.18)" : phase === 1 ? "rgba(220,80,0,0.16)" : "rgba(0,220,200,0.15)";
-  const nebulaA = phase === 0 ? "rgba(80,0,140,0.18)" : phase === 1 ? "rgba(200,60,0,0.16)" : "rgba(0,200,180,0.15)";
-  const nebulaB = phase === 0 ? "rgba(0,40,150,0.14)" : phase === 1 ? "rgba(140,20,0,0.12)" : "rgba(0,120,220,0.13)";
+  const starColor = phase === 0 ? "#fff" : phase === 1 ? "#ffb992" : "#9dffee";
+  const glowColor = phase === 0 ? "rgba(180,160,255,0.20)" : phase === 1 ? "rgba(255,110,20,0.18)" : "rgba(0,230,205,0.17)";
+  const nebulaA = phase === 0 ? "rgba(110,20,200,0.22)" : phase === 1 ? "rgba(230,75,0,0.20)" : "rgba(0,215,190,0.18)";
+  const nebulaB = phase === 0 ? "rgba(20,70,220,0.18)" : phase === 1 ? "rgba(170,30,0,0.16)" : "rgba(0,140,240,0.16)";
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {/* Nebula glow layers */}
+      {/* Planets / galaxy per phase */}
+      <PlanetScape phase={phase} />
+      {/* Breathing nebula clouds */}
       <motion.div
-        animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.08, 1] }}
-        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-        style={{ position: "absolute", top: "10%", left: "5%", width: 420, height: 280, background: `radial-gradient(ellipse, ${nebulaA} 0%, transparent 70%)` }}
+        animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.1, 1], x: [-8, 8, -8] }}
+        transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
+        style={{ position: "absolute", top: "8%", left: "2%", width: "48vmin", height: "34vmin", filter: "blur(6px)", background: `radial-gradient(ellipse, ${nebulaA} 0%, transparent 70%)` }}
       />
       <motion.div
-        animate={{ opacity: [0.5, 0.9, 0.5], scale: [1, 1.05, 1] }}
-        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut", delay: 2 }}
-        style={{ position: "absolute", top: "50%", right: "3%", width: 350, height: 240, background: `radial-gradient(ellipse, ${nebulaB} 0%, transparent 70%)` }}
+        animate={{ opacity: [0.5, 0.95, 0.5], scale: [1, 1.07, 1], x: [10, -10, 10] }}
+        transition={{ repeat: Infinity, duration: 9, ease: "easeInOut", delay: 2 }}
+        style={{ position: "absolute", top: "46%", right: "0%", width: "42vmin", height: "30vmin", filter: "blur(6px)", background: `radial-gradient(ellipse, ${nebulaB} 0%, transparent 70%)` }}
       />
       <motion.div
-        animate={{ opacity: [0.3, 0.7, 0.3] }}
-        transition={{ repeat: Infinity, duration: 10, ease: "easeInOut", delay: 4 }}
-        style={{ position: "absolute", bottom: "15%", left: "20%", width: 300, height: 200, background: `radial-gradient(ellipse, ${glowColor} 0%, transparent 70%)` }}
+        animate={{ opacity: [0.3, 0.75, 0.3] }}
+        transition={{ repeat: Infinity, duration: 11, ease: "easeInOut", delay: 4 }}
+        style={{ position: "absolute", bottom: "12%", left: "18%", width: "38vmin", height: "26vmin", filter: "blur(8px)", background: `radial-gradient(ellipse, ${glowColor} 0%, transparent 70%)` }}
       />
-      {/* Far stars — slow scroll */}
+      {/* Far stars — slowest (deepest layer) */}
       <motion.div
         animate={{ y: ["0%", "-50%"] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
         style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
       >
         {STAR_LAYERS[0].map(s => (
           <motion.div
             key={s.id}
-            animate={s.twinkle ? { opacity: [0.2, 1, 0.3, 0.9, 0.2] } : { opacity: [0.4, 0.85, 0.4] }}
+            animate={s.twinkle ? { opacity: [0.2, 1, 0.3, 0.9, 0.2] } : { opacity: [0.35, 0.8, 0.35] }}
             transition={{ repeat: Infinity, duration: 2 + (s.id % 5), delay: (s.id % 7) * 0.3 }}
             style={{
               position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
               width: s.size, height: s.size, borderRadius: "50%", background: starColor,
-              boxShadow: s.size > 1.2 ? `0 0 ${s.size * 4}px ${starColor}bb` : undefined,
             }}
           />
         ))}
       </motion.div>
-      {/* Near stars — faster scroll */}
+      {/* Mid stars */}
       <motion.div
         animate={{ y: ["0%", "-50%"] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: 11, repeat: Infinity, ease: "linear" }}
         style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
       >
         {STAR_LAYERS[1].map(s => (
           <motion.div
             key={s.id}
-            animate={s.twinkle ? { opacity: [0.3, 1, 0.3], scale: [1, 1.5, 1] } : { opacity: [0.5, 1, 0.5] }}
+            animate={s.twinkle ? { opacity: [0.3, 1, 0.3] } : { opacity: [0.5, 0.95, 0.5] }}
             transition={{ repeat: Infinity, duration: 1.5 + (s.id % 4) * 0.5, delay: (s.id % 5) * 0.4 }}
             style={{
               position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
               width: s.size, height: s.size, borderRadius: "50%", background: starColor,
-              boxShadow: `0 0 ${s.size * 5}px ${starColor}dd`,
+              boxShadow: s.size > 1.4 ? `0 0 ${s.size * 3}px ${starColor}aa` : undefined,
             }}
           />
         ))}
       </motion.div>
-      {/* Shooting stars */}
+      {/* Near stars — fastest (strongest parallax, brightest) */}
+      <motion.div
+        animate={{ y: ["0%", "-50%"] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, height: "200%", willChange: "transform" }}
+      >
+        {STAR_LAYERS[2].map(s => (
+          <motion.div
+            key={s.id}
+            animate={s.twinkle ? { opacity: [0.4, 1, 0.4], scale: [1, 1.4, 1] } : { opacity: [0.6, 1, 0.6] }}
+            transition={{ repeat: Infinity, duration: 1.2 + (s.id % 4) * 0.4, delay: (s.id % 5) * 0.35 }}
+            style={{
+              position: "absolute", left: `${s.x}%`, top: `${s.y}%`,
+              width: s.size, height: s.size, borderRadius: "50%", background: starColor,
+              boxShadow: `0 0 ${s.size * 4}px ${starColor}cc`,
+            }}
+          />
+        ))}
+      </motion.div>
+      {/* Comets */}
       {[{ x: 80, y: 8, delay: 4 }, { x: 55, y: 3, delay: 11 }, { x: 92, y: 18, delay: 18 }].map((s, i) => (
         <ShootingStar key={i} x={s.x} y={s.y} delay={s.delay} />
       ))}
@@ -591,38 +947,56 @@ const ASTEROID_CONFIGS = [
 function AsteroidField() {
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {/* Scrolling asteroids from top */}
+      {/* Scrolling asteroids — cratered rocks with rim light + molten cracks */}
       {ASTEROID_CONFIGS.map(a => (
         <motion.div key={a.id}
           animate={{ y: ["-10%", "110%"], rotate: [0, a.rot * 360] }}
           transition={{ y: { duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" }, rotate: { duration: a.dur, delay: a.delay, repeat: Infinity, ease: "linear" } }}
           style={{ position: "absolute", left: `${a.x}%`, top: 0 }}>
-          <svg width={a.size} height={a.size * 0.85} viewBox="0 0 60 50" opacity={0.45}>
+          <svg width={a.size} height={a.size * 0.85} viewBox="0 0 60 50" opacity={0.6} style={{ filter: "drop-shadow(0 0 6px rgba(255,120,30,0.35))" }}>
+            <defs>
+              <radialGradient id={`rrAst-${a.id}`} cx="0.32" cy="0.28" r="1">
+                <stop offset="0%" stopColor="#b07040" />
+                <stop offset="55%" stopColor="#6e3a18" />
+                <stop offset="100%" stopColor="#2c1305" />
+              </radialGradient>
+            </defs>
             <path d="M10 12 L20 4 L38 2 L52 14 L58 28 L50 42 L34 46 L18 44 L6 32 L8 18 Z"
-              fill="#8b4513" stroke="#d2691e" strokeWidth="2" />
-            <path d="M20 15 L28 10 L36 16 L32 26 L22 24 Z" fill="rgba(0,0,0,0.35)" />
-            <path d="M38 28 L46 32 L42 40 L34 36 Z" fill="rgba(0,0,0,0.25)" />
-            <path d="M12 22 L18 20 L16 28 L10 26 Z" fill="rgba(255,140,60,0.3)" />
+              fill={`url(#rrAst-${a.id})`} stroke="#e8823a" strokeWidth="1.4" strokeOpacity="0.6" />
+            {/* Craters with inner shadow */}
+            <ellipse cx="26" cy="17" rx="7" ry="5.5" fill="rgba(0,0,0,0.45)" />
+            <ellipse cx="25" cy="16" rx="5" ry="3.8" fill="rgba(120,60,25,0.55)" />
+            <ellipse cx="41" cy="33" rx="5.5" ry="4.5" fill="rgba(0,0,0,0.4)" />
+            <ellipse cx="40" cy="32" rx="3.8" ry="3" fill="rgba(110,55,22,0.5)" />
+            <ellipse cx="15" cy="30" rx="3.5" ry="3" fill="rgba(0,0,0,0.35)" />
+            {/* Molten crack glow */}
+            <path d="M34 44 L38 36 L45 32" stroke="#ff8c2e" strokeWidth="1.3" fill="none" opacity="0.8" />
+            <path d="M12 20 L17 24 L15 30" stroke="#ff8c2e" strokeWidth="1" fill="none" opacity="0.6" />
+            {/* Rim light (sun side) */}
+            <path d="M20 4 L38 2 L52 14" stroke="#ffc27a" strokeWidth="1.6" fill="none" opacity="0.75" />
           </svg>
         </motion.div>
       ))}
       {/* Fire embers drifting */}
-      {[...Array(8)].map((_, i) => (
+      {[...Array(10)].map((_, i) => (
         <motion.div key={`ember-${i}`}
-          animate={{ y: ["-5vh", "105vh"], opacity: [0, 0.8, 0.8, 0], x: [0, (i % 2 === 0 ? 1 : -1) * 30] }}
-          transition={{ duration: 3 + i * 0.5, delay: i * 0.8, repeat: Infinity, ease: "easeIn" }}
+          animate={{ y: ["-5vh", "105vh"], opacity: [0, 0.9, 0.9, 0], x: [0, (i % 2 === 0 ? 1 : -1) * 36] }}
+          transition={{ duration: 3 + i * 0.45, delay: i * 0.7, repeat: Infinity, ease: "easeIn" }}
           style={{
-            position: "absolute", top: 0, left: `${8 + i * 11}%`,
-            width: 6, height: 6, borderRadius: "50%",
-            background: `hsl(${15 + i * 10}, 100%, 60%)`,
-            boxShadow: `0 0 12px hsl(${15 + i * 10}, 100%, 60%)`,
+            position: "absolute", top: 0, left: `${6 + i * 9.5}%`,
+            width: 5 + (i % 3), height: 5 + (i % 3), borderRadius: "50%",
+            background: `hsl(${15 + i * 9}, 100%, ${58 + (i % 3) * 6}%)`,
+            boxShadow: `0 0 14px hsl(${15 + i * 9}, 100%, 60%)`,
           }} />
       ))}
-      {/* Nebula clouds */}
+      {/* Heat haze bands */}
+      <motion.div animate={{ opacity: [0.15, 0.4, 0.15], y: [0, -18, 0] }} transition={{ repeat: Infinity, duration: 5 }}
+        style={{ position: "absolute", bottom: "8%", left: 0, right: 0, height: "16%", background: "linear-gradient(180deg, transparent, rgba(255,90,10,0.14), transparent)", filter: "blur(10px)" }} />
+      {/* Ambient fire nebulae */}
       <motion.div animate={{ opacity: [0.7, 1, 0.7], x: [-10, 10, -10] }} transition={{ repeat: Infinity, duration: 8 }}
-        style={{ position: "absolute", top: "15%", left: "10%", width: 380, height: 260, background: "radial-gradient(ellipse, rgba(200,50,0,0.15) 0%, transparent 70%)" }} />
+        style={{ position: "absolute", top: "15%", left: "10%", width: "44vmin", height: "30vmin", filter: "blur(7px)", background: "radial-gradient(ellipse, rgba(230,60,0,0.20) 0%, transparent 70%)" }} />
       <motion.div animate={{ opacity: [0.5, 0.9, 0.5], x: [10, -10, 10] }} transition={{ repeat: Infinity, duration: 10, delay: 3 }}
-        style={{ position: "absolute", bottom: "10%", right: "5%", width: 320, height: 220, background: "radial-gradient(ellipse, rgba(255,100,0,0.12) 0%, transparent 70%)" }} />
+        style={{ position: "absolute", bottom: "10%", right: "5%", width: "38vmin", height: "26vmin", filter: "blur(7px)", background: "radial-gradient(ellipse, rgba(255,110,0,0.16) 0%, transparent 70%)" }} />
     </div>
   );
 }
@@ -631,38 +1005,82 @@ function AsteroidField() {
 function CrystalField() {
   const crystals = Array.from({ length: 14 }, (_, i) => ({
     id: i, x: (i / 14) * 88 + 3,
-    height: 35 + (i % 4) * 22,
-    width: 8 + (i % 3) * 5,
+    height: 38 + (i % 4) * 24,
+    width: 9 + (i % 3) * 6,
     hue: 160 + (i * 17) % 60,
     delay: (i * 0.4) % 3.5,
   }));
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {/* Aurora curtain */}
+      <motion.div
+        animate={{ opacity: [0.25, 0.55, 0.25], x: [-24, 24, -24] }}
+        transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
+        style={{
+          position: "absolute", top: 0, left: "10%", width: "80%", height: "42%",
+          background: "linear-gradient(180deg, rgba(80,255,220,0.16) 0%, rgba(90,140,255,0.10) 45%, transparent 100%)",
+          filter: "blur(14px)",
+          borderRadius: "0 0 50% 50%",
+        }} />
+      {/* Vertical light beams rising from the crystal surface */}
+      {[16, 38, 64, 84].map((x, i) => (
+        <motion.div key={`beam-${i}`}
+          animate={{ opacity: [0.1, 0.42, 0.1] }}
+          transition={{ repeat: Infinity, duration: 3.5 + i, delay: i * 0.8 }}
+          style={{
+            position: "absolute", bottom: 0, left: `${x}%`,
+            width: 22, height: "48%",
+            background: `linear-gradient(0deg, hsla(${168 + i * 12},100%,70%,0.34), transparent)`,
+            filter: "blur(7px)",
+            transform: `skewX(${i % 2 === 0 ? -4 : 4}deg)`,
+          }} />
+      ))}
+      {/* Faceted crystals with inner shine */}
       {crystals.map(c => (
         <motion.div key={c.id}
-          animate={{ y: [0, -12, 0], opacity: [0.45, 1, 0.45] }}
+          animate={{ y: [0, -12, 0], opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2.5 + c.delay, delay: c.delay, repeat: Infinity, ease: "easeInOut" }}
           style={{
             position: "absolute", bottom: `${4 + (c.id % 4) * 5}%`, left: `${c.x}%`,
             width: c.width, height: c.height,
-            background: `linear-gradient(180deg, hsl(${c.hue},100%,85%) 0%, hsl(${c.hue},80%,55%) 50%, hsl(${c.hue},60%,30%) 100%)`,
+            background: `linear-gradient(160deg, hsl(${c.hue},100%,88%) 0%, hsl(${c.hue},85%,60%) 38%, hsl(${c.hue},70%,42%) 62%, hsl(${c.hue},60%,26%) 100%)`,
             clipPath: "polygon(50% 0%, 80% 30%, 100% 80%, 60% 100%, 40% 100%, 0% 80%, 20% 30%)",
-            filter: `drop-shadow(0 0 6px hsl(${c.hue},100%,75%))`,
+            filter: `drop-shadow(0 0 8px hsl(${c.hue},100%,72%))`,
+          }}>
+          <div style={{
+            position: "absolute", left: "28%", top: "8%", width: "16%", height: "70%",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.85), transparent)",
+            transform: "skewX(-6deg)",
+          }} />
+        </motion.div>
+      ))}
+      {/* Floating rotating shards */}
+      {[...Array(6)].map((_, i) => (
+        <motion.div key={`shard-${i}`}
+          animate={{ y: [0, -30, 0], rotate: [0, 180, 360], opacity: [0.35, 0.8, 0.35] }}
+          transition={{ duration: 6 + i * 1.2, delay: i * 0.9, repeat: Infinity, ease: "easeInOut" }}
+          style={{
+            position: "absolute", left: `${12 + i * 15}%`, bottom: `${30 + (i % 3) * 12}%`,
+            width: 7 + (i % 3) * 3, height: 12 + (i % 3) * 5,
+            background: `linear-gradient(160deg, hsl(${170 + i * 10},100%,85%), hsl(${170 + i * 10},75%,45%))`,
+            clipPath: "polygon(50% 0%, 100% 40%, 65% 100%, 20% 78%)",
+            filter: `drop-shadow(0 0 5px hsl(${170 + i * 10},100%,70%))`,
           }} />
       ))}
+      {/* Rising sparkles */}
       {[...Array(8)].map((_, i) => (
         <motion.div key={`crystal-spark-${i}`}
-          animate={{ y: [0, -55, 0], opacity: [0, 1, 0], scale: [0.5, 1.5, 0] }}
+          animate={{ y: [0, -65, 0], opacity: [0, 1, 0], scale: [0.5, 1.5, 0] }}
           transition={{ duration: 1.4 + i * 0.25, delay: i * 0.7, repeat: Infinity }}
           style={{
             position: "absolute", left: `${8 + i * 11}%`, bottom: `${12 + (i % 3) * 8}%`,
             width: 4, height: 4, borderRadius: "50%",
-            background: `hsl(${170 + i * 8}, 100%, 75%)`,
-            boxShadow: `0 0 8px hsl(${170 + i * 8}, 100%, 75%)`,
+            background: `hsl(${170 + i * 8}, 100%, 78%)`,
+            boxShadow: `0 0 10px hsl(${170 + i * 8}, 100%, 75%)`,
           }} />
       ))}
-      <div style={{ position: "absolute", top: "10%", left: "10%", width: 400, height: 300, background: "radial-gradient(ellipse, rgba(0,210,190,0.11) 0%, transparent 70%)" }} />
-      <div style={{ position: "absolute", bottom: "20%", right: "5%", width: 300, height: 220, background: "radial-gradient(ellipse, rgba(0,130,255,0.09) 0%, transparent 70%)" }} />
+      <div style={{ position: "absolute", top: "10%", left: "10%", width: "46vmin", height: "34vmin", filter: "blur(8px)", background: "radial-gradient(ellipse, rgba(0,225,200,0.13) 0%, transparent 70%)" }} />
+      <div style={{ position: "absolute", bottom: "20%", right: "5%", width: "36vmin", height: "26vmin", filter: "blur(8px)", background: "radial-gradient(ellipse, rgba(0,150,255,0.11) 0%, transparent 70%)" }} />
     </div>
   );
 }
@@ -684,36 +1102,78 @@ function PhaseTransitionOverlay({ gamePhase, show }: { gamePhase: number; show: 
       style={{
         position: "fixed", inset: 0, zIndex: 300,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        background: `radial-gradient(ellipse at center, ${p.color}bb 0%, #000000bb 100%)`,
+        background: `radial-gradient(ellipse at center, ${p.color}cc 0%, #000000d9 100%)`,
         pointerEvents: "none",
+        overflow: "hidden",
       }}
     >
+      {/* Hyperspace tunnel streaks */}
+      {Array.from({ length: 24 }, (_, i) => {
+        const angle = i * 15;
+        const rad = (angle * Math.PI) / 180;
+        return (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, scaleX: 0.05 }}
+            animate={{ opacity: [0, 0.85, 0], scaleX: [0.05, 1] }}
+            transition={{ duration: 0.8, delay: (i % 8) * 0.07, repeat: 1, ease: "easeIn" }}
+            style={{
+              position: "absolute", left: "50%", top: "50%",
+              width: "56vmax", height: i % 3 === 0 ? 3 : 1.8,
+              transformOrigin: "left center",
+              transform: `rotate(${angle}deg)`,
+              background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 100%)`,
+              borderRadius: 2,
+              // Small radial offset so lines start away from centre
+              marginLeft: Math.cos(rad) * 30,
+              marginTop: Math.sin(rad) * 30,
+            }}
+          />
+        );
+      })}
+      {/* Central flash */}
+      <motion.div
+        initial={{ opacity: 0.9, scale: 0.2 }}
+        animate={{ opacity: 0, scale: 3.2 }}
+        transition={{ duration: 1.1, ease: "easeOut" }}
+        style={{
+          position: "absolute", width: "34vmin", height: "34vmin", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,255,255,0.95) 0%, transparent 70%)",
+        }}
+      />
       <motion.div
         initial={{ scale: 0.4, opacity: 0 }}
         animate={{ scale: [0.4, 1.15, 1], opacity: [0, 1, 1, 0] }}
         transition={{ duration: 1.8, times: [0, 0.3, 0.7, 1] }}
-        style={{ textAlign: "center" }}
+        style={{ textAlign: "center", position: "relative" }}
       >
         <motion.div
-          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.3, 1] }}
+          animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.35, 1] }}
           transition={{ duration: 0.6, repeat: 2 }}
-          style={{ fontSize: 60, marginBottom: 12, display: "inline-block" }}
+          style={{ fontSize: 64, marginBottom: 12, display: "inline-block", filter: `drop-shadow(0 0 24px ${p.color})` }}
         >
           {p.icon}
         </motion.div>
-        <div style={{ color: "#fff", fontSize: 24, fontWeight: 900, textShadow: `0 0 30px ${p.color}, 0 0 60px ${p.color}80` }}>
+        <div style={{
+          color: "#fff", fontSize: 30, fontWeight: 900, letterSpacing: 1,
+          textShadow: `0 0 34px ${p.color}, 0 0 70px ${p.color}90, 0 2px 4px rgba(0,0,0,0.8)`,
+        }}>
           {p.name}
         </div>
-        <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginTop: 4 }}>{p.nameEn}</div>
+        <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, marginTop: 4, letterSpacing: 4, textTransform: "uppercase" }}>{p.nameEn}</div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: [0, 1, 1, 0], y: [8, 0, 0, -8] }}
           transition={{ duration: 1.8, times: [0.2, 0.35, 0.7, 1] }}
           style={{
             marginTop: 18, color: "#fff", fontSize: 16, fontWeight: 800,
-            background: `${p.color}80`, padding: "8px 24px",
-            borderRadius: 999, border: `2px solid ${p.color}`,
+            background: `linear-gradient(135deg, ${p.color}b3, ${p.color}66)`,
+            padding: "9px 28px",
+            borderRadius: 999,
+            border: "1.5px solid rgba(255,255,255,0.5)",
+            boxShadow: `0 0 26px ${p.color}80, inset 0 1px 0 rgba(255,255,255,0.35)`,
             display: "inline-block",
+            backdropFilter: "blur(6px)",
           }}
         >
           {p.label}
@@ -749,10 +1209,10 @@ function HorizontalRocketLanesStrip({
 
   const laneBg =
     gamePhase === 0
-      ? "rgba(255,255,255,0.06)"
+      ? "linear-gradient(180deg, rgba(84,120,255,0.10), rgba(255,255,255,0.04))"
       : gamePhase === 1
-        ? "rgba(180,60,0,0.14)"
-        : "rgba(0,200,180,0.1)";
+        ? "linear-gradient(180deg, rgba(230,90,10,0.16), rgba(120,40,0,0.08))"
+        : "linear-gradient(180deg, rgba(0,220,190,0.13), rgba(0,90,90,0.06))";
 
   return (
     <div
@@ -979,24 +1439,36 @@ function PowerButton({
       disabled={disabled}
       onClick={onClick}
       whileTap={disabled ? undefined : { scale: 0.94 }}
-      animate={armed ? { boxShadow: [`0 0 0 0 ${accent}80`, `0 0 14px 6px ${accent}40`, `0 0 0 0 ${accent}80`] } : {}}
+      animate={armed ? { boxShadow: [`0 0 0 0 ${accent}80`, `0 0 18px 7px ${accent}50`, `0 0 0 0 ${accent}80`] } : {}}
       transition={{ repeat: armed ? Infinity : 0, duration: 1.1 }}
       style={{
         position: "relative",
         display: "flex", alignItems: "center", gap: 6,
-        padding: "6px 12px", borderRadius: 999,
-        background: armed ? `${accent}` : disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
+        padding: "7px 13px", borderRadius: 999,
+        background: armed
+          ? `linear-gradient(135deg, ${accent}, ${accent}aa)`
+          : disabled ? "rgba(255,255,255,0.05)" : `linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))`,
         color: armed ? "#fff" : disabled ? "rgba(255,255,255,0.35)" : "#fff",
-        border: `1.5px solid ${armed ? "#fff" : disabled ? "rgba(255,255,255,0.08)" : `${accent}80`}`,
+        border: `1.5px solid ${armed ? "#fff" : disabled ? "rgba(255,255,255,0.08)" : `${accent}90`}`,
         fontWeight: 800, fontSize: 12, lineHeight: 1,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.55 : 1,
         whiteSpace: "nowrap",
+        overflow: "hidden",
+        backdropFilter: "blur(6px)",
       }}
       aria-pressed={armed}
       aria-label={label}
     >
-      <span style={{ fontSize: 16 }}>{icon}</span>
+      {!disabled && (
+        <span aria-hidden style={{
+          position: "absolute", top: 0, bottom: 0, width: "45%",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)",
+          animation: "rrShine 2.6s ease-in-out infinite",
+          pointerEvents: "none",
+        }} />
+      )}
+      <span style={{ fontSize: 16, filter: `drop-shadow(0 0 6px ${accent})` }}>{icon}</span>
       <span>{label}</span>
       {count > 0 && (
         <span style={{
@@ -1516,47 +1988,140 @@ export default function RocketPlay() {
   // ─── Connecting ─────────────────────────────────────────────────────────
   if (phase === "connecting") {
     return (
-      <div style={{ minHeight: "100dvh", background: SPACE_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100dvh", background: SPACE_BG, display: "flex", flexDirection: "column", gap: 18, alignItems: "center", justifyContent: "center" }}>
+        <style>{RR_KEYFRAMES}</style>
         <StarField />
-        <Loader2 size={44} color={GOLD} className="animate-spin" style={{ position: "relative", zIndex: 10 }} />
+        <div style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div style={{ position: "relative", width: 84, height: 84 }}>
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              border: `2.5px solid transparent`, borderTopColor: GOLD, borderInlineEndColor: `${GOLD}60`,
+              animation: "rrSpin 1s linear infinite",
+            }} />
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>🚀</div>
+          </div>
+          <span style={{ color: "rgba(255,255,255,0.75)", fontWeight: 700, fontSize: 13, letterSpacing: 1, animation: "rrPulse 1.6s ease-in-out infinite" }}>
+            {ar ? "جارٍ الاتصال بالمحطة..." : "Connecting to station..."}
+          </span>
+        </div>
       </div>
     );
   }
 
+  const dustTint = gamePhase === 0 ? "rgba(170,190,255,0.7)" : gamePhase === 1 ? "rgba(255,170,90,0.7)" : "rgba(110,255,230,0.7)";
+
   return (
-    <div dir={dir} style={{ minHeight: "100dvh", background: PHASE_BACKGROUNDS[gamePhase], position: "relative", overflow: "hidden", transition: "background 2s ease" }}>
+    <div
+      dir={dir}
+      style={{
+        minHeight: "100dvh",
+        background: PHASE_BACKGROUNDS[gamePhase],
+        position: "relative", overflow: "hidden",
+        transition: "background 2s ease",
+        // Cinematic camera shake — hard judder on wrong answers, energetic rumble on boosts
+        animation: penaltyFlash
+          ? "rrShakeHard 0.55s ease-in-out"
+          : boostFlash
+            ? "rrShakeSoft 0.65s ease-in-out"
+            : undefined,
+      }}
+    >
+      <style>{RR_KEYFRAMES}</style>
       <StarField phase={gamePhase} />
       {gamePhase === 1 && <AsteroidField />}
       {gamePhase === 2 && <CrystalField />}
       <WarpField boosting={boostFlash} />
+      <AmbientDust tint={dustTint} />
       <PhaseTransitionOverlay gamePhase={gamePhase} show={showPhaseTransition} />
       <BoostParticles active={boostFlash} />
 
-      {/* Penalty flash (wrong answer) */}
+      {/* Penalty impact (wrong answer) — red vignette + sparks + engine smoke */}
       <AnimatePresence>
         {penaltyFlash && (
           <motion.div
-            initial={{ opacity: 0.55 }}
-            animate={{ opacity: 0 }}
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.85, ease: "easeOut" }}
-            style={{
-              position: "fixed", inset: 0, zIndex: 50,
-              background: "radial-gradient(ellipse at center, rgba(220,38,38,0.55) 0%, rgba(180,0,0,0.35) 60%, transparent 100%)",
-              pointerEvents: "none",
-            }}
-          />
+            style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none", overflow: "hidden" }}
+          >
+            {/* Red alert vignette */}
+            <motion.div
+              initial={{ opacity: 0.6 }}
+              animate={{ opacity: [0.6, 0.25, 0.5, 0] }}
+              transition={{ duration: 0.85, ease: "easeOut" }}
+              style={{
+                position: "absolute", inset: 0,
+                background: "radial-gradient(ellipse at center, rgba(220,38,38,0.30) 0%, rgba(160,0,0,0.42) 62%, rgba(120,0,0,0.6) 100%)",
+              }}
+            />
+            {/* Electric sparks scattering */}
+            {Array.from({ length: 14 }, (_, i) => {
+              const angle = (i / 14) * 360 + 12;
+              const rad = (angle * Math.PI) / 180;
+              const dist = 90 + (i % 4) * 45;
+              return (
+                <motion.div
+                  key={`spark-${i}`}
+                  initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                  animate={{ opacity: 0, x: Math.cos(rad) * dist, y: Math.sin(rad) * dist + 40, scale: 0.15 }}
+                  transition={{ duration: 0.55, delay: (i % 5) * 0.03, ease: "easeOut" }}
+                  style={{
+                    position: "absolute", left: "50%", top: "48%",
+                    width: 3 + (i % 3) * 2, height: 3 + (i % 3) * 2,
+                    background: i % 3 === 0 ? "#ffd166" : "#ff6b4a",
+                    borderRadius: i % 2 === 0 ? "50%" : 1,
+                    boxShadow: `0 0 8px ${i % 3 === 0 ? "#ffd166" : "#ff6b4a"}`,
+                  }}
+                />
+              );
+            })}
+            {/* Engine failure smoke puffs drifting up */}
+            {[42, 50, 58].map((x, i) => (
+              <motion.div
+                key={`smoke-${i}`}
+                initial={{ opacity: 0.55, scale: 0.4, y: 0 }}
+                animate={{ opacity: 0, scale: 1.9, y: -110 }}
+                transition={{ duration: 0.95, delay: i * 0.09, ease: "easeOut" }}
+                style={{
+                  position: "absolute", left: `${x}%`, top: "56%",
+                  width: 46, height: 46, borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(90,90,100,0.75) 0%, rgba(60,60,70,0.4) 55%, transparent 80%)",
+                  filter: "blur(3px)",
+                }}
+              />
+            ))}
+            {/* Warning stripes flash at edges */}
+            <motion.div
+              initial={{ opacity: 0.8 }}
+              animate={{ opacity: [0.8, 0, 0.6, 0] }}
+              transition={{ duration: 0.8 }}
+              style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: 5,
+                background: "repeating-linear-gradient(45deg, #ff3b3b 0, #ff3b3b 16px, #2b0000 16px, #2b0000 32px)",
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0.8 }}
+              animate={{ opacity: [0.8, 0, 0.6, 0] }}
+              transition={{ duration: 0.8 }}
+              style={{
+                position: "absolute", bottom: 0, left: 0, right: 0, height: 5,
+                background: "repeating-linear-gradient(45deg, #ff3b3b 0, #ff3b3b 16px, #2b0000 16px, #2b0000 32px)",
+              }}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Top bar */}
+      {/* Top HUD bar */}
       <div style={{
         position: "relative", zIndex: 20,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "10px 16px",
-        background: "rgba(0,0,0,0.4)",
-        backdropFilter: "blur(10px)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: "linear-gradient(180deg, rgba(8,12,32,0.72), rgba(8,12,32,0.45))",
+        backdropFilter: "blur(14px)",
+        borderBottom: "1px solid rgba(120,160,255,0.16)",
+        boxShadow: "0 1px 0 rgba(84,216,255,0.12), 0 8px 26px -14px rgba(0,0,0,0.85)",
         flexWrap: "wrap", gap: 8,
       }}>
         {/* Player info */}
@@ -1679,35 +2244,71 @@ export default function RocketPlay() {
         </div>
       )}
 
-      {/* ── Lobby ── */}
+      {/* ── Lobby — launch pad with orbit rings ── */}
       {phase === "lobby" && (
         <div style={{ position: "relative", zIndex: 5, padding: "40px 20px", textAlign: "center" }}>
-          <motion.div
-            animate={{ y: [-8, 8, -8] }}
-            transition={{ repeat: Infinity, duration: 2.5 }}
-            style={{ display: "inline-block", marginBottom: 20 }}
-          >
-            <RocketIcon color={myColor} isPlayer size={90} />
-          </motion.div>
-          <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 900, margin: "0 0 8px" }}>
+          <div style={{ position: "relative", display: "inline-block", marginBottom: 20, padding: 30 }}>
+            {/* Rotating orbit rings around the ship */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              border: "1.5px dashed rgba(84,216,255,0.35)",
+              animation: "rrSpin 14s linear infinite",
+            }} />
+            <div style={{
+              position: "absolute", inset: 14, borderRadius: "50%",
+              border: `1px solid ${GOLD}40`,
+              animation: "rrSpin 9s linear infinite reverse",
+            }} />
+            {/* Orbiting satellite dot */}
+            <div style={{ position: "absolute", inset: 0, animation: "rrSpin 6s linear infinite" }}>
+              <div style={{
+                position: "absolute", top: -4, left: "50%", width: 9, height: 9, borderRadius: "50%",
+                background: CYAN, boxShadow: `0 0 12px ${CYAN}`,
+              }} />
+            </div>
+            {/* Launch pad glow beneath */}
+            <div style={{
+              position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
+              width: 120, height: 26, borderRadius: "50%",
+              background: `radial-gradient(ellipse, ${myColor}55 0%, transparent 70%)`,
+              filter: "blur(6px)",
+              animation: "rrPulse 2.4s ease-in-out infinite",
+            }} />
+            <motion.div
+              animate={{ y: [-8, 8, -8] }}
+              transition={{ repeat: Infinity, duration: 2.5 }}
+              style={{ display: "inline-block", position: "relative" }}
+            >
+              <RocketIcon color={myColor} isPlayer size={90} />
+            </motion.div>
+          </div>
+          <h1 style={{
+            color: "#fff", fontSize: 27, fontWeight: 900, margin: "0 0 8px",
+            textShadow: `0 0 30px ${GOLD}50, 0 2px 4px rgba(0,0,0,0.6)`,
+          }}>
             {ar ? "في انتظار الانطلاق..." : "Awaiting Launch..."}
           </h1>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, margin: 0 }}>
+          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80", display: "inline-block", animation: "rrPulse 1.4s ease-in-out infinite" }} />
             {ar ? "سينطلق السباق عند بدء المعلم" : "Race starts when teacher launches"}
           </p>
           <div style={{ marginTop: 28, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", maxWidth: 600, marginInline: "auto" }}>
             {players.map((p, i) => (
               <motion.div
                 key={p.name}
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
+                initial={{ opacity: 0, scale: 0.6, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 18 }}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "8px 14px",
                   borderRadius: 999,
-                  background: p.name === queryName ? `${GOLD}30` : "rgba(255,255,255,0.08)",
-                  border: p.name === queryName ? `2px solid ${GOLD}` : "1px solid rgba(255,255,255,0.15)",
+                  background: p.name === queryName
+                    ? `linear-gradient(135deg, ${GOLD}45, ${GOLD}18)`
+                    : "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))",
+                  border: p.name === queryName ? `2px solid ${GOLD}` : "1px solid rgba(255,255,255,0.16)",
+                  boxShadow: p.name === queryName ? `0 0 18px ${GOLD}40` : "0 2px 10px rgba(0,0,0,0.3)",
+                  backdropFilter: "blur(6px)",
                   color: "#fff", fontSize: 13, fontWeight: 700,
                 }}
               >
@@ -1720,25 +2321,64 @@ export default function RocketPlay() {
         </div>
       )}
 
-      {/* ── Countdown ── */}
+      {/* ── Countdown — cinematic ring + shockwave ── */}
       {phase === "countdown" && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(5,8,24,0.88)", backdropFilter: "blur(10px)" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(4,6,20,0.9)", backdropFilter: "blur(10px)", overflow: "hidden" }}>
+          {/* Converging warp lines behind the number */}
+          {Array.from({ length: 16 }, (_, i) => (
+            <motion.div
+              key={`cd-line-${i}`}
+              animate={{ opacity: [0, 0.4, 0], scaleX: [0.1, 1] }}
+              transition={{ duration: 1.4, delay: (i % 6) * 0.2, repeat: Infinity, ease: "easeIn" }}
+              style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: "48vmax", height: 1.5,
+                transformOrigin: "left center",
+                transform: `rotate(${i * 22.5}deg)`,
+                background: "linear-gradient(90deg, transparent, rgba(84,216,255,0.7))",
+              }}
+            />
+          ))}
           <AnimatePresence mode="wait">
             <motion.div
               key={countdownNum}
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 2, opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              style={{
-                fontSize: countdownNum > 0 ? 160 : 80,
-                fontWeight: 900,
-                color: GOLD,
-                textShadow: `0 0 40px ${GOLD}, 0 0 80px ${GOLD}60`,
-                textAlign: "center",
-              }}
+              initial={{ scale: 0.3, opacity: 0, rotate: -8 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              exit={{ scale: 2.2, opacity: 0 }}
+              transition={{ duration: 0.4, type: "spring", stiffness: 260, damping: 20 }}
+              style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              {countdownNum > 0 ? countdownNum : (ar ? "🚀 انطلق!" : "🚀 GO!")}
+              {/* Shockwave ring per tick */}
+              <div style={{
+                position: "absolute", left: "50%", top: "50%",
+                width: 190, height: 190, borderRadius: "50%",
+                border: `2.5px solid ${countdownNum > 0 ? GOLD : "#4ade80"}`,
+                boxShadow: `0 0 34px ${countdownNum > 0 ? GOLD : "#4ade80"}60`,
+                animation: "rrRing 0.9s ease-out forwards",
+              }} />
+              {/* Pulsing outline ring */}
+              {countdownNum > 0 && (
+                <div style={{
+                  position: "absolute", width: 220, height: 220, borderRadius: "50%",
+                  border: "1.5px dashed rgba(217,165,33,0.4)",
+                  animation: "rrSpin 5s linear infinite",
+                }} />
+              )}
+              <div
+                style={{
+                  fontSize: countdownNum > 0 ? 150 : 72,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  color: countdownNum > 0 ? GOLD : "#4ade80",
+                  textShadow: countdownNum > 0
+                    ? `0 0 44px ${GOLD}, 0 0 90px ${GOLD}70`
+                    : "0 0 44px #4ade80, 0 0 90px #4ade8070",
+                  textAlign: "center",
+                  padding: 40,
+                }}
+              >
+                {countdownNum > 0 ? countdownNum : (ar ? "🚀 انطلق!" : "🚀 GO!")}
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -1833,8 +2473,10 @@ export default function RocketPlay() {
             {/* Mobile: horizontal race track — camera follows player, rockets face right */}
             <div style={{
               flex: "0 0 auto",
-              background: "rgba(0,0,0,0.6)",
-              borderTop: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.12)" : gamePhase === 1 ? "rgba(200,80,0,0.3)" : "rgba(0,200,180,0.25)"}`,
+              background: "linear-gradient(180deg, rgba(6,10,28,0.82), rgba(4,6,18,0.9))",
+              borderTop: `1.5px solid ${gamePhase === 0 ? "rgba(130,160,255,0.3)" : gamePhase === 1 ? "rgba(230,110,30,0.4)" : "rgba(0,220,200,0.35)"}`,
+              boxShadow: `0 -1px 0 ${gamePhase === 0 ? "rgba(84,216,255,0.15)" : gamePhase === 1 ? "rgba(255,140,60,0.15)" : "rgba(0,255,220,0.15)"}, 0 -10px 26px -14px rgba(0,0,0,0.9)`,
+              backdropFilter: "blur(10px)",
               position: "relative",
               overflow: "hidden",
             }}>
@@ -1876,13 +2518,14 @@ export default function RocketPlay() {
                         position: "relative",
                         height: isMe ? 36 : 28,
                         marginBottom: 2,
-                        borderRadius: 6,
+                        borderRadius: 8,
                         background: isMe
-                          ? "rgba(212,175,55,0.10)"
-                          : "rgba(255,255,255,0.03)",
+                          ? "linear-gradient(90deg, rgba(217,165,33,0.20), rgba(217,165,33,0.06) 55%, rgba(84,216,255,0.08))"
+                          : "linear-gradient(90deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02))",
                         border: isMe
-                          ? `1px solid rgba(212,175,55,0.25)`
-                          : "1px solid rgba(255,255,255,0.06)",
+                          ? "1px solid rgba(217,165,33,0.45)"
+                          : "1px solid rgba(255,255,255,0.07)",
+                        boxShadow: isMe ? "0 0 14px rgba(217,165,33,0.22), inset 0 1px 0 rgba(255,255,255,0.08)" : undefined,
                         overflow: "hidden",
                       }}
                     >
@@ -1940,16 +2583,30 @@ export default function RocketPlay() {
             {/* Race track */}
             <div style={{
               position: "relative", height: "100%",
-              background: gamePhase === 0 ? "rgba(255,255,255,0.04)"
-                : gamePhase === 1 ? "rgba(180,60,0,0.08)"
-                : "rgba(0,200,180,0.06)",
+              background: gamePhase === 0
+                ? "linear-gradient(180deg, rgba(30,45,110,0.22), rgba(10,15,40,0.30))"
+                : gamePhase === 1
+                  ? "linear-gradient(180deg, rgba(120,45,5,0.22), rgba(45,15,0,0.30))"
+                  : "linear-gradient(180deg, rgba(0,110,110,0.18), rgba(0,35,50,0.30))",
               borderRadius: 18,
-              border: `1px solid ${gamePhase === 0 ? "rgba(255,255,255,0.09)" : gamePhase === 1 ? "rgba(200,80,0,0.3)" : "rgba(0,200,180,0.25)"}`,
+              border: `1px solid ${gamePhase === 0 ? "rgba(130,160,255,0.22)" : gamePhase === 1 ? "rgba(230,110,30,0.32)" : "rgba(0,220,200,0.28)"}`,
+              boxShadow: "inset 0 0 40px rgba(0,0,0,0.35), 0 10px 30px -14px rgba(0,0,0,0.7)",
+              backdropFilter: "blur(4px)",
               overflow: "hidden", padding: "16px 8px",
               transition: "background 2s ease, border 2s ease",
             }}>
+              {/* Orbit gate — shimmering energy line at the top of the visible track */}
+              <div aria-hidden style={{
+                position: "absolute", top: 10, left: "6%", right: "6%", height: 2.5,
+                borderRadius: 2,
+                background: `linear-gradient(90deg, transparent, ${CYAN}, ${GOLD}, ${CYAN}, transparent)`,
+                backgroundSize: "200% 100%",
+                animation: "rrGateShimmer 3s linear infinite",
+                boxShadow: `0 0 12px ${CYAN}80`,
+                opacity: 0.75,
+              }} />
               {/* Phase indicator — no "lead zone" banner during race (shown on results screen) */}
-              <div style={{ position: "absolute", top: 28, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 700, color: gamePhase === 0 ? "rgba(180,180,255,0.7)" : gamePhase === 1 ? "rgba(255,140,80,0.8)" : "rgba(80,255,220,0.8)" }}>
+              <div style={{ position: "absolute", top: 28, left: 0, right: 0, textAlign: "center", fontSize: 9, fontWeight: 800, letterSpacing: 0.6, color: gamePhase === 0 ? "rgba(190,195,255,0.85)" : gamePhase === 1 ? "rgba(255,150,90,0.9)" : "rgba(95,255,225,0.9)", textShadow: "0 0 10px currentColor" }}>
                 {gamePhase === 0 ? "🌌 الفضاء العميق" : gamePhase === 1 ? "☄️ حقل الكويكبات" : "💎 كوكب الكريستال"}
               </div>
 
@@ -2151,19 +2808,24 @@ function QuestionPanel({
 }) {
   const options = displayOptions && displayOptions.length > 0 ? displayOptions : currentQ.options;
   const MCQ_COLORS = [
-    "linear-gradient(155deg, #7f1d1d, #b91c1c)",
-    "linear-gradient(155deg, #1e3a5f, #1d4ed8)",
-    "linear-gradient(155deg, #713f12, #d97706)",
-    "linear-gradient(155deg, #4a1d96, #7c3aed)",
+    "linear-gradient(155deg, #8e1c2e, #d4304a)",
+    "linear-gradient(155deg, #143d78, #2563eb)",
+    "linear-gradient(155deg, #7a4a08, #e8930c)",
+    "linear-gradient(155deg, #46187f, #8b45f7)",
   ];
+  const MCQ_EDGE = ["#ff6b81", "#60a5fa", "#fbbf24", "#c084fc"];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Timer bar */}
+      {/* Timer row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{
-          color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700,
-          background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: 999,
+          color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: 800,
+          background: "linear-gradient(135deg, rgba(84,216,255,0.16), rgba(84,216,255,0.05))",
+          border: "1px solid rgba(84,216,255,0.3)",
+          padding: "5px 12px", borderRadius: 999,
+          backdropFilter: "blur(6px)",
+          letterSpacing: 0.3,
         }}>
           {ar ? "السؤال" : "Q"} {currentQ.index + 1}
           {currentQ.index + 1 > totalQuestions && (
@@ -2171,42 +2833,76 @@ function QuestionPanel({
           )}
         </span>
         <motion.div
-          animate={timeLeft <= 5 ? { scale: [1, 1.08, 1] } : {}}
+          animate={timeLeft <= 5 ? { scale: [1, 1.1, 1] } : {}}
           transition={{ repeat: Infinity, duration: 0.5 }}
           style={{
             display: "inline-flex", alignItems: "center", gap: 5,
             padding: "6px 16px", borderRadius: 999,
-            background: timeLeft <= 5 ? "rgba(220,38,38,0.5)" : timeLeft <= 10 ? "rgba(217,100,0,0.35)" : "rgba(255,255,255,0.12)",
-            border: `1.5px solid ${timeLeft <= 5 ? "#ef4444" : timeLeft <= 10 ? "#f97316" : "rgba(255,255,255,0.2)"}`,
+            background: timeLeft <= 5
+              ? "linear-gradient(135deg, rgba(220,38,38,0.65), rgba(150,10,10,0.5))"
+              : timeLeft <= 10
+                ? "linear-gradient(135deg, rgba(230,110,0,0.5), rgba(160,70,0,0.4))"
+                : "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.07))",
+            border: `1.5px solid ${timeLeft <= 5 ? "#ef4444" : timeLeft <= 10 ? "#f97316" : "rgba(255,255,255,0.22)"}`,
+            boxShadow: timeLeft <= 5 ? "0 0 18px rgba(239,68,68,0.55)" : "none",
             color: "#fff", fontWeight: 900, fontSize: 16,
+            fontVariantNumeric: "tabular-nums",
+            backdropFilter: "blur(6px)",
           }}
         >
           ⏱ {timeLeft}s
         </motion.div>
       </div>
 
-      {/* Timer progress bar */}
-      <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.1)", overflow: "hidden" }}>
+      {/* Timer energy bar */}
+      <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden", position: "relative", border: "1px solid rgba(255,255,255,0.07)" }}>
         <motion.div
           animate={{ width: `${(timeLeft / currentQ.duration) * 100}%` }}
           transition={{ duration: 0.5 }}
           style={{
             height: "100%",
-            background: timeLeft <= 5 ? "#ef4444" : timeLeft <= 10 ? "#f97316" : GOLD,
-            borderRadius: 2,
+            background: timeLeft <= 5
+              ? "linear-gradient(90deg, #7a1010, #ef4444)"
+              : timeLeft <= 10
+                ? "linear-gradient(90deg, #92400e, #f97316)"
+                : `linear-gradient(90deg, ${GOLD}, #ffd76e, ${GOLD})`,
+            boxShadow: timeLeft <= 5 ? "0 0 12px #ef4444" : `0 0 10px ${GOLD}70`,
+            borderRadius: 3,
+            position: "relative",
+            overflow: "hidden",
           }}
-        />
+        >
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)",
+            width: "40%",
+            animation: "rrShine 1.8s linear infinite",
+          }} />
+        </motion.div>
       </div>
 
-      {/* Question text */}
+      {/* Question console */}
       <div style={{
-        background: "rgba(255,255,255,0.08)",
+        position: "relative",
+        background: "linear-gradient(160deg, rgba(20,28,64,0.78), rgba(10,14,38,0.68))",
         borderRadius: 20, padding: "20px 22px",
-        border: `1.5px solid rgba(217,165,33,0.35)`,
-        backdropFilter: "blur(6px)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+        border: "1px solid rgba(120,160,255,0.22)",
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 10px 34px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.09)",
+        overflow: "hidden",
       }}>
-        <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.6, textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+        {/* Neon top edge */}
+        <div style={{
+          position: "absolute", top: 0, left: "8%", right: "8%", height: 2,
+          background: `linear-gradient(90deg, transparent, ${GOLD}, ${CYAN}, transparent)`,
+          backgroundSize: "200% 100%",
+          animation: "rrGateShimmer 3.5s linear infinite",
+          borderRadius: 2,
+        }} />
+        {/* Corner brackets */}
+        <div style={{ position: "absolute", top: 8, insetInlineStart: 8, width: 14, height: 14, borderTop: `2px solid ${CYAN}66`, borderInlineStart: `2px solid ${CYAN}66`, borderStartStartRadius: 6 }} />
+        <div style={{ position: "absolute", bottom: 8, insetInlineEnd: 8, width: 14, height: 14, borderBottom: `2px solid ${CYAN}66`, borderInlineEnd: `2px solid ${CYAN}66`, borderEndEndRadius: 6 }} />
+        <p style={{ color: "#fff", fontSize: 18, fontWeight: 800, margin: 0, lineHeight: 1.65, textShadow: "0 1px 5px rgba(0,0,0,0.6)" }}>
           {currentQ.text}
         </p>
       </div>
@@ -2222,8 +2918,12 @@ function QuestionPanel({
             transition={{ duration: 0.3 }}
             style={{
               textAlign: "center", color: GOLD, fontWeight: 900, fontSize: 17,
-              textShadow: `0 0 20px ${GOLD}99`,
-              background: "rgba(0,0,0,0.3)", padding: "8px 16px", borderRadius: 12,
+              textShadow: `0 0 22px ${GOLD}`,
+              background: "linear-gradient(135deg, rgba(217,165,33,0.16), rgba(0,0,0,0.35))",
+              border: `1px solid ${GOLD}50`,
+              boxShadow: `0 0 20px ${GOLD}25, inset 0 1px 0 rgba(255,255,255,0.12)`,
+              padding: "9px 16px", borderRadius: 14,
+              backdropFilter: "blur(6px)",
             }}
           >
             {encouragement}
@@ -2242,45 +2942,67 @@ function QuestionPanel({
               <motion.button
                 key={idx}
                 whileTap={{ scale: 0.95 }}
-                whileHover={!feedback ? { scale: 1.02 } : {}}
+                whileHover={!feedback ? { scale: 1.025, y: -2 } : {}}
                 disabled={!!feedback}
                 onClick={() => handleMCQAnswer(idx)}
                 style={{
+                  position: "relative",
                   background: showCorrect
-                    ? "linear-gradient(155deg, #14532d, #22c55e)"
+                    ? "linear-gradient(155deg, #10532c, #2ee06a)"
                     : showWrong
-                      ? "linear-gradient(155deg, #7f1d1d, #dc2626)"
+                      ? "linear-gradient(155deg, #7f1d1d, #ef2d2d)"
                       : MCQ_COLORS[idx % 4],
                   border: showCorrect
-                    ? `2.5px solid ${GOLD}`
+                    ? "2.5px solid #7dffab"
                     : showWrong
-                      ? "2.5px solid #ef4444"
-                      : "1.5px solid rgba(255,255,255,0.14)",
+                      ? "2.5px solid #ff8080"
+                      : "1.5px solid rgba(255,255,255,0.16)",
                   borderRadius: 18, padding: "18px 16px",
                   color: "#fff", fontSize: 15, fontWeight: 800,
                   textAlign: "start", minHeight: 74,
                   cursor: feedback ? "default" : "pointer",
-                  opacity: dimmed ? 0.3 : 1,
-                  transition: "opacity .2s, transform .15s",
+                  opacity: dimmed ? 0.28 : 1,
+                  transition: "opacity .2s",
                   display: "flex", alignItems: "center", gap: 12,
+                  overflow: "hidden",
                   boxShadow: showCorrect
-                    ? "0 0 20px #22c55e80"
+                    ? "0 0 28px #22c55e90, inset 0 1px 0 rgba(255,255,255,0.3)"
                     : showWrong
-                      ? "0 0 18px #ef444460"
-                      : "0 2px 8px rgba(0,0,0,0.3)",
+                      ? "0 0 24px #ef444470, inset 0 1px 0 rgba(255,255,255,0.2)"
+                      : "0 6px 18px -6px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -8px 18px -8px rgba(0,0,0,0.4)",
+                  animation: showWrong ? "rrWrongShake 0.45s ease-in-out" : undefined,
                 }}
               >
+                {/* Side accent light */}
+                {!feedback && (
+                  <span aria-hidden style={{
+                    position: "absolute", insetInlineStart: 0, top: "18%", bottom: "18%", width: 3.5,
+                    borderRadius: 4,
+                    background: MCQ_EDGE[idx % 4],
+                    boxShadow: `0 0 10px ${MCQ_EDGE[idx % 4]}`,
+                  }} />
+                )}
                 <span style={{
-                  display: "inline-flex", width: 32, height: 32, borderRadius: 10,
-                  background: showCorrect || showWrong ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.18)",
+                  display: "inline-flex", width: 34, height: 34,
+                  clipPath: "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
+                  background: showCorrect || showWrong ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.3)",
+                  border: "1px solid rgba(255,255,255,0.3)",
                   alignItems: "center", justifyContent: "center",
                   fontWeight: 900, fontSize: 14, flexShrink: 0,
+                  textShadow: "0 1px 2px rgba(0,0,0,0.6)",
                 }}>
                   {["أ", "ب", "ج", "د"][idx]}
                 </span>
-                <span style={{ lineHeight: 1.4, flex: 1 }}>{opt}</span>
-                {showCorrect && <span style={{ fontSize: 20, flexShrink: 0 }}>✅</span>}
-                {showWrong && <span style={{ fontSize: 20, flexShrink: 0 }}>❌</span>}
+                <span style={{ lineHeight: 1.4, flex: 1, textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{opt}</span>
+                {showCorrect && (
+                  <motion.span
+                    initial={{ scale: 0, rotate: -30 }}
+                    animate={{ scale: [0, 1.5, 1], rotate: 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{ fontSize: 22, flexShrink: 0 }}
+                  >✅</motion.span>
+                )}
+                {showWrong && <span style={{ fontSize: 22, flexShrink: 0 }}>❌</span>}
               </motion.button>
             );
           })}
@@ -2291,26 +3013,33 @@ function QuestionPanel({
       {currentQ.type === "true_false" && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {[
-            { idx: 0, label: ar ? "✓ صحيح" : "✓ True", color: "linear-gradient(155deg, #14532d, #16a34a)", icon: <CheckCircle2 size={28} /> },
-            { idx: 1, label: ar ? "✗ خطأ" : "✗ False", color: "linear-gradient(155deg, #7f1d1d, #dc2626)", icon: <XCircle size={28} /> },
+            { idx: 0, label: ar ? "✓ صحيح" : "✓ True", color: "linear-gradient(155deg, #0f5132, #22b45e)", edge: "#4ade80", icon: <CheckCircle2 size={28} /> },
+            { idx: 1, label: ar ? "✗ خطأ" : "✗ False", color: "linear-gradient(155deg, #7f1d1d, #e23a3a)", edge: "#ff8080", icon: <XCircle size={28} /> },
           ].map(o => {
             const showCorrect = feedback && feedback.correctIndex === o.idx;
             return (
               <motion.button
                 key={o.idx}
                 whileTap={{ scale: 0.96 }}
+                whileHover={!feedback ? { scale: 1.02, y: -2 } : {}}
                 disabled={!!feedback}
                 onClick={() => handleMCQAnswer(o.idx)}
                 style={{
-                  background: o.color, border: showCorrect ? `3px solid ${GOLD}` : "1.5px solid rgba(255,255,255,0.15)",
+                  background: o.color,
+                  border: showCorrect ? "3px solid #7dffab" : "1.5px solid rgba(255,255,255,0.18)",
                   borderRadius: 18, padding: "24px 18px",
                   color: "#fff", fontSize: 20, fontWeight: 900,
                   cursor: feedback ? "default" : "pointer",
-                  opacity: feedback && !showCorrect ? 0.38 : 1,
+                  opacity: feedback && !showCorrect ? 0.35 : 1,
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 90,
+                  boxShadow: showCorrect
+                    ? "0 0 30px #22c55e90, inset 0 1px 0 rgba(255,255,255,0.3)"
+                    : `0 8px 22px -8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -10px 22px -10px rgba(0,0,0,0.45)`,
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
                 }}
               >
-                {o.icon} {o.label}
+                <span style={{ filter: `drop-shadow(0 0 8px ${o.edge})`, display: "inline-flex" }}>{o.icon}</span>
+                {o.label}
               </motion.button>
             );
           })}
@@ -2330,10 +3059,16 @@ function QuestionPanel({
             style={{
               width: "100%", boxSizing: "border-box",
               padding: "16px 18px", marginBottom: 12,
-              background: "rgba(255,255,255,0.1)",
-              border: `2px solid ${feedback?.correct ? "#16a34a" : feedback?.correct === false ? "#dc2626" : "rgba(255,255,255,0.25)"}`,
+              background: "linear-gradient(160deg, rgba(20,28,64,0.7), rgba(10,14,38,0.6))",
+              border: `2px solid ${feedback?.correct ? "#4ade80" : feedback?.correct === false ? "#ef4444" : "rgba(84,216,255,0.35)"}`,
+              boxShadow: feedback?.correct
+                ? "0 0 18px rgba(74,222,128,0.4)"
+                : feedback?.correct === false
+                  ? "0 0 18px rgba(239,68,68,0.4)"
+                  : "inset 0 2px 8px rgba(0,0,0,0.4)",
               borderRadius: 14, color: "#fff", fontSize: 18, fontWeight: 700,
               outline: "none",
+              backdropFilter: "blur(8px)",
             }}
           />
           <motion.button
@@ -2342,10 +3077,12 @@ function QuestionPanel({
             disabled={!!feedback || !fillAnswer.trim()}
             style={{
               width: "100%", padding: "14px",
-              background: feedback ? "rgba(255,255,255,0.15)" : `linear-gradient(135deg, ${GOLD}, #b8860b)`,
+              background: feedback ? "rgba(255,255,255,0.15)" : `linear-gradient(135deg, #ffd76e, ${GOLD} 45%, #a87908)`,
               border: "none", borderRadius: 14,
-              color: "#fff", fontSize: 16, fontWeight: 900,
+              color: feedback ? "#fff" : "#221a02",
+              fontSize: 16, fontWeight: 900,
               cursor: feedback ? "default" : "pointer",
+              boxShadow: feedback ? "none" : `0 10px 26px -8px ${GOLD}90, inset 0 1px 0 rgba(255,255,255,0.5)`,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               opacity: !fillAnswer.trim() ? 0.5 : 1,
             }}
@@ -2368,14 +3105,19 @@ function QuestionPanel({
             initial={{ opacity: 0, scale: 0.88, y: 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 350, damping: 22 }}
             style={{
-              padding: "10px 16px", borderRadius: 14,
-              background: feedback.correct ? "rgba(22,163,74,0.25)" : "rgba(220,38,38,0.25)",
-              border: `1.5px solid ${feedback.correct ? "#22c55e" : "#dc2626"}`,
+              padding: "11px 16px", borderRadius: 14,
+              background: feedback.correct
+                ? "linear-gradient(135deg, rgba(22,163,74,0.4), rgba(10,90,44,0.3))"
+                : "linear-gradient(135deg, rgba(220,38,38,0.4), rgba(130,15,15,0.3))",
+              border: `1.5px solid ${feedback.correct ? "#4ade80" : "#f87171"}`,
+              boxShadow: feedback.correct ? "0 0 22px rgba(74,222,128,0.35)" : "0 0 22px rgba(248,113,113,0.3)",
               textAlign: "center",
+              backdropFilter: "blur(8px)",
             }}
           >
-            <p style={{ color: "#fff", fontWeight: 800, fontSize: 14, margin: 0 }}>
+            <p style={{ color: "#fff", fontWeight: 800, fontSize: 14, margin: 0, textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
               {feedback.correct
                 ? (ar ? "🚀 صح! مضيٌّ قُدُماً!" : "🚀 Correct! Keep soaring!")
                 : (ar ? "❌ خطأ — السؤال التالي قادم..." : "❌ Wrong — Next question soon...")}
@@ -2455,29 +3197,62 @@ function FinishedScreen({
       {showConfetti && <Confetti />}
 
       <div style={{ padding: "24px 16px", maxWidth: 640, marginInline: "auto" }}>
-        {/* Motivational header */}
+        {/* Motivational header — spotlight + rotating rays behind the medal */}
         <motion.div
           initial={{ opacity: 0, y: -20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 18 }}
-          style={{ textAlign: "center", marginBottom: 24 }}
+          style={{ textAlign: "center", marginBottom: 24, position: "relative" }}
         >
-          <motion.div
-            animate={{ rotate: [-5, 5, -5], scale: [1, 1.05, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            style={{ fontSize: 60, marginBottom: 8 }}
-          >
-            {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🚀"}
-          </motion.div>
-          <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 900, margin: "0 0 8px", lineHeight: 1.3 }}>
+          <div style={{ position: "relative", display: "inline-block", marginBottom: 8 }}>
+            {/* Rotating light rays */}
+            <div style={{
+              position: "absolute", left: "50%", top: "50%",
+              width: 190, height: 190,
+              transform: "translate(-50%,-50%)",
+              background: `conic-gradient(from 0deg, transparent 0deg, ${GOLD}38 14deg, transparent 30deg, transparent 60deg, ${GOLD}30 74deg, transparent 90deg, transparent 120deg, ${GOLD}38 134deg, transparent 150deg, transparent 180deg, ${GOLD}30 194deg, transparent 210deg, transparent 240deg, ${GOLD}38 254deg, transparent 270deg, transparent 300deg, ${GOLD}30 314deg, transparent 330deg)`,
+              borderRadius: "50%",
+              animation: "rrSpin 9s linear infinite",
+              filter: "blur(1.5px)",
+            }} />
+            {/* Spotlight glow */}
+            <div style={{
+              position: "absolute", left: "50%", top: "50%",
+              width: 150, height: 150, transform: "translate(-50%,-50%)",
+              background: `radial-gradient(circle, ${GOLD}45 0%, transparent 70%)`,
+              borderRadius: "50%",
+              animation: "rrPulse 2.5s ease-in-out infinite",
+            }} />
+            <motion.div
+              animate={{ rotate: [-5, 5, -5], scale: [1, 1.07, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              style={{ fontSize: 64, position: "relative", filter: `drop-shadow(0 0 26px ${GOLD})` }}
+            >
+              {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : "🚀"}
+            </motion.div>
+          </div>
+          <h1 style={{
+            color: "#fff", fontSize: 23, fontWeight: 900, margin: "0 0 8px", lineHeight: 1.35,
+            textShadow: `0 0 30px ${GOLD}45, 0 2px 4px rgba(0,0,0,0.6)`,
+          }}>
             {ar ? "🎊 انتهت المغامرة — أحسنتم جميعاً! 🎊" : "🎊 Adventure Over — You All Flew High! 🎊"}
           </h1>
-          <p style={{ color: GOLD, fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
+          <p style={{ color: GOLD, fontSize: 15, fontWeight: 800, margin: "0 0 10px", textShadow: `0 0 18px ${GOLD}60` }}>
             {motivationalText()}
           </p>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0 }}>
-            {ar ? `مرتبتك: #${myRank} · نقاطك: ${myScore}` : `Your rank: #${myRank} · Score: ${myScore}`}
-          </p>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 10,
+            color: "#fff", fontSize: 13, fontWeight: 800,
+            background: "linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05))",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 999, padding: "7px 18px",
+            backdropFilter: "blur(8px)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)",
+          }}>
+            <span>{ar ? `مرتبتك #${myRank}` : `Rank #${myRank}`}</span>
+            <span style={{ opacity: 0.4 }}>·</span>
+            <span style={{ color: GOLD }}>{myScore} {ar ? "نقطة" : "pts"}</span>
+          </span>
         </motion.div>
 
         {/* Podium — only if 2+ players */}
@@ -2499,31 +3274,60 @@ function FinishedScreen({
               const h = podiumHeights[podIdx];
               const rankColors: Record<number, string> = { 1: GOLD, 2: "#94a3b8", 3: "#cd7f32" };
               const rankEmoji: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+              const c = rankColors[rank];
               return (
                 <motion.div
                   key={p.name}
-                  initial={{ opacity: 0, y: 30 }}
+                  initial={{ opacity: 0, y: 40 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + podIdx * 0.15, type: "spring", stiffness: 200 }}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: rank === 1 ? 1.2 : 1, maxWidth: 140 }}
+                  transition={{ delay: 0.4 + podIdx * 0.18, type: "spring", stiffness: 180, damping: 16 }}
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: rank === 1 ? 1.2 : 1, maxWidth: 140, position: "relative" }}
                 >
-                  <span style={{ fontSize: 22 }}>{p.avatar}</span>
-                  <p style={{ color: "#fff", fontWeight: 800, fontSize: rank === 1 ? 14 : 12, margin: "4px 0 2px", textAlign: "center", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {/* Champion spotlight beam */}
+                  {rank === 1 && (
+                    <div style={{
+                      position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+                      width: "130%", height: h + 90,
+                      background: `linear-gradient(0deg, ${GOLD}22, transparent 80%)`,
+                      clipPath: "polygon(28% 0%, 72% 0%, 100% 100%, 0% 100%)",
+                      pointerEvents: "none",
+                      animation: "rrPulse 3s ease-in-out infinite",
+                    }} />
+                  )}
+                  {rank === 1 && <span style={{ fontSize: 18, marginBottom: -4, filter: `drop-shadow(0 0 8px ${GOLD})`, position: "relative" }}>👑</span>}
+                  <motion.span
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ repeat: Infinity, duration: 2.2, delay: podIdx * 0.3 }}
+                    style={{ fontSize: rank === 1 ? 30 : 24, position: "relative", filter: `drop-shadow(0 3px 8px rgba(0,0,0,0.5))` }}
+                  >
+                    {p.avatar}
+                  </motion.span>
+                  <p style={{ color: "#fff", fontWeight: 800, fontSize: rank === 1 ? 14 : 12, margin: "4px 0 2px", textAlign: "center", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", position: "relative", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
                     {p.name}
                   </p>
-                  <p style={{ color: rankColors[rank], fontWeight: 700, fontSize: 11, margin: "0 0 4px" }}>
+                  <p style={{ color: c, fontWeight: 800, fontSize: 11, margin: "0 0 5px", position: "relative", textShadow: `0 0 12px ${c}80` }}>
                     {p.score} {ar ? "نق" : "pts"}
                   </p>
                   <div style={{
                     width: "100%",
                     height: h,
-                    background: `linear-gradient(180deg, ${rankColors[rank]}50, ${rankColors[rank]}20)`,
-                    border: `2px solid ${rankColors[rank]}80`,
-                    borderRadius: "8px 8px 0 0",
+                    background: `linear-gradient(180deg, ${c}70 0%, ${c}30 55%, ${c}14 100%)`,
+                    border: `1.5px solid ${c}90`,
+                    borderBottom: "none",
+                    borderRadius: "10px 10px 0 0",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: rank === 1 ? 32 : 24,
+                    fontSize: rank === 1 ? 34 : 25,
+                    position: "relative",
+                    overflow: "hidden",
+                    boxShadow: `0 -4px 26px -6px ${c}60, inset 0 1px 0 ${c}aa`,
+                    backdropFilter: "blur(4px)",
                   }}>
-                    {rankEmoji[rank]}
+                    <div style={{
+                      position: "absolute", top: 0, insetInlineStart: "12%", width: "22%", height: "100%",
+                      background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)",
+                      transform: "skewX(-14deg)",
+                    }} />
+                    <span style={{ filter: `drop-shadow(0 0 10px ${c})` }}>{rankEmoji[rank]}</span>
                   </div>
                 </motion.div>
               );
@@ -2533,9 +3337,11 @@ function FinishedScreen({
 
         {/* Full player list */}
         <div style={{
-          background: "rgba(255,255,255,0.05)",
+          background: "linear-gradient(160deg, rgba(20,28,64,0.6), rgba(10,14,38,0.5))",
           borderRadius: 20, overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid rgba(120,160,255,0.18)",
+          boxShadow: "0 12px 36px -14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08)",
+          backdropFilter: "blur(12px)",
           marginBottom: 16,
         }}>
           <div style={{ padding: "12px 18px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -2595,12 +3401,17 @@ function FinishedScreen({
             style={{
               flex: 1, minWidth: 140,
               padding: "13px 16px",
-              borderRadius: 14, border: "none",
-              background: saved ? "rgba(22,163,74,0.4)" : `linear-gradient(135deg, #1d4ed8, #2563eb)`,
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: saved
+                ? "linear-gradient(135deg, rgba(22,163,74,0.55), rgba(12,100,45,0.45))"
+                : "linear-gradient(135deg, #3b76f6, #1d4ed8 60%, #14349b)",
               color: "#fff", fontWeight: 800, fontSize: 14,
               cursor: saving || saved ? "default" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               opacity: saving ? 0.7 : 1,
+              boxShadow: saved ? "0 0 18px rgba(34,197,94,0.35)" : "0 10px 26px -10px rgba(37,99,235,0.8), inset 0 1px 0 rgba(255,255,255,0.3)",
+              textShadow: "0 1px 3px rgba(0,0,0,0.4)",
             }}
           >
             {saved ? (ar ? "✓ تم الحفظ!" : "✓ Saved!") : saving ? (ar ? "جاري الحفظ..." : "Saving...") : (ar ? "💾 حفظ النتائج" : "💾 Save Scores")}
@@ -2610,12 +3421,21 @@ function FinishedScreen({
             style={{
               flex: 1, minWidth: 140,
               padding: "13px 16px",
-              borderRadius: 14, border: "none",
-              background: `linear-gradient(135deg, ${GOLD}, #b8860b)`,
-              color: "#000", fontWeight: 900, fontSize: 14,
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.35)",
+              background: `linear-gradient(135deg, #ffd76e, ${GOLD} 45%, #a87908)`,
+              color: "#221a02", fontWeight: 900, fontSize: 14,
               cursor: "pointer",
+              position: "relative", overflow: "hidden",
+              boxShadow: `0 10px 26px -10px ${GOLD}cc, inset 0 1px 0 rgba(255,255,255,0.55)`,
             }}
           >
+            <span aria-hidden style={{
+              position: "absolute", top: 0, bottom: 0, width: "40%",
+              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)",
+              animation: "rrShine 2.8s ease-in-out infinite",
+              pointerEvents: "none",
+            }} />
             {ar ? "🏠 الرئيسية" : "🏠 Home"}
           </button>
         </div>

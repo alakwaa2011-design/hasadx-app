@@ -13,7 +13,24 @@ import { toast } from "@/components/ui/sonner";
 
 const GREEN = "#225739";
 const GOLD = "#D9A521";
-const SPACE_BG = "linear-gradient(180deg, #0a0e27 0%, #1a1740 50%, #2d1b4e 100%)";
+const CYAN = "#54d8ff";
+const SPACE_BG = "radial-gradient(140% 95% at 50% -10%, #1a2a7a 0%, #0d1445 38%, #060930 62%, #02040f 100%)";
+
+const RRH_KEYFRAMES = `
+@keyframes rrhSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes rrhShine{0%{transform:translateX(-140%) skewX(-18deg)}100%{transform:translateX(240%) skewX(-18deg)}}
+@keyframes rrhPulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes rrhGate{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+`;
+
+// Module-level star data — stable positions across re-renders
+const HOST_STARS = Array.from({ length: 120 }, (_, i) => ({
+  id: i,
+  x: ((i * 73 + 17) % 100),
+  y: ((i * 91 + 33) % 100),
+  size: 0.6 + (i % 4) * 0.55,
+  delay: (i % 7) * 0.45,
+}));
 
 interface Player {
   name: string;
@@ -35,33 +52,74 @@ interface Player {
 }
 
 function RocketIcon({ color, size = 30 }: { color: string; size?: number }) {
+  const uid = color.replace("#", "");
   return (
-    <svg width={size} height={size * 1.6} viewBox="0 0 60 96">
-      <motion.g animate={{ scaleY: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 0.3 }} style={{ originX: "30px", originY: "78px" }}>
-        <path d="M22 78 Q30 96 38 78 Q34 86 30 88 Q26 86 22 78 Z" fill="#ff6b1a" opacity="0.95" />
-        <path d="M25 78 Q30 88 35 78 Q32 84 30 85 Q28 84 25 78 Z" fill="#ffd54f" opacity="0.95" />
+    <svg width={size} height={size * 1.6} viewBox="0 0 60 96" style={{ overflow: "visible", filter: `drop-shadow(0 2px 8px ${color}80)` }}>
+      <defs>
+        <linearGradient id={`rrhHull-${uid}`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#000" stopOpacity="0.5" />
+          <stop offset="46%" stopColor="#fff" stopOpacity="0.55" />
+          <stop offset="60%" stopColor="#fff" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.45" />
+        </linearGradient>
+      </defs>
+      {/* Layered engine flame */}
+      <motion.g animate={{ scaleY: [1, 1.25, 0.9, 1.15, 1] }} transition={{ repeat: Infinity, duration: 0.24 }} style={{ originX: "30px", originY: "77px" }}>
+        <path d="M20 78 Q30 100 40 78 Q35 90 30 93 Q25 90 20 78 Z" fill="#ff7a1a" opacity="0.95" />
+        <path d="M24 78 Q30 90 36 78 Q33 85 30 87 Q27 85 24 78 Z" fill="#ffc247" opacity="0.95" />
+        <path d="M27 78 Q30 84 33 78 Q31.5 81.5 30 82.5 Q28.5 81.5 27 78 Z" fill="#fff" opacity="0.95" />
       </motion.g>
-      <path d="M30 4 L42 28 L42 70 Q42 78 30 78 Q18 78 18 70 L18 28 Z" fill={color} />
-      <circle cx="30" cy="38" r="7" fill="#e0f2fe" stroke="#fff" strokeWidth="2" />
-      <circle cx="30" cy="38" r="4" fill="#0284c7" opacity="0.6" />
-      <path d="M18 60 L8 78 L18 76 Z" fill={color} opacity="0.85" />
-      <path d="M42 60 L52 78 L42 76 Z" fill={color} opacity="0.85" />
-      <path d="M30 4 L26 14 L34 14 Z" fill="#fff" opacity="0.9" />
+      {/* Fins with edge light */}
+      <path d="M18 48 L5 76 L18 71 Z" fill={color} />
+      <path d="M18 48 L5 76 L18 71 Z" fill="#000" opacity="0.3" />
+      <path d="M42 48 L55 76 L42 71 Z" fill={color} />
+      <path d="M42 48 L55 76 L42 71 Z" fill="#fff" opacity="0.12" />
+      {/* Hull */}
+      <path d="M30 3 Q44 22 43 46 L43 66 Q43 74 30 75 Q17 74 17 66 L17 46 Q16 22 30 3 Z" fill={color} />
+      <path d="M30 3 Q44 22 43 46 L43 66 Q43 74 30 75 Q17 74 17 66 L17 46 Q16 22 30 3 Z" fill={`url(#rrhHull-${uid})`} />
+      {/* Nose */}
+      <path d="M30 3 Q36 12 37.5 21 L22.5 21 Q24 12 30 3 Z" fill="#fff" opacity="0.85" />
+      {/* Cockpit */}
+      <circle cx="30" cy="38" r="8" fill="#0a0e1a" opacity="0.85" />
+      <circle cx="30" cy="38" r="6.6" fill="#5ec9ff" />
+      <ellipse cx="27.6" cy="35.6" rx="2.7" ry="1.8" fill="#fff" opacity="0.75" />
+      {/* Nav lights */}
+      <motion.circle cx="7" cy="74" r="1.7" fill="#ff5d5d" animate={{ opacity: [1, 0.2, 1] }} transition={{ repeat: Infinity, duration: 1.4 }} />
+      <motion.circle cx="53" cy="74" r="1.7" fill="#4ade80" animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.4 }} />
     </svg>
   );
 }
 
 function StarField() {
-  const stars = Array.from({ length: 80 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 2 + 0.5,
-    delay: Math.random() * 3,
-  }));
   return (
     <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
-      {stars.map(s => (
+      {/* Nebula glows */}
+      <motion.div
+        animate={{ opacity: [0.5, 0.95, 0.5], x: [-10, 10, -10] }}
+        transition={{ repeat: Infinity, duration: 9, ease: "easeInOut" }}
+        style={{ position: "absolute", top: "8%", left: "4%", width: "46vmin", height: "32vmin", filter: "blur(8px)", background: "radial-gradient(ellipse, rgba(110,20,200,0.20) 0%, transparent 70%)" }}
+      />
+      <motion.div
+        animate={{ opacity: [0.4, 0.85, 0.4], x: [10, -10, 10] }}
+        transition={{ repeat: Infinity, duration: 11, ease: "easeInOut", delay: 3 }}
+        style={{ position: "absolute", bottom: "10%", right: "2%", width: "40vmin", height: "28vmin", filter: "blur(8px)", background: "radial-gradient(ellipse, rgba(20,70,220,0.18) 0%, transparent 70%)" }}
+      />
+      {/* Ringed planet on the horizon */}
+      <div style={{ position: "absolute", bottom: "-6%", right: "-5%", width: "30vmin", height: "30vmin", opacity: 0.6 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: "50%",
+          background: "radial-gradient(circle at 35% 30%, #a7c4ff 0%, #4a67d4 35%, #22307a 65%, #0c1030 100%)",
+          boxShadow: "0 0 45px 10px rgba(90,130,255,0.22), inset -12px -15px 40px rgba(0,0,20,0.65)",
+        }} />
+        <div style={{
+          position: "absolute", left: "-26%", top: "40%", width: "152%", height: "18%",
+          borderRadius: "50%",
+          border: "2px solid rgba(180,200,255,0.35)",
+          borderTopColor: "transparent",
+          transform: "rotate(-14deg)",
+        }} />
+      </div>
+      {HOST_STARS.map(s => (
         <motion.div
           key={s.id}
           animate={{ opacity: [0.3, 1, 0.3] }}
@@ -72,7 +130,7 @@ function StarField() {
             width: s.size, height: s.size,
             borderRadius: "50%",
             background: "#fff",
-            boxShadow: `0 0 ${s.size * 2}px rgba(255,255,255,0.6)`,
+            boxShadow: s.size > 1.5 ? `0 0 ${s.size * 3}px rgba(200,225,255,0.8)` : undefined,
           }}
         />
       ))}
@@ -290,6 +348,7 @@ export default function RocketHost() {
 
   return (
     <div dir={dir} style={{ minHeight: "100dvh", background: SPACE_BG, position: "relative", overflow: "hidden" }}>
+      <style>{RRH_KEYFRAMES}</style>
       <StarField />
 
       {/* Top bar — join code + mini QR + enlarge (teacher only in this route) */}
@@ -299,9 +358,10 @@ export default function RocketHost() {
         gap: 12,
         flexWrap: "wrap",
         padding: "12px 18px",
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(8px)",
-        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        background: "linear-gradient(180deg, rgba(8,12,32,0.7), rgba(8,12,32,0.42))",
+        backdropFilter: "blur(14px)",
+        borderBottom: "1px solid rgba(120,160,255,0.16)",
+        boxShadow: "0 1px 0 rgba(84,216,255,0.12), 0 8px 26px -14px rgba(0,0,0,0.85)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", minWidth: 0 }}>
           <Rocket size={22} color={GOLD} />
@@ -371,12 +431,22 @@ export default function RocketHost() {
       {phase === "lobby" && (
         <div style={{ position: "relative", zIndex: 5, padding: "24px 16px", maxWidth: 900, marginInline: "auto" }}>
           <div style={{
-            background: "rgba(255,255,255,0.06)",
+            position: "relative",
+            background: "linear-gradient(160deg, rgba(20,28,64,0.72), rgba(10,14,38,0.62))",
             borderRadius: 24,
             padding: 24,
-            border: "1.5px solid rgba(255,255,255,0.12)",
-            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(120,160,255,0.22)",
+            boxShadow: "0 14px 40px -16px rgba(0,0,0,0.75), inset 0 1px 0 rgba(255,255,255,0.09)",
+            backdropFilter: "blur(14px)",
+            overflow: "hidden",
           }}>
+            {/* Neon top edge */}
+            <div aria-hidden style={{
+              position: "absolute", top: 0, left: "8%", right: "8%", height: 2,
+              background: `linear-gradient(90deg, transparent, ${GOLD}, ${CYAN}, transparent)`,
+              backgroundSize: "200% 100%",
+              animation: "rrhGate 3.5s linear infinite",
+            }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 24, alignItems: "center" }}>
               {/* Left: pin */}
               <div>
@@ -385,17 +455,25 @@ export default function RocketHost() {
                 </p>
                 <div style={{
                   marginTop: 12,
-                  background: GOLD,
+                  position: "relative",
+                  background: `linear-gradient(135deg, #ffd76e, ${GOLD} 45%, #b8860b)`,
                   borderRadius: 18,
                   padding: "16px 24px",
                   display: "inline-flex", alignItems: "center", gap: 8,
                   fontSize: 48,
                   fontWeight: 900,
-                  color: "#000",
+                  color: "#221a02",
                   letterSpacing: "0.15em",
                   fontFamily: "monospace",
-                  boxShadow: `0 12px 32px -8px ${GOLD}80`,
+                  overflow: "hidden",
+                  boxShadow: `0 14px 36px -8px ${GOLD}90, inset 0 1px 0 rgba(255,255,255,0.55)`,
                 }} dir="ltr">
+                  <span aria-hidden style={{
+                    position: "absolute", top: 0, bottom: 0, width: "40%",
+                    background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
+                    animation: "rrhShine 3s ease-in-out infinite",
+                    pointerEvents: "none",
+                  }} />
                   {pin}
                 </div>
                 <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
@@ -427,19 +505,30 @@ export default function RocketHost() {
               onClick={startRace}
               disabled={players.length === 0}
               style={{
-                padding: "10px 20px",
-                borderRadius: 14, border: "none",
+                position: "relative",
+                padding: "11px 22px",
+                borderRadius: 14,
+                border: players.length === 0 ? "none" : "1px solid rgba(255,255,255,0.35)",
                 background: players.length === 0
                   ? "rgba(255,255,255,0.15)"
-                  : `linear-gradient(135deg, ${GOLD}, #c89212)`,
-                color: "#fff",
+                  : `linear-gradient(135deg, #ffd76e, ${GOLD} 45%, #a87908)`,
+                color: players.length === 0 ? "#fff" : "#221a02",
                 fontWeight: 900, fontSize: 16,
                 cursor: players.length === 0 ? "not-allowed" : "pointer",
                 display: "flex", alignItems: "center", gap: 8,
-                boxShadow: players.length > 0 ? `0 10px 24px -8px ${GOLD}80` : "none",
+                overflow: "hidden",
+                boxShadow: players.length > 0 ? `0 12px 30px -8px ${GOLD}aa, inset 0 1px 0 rgba(255,255,255,0.5)` : "none",
                 opacity: players.length === 0 ? 0.5 : 1,
               }}
             >
+              {players.length > 0 && (
+                <span aria-hidden style={{
+                  position: "absolute", top: 0, bottom: 0, width: "40%",
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent)",
+                  animation: "rrhShine 2.6s ease-in-out infinite",
+                  pointerEvents: "none",
+                }} />
+              )}
               <Play size={18} fill="currentColor" />
               {ar ? "أطلق السباق!" : "Launch Race!"}
             </button>
@@ -545,12 +634,24 @@ export default function RocketHost() {
             <div style={{
               position: "relative",
               height: "calc(100dvh - 100px)",
-              background: "rgba(255,255,255,0.05)",
+              background: "linear-gradient(180deg, rgba(30,45,110,0.20), rgba(10,15,40,0.32))",
               borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.1)",
+              border: "1px solid rgba(130,160,255,0.22)",
+              boxShadow: "inset 0 0 40px rgba(0,0,0,0.35), 0 10px 30px -14px rgba(0,0,0,0.7)",
+              backdropFilter: "blur(4px)",
               overflow: "hidden",
               padding: "16px 8px",
             }}>
+              {/* Orbit gate shimmer at the top */}
+              <div aria-hidden style={{
+                position: "absolute", top: 6, left: "6%", right: "6%", height: 2.5,
+                borderRadius: 2,
+                background: `linear-gradient(90deg, transparent, ${CYAN}, ${GOLD}, ${CYAN}, transparent)`,
+                backgroundSize: "200% 100%",
+                animation: "rrhGate 3s linear infinite",
+                boxShadow: `0 0 12px ${CYAN}80`,
+                opacity: 0.75,
+              }} />
               {/* Race timer chip + leader-altitude label */}
               <div style={{
                 position: "absolute", top: 12, left: 0, right: 0,
@@ -646,9 +747,13 @@ export default function RocketHost() {
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
                       padding: "10px 14px",
-                      background: idx < 3 ? `${GOLD}15` : "rgba(255,255,255,0.05)",
+                      background: idx < 3
+                        ? `linear-gradient(135deg, ${GOLD}28, ${GOLD}0d)`
+                        : "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
                       borderRadius: 14,
-                      border: idx < 3 ? `1.5px solid ${GOLD}40` : "1px solid rgba(255,255,255,0.08)",
+                      border: idx < 3 ? `1.5px solid ${GOLD}55` : "1px solid rgba(255,255,255,0.09)",
+                      boxShadow: idx < 3 ? `0 0 16px ${GOLD}22, inset 0 1px 0 rgba(255,255,255,0.1)` : "inset 0 1px 0 rgba(255,255,255,0.06)",
+                      backdropFilter: "blur(8px)",
                     }}
                   >
                     <span style={{
@@ -695,15 +800,33 @@ export default function RocketHost() {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             style={{
-              background: "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(12px)",
+              position: "relative",
+              background: "linear-gradient(160deg, rgba(20,28,64,0.78), rgba(10,14,38,0.68))",
+              backdropFilter: "blur(14px)",
               borderRadius: 24,
               padding: 28,
-              border: `2px solid ${GOLD}`,
+              border: `1.5px solid ${GOLD}90`,
+              boxShadow: `0 20px 50px -18px rgba(0,0,0,0.85), 0 0 40px ${GOLD}18, inset 0 1px 0 rgba(255,255,255,0.1)`,
               textAlign: "center",
+              overflow: "hidden",
             }}
           >
-            <Trophy size={70} color={GOLD} style={{ margin: "0 auto 12px" }} />
+            <div aria-hidden style={{
+              position: "absolute", top: 0, left: "8%", right: "8%", height: 2,
+              background: `linear-gradient(90deg, transparent, ${GOLD}, ${CYAN}, transparent)`,
+              backgroundSize: "200% 100%",
+              animation: "rrhGate 3.5s linear infinite",
+            }} />
+            <div style={{ position: "relative", display: "inline-block", marginBottom: 12 }}>
+              <div style={{
+                position: "absolute", left: "50%", top: "50%", width: 140, height: 140,
+                transform: "translate(-50%,-50%)",
+                background: `radial-gradient(circle, ${GOLD}40 0%, transparent 70%)`,
+                borderRadius: "50%",
+                animation: "rrhPulse 2.4s ease-in-out infinite",
+              }} />
+              <Trophy size={70} color={GOLD} style={{ position: "relative", filter: `drop-shadow(0 0 18px ${GOLD})` }} />
+            </div>
             <h1 style={{ color: "#fff", fontSize: 30, fontWeight: 900, margin: "0 0 4px" }}>
               {ar ? "انتهى السباق!" : "Race Complete!"}
             </h1>
