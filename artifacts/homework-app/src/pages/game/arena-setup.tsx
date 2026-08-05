@@ -49,10 +49,10 @@ const TEAM_EMOJIS = [
 const DIFFICULTIES: ArenaDifficulty[] = [200, 400, 600, 800];
 
 const DIFF_CHIP_STYLES: Record<number, { text: string; bg: string; activeBg: string; border: string }> = {
-  200: { text: "#93c5fd", bg: "rgba(36,87,168,0.20)", activeBg: "rgba(36,87,168,0.60)", border: "rgba(36,87,168,0.55)" },
-  400: { text: "#c4b5fd", bg: "rgba(85,37,168,0.20)", activeBg: "rgba(85,37,168,0.60)", border: "rgba(85,37,168,0.55)" },
-  600: { text: "#fca5a5", bg: "rgba(146,35,64,0.20)", activeBg: "rgba(146,35,64,0.60)", border: "rgba(146,35,64,0.55)" },
-  800: { text: "#fde68a", bg: "rgba(180,83,9,0.20)", activeBg: "rgba(180,83,9,0.65)", border: "rgba(180,83,9,0.65)" },
+  200: { text: "#1d4ed8", bg: "rgba(219,234,254,0.80)", activeBg: "#2563eb", border: "#93c5fd" },
+  400: { text: "#6d28d9", bg: "rgba(237,233,254,0.80)", activeBg: "#7c3aed", border: "#c4b5fd" },
+  600: { text: "#b91c1c", bg: "rgba(254,226,226,0.80)", activeBg: "#dc2626", border: "#fca5a5" },
+  800: { text: "#92400e", bg: "rgba(254,243,199,0.80)", activeBg: "#d97706", border: "#fcd34d" },
 };
 
 function DiffChips({ value, onChange }: { value: ArenaDifficulty; onChange: (d: ArenaDifficulty) => void }) {
@@ -68,13 +68,10 @@ function DiffChips({ value, onChange }: { value: ArenaDifficulty; onChange: (d: 
             onClick={() => onChange(d)}
             className="px-2 py-1 rounded-md text-[11px] font-black border transition-all"
             style={{
-              color: c.text,
+              color: selected ? "white" : c.text,
               background: selected ? c.activeBg : c.bg,
-              borderColor: selected ? c.text : c.border,
-              boxShadow: selected && d === 800 ? `0 0 6px rgba(253,230,138,0.45)` : undefined,
-              opacity: selected ? 1 : 0.65,
-              outline: selected ? `1.5px solid ${c.text}` : undefined,
-              outlineOffset: "1px",
+              borderColor: c.border,
+              boxShadow: selected ? `0 0 8px ${c.border}88` : undefined,
             }}
           >
             {d}
@@ -1706,6 +1703,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
   const [coverGradient, setCoverGradient] = useState(initial?.coverGradient ?? COVER_PRESETS[0].gradient);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(initial?.coverImageUrl ?? null);
   const [makePublic, setMakePublic] = useState(initial?.isPublic ?? false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [savingCat, setSavingCat] = useState(false);
   const [savedCatId, setSavedCatId] = useState<number | null>(initial?.id ?? null);
@@ -2282,13 +2281,23 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   </div>
                   <div>
                     <label className="text-xs font-bold text-[#5b6b87] mb-1 block">رمز تعبيري</label>
-                    <div className="flex flex-wrap gap-1">
-                      {EDITOR_EMOJIS.map(em => (
-                        <button key={em} onClick={() => setEmoji(em)} className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center transition border ${emoji === em ? "bg-amber-100 ring-2 ring-amber-400 border-amber-400" : "bg-[#f3ede0] border-[#ebe2cd] hover:bg-[#ebe2cd]"}`}>
-                          {em}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEmojiOpen(p => !p)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#ebe2cd] bg-[#f3ede0] hover:bg-[#ebe2cd] transition"
+                    >
+                      <span className="text-xl leading-none">{emoji}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-[#a07f37] transition-transform ${emojiOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {emojiOpen && (
+                      <div className="flex flex-wrap gap-1 mt-2 p-2 rounded-xl border border-[#ebe2cd] bg-white">
+                        {EDITOR_EMOJIS.map(em => (
+                          <button key={em} onClick={() => { setEmoji(em); setEmojiOpen(false); }} className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center transition border ${emoji === em ? "bg-amber-100 ring-2 ring-amber-400 border-amber-400" : "bg-[#f3ede0] border-[#ebe2cd] hover:bg-[#ebe2cd]"}`}>
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2296,23 +2305,34 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
               {/* Color + image upload */}
               <div>
                 <label className="text-xs font-bold text-[#5b6b87] mb-1 block">لون الغلاف</label>
-                <div className="flex flex-wrap gap-2">
-                  {COVER_PRESETS.map(p => (
-                    <button
-                      key={p.color}
-                      onClick={() => { setCoverColor(p.color); setCoverGradient(p.gradient); }}
-                      className="relative w-13 h-13 rounded-xl transition border border-white/10 overflow-hidden"
-                      style={{ background: p.gradient, width: "3.25rem", height: "3.25rem", boxShadow: coverColor === p.color ? "0 0 0 2px #fbbf24, 0 0 8px rgba(251,191,36,0.4)" : undefined }}
-                      title={p.label}
-                    >
-                      {coverColor === p.color && (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          <Check className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setColorOpen(p => !p)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#ebe2cd] bg-[#f3ede0] hover:bg-[#ebe2cd] transition"
+                >
+                  <span className="w-5 h-5 rounded-full shrink-0 border border-white/30 shadow-sm" style={{ background: coverGradient }} />
+                  <span className="text-sm font-bold text-[#5b6b87]">{COVER_PRESETS.find(p => p.color === coverColor)?.label ?? "اختر لوناً"}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-[#a07f37] transition-transform ${colorOpen ? "rotate-180" : ""}`} />
+                </button>
+                {colorOpen && (
+                  <div className="flex flex-wrap gap-2 mt-2 p-2 rounded-xl border border-[#ebe2cd] bg-white">
+                    {COVER_PRESETS.map(p => (
+                      <button
+                        key={p.color}
+                        onClick={() => { setCoverColor(p.color); setCoverGradient(p.gradient); setColorOpen(false); }}
+                        className="relative rounded-xl transition border border-white/10 overflow-hidden"
+                        style={{ background: p.gradient, width: "3.25rem", height: "3.25rem", boxShadow: coverColor === p.color ? "0 0 0 2px #fbbf24, 0 0 8px rgba(251,191,36,0.4)" : undefined }}
+                        title={p.label}
+                      >
+                        {coverColor === p.color && (
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <Check className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs font-bold text-[#5b6b87] mb-1 block">صورة الغلاف (اختياري — يستبدل الرمز)</label>
@@ -2424,11 +2444,8 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       {([
                         { id: "text", label: "نصي", emoji: "📝" },
                         { id: "image", label: "بصورة", emoji: "🖼️" },
-                        { id: "logo", label: "شعار", emoji: "🏷️" },
-                        { id: "sin-jeem", label: "سين جيم", emoji: "🔤" },
                         { id: "memory", label: "ذاكرة", emoji: "🧠" },
                         { id: "categorize", label: "تصنيف", emoji: "🗂️" },
-                        { id: "secret", label: "اكشف السر", emoji: "🔍" },
                       ] as const).map(t => (
                         <button
                           key={t.id}
@@ -2459,28 +2476,6 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       </div>
                     )}
 
-                    {draftType === "logo" && (
-                      <LogoEditor
-                        imageUrl={draftImageUrl}
-                        onUpload={async (file) => { setDraftImageUploading(true); const url = await uploadInline(file); setDraftImageUploading(false); if (url) setDraftImageUrl(url); }}
-                        onClear={() => setDraftImageUrl(null)}
-                        uploading={draftImageUploading}
-                        brandName={draftA}
-                        onBrandName={setDraftA}
-                        hint={draftHint}
-                        onHint={setDraftHint}
-                      />
-                    )}
-
-                    {draftType === "sin-jeem" && (
-                      <SinJeemEditor
-                        letter={draftSinLetter}
-                        onLetter={setDraftSinLetter}
-                        prompts={draftSinPrompts}
-                        onPrompts={setDraftSinPrompts}
-                      />
-                    )}
-
                     {draftType === "memory" && (
                       <MemoryEditor
                         pairs={draftMemoryPairs}
@@ -2494,73 +2489,6 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         groups={draftCatGroups}
                         onGroups={setDraftCatGroups}
                       />
-                    )}
-
-                    {draftType === "secret" && (
-                      <div className="space-y-3 p-3 rounded-xl border border-purple-200 bg-purple-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-purple-500 text-lg">🔍</span>
-                          <span className="text-sm font-extrabold text-purple-700">إعداد جولة اكشف السر</span>
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-[#5b6b87] mb-1 block">فئة الأسرار</label>
-                          {secretGameCats.length === 0 ? (
-                            <div className="text-xs text-[#5b6b87]/60 py-2">جارٍ التحميل...</div>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {secretGameCats.map(cat => (
-                                <div
-                                  key={cat.id}
-                                  className="relative"
-                                  onMouseEnter={() => { setHoveredSecretCat(cat.id); fetchSecretCatPreview(cat.id); }}
-                                  onMouseLeave={() => setHoveredSecretCat(null)}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => setDraftSecretCategoryId(cat.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition border ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow border-purple-400" : "bg-white border-purple-100 text-purple-700 hover:bg-purple-50"}`}
-                                  >
-                                    <span>{cat.emoji}</span>
-                                    <span>{cat.name}</span>
-                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${draftSecretCategoryId === cat.id ? "bg-white/30 text-white" : "bg-purple-100 text-purple-600"}`}>
-                                      {cat.count}
-                                    </span>
-                                  </button>
-
-                                  {hoveredSecretCat === cat.id && (
-                                    <div className="absolute bottom-full mb-1.5 right-0 z-50 min-w-[160px] max-w-[220px] rounded-xl bg-[#1a0d30] border border-purple-400/40 shadow-xl p-2.5 text-right pointer-events-none">
-                                      <div className="text-[10px] font-extrabold text-purple-300 mb-1.5 flex items-center gap-1 justify-end">
-                                        <span>عينة من الأسرار</span>
-                                        <span className="text-purple-400">🔍</span>
-                                      </div>
-                                      {secretCatPreviews[cat.id]?.loading ? (
-                                        <div className="text-[10px] text-white/40 text-center py-1">جارٍ التحميل…</div>
-                                      ) : secretCatPreviews[cat.id]?.samples.length === 0 ? (
-                                        <div className="text-[10px] text-white/40 text-center py-1">لا توجد عناصر</div>
-                                      ) : (
-                                        <ul className="space-y-1">
-                                          {secretCatPreviews[cat.id]?.samples.map((s, i) => (
-                                            <li key={i} className="text-[11px] text-white/80 flex items-center gap-1.5 justify-end">
-                                              <span>{s}</span>
-                                              <span className="text-purple-400 shrink-0">•</span>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                      <div className="mt-1.5 pt-1.5 border-t border-white/10 text-[10px] text-white/40 text-center">
-                                        {cat.count} عنصر في الفئة
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-purple-600/70 flex items-center gap-1">
-                          <span className="text-purple-500">⏱</span> كل جولة تحتوي على حد أقصى 10 أسئلة
-                        </div>
-                      </div>
                     )}
 
                     {(draftType === "text" || draftType === "image") && (
