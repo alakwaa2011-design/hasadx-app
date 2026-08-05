@@ -2203,7 +2203,20 @@ export default function TeacherAssignmentDetail() {
                                   <div className="space-y-1.5 mb-2">
                                     <div className="bg-background/60 border border-border rounded-lg px-2.5 py-2">
                                       <p className="text-[10px] font-bold text-muted-foreground mb-0.5">{lang === "ar" ? "إجابة الطالب" : "Student answer"}</p>
-                                      <p className="text-sm whitespace-pre-wrap break-words">{a.selectedAnswer || <span className="text-muted-foreground italic">{lang === "ar" ? "(فارغة)" : "(empty)"}</span>}</p>
+                                      {a.questionType === "whiteboard" ? (
+                                        a.selectedAnswer?.startsWith("data:image") ? (
+                                          <img
+                                            src={a.selectedAnswer}
+                                            alt={lang === "ar" ? "رسم الطالب" : "Student drawing"}
+                                            className="max-w-full rounded-lg border border-border mt-1"
+                                            style={{ imageRendering: "auto" }}
+                                          />
+                                        ) : (
+                                          <span className="text-muted-foreground italic text-sm">{lang === "ar" ? "(لا توجد رسمة)" : "(no drawing)"}</span>
+                                        )
+                                      ) : (
+                                        <p className="text-sm whitespace-pre-wrap break-words">{a.selectedAnswer || <span className="text-muted-foreground italic">{lang === "ar" ? "(فارغة)" : "(empty)"}</span>}</p>
+                                      )}
                                     </div>
                                     {a.correctAnswer && (
                                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg px-2.5 py-2">
