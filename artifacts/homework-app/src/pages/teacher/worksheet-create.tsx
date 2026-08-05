@@ -134,9 +134,14 @@ interface Settings {
 
   logoUrl?: string;
   /** Design template ID — auto-selected by AI, overrideable by teacher. */
+  /** Question IDs that have a forced page break inserted before them. */
+
   template?: ThemeId;
   /** Free-form canvas overlay elements (text, shapes). */
+
   layout?: CanvasLayout;
+
+  pageBreaks?: string[];
 }
 
 const MAX_CUSTOM_FIELDS = 6;
@@ -1913,10 +1918,18 @@ function QuestionEditor({
  * in-memory draft (no save, no fetch) so the teacher can see exactly
  * what the printable looks like, then either return to editing, print
  * to PDF, or download as Word — all without persisting anything.
+ *
+ * The page layout panel is also available here: all changes stay
+ * in-memory (they are not saved until the teacher explicitly clicks
+ * "Save & Open Print Page" from the editor).
  */
 function PreviewOverlay({
-  ar, data, onClose,
+  ar, data: initialData, onClose,
 }: { ar: boolean; data: WorksheetData; onClose: () => void }) {
+  // Local data state so the page-layout panel can reorder questions
+  // and set manual breaks without touching the saved worksheet.
+  const [data, setData] = useState<WorksheetData>(initialData);
+
   const handleWord = () => {
     const root = document.getElementById("ws-printable-root");
     if (!root) {
@@ -1925,6 +1938,15 @@ function PreviewOverlay({
     }
     downloadAsWord({ element: root, title: data.title, lang: data.language });
   };
+
+  const handleLayoutChange = (newQuestions: Question[], newPageBreaks: string[]) => {
+    setData(prev => ({
+      ...prev,
+      questions: newQuestions,
+      settings: { ...prev.settings, pageBreaks: newPageBreaks },
+    }));
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1968,7 +1990,7 @@ function PreviewOverlay({
           </button>
         </div>
       </div>
-      <WorksheetPrintView data={data} />
+      <WorksheetPrintView data={data} onLayoutChange={handleLayoutChange} />
     </motion.div>
   );
 }

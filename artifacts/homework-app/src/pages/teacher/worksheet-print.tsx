@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { Loader2, Printer, ArrowLeft, Edit3, FileType } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
@@ -12,6 +11,8 @@ import {
   type HeaderProps,
 } from "./worksheet-themes";
 import { CanvasLayerRenderer, type CanvasLayout } from "@/pages/teacher/worksheet-canvas-types";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { Loader2, Printer, ArrowLeft, Edit3, FileType, Layout, Save, Scissors } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -66,9 +67,14 @@ export interface Settings {
 
   logoUrl?: string;
   /** Design template ID — auto-selected by AI, overrideable by teacher. */
+  /** Question IDs that have a forced page break inserted before them. */
+
   template?: ThemeId;
   /** Free-form canvas overlay elements (text, shapes) placed by the teacher. */
+
   layout?: CanvasLayout;
+
+  pageBreaks?: string[];
 }
 
 export interface WorksheetData {
@@ -119,6 +125,7 @@ function paginateByEstimate(
   columns: 1 | 2,
   firstPageAvailMm: number,
   otherPageAvailMm: number,
+  manualBreaks?: ReadonlySet<string>,
 ): Question[][] {
   if (questions.length === 0) return [[]];
   const lineH = fontSizePt * 0.352778 * 1.85; // pt → mm
@@ -141,16 +148,18 @@ function paginateByEstimate(
   let limit = firstPageAvailMm;
   if (columns === 2) {
     for (let i = 0; i < questions.length; i += 2) {
+      const forceBreak = manualBreaks?.has(questions[i].id) || (i + 1 < questions.length && manualBreaks?.has(questions[i + 1].id));
       const h = Math.max(est(questions[i]), i + 1 < questions.length ? est(questions[i + 1]) : 0) + GAP;
-      if (page.length > 0 && used + h > limit) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
+      if (page.length > 0 && (forceBreak || used + h > limit)) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
       page.push(questions[i]);
       if (i + 1 < questions.length) page.push(questions[i + 1]);
       used += h;
     }
   } else {
     for (const q of questions) {
+      const forceBreak = manualBreaks?.has(q.id);
       const h = est(q) + GAP;
-      if (page.length > 0 && used + h > limit) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
+      if (page.length > 0 && (forceBreak || used + h > limit)) { pages.push(page); page = []; used = 0; limit = otherPageAvailMm; }
       page.push(q);
       used += h;
     }
@@ -206,7 +215,24 @@ function ThemedHeader({
   }
 }
 
-export function WorksheetPrintView({ data }: { data: WorksheetData }) {
+/**
+ * Reusable printable view. Supports automatic A4 pagination, custom
+ * theme color, design themes, and school logo in the header. The wrapper
+ * element gets id `ws-printable-root` so the Word exporter can grab the
+ * right subtree.
+ *
+ * Pass `onLayoutChange` to enable the "Page Layout" editing panel that
+ * lets teachers redistribute questions across pages and add manual page
+ * breaks. When the teacher saves layout changes this callback fires with
+ * the updated questions array and page-break IDs.
+ */
+export function WorksheetPrintView({
+  data,
+  onLayoutChange,
+}: {
+  data: WorksheetData;
+  onLayoutChange?: (newQuestions: Question[], newPageBreaks: string[]) => void;
+}) {
   const ar = data.language === "ar";
   const dir = ar ? "rtl" : "ltr";
   const fontFamily = resolveFont(data.settings.fontFamily, data.language);
@@ -225,6 +251,63 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   // Teacher's manual color always wins; theme provides a default; fallback to brand green
   const themeColor = data.settings.themeColor ?? theme?.defaultColor ?? BRAND_PRIMARY;
   const logoUrl = data.settings.logoUrl;
+
+  // ── Local layout-editing state ─────────────────────────────────────────
+  const [localQs, setLocalQs] = useState<Question[]>(data.questions);
+  const [localBreaks, setLocalBreaks] = useState<Set<string>>(
+    () => new Set(data.settings.pageBreaks ?? []),
+  );
+  const [showPanel, setShowPanel] = useState(false);
+  const [layoutDirty, setLayoutDirty] = useState(false);
+  const [dragQId, setDragQId] = useState<string | null>(null);
+  const [dragOverPage, setDragOverPage] = useState<number | null>(null);
+
+  // Sync when the parent data is replaced (e.g. after saving).
+  const prevDataRef = useRef(data);
+  useEffect(() => {
+    if (prevDataRef.current === data) return;
+    prevDataRef.current = data;
+    setLocalQs(data.questions);
+    setLocalBreaks(new Set(data.settings.pageBreaks ?? []));
+    setLayoutDirty(false);
+  }, [data]);
+
+  const addBreak = useCallback((qId: string) => {
+    setLocalBreaks(prev => { const n = new Set(prev); n.add(qId); return n; });
+    setLayoutDirty(true);
+  }, []);
+
+  const removeBreak = useCallback((qId: string) => {
+    setLocalBreaks(prev => { const n = new Set(prev); n.delete(qId); return n; });
+    setLayoutDirty(true);
+  }, []);
+
+  const saveLayout = useCallback(() => {
+    onLayoutChange?.(localQs, [...localBreaks]);
+    setLayoutDirty(false);
+  }, [localQs, localBreaks, onLayoutChange]);
+
+  const handleDropOnPage = useCallback((targetPageIndex: number) => {
+    if (!dragQId) return;
+    setDragOverPage(null);
+    setDragQId(null);
+    setLocalQs(prevQs => {
+      const currentPages = paginateByEstimate(prevQs, fontSizePt, data.settings.columns, 190, 250, localBreaks);
+      const targetPage = currentPages[targetPageIndex];
+      if (!targetPage || targetPage.length === 0) return prevQs;
+      const targetFirstQId = targetPage[0].id;
+      if (targetFirstQId === dragQId) return prevQs;
+      const qToMove = prevQs.find(q => q.id === dragQId);
+      if (!qToMove) return prevQs;
+      const without = prevQs.filter(q => q.id !== dragQId);
+      const insertIdx = without.findIndex(q => q.id === targetFirstQId);
+      const newQs = insertIdx === -1
+        ? [...without, qToMove]
+        : [...without.slice(0, insertIdx), qToMove, ...without.slice(insertIdx)];
+      return newQs;
+    });
+    setLayoutDirty(true);
+  }, [dragQId, fontSizePt, data.settings.columns, localBreaks]);
 
   const labels = ar
     ? { name: "الاسم", date: "التاريخ", clazz: "الصف", section: "القسم", school: "المدرسة", teacher: "المعلم", instructions: "تعليمات", answerKey: "صفحة الإجابات", question: "س", true: "✓", false: "✗", correct: "الإجابة:", goodLuck: "نتمنى لك التوفيق ✦" }
@@ -573,11 +656,185 @@ export default function WorksheetPrint() {
         </div>
       </div>
 
-      <WorksheetPrintView data={data} />
+      <WorksheetPrintView
+        data={data}
+        onLayoutChange={data.isOwner !== false ? async (newQs, newBreaks) => {
+          const updated: WorksheetData = {
+            ...data,
+            questions: newQs,
+            settings: { ...data.settings, pageBreaks: newBreaks },
+          };
+          try {
+            const res = await fetch(`${API_BASE}/api/worksheets/${data.id}`, {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: updated.title,
+                language: updated.language,
+                gradeLevel: updated.gradeLevel,
+                subject: updated.subject,
+                questions: updated.questions,
+                settings: updated.settings,
+              }),
+            });
+            if (!res.ok) throw new Error("save failed");
+            setData(updated);
+            toast.success(uiLang === "ar" ? "تم حفظ توزيع الصفحات" : "Layout saved");
+          } catch {
+            toast.error(uiLang === "ar" ? "تعذّر الحفظ" : "Save failed");
+          }
+        } : undefined}
+      />
     </>
   );
 }
 
+function PageLayoutPanel({
+  ar, pages, allQuestions, localBreaks, layoutDirty, dragQId, dragOverPage,
+  themeColor, onAddBreak, onRemoveBreak, onSave,
+  onDragStart, onDragEnd, onDragOverPage, onDropOnPage,
+}: {
+  ar: boolean;
+  pages: Question[][];
+  allQuestions: Question[];
+  localBreaks: ReadonlySet<string>;
+  layoutDirty: boolean;
+  dragQId: string | null;
+  dragOverPage: number | null;
+  themeColor: string;
+  onAddBreak: (id: string) => void;
+  onRemoveBreak: (id: string) => void;
+  onSave: () => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDragOverPage: (pi: number) => void;
+  onDropOnPage: (pi: number) => void;
+}) {
+  const qTypeIcon: Record<Question["type"], string> = {
+    mcq: "⊙", true_false: "✓✗", short_answer: "✎", fill_blank: "░", matching: "⇔",
+  };
+
+  return (
+    <div
+      className="no-print ws-layout-panel"
+      dir={ar ? "rtl" : "ltr"}
+      style={{ borderColor: `${themeColor}33` }}
+    >
+      {/* Panel header */}
+      <div className="ws-layout-panel-head" style={{ borderColor: `${themeColor}22` }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: themeColor }}>
+          {ar ? "توزيع الصفحات — اسحب الأسئلة بين الصفحات" : "Page layout — drag questions between pages"}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 11, color: "#888" }}>
+            {ar
+              ? "اسحب السؤال إلى صفحة أخرى · ✂ لإضافة فاصل صفحة"
+              : "Drag a question chip to another page · ✂ to add a break"}
+          </div>
+          {layoutDirty && (
+            <button
+              onClick={onSave}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", borderRadius: 8, border: "none",
+                background: themeColor, color: "white",
+                fontWeight: 700, fontSize: 12, cursor: "pointer",
+              }}
+            >
+              <Save size={13} />
+              {ar ? "حفظ التوزيع" : "Save layout"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Thumbnails */}
+      <div className="ws-layout-thumbs">
+        {pages.map((pageQs, pi) => {
+          const isDragTarget = dragOverPage === pi && dragQId !== null;
+          return (
+            <div
+              key={pi}
+              className="ws-layout-thumb"
+              style={{
+                borderColor: isDragTarget ? themeColor : `${themeColor}33`,
+                boxShadow: isDragTarget ? `0 0 0 2px ${themeColor}66` : "none",
+                background: isDragTarget ? `${themeColor}08` : "white",
+              }}
+              onDragOver={e => { e.preventDefault(); onDragOverPage(pi); }}
+              onDragLeave={() => {}}
+              onDrop={e => { e.preventDefault(); onDropOnPage(pi); }}
+            >
+              {/* Page badge */}
+              <div className="ws-layout-thumb-badge" style={{ background: themeColor }}>
+                {ar ? `ص ${pi + 1}` : `P${pi + 1}`}
+              </div>
+
+              {/* Question chips */}
+              <div className="ws-layout-thumb-qs">
+                {pageQs.map(q => {
+                  const globalIdx = allQuestions.indexOf(q) + 1;
+                  const hasBreak = localBreaks.has(q.id);
+                  const isDragging = dragQId === q.id;
+                  return (
+                    <div
+                      key={q.id}
+                      className="ws-layout-chip"
+                      draggable
+                      style={{
+                        opacity: isDragging ? 0.4 : 1,
+                        borderColor: hasBreak ? "#dc2626" : `${themeColor}55`,
+                        background: hasBreak ? "#fef2f2" : `${themeColor}0a`,
+                        cursor: "grab",
+                      }}
+                      onDragStart={e => {
+                        e.dataTransfer.setData("text/plain", q.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        onDragStart(q.id);
+                      }}
+                      onDragEnd={onDragEnd}
+                    >
+                      {/* Break indicator */}
+                      {hasBreak && (
+                        <span style={{ color: "#dc2626", fontSize: 9, fontWeight: 700 }}>↵</span>
+                      )}
+                      {/* Question number + type icon */}
+                      <span className="ws-layout-chip-num" style={{ background: themeColor }}>
+                        {globalIdx}
+                      </span>
+                      <span className="ws-layout-chip-icon">{qTypeIcon[q.type]}</span>
+                      <span className="ws-layout-chip-text">
+                        {(q.type === "matching" ? (q.prompt ?? "") : q.prompt ?? "").slice(0, 28) || "…"}
+                      </span>
+                      {/* Break toggle button */}
+                      <button
+                        className="ws-layout-break-btn"
+                        title={hasBreak
+                          ? (ar ? "إزالة فاصل الصفحة" : "Remove break")
+                          : (ar ? "كسر الصفحة قبله" : "Break before")}
+                        onClick={e => { e.stopPropagation(); hasBreak ? onRemoveBreak(q.id) : onAddBreak(q.id); }}
+                        style={{ color: hasBreak ? "#dc2626" : "#aaa" }}
+                      >
+                        ✂
+                      </button>
+                    </div>
+                  );
+                })}
+                {/* Drop hint when dragging */}
+                {isDragTarget && (
+                  <div className="ws-layout-drop-hint" style={{ borderColor: themeColor, color: themeColor }}>
+                    {ar ? "افلت هنا" : "Drop here"}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 function FieldLine({ label, short, icon }: { label: string; short?: boolean; icon?: React.ReactNode }) {
   return (
     <div className={`ws-field-line ${short ? "short" : ""}`}>
@@ -1297,6 +1554,169 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
         font-size: ${Math.max(9.5, fontSizePt - 0.5)}pt;
       }
       .ws-answer-line strong { color: ${BRAND_GOLD}; margin-${endSide}: 4px; }
+
+      /* ── Page layout panel (no-print) ─────────────────────────── */
+      .ws-layout-panel {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: #f8f9f8;
+        border-bottom: 1px solid;
+        padding: 10px 16px 12px;
+        font-family: ${headingFont};
+      }
+      .ws-layout-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+      .ws-layout-thumbs {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .ws-layout-thumb {
+        flex: 0 0 auto;
+        min-width: 140px;
+        max-width: 200px;
+        border: 2px solid;
+        border-radius: 8px;
+        padding: 8px;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .ws-layout-thumb-badge {
+        color: white;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 999px;
+        display: inline-block;
+        margin-bottom: 7px;
+        letter-spacing: 0.03em;
+      }
+      .ws-layout-thumb-qs {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ws-layout-chip {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 6px 3px 4px;
+        border-radius: 6px;
+        border: 1px solid;
+        font-size: 11px;
+        cursor: grab;
+        user-select: none;
+        transition: opacity 0.15s;
+      }
+      .ws-layout-chip:active { cursor: grabbing; }
+      .ws-layout-chip-num {
+        color: white;
+        font-weight: 800;
+        font-size: 10px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .ws-layout-chip-icon {
+        font-size: 10px;
+        color: #888;
+        flex-shrink: 0;
+      }
+      .ws-layout-chip-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10.5px;
+        color: #333;
+      }
+      .ws-layout-break-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 0 2px;
+        line-height: 1;
+        flex-shrink: 0;
+        opacity: 0.6;
+        transition: opacity 0.12s;
+      }
+      .ws-layout-break-btn:hover { opacity: 1; }
+      .ws-layout-drop-hint {
+        border: 2px dashed;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        padding: 4px;
+        letter-spacing: 0.03em;
+      }
+
+      /* ── Break-before overlay button (appears on each question
+           in the printed view when the panel is open) ────────── */
+      .ws-q-wrapper { position: relative; }
+      .ws-break-btn {
+        position: absolute;
+        top: -1px;
+        ${isAr ? "right" : "left"}: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px 2px 5px;
+        border-radius: 0 0 6px 0;
+        border: 1px solid currentColor;
+        background: white;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s;
+        font-family: ${headingFont};
+        white-space: nowrap;
+      }
+      .ws-q-wrapper:hover .ws-break-btn { opacity: 0.9; }
+      .ws-break-btn:hover { opacity: 1 !important; }
+
+      /* ── Panel toggle floating button ────────────────────────── */
+      .ws-panel-toggle {
+        position: fixed;
+        bottom: 20px;
+        ${isAr ? "left" : "right"}: 20px;
+        z-index: 35;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 2px solid;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+        transition: background 0.15s, color 0.15s;
+        font-family: ${headingFont};
+      }
+      .ws-panel-toggle-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #f59e0b;
+        flex-shrink: 0;
+      }
 
       @media print {
         @page { size: A4; margin: 0; }
