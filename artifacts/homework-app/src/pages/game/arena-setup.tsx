@@ -2184,23 +2184,23 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         animate={{ scale: 1, y: 0 }}
         className="w-full max-w-3xl my-8 rounded-3xl border-2 overflow-hidden"
         style={{
-          background: "linear-gradient(160deg, #14352A, #0A1F18)",
-          borderColor: "rgba(232,168,14,0.4)",
-          boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
+          background: "#faf6ec",
+          borderColor: "#ebe2cd",
+          boxShadow: "0 30px 80px -20px rgba(0,0,0,0.35)",
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex items-center justify-between p-4 border-b border-[#ebe2cd]">
           <div className="flex items-center gap-2.5">
-            <FolderPlus className="w-5 h-5 text-amber-300" />
+            <FolderPlus className="w-5 h-5 text-amber-600" />
             <div>
-              <h3 className="text-lg font-extrabold text-white">{savedCatId ? "تعديل فئة" : "إنشاء فئة جديدة"}</h3>
-              <p className="text-[11px] text-emerald-100/60">
+              <h3 className="text-lg font-extrabold text-[#1a2e1a]">{savedCatId ? "تعديل فئة" : "إنشاء فئة جديدة"}</h3>
+              <p className="text-[11px] text-[#5b6b87]">
                 {isAdmin ? "بصفتك مسؤولاً يمكنك جعل الفئة عامة لكل المعلمين" : "ستكون الفئة خاصة بحسابك فقط"}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[#f0e8d4] text-[#5b6b87] hover:text-[#1a2e1a]">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -2208,17 +2208,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
         <div className="p-4 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Mode tabs */}
           {!savedCatId && (
-            <div className="flex gap-2 rounded-xl bg-black/30 p-1 border border-white/10">
+            <div className="flex gap-2 rounded-xl p-1 border border-[#ebe2cd]" style={{ background: "#f0e8d4" }}>
               <button
                 onClick={() => setMode("saved")}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "saved" ? "bg-amber-400 text-emerald-950" : "text-emerald-100/70 hover:text-white"}`}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "saved" ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-[#5b6b87] hover:text-[#1a2e1a]"}`}
               >
                 <Save className="w-4 h-4 inline -mt-0.5 me-1" />
                 فئة محفوظة (تظهر في كل مسابقاتك)
               </button>
               <button
                 onClick={() => setMode("ephemeral")}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "ephemeral" ? "bg-amber-400 text-emerald-950" : "text-emerald-100/70 hover:text-white"}`}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold transition ${mode === "ephemeral" ? "bg-amber-400 text-emerald-950 shadow-sm" : "text-[#5b6b87] hover:text-[#1a2e1a]"}`}
               >
                 <Sparkles className="w-4 h-4 inline -mt-0.5 me-1" />
                 أسئلة سريعة (للمسابقة الحالية فقط)
@@ -2228,10 +2228,10 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
           {mode === "ephemeral" ? (
             <div className="space-y-3">
-              <p className="text-emerald-100/70 text-xs">أسئلة خاصة بهذه المسابقة فقط، لن تُحفظ بعد انتهاء اللعبة.</p>
+              <p className="text-[#5b6b87] text-xs">أسئلة خاصة بهذه المسابقة فقط، لن تُحفظ بعد انتهاء اللعبة.</p>
               <div className="grid sm:grid-cols-12 gap-2">
-                <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300" />
-                <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300" />
+                <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                 <div className="sm:col-span-2 flex items-center">
                   <DiffChips value={draftDiff} onChange={setDraftDiff} />
                 </div>
@@ -2240,17 +2240,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 </button>
               </div>
               {customQuestions.length === 0 ? (
-                <div className="text-center text-emerald-100/40 text-sm py-3">لم تضف أسئلة بعد</div>
+                <div className="text-center text-[#5b6b87]/60 text-sm py-3">لم تضف أسئلة بعد</div>
               ) : (
                 <div className="space-y-1.5 max-h-60 overflow-y-auto">
                   {customQuestions.map((cq, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
-                      <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: cq.difficulty === 800 ? "#fde68a" : cq.difficulty === 600 ? "#fca5a5" : cq.difficulty === 400 ? "#c4b5fd" : "#93c5fd", background: cq.difficulty === 800 ? "rgba(180,83,9,0.35)" : cq.difficulty === 600 ? "rgba(146,35,64,0.35)" : cq.difficulty === 400 ? "rgba(85,37,168,0.35)" : "rgba(36,87,168,0.35)" }}>{cq.difficulty}</span>
+                    <div key={i} className="flex items-center gap-2 rounded-lg bg-white border border-[#ebe2cd] px-3 py-2">
+                      <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: cq.difficulty === 800 ? "#a07f37" : cq.difficulty === 600 ? "#9f1239" : cq.difficulty === 400 ? "#6d28d9" : "#1d4ed8", background: cq.difficulty === 800 ? "rgba(251,191,36,0.18)" : cq.difficulty === 600 ? "rgba(159,18,57,0.12)" : cq.difficulty === 400 ? "rgba(109,40,217,0.12)" : "rgba(29,78,216,0.12)" }}>{cq.difficulty}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-white truncate">{cq.q}</div>
-                        <div className="text-xs text-emerald-200/80 truncate">→ {cq.a}</div>
+                        <div className="text-sm font-bold text-[#1a2e1a] truncate">{cq.q}</div>
+                        <div className="text-xs text-[#5b6b87] truncate">→ {cq.a}</div>
                       </div>
-                      <button onClick={() => setCustomQuestions(prev => prev.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-rose-300 hover:bg-rose-500/20" title="حذف">
+                      <button onClick={() => setCustomQuestions(prev => prev.filter((_, j) => j !== i))} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title="حذف">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -2263,7 +2263,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
               {/* Cover preview + name */}
               <div className="grid sm:grid-cols-[180px_1fr] gap-4">
                 <div
-                  className="rounded-2xl aspect-[4/3] relative overflow-hidden border-2 border-white/15"
+                  className="rounded-2xl aspect-[4/3] relative overflow-hidden border-2 border-[#ebe2cd]"
                   style={{ background: coverImageUrl ? "#0E2A1D" : (coverGradient ?? coverColor) }}
                 >
                   {coverImageUrl ? (
@@ -2277,14 +2277,14 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-bold text-emerald-100/70 mb-1 block">اسم الفئة</label>
-                    <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="مثال: علماء العرب" className="w-full bg-black/30 text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-amber-300" />
+                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">اسم الفئة</label>
+                    <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="مثال: علماء العرب" className="w-full bg-white text-[#1a2e1a] rounded-xl px-3 py-2 border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-emerald-100/70 mb-1 block">رمز تعبيري</label>
+                    <label className="text-xs font-bold text-[#5b6b87] mb-1 block">رمز تعبيري</label>
                     <div className="flex flex-wrap gap-1">
                       {EDITOR_EMOJIS.map(em => (
-                        <button key={em} onClick={() => setEmoji(em)} className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center transition ${emoji === em ? "bg-amber-400 ring-2 ring-amber-200" : "bg-white/10 hover:bg-white/20"}`}>
+                        <button key={em} onClick={() => setEmoji(em)} className={`w-9 h-9 rounded-lg text-xl flex items-center justify-center transition border ${emoji === em ? "bg-amber-100 ring-2 ring-amber-400 border-amber-400" : "bg-[#f3ede0] border-[#ebe2cd] hover:bg-[#ebe2cd]"}`}>
                           {em}
                         </button>
                       ))}
@@ -2295,29 +2295,35 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               {/* Color + image upload */}
               <div>
-                <label className="text-xs font-bold text-emerald-100/70 mb-1 block">لون الغلاف</label>
+                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">لون الغلاف</label>
                 <div className="flex flex-wrap gap-2">
                   {COVER_PRESETS.map(p => (
                     <button
                       key={p.color}
                       onClick={() => { setCoverColor(p.color); setCoverGradient(p.gradient); }}
-                      className={`w-12 h-12 rounded-xl transition ${coverColor === p.color ? "ring-2 ring-amber-300 scale-110" : ""}`}
-                      style={{ background: p.gradient }}
+                      className="relative w-13 h-13 rounded-xl transition border border-white/10 overflow-hidden"
+                      style={{ background: p.gradient, width: "3.25rem", height: "3.25rem", boxShadow: coverColor === p.color ? "0 0 0 2px #fbbf24, 0 0 8px rgba(251,191,36,0.4)" : undefined }}
                       title={p.label}
-                    />
+                    >
+                      {coverColor === p.color && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Check className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />
+                        </span>
+                      )}
+                    </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-emerald-100/70 mb-1 block">صورة الغلاف (اختياري — يستبدل الرمز)</label>
+                <label className="text-xs font-bold text-[#5b6b87] mb-1 block">صورة الغلاف (اختياري — يستبدل الرمز)</label>
                 <div className="flex items-center gap-2">
-                  <label className="px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 cursor-pointer inline-flex items-center gap-2 text-sm font-bold">
+                  <label className="px-4 py-2 rounded-xl bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] cursor-pointer inline-flex items-center gap-2 text-sm font-bold transition">
                     <Camera className="w-4 h-4" />
                     {uploading ? "جارٍ الرفع..." : "رفع صورة"}
                     <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={uploading} className="hidden" />
                   </label>
                   {coverImageUrl && (
-                    <button onClick={() => setCoverImageUrl(null)} className="px-3 py-2 rounded-xl bg-rose-500/15 border border-rose-400/30 text-rose-200 hover:bg-rose-500/25 text-sm font-bold inline-flex items-center gap-1">
+                    <button onClick={() => setCoverImageUrl(null)} className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-sm font-bold inline-flex items-center gap-1">
                       <X className="w-4 h-4" />
                       إزالة
                     </button>
@@ -2327,14 +2333,14 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               {/* Public toggle (admin only — shown for both create and edit) */}
               {isAdmin && (
-                <label className="flex items-center gap-3 p-3 rounded-xl bg-amber-300/10 border border-amber-300/30 cursor-pointer">
-                  <input type="checkbox" checked={makePublic} onChange={e => setMakePublic(e.target.checked)} className="w-5 h-5 accent-amber-400" />
+                <label className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer">
+                  <input type="checkbox" checked={makePublic} onChange={e => setMakePublic(e.target.checked)} className="w-5 h-5 accent-amber-500" />
                   <div className="flex-1">
-                    <div className="font-bold text-sm text-amber-100 inline-flex items-center gap-1.5">
+                    <div className="font-bold text-sm text-amber-800 inline-flex items-center gap-1.5">
                       <Globe className="w-4 h-4" />
                       فئة عامة (مرئية لجميع المعلمين)
                     </div>
-                    <div className="text-[11px] text-amber-100/60">
+                    <div className="text-[11px] text-amber-700/70">
                       {savedCatId ? "تحديث حالة الظهور للمعلمين الآخرين" : "ستظهر في مكتبة جميع المعلمين، ولن تكون مرتبطة بحسابك"}
                     </div>
                   </div>
@@ -2343,7 +2349,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               <div className="flex justify-between gap-2">
                 {savedCatId && (
-                  <button onClick={removeCategory} className="px-4 py-2 rounded-xl bg-rose-500/15 border border-rose-400/30 text-rose-200 hover:bg-rose-500/25 text-sm font-bold inline-flex items-center gap-2">
+                  <button onClick={removeCategory} className="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-sm font-bold inline-flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
                     حذف الفئة
                   </button>
@@ -2360,17 +2366,17 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
 
               {/* Activities editor (only after save) */}
               {savedCatId && (
-                <div className="border-t border-white/10 pt-5">
+                <div className="border-t border-[#ebe2cd] pt-5">
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                    <h4 className="font-extrabold text-base text-white flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-amber-300" />
+                    <h4 className="font-extrabold text-base text-[#1a2e1a] flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-amber-600" />
                       أسئلة الفئة
                     </h4>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {importSources.ai && (
                         <button
                           onClick={() => setAiDialogOpen(true)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-gradient-to-l from-fuchsia-500/30 to-violet-500/30 border border-fuchsia-300/40 text-fuchsia-100 hover:from-fuchsia-500/45 hover:to-violet-500/45"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] transition"
                         >
                           <Wand2 className="w-3.5 h-3.5" />
                           توليد بالذكاء
@@ -2379,7 +2385,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                       {importSources.homework && (
                         <button
                           onClick={() => toast.info("استيراد من واجباتك — قريباً")}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25"
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] transition"
                         >
                           <Inbox className="w-3.5 h-3.5" />
                           من الواجبات
@@ -2397,7 +2403,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                           <button
                             onClick={() => fileInputRef.current?.click()}
                             disabled={fileImporting}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-sky-500/15 border border-sky-400/30 text-sky-100 hover:bg-sky-500/25 disabled:opacity-60"
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] disabled:opacity-60 transition"
                           >
                             <Upload className="w-3.5 h-3.5" />
                             {fileImporting ? "جارٍ الاستيراد..." : "من ملف Excel/CSV"}
@@ -2408,12 +2414,12 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   </div>
 
                   {!importSources.manual && (
-                    <div className="rounded-xl bg-black/30 border border-dashed border-white/10 p-3 mb-3 text-center text-emerald-100/60 text-xs">
+                    <div className="rounded-xl bg-[#f3ede0] border border-dashed border-[#ebe2cd] p-3 mb-3 text-center text-[#5b6b87] text-xs">
                       الإدخال اليدوي معطّل من قِبَل المسؤول — استخدم زر «توليد بالذكاء» أعلاه.
                     </div>
                   )}
                   {importSources.manual && (
-                  <div className="rounded-xl bg-black/30 border border-white/10 p-3 mb-3 space-y-3">
+                  <div className="rounded-xl bg-white border border-[#ebe2cd] p-3 mb-3 space-y-3">
                     <div className="flex flex-wrap gap-1.5">
                       {([
                         { id: "text", label: "نصي", emoji: "📝" },
@@ -2427,7 +2433,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         <button
                           key={t.id}
                           onClick={() => setDraftType(t.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition ${draftType === t.id ? "bg-amber-400 text-emerald-950 shadow" : "bg-white/10 text-white/70 hover:bg-white/15"}`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition border ${draftType === t.id ? "bg-amber-400 text-emerald-950 shadow border-amber-300" : "bg-[#f3ede0] border-[#ebe2cd] text-[#5b6b87] hover:bg-[#ebe2cd]"}`}
                         >
                           <span>{t.emoji}</span> {t.label}
                         </button>
@@ -2444,7 +2450,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             </button>
                           </div>
                         ) : (
-                          <label className="px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-400/30 text-emerald-100 hover:bg-emerald-500/25 cursor-pointer inline-flex items-center gap-2 text-xs font-bold">
+                          <label className="px-3 py-2 rounded-lg bg-[#f3ede0] border border-[#ebe2cd] text-[#a07f37] hover:bg-[#ebe2cd] cursor-pointer inline-flex items-center gap-2 text-xs font-bold transition">
                             <Upload className="w-3.5 h-3.5" />
                             {draftImageUploading ? "جارٍ الرفع..." : "رفع صورة السؤال"}
                             <input type="file" accept="image/*" onChange={handleQuestionImageUpload} disabled={draftImageUploading} className="hidden" />
@@ -2491,15 +2497,15 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                     )}
 
                     {draftType === "secret" && (
-                      <div className="space-y-3 p-3 rounded-xl border border-purple-400/30 bg-purple-500/8">
+                      <div className="space-y-3 p-3 rounded-xl border border-purple-200 bg-purple-50">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-purple-300 text-lg">🔍</span>
-                          <span className="text-sm font-extrabold text-purple-200">إعداد جولة اكشف السر</span>
+                          <span className="text-purple-500 text-lg">🔍</span>
+                          <span className="text-sm font-extrabold text-purple-700">إعداد جولة اكشف السر</span>
                         </div>
                         <div>
-                          <label className="text-xs font-bold text-emerald-100/70 mb-1 block">فئة الأسرار</label>
+                          <label className="text-xs font-bold text-[#5b6b87] mb-1 block">فئة الأسرار</label>
                           {secretGameCats.length === 0 ? (
-                            <div className="text-xs text-emerald-100/50 py-2">جارٍ التحميل...</div>
+                            <div className="text-xs text-[#5b6b87]/60 py-2">جارٍ التحميل...</div>
                           ) : (
                             <div className="flex flex-wrap gap-1.5">
                               {secretGameCats.map(cat => (
@@ -2512,11 +2518,11 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                                   <button
                                     type="button"
                                     onClick={() => setDraftSecretCategoryId(cat.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow" : "bg-white/10 text-white/70 hover:bg-white/15"}`}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition border ${draftSecretCategoryId === cat.id ? "bg-purple-500 text-white shadow border-purple-400" : "bg-white border-purple-100 text-purple-700 hover:bg-purple-50"}`}
                                   >
                                     <span>{cat.emoji}</span>
                                     <span>{cat.name}</span>
-                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${draftSecretCategoryId === cat.id ? "bg-white/25 text-white" : "bg-white/15 text-white/60"}`}>
+                                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${draftSecretCategoryId === cat.id ? "bg-white/30 text-white" : "bg-purple-100 text-purple-600"}`}>
                                       {cat.count}
                                     </span>
                                   </button>
@@ -2551,16 +2557,16 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                             </div>
                           )}
                         </div>
-                        <div className="text-xs text-emerald-100/50 flex items-center gap-1">
-                          <span className="text-purple-300">⏱</span> كل جولة تحتوي على حد أقصى 10 أسئلة
+                        <div className="text-xs text-purple-600/70 flex items-center gap-1">
+                          <span className="text-purple-500">⏱</span> كل جولة تحتوي على حد أقصى 10 أسئلة
                         </div>
                       </div>
                     )}
 
                     {(draftType === "text" || draftType === "image") && (
                       <div className="grid sm:grid-cols-12 gap-2">
-                        <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? "وصف السؤال (مثال: ما هو هذا الحيوان؟)" : "نص السؤال"} className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
-                        <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/40 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                        <input value={draftQ} onChange={e => setDraftQ(e.target.value)} placeholder={draftType === "image" ? "وصف السؤال (مثال: ما هو هذا الحيوان؟)" : "نص السؤال"} className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                        <input value={draftA} onChange={e => setDraftA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-2 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                         <div className="sm:col-span-2 flex items-center">
                           <DiffChips value={draftDiff} onChange={setDraftDiff} />
                         </div>
@@ -2583,7 +2589,7 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                   )}
 
                   {activities.length === 0 ? (
-                    <div className="text-center text-emerald-100/40 text-sm py-4 border border-dashed border-white/10 rounded-xl">
+                    <div className="text-center text-[#5b6b87]/60 text-sm py-4 border border-dashed border-[#ebe2cd] rounded-xl">
                       لم تضف أسئلة بعد — يفضّل ≥6 أسئلة لكل فئة (2 لكل صعوبة)
                     </div>
                   ) : (
@@ -2592,30 +2598,30 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                         <div key={a.id}>
                           {editingActivityId === a.id ? (
                             /* ── Inline edit form ── */
-                            <div className="rounded-lg bg-amber-400/10 border border-amber-300/40 px-3 py-3 space-y-2">
-                              <div className="text-[11px] font-extrabold text-amber-200 mb-1">تعديل السؤال</div>
+                            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 space-y-2">
+                              <div className="text-[11px] font-extrabold text-amber-700 mb-1">تعديل السؤال</div>
                               <div className="grid sm:grid-cols-12 gap-2">
-                                <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
-                                <input value={editA} onChange={e => setEditA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                                <input value={editQ} onChange={e => setEditQ(e.target.value)} placeholder="نص السؤال" className="sm:col-span-5 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
+                                <input value={editA} onChange={e => setEditA(e.target.value)} placeholder="الإجابة" className="sm:col-span-4 bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                                 <div className="sm:col-span-3 flex items-center">
                                   <DiffChips value={editDiff} onChange={setEditDiff} />
                                 </div>
                               </div>
-                              <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="تلميح (اختياري)" className="w-full bg-black/40 text-white rounded-lg px-3 py-1.5 text-sm border border-white/10 focus:outline-none focus:border-amber-300" />
+                              <input value={editHint} onChange={e => setEditHint(e.target.value)} placeholder="تلميح (اختياري)" className="w-full bg-white text-[#1a2e1a] rounded-lg px-3 py-1.5 text-sm border border-[#ebe2cd] focus:outline-none focus:border-amber-400" />
                               <div className="flex gap-2 pt-1">
                                 <button onClick={saveEditActivity} disabled={savingEdit} className="px-4 py-1.5 rounded-lg font-bold text-sm bg-amber-400 text-emerald-950 hover:bg-amber-300 inline-flex items-center gap-1.5 disabled:opacity-50">
                                   <Save className="w-3.5 h-3.5" />
                                   {savingEdit ? "جارٍ الحفظ..." : "حفظ التعديل"}
                                 </button>
-                                <button onClick={() => setEditingActivityId(null)} className="px-3 py-1.5 rounded-lg font-bold text-sm text-white/60 hover:text-white border border-white/15 hover:border-white/30">
+                                <button onClick={() => setEditingActivityId(null)} className="px-3 py-1.5 rounded-lg font-bold text-sm text-[#5b6b87] hover:text-[#1a2e1a] border border-[#ebe2cd] hover:border-[#a07f37]">
                                   إلغاء
                                 </button>
                               </div>
                             </div>
                           ) : (
                             /* ── Normal row ── */
-                            <div className="flex items-center gap-2 rounded-lg bg-black/30 border border-white/10 px-3 py-2">
-                              <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: a.difficulty === 800 ? "#fde68a" : a.difficulty === 600 ? "#fca5a5" : a.difficulty === 400 ? "#c4b5fd" : "#93c5fd", background: a.difficulty === 800 ? "rgba(180,83,9,0.35)" : a.difficulty === 600 ? "rgba(146,35,64,0.35)" : a.difficulty === 400 ? "rgba(85,37,168,0.35)" : "rgba(36,87,168,0.35)" }}>{a.difficulty}</span>
+                            <div className="flex items-center gap-2 rounded-lg bg-white border border-[#ebe2cd] px-3 py-2">
+                              <span className="text-xs font-bold shrink-0 w-10 text-center rounded-md px-1 py-0.5" style={{ color: a.difficulty === 800 ? "#a07f37" : a.difficulty === 600 ? "#9f1239" : a.difficulty === 400 ? "#6d28d9" : "#1d4ed8", background: a.difficulty === 800 ? "rgba(251,191,36,0.15)" : a.difficulty === 600 ? "rgba(159,18,57,0.10)" : a.difficulty === 400 ? "rgba(109,40,217,0.10)" : "rgba(29,78,216,0.10)" }}>{a.difficulty}</span>
                               {a.type === "secret" && (
                                 <span className="text-base shrink-0" title="اكشف السر">🔍</span>
                               )}
@@ -2623,13 +2629,13 @@ function CategoryEditor({ initial, isAdmin, onClose, onSaved, customQuestions, s
                                 <img src={a.imageUrl} alt="" className="w-10 h-10 object-cover rounded shrink-0" />
                               )}
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-bold text-white truncate">{a.question}</div>
-                                <div className="text-xs text-emerald-200/80 truncate">→ {a.answer}</div>
+                                <div className="text-sm font-bold text-[#1a2e1a] truncate">{a.question}</div>
+                                <div className="text-xs text-[#5b6b87] truncate">→ {a.answer}</div>
                               </div>
-                              <button onClick={() => startEditActivity(a)} className="p-1.5 rounded-lg text-amber-300 hover:bg-amber-400/20" title="تعديل">
+                              <button onClick={() => startEditActivity(a)} className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50" title="تعديل">
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-300 hover:bg-rose-500/20" title="حذف">
+                              <button onClick={() => removeSavedActivity(a.id)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50" title="حذف">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
