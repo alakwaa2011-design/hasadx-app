@@ -1,9 +1,23 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { CheckCircle, AlertTriangle, MessageSquare, User, BookOpen, Send, Loader2, Clock, XCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, MessageSquare, User, BookOpen, Send, Loader2, Clock, XCircle, Paperclip } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BASE = import.meta.env.VITE_API_URL || "";
+
+interface Attachment { name: string; objectPath: string; contentType: string; size: number; }
+
+function attachIcon(ct: string) {
+  if (ct.startsWith("image/")) return "🖼️";
+  if (ct === "application/pdf") return "📄";
+  if (ct.includes("word")) return "📝";
+  if (ct.includes("sheet") || ct.includes("excel")) return "📊";
+  if (ct.includes("presentation") || ct.includes("powerpoint")) return "📑";
+  return "📎";
+}
+function attachSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const C = {
   green: "#1E4D35", greenLight: "#2d7050", gold: "#C9A050",
@@ -20,7 +34,7 @@ interface MessageData {
   sentAt: string; readAt: string | null; replyText: string | null; repliedAt: string | null;
   tokenExpiresAt: string; expired: boolean;
   studentName: string; studentClass: string | null; gradeLevel: string | null;
-  teacherName: string; replies: Reply[];
+  teacherName: string; replies: Reply[]; attachments: string | null;
 }
 
 export default function ParentPortalPage() {
@@ -142,6 +156,27 @@ export default function ParentPortalPage() {
             <div style={{ background: C.surface, borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75, color: C.text, whiteSpace: "pre-wrap", borderRight: `4px solid ${C.gold}` }}>
               {data.body}
             </div>
+            {data.attachments && (() => {
+              try {
+                const atts: Attachment[] = JSON.parse(data.attachments);
+                if (!atts.length) return null;
+                return (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, display: "flex", alignItems: "center", gap: 5 }}>
+                      <Paperclip size={11} /> المرفقات ({atts.length})
+                    </div>
+                    {atts.map((att, i) => (
+                      <a key={i} href={`${BASE}/api/storage${att.objectPath}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 8, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", textDecoration: "none", color: C.text, fontSize: 13 }}>
+                        <span style={{ fontSize: 17 }}>{attachIcon(att.contentType)}</span>
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                        <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                      </a>
+                    ))}
+                  </div>
+                );
+              } catch { return null; }
+            })()}
           </div>
 
           {/* Replies */}
