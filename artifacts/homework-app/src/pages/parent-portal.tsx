@@ -189,6 +189,7 @@ export default function ParentPortalPage() {
   const [viewer, setViewer] = useState<{ attachments: Attachment[]; index: number } | null>(null);
   const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -235,6 +236,7 @@ export default function ParentPortalPage() {
   async function handleReply() {
     if (!replyText.trim() || !token) return;
     setSending(true);
+    setReplyError(null);
     try {
       const r = await fetch(`${BASE}/api/parent-portal/${token}/reply`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -252,7 +254,9 @@ export default function ParentPortalPage() {
       setReplyText("");
       setReplyAttachments([]);
       setSent(true);
-    } catch (e: any) { alert(e.message || "حدث خطأ أثناء الإرسال"); }
+    } catch (e: any) {
+      setReplyError(e.message || "حدث خطأ أثناء الإرسال");
+    }
     finally { setSending(false); }
   }
 
@@ -427,6 +431,17 @@ export default function ParentPortalPage() {
                         </button>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Error banner */}
+                {replyError && (
+                  <div style={{ marginTop: 10, background: "#fff3cd", border: "1px solid #ffc107", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#856404", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>
+                      {replyError}
+                      {replyAttachments.length > 0 && " — مرفقاتك محفوظة، يمكنك إعادة المحاولة."}
+                    </span>
                   </div>
                 )}
 
