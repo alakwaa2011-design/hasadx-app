@@ -6,3 +6,4 @@
 - [Runtime schema migrations required](runtime-schema-migrations.md) — new tables/columns must also be added to runSchemaMigrations in the api-server entrypoint, or prod fails with "does not exist".
 - [Solo challenge difficulty and multi-level](solo-challenge-difficulty-levels.md) — difficulty preset (easy/med/hard) + per-question duration via GameQuestion.duration; multi-level uses preserveOrder in createGame and level-transition overlay in play.tsx.
 - [API server slow build & restart](api-server-slow-build.md) — workflow restart timeouts are usually the 2-min esbuild bundle, not a crash; use 300s timeout and test dist manually to tell them apart.
+- [Worksheet design theme system](worksheet-theme-system.md) — 7 themes in worksheet-themes.tsx; ThemeId in Settings.template; auto-selected on AI generation via selectTheme(); localStorage tracks last theme to prevent repeats.

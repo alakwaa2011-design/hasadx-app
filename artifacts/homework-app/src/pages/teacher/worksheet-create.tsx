@@ -8,8 +8,11 @@ import {
   Wand2, X, Edit3, Check, Eye, FileText, ListChecks,
   CheckSquare, Pencil, Type, Shuffle, Upload, ImageIcon,
   FileType, Settings as SettingsIcon, Building2, GraduationCap, User,
-  ArrowLeft, Printer, RotateCcw, Palette,
+  ArrowLeft, Printer, RotateCcw, Palette, LayoutTemplate, ChevronDown,
 } from "lucide-react";
+import {
+  type ThemeId, THEMES, selectTheme, getLastTheme, setLastTheme,
+} from "./worksheet-themes";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { WorksheetPrintView, type WorksheetData } from "@/pages/teacher/worksheet-print";
@@ -112,6 +115,8 @@ interface Settings {
   themeColor?: string;
   /** Base64 school logo shown in the header. */
   logoUrl?: string;
+  /** Design template ID — auto-selected by AI, overrideable by teacher. */
+  template?: ThemeId;
 }
 
 const MAX_CUSTOM_FIELDS = 6;
@@ -199,6 +204,7 @@ const DEFAULT_SETTINGS: Settings = {
   showWatermark: true,
   themeColor: undefined,
   logoUrl: undefined,
+  template: undefined,
 };
 
 const THEME_PRESETS = [
@@ -230,6 +236,9 @@ export default function WorksheetCreate() {
 
   // AI panel state
   const [aiOpen, setAiOpen] = useState(true);
+  const [headerOpen, setHeaderOpen] = useState(false);
+  const [designOpen, setDesignOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [aiTopic, setAiTopic] = useState("");
   const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard" | "mixed">(_wsPrefs.aiDifficulty ?? "medium");
   const [aiPages, setAiPages] = useState<1 | 2 | 3>(_wsPrefs.aiPages ?? 1);
@@ -436,6 +445,17 @@ export default function WorksheetCreate() {
       // immediately without scrolling.
       setQuestions(prev => [...generated, ...prev]);
       if (!title.trim()) setTitle(aiTopic.trim().slice(0, 80));
+      // Auto-select an appropriate design template based on subject/grade
+      const lastTheme = getLastTheme();
+      const chosenTheme = selectTheme(
+        subject.trim() || null,
+        gradeLevel.trim() || null,
+        contentLang as "ar" | "en",
+        generated.length,
+        lastTheme,
+      );
+      setLastTheme(chosenTheme);
+      setSettings(s => ({ ...s, template: chosenTheme }));
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال` : `Added ${generated.length} questions`);
       setAiOpen(false);
     } catch {
@@ -490,11 +510,20 @@ export default function WorksheetCreate() {
       }
       setQuestions(prev => [...generated, ...prev]);
       if (!title.trim()) {
-        // Use the first file's name (sans extension) as a sensible
-        // default title when the teacher hasn't typed one yet.
         const baseName = pickedFiles[0].name.replace(/\.[^.]+$/, "").slice(0, 80);
         setTitle(baseName);
       }
+      // Auto-select design template for file-extracted worksheets too
+      const lastThemeF = getLastTheme();
+      const chosenThemeF = selectTheme(
+        subject.trim() || null,
+        gradeLevel.trim() || null,
+        contentLang as "ar" | "en",
+        generated.length,
+        lastThemeF,
+      );
+      setLastTheme(chosenThemeF);
+      setSettings(s => ({ ...s, template: chosenThemeF }));
       toast.success(ar ? `تمت إضافة ${generated.length} سؤال من ${pickedFiles.length} ملف` : `Added ${generated.length} questions from ${pickedFiles.length} file(s)`);
       setPickedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -673,32 +702,35 @@ export default function WorksheetCreate() {
           </button>
         </div>
 
-        {/* Meta card */}
+        {/* ── Main meta card — title always visible ── */}
         <Card className="p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label={ar ? "عنوان الورقة" : "Worksheet Title"}>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder={ar ? "مثال: مراجعة الكسور" : "e.g., Fractions Review"}
-                className="w-full px-3 py-2 rounded-lg border bg-background"
-              />
-            </Field>
-            <Field label={ar ? "المادة (اختياري)" : "Subject (optional)"}>
+          {/* Title — prominent */}
+          <Field label={ar ? "عنوان الورقة" : "Worksheet Title"}>
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={ar ? "مثال: مراجعة الكسور" : "e.g., Fractions Review"}
+              className="w-full px-3 py-2.5 rounded-lg border bg-background text-base font-semibold"
+            />
+          </Field>
+
+          {/* Subject + Grade — smaller row */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={ar ? "المادة" : "Subject"}>
               <input
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
-                placeholder={ar ? "مثال: رياضيات" : "e.g., Mathematics"}
-                className="w-full px-3 py-2 rounded-lg border bg-background"
+                placeholder={ar ? "رياضيات، علوم، عربي…" : "Math, Science…"}
+                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
               />
             </Field>
-            <Field label={ar ? "المرحلة (اختياري)" : "Grade level (optional)"}>
+            <Field label={ar ? "المرحلة" : "Grade"}>
               <input
                 value={gradeLevel}
                 onChange={e => setGradeLevel(e.target.value)}
-                placeholder={ar ? "مثال: الصف الخامس" : "e.g., Grade 5"}
+                placeholder={ar ? "الصف الخامس…" : "Grade 5…"}
                 list="ws-grade-levels"
-                className="w-full px-3 py-2 rounded-lg border bg-background"
+                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
               />
               <datalist id="ws-grade-levels">
                 {gradeLevels.map(g => <option key={g.gradeLevel} value={g.gradeLevel} />)}
@@ -706,218 +738,376 @@ export default function WorksheetCreate() {
             </Field>
           </div>
 
-          {/* Header identity fields — printed at the top of the worksheet. */}
-          <div className="pt-3 border-t" style={{ borderColor: `${BRAND_PRIMARY}22` }}>
-            <div className="text-[11px] font-bold mb-2 flex items-center gap-1.5" style={{ color: BRAND_PRIMARY }}>
-              <Building2 className="w-3.5 h-3.5" />
-              {ar ? "بيانات الترويسة (تظهر أعلى الورقة عند الطباعة)" : "Header info (printed at the top of the worksheet)"}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Field label={ar ? "اسم المدرسة" : "School name"}>
-                <input
-                  value={settings.schoolName ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, schoolName: e.target.value }))}
-                  placeholder={ar ? "مثال: مدرسة الأمل" : "e.g., Al-Amal School"}
-                  maxLength={200}
-                  className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                />
-              </Field>
-              <Field label={ar ? "القسم" : "Section"}>
-                <input
-                  value={settings.section ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
-                  placeholder={ar ? "مثال: قسم اللغة العربية" : "e.g., English Department"}
-                  maxLength={100}
-                  className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                />
-              </Field>
-              <Field label={ar ? "اسم المعلم" : "Teacher name"}>
-                <input
-                  value={settings.teacherName ?? ""}
-                  onChange={e => setSettings(s => ({ ...s, teacherName: e.target.value }))}
-                  placeholder={ar ? "مثال: أ. محمد" : "e.g., Mr. Ahmed"}
-                  maxLength={100}
-                  className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                />
-              </Field>
-            </div>
-
-            {/* Custom header fields — teacher-defined extras (e.g. "Year:
-                2026", "Marks: __/100"). Render alongside school/section/
-                teacher in the printable worksheet header. */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                <div className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: BRAND_PRIMARY }}>
-                  <Plus className="w-3.5 h-3.5" />
-                  {ar ? "حقول إضافية للترويسة (اختياري)" : "Extra header fields (optional)"}
-                </div>
-                <button
-                  onClick={() => {
-                    const cur = settings.customFields ?? [];
-                    if (cur.length >= MAX_CUSTOM_FIELDS) {
-                      toast.error(ar ? `الحد الأقصى ${MAX_CUSTOM_FIELDS} حقول` : `Max ${MAX_CUSTOM_FIELDS} fields`);
-                      return;
-                    }
-                    setSettings(s => ({ ...s, customFields: [...(s.customFields ?? []), { label: "", value: "" }] }));
-                  }}
-                  className="text-[11px] font-bold px-2 py-1 rounded border flex items-center gap-1"
-                  style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
-                >
-                  <Plus className="w-3 h-3" />
-                  {ar ? "أضف حقلًا" : "Add field"}
-                </button>
+          {/* ── Collapsible: Header identity ── */}
+          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
+            <button
+              onClick={() => setHeaderOpen(o => !o)}
+              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
+            >
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
+                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "بيانات الترويسة" : "Header info"}
+                </span>
+                {/* Summary pill when closed */}
+                {!headerOpen && (settings.schoolName || settings.teacherName || (settings.customFields ?? []).length > 0) && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
+                    {[settings.schoolName, settings.teacherName].filter(Boolean).join(" · ")}
+                    {(settings.customFields ?? []).length > 0 && ` +${(settings.customFields ?? []).length}`}
+                  </span>
+                )}
               </div>
-              {(settings.customFields ?? []).length === 0 ? (
-                <div className="text-[11px] text-muted-foreground">
-                  {ar
-                    ? "أضف أي حقل تريد ظهوره أعلى الورقة، مثل: العام الدراسي، الدرجة، الفصل…"
-                    : "Add any field you want at the top of the worksheet, e.g., Academic Year, Marks, Term…"}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {(settings.customFields ?? []).map((f, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <input
-                        value={f.label}
-                        onChange={e => {
-                          const next = (settings.customFields ?? []).slice();
-                          next[i] = { ...next[i], label: e.target.value };
-                          setSettings(s => ({ ...s, customFields: next }));
-                        }}
-                        placeholder={ar ? "اسم الحقل (مثل: الفصل)" : "Field name (e.g., Term)"}
-                        maxLength={40}
-                        className="w-1/3 px-2 py-1.5 rounded border bg-background text-sm"
-                      />
-                      <input
-                        value={f.value}
-                        onChange={e => {
-                          const next = (settings.customFields ?? []).slice();
-                          next[i] = { ...next[i], value: e.target.value };
-                          setSettings(s => ({ ...s, customFields: next }));
-                        }}
-                        placeholder={ar ? "القيمة" : "Value"}
-                        maxLength={120}
-                        className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
-                      />
-                      <button
-                        onClick={() => {
-                          const next = (settings.customFields ?? []).filter((_, j) => j !== i);
-                          setSettings(s => ({ ...s, customFields: next }));
-                        }}
-                        className="p-1.5 rounded text-red-500 hover:bg-red-50"
-                        title={ar ? "حذف" : "Remove"}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+              <ChevronDown
+                className="w-4 h-4 transition-transform flex-shrink-0"
+                style={{ color: BRAND_PRIMARY, transform: headerOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {headerOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3 space-y-3 pb-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Field label={ar ? "اسم المدرسة" : "School name"}>
+                        <input
+                          value={settings.schoolName ?? ""}
+                          onChange={e => setSettings(s => ({ ...s, schoolName: e.target.value }))}
+                          placeholder={ar ? "مدرسة الأمل" : "Al-Amal School"}
+                          maxLength={200}
+                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                        />
+                      </Field>
+                      <Field label={ar ? "القسم" : "Department"}>
+                        <input
+                          value={settings.section ?? ""}
+                          onChange={e => setSettings(s => ({ ...s, section: e.target.value }))}
+                          placeholder={ar ? "قسم اللغة العربية" : "English Dept"}
+                          maxLength={100}
+                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                        />
+                      </Field>
+                      <Field label={ar ? "اسم المعلم" : "Teacher"}>
+                        <input
+                          value={settings.teacherName ?? ""}
+                          onChange={e => setSettings(s => ({ ...s, teacherName: e.target.value }))}
+                          placeholder={ar ? "أ. محمد" : "Mr. Ahmed"}
+                          maxLength={100}
+                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                        />
+                      </Field>
                     </div>
-                  ))}
-                </div>
+                    {/* Custom fields */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold" style={{ color: BRAND_PRIMARY }}>
+                          {ar ? "حقول إضافية (اختياري)" : "Extra fields (optional)"}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const cur = settings.customFields ?? [];
+                            if (cur.length >= MAX_CUSTOM_FIELDS) {
+                              toast.error(ar ? `الحد الأقصى ${MAX_CUSTOM_FIELDS} حقول` : `Max ${MAX_CUSTOM_FIELDS} fields`);
+                              return;
+                            }
+                            setSettings(s => ({ ...s, customFields: [...(s.customFields ?? []), { label: "", value: "" }] }));
+                          }}
+                          className="text-[11px] font-bold px-2 py-1 rounded border flex items-center gap-1"
+                          style={{ borderColor: `${BRAND_PRIMARY}55`, color: BRAND_PRIMARY }}
+                        >
+                          <Plus className="w-3 h-3" />
+                          {ar ? "أضف" : "Add"}
+                        </button>
+                      </div>
+                      {(settings.customFields ?? []).length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground">{ar ? "مثال: العام الدراسي، الدرجة، الفصل…" : "e.g., Academic Year, Marks, Term…"}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(settings.customFields ?? []).map((f, i) => (
+                            <div key={i} className="flex gap-2 items-center">
+                              <input
+                                value={f.label}
+                                onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], label: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
+                                placeholder={ar ? "اسم الحقل" : "Label"}
+                                maxLength={40}
+                                className="w-1/3 px-2 py-1.5 rounded border bg-background text-sm"
+                              />
+                              <input
+                                value={f.value}
+                                onChange={e => { const next = (settings.customFields ?? []).slice(); next[i] = { ...next[i], value: e.target.value }; setSettings(s => ({ ...s, customFields: next })); }}
+                                placeholder={ar ? "القيمة" : "Value"}
+                                maxLength={120}
+                                className="flex-1 px-2 py-1.5 rounded border bg-background text-sm"
+                              />
+                              <button onClick={() => { const next = (settings.customFields ?? []).filter((_, j) => j !== i); setSettings(s => ({ ...s, customFields: next })); }} className="p-1.5 rounded text-red-500 hover:bg-red-50" title={ar ? "حذف" : "Remove"}>
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
               )}
-            </div>
-          </div>
-        </Card>
-
-        {/* Design card — theme color + school logo */}
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${BRAND_PRIMARY}15`, color: BRAND_PRIMARY }}>
-              <Palette className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-sm font-bold" style={{ color: BRAND_PRIMARY }}>{ar ? "تصميم الورقة" : "Worksheet Design"}</div>
-              <div className="text-[11px] text-muted-foreground">{ar ? "لون الورقة وشعار المدرسة" : "Accent color & school logo"}</div>
-            </div>
+            </AnimatePresence>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Color theme */}
-            <div>
-              <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                {ar ? "لون الورقة" : "Accent color"}
-              </label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {THEME_PRESETS.map(p => (
-                  <button
-                    key={p.color}
-                    title={p.label}
-                    onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
-                    className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
-                    style={{
-                      background: p.color,
-                      borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
-                      boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
-                    }}
-                  />
-                ))}
-                {/* Custom color input */}
-                <label
-                  className="w-8 h-8 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-                  style={{ borderColor: `${BRAND_PRIMARY}55` }}
-                  title={ar ? "لون مخصص" : "Custom color"}
-                >
-                  <input
-                    type="color"
-                    className="sr-only"
-                    value={settings.themeColor ?? BRAND_PRIMARY}
-                    onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))}
-                  />
-                  <span className="text-[10px] font-bold" style={{ color: BRAND_PRIMARY }}>+</span>
-                </label>
+          {/* ── Collapsible: Design ── */}
+          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
+            <button
+              onClick={() => setDesignOpen(o => !o)}
+              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
+            >
+              <div className="flex items-center gap-2">
+                <LayoutTemplate className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
+                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "تصميم الورقة" : "Worksheet Design"}
+                </span>
+                {!designOpen && settings.template && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${THEMES[settings.template].swatchColors[0]}20`, color: THEMES[settings.template].swatchColors[0] }}>
+                    {ar ? THEMES[settings.template].nameAr : THEMES[settings.template].nameEn}
+                  </span>
+                )}
+                {!designOpen && settings.themeColor && (
+                  <span className="w-4 h-4 rounded-full border border-white shadow-sm inline-block" style={{ background: settings.themeColor }} />
+                )}
               </div>
-              {settings.themeColor && (
-                <button
-                  onClick={() => setSettings(s => ({ ...s, themeColor: undefined }))}
-                  className="text-[11px] text-muted-foreground hover:text-destructive"
+              <ChevronDown
+                className="w-4 h-4 transition-transform flex-shrink-0"
+                style={{ color: BRAND_PRIMARY, transform: designOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {designOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
                 >
-                  {ar ? "إعادة الافتراضي" : "Reset to default"}
-                </button>
-              )}
-            </div>
+                  <div className="pt-3 space-y-5 pb-1">
+                    {/* Template picker */}
+                    <div>
+                      <div className="text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
+                        {ar ? "قالب التصميم" : "Design Template"}
+                        <span className="ms-2 font-normal text-muted-foreground text-[10px]">
+                          {ar ? "يُختار تلقائيًا عند التوليد بالذكاء الاصطناعي" : "auto-selected on AI generation"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-8 gap-2 mb-2">
+                        {/* No template */}
+                        <button
+                          onClick={() => setSettings(s => ({ ...s, template: undefined }))}
+                          className="flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all"
+                          style={{
+                            borderColor: !settings.template ? BRAND_PRIMARY : "transparent",
+                            background: !settings.template ? `${BRAND_PRIMARY}0d` : "var(--muted)",
+                          }}
+                        >
+                          <div className="w-full h-8 rounded flex items-center justify-center border border-dashed" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
+                            <span className="text-[8px] font-bold" style={{ color: BRAND_PRIMARY }}>{ar ? "افتراضي" : "Default"}</span>
+                          </div>
+                          <span className="text-[9px] text-muted-foreground truncate w-full text-center">{ar ? "كلاسيك" : "Classic"}</span>
+                        </button>
+                        {/* Theme cards */}
+                        {(Object.values(THEMES) as typeof THEMES[ThemeId][]).map(t => {
+                          const isActive = settings.template === t.id;
+                          const [c1, c2] = t.swatchColors;
+                          return (
+                            <button
+                              key={t.id}
+                              onClick={() => setSettings(s => ({ ...s, template: s.template === t.id ? undefined : t.id }))}
+                              title={t.description}
+                              className="flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all"
+                              style={{
+                                borderColor: isActive ? c1 : "transparent",
+                                background: isActive ? `${c1}0d` : "var(--muted)",
+                              }}
+                            >
+                              <div className="w-full h-8 rounded overflow-hidden" style={{ background: c1 }}>
+                                <div className="h-[40%]" style={{ background: c1 }} />
+                                <div className="h-[60%]" style={{ background: "white" }}>
+                                  <div className="mx-1 mt-0.5 h-px rounded" style={{ background: `${c1}44` }} />
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-semibold truncate w-full text-center" style={{ color: isActive ? c1 : undefined }}>
+                                {ar ? t.nameAr : t.nameEn}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
 
-            {/* Logo upload */}
-            <div>
-              <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
-                {ar ? "شعار المدرسة (اختياري)" : "School logo (optional)"}
-              </label>
-              {settings.logoUrl ? (
-                <div className="flex items-center gap-3">
-                  <img src={settings.logoUrl} alt="logo" className="h-12 w-auto rounded border border-border object-contain" />
-                  <button
-                    onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))}
-                    className="text-[11px] text-red-500 hover:underline"
-                  >
-                    {ar ? "حذف الشعار" : "Remove"}
-                  </button>
-                </div>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/30 transition-colors" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
-                  <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
-                  <span>{ar ? "اضغط لرفع الشعار (PNG/JPG)" : "Click to upload logo (PNG/JPG)"}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-                    className="sr-only"
-                    onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      if (file.size > 500 * 1024) {
-                        toast.error(ar ? "حجم الشعار يجب أن يكون أقل من 500 كيلوبايت" : "Logo must be under 500 KB");
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = ev => {
-                        const url = ev.target?.result as string;
-                        setSettings(s => ({ ...s, logoUrl: url }));
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                  />
-                </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Accent color */}
+                      <div>
+                        <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
+                          {ar ? "لون الورقة" : "Accent color"}
+                        </label>
+                        <div className="flex flex-wrap gap-2 mb-1">
+                          {THEME_PRESETS.map(p => (
+                            <button
+                              key={p.color}
+                              title={p.label}
+                              onClick={() => setSettings(s => ({ ...s, themeColor: s.themeColor === p.color ? undefined : p.color }))}
+                              className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
+                              style={{
+                                background: p.color,
+                                borderColor: settings.themeColor === p.color ? "#fff" : "transparent",
+                                boxShadow: settings.themeColor === p.color ? `0 0 0 2px ${p.color}` : "none",
+                              }}
+                            />
+                          ))}
+                          <label className="w-7 h-7 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer hover:scale-110 transition-transform" style={{ borderColor: `${BRAND_PRIMARY}55` }} title={ar ? "لون مخصص" : "Custom"}>
+                            <input type="color" className="sr-only" value={settings.themeColor ?? BRAND_PRIMARY} onChange={e => setSettings(s => ({ ...s, themeColor: e.target.value }))} />
+                            <span className="text-[10px] font-bold" style={{ color: BRAND_PRIMARY }}>+</span>
+                          </label>
+                        </div>
+                        {settings.themeColor && (
+                          <button onClick={() => setSettings(s => ({ ...s, themeColor: undefined }))} className="text-[11px] text-muted-foreground hover:text-destructive">
+                            {ar ? "إعادة الافتراضي" : "Reset"}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Logo upload */}
+                      <div>
+                        <label className="block text-xs font-bold mb-2" style={{ color: BRAND_PRIMARY }}>
+                          {ar ? "شعار المدرسة (اختياري)" : "School logo (optional)"}
+                        </label>
+                        {settings.logoUrl ? (
+                          <div className="flex items-center gap-3">
+                            <img src={settings.logoUrl} alt="logo" className="h-10 w-auto rounded border object-contain" />
+                            <button onClick={() => setSettings(s => ({ ...s, logoUrl: undefined }))} className="text-[11px] text-red-500 hover:underline">{ar ? "حذف" : "Remove"}</button>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed text-sm text-muted-foreground hover:bg-muted/30 transition-colors" style={{ borderColor: `${BRAND_PRIMARY}44` }}>
+                            <ImageIcon className="w-4 h-4 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
+                            <span className="text-xs">{ar ? "رفع الشعار (PNG/JPG)" : "Upload logo (PNG/JPG)"}</span>
+                            <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" className="sr-only"
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 500 * 1024) { toast.error(ar ? "حجم الشعار يجب أن يكون أقل من 500 كيلوبايت" : "Logo must be under 500 KB"); return; }
+                                const reader = new FileReader();
+                                reader.onload = ev => setSettings(s => ({ ...s, logoUrl: ev.target?.result as string }));
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               )}
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {ar ? "يظهر في الترويسة أعلى الورقة · الحد الأقصى 500 كيلوبايت" : "Shown in the header · max 500 KB"}
-              </p>
-            </div>
+            </AnimatePresence>
+          </div>
+
+          {/* ── Collapsible: Layout & Formatting ── */}
+          <div className="border-t" style={{ borderColor: `${BRAND_PRIMARY}18` }}>
+            <button
+              onClick={() => setLayoutOpen(o => !o)}
+              className="w-full flex items-center justify-between pt-3 pb-1 gap-2 text-start"
+            >
+              <div className="flex items-center gap-2">
+                <SettingsIcon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: BRAND_PRIMARY }} />
+                <span className="text-xs font-bold" style={{ color: BRAND_PRIMARY }}>
+                  {ar ? "إعدادات التنسيق" : "Formatting"}
+                </span>
+                {!layoutOpen && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {ar
+                      ? `${settings.columns === 2 ? "عمودان" : "عمود واحد"} · ${settings.fontSizePt}pt${settings.includeAnswerKey ? " · نموذج الإجابات" : ""}`
+                      : `${settings.columns === 2 ? "2 cols" : "1 col"} · ${settings.fontSizePt}pt${settings.includeAnswerKey ? " · Answer key" : ""}`}
+                  </span>
+                )}
+              </div>
+              <ChevronDown
+                className="w-4 h-4 transition-transform flex-shrink-0"
+                style={{ color: BRAND_PRIMARY, transform: layoutOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {layoutOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3 space-y-3 pb-1">
+                    <Field label={ar ? "تعليمات الطالب (اختياري)" : "Student instructions (optional)"}>
+                      <textarea
+                        value={settings.instructions ?? ""}
+                        onChange={e => setSettings(s => ({ ...s, instructions: e.target.value }))}
+                        rows={2}
+                        placeholder={ar ? "اقرأ كل سؤال بعناية قبل الإجابة." : "Read each question carefully before answering."}
+                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                      />
+                    </Field>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <Toggle label={ar ? "خانة الاسم" : "Name field"} value={settings.includeName} onChange={v => setSettings(s => ({ ...s, includeName: v }))} icon={<User className="w-3 h-3" />} />
+                      <Toggle label={ar ? "خانة التاريخ" : "Date field"} value={settings.includeDate} onChange={v => setSettings(s => ({ ...s, includeDate: v }))} />
+                      <Toggle label={ar ? "خانة الصف" : "Class field"} value={settings.includeClass} onChange={v => setSettings(s => ({ ...s, includeClass: v }))} icon={<GraduationCap className="w-3 h-3" />} />
+                      <Toggle label={ar ? "نموذج الإجابات" : "Answer key"} value={settings.includeAnswerKey} onChange={v => setSettings(s => ({ ...s, includeAnswerKey: v }))} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Field label={ar ? "عدد الأعمدة" : "Columns"}>
+                        <div className="flex gap-2">
+                          {([1, 2] as const).map(c => (
+                            <button key={c} onClick={() => setSettings(s => ({ ...s, columns: c }))}
+                              className="flex-1 px-3 py-2 rounded-lg border text-sm font-bold"
+                              style={{ background: settings.columns === c ? BRAND_PRIMARY : "transparent", color: settings.columns === c ? "#fff" : BRAND_PRIMARY, borderColor: `${BRAND_PRIMARY}55` }}>
+                              {c === 1 ? (ar ? "عمود" : "1 col") : (ar ? "عمودان" : "2 cols")}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+                      <Field label={ar ? "نوع الخط" : "Font"}>
+                        <select value={settings.fontFamily} onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as FontFamily }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                          <option value="default">{ar ? "افتراضي" : "Default"}</option>
+                          <option value="cairo">Cairo</option>
+                          <option value="tajawal">Tajawal</option>
+                          <option value="amiri">Amiri</option>
+                          <option value="noto-naskh">Noto Naskh</option>
+                          <option value="inter">Inter</option>
+                          <option value="georgia">Georgia</option>
+                        </select>
+                      </Field>
+                      <Field label={ar ? `حجم الخط (${settings.fontSizePt}pt)` : `Font size (${settings.fontSizePt}pt)`}>
+                        <input type="range" min={9} max={18} step={1} value={settings.fontSizePt}
+                          onChange={e => setSettings(s => ({ ...s, fontSizePt: parseInt(e.target.value, 10) }))}
+                          className="w-full" style={{ accentColor: BRAND_PRIMARY }} />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Field label={ar ? "ملاحظة في الترويسة" : "Header note"}>
+                        <input value={settings.headerNote ?? ""} onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" maxLength={300} />
+                      </Field>
+                      <Field label={ar ? "ملاحظة في التذييل" : "Footer note"}>
+                        <input value={settings.footerNote ?? ""} onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" maxLength={300} />
+                      </Field>
+                    </div>
+                    <div className="rounded-lg p-3 border flex items-center gap-3 flex-wrap" style={{ borderColor: `${BRAND_GOLD}55`, background: `${BRAND_GOLD}0c` }}>
+                      <div className="flex-1 min-w-[160px]">
+                        <div className="text-xs font-bold mb-0.5" style={{ color: BRAND_PRIMARY }}>{ar ? "علامة حصاد المائية" : "Hasaad watermark"}</div>
+                        <div className="text-[11px] text-muted-foreground">{ar ? "كلمة «حصاد» بخط كبير وخافت خلف الأسئلة" : "Faded «Hasaad» word behind the questions"}</div>
+                      </div>
+                      <Toggle label={settings.showWatermark ? (ar ? "تظهر" : "On") : (ar ? "مخفية" : "Off")} value={settings.showWatermark} onChange={v => setSettings(s => ({ ...s, showWatermark: v }))} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </Card>
 
@@ -1210,115 +1400,6 @@ export default function WorksheetCreate() {
           )}
         </Card>
 
-        {/* Layout settings */}
-        <Card className="p-4 space-y-3">
-          <div className="text-sm font-bold flex items-center gap-2" style={{ color: BRAND_PRIMARY }}>
-            <SettingsIcon className="w-4 h-4" />
-            {ar ? "إعدادات التخطيط والتنسيق" : "Layout & Formatting"}
-          </div>
-          <Field label={ar ? "تعليمات الطالب (اختياري)" : "Student instructions (optional)"}>
-            <textarea
-              value={settings.instructions ?? ""}
-              onChange={e => setSettings(s => ({ ...s, instructions: e.target.value }))}
-              rows={2}
-              placeholder={ar ? "مثال: اقرأ كل سؤال بعناية قبل الإجابة." : "e.g., Read each question carefully before answering."}
-              className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-            />
-          </Field>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Toggle label={ar ? "خانة الاسم" : "Name field"} value={settings.includeName} onChange={v => setSettings(s => ({ ...s, includeName: v }))} icon={<User className="w-3 h-3" />} />
-            <Toggle label={ar ? "خانة التاريخ" : "Date field"} value={settings.includeDate} onChange={v => setSettings(s => ({ ...s, includeDate: v }))} />
-            <Toggle label={ar ? "خانة الصف" : "Class field"} value={settings.includeClass} onChange={v => setSettings(s => ({ ...s, includeClass: v }))} icon={<GraduationCap className="w-3 h-3" />} />
-            <Toggle label={ar ? "صفحة الإجابات" : "Answer key"} value={settings.includeAnswerKey} onChange={v => setSettings(s => ({ ...s, includeAnswerKey: v }))} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Field label={ar ? "عدد الأعمدة" : "Columns"}>
-              <div className="flex gap-2">
-                {([1, 2] as const).map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setSettings(s => ({ ...s, columns: c }))}
-                    className="flex-1 px-3 py-2 rounded-lg border text-sm font-bold"
-                    style={{
-                      background: settings.columns === c ? BRAND_PRIMARY : "transparent",
-                      color: settings.columns === c ? "#fff" : BRAND_PRIMARY,
-                      borderColor: `${BRAND_PRIMARY}55`,
-                    }}
-                  >
-                    {c === 1 ? (ar ? "عمود واحد" : "1 Column") : (ar ? "عمودان" : "2 Columns")}
-                  </button>
-                ))}
-              </div>
-            </Field>
-            <Field label={ar ? "نوع الخط" : "Font family"}>
-              <select
-                value={settings.fontFamily}
-                onChange={e => setSettings(s => ({ ...s, fontFamily: e.target.value as FontFamily }))}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-              >
-                <option value="default">{ar ? "افتراضي" : "Default"}</option>
-                <option value="cairo">Cairo</option>
-                <option value="tajawal">Tajawal</option>
-                <option value="amiri">Amiri</option>
-                <option value="noto-naskh">Noto Naskh</option>
-                <option value="inter">Inter</option>
-                <option value="georgia">Georgia</option>
-              </select>
-            </Field>
-            <Field label={ar ? `حجم الخط (${settings.fontSizePt}pt)` : `Font size (${settings.fontSizePt}pt)`}>
-              <input
-                type="range" min={9} max={18} step={1}
-                value={settings.fontSizePt}
-                onChange={e => setSettings(s => ({ ...s, fontSizePt: parseInt(e.target.value, 10) }))}
-                className="w-full"
-                style={{ accentColor: BRAND_PRIMARY }}
-              />
-            </Field>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Field label={ar ? "ملاحظة في الترويسة" : "Header note"}>
-              <input
-                value={settings.headerNote ?? ""}
-                onChange={e => setSettings(s => ({ ...s, headerNote: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                maxLength={300}
-              />
-            </Field>
-            <Field label={ar ? "ملاحظة في التذييل" : "Footer note"}>
-              <input
-                value={settings.footerNote ?? ""}
-                onChange={e => setSettings(s => ({ ...s, footerNote: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-                maxLength={300}
-              />
-            </Field>
-          </div>
-
-          {/* Watermark control — currently always available; once billing is
-              wired up we can hide this for paid plans (force showWatermark=false). */}
-          <div
-            className="rounded-lg p-3 border flex items-start gap-3 flex-wrap"
-            style={{ borderColor: `${BRAND_GOLD}55`, background: `${BRAND_GOLD}0c` }}
-          >
-            <div className="flex-1 min-w-[180px]">
-              <div className="text-xs font-bold mb-0.5" style={{ color: BRAND_PRIMARY }}>
-                {ar ? "علامة حصاد المائية (خلف نص الورقة)" : "Hasaad watermark (behind worksheet text)"}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                {ar
-                  ? "كلمة \"حصاد\" بخط كبير وخافت تظهر خلف الأسئلة. يمكن إخفاؤها لاحقًا في الباقات المدفوعة."
-                  : "Big faded \"Hasaad\" word shown behind the questions. Can be hidden in paid plans later."}
-              </div>
-            </div>
-            <Toggle
-              label={settings.showWatermark ? (ar ? "تظهر" : "Showing") : (ar ? "مخفية" : "Hidden")}
-              value={settings.showWatermark}
-              onChange={v => setSettings(s => ({ ...s, showWatermark: v }))}
-            />
-          </div>
-        </Card>
 
         {/* Action bar */}
         <div className="sticky bottom-3 flex flex-wrap gap-2 justify-end p-3 rounded-2xl border shadow-lg backdrop-blur"

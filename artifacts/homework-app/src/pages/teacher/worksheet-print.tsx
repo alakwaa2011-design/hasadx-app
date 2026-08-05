@@ -4,6 +4,13 @@ import { Loader2, Printer, ArrowLeft, Edit3, FileType } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "@/components/ui/sonner";
 import { downloadAsWord, printToPdf } from "@/lib/print-export";
+import {
+  type ThemeId, type ThemeSpec, THEMES, THEME_BACKGROUNDS,
+  resolveThemeHeadingFont,
+  TabularHeader, ArabesqueHeader, BandHeader,
+  PlayfulHeader, ClipboardHeader, MastheadHeader,
+  type HeaderProps,
+} from "./worksheet-themes";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const BRAND_PRIMARY = "#225739";
@@ -41,6 +48,8 @@ export interface Settings {
   themeColor?: string;
   /** Base64 or URL of school logo — shown in the header identity panel. */
   logoUrl?: string;
+  /** Design template ID — auto-selected by AI, overrideable by teacher. */
+  template?: ThemeId;
 }
 
 export interface WorksheetData {
@@ -136,14 +145,66 @@ function paginateByEstimate(
  * theme color, and school logo in the header. The wrapper element gets
  * id `ws-printable-root` so the Word exporter can grab the right subtree.
  */
+/** Inject a theme's CSS overrides after the base PrintStyles. */
+function ThemeStyles({ theme, TC, GOLD, BG, fontFamily, headingFont, fontSizePt, lang }: {
+  theme: ThemeSpec; TC: string; GOLD: string; BG: string;
+  fontFamily: string; headingFont: string; fontSizePt: number; lang: "ar" | "en";
+}) {
+  const isAr = lang === "ar";
+  const startSide = isAr ? "right" : "left" as const;
+  const endSide = isAr ? "left" : "right" as const;
+  return <style>{theme.css({ TC, GOLD, BG, fontFamily, headingFont, fontSizePt, isAr, startSide, endSide })}</style>;
+}
+
+/** Build the themed header element given a resolved theme or fall back to classic. */
+function ThemedHeader({
+  theme, data, labels, TC, GOLD, ar, hasIdentity, customFields, classicFallback,
+}: {
+  theme: ThemeSpec | undefined;
+  data: WorksheetData;
+  labels: Record<string, string>;
+  TC: string; GOLD: string; ar: boolean;
+  hasIdentity: boolean;
+  customFields: Array<{ label: string; value: string }>;
+  classicFallback: React.ReactNode;
+}): React.ReactNode {
+  if (!theme) return classicFallback;
+  const props: HeaderProps = {
+    data, labels, TC, GOLD, ar, hasIdentity, customFields,
+    IdentityCell: () => null, FieldLine: () => null, DoubleDivider: () => null,
+    IconUser: () => null, IconClass: () => null, IconDate: () => null,
+    IconLightbulb: () => null, IconSchool: () => null, IconSection: () => null,
+    IconTeacher: () => null, IconField: () => null,
+  };
+  switch (theme.headerLayout) {
+    case "tabular":   return <TabularHeader {...props} />;
+    case "arabesque": return <ArabesqueHeader {...props} />;
+    case "band":      return <BandHeader {...props} />;
+    case "playful":   return <PlayfulHeader {...props} />;
+    case "clipboard": return <ClipboardHeader {...props} />;
+    case "masthead":  return <MastheadHeader {...props} />;
+    default:          return classicFallback;
+  }
+}
+
 export function WorksheetPrintView({ data }: { data: WorksheetData }) {
   const ar = data.language === "ar";
   const dir = ar ? "rtl" : "ltr";
   const fontFamily = resolveFont(data.settings.fontFamily, data.language);
-  const headingFont = resolveHeadingFont(data.language);
+  const baseHeadingFont = resolveHeadingFont(data.language);
+
+  // ── Resolve active design theme ──
+  const themeId = data.settings.template;
+  const theme = themeId ? THEMES[themeId] : undefined;
+  const themeBg = themeId ? (THEME_BACKGROUNDS[themeId] ?? "white") : "white";
+
+  // Theme can override heading font (e.g. Amiri for Arabic Ink)
+  const headingFont = resolveThemeHeadingFont(themeId, baseHeadingFont);
+
   const fontSizePt = Math.min(18, Math.max(9, data.settings.fontSizePt ?? 12));
   const showWatermark = data.settings.showWatermark !== false;
-  const themeColor = data.settings.themeColor ?? BRAND_PRIMARY;
+  // Teacher's manual color always wins; theme provides a default; fallback to brand green
+  const themeColor = data.settings.themeColor ?? theme?.defaultColor ?? BRAND_PRIMARY;
   const logoUrl = data.settings.logoUrl;
 
   const labels = ar
@@ -220,8 +281,8 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
     if (newPages.length > 0) setPages(newPages);
   });
 
-  // ── Header JSX (shared between page 1 render and measurement div) ──
-  const headerJsx = (
+  // ── Classic (default) header — used when no theme is active ──
+  const classicHeader = (
     <header className="ws-header">
       <div className={`ws-headgrid${hasIdentity ? "" : " ws-headgrid-titleonly"}`}>
         {hasIdentity && (
@@ -271,11 +332,43 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
     </header>
   );
 
+  // ── Resolve the correct header for page 1 ──
+  const page1Header = (
+    <ThemedHeader
+      theme={theme}
+      data={data}
+      labels={labels}
+      TC={themeColor}
+      GOLD={BRAND_GOLD}
+      ar={ar}
+      hasIdentity={hasIdentity}
+      customFields={customFields}
+      classicFallback={classicHeader}
+    />
+  );
+
   const qColWidth = cols === 2 ? "calc((174mm - 8mm) / 2)" : "174mm";
+  // The page class includes the theme modifier when a theme is active
+  const pageClass = `ws-page${themeId ? ` ws-theme-${themeId}` : ""}`;
+  // Use theme background for the screen wrapper tint
+  const hostBg = themeId ? "bg-neutral-200" : "bg-neutral-200";
 
   return (
     <>
       <PrintStyles fontFamily={fontFamily} headingFont={headingFont} fontSizePt={fontSizePt} lang={data.language} themeColor={themeColor} />
+      {/* Theme-specific CSS overrides injected after the base styles */}
+      {theme && (
+        <ThemeStyles
+          theme={theme}
+          TC={themeColor}
+          GOLD={BRAND_GOLD}
+          BG={themeBg}
+          fontFamily={fontFamily}
+          headingFont={headingFont}
+          fontSizePt={fontSizePt}
+          lang={data.language}
+        />
+      )}
 
       {/* ── Hidden measurement div ───────────────────────────────── */}
       <div
@@ -285,7 +378,7 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
         style={{ position: "absolute", left: "-9999px", top: 0, visibility: "hidden", pointerEvents: "none" }}
         dir={dir}
       >
-        <div data-header-measure style={{ width: "174mm" }}>{headerJsx}</div>
+        <div data-header-measure style={{ width: "174mm" }}>{page1Header}</div>
         {data.questions.map((q, i) => (
           <div key={q.id} data-q-measure style={{ width: qColWidth }}>
             <QuestionView index={i + 1} q={q} ar={ar} labels={labels} />
@@ -294,21 +387,22 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
       </div>
 
       {/* ── Visible paginated pages ──────────────────────────────── */}
-      <div id="ws-printable-root" className="print-host bg-neutral-200 min-h-screen py-6 px-2 flex flex-col items-center" dir={dir}>
+      <div id="ws-printable-root" className={`print-host ${hostBg} min-h-screen py-6 px-2 flex flex-col items-center`} dir={dir}>
 
         {pages.map((pageQs, pi) => {
           const pageNum = pi + 1;
           const isFirst = pi === 0;
           const isLast = pi === pages.length - 1;
           return (
-            <article key={pageNum} className="ws-page" lang={data.language}>
+            <article key={pageNum} className={pageClass} lang={data.language} style={{ background: themeBg }}>
               {showWatermark && <WatermarkLayer ar={ar} />}
-              <CornerOrnaments />
+              {/* Classic corner ornaments only for no-theme or themes that keep them */}
+              {!themeId && <CornerOrnaments />}
+              {themeId === "arabic_ink" && <CornerOrnaments />}
               <div className="ws-content">
                 {isFirst ? (
-                  headerJsx
+                  page1Header
                 ) : (
-                  /* Slim continuation header for pages 2+ */
                   <div className="ws-cont-header">
                     <span className="ws-cont-title">{data.title}</span>
                     <span className="ws-cont-page">{ar ? `صفحة ${pageNum}` : `Page ${pageNum}`}</span>
@@ -331,9 +425,10 @@ export function WorksheetPrintView({ data }: { data: WorksheetData }) {
 
         {/* ── Answer key page ──────────────────────────────────── */}
         {data.settings.includeAnswerKey && (
-          <article className="ws-page" lang={data.language}>
+          <article className={pageClass} lang={data.language} style={{ background: themeBg }}>
             {showWatermark && <WatermarkLayer ar={ar} />}
-            <CornerOrnaments />
+            {!themeId && <CornerOrnaments />}
+            {themeId === "arabic_ink" && <CornerOrnaments />}
             <div className="ws-content">
               <header className="ws-header">
                 <div className="ws-headgrid ws-headgrid-titleonly">
@@ -1180,11 +1275,18 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang, themeColor }: 
           width: 210mm !important;
           min-height: 297mm !important;
         }
+        /* Core base elements */
         .ws-watermark, .ws-watermark-word,
         .ws-corner, .ws-q, .ws-instructions, .ws-school-cell,
         .ws-q-num, .ws-q-typebadge, .ws-q-points,
         .ws-match-bullet, .ws-divider-thick, .ws-divider-thin,
-        .ws-kicker-center {
+        .ws-kicker-center,
+        /* Theme-specific colored elements */
+        .ws-band-top, .ws-play-banner, .ws-tab-sub, .ws-tab-header,
+        .ws-clip-badge, .ws-clip-badge-sec,
+        .ws-arb-diamond, .ws-arb-diamond-sm,
+        .ws-mast-rule-thick, .ws-mast-rule-mid,
+        .ws-exam-header {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
