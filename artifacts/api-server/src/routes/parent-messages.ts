@@ -5,6 +5,7 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { randomUUID } from "crypto";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const attachmentSchema = z.array(z.object({
   name: z.string().max(255),
@@ -459,12 +460,67 @@ router.get("/parent-portal/:token", async (req, res) => {
   }
 });
 
+// ── Parent portal: request attachment upload URL (token-auth) ──
+router.post("/parent-portal/:token/upload-attachment-url", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Validate the token is active
+    const [msg] = await db
+      .select({ id: parentMessagesTable.id, tokenExpiresAt: parentMessagesTable.tokenExpiresAt })
+      .from(parentMessagesTable)
+      .where(eq(parentMessagesTable.replyToken, token))
+      .limit(1);
+    if (!msg) { res.status(404).json({ error: "الرابط غير صالح" }); return; }
+    if (msg.tokenExpiresAt < new Date()) { res.status(410).json({ error: "انتهت صلاحية هذا الرابط" }); return; }
+
+    const parsed = z.object({
+      name: z.string().min(1).max(255),
+      size: z.number().int().positive(),
+      contentType: z.string().min(1).max(200),
+    }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "بيانات غير صالحة" }); return; }
+
+    const { name, size, contentType } = parsed.data;
+    const ALLOWED = [
+      "image/",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ];
+    if (!ALLOWED.some(t => contentType.startsWith(t))) {
+      res.status(400).json({ error: "نوع الملف غير مدعوم" }); return;
+    }
+    if (size > 20 * 1024 * 1024) {
+      res.status(400).json({ error: "حجم الملف يتجاوز 20MB" }); return;
+    }
+
+    const storage = new ObjectStorageService();
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+  } catch (err) {
+    console.error("parent-portal upload-attachment-url error:", err);
+    res.status(500).json({ error: "حدث خطأ أثناء إنشاء رابط الرفع" });
+  }
+});
+
 // ── Parent portal: submit reply ─────────────────────────────
 router.post("/parent-portal/:token/reply", async (req, res) => {
   try {
     const { token } = req.params;
-    const { replyText } = req.body;
-    if (!replyText?.trim()) { res.status(400).json({ message: "الرد فارغ" }); return; }
+
+    const parsed = z.object({
+      replyText: z.string().min(1).max(3000),
+      attachments: attachmentSchema,
+    }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
+    const { replyText, attachments } = parsed.data;
 
     const [msg] = await db
       .select({
@@ -485,7 +541,10 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
     if (msg.tokenExpiresAt < new Date()) { res.status(410).json({ message: "انتهت صلاحية هذا الرابط" }); return; }
 
     await db.insert(parentMessageRepliesTable)
-      .values({ messageId: msg.id, sender: "parent", body: replyText.trim() });
+      .values({
+        messageId: msg.id, sender: "parent", body: replyText.trim(),
+        attachments: attachments ? JSON.stringify(attachments) : null,
+      });
 
     if (!msg.repliedAt) {
       await db.update(parentMessagesTable)
@@ -498,10 +557,15 @@ router.post("/parent-portal/:token/reply", async (req, res) => {
 
     if (teacher?.email) {
       const baseUrl = getAppBaseUrl();
+      const attachmentLinks = attachments?.map(a => ({
+        name: a.name, contentType: a.contentType, size: a.size,
+        url: `${baseUrl}/api/storage${a.objectPath}`,
+      }));
       const emailHtml = buildTeacherReplyNotificationEmail({
         teacherName: teacher.name, studentName: msg.studentName,
         parentName: msg.parentName || "ولي الأمر", replyText: replyText.trim(),
         inboxUrl: `${baseUrl}/teacher/parent-messages`,
+        attachments: attachmentLinks,
       });
       await sendEmail({
         to: teacher.email,

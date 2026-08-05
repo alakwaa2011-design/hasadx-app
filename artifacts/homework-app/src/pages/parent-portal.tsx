@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "wouter";
 import {
   CheckCircle, AlertTriangle, MessageSquare, User, Send, Loader2,
@@ -36,6 +36,7 @@ const C = {
 
 interface Reply {
   id: number; sender: "teacher" | "parent"; body: string; createdAt: string;
+  attachments?: string | null;
 }
 
 interface MessageData {
@@ -186,6 +187,9 @@ export default function ParentPortalPage() {
   const [sent, setSent] = useState(false);
   const [localReplies, setLocalReplies] = useState<Reply[]>([]);
   const [viewer, setViewer] = useState<{ attachments: Attachment[]; index: number } | null>(null);
+  const [replyAttachments, setReplyAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -199,17 +203,54 @@ export default function ParentPortalPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  async function uploadFile(file: File): Promise<Attachment | null> {
+    try {
+      const r = await fetch(`${BASE}/api/parent-portal/${token}/upload-attachment-url`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!r.ok) return null;
+      const { uploadURL, objectPath } = await r.json();
+      const up = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!up.ok) return null;
+      return { name: file.name, objectPath, contentType: file.type, size: file.size };
+    } catch { return null; }
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    if (replyAttachments.length + files.length > 5) { alert("الحد الأقصى 5 مرفقات"); return; }
+    setUploading(true);
+    const uploaded: Attachment[] = [];
+    for (const f of files) {
+      const att = await uploadFile(f);
+      if (att) uploaded.push(att);
+    }
+    setReplyAttachments(prev => [...prev, ...uploaded]);
+    setUploading(false);
+  }
+
   async function handleReply() {
     if (!replyText.trim() || !token) return;
     setSending(true);
     try {
       const r = await fetch(`${BASE}/api/parent-portal/${token}/reply`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ replyText }),
+        body: JSON.stringify({
+          replyText,
+          attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
+        }),
       });
       if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.message || "حدث خطأ"); }
-      setLocalReplies(prev => [...prev, { id: Date.now(), sender: "parent", body: replyText.trim(), createdAt: new Date().toISOString() }]);
+      setLocalReplies(prev => [...prev, {
+        id: Date.now(), sender: "parent", body: replyText.trim(),
+        createdAt: new Date().toISOString(),
+        attachments: replyAttachments.length > 0 ? JSON.stringify(replyAttachments) : null,
+      }]);
       setReplyText("");
+      setReplyAttachments([]);
       setSent(true);
     } catch (e: any) { alert(e.message || "حدث خطأ أثناء الإرسال"); }
     finally { setSending(false); }
@@ -310,34 +351,41 @@ export default function ParentPortalPage() {
           </div>
 
           {/* Replies */}
-          {localReplies.map((reply, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-              style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: reply.sender === "teacher" ? C.green : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>
-                    {reply.sender === "teacher" ? "م" : "و"}
-                  </span>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: reply.sender === "teacher" ? C.green : "#2563eb" }}>
-                    {reply.sender === "teacher" ? `المعلم ${data.teacherName}` : (data.parentName || "أنت")}
+          {localReplies.map((reply, i) => {
+            let replyAtts: Attachment[] = [];
+            try { if (reply.attachments) replyAtts = JSON.parse(reply.attachments); } catch {}
+            return (
+              <motion.div key={i} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: reply.sender === "teacher" ? C.green : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>
+                      {reply.sender === "teacher" ? "م" : "و"}
+                    </span>
                   </div>
-                  <div style={{ fontSize: 11, color: C.muted }}>
-                    {new Date(reply.createdAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: reply.sender === "teacher" ? C.green : "#2563eb" }}>
+                      {reply.sender === "teacher" ? `المعلم ${data.teacherName}` : (data.parentName || "أنت")}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted }}>
+                      {new Date(reply.createdAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div style={{
-                background: reply.sender === "teacher" ? C.surface : "#f0f7ff",
-                borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75,
-                color: C.text, whiteSpace: "pre-wrap",
-                borderRight: `4px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
-              }}>
-                {reply.body}
-              </div>
-            </motion.div>
-          ))}
+                <div style={{
+                  background: reply.sender === "teacher" ? C.surface : "#f0f7ff",
+                  borderRadius: 10, padding: "14px 16px", fontSize: 14, lineHeight: 1.75,
+                  color: C.text, whiteSpace: "pre-wrap",
+                  borderRight: `4px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
+                }}>
+                  {reply.body}
+                </div>
+                {replyAtts.length > 0 && (
+                  <AttachmentList attachments={replyAtts} onOpen={j => openViewer(replyAtts, j)} />
+                )}
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         {/* Reply box — always visible, same page */}
@@ -364,11 +412,45 @@ export default function ParentPortalPage() {
                   style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px", fontSize: 14, fontFamily: "inherit", resize: "vertical", outline: "none", background: C.surface, color: C.text, lineHeight: 1.6, transition: "border-color 0.2s", boxSizing: "border-box" }}
                   onFocus={e => e.target.style.borderColor = C.green}
                   onBlur={e => e.target.style.borderColor = C.border} />
-                <button onClick={handleReply} disabled={sending || !replyText.trim()}
-                  style={{ marginTop: 10, width: "100%", padding: "13px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: sending || !replyText.trim() ? "not-allowed" : "pointer", opacity: sending || !replyText.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  {sending ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={16} />}
-                  {sending ? "جارٍ الإرسال..." : "إرسال الرد"}
-                </button>
+
+                {/* Attachment previews */}
+                {replyAttachments.length > 0 && (
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 5 }}>
+                    {replyAttachments.map((att, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "7px 10px" }}>
+                        <span style={{ fontSize: 16 }}>{attachIcon(att.contentType)}</span>
+                        <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                        <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                        <button onClick={() => setReplyAttachments(prev => prev.filter((_, j) => j !== i))}
+                          style={{ border: "none", background: "none", cursor: "pointer", color: C.muted, padding: 2, display: "flex", alignItems: "center" }}>
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Actions row */}
+                <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                  {/* Attach file button */}
+                  <button onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading || replyAttachments.length >= 5}
+                    title="إرفاق ملف"
+                    style={{ padding: "10px 14px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, cursor: uploading || replyAttachments.length >= 5 ? "not-allowed" : "pointer", color: C.muted, display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontFamily: "inherit", opacity: replyAttachments.length >= 5 ? 0.5 : 1, flexShrink: 0 }}>
+                    {uploading ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> : <Paperclip size={15} />}
+                    {uploading ? "جاري الرفع..." : "مرفق"}
+                  </button>
+                  <input ref={fileInputRef} type="file" multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                    style={{ display: "none" }} onChange={handleFileChange} />
+
+                  {/* Send button */}
+                  <button onClick={handleReply} disabled={sending || !replyText.trim()}
+                    style={{ flex: 1, padding: "13px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: sending || !replyText.trim() ? "not-allowed" : "pointer", opacity: sending || !replyText.trim() ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    {sending ? <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={16} />}
+                    {sending ? "جارٍ الإرسال..." : "إرسال الرد"}
+                  </button>
+                </div>
               </>
             )}
           </motion.div>
