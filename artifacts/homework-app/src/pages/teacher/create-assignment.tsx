@@ -28,7 +28,7 @@ import { getSuggestions, addMultipleSuggestions, addSuggestion } from "@/lib/sug
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-/** Hasad brand — dark forest green (matches dashboard / layout), not teal/cyan */
+/** Hasaad brand — dark forest green (matches dashboard / layout), not teal/cyan */
 const HASAD_GREEN = "#1E4D35";
 const HASAD_GREEN_MID = "#225739";
 const HASAD_GREEN_DEEP = "#17382a";

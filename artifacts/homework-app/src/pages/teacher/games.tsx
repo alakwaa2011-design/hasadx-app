@@ -115,7 +115,7 @@ export default function TeacherGamesPage() {
         {
           icon: <Trophy />,
           titleAr: "تحدي حصاد",
-          titleEn: "Hasad Arena",
+          titleEn: "Hasaad Arena",
           to: "/game/arena",
           iconBg: "bg-amber-500/10",
           iconColor: "text-amber-600",

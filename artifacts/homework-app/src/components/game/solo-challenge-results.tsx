@@ -334,7 +334,7 @@ export function SoloChallengeResults({
       navigator
         .share({
           title:
-            soloChallengeTitle || (isAr ? "تحدي حصاد" : "Hasad Challenge"),
+            soloChallengeTitle || (isAr ? "تحدي حصاد" : "Hasaad Challenge"),
           text: shareText,
           url: shareUrl,
         })

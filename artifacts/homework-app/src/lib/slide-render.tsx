@@ -634,7 +634,7 @@ export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "
   const accent = "#225739";
   const gold   = "#D9A521";
   const elAny  = el as unknown as { assignmentId?: number; assignmentTitle?: string; gameType?: string };
-  const title  = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity");
+  const title  = elAny.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasaad Activity");
   const game   = elAny.gameType ? HASAD_GAME_META[elAny.gameType] : null;
 
   return (
@@ -672,7 +672,7 @@ export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "
           padding: "5px 14px", borderRadius: 999,
           fontSize: 12, fontWeight: 800, letterSpacing: 0.3,
         }}>
-          🎮 {isAr ? "نشاط حصاد" : "Hasad Activity"}
+          🎮 {isAr ? "نشاط حصاد" : "Hasaad Activity"}
         </div>
         {game && (
           <div style={{
@@ -725,7 +725,7 @@ export function HasadActivityRenderer({ el, lang }: { el: SlideElement; lang?: "
 /* ── VideoEmbedRenderer ────────────────────────────────────────────────
    Present-mode renderer for video-embed elements. Renders a live iframe
    so the teacher can play the video directly from the slide. For YouTube
-   it uses the standard embed URL; for Hasad interactive video lessons it
+   it uses the standard embed URL; for Hasaad interactive video lessons it
    points at the student player route (/video/:id) which handles auth-
    free viewing via the lesson's accessMode. */
 function VideoEmbedRenderer({ el }: { el: SlideElement }) {

@@ -29,7 +29,7 @@ export default function PresentationPlay() {
   const [dist, setDist] = useState<{ counts: Record<string, number>; total: number } | null>(null);
   const [totalAnswered, setTotalAnswered] = useState(0);
   const [submitted, setSubmitted] = useState(false);
-  /* Phase 3 — when the teacher launches a Hasad live game, every
+  /* Phase 3 — when the teacher launches a Hasaad live game, every
      student device receives a one-tap "open game" card with the URL
      to the join page. Cleared automatically when the activity is
      closed or the slide changes. */

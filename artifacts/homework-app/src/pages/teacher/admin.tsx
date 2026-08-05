@@ -2560,7 +2560,7 @@ export default function AdminPage() {
                 </button>
 
                 <div className="border-t border-border/40 my-2" />
-                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "تحدّي حصاد — مصادر الأسئلة" : "Hasad Challenge — Question Sources"}</p>
+                <p className="text-xs font-bold text-muted-foreground px-1 mb-1">{lang === "ar" ? "تحدّي حصاد — مصادر الأسئلة" : "Hasaad Challenge — Question Sources"}</p>
                 {([
                   { key: "manual" as const, label: lang === "ar" ? "إدخال يدوي" : "Manual entry", desc: lang === "ar" ? "إدخال السؤال والإجابة يدوياً." : "Type questions and answers by hand." },
                   { key: "ai" as const, label: lang === "ar" ? "توليد بالذكاء الاصطناعي" : "AI generation", desc: lang === "ar" ? "توليد دفعة من الأسئلة بناءً على موضوع." : "Generate a batch of questions from a topic." },

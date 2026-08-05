@@ -122,7 +122,7 @@ const outlineSlideCardSchema = z.object({
   purpose: z.string().min(1).max(140),
   talkingPoints: z.array(z.string().min(1).max(140)).min(1).max(6),
   interactionHint: z.enum(["poll", "quiz", "discussion", "activity"]).nullable(),
-  /* Phase 3 — optional Hasad live-game suggestion. Allowed values
+  /* Phase 3 — optional Hasaad live-game suggestion. Allowed values
      mirror the discriminated `hasad-game` element in `presentations.ts`
      and the materializer in `lib/slide-templates`. Nullable so the
      model can omit it on slides where no game fits. */
@@ -132,7 +132,7 @@ const outlineSlideCardSchema = z.object({
   ]).nullable().optional(),
   /* Phase 5 — AI-generated complete question set for the slide's
      suggested game. When present, the editor + live-control "Start
-     activity" button opens the in-Hasad Activity Runner with these
+     activity" button opens the in-Hasaad Activity Runner with these
      questions pre-loaded instead of the legacy game-setup page. */
   gameQuestions: z.array(z.object({
     prompt: z.string().min(1).max(500),
@@ -778,7 +778,7 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, async (req, res)
     /* Theme/pattern/coverEmoji are optional. For AI-generated decks,
        legacy "harvest" is treated as an old placeholder rather than a
        deliberate choice, so the server can pick a subject-fit visual
-       identity instead of forcing every deck back to Hasad green. */
+       identity instead of forcing every deck back to Hasaad green. */
     const requestedTheme = body.theme && isAllowedTheme(body.theme) && body.theme !== "harvest" ? body.theme : null;
     if (body.theme && !isAllowedTheme(body.theme)) {
       req.log.warn({ themeKey: body.theme }, "Unknown theme requested for build; using AI visual theme");

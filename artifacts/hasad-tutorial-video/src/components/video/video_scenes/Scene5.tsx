@@ -64,7 +64,7 @@ export function Scene5() {
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 1 }}
           >
-            HASAD.APP
+            HASAAD.APP
           </motion.div>
         </div>
       )}

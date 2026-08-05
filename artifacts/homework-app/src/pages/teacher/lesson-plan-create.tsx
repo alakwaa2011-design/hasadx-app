@@ -94,7 +94,7 @@ function clearLpPrefs() {
 
 interface Block { title?: string; durationMinutes?: number; description: string }
 /** Optional reference linking this lesson-plan activity to an existing
- *  Hasad activity (assignment or interactive video).
+ *  Hasaad activity (assignment or interactive video).
  *  Stored alongside the activity so the teacher can deep-link from the
  *  printable plan back to the actual platform asset. */
 interface ActivityRef {
@@ -355,7 +355,7 @@ export default function LessonPlanCreate() {
     dateHijri: ar ? "التاريخ الهجري" : "Hijri date",
     dateGregPh: ar ? "مثال: 2026/05/15" : "e.g. 2026-05-15",
     dateHijriPh: ar ? "مثال: 1447/11/27" : "e.g. 1447-11-27",
-    linkActivity: ar ? "ربط بنشاط حصاد" : "Link Hasad activity",
+    linkActivity: ar ? "ربط بنشاط حصاد" : "Link Hasaad activity",
     linkedActivity: ar ? "النشاط المرتبط" : "Linked activity",
     unlink: ar ? "إلغاء الربط" : "Unlink",
     pickActivity: ar ? "اختر نشاطًا" : "Pick an activity",
@@ -1361,7 +1361,7 @@ function ActivitiesSection({
                 className="w-full px-3 py-2 border rounded-xl text-sm bg-white"
                 style={{ borderColor: `${BRAND_PRIMARY}33` }}
               />
-              {/* Linked-Hasad-activity row. Either shows the current ref
+              {/* Linked-Hasaad-activity row. Either shows the current ref
                   with an unlink button, or a "Link" button that opens the
                   picker modal scoped to this activity index. */}
               {a.activityRef ? (
@@ -1417,7 +1417,7 @@ function ActivitiesSection({
   );
 }
 
-/** Modal that lets the teacher pick an existing Hasad activity to link
+/** Modal that lets the teacher pick an existing Hasaad activity to link
  *  to a lesson-plan step. Loads from three list endpoints lazily — only
  *  the active tab's data is fetched. The selected ref is returned via
  *  onPick as a compact { kind, id, title } shape that survives JSON

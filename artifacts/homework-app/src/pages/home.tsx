@@ -2791,7 +2791,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* -------------- HASAD CHALLENGE (group / audience competition) -------------- */}
+        {/* -------------- HASAAD CHALLENGE (group / audience competition) -------------- */}
         <section
           className="border-t border-border/60"
           dir="rtl"
@@ -3126,7 +3126,7 @@ export default function Home() {
                       className="flex-1 rounded-lg px-3 py-1 text-[10px] text-center font-medium"
                       style={{ background: "hsl(145,30%,93%)", color: "hsl(145,40%,35%)" }}
                     >
-                      {lang === "ar" ? "دورة الماء في الطبيعة · حصاد" : "Water Cycle · Hasad"}
+                      {lang === "ar" ? "دورة الماء في الطبيعة · حصاد" : "Water Cycle · Hasaad"}
                     </div>
                     <div
                       className="text-[10px] font-black px-2.5 py-1 rounded-lg"
@@ -3635,7 +3635,7 @@ export default function Home() {
                     <h3 className="text-base font-black text-foreground">
                       {lang === "ar"
                         ? "تثبيت حصاد على هاتفك"
-                        : "Install Hasad on your phone"}
+                        : "Install Hasaad on your phone"}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {lang === "ar"
@@ -3695,7 +3695,7 @@ export default function Home() {
                     {[
                       lang === "ar"
                         ? "افتح حصاد في متصفح Safari"
-                        : "Open Hasad in Safari browser",
+                        : "Open Hasaad in Safari browser",
                       lang === "ar"
                         ? "اضغط على أيقونة المشاركة ↑ في أسفل الشاشة"
                         : "Tap the Share icon ↑ at the bottom",
@@ -3720,7 +3720,7 @@ export default function Home() {
                     {[
                       lang === "ar"
                         ? "افتح حصاد في متصفح Chrome"
-                        : "Open Hasad in Chrome browser",
+                        : "Open Hasaad in Chrome browser",
                       lang === "ar"
                         ? "اضغط على قائمة النقاط الثلاث ⋮ في الأعلى"
                         : "Tap the three-dot menu ⋮ at the top",
@@ -3748,7 +3748,7 @@ export default function Home() {
                         title={
                           lang === "ar"
                             ? "شرح تثبيت حصاد"
-                            : "Install Hasad tutorial"
+                            : "Install Hasaad tutorial"
                         }
                         className="h-full w-full border-0"
                         allow="autoplay"

@@ -185,7 +185,7 @@ export default function GamesPage() {
             </p>
           </motion.div>
 
-          {/* Featured Hero Card — Hasad Arena */}
+          {/* Featured Hero Card — Hasaad Arena */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -213,7 +213,7 @@ export default function GamesPage() {
                       {lang === "ar" ? "جديد · لعبة الشاشة الكبيرة" : "New · Big Screen Game"}
                     </div>
                     <h2 className="text-2xl sm:text-4xl font-extrabold mb-1 text-transparent bg-clip-text bg-gradient-to-l from-amber-200 via-yellow-300 to-amber-400">
-                      {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
+                      {lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena"}
                     </h2>
                     <p className="text-emerald-100/80 text-sm sm:text-base mb-3">
                       {lang === "ar"

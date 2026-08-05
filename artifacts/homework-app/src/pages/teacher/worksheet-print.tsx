@@ -357,9 +357,9 @@ function FooterStrip({ note, goodLuck }: { note?: string; goodLuck: string }) {
   );
 }
 
-// Faint big "حصاد" / "Hasad" watermark sitting behind worksheet content.
+// Faint big "حصاد" / "Hasaad" watermark sitting behind worksheet content.
 function WatermarkLayer({ ar }: { ar: boolean }) {
-  const text = ar ? "حصاد" : "Hasad";
+  const text = ar ? "حصاد" : "Hasaad";
   return (
     <div className="ws-watermark" aria-hidden="true">
       <span className="ws-watermark-word">{text}</span>
@@ -673,7 +673,7 @@ function PrintStyles({ fontFamily, headingFont, fontSizePt, lang }: { fontFamily
         min-height: calc(297mm - 0px);
       }
 
-      /* Faint Hasad watermark behind content. */
+      /* Faint Hasaad watermark behind content. */
       .ws-watermark {
         position: absolute; inset: 0; z-index: 0;
         display: flex; align-items: center; justify-content: center;

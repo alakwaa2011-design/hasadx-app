@@ -240,7 +240,7 @@ const activityElement = baseElement.extend({
    etc.). When the teacher opens it from the live control panel the
    server forwards a `game:launch` event to the room with the URL each
    student can tap to join the game on their own device. */
-/* A complete question payload that can be played inside Hasad's
+/* A complete question payload that can be played inside Hasaad's
    in-platform Activity Runner. The AI Director generates this set
    when it suggests a game on a slide so the teacher's "Start
    activity" button has the full quiz ready, not a placeholder. */
@@ -260,14 +260,14 @@ const hasadGameElement = baseElement.extend({
   topic: z.string().max(200).optional(),
   accentColor: colorSchema.optional(),
   /* AI-generated complete question set. When present, the editor and
-     live-control "Start activity" button open the in-Hasad Activity
+     live-control "Start activity" button open the in-Hasaad Activity
      Runner pre-loaded with these questions instead of the legacy
      game-setup page. */
   questions: z.array(gameQuestionSchema).max(20).optional(),
 });
 
 /* Phase 4 — "Activity Hub" launcher. A `hasad-activity` element links
-   a teacher's existing Hasad assignment to a slide so it can be
+   a teacher's existing Hasaad assignment to a slide so it can be
    launched during live presentation mode (teacher:create-game socket
    event). Stores the assignment id + a denormalised display title so
    the editor card preview doesn't require an extra API round-trip. */
@@ -278,7 +278,7 @@ const hasadActivityElement = baseElement.extend({
   gameType: z.string().max(50).optional(),
 });
 
-/* Video embed element — YouTube or Hasad interactive video lesson.
+/* Video embed element — YouTube or Hasaad interactive video lesson.
    `url` is the original pasted link; `videoKind` and `videoId` are
    parsed on the client and stored so the renderer can build the embed
    URL without re-parsing. `title` is an optional display label. */

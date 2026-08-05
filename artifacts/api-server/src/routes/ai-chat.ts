@@ -61,7 +61,7 @@ async function getTodayUsage(teacherId: number) {
   return rows[0] ?? null;
 }
 
-// Hasad Guide is open to every teacher and organizer with no daily cap.
+// Hasaad Guide is open to every teacher and organizer with no daily cap.
 // We still bump the per-day counter for stats/observability, but never deny.
 async function reserveSlot(teacherId: number): Promise<number> {
   const day = todayUtc();

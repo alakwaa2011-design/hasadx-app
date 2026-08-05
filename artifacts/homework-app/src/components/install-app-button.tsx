@@ -77,7 +77,7 @@ function InstallModal({ onClose }: { onClose: () => void }) {
             <img src="/icons/icon-192.png" alt="حصاد" className="w-10 h-10 rounded-2xl shadow-md" />
             <div>
               <p className="font-black text-white text-base leading-tight">
-                {isAr ? "ثبّت حصاد" : "Install Hasad"}
+                {isAr ? "ثبّت حصاد" : "Install Hasaad"}
               </p>
               <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
                 {isAr ? "بدون متجر تطبيقات" : "No app store needed"}
@@ -205,7 +205,7 @@ export function InstallAppButton({ variant = "compact", className = "" }: Props)
           </span>
           <span className="text-start leading-tight">
             <span className="block font-semibold text-[13px] tracking-tight">
-              {isAr ? "ثبّت حصاد على هاتفك" : "Install Hasad on your phone"}
+              {isAr ? "ثبّت حصاد على هاتفك" : "Install Hasaad on your phone"}
             </span>
             <span className="block text-[11px] text-[hsl(145,15%,50%)] font-normal mt-0.5">
               {isAr ? "وصول أسرع بنقرة واحدة" : "One tap away — anytime"}
@@ -233,7 +233,7 @@ export function InstallAppButton({ variant = "compact", className = "" }: Props)
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-bold text-sm text-[hsl(145,40%,18%)] tracking-tight">
-              {isAr ? "ثبّت حصاد كتطبيق" : "Install Hasad as an app"}
+              {isAr ? "ثبّت حصاد كتطبيق" : "Install Hasaad as an app"}
             </div>
             <div className="text-xs text-[hsl(145,20%,42%)] mt-0.5">
               {isAr ? "iOS وأندرويد — بدون متجر" : "iOS & Android — no store needed"}

@@ -578,7 +578,7 @@ export function ActivitiesLibraryMarketplace(props: ActivitiesLibraryMarketplace
               </span>
             ) : a.isAdminContent ? (
               <span className="truncate font-semibold" style={{ color: C.primary }}>
-                {isAr ? "حصاد" : "Hasad"}
+                {isAr ? "حصاد" : "Hasaad"}
               </span>
             ) : null}
           </div>

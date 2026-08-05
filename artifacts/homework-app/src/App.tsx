@@ -497,7 +497,7 @@ function Router() {
             <SecretSetup />
           </Suspense>
         </Route>
-        {/* Hasad Arena Routes */}
+        {/* Hasaad Arena Routes */}
         <Route path="/game/arena/audience">
           <Suspense fallback={<LoadingFallback />}>
             <ArenaAudience />

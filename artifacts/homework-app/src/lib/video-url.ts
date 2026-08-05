@@ -2,7 +2,7 @@
  * Video URL detection and normalization for the slide editor.
  * Supports:
  *  - YouTube (watch, short, embed, shorts, live)
- *  - Hasad interactive video lessons (/video/:id or /student/video-lesson/:id)
+ *  - Hasaad interactive video lessons (/video/:id or /student/video-lesson/:id)
  */
 
 export type VideoKind = "youtube" | "hasad-video";
@@ -12,7 +12,7 @@ export interface ParsedVideo {
   videoId: string;
   /** Ready-to-use iframe src */
   embedUrl: string;
-  /** Static thumbnail URL (null for Hasad videos) */
+  /** Static thumbnail URL (null for Hasaad videos) */
   thumbnailUrl: string | null;
 }
 

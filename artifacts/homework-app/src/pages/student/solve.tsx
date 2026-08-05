@@ -1368,7 +1368,7 @@ export default function StudentSolve() {
             </div>
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary-foreground/90 text-xs font-bold mb-4 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5" />
-              {lang === "ar" ? "واجب من حصاد" : "A Hasad Assignment"}
+              {lang === "ar" ? "واجب من حصاد" : "A Hasaad Assignment"}
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-bold">

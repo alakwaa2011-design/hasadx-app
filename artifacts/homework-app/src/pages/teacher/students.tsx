@@ -1152,7 +1152,7 @@ export default function StudentsPage() {
       <div className="min-h-screen bg-background pb-16" dir="rtl">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-          {/* Hero — Hasad brand: deep green #1E4D35 + gold #E8A80E accent */}
+          {/* Hero — Hasaad brand: deep green #1E4D35 + gold #E8A80E accent */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}

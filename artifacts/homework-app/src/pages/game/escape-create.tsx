@@ -549,7 +549,7 @@ export default function EscapeCreate() {
           {/* Info strip */}
           <div className="flex flex-wrap justify-center gap-3">
             {[
-              { icon: "🤝", text: ar ? "أول لعبة تعاونية في حصاد" : "Hasad's first cooperative game" },
+              { icon: "🤝", text: ar ? "أول لعبة تعاونية في حصاد" : "Hasaad's first cooperative game" },
               { icon: "🗝️", text: ar ? "كل قفل يكشف رقماً من الرمز الأعظم" : "Each lock reveals a master-code digit" },
               { icon: "🚨", text: ar ? "الخطأ يطلق الإنذار ويحرق الوقت" : "Mistakes trip the alarm and burn time" },
             ].map((item, i) => (

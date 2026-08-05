@@ -925,7 +925,7 @@ export default function SharedContentPage({
                           </span>
                         ) : (
                           <>
-                            {/* PRIMARY: Play — Hasad dark green */}
+                            {/* PRIMARY: Play — Hasaad dark green */}
                             <button
                               onClick={() => launchAsGame(a.id, "classic")}
                               disabled={launchingIds.has(a.id) || a.questionCount === 0}

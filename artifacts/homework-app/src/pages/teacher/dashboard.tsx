@@ -828,7 +828,7 @@ export default function TeacherDashboard() {
       <div className="hidden lg:flex min-h-screen">
         {/* Sidebar */}
         <aside className="w-56 shrink-0 flex flex-col sticky top-0 h-screen overflow-y-auto" style={{background: "#1E4D35", borderInlineEnd: "none", paddingTop: 12}}>
-          {/* Logo intentionally removed — the main top header already shows the Hasad logo. */}
+          {/* Logo intentionally removed — the main top header already shows the Hasaad logo. */}
           {/* User greeting — shown only on overview tab */}
           {activeTab === "overview" && (
             <div style={{padding: "10px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 10}}>
@@ -1840,7 +1840,7 @@ function CompetitiveTab({
   /** تحدّي حصاد — يُعرَض بجوار مسابقات عامة (لا يُكرَّر في شبكة المسابقات الحية) */
   const arenaGame = {
     icon: <ArenaIcon size={44} />,
-    title: lang === "ar" ? "تحدّي حصاد" : "Hasad Arena",
+    title: lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena",
     desc:
       lang === "ar"
         ? "مسابقة فريقين على شاشة كبيرة — فئات وبطاقات بنقاط متدرجة ووسائل مساعدة."
@@ -2614,7 +2614,7 @@ function ToolsTab({ t, lang, setLocation, user, classroomEnabled }: any) {
         },
         {
           icon: <Sparkles className="w-6 h-6" />,
-          title: isAr ? (isAdmin ? "محتوى تحدي حصاد" : "فئاتي في تحدي حصاد") : (isAdmin ? "Hasad Arena Content" : "My Arena Categories"),
+          title: isAr ? (isAdmin ? "محتوى تحدي حصاد" : "فئاتي في تحدي حصاد") : (isAdmin ? "Hasaad Arena Content" : "My Arena Categories"),
           desc: isAr
             ? (isAdmin
                 ? "أدر أقسام وأسئلة تحدي حصاد مع الصور والتوليد بالذكاء"

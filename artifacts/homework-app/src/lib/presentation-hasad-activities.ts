@@ -1,6 +1,6 @@
 /**
  * createHasadActivityFromSlide — converts AI-generated slide activity metadata
- * into a real Hasad assignment + returns enough info for the editor to launch
+ * into a real Hasaad assignment + returns enough info for the editor to launch
  * the appropriate game session.
  *
  * Supported activity types (extensible):
@@ -23,7 +23,7 @@ type HasadGameQuestion = {
 export type CreatedHasadActivity = {
   assignmentId: number;
   activityType: "tug_war" | "quick_quiz";
-  /** "tug_of_war" or "knowledge_race" — the internal Hasad game kind stored
+  /** "tug_of_war" or "knowledge_race" — the internal Hasaad game kind stored
    *  on the linked hasad-activity element so present.tsx picks the right launcher. */
   gameType: "tug_of_war" | "knowledge_race";
   title: string;

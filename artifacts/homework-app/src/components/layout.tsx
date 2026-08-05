@@ -313,7 +313,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                     <Search className="absolute top-1/2 -translate-y-1/2 start-3 w-4 h-4 text-white/55 pointer-events-none" />
                     <input
                       type="search"
-                      placeholder={lang === "ar" ? "ابحث في حصاد…" : "Search Hasad…"}
+                      placeholder={lang === "ar" ? "ابحث في حصاد…" : "Search Hasaad…"}
                       className="w-full h-9 ps-9 pe-3 rounded-full text-sm text-white placeholder:text-white/55 bg-black/20 border border-white/10 focus:outline-none focus:bg-black/25 focus:border-[#C9A050]/70 transition-colors"
                     />
                   </div>
@@ -338,7 +338,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
                   <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 ) : user ? (
                   <div className="flex items-center gap-2">
-                    {/* Role switcher dropdown (admins only). Hasad logo on
+                    {/* Role switcher dropdown (admins only). Hasaad logo on
                         the start side already serves as the home/dashboard
                         link so an explicit "Dashboard" button would be
                         redundant. */}
@@ -876,7 +876,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
           </div>
         </div>
       </footer>
-      {/* Hasad Guide is now mounted globally in App.tsx (<GlobalAiAssistant />)
+      {/* Hasaad Guide is now mounted globally in App.tsx (<GlobalAiAssistant />)
           so it appears on every teacher/organizer page, including those that
           don't use this Layout (mobile flows hit those a lot). */}
     </div>

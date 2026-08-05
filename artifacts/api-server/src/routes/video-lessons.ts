@@ -761,7 +761,7 @@ router.post("/video-lessons", async (req, res) => {
     void runAfterCommit().catch(() => {});
 
     // Present on successful create so DevTools can confirm this API build uses raw INSERT (not Drizzle insert().returning()).
-    res.setHeader("X-Hasad-Video-Lesson-Create", "drizzle-named-insert-v1");
+    res.setHeader("X-Hasaad-Video-Lesson-Create", "drizzle-named-insert-v1");
     res.status(201).json(lesson);
   } catch (error) {
     if (error instanceof z.ZodError) {

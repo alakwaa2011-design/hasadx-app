@@ -442,7 +442,7 @@ export default function DashboardOverview({
                     >
                       {isAr
                         ? `أهلاً ${firstName} في حصاد!`
-                        : `Welcome to Hasad, ${firstName}!`}
+                        : `Welcome to Hasaad, ${firstName}!`}
                     </h2>
                     <p style={{ fontSize: 12.5, color: C.muted, margin: 0 }}>
                       {isAr
@@ -1028,7 +1028,7 @@ export default function DashboardOverview({
               </button>
             )}
           </motion.div>
-          {/* Hasad Challenge — premium hero banner */}
+          {/* Hasaad Challenge — premium hero banner */}
           <motion.button
             type="button"
             onClick={() => setLocation("/game/arena")}
@@ -1141,7 +1141,7 @@ export default function DashboardOverview({
                   letterSpacing: "-0.04em",
                 }}
               >
-                {isAr ? "تحدي حصاد" : "Hasad Challenge"}
+                {isAr ? "تحدي حصاد" : "Hasaad Challenge"}
               </h2>
 
               {/* Pills */}

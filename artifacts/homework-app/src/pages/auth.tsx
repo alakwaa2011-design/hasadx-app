@@ -1246,7 +1246,7 @@ export default function Auth() {
           >
             <div className="text-center mb-7">
               <h1 className="text-[1.65rem] font-black mb-2 leading-tight" style={{ color: "#1a4731" }}>
-                {lang === "ar" ? "كيف ستستخدم حصاد؟" : "How will you use Hasad?"}
+                {lang === "ar" ? "كيف ستستخدم حصاد؟" : "How will you use Hasaad?"}
               </h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {lang === "ar"

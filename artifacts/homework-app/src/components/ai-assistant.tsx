@@ -49,11 +49,11 @@ function hasDailyCap(u: UsageInfo | null): u is UsageInfo & { limit: number; rem
 function copy(lang: string) {
   const isAr = lang === "ar";
   return {
-    brand: isAr ? "مرشد حصاد" : "Hasad Guide",
+    brand: isAr ? "مرشد حصاد" : "Hasaad Guide",
     tagline: isAr ? "مساعد العمل الذكي" : "Your workspace AI companion",
-    openLauncher: isAr ? "فتح مرشد حصاد" : "Open Hasad Guide",
+    openLauncher: isAr ? "فتح مرشد حصاد" : "Open Hasaad Guide",
     hideLauncher: isAr ? "إخفاء شريط المساعد" : "Hide assistant bar",
-    restore: isAr ? "إظهار المرشد" : "Show Hasad Guide",
+    restore: isAr ? "إظهار المرشد" : "Show Hasaad Guide",
     history: isAr ? "السجل" : "History",
     newChat: isAr ? "محادثة جديدة" : "New chat",
     close: isAr ? "إغلاق" : "Close",
@@ -78,7 +78,7 @@ function copy(lang: string) {
           "Live vs solo games — what's the difference?",
           "How do points work?",
           "How do I share a contest?",
-          "Explain Hasad Arena",
+          "Explain Hasaad Arena",
           "How do I use the question bank?",
         ],
     noHistory: isAr ? "لا توجد محادثات سابقة" : "No past conversations",
@@ -510,7 +510,7 @@ export function AiAssistant({ enabled, lang }: { enabled: boolean; lang: string 
 }
 
 /**
- * Mounts the Hasad Guide once at the app root so it shows up on every
+ * Mounts the Hasaad Guide once at the app root so it shows up on every
  * teacher/organizer page (mobile + desktop) — including pages that don't
  * wrap themselves in `<Layout>` (e.g. teacher/profile, teacher/new-activity,
  * teacher/categories, teacher/collections, presentations/present, etc.).

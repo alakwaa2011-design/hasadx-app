@@ -38,7 +38,7 @@ async function runTierCompletion(opts: {
   return completion.choices[0]?.message?.content || "";
 }
 
-/* ── Hasad-branded wheel palette. The wheel paints segments by cycling
+/* ── Hasaad-branded wheel palette. The wheel paints segments by cycling
    through this list so adjacent slices are always different. Calm hues
    that match the rest of the platform identity (deep green + warm gold). */
 const WHEEL_PALETTE = [

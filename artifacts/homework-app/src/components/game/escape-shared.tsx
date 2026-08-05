@@ -5,7 +5,7 @@
 //   • escape-class.tsx — cooperative run on the classroom screen.
 //   • escape-play.tsx  — individual run on each student's device.
 //
-// Identity: Hasad gold (#F7C948 / #D9A521) glowing inside a deep midnight
+// Identity: Hasaad gold (#F7C948 / #D9A521) glowing inside a deep midnight
 // vault (#0b1220 → #131c33). Everything is SVG/CSS/Web Audio — no assets.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
@@ -632,7 +632,7 @@ export function AlarmFlash() {
 // ═════════════════════════════════════════════════════════════════════════════
 const OPTION_LETTERS_AR = ["أ", "ب", "ج", "د"];
 const OPTION_LETTERS_EN = ["A", "B", "C", "D"];
-// Same gradients as وميض / شد الحبل option cards — Hasad answer identity.
+// Same gradients as وميض / شد الحبل option cards — Hasaad answer identity.
 const OPTION_GRADIENT = [
   "linear-gradient(145deg, #1870C0, #08386E)",
   "linear-gradient(145deg, #C41818, #7A0A0A)",
@@ -845,7 +845,7 @@ export function EscapeGameView({
             </p>
           </motion.div>
 
-          {/* Options 2×2 with letter badges (Hasad answer identity).
+          {/* Options 2×2 with letter badges (Hasaad answer identity).
               Positions are RE-SHUFFLED on every presentation, so the correct
               answer never sits in a memorable spot. On a wrong answer the
               correct option is NOT revealed — the student must think. */}

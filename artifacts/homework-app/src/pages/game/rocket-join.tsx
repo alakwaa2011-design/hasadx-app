@@ -383,7 +383,7 @@ export default function RocketJoin() {
 
       <div style={{ padding: "16px 20px", textAlign: "center", borderTop: "1px solid #e5e7eb", background: "#fff" }}>
         <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>
-          {ar ? "منصة حصاد التعليمية" : "Hasad Educational Platform"}
+          {ar ? "منصة حصاد التعليمية" : "Hasaad Educational Platform"}
         </p>
       </div>
     </div>

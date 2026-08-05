@@ -150,7 +150,7 @@ export function AuthSideRail() {
                 id="auth-rail-sheet-title"
                 className="text-base font-black text-foreground mb-3 text-center"
               >
-                {isAr ? "ابدأ مع حصاد" : "Get started with Hasad"}
+                {isAr ? "ابدأ مع حصاد" : "Get started with Hasaad"}
               </h3>
               <div className="flex flex-col gap-2">
                 <Link

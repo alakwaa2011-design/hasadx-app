@@ -312,7 +312,7 @@ Mandatory order: E1 → E2 → E3 → E4 → E5.`,
 };
 
 /* ────────────────────────────────────────────────────────────────────────
-   HASAD ACTIVITY VOCABULARY
+   HASAAD ACTIVITY VOCABULARY
    Each interactive slide may carry activityType + gameSuggestion + strategyStage.
    Use ONLY the values listed here — do NOT invent new types.
    ──────────────────────────────────────────────────────────────────────── */
@@ -332,7 +332,7 @@ activityType           │ gameSuggestion │ interactionHint │ الوصف
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ استثناء حصري: لهذا العرض يُسمح بتعيين gameSuggestion من القائمة أعلاه — هذا يتجاوز قاعدة "gameSuggestion: null دائمًا" لهذا العرض فقط.`;
 
-const HASAD_ACTIVITY_VOCAB_EN = `Hasad Activity Types — use ONLY these exact values:
+const HASAD_ACTIVITY_VOCAB_EN = `Hasaad Activity Types — use ONLY these exact values:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 activityType           │ gameSuggestion │ interactionHint │ Description
 ─────────────────────────────────────────────────────────────────
@@ -511,7 +511,7 @@ const STRATEGY_ACTIVITY_MAPS_EN: Partial<Record<EducationalStrategy, string>> = 
   [Competitive eval]   activityType: "tug_war",         gameSuggestion: "tug", strategyStage: "evaluation"`,
 
   gamification:
-`Gamification Activity Map (≥40% interactive slides with Hasad games — MANDATORY):
+`Gamification Activity Map (≥40% interactive slides with Hasaad games — MANDATORY):
   [Opening challenge]  activityType: "tug_war",         gameSuggestion: "tug",         strategyStage: "opening_challenge"
   [Mid round]          activityType: "rocket_race",      gameSuggestion: "rocket",      strategyStage: "mid_round"
   [Wheel challenge]    activityType: "wheel_spin",       gameSuggestion: "wheel",       strategyStage: "wheel_challenge"
@@ -857,7 +857,7 @@ Kind selection by topic category (MANDATORY — analyze the topic first, then ch
 
 /* Phase 7 — Activity questions are now SLIDE-NATIVE content, not a
    "pick a platform game" decision. The teacher feedback was clear:
-   don't label slides with a Hasad game's brand name, just write the
+   don't label slides with a Hasaad game's brand name, just write the
    activity's questions and answers and show them on the slide. The
    AI's job is to produce a clean MCQ set when a slide warrants
    classroom interaction; the platform decides at runtime how to
@@ -1117,7 +1117,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     ar ? "تخطيطات الشرائح المتاحة" : "AVAILABLE LAYOUTS",
     layoutRules,
     "",
-    ar ? "ألعاب حصاد الحية" : "HASAD LIVE GAMES",
+    ar ? "ألعاب حصاد الحية" : "HASAAD LIVE GAMES",
     gamesRules,
     "",
     ar ? "ذكاء التصميم البصري" : "VISUAL DESIGN INTELLIGENCE",

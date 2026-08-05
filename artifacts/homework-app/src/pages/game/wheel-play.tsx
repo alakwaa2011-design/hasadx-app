@@ -341,7 +341,7 @@ export default function WheelPlay() {
     ctx.font = "900 16px system-ui, -apple-system, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(template.language === "ar" ? "حصاد" : "Hasad", cx, cy);
+    ctx.fillText(template.language === "ar" ? "حصاد" : "Hasaad", cx, cy);
   }, [template, usedIds]);
 
   // Initial draw + redraw on rotation/used updates

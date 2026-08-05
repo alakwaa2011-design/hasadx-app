@@ -385,7 +385,7 @@ export default function OrganizerDashboard() {
     () => [
       {
         href: "/game/arena",
-        title: lang === "ar" ? "تحدّي حصاد 🏆" : "Hasad Arena 🏆",
+        title: lang === "ar" ? "تحدّي حصاد 🏆" : "Hasaad Arena 🏆",
         subtitle:
           lang === "ar"
             ? "تحدٍّ بين فريقين أو أكثر — ٦ فئات، أسئلة بقيم متصاعدة ومساعدات استراتيجية. مثالي للحفلات والتجمعات والزيارات."
@@ -1120,7 +1120,7 @@ export default function OrganizerDashboard() {
                         className="text-[17px] font-black leading-tight mb-1.5 tracking-tight"
                         style={{ color: "#103d2a" }}
                       >
-                        {lang === "ar" ? "تحدّي حصاد" : "Hasad Arena"}
+                        {lang === "ar" ? "تحدّي حصاد" : "Hasaad Arena"}
                       </h3>
                       <p
                         className="text-[13px] leading-relaxed"

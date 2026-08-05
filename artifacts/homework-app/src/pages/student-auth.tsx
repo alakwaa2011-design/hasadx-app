@@ -29,11 +29,11 @@ function StudentLoginLayout({
         <Link href="/" className="flex items-center gap-2.5">
           <img
             src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-            alt={isAr ? "حصاد" : "Hasad"}
+            alt={isAr ? "حصاد" : "Hasaad"}
             className="w-9 h-9 rounded-xl object-cover shadow-sm"
           />
           <span className="text-xl font-extrabold" style={{ color: "#1a4731" }}>
-            {isAr ? "حصاد" : "Hasad"}
+            {isAr ? "حصاد" : "Hasaad"}
           </span>
         </Link>
         <Link
@@ -52,7 +52,7 @@ function StudentLoginLayout({
       <footer className="text-center py-4 text-xs text-muted-foreground/60">
         {isAr
           ? `منصة حصاد © ${new Date().getFullYear()} — جميع الحقوق محفوظة`
-          : `Hasad Platform © ${new Date().getFullYear()} — All rights reserved`}
+          : `Hasaad Platform © ${new Date().getFullYear()} — All rights reserved`}
       </footer>
     </div>
   );
@@ -91,11 +91,11 @@ function StudentSidePanel({ lang }: { lang: string }) {
         <div className="flex items-center gap-3 mb-10">
           <img
             src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
-            alt={isAr ? "حصاد" : "Hasad"}
+            alt={isAr ? "حصاد" : "Hasaad"}
             className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/20 shadow-lg"
           />
           <span className="text-3xl font-extrabold text-white tracking-wide">
-            {isAr ? "حصاد" : "Hasad"}
+            {isAr ? "حصاد" : "Hasaad"}
           </span>
         </div>
 
@@ -126,7 +126,7 @@ function StudentSidePanel({ lang }: { lang: string }) {
       <p className="text-white/30 text-xs mt-10">
         {isAr
           ? `منصة حصاد © ${new Date().getFullYear()}`
-          : `Hasad Platform © ${new Date().getFullYear()}`}
+          : `Hasaad Platform © ${new Date().getFullYear()}`}
       </p>
     </motion.div>
   );

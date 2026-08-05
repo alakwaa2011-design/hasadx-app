@@ -163,7 +163,7 @@ const HASAD_GAME_STUDENT_URL = "/game/join";
 type HasadQuestion = { prompt: string; options: string[]; correctIndex: number };
 /* Phase 5 — split the launch payload by audience so we never broadcast
    correct answers to student/show sockets via socket.io. Teachers get
-   the full question set (used to populate the in-Hasad Activity Runner
+   the full question set (used to populate the in-Hasaad Activity Runner
    via localStorage); everyone else gets only the join URL + label. */
 function buildGameLaunchPayload(
   el: { id?: string; gameKind?: string; topic?: string; prompt?: string; questions?: HasadQuestion[] },
@@ -465,7 +465,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     socket.emit("wall:update", { elementId: sess.activeElementId, cards });
   }
 
-  /* Late-joiner support for active Hasad-game launchers. */
+  /* Late-joiner support for active Hasaad-game launchers. */
   if (active && (active as any).kind === "hasad-game" && sess.activeElementId) {
     const hasInlineQuestions =
       Array.isArray((active as any).questions) && (active as any).questions.length > 0;

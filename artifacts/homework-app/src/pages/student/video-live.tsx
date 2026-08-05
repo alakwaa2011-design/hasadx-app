@@ -699,7 +699,7 @@ export default function StudentVideoLive() {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f3f7f4] px-3 py-1.5 text-[11px] font-black text-[#374151]">
                     <Users className="h-3.5 w-3.5 text-[#64748B]" />
-                    {isAr ? "منصّة حصاد" : "Hasad platform"}
+                    {isAr ? "منصّة حصاد" : "Hasaad platform"}
                   </span>
                 </div>
               </div>

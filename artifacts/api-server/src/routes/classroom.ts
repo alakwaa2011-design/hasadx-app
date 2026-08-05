@@ -292,7 +292,7 @@ router.get("/classroom/courses/:courseId/students", async (req, res) => {
 });
 
 // ── POST /api/classroom/courses/:courseId/students/import ─────────────────
-// Imports Google Classroom students into the Hasad platform
+// Imports Google Classroom students into the Hasaad platform
 router.post("/classroom/courses/:courseId/students/import", async (req, res) => {
   const teacherId = (req.session as any).teacherId;
   if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
@@ -332,7 +332,7 @@ router.post("/classroom/courses/:courseId/students/import", async (req, res) => 
 });
 
 // ── POST /api/classroom/courses/:courseId/coursework ──────────────────────
-// Publishes a Hasad assignment to Google Classroom
+// Publishes a Hasaad assignment to Google Classroom
 router.post("/classroom/courses/:courseId/coursework", async (req, res) => {
   const teacherId = (req.session as any).teacherId;
   if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }

@@ -693,7 +693,7 @@ export default function PresentationEditor() {
           };
         }),
       );
-      toast.success(isAr ? "تم إنشاء نشاط حصاد وربطه بالشريحة" : "Hasad activity created and linked");
+      toast.success(isAr ? "تم إنشاء نشاط حصاد وربطه بالشريحة" : "Hasaad activity created and linked");
     } catch (err) {
       mutateSlides((prev) =>
         prev.map((s, i) => i === activeIdx ? { ...s, activityCreationStatus: "failed" } : s),
@@ -1341,7 +1341,7 @@ export default function PresentationEditor() {
             </div>
             
             {/* إضافة نشاط — opens the Activity Hub so teachers can pick
-                either a Hasad assignment or a presentation activity. */}
+                either a Hasaad assignment or a presentation activity. */}
             {Number.isFinite(id) && !readOnly && (
               <div className="relative inline-flex">
                 <button
@@ -1356,10 +1356,10 @@ export default function PresentationEditor() {
                     borderColor: hasLinkedHasadActivity ? BRAND_GREEN : `${BRAND_GREEN}40`,
                     background: hasLinkedHasadActivity ? `${BRAND_GREEN}08` : undefined,
                   }}
-                  title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Add a Hasad activity to this slide"}
+                  title={isAr ? "أضف نشاطاً من حصاد إلى الشريحة" : "Add a Hasaad activity to this slide"}
                 >
                   <Gamepad2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{isAr ? "أضف نشاط من حصاد" : "Add Hasad activity"}</span>
+                  <span className="hidden md:inline">{isAr ? "أضف نشاط من حصاد" : "Add Hasaad activity"}</span>
                 </button>
                 {/* Badge — appears when at least one hasad-activity element exists in the deck */}
                 {hasLinkedHasadActivity && (
@@ -3791,13 +3791,13 @@ function Inspector({
         {selectedEl.kind === "hasad-activity" && (() => {
           const hEl = selectedEl as typeof selectedEl & { assignmentId?: number; assignmentTitle?: string };
           return (
-            <Section title={isAr ? "نشاط من حصاد" : "Hasad Activity"} icon={<Gamepad2 className="w-4 h-4" />}>
+            <Section title={isAr ? "نشاط من حصاد" : "Hasaad Activity"} icon={<Gamepad2 className="w-4 h-4" />}>
               <div className="space-y-3">
                 <div
                   className="p-3 rounded-xl border text-sm font-medium"
                   style={{ background: `${BRAND_GREEN}08`, borderColor: `${BRAND_GREEN}30`, color: BRAND_GREEN }}
                 >
-                  {hEl.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasad Activity")}
+                  {hEl.assignmentTitle ?? (isAr ? "نشاط من حصاد" : "Hasaad Activity")}
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
                   {isAr
@@ -4170,7 +4170,7 @@ function Inspector({
           >
             <Video className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
             <span className="font-bold text-sm text-foreground">
-              {isAr ? "إدراج فيديو (يوتيوب / حصاد)" : "Embed Video (YouTube / Hasad)"}
+              {isAr ? "إدراج فيديو (يوتيوب / حصاد)" : "Embed Video (YouTube / Hasaad)"}
             </span>
           </Button>
           {/* GIF Library */}
@@ -4459,7 +4459,7 @@ function HasadGameInspector({
   return (
     <>
       <div className="text-[11px] font-bold uppercase tracking-wide" style={{ color: BRAND_GREEN }}>
-        {isAr ? "لعبة حصاد الحية" : "Hasad live game"}
+        {isAr ? "لعبة حصاد الحية" : "Hasaad live game"}
       </div>
       <Field label={isAr ? "نوع اللعبة" : "Game"}>
         <div className="px-3 py-1.5 text-sm font-bold rounded border bg-white" style={{ borderColor: BRAND_GREEN, color: BRAND_GREEN }}>
@@ -4548,7 +4548,7 @@ function HasadGameInspector({
 
 /* Inspector panel for a "video-embed" element. Lets the teacher
    update the URL (reparsed on change) and see a YouTube thumbnail or
-   a Hasad branded preview. Title is editable for Hasad videos so the
+   a Hasaad branded preview. Title is editable for Hasaad videos so the
    teacher can label a lesson (e.g. "مقدمة الكيمياء"). */
 /* Inspector for an "image" element — fit mode, opacity, corner radius,
    and quick-replace shortcuts (re-upload or re-search). */
@@ -4926,7 +4926,7 @@ function VideoEmbedInspector({
   return (
     <>
       <div className="text-[11px] font-bold uppercase tracking-wide mb-1" style={{ color: BRAND_GREEN }}>
-        {videoKind === "youtube" ? "YouTube" : (isAr ? "فيديو تفاعلي حصاد" : "Hasad interactive video")}
+        {videoKind === "youtube" ? "YouTube" : (isAr ? "فيديو تفاعلي حصاد" : "Hasaad interactive video")}
       </div>
 
       <Field label={isAr ? "رابط الفيديو" : "Video URL"}>
@@ -6779,7 +6779,7 @@ function MobileAddGrid({
     { icon: Shapes, label: isAr ? "شكل" : "Shape", color: "#F59E0B", onClick: onAddShape },
     { icon: Smile, label: isAr ? "أيقونة" : "Icon", color: "#EC4899", onClick: onAddIcon },
     { icon: Sparkles, label: isAr ? "نشاط" : "Activity", color: BRAND_GREEN, onClick: onAddActivity },
-    { icon: Gamepad2, label: isAr ? "حصاد" : "Hasad", color: "#D97706", onClick: onAddHasad },
+    { icon: Gamepad2, label: isAr ? "حصاد" : "Hasaad", color: "#D97706", onClick: onAddHasad },
     { icon: Palette, label: isAr ? "ثيم" : "Theme", color: "#475569", onClick: onOpenTheme },
     { icon: Layers, label: isAr ? "نقش" : "Pattern", color: "#0891B2", onClick: onOpenPattern },
     { icon: FileText, label: isAr ? "ملاحظات" : "Notes", color: "#94A3B8", onClick: onOpenNotes },

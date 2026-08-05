@@ -1,11 +1,11 @@
 /**
- * VideoEmbedDialog — paste a YouTube or Hasad interactive video URL
+ * VideoEmbedDialog — paste a YouTube or Hasaad interactive video URL
  * and insert a video-embed element on the active slide.
  *
  * Supported inputs:
  *   • YouTube: https://www.youtube.com/watch?v=…  |  https://youtu.be/…
  *              https://www.youtube.com/shorts/…
- *   • Hasad interactive video: /video/:id  or  /student/video-lesson/:id
+ *   • Hasaad interactive video: /video/:id  or  /student/video-lesson/:id
  */
 import { useState } from "react";
 import type { SlideElement } from "@workspace/api-client-react";
@@ -54,7 +54,7 @@ export function VideoEmbedDialog({
       setError(
         isAr
           ? "الرابط غير معروف. أدخل رابط يوتيوب أو رابط فيديو تفاعلي من حصاد."
-          : "Unrecognized URL. Enter a YouTube or Hasad interactive video link.",
+          : "Unrecognized URL. Enter a YouTube or Hasaad interactive video link.",
       );
       return;
     }
@@ -141,7 +141,7 @@ export function VideoEmbedDialog({
               </div>
               <div>
                 <p className="font-bold text-sm" style={{ color: BRAND_GREEN }}>
-                  {isAr ? "فيديو تفاعلي من حصاد" : "Hasad Interactive Video"}
+                  {isAr ? "فيديو تفاعلي من حصاد" : "Hasaad Interactive Video"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isAr ? `درس رقم ${parsed.videoId}` : `Lesson ID: ${parsed.videoId}`}
@@ -158,7 +158,7 @@ export function VideoEmbedDialog({
             <p className="text-xs text-amber-800 leading-relaxed">
               {isAr
                 ? "يمكنك إدراج فيديو من يوتيوب أو فيديو تفاعلي من منصة حصاد. ارسم للطلاب رابط الفيديو التفاعلي من صفحة الدروس لتظهر له الأسئلة تلقائياً أثناء المشاهدة."
-                : "Paste a YouTube link or a Hasad interactive video lesson link. Hasad interactive videos show questions to students at the right timestamps while they watch."}
+                : "Paste a YouTube link or a Hasaad interactive video lesson link. Hasaad interactive videos show questions to students at the right timestamps while they watch."}
             </p>
           </div>
         </div>

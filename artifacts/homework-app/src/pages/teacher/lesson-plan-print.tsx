@@ -127,7 +127,7 @@ export function LessonPlanPrintView({ data }: { data: PlanData }) {
         <article dir={dir} className="lp-page" lang={data.language}>
           <CornerOrnaments />
           <div className="lp-content">
-            {/* Header — Hasad brand mark + name removed per teacher
+            {/* Header — Hasaad brand mark + name removed per teacher
                 request. The "lesson plan" kicker stays, centered, so the
                 page still reads as an official document. */}
             <header className="lp-header">
@@ -295,7 +295,7 @@ export function LessonPlanPrintView({ data }: { data: PlanData }) {
               )}
             </div>
 
-            {/* Footer — Hasad brand line removed per teacher request.
+            {/* Footer — Hasaad brand line removed per teacher request.
                 Only the optional teacher-supplied footer note remains. */}
             {cfg.footerNote && (
               <footer className="lp-footer">
@@ -635,7 +635,7 @@ function PrintStyles({ lang, fontStack, headingFont, fontSizePt }: { lang: "ar" 
 
       .lp-header { margin-bottom: 8mm; }
       /* Kicker row — used to host the brand bar; now centers the
-         "Lesson Plan" pill since the Hasad brand mark has been removed. */
+         "Lesson Plan" pill since the Hasaad brand mark has been removed. */
       .lp-kicker-row { display: flex; align-items: center; justify-content: center; margin-bottom: 4mm; }
       .lp-kicker {
         font-size: 9pt; letter-spacing: 1.6px; text-transform: uppercase;
@@ -832,7 +832,7 @@ function PrintStyles({ lang, fontStack, headingFont, fontSizePt }: { lang: "ar" 
         padding: 2px 8px; border-radius: 999px; font-weight: 700;
       }
       .lp-activity-desc { font-size: ${Math.max(9.5, fontSizePt - 0.5)}pt; color: #222; margin: 0; }
-      /* Linked-Hasad-activity badge: a small, low-key inline reference
+      /* Linked-Hasaad-activity badge: a small, low-key inline reference
          that follows the description so the printed plan tells the
          teacher exactly which platform asset they wired this step to. */
       .lp-activity-ref {

@@ -104,7 +104,7 @@ export function ActivityHubDialog({
     if (tab === "home") return isAr ? "إضافة نشاط" : "Add Activity";
     if (tab === "hasad" && selectedAssignment !== null)
       return isAr ? "اختر نوع اللعبة" : "Choose Game Type";
-    if (tab === "hasad") return isAr ? "نشاط من حصاد" : "Hasad Activity";
+    if (tab === "hasad") return isAr ? "نشاط من حصاد" : "Hasaad Activity";
     return isAr ? "أنشطة العرض" : "Presentation Activities";
   })();
 
@@ -185,12 +185,12 @@ export function ActivityHubDialog({
                 </div>
                 <div>
                   <div className="font-extrabold text-sm" style={{ color: BRAND_GREEN }}>
-                    {isAr ? "نشاط من حصاد" : "Hasad Activity"}
+                    {isAr ? "نشاط من حصاد" : "Hasaad Activity"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {isAr
                       ? "اختر واجباً من حصاد وألعابه التعليمية ليُشغَّل أثناء عرضك"
-                      : "Pick a Hasad assignment and its educational games to launch during your presentation"}
+                      : "Pick a Hasaad assignment and its educational games to launch during your presentation"}
                   </div>
                 </div>
                 <div className="mt-auto text-xs font-bold flex items-center gap-1" style={{ color: BRAND_GREEN }}>
@@ -236,7 +236,7 @@ export function ActivityHubDialog({
             </div>
           )}
 
-          {/* ── HASAD: assignment browser ── */}
+          {/* ── HASAAD: assignment browser ── */}
           {tab === "hasad" && selectedAssignment === null && (
             <div className="flex flex-col h-full">
               <div className="p-4 border-b border-border">

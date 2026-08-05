@@ -98,7 +98,7 @@ interface Settings {
   columns: 1 | 2;
   headerNote?: string;
   footerNote?: string;
-  // Header identity fields, typography, and Hasad watermark control.
+  // Header identity fields, typography, and Hasaad watermark control.
   schoolName?: string;
   section?: string;
   teacherName?: string;
@@ -1203,12 +1203,12 @@ export default function WorksheetCreate() {
           >
             <div className="flex-1 min-w-[180px]">
               <div className="text-xs font-bold mb-0.5" style={{ color: BRAND_PRIMARY }}>
-                {ar ? "علامة حصاد المائية (خلف نص الورقة)" : "Hasad watermark (behind worksheet text)"}
+                {ar ? "علامة حصاد المائية (خلف نص الورقة)" : "Hasaad watermark (behind worksheet text)"}
               </div>
               <div className="text-[11px] text-muted-foreground">
                 {ar
                   ? "كلمة \"حصاد\" بخط كبير وخافت تظهر خلف الأسئلة. يمكن إخفاؤها لاحقًا في الباقات المدفوعة."
-                  : "Big faded \"Hasad\" word shown behind the questions. Can be hidden in paid plans later."}
+                  : "Big faded \"Hasaad\" word shown behind the questions. Can be hidden in paid plans later."}
               </div>
             </div>
             <Toggle

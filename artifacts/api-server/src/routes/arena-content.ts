@@ -451,7 +451,7 @@ router.post("/arena-content/ai-generate-questions", async (req, res) => {
 
     const langName = body.language === "ar" ? "Arabic" : "English";
     const sysPrompt = [
-      `You are an expert quiz writer for an Arabic educational competition platform called "Hasad Challenge".`,
+      `You are an expert quiz writer for an Arabic educational competition platform called "Hasaad Challenge".`,
       `Generate factually accurate, engaging short-answer trivia questions on the user-provided topic.`,
       `Write the questions and answers in ${langName}.`,
       `Each question must have ONE concise canonical answer (1–6 words). Avoid yes/no, avoid multi-part.`,

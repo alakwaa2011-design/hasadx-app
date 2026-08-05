@@ -773,8 +773,8 @@ function BrandLogoBlock({ isAr, onHome }: { isAr: boolean; onHome: () => void })
     <button
       type="button"
       onClick={onHome}
-      className="flex min-w-0 items-center justify-self-start gap-3 rounded-xl text-start transition-opacity hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a63a]/50"
-      aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasad"}
+      className="flex min-w-0 items-center justify-self-start gap-1.5 rounded-xl text-start transition-opacity hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a63a]/50"
+      aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasaad"}
     >
       <div
         className="shrink-0 rounded-xl p-0.5"
@@ -789,9 +789,9 @@ function BrandLogoBlock({ isAr, onHome }: { isAr: boolean; onHome: () => void })
           className="h-11 w-11 rounded-[10px] object-cover ring-1 ring-[rgba(212,166,58,0.35)]"
         />
       </div>
-      <div className="hidden flex-col sm:flex">
-        <span className="text-lg font-black leading-tight tracking-tight text-white">{isAr ? "حصاد" : "Hasad"}</span>
-        <span className="text-[11px] font-bold tracking-[0.22em] text-[#f4c95d]/95">HASADX</span>
+      <div className="hidden flex-col items-stretch sm:flex" style={{ minWidth: "5rem" }}>
+        <span className="text-[15px] font-black leading-tight text-[#f4c95d] text-center" style={{ letterSpacing: "0.32em" }}>{isAr ? "حصاد" : "Hasaad"}</span>
+        <span className="text-[11px] font-bold tracking-[0.22em] text-[#f4c95d]/95 text-center">HASAAD</span>
       </div>
     </button>
   );
@@ -1079,7 +1079,7 @@ export function WameethWaitingRoomUI(props: WameethWaitingRoomUIProps) {
               type="button"
               onClick={onHome}
               className="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d4a63a]/50"
-              aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasad"}
+              aria-label={isAr ? "الصفحة الرئيسية — حصاد" : "Home — Hasaad"}
             >
               <img
                 src={`${import.meta.env.BASE_URL}images/logo-mark.png`}
