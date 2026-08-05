@@ -13,6 +13,7 @@ import {
   ClassSelector,
   getRememberedTargetClass,
 } from "@/components/teacher/class-selector";
+import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import {
   Zap,
   ArrowLeft,
@@ -25,6 +26,7 @@ import {
   Link2,
   QrCode,
   Hash,
+  School,
 } from "lucide-react";
 
 interface Assignment {
@@ -54,6 +56,7 @@ export default function WameethCreate() {
 
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState<number | null>(null);
+  const [classLoading, setClassLoading] = useState<number | null>(null);
   const [targetClass, setTargetClass] = useState<string>(() =>
     getRememberedTargetClass(),
   );
@@ -84,6 +87,32 @@ export default function WameethCreate() {
         setLocation(`/teacher/game/${res.pin}`);
       },
     );
+  };
+
+  // Launch وميض الصف — fetch questions locally, store in sessionStorage, navigate.
+  const startClassMode = async (assignmentId: number, assignmentTitle: string) => {
+    if (classLoading !== null || creating !== null) return;
+    setClassLoading(assignmentId);
+    try {
+      const res = await fetch(`/api/assignments/${assignmentId}`, { credentials: "include" });
+      if (!res.ok) { toast.error(ar ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
+      const data = await res.json();
+      const qs = (data.questions || [])
+        .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
+          q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
+        .map((q: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
+          text: q.text,
+          options: [q.optionA, q.optionB, q.optionC, q.optionD],
+          correct: ["A", "B", "C", "D"].indexOf(q.correctAnswer),
+        }));
+      if (qs.length < 2) {
+        toast.error(ar ? "يحتاج وميض الصف سؤالين اختيار متعدد على الأقل" : "Wameeth Class needs at least 2 MCQ questions");
+        return;
+      }
+      sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({ questions: qs, duration: 20, title: assignmentTitle }));
+      setLocation("/game/wameeth/class");
+    } catch { toast.error(ar ? "حدث خطأ" : "An error occurred"); }
+    finally { setClassLoading(null); }
   };
 
   // If the organizer is not logged in, send them to the login page with a
@@ -272,55 +301,67 @@ export default function WameethCreate() {
           ) : (
             <div className="space-y-2.5">
               {filtered.map((a: Assignment) => (
-                <button
+                <div
                   key={a.id}
-                  type="button"
-                  disabled={creating !== null}
-                  onClick={() => startWameeth(a.id)}
-                  className="w-full text-start flex items-center gap-3 p-4 rounded-2xl transition-all hover:brightness-110 hover:-translate-y-px disabled:opacity-60 disabled:cursor-wait"
+                  className="rounded-2xl overflow-hidden"
                   style={{
-                    background:
-                      "linear-gradient(135deg, rgba(10,58,34,0.55) 0%, rgba(2,14,9,0.80) 100%)",
+                    background: "linear-gradient(135deg, rgba(10,58,34,0.55) 0%, rgba(2,14,9,0.80) 100%)",
                     border: "1px solid rgba(212,166,58,0.22)",
                     boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
                   }}
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(212,166,58,0.12)",
-                      border: "1px solid rgba(212,166,58,0.30)",
-                    }}
-                  >
-                    <FileText className="w-4 h-4" style={{ color: "#f4c95d" }} />
+                  {/* Assignment info row */}
+                  <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(212,166,58,0.12)", border: "1px solid rgba(212,166,58,0.30)" }}
+                    >
+                      <FileText className="w-4 h-4" style={{ color: "#f4c95d" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-extrabold text-sm leading-snug truncate">{a.title}</p>
+                      <p className="text-[11px] text-white/50 mt-0.5">
+                        {a.questionCount} {ar ? "سؤال" : "questions"}{a.subject ? ` · ${a.subject}` : ""}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-extrabold text-sm leading-snug truncate">
-                      {a.title}
-                    </p>
-                    <p className="text-[11px] text-white/50 mt-0.5">
-                      {a.questionCount}{" "}
-                      {ar ? "سؤال" : "questions"}
-                      {a.subject ? ` · ${a.subject}` : ""}
-                    </p>
-                  </div>
-                  {creating === a.id ? (
-                    <Loader2
-                      className="w-5 h-5 animate-spin"
-                      style={{ color: "#f4c95d" }}
-                    />
-                  ) : (
-                    <span
-                      className="text-xs font-extrabold px-3 py-1.5 rounded-lg shrink-0"
+                  {/* Action buttons */}
+                  <div className="flex gap-2 px-4 pb-3">
+                    {/* Live game — original behaviour */}
+                    <button
+                      type="button"
+                      disabled={creating !== null || classLoading !== null}
+                      onClick={() => startWameeth(a.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-extrabold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-wait"
                       style={{
                         background: "linear-gradient(135deg,#f4c95d 0%,#d4a63a 100%)",
                         color: "#1a1008",
                       }}
                     >
-                      {ar ? "ابدأ" : "Start"}
-                    </span>
-                  )}
-                </button>
+                      {creating === a.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Zap className="w-3.5 h-3.5" fill="currentColor" />}
+                      {ar ? "ابدأ مباشرة" : "Live game"}
+                    </button>
+                    {/* Class mode */}
+                    <button
+                      type="button"
+                      disabled={creating !== null || classLoading !== null}
+                      onClick={() => startClassMode(a.id, a.title)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-extrabold transition-all hover:brightness-110 disabled:opacity-50 disabled:cursor-wait"
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1.5px solid rgba(99,179,237,0.55)",
+                        color: "#93c5fd",
+                      }}
+                    >
+                      {classLoading === a.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <School className="w-3.5 h-3.5" />}
+                      {ar ? "وميض الصف" : "Class mode"}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}

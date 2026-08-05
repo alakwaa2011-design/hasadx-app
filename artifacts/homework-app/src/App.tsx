@@ -100,6 +100,7 @@ const EscapeHost = lazy(() => import("@/pages/game/escape-host"));
 const EscapePlay = lazy(() => import("@/pages/game/escape-play"));
 const HotSeatCreate = lazy(() => import("@/pages/game/hotseat-create"));
 const WameethCreate = lazy(() => import("@/pages/game/wameeth-create"));
+const WameethClass  = lazy(() => import("@/pages/game/wameeth-class"));
 const HotSeatHost = lazy(() => import("@/pages/game/hotseat-host"));
 const HotSeatJoin = lazy(() => import("@/pages/game/hotseat-join"));
 const HotSeatPlay = lazy(() => import("@/pages/game/hotseat-play"));
@@ -393,6 +394,7 @@ function Router() {
         {/* Game Routes */}
         <Route path="/game/wameeth" component={WameethRedirect} />
         <Route path="/game/wameeth/create" component={WameethCreate} />
+        <Route path="/game/wameeth/class" component={WameethClass} />
         <Route path="/game/join/:pin?" component={GameJoin} />
         <Route path="/game/play/:pin" component={GamePlay} />
         {/* Tug of War Routes */}
