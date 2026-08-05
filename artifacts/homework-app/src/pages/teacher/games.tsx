@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Eye,
   Lock,
+  School,
 } from "lucide-react";
 
 interface GameItem {
@@ -101,6 +102,24 @@ export default function TeacherGamesPage() {
           to: "/game/hack",
           iconBg: "bg-emerald-700/10",
           iconColor: "text-emerald-700",
+        },
+      ],
+    },
+    {
+      key: "classroom",
+      titleAr: "وميض الصف",
+      titleEn: "Classroom Wameeth",
+      descAr: "نفس لعبة وميض — هدايا ونقاط وتجميد — لكن على السبورة الذكية: فريقان يتنافسان على شاشتين منفصلتين في نفس الوقت",
+      descEn: "Full Wameeth experience — gifts, points, freeze — split across two side-by-side panels on the smart board",
+      accent: "from-emerald-500 to-teal-600",
+      items: [
+        {
+          icon: <School />,
+          titleAr: "وميض الصف",
+          titleEn: "Class Wameeth",
+          to: "/game/wameeth/create",
+          iconBg: "bg-emerald-500/10",
+          iconColor: "text-emerald-600",
         },
       ],
     },

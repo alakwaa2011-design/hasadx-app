@@ -87,7 +87,9 @@ import {
   GraduationCap,
   Flame,
   ChevronRight,
+  School,
 } from "lucide-react";
+import { WAMEETH_CLASS_SETUP_KEY } from "@/pages/game/wameeth-class";
 import SharedContentPage from "@/pages/teacher/shared-content";
 import PresentationsIndex from "@/pages/teacher/presentations/index";
 import GuestDraftImportBanner from "@/components/teacher/GuestDraftImportBanner";
@@ -307,7 +309,7 @@ interface SharedAssignment {
   questionCount: number;
 }
 
-type GameMode = "solo" | "teams";
+type GameMode = "solo" | "teams" | "classroom";
 
 /** Games that can be launched from an assignment (live session). Default: وميض */
 type AssignmentLiveGameChoice =
@@ -554,10 +556,46 @@ export default function TeacherDashboard() {
     }
   };
 
-  const confirmStartGame = () => {
+  const confirmStartGame = async () => {
     if (!gameSetupModal) return;
     const assignmentId = gameSetupModal;
     setGameSetupModal(null);
+
+    // ── وضع اللعب داخل الصف: fetch questions → sessionStorage → navigate ──
+    if (gameMode === "classroom") {
+      setCreatingGameForId(assignmentId);
+      try {
+        const res = await fetch(`/api/assignments/${assignmentId}`, { credentials: "include" });
+        if (!res.ok) { toast.error(lang === "ar" ? "تعذّر تحميل الأسئلة" : "Failed to load questions"); return; }
+        const data = await res.json();
+        const assignment = assignments.find((a: { id: number }) => a.id === assignmentId);
+        const qs = (data.questions || [])
+          .filter((q: { questionType?: string; optionA?: string; optionB?: string; optionC?: string; optionD?: string; correctAnswer?: string }) =>
+            q.questionType === "mcq" && q.optionA && q.optionB && q.optionC && q.optionD && q.correctAnswer)
+          .map((q: { text: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string }) => ({
+            text: q.text,
+            options: [q.optionA, q.optionB, q.optionC, q.optionD],
+            correct: ["A","B","C","D"].indexOf(q.correctAnswer),
+          }));
+        if (qs.length < 2) {
+          toast.error(lang === "ar" ? "يحتاج وميض الصف سؤالين اختيار متعدد على الأقل" : "Wameeth Class needs at least 2 MCQ questions");
+          return;
+        }
+        sessionStorage.setItem(WAMEETH_CLASS_SETUP_KEY, JSON.stringify({
+          questions: qs,
+          duration: 20,
+          title: (assignment as { title?: string })?.title,
+        }));
+        setLocation("/game/wameeth/class");
+      } catch {
+        toast.error(lang === "ar" ? "حدث خطأ" : "An error occurred");
+      } finally {
+        setCreatingGameForId(null);
+      }
+      return;
+    }
+
+    // ── وضع مباشر عادي (فردي / فرق) ──────────────────────────────────────
     setCreatingGameForId(assignmentId);
     const socket = getSocket();
     const validCustomNames =
@@ -1403,6 +1441,32 @@ export default function TeacherDashboard() {
                     {t.teacherGame.teamModeDesc}
                   </p>
                 </button>
+                {/* ── وضع اللعب داخل الصف ── */}
+                <button
+                  onClick={() => setGameMode("classroom")}
+                  className={`col-span-2 p-4 rounded-xl border-2 text-center transition-all flex items-center gap-4 ${
+                    gameMode === "classroom"
+                      ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-emerald-400"
+                  }`}
+                >
+                  <School className={`w-8 h-8 shrink-0 ${gameMode === "classroom" ? "text-emerald-500" : ""}`} />
+                  <div className="text-start flex-1">
+                    <p className="font-black text-sm">
+                      {lang === "ar" ? "وضع اللعب داخل الصف" : "Classroom Mode"}
+                    </p>
+                    <p className="text-xs mt-0.5 opacity-70">
+                      {lang === "ar"
+                        ? "فريقان على السبورة الذكية — شاشتان منفصلتان في نفس الوقت"
+                        : "Two teams on the smart board — two panels at once"}
+                    </p>
+                  </div>
+                  {gameMode === "classroom" && (
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
+                </button>
               </div>
               {gameMode === "teams" && (
                 <div className="mb-5 space-y-4">
@@ -1474,13 +1538,15 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
               )}
-              <div className="mb-5">
-                <ClassSelector
-                  value={gameTargetClass}
-                  onChange={setGameTargetClass}
-                  accent="#a855f7"
-                />
-              </div>
+              {gameMode !== "classroom" && (
+                <div className="mb-5">
+                  <ClassSelector
+                    value={gameTargetClass}
+                    onChange={setGameTargetClass}
+                    accent="#a855f7"
+                  />
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button
