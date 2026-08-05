@@ -74,6 +74,7 @@ interface Message {
   subject: string; body: string; parentEmail: string; parentName: string | null;
   sentAt: string; readAt: string | null; replyText: string | null;
   repliedAt: string | null; tokenExpiresAt: string; isArchived: boolean;
+  hasUnreadReply: boolean;
 }
 
 type MsgStatus = "expired" | "replied" | "read" | "sent";
@@ -244,6 +245,7 @@ export default function ParentMessagesPage() {
       const newReply = await r.json();
       setThreads(prev => ({ ...prev, [msgId]: [...(prev[msgId] || []), newReply] }));
       setTeacherReplyDraft(prev => ({ ...prev, [msgId]: "" }));
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, hasUnreadReply: false } : m));
       toast.success("تم إرسال الرد");
     } catch (e: any) { toast.error(e.message || "حدث خطأ"); }
     finally { setSendingReply(prev => ({ ...prev, [msgId]: false })); }
@@ -349,6 +351,12 @@ export default function ParentMessagesPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      {msg.hasUnreadReply && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "#fff7ed", color: "#c2730a", border: "1px solid #fcd89a" }}>
+                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} />
+                          رد جديد
+                        </span>
+                      )}
                       <span style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 9px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: status.bg, color: status.color }}>
                         {status.icon} {status.label}
                       </span>

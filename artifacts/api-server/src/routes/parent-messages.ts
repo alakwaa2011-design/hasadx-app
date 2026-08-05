@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, parentMessagesTable, parentMessageRepliesTable, studentsTable, teachersTable, notificationsTable } from "@workspace/db";
-import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod/v4";
 import { randomUUID } from "crypto";
 import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { buildParentMessageEmail, buildTeacherReplyNotificationEmail, buildParentThreadReplyEmail } from "../lib/parent-message-email";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -117,6 +117,15 @@ router.get("/parent-messages", async (req, res) => {
         repliedAt: parentMessagesTable.repliedAt,
         tokenExpiresAt: parentMessagesTable.tokenExpiresAt,
         isArchived: parentMessagesTable.isArchived,
+        hasUnreadReply: sql<boolean>`EXISTS (
+          SELECT 1 FROM parent_message_replies pmr
+          WHERE pmr.message_id = ${parentMessagesTable.id}
+            AND pmr.sender = 'parent'
+            AND pmr.created_at = (
+              SELECT MAX(pmr2.created_at) FROM parent_message_replies pmr2
+              WHERE pmr2.message_id = ${parentMessagesTable.id}
+            )
+        )`,
       })
       .from(parentMessagesTable)
       .innerJoin(studentsTable, eq(parentMessagesTable.studentId, studentsTable.id))
