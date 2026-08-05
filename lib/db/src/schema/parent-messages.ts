@@ -17,6 +17,7 @@ export const parentMessagesTable = pgTable("parent_messages", {
   replyToken: text("reply_token").notNull().unique(),
   tokenExpiresAt: timestamp("token_expires_at").notNull(),
   isArchived: boolean("is_archived").notNull().default(false),
+  attachments: text("attachments"), // JSON: Array<{name,objectPath,contentType,size}>
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   teacherIdx: index("parent_messages_teacher_idx").on(t.teacherId),

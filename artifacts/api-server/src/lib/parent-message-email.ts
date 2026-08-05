@@ -176,6 +176,8 @@ function schoolBannerRow(schoolName: string, schoolLogoUrl?: string): string {
           </tr>`;
 }
 
+export interface AttachmentMeta { name: string; url: string; contentType: string; size: number; }
+
 export interface ParentMessageEmailParams {
   teacherName: string;
   studentName: string;
@@ -187,6 +189,7 @@ export interface ParentMessageEmailParams {
   parentName?: string;
   schoolName?: string;
   schoolLogoUrl?: string;
+  attachments?: AttachmentMeta[];
 }
 
 export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
@@ -253,6 +256,53 @@ export function buildParentMessageEmail(p: ParentMessageEmailParams): string {
                   </td>
                 </tr>
               </table>
+
+              ${p.attachments && p.attachments.length > 0 ? `
+              <!-- Attachments -->
+              <p style="margin:20px 0 8px;font-size:11px;font-weight:700;color:${G.muted};text-transform:uppercase;
+                         letter-spacing:0.06em;font-family:'Tajawal',Arial,sans-serif;">
+                المرفقات (${p.attachments.length})
+              </p>
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"
+                     style="background:#FAFAF8;border:1px solid ${G.border};border-radius:10px;padding:4px 0;">
+                ${p.attachments.map(att => {
+                  const icon = att.contentType.startsWith("image/") ? "🖼️"
+                    : att.contentType === "application/pdf" ? "📄"
+                    : att.contentType.includes("word") ? "📝"
+                    : att.contentType.includes("sheet") || att.contentType.includes("excel") ? "📊"
+                    : att.contentType.includes("presentation") || att.contentType.includes("powerpoint") ? "📑"
+                    : "📎";
+                  const sizeKb = att.size < 1024 * 1024
+                    ? `${Math.round(att.size / 1024)} KB`
+                    : `${(att.size / (1024 * 1024)).toFixed(1)} MB`;
+                  return `
+                <tr>
+                  <td style="padding:10px 16px;border-bottom:1px solid ${G.border};direction:rtl;">
+                    <a href="${esc(att.url)}" target="_blank"
+                       style="text-decoration:none;display:block;">
+                      <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td width="28" valign="middle" style="font-size:18px;padding-left:10px;">${icon}</td>
+                          <td valign="middle">
+                            <span style="font-size:13px;font-weight:700;color:${G.green};
+                                         font-family:'Tajawal',Arial,sans-serif;word-break:break-all;">
+                              ${esc(att.name)}
+                            </span>
+                            <span style="font-size:11px;color:${G.muted};font-family:'Tajawal',Arial,sans-serif;
+                                         margin-right:8px;">${esc(sizeKb)}</span>
+                          </td>
+                          <td width="60" align="left" valign="middle"
+                              style="font-size:11px;color:${G.green};font-family:'Tajawal',Arial,sans-serif;
+                                     white-space:nowrap;padding-right:4px;">
+                            ⬇ تحميل
+                          </td>
+                        </tr>
+                      </table>
+                    </a>
+                  </td>
+                </tr>`;
+                }).join("")}
+              </table>` : ""}
 
               <!-- Security notice -->
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top:20px;">

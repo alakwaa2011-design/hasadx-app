@@ -5,7 +5,8 @@ import {
   MessageSquare, Plus, Send, X, Search, Loader2,
   Mail, User, Reply, Archive, AlertCircle,
   MailOpen, RotateCcw, ChevronDown, ChevronUp,
-  FileText, Clock, CheckCircle2, XCircle,
+  FileText, Clock, CheckCircle2, XCircle, Users,
+  Paperclip, Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "@/components/ui/sonner";
@@ -57,6 +58,20 @@ const TEMPLATES = [
   },
 ];
 
+interface Attachment { name: string; objectPath: string; contentType: string; size: number; }
+
+function attachIcon(ct: string) {
+  if (ct.startsWith("image/")) return "🖼️";
+  if (ct === "application/pdf") return "📄";
+  if (ct.includes("word")) return "📝";
+  if (ct.includes("sheet") || ct.includes("excel")) return "📊";
+  if (ct.includes("presentation") || ct.includes("powerpoint")) return "📑";
+  return "📎";
+}
+function attachSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 interface Student {
   id: number; name: string; gradeLevel: string | null;
   studentClass: string | null; parentPhone: string | null;
@@ -74,7 +89,7 @@ interface Message {
   subject: string; body: string; parentEmail: string; parentName: string | null;
   sentAt: string; readAt: string | null; replyText: string | null;
   repliedAt: string | null; tokenExpiresAt: string; isArchived: boolean;
-  hasUnreadReply: boolean;
+  hasUnreadReply: boolean; attachments: string | null;
 }
 
 type MsgStatus = "expired" | "replied" | "read" | "sent";
@@ -111,6 +126,14 @@ export default function ParentMessagesPage() {
   const [sendingReply, setSendingReply] = useState<Record<number, boolean>>({});
   const [search, setSearch] = useState("");
   const [showCompose, setShowCompose] = useState(false);
+  const [showBulkCompose, setShowBulkCompose] = useState(false);
+
+  // Bulk compose
+  const [bulkClassFilter, setBulkClassFilter] = useState<string>("__all__");
+  const [bulkSubject, setBulkSubject] = useState("");
+  const [bulkBody, setBulkBody] = useState("");
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ sent: number; skipped: number; failed: number } | null>(null);
 
   // Compose
   const [composeStudentId, setComposeStudentId] = useState<number | "">("");
@@ -121,6 +144,12 @@ export default function ParentMessagesPage() {
   const [composeSending, setComposeSending] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+
+  // Attachment state
+  const [composeAttachments, setComposeAttachments] = useState<Attachment[]>([]);
+  const [composeUploadingCount, setComposeUploadingCount] = useState(0);
+  const [bulkAttachments, setBulkAttachments] = useState<Attachment[]>([]);
+  const [bulkUploadingCount, setBulkUploadingCount] = useState(0);
 
   const fetchMessages = useCallback(async (archived = false) => {
     setLoading(true);
@@ -214,6 +243,7 @@ export default function ParentMessagesPage() {
         body: JSON.stringify({
           studentId: composeStudentId, subject: composeSubject || "رسالة من المعلم",
           body: composeBody, parentEmail: composeParentEmail, parentName: composeParentName || undefined,
+          attachments: composeAttachments.length > 0 ? composeAttachments : undefined,
         }),
       });
       if (!r.ok) throw new Error((await r.json()).message || "حدث خطأ");
@@ -228,7 +258,78 @@ export default function ParentMessagesPage() {
   function resetCompose() {
     setComposeStudentId(""); setComposeSubject(""); setComposeBody("");
     setComposeParentEmail(""); setComposeParentName(""); setStudentSearch("");
-    setActiveTemplate(null);
+    setActiveTemplate(null); setComposeAttachments([]);
+  }
+
+  function resetBulk() {
+    setBulkClassFilter("__all__"); setBulkSubject(""); setBulkBody("");
+    setBulkResult(null); setBulkAttachments([]);
+  }
+
+  async function handleBulkSend() {
+    if (!bulkBody.trim()) return;
+    setBulkSending(true); setBulkResult(null);
+    try {
+      const r = await fetch(`${BASE}/api/parent-messages/bulk`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classFilter: bulkClassFilter === "__all__" ? null : bulkClassFilter,
+          subject: bulkSubject || "رسالة من المعلم",
+          body: bulkBody,
+          attachments: bulkAttachments.length > 0 ? bulkAttachments : undefined,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || "حدث خطأ");
+      setBulkResult(data);
+      fetchMessages(false);
+      toast.success(`تم الإرسال — ${data.sent} رسالة`);
+    } catch (e: any) { toast.error(e.message || "حدث خطأ"); }
+    finally { setBulkSending(false); }
+  }
+
+  // Unique classes from students list
+  const uniqueClasses = Array.from(new Set(students.map(s => s.studentClass).filter(Boolean))) as string[];
+
+  // ── Attachment upload helpers ───────────────────────────────
+  async function uploadAttachmentFile(file: File): Promise<Attachment | null> {
+    try {
+      const r = await fetch(`${BASE}/api/storage/uploads/request-attachment-url`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!r.ok) { toast.error((await r.json()).error || "فشل رفع الملف"); return null; }
+      const { uploadURL, objectPath } = await r.json();
+      const up = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!up.ok) { toast.error("فشل رفع الملف إلى التخزين"); return null; }
+      return { name: file.name, objectPath, contentType: file.type, size: file.size };
+    } catch { toast.error("فشل رفع الملف"); return null; }
+  }
+
+  async function handleComposeFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    const toUpload = files.slice(0, 5 - composeAttachments.length);
+    setComposeUploadingCount(c => c + toUpload.length);
+    for (const file of toUpload) {
+      const att = await uploadAttachmentFile(file);
+      if (att) setComposeAttachments(prev => [...prev, att]);
+      setComposeUploadingCount(c => Math.max(0, c - 1));
+    }
+  }
+
+  async function handleBulkFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    const toUpload = files.slice(0, 5 - bulkAttachments.length);
+    setBulkUploadingCount(c => c + toUpload.length);
+    for (const file of toUpload) {
+      const att = await uploadAttachmentFile(file);
+      if (att) setBulkAttachments(prev => [...prev, att]);
+      setBulkUploadingCount(c => Math.max(0, c - 1));
+    }
   }
 
   async function handleTeacherReply(msgId: number) {
@@ -278,13 +379,19 @@ export default function ParentMessagesPage() {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.green, margin: 0 }}>مراسلات الأسرة</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: C.green, margin: 0 }}>رسائل أولياء الأمور</h1>
             <p style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>أرسل رسائل لأولياء الأمور وتابع ردودهم</p>
           </div>
-          <button onClick={() => setShowCompose(true)}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            <Plus size={16} /> رسالة جديدة
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setShowBulkCompose(true)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", background: "#fff", color: C.green, border: `1.5px solid ${C.green}`, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              <Users size={15} /> رسالة جماعية
+            </button>
+            <button onClick={() => setShowCompose(true)}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+              <Plus size={16} /> رسالة جديدة
+            </button>
+          </div>
         </div>
 
         {/* Warning */}
@@ -394,6 +501,25 @@ export default function ParentMessagesPage() {
                             <div style={{ background: C.surface, borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.75, color: C.text, whiteSpace: "pre-wrap", borderRight: `3px solid ${C.gold}` }}>
                               {msg.body}
                             </div>
+                            {msg.attachments && (() => {
+                              try {
+                                const atts: Attachment[] = JSON.parse(msg.attachments);
+                                if (!atts.length) return null;
+                                return (
+                                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                                    {atts.map((att, i) => (
+                                      <a key={i} href={`${BASE}/api/storage${att.objectPath}`} target="_blank" rel="noopener noreferrer"
+                                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: C.card, borderRadius: 8, border: `1px solid ${C.border}`, textDecoration: "none" }}>
+                                        <span style={{ fontSize: 15 }}>{attachIcon(att.contentType)}</span>
+                                        <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                                        <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                                        <Download size={12} style={{ color: C.green, flexShrink: 0 }} />
+                                      </a>
+                                    ))}
+                                  </div>
+                                );
+                              } catch { return null; }
+                            })()}
                           </div>
 
                           {/* Thread replies */}
@@ -461,6 +587,112 @@ export default function ParentMessagesPage() {
           </div>
         )}
       </div>
+
+      {/* ── Bulk Compose Modal ─────────────────────────────── */}
+      <AnimatePresence>
+        {showBulkCompose && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "16px", overflowY: "auto", direction: "rtl" }}
+            onClick={() => { setShowBulkCompose(false); resetBulk(); }}>
+            <motion.div initial={{ scale: 0.92, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92 }}
+              style={{ background: C.card, borderRadius: 18, padding: 28, maxWidth: 520, width: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.18)", marginTop: 20 }}
+              onClick={e => e.stopPropagation()}>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: C.green, display: "flex", alignItems: "center", gap: 8, margin: 0 }}>
+                  <Users size={18} /> رسالة جماعية لأولياء الأمور
+                </h3>
+                <button onClick={() => { setShowBulkCompose(false); resetBulk(); }} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted }}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                {/* Class selector */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 6 }}>الصف المستهدف</label>
+                  <select value={bulkClassFilter} onChange={e => setBulkClassFilter(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 13, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none", appearance: "none" }}>
+                    <option value="__all__">جميع الصفوف ({students.filter(s => s.parentEmail).length} ولي أمر)</option>
+                    {uniqueClasses.map(cls => (
+                      <option key={cls} value={cls}>
+                        {cls} ({students.filter(s => s.studentClass === cls && s.parentEmail).length} ولي أمر)
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: 11, color: C.muted, marginTop: 5 }}>
+                    ⚠️ يُرسَل فقط إلى الطلاب الذين لديهم إيميل ولي أمر مسجّل.
+                  </p>
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 5 }}>الموضوع</label>
+                  <input value={bulkSubject} onChange={e => setBulkSubject(e.target.value)} placeholder="رسالة من المعلم"
+                    style={{ width: "100%", padding: "8px 10px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 13, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none" }} />
+                </div>
+
+                {/* Body */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 5 }}>نص الرسالة *</label>
+                  <textarea value={bulkBody} onChange={e => setBulkBody(e.target.value)} rows={5} placeholder="اكتب الرسالة هنا — ستصل لجميع أولياء الأمور المحددين..."
+                    style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 14, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none", resize: "vertical", lineHeight: 1.65 }} />
+                </div>
+
+                {/* Attachments */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 6 }}>المرفقات (اختياري — حتى 5 ملفات، 20 MB لكل ملف)</label>
+                  {bulkAttachments.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+                      {bulkAttachments.map((att, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: C.surface, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                          <span style={{ fontSize: 15 }}>{attachIcon(att.contentType)}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                          <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                          <button onClick={() => setBulkAttachments(prev => prev.filter((_, j) => j !== i))} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, padding: 2, display: "flex", alignItems: "center" }}><X size={13} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {bulkUploadingCount > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted, marginBottom: 8 }}>
+                      <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جارٍ الرفع...
+                    </div>
+                  )}
+                  {bulkAttachments.length < 5 && (
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 8, cursor: "pointer", fontSize: 12, color: C.muted, fontFamily: "inherit" }}>
+                      <Paperclip size={13} /> إضافة مرفق
+                      <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style={{ display: "none" }} onChange={handleBulkFileChange} />
+                    </label>
+                  )}
+                </div>
+
+                {/* Result */}
+                {bulkResult && (
+                  <div style={{ background: "#e8f4ed", border: `1px solid ${C.green}`, borderRadius: 10, padding: "12px 14px", fontSize: 13, color: C.green, fontWeight: 700 }}>
+                    ✅ أُرسل {bulkResult.sent} رسالة
+                    {bulkResult.skipped > 0 && ` · ${bulkResult.skipped} بدون إيميل`}
+                    {bulkResult.failed > 0 && ` · ${bulkResult.failed} فشل`}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleBulkSend} disabled={bulkSending || !bulkBody.trim() || bulkUploadingCount > 0}
+                    style={{ flex: 1, padding: "11px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, opacity: (bulkSending || !bulkBody.trim()) ? 0.5 : 1 }}>
+                    {bulkSending ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={15} />}
+                    {bulkSending ? "جارٍ الإرسال..." : "إرسال للجميع"}
+                  </button>
+                  <button onClick={() => { setShowBulkCompose(false); resetBulk(); }}
+                    style={{ flex: 1, padding: "11px", background: C.surface, color: C.muted, border: `1px solid ${C.border}`, borderRadius: 10, fontSize: 14, fontFamily: "inherit", cursor: "pointer" }}>
+                    إغلاق
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Compose Modal ──────────────────────────────────── */}
       <AnimatePresence>
@@ -556,8 +788,36 @@ export default function ParentMessagesPage() {
                     style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.border}`, borderRadius: 9, fontSize: 14, fontFamily: "inherit", background: C.surface, color: C.text, outline: "none", resize: "vertical", lineHeight: 1.65 }} />
                 </div>
 
+                {/* Attachments */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, display: "block", marginBottom: 6 }}>المرفقات (اختياري — حتى 5 ملفات، 20 MB لكل ملف)</label>
+                  {composeAttachments.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+                      {composeAttachments.map((att, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: C.surface, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                          <span style={{ fontSize: 15 }}>{attachIcon(att.contentType)}</span>
+                          <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                          <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                          <button onClick={() => setComposeAttachments(prev => prev.filter((_, j) => j !== i))} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, padding: 2, display: "flex", alignItems: "center" }}><X size={13} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {composeUploadingCount > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted, marginBottom: 8 }}>
+                      <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> جارٍ الرفع...
+                    </div>
+                  )}
+                  {composeAttachments.length < 5 && (
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", background: C.surface, border: `1px dashed ${C.border}`, borderRadius: 8, cursor: "pointer", fontSize: 12, color: C.muted, fontFamily: "inherit" }}>
+                      <Paperclip size={13} /> إضافة مرفق
+                      <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style={{ display: "none" }} onChange={handleComposeFileChange} />
+                    </label>
+                  )}
+                </div>
+
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={handleSend} disabled={composeSending || !composeStudentId || !composeBody.trim() || !composeParentEmail.trim()}
+                  <button onClick={handleSend} disabled={composeSending || !composeStudentId || !composeBody.trim() || !composeParentEmail.trim() || composeUploadingCount > 0}
                     style={{ flex: 1, padding: "11px", background: C.green, color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, opacity: (composeSending || !composeStudentId || !composeBody.trim() || !composeParentEmail.trim()) ? 0.5 : 1 }}>
                     {composeSending ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={15} />}
                     {composeSending ? "جارٍ الإرسال..." : "إرسال"}

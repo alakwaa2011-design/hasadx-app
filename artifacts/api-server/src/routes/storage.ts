@@ -78,6 +78,50 @@ router.post("/storage/uploads/request-image-url", async (req: Request, res: Resp
   }
 });
 
+router.post("/storage/uploads/request-attachment-url", async (req: Request, res: Response) => {
+  if (!req.session.teacherId) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  const parsed = RequestUploadUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Missing or invalid required fields" });
+    return;
+  }
+
+  const { name, size, contentType } = parsed.data;
+  const ALLOWED = [
+    "image/",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+  ];
+  const allowed = ALLOWED.some(t => contentType.startsWith(t));
+  if (!allowed) {
+    res.status(400).json({ error: "نوع الملف غير مدعوم. المسموح به: صور، PDF، Word، Excel، PowerPoint" });
+    return;
+  }
+  const MAX_SIZE = 20 * 1024 * 1024;
+  if (size > MAX_SIZE) {
+    res.status(400).json({ error: "حجم الملف يتجاوز 20MB" });
+    return;
+  }
+
+  try {
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
+  } catch (error) {
+    req.log.error({ err: error }, "Error generating attachment upload URL");
+    res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
 router.post("/storage/uploads/request-audio-url", async (req: Request, res: Response) => {
   if (!req.session.teacherId) {
     res.status(401).json({ error: "Authentication required" });
