@@ -80,7 +80,7 @@ interface Student {
 
 interface Reply {
   id: number; messageId: number; sender: "teacher" | "parent";
-  body: string; createdAt: string;
+  body: string; attachments?: string | null; createdAt: string;
 }
 
 interface Message {
@@ -150,6 +150,9 @@ export default function ParentMessagesPage() {
   const [composeUploadingCount, setComposeUploadingCount] = useState(0);
   const [bulkAttachments, setBulkAttachments] = useState<Attachment[]>([]);
   const [bulkUploadingCount, setBulkUploadingCount] = useState(0);
+  // Reply attachment state (keyed by message id)
+  const [replyAttachments, setReplyAttachments] = useState<Record<number, Attachment[]>>({});
+  const [replyUploadingCount, setReplyUploadingCount] = useState<Record<number, number>>({});
 
   const fetchMessages = useCallback(async (archived = false) => {
     setLoading(true);
@@ -332,20 +335,35 @@ export default function ParentMessagesPage() {
     }
   }
 
+  async function handleReplyFileChange(msgId: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    const current = replyAttachments[msgId] || [];
+    const toUpload = files.slice(0, 5 - current.length);
+    setReplyUploadingCount(prev => ({ ...prev, [msgId]: (prev[msgId] || 0) + toUpload.length }));
+    for (const file of toUpload) {
+      const att = await uploadAttachmentFile(file);
+      if (att) setReplyAttachments(prev => ({ ...prev, [msgId]: [...(prev[msgId] || []), att] }));
+      setReplyUploadingCount(prev => ({ ...prev, [msgId]: Math.max(0, (prev[msgId] || 1) - 1) }));
+    }
+  }
+
   async function handleTeacherReply(msgId: number) {
     const body = teacherReplyDraft[msgId]?.trim();
     if (!body) return;
     setSendingReply(prev => ({ ...prev, [msgId]: true }));
+    const atts = replyAttachments[msgId] || [];
     try {
       const r = await fetch(`${BASE}/api/parent-messages/${msgId}/teacher-reply`, {
         method: "POST", credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, attachments: atts.length > 0 ? atts : undefined }),
       });
       if (!r.ok) throw new Error((await r.json()).message || "حدث خطأ");
       const newReply = await r.json();
       setThreads(prev => ({ ...prev, [msgId]: [...(prev[msgId] || []), newReply] }));
       setTeacherReplyDraft(prev => ({ ...prev, [msgId]: "" }));
+      setReplyAttachments(prev => ({ ...prev, [msgId]: [] }));
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, hasUnreadReply: false } : m));
       toast.success("تم إرسال الرد");
     } catch (e: any) { toast.error(e.message || "حدث خطأ"); }
@@ -528,48 +546,91 @@ export default function ParentMessagesPage() {
                               <Loader2 size={18} style={{ color: C.green, animation: "spin 1s linear infinite" }} />
                             </div>
                           ) : (
-                            thread.map((reply, i) => (
-                              <div key={i} style={{ marginBottom: 12 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: reply.sender === "teacher" ? C.green : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    {reply.sender === "teacher"
-                                      ? <User size={13} style={{ color: "#fff" }} />
-                                      : <span style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>و</span>}
+                            thread.map((reply, i) => {
+                              let replyAtts: Attachment[] = [];
+                              try { if (reply.attachments) replyAtts = JSON.parse(reply.attachments); } catch {}
+                              return (
+                                <div key={i} style={{ marginBottom: 12 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: reply.sender === "teacher" ? C.green : "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                      {reply.sender === "teacher"
+                                        ? <User size={13} style={{ color: "#fff" }} />
+                                        : <span style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>و</span>}
+                                    </div>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: reply.sender === "teacher" ? C.green : "#2563eb" }}>
+                                      {reply.sender === "teacher" ? "أنت (المعلم)" : `${msg.parentName || "ولي الأمر"}`}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: C.muted }}>
+                                      {new Date(reply.createdAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                    </span>
                                   </div>
-                                  <span style={{ fontSize: 12, fontWeight: 700, color: reply.sender === "teacher" ? C.green : "#2563eb" }}>
-                                    {reply.sender === "teacher" ? "أنت (المعلم)" : `${msg.parentName || "ولي الأمر"}`}
-                                  </span>
-                                  <span style={{ fontSize: 11, color: C.muted }}>
-                                    {new Date(reply.createdAt).toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                                  </span>
+                                  <div style={{
+                                    background: reply.sender === "teacher" ? C.surface : "#f0f7ff",
+                                    borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.75,
+                                    color: C.text, whiteSpace: "pre-wrap",
+                                    borderRight: `3px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
+                                  }}>
+                                    {reply.body}
+                                  </div>
+                                  {replyAtts.length > 0 && (
+                                    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+                                      {replyAtts.map((att, j) => (
+                                        <a key={j} href={`${BASE}/api/storage${att.objectPath}`} target="_blank" rel="noopener noreferrer"
+                                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", background: C.card, borderRadius: 8, border: `1px solid ${C.border}`, textDecoration: "none" }}>
+                                          <span style={{ fontSize: 15 }}>{attachIcon(att.contentType)}</span>
+                                          <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                                          <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                                          <Download size={12} style={{ color: C.green, flexShrink: 0 }} />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                                <div style={{
-                                  background: reply.sender === "teacher" ? C.surface : "#f0f7ff",
-                                  borderRadius: 10, padding: "12px 14px", fontSize: 14, lineHeight: 1.75,
-                                  color: C.text, whiteSpace: "pre-wrap",
-                                  borderRight: `3px solid ${reply.sender === "teacher" ? C.gold : "#3b82f6"}`,
-                                }}>
-                                  {reply.body}
-                                </div>
-                              </div>
-                            ))
+                              );
+                            })
                           )}
 
                           {/* Teacher reply input */}
                           {tab === "inbox" && getStatus(msg) !== "expired" && (
-                            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                              <textarea
-                                value={teacherReplyDraft[msg.id] || ""}
-                                onChange={e => setTeacherReplyDraft(prev => ({ ...prev, [msg.id]: e.target.value }))}
-                                rows={2} placeholder="اكتب ردك هنا..."
-                                style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", background: C.card, color: C.text, resize: "none", outline: "none" }}
-                              />
-                              <button onClick={() => handleTeacherReply(msg.id)}
-                                disabled={sendingReply[msg.id] || !teacherReplyDraft[msg.id]?.trim()}
-                                style={{ padding: "10px 16px", background: C.green, color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontFamily: "inherit", opacity: (sendingReply[msg.id] || !teacherReplyDraft[msg.id]?.trim()) ? 0.5 : 1 }}>
-                                {sendingReply[msg.id] ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={14} />}
-                                رد
-                              </button>
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <textarea
+                                  value={teacherReplyDraft[msg.id] || ""}
+                                  onChange={e => setTeacherReplyDraft(prev => ({ ...prev, [msg.id]: e.target.value }))}
+                                  rows={2} placeholder="اكتب ردك هنا..."
+                                  style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", background: C.card, color: C.text, resize: "none", outline: "none" }}
+                                />
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  <label title="إرفاق ملف" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, cursor: (replyAttachments[msg.id] || []).length >= 5 ? "not-allowed" : "pointer", opacity: (replyAttachments[msg.id] || []).length >= 5 ? 0.4 : 1 }}>
+                                    <Paperclip size={15} style={{ color: C.muted }} />
+                                    <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" style={{ display: "none" }} disabled={(replyAttachments[msg.id] || []).length >= 5} onChange={e => handleReplyFileChange(msg.id, e)} />
+                                  </label>
+                                  <button onClick={() => handleTeacherReply(msg.id)}
+                                    disabled={sendingReply[msg.id] || !teacherReplyDraft[msg.id]?.trim() || (replyUploadingCount[msg.id] || 0) > 0}
+                                    style={{ padding: "8px 14px", background: C.green, color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontFamily: "inherit", opacity: (sendingReply[msg.id] || !teacherReplyDraft[msg.id]?.trim() || (replyUploadingCount[msg.id] || 0) > 0) ? 0.5 : 1 }}>
+                                    {sendingReply[msg.id] ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Send size={14} />}
+                                    رد
+                                  </button>
+                                </div>
+                              </div>
+                              {/* Reply attachments preview */}
+                              {((replyAttachments[msg.id] || []).length > 0 || (replyUploadingCount[msg.id] || 0) > 0) && (
+                                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {(replyUploadingCount[msg.id] || 0) > 0 && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.muted }}>
+                                      <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> جارٍ الرفع...
+                                    </div>
+                                  )}
+                                  {(replyAttachments[msg.id] || []).map((att, j) => (
+                                    <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", background: C.surface, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                                      <span style={{ fontSize: 14 }}>{attachIcon(att.contentType)}</span>
+                                      <span style={{ flex: 1, fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                                      <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{attachSize(att.size)}</span>
+                                      <button onClick={() => setReplyAttachments(prev => ({ ...prev, [msg.id]: (prev[msg.id] || []).filter((_, k) => k !== j) }))} style={{ border: "none", background: "transparent", cursor: "pointer", color: C.muted, padding: 2, display: "flex", alignItems: "center" }}><X size={12} /></button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                           {getStatus(msg) === "expired" && (

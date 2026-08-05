@@ -582,6 +582,16 @@ async function runSchemaMigrations() {
   } catch (err) {
     logger.error(err, "parent_messages.attachments column migration failed");
   }
+
+  // ── Parent message replies: attachments column ────────────────────────────
+  try {
+    await db.execute(sql`
+      ALTER TABLE parent_message_replies ADD COLUMN IF NOT EXISTS attachments TEXT
+    `);
+    logger.info("parent_message_replies.attachments column migrated");
+  } catch (err) {
+    logger.error(err, "parent_message_replies.attachments column migration failed");
+  }
 }
 
 async function backfillAdminSharedApproval() {

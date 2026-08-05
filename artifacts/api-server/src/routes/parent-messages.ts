@@ -308,8 +308,13 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
     if (!teacherId) { res.status(401).json({ message: "غير مسجل الدخول" }); return; }
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) { res.status(400).json({ message: "معرّف غير صالح" }); return; }
-    const { body } = req.body;
-    if (!body?.trim()) { res.status(400).json({ message: "الرد فارغ" }); return; }
+
+    const parsed = z.object({
+      body: z.string().min(1).max(3000),
+      attachments: attachmentSchema,
+    }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ message: "بيانات غير صالحة" }); return; }
+    const { body, attachments } = parsed.data;
 
     const [msg] = await db
       .select({
@@ -327,7 +332,10 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
     if (!msg) { res.status(404).json({ message: "الرسالة غير موجودة" }); return; }
 
     const [reply] = await db.insert(parentMessageRepliesTable)
-      .values({ messageId: id, sender: "teacher", body: body.trim() })
+      .values({
+        messageId: id, sender: "teacher", body: body.trim(),
+        attachments: attachments ? JSON.stringify(attachments) : null,
+      })
       .returning();
 
     const [teacher] = await db.select({ name: teachersTable.name })
@@ -335,12 +343,17 @@ router.post("/parent-messages/:id/teacher-reply", async (req, res) => {
 
     if (msg.parentEmail && teacher) {
       const baseUrl = getAppBaseUrl();
+      const attachmentLinks = attachments?.map(a => ({
+        name: a.name, contentType: a.contentType, size: a.size,
+        url: `${baseUrl}/api/storage${a.objectPath}`,
+      }));
       const emailHtml = buildParentThreadReplyEmail({
         teacherName: teacher.name,
         studentName: msg.studentName,
         parentName: msg.parentName || "ولي الأمر",
         replyText: body.trim(),
         portalUrl: `${baseUrl}/parent/${msg.replyToken}`,
+        attachments: attachmentLinks,
       });
       await sendEmail({
         to: msg.parentEmail,
