@@ -47,6 +47,8 @@ interface ClassSettings {
 const DURATION_OPTIONS       = [10, 15, 20, 30, 45];
 const FREEZE_DURATION_OPTIONS = [5, 10, 15, 20];
 
+const CLASS_SETTINGS_KEY = "wameeth_class_settings";
+
 function readSetup(): WameethClassSetup | null {
   try {
     const raw = sessionStorage.getItem(WAMEETH_CLASS_SETUP_KEY);
@@ -1087,12 +1089,12 @@ export default function WameethClass() {
   const [setup]   = useState<WameethClassSetup | null>(readSetup);
   const [round,   setRound]   = useState(0);
   const [swapped, setSwapped] = useState(false);
-  const [settings, setSettings] = useState<ClassSettings>({
-    duration:      setup?.duration ?? 20,
-    giftsEnabled:  true,
-    showCorrect:   true,
-    freezeDuration: 10,
-  });
+  const [settings, setSettings] = useState<ClassSettings>(() =>
+    loadClassSettings(setup?.duration ?? 20)
+  );
+  useEffect(() => {
+    try { localStorage.setItem(CLASS_SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
+  }, [settings]);
   const blueOnRight = ar !== swapped;
 
   if (!setup) {
@@ -1126,4 +1128,20 @@ export default function WameethClass() {
         onExit={() => setLocation("/game/wameeth/create")}/>
     </Layout>
   );
+}
+
+function loadClassSettings(defaultDuration: number): ClassSettings {
+  try {
+    const raw = localStorage.getItem(CLASS_SETTINGS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<ClassSettings>;
+      return {
+        duration:       typeof parsed.duration === "number"       ? parsed.duration       : defaultDuration,
+        giftsEnabled:   typeof parsed.giftsEnabled === "boolean"  ? parsed.giftsEnabled   : true,
+        showCorrect:    typeof parsed.showCorrect === "boolean"   ? parsed.showCorrect    : true,
+        freezeDuration: typeof parsed.freezeDuration === "number" ? parsed.freezeDuration : 10,
+      };
+    }
+  } catch { /* ignore */ }
+  return { duration: defaultDuration, giftsEnabled: true, showCorrect: true, freezeDuration: 10 };
 }
