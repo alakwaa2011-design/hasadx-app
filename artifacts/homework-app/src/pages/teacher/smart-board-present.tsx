@@ -500,6 +500,13 @@ export default function SmartBoardPresent() {
   const [showCtrl,     setShowCtrl]     = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isMobile,     setIsMobile]     = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Broadcast (share with students)
   const [broadcastCode,        setBroadcastCode]        = useState<string|null>(null);
@@ -1137,6 +1144,13 @@ export default function SmartBoardPresent() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const mobileSecBtn: React.CSSProperties = {
+    background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)",
+    color:"rgba(242,237,224,.6)", borderRadius:8, padding:"8px 12px", cursor:"pointer",
+    display:"flex", alignItems:"center", gap:5,
+    fontFamily:"'Tajawal',sans-serif", fontSize:13,
+  };
+
   return (
     <div
       dir="rtl"
@@ -1558,161 +1572,313 @@ export default function SmartBoardPresent() {
       </div>
 
       {/* ── Controls bar ── */}
-      <div style={{ flexShrink:0, height:50,
-        display:"flex", alignItems:"center", justifyContent:"space-between",
-        padding:"0 26px",
-        opacity: showCtrl ? 1:0, transition:"opacity .5s",
-        pointerEvents: showCtrl ? "all":"none" }}>
+      {isMobile ? (
+        /* ════ MOBILE controls ════ */
+        <div style={{ flexShrink:0, background:"rgba(10,13,8,.95)",
+          borderTop:"1px solid rgba(255,255,255,.07)",
+          paddingBottom:"env(safe-area-inset-bottom)",
+          opacity: showCtrl ? 1 : 0.15, transition:"opacity .4s",
+          pointerEvents: "all" }}>
 
-        {/* Left: nav + playback */}
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-          <button onClick={goPrev} disabled={stepIdx===0}
-            style={{ background:"rgba(255,255,255,.06)", border:"none",
-              color: stepIdx===0?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
-              borderRadius:8, padding:"7px 12px", cursor:stepIdx===0?"not-allowed":"pointer",
-              display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-            <ChevronRight size={13}/> السابق
-          </button>
+          {/* Main row: prev / pause / next / mute / more */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-around",
+            padding:"10px 12px 6px" }}>
 
-          <button onClick={() => {
-            if (manualModeRef.current && waitingTapRef.current) manualAdvance();
-            else togglePause();
-          }}
-            style={{ background: isPaused?"rgba(168,230,176,.15)":"rgba(255,255,255,.08)",
-              border: `1px solid ${isPaused?"rgba(168,230,176,.4)":"rgba(255,255,255,.08)"}`,
-              color: isPaused?"#a8e6b0":"rgba(242,237,224,.8)",
-              borderRadius:8, padding:"8px 20px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:7,
-              fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
-            {isPaused ? <><Play size={15}/> متابعة</> : <><Pause size={15}/> إيقاف</>}
-          </button>
+            {/* السابق */}
+            <button onClick={goPrev} disabled={stepIdx===0}
+              style={{ background:"rgba(255,255,255,.07)", border:"none",
+                color: stepIdx===0?"rgba(255,255,255,.2)":"rgba(242,237,224,.8)",
+                borderRadius:10, padding:"10px 16px", cursor:stepIdx===0?"not-allowed":"pointer",
+                display:"flex", alignItems:"center", gap:5,
+                fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
+              <ChevronRight size={16}/> السابق
+            </button>
 
-          <button onClick={goNext} disabled={isDone && stepIdx >= phases.length-1}
-            style={{ background:"rgba(255,255,255,.06)", border:"none",
-              color:(isDone&&stepIdx>=phases.length-1)?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
-              borderRadius:8, padding:"7px 12px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-            التالي <ChevronLeft size={13}/>
-          </button>
+            {/* إيقاف / متابعة */}
+            <button onClick={() => {
+              if (manualModeRef.current && waitingTapRef.current) manualAdvance();
+              else togglePause();
+            }}
+              style={{ background: isPaused?"rgba(168,230,176,.18)":"rgba(255,255,255,.1)",
+                border: `1.5px solid ${isPaused?"rgba(168,230,176,.5)":"rgba(255,255,255,.12)"}`,
+                color: isPaused?"#a8e6b0":"rgba(242,237,224,.9)",
+                borderRadius:12, padding:"12px 22px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:8,
+                fontFamily:"'Tajawal',sans-serif", fontSize:15, fontWeight:700 }}>
+              {isPaused ? <><Play size={16}/> متابعة</> : <><Pause size={16}/> إيقاف</>}
+            </button>
 
-          <button onClick={restartStep} title="إعادة (R)"
-            style={{ background:"rgba(255,255,255,.05)", border:"none",
-              color:"rgba(242,237,224,.35)", borderRadius:8, padding:"8px 9px", cursor:"pointer" }}>
-            <RotateCcw size={13}/>
-          </button>
-        </div>
+            {/* التالي */}
+            <button onClick={goNext} disabled={isDone && stepIdx >= phasesRef.current.length-1}
+              style={{ background:"rgba(255,255,255,.07)", border:"none",
+                color:(isDone&&stepIdx>=phasesRef.current.length-1)?"rgba(255,255,255,.2)":"rgba(242,237,224,.8)",
+                borderRadius:10, padding:"10px 16px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5,
+                fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
+              التالي <ChevronLeft size={16}/>
+            </button>
 
-        {/* Center: progress */}
-        <div style={{ flex:1, maxWidth:300, margin:"0 20px" }}>
-          <div style={{ height:3, background:"rgba(255,255,255,.08)", borderRadius:2, overflow:"hidden" }}>
+            {/* الصوت */}
+            <button onClick={() => { const n=!isMuted; setIsMuted(n); isMutedRef.current=n; if(n) clearQueue(); }}
+              style={{ background:"rgba(255,255,255,.07)", border:"none",
+                color: isMuted?"rgba(255,100,100,.6)":"rgba(242,237,224,.6)",
+                borderRadius:10, padding:"10px 12px", cursor:"pointer" }}>
+              {isMuted ? <VolumeX size={18}/> : <Volume2 size={18}/>}
+            </button>
+
+            {/* المزيد */}
+            <button onClick={() => setShowMoreMenu(m=>!m)}
+              style={{ background: showMoreMenu?"rgba(168,230,176,.12)":"rgba(255,255,255,.07)",
+                border:`1px solid ${showMoreMenu?"rgba(168,230,176,.35)":"transparent"}`,
+                color: showMoreMenu?"#a8e6b0":"rgba(242,237,224,.6)",
+                borderRadius:10, padding:"10px 12px", cursor:"pointer" }}>
+              <Settings size={18}/>
+            </button>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ height:3, background:"rgba(255,255,255,.07)", margin:"0 16px 8px" }}>
             <div style={{ height:"100%", background:"rgba(168,230,176,.5)", width:`${progress}%`,
               transition:"width .6s ease", borderRadius:2 }}/>
           </div>
-        </div>
 
-        {/* Right: tools */}
-        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <button onClick={() => setIsDrawMode(m=>!m)}
-            style={{ background: isDrawMode?"rgba(245,215,110,.12)":"rgba(255,255,255,.06)",
-              border: `1px solid ${isDrawMode?"rgba(245,215,110,.4)":"transparent"}`,
-              color: isDrawMode?"#f5d76e":"rgba(242,237,224,.4)",
-              borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
-            <Pencil size={13}/> رسم
-          </button>
+          {/* Expanded menu */}
+          {showMoreMenu && (
+            <div style={{ borderTop:"1px solid rgba(255,255,255,.06)",
+              padding:"10px 16px 4px",
+              display:"flex", flexWrap:"wrap", gap:8 }}>
 
-          {isDrawMode && (
-            <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(0,0,0,.5)",
-              borderRadius:8, padding:"4px 9px", border:"1px solid rgba(255,255,255,.08)" }}>
-              {DRAW_COLORS.map(c => (
-                <button key={c} onClick={() => { setDrawColor(c); setDrawTool("pen"); }}
-                  style={{ width:16, height:16, borderRadius:"50%", background:c, padding:0, cursor:"pointer",
-                    border: drawColor===c&&drawTool==="pen"?"2px solid white":"2px solid transparent" }}/>
-              ))}
-              <button onClick={() => setDrawTool("eraser")}
-                style={{ background: drawTool==="eraser"?"rgba(255,255,255,.15)":"transparent",
-                  border:"none", color:"rgba(242,237,224,.6)", borderRadius:5, padding:"3px 6px", cursor:"pointer" }}>
-                <Eraser size={13}/>
+              {/* إعادة */}
+              <button onClick={() => { restartStep(); }}
+                style={mobileSecBtn}>
+                <RotateCcw size={14}/> إعادة
               </button>
-              <button onClick={clearDrawing}
-                style={{ background:"transparent", border:"none", color:"rgba(245,128,128,.7)",
-                  borderRadius:5, padding:"3px 5px", cursor:"pointer" }}>
-                <Trash2 size={12}/>
+
+              {/* رسم */}
+              <button onClick={() => setIsDrawMode(m=>!m)}
+                style={{ ...mobileSecBtn,
+                  background: isDrawMode?"rgba(245,215,110,.12)":"rgba(255,255,255,.06)",
+                  border:`1px solid ${isDrawMode?"rgba(245,215,110,.4)":"rgba(255,255,255,.08)"}`,
+                  color: isDrawMode?"#f5d76e":"rgba(242,237,224,.6)" }}>
+                <Pencil size={14}/> رسم
+              </button>
+
+              {/* Draw color strip */}
+              {isDrawMode && (
+                <div style={{ display:"flex", alignItems:"center", gap:6,
+                  background:"rgba(0,0,0,.4)", borderRadius:8, padding:"6px 10px",
+                  border:"1px solid rgba(255,255,255,.08)" }}>
+                  {DRAW_COLORS.map(c => (
+                    <button key={c} onClick={() => { setDrawColor(c); setDrawTool("pen"); }}
+                      style={{ width:20, height:20, borderRadius:"50%", background:c, padding:0, cursor:"pointer",
+                        border: drawColor===c&&drawTool==="pen"?"2.5px solid white":"2.5px solid transparent" }}/>
+                  ))}
+                  <button onClick={() => setDrawTool("eraser")}
+                    style={{ background:drawTool==="eraser"?"rgba(255,255,255,.15)":"transparent",
+                      border:"none", color:"rgba(242,237,224,.6)", borderRadius:5, padding:"3px 7px", cursor:"pointer" }}>
+                    <Eraser size={14}/>
+                  </button>
+                  <button onClick={clearDrawing}
+                    style={{ background:"transparent", border:"none", color:"rgba(245,128,128,.7)",
+                      borderRadius:5, padding:"3px 6px", cursor:"pointer" }}>
+                    <Trash2 size={13}/>
+                  </button>
+                </div>
+              )}
+
+              {/* إعدادات الصوت */}
+              <button onClick={() => { setShowSettings(s=>!s); }}
+                style={{ ...mobileSecBtn,
+                  background: showSettings?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
+                  border:`1px solid ${showSettings?"rgba(168,230,176,.35)":"rgba(255,255,255,.08)"}`,
+                  color: showSettings?"#a8e6b0":"rgba(242,237,224,.6)" }}>
+                <Volume2 size={14}/> الصوت
+              </button>
+
+              {/* شارك مع الطلاب */}
+              <button onClick={() => broadcastCode ? setShowBroadcastModal(true) : startBroadcast()}
+                disabled={broadcastLoading}
+                style={{ ...mobileSecBtn,
+                  background: broadcastCode?"rgba(168,230,176,.15)":"rgba(255,255,255,.06)",
+                  border:`1px solid ${broadcastCode?"rgba(168,230,176,.5)":"rgba(255,255,255,.08)"}`,
+                  color: broadcastCode?"#a8e6b0":"rgba(242,237,224,.6)" }}>
+                {broadcastLoading
+                  ? <Loader2 size={14} style={{ animation:"spin 1s linear infinite" }}/>
+                  : <Radio size={14}/>}
+                {broadcastCode ? "بث مباشر" : "شارك"}
+                {broadcastCode && <span style={{ width:6,height:6,borderRadius:"50%",background:"#a8e6b0",display:"inline-block" }}/>}
+              </button>
+
+              {/* ملء الشاشة */}
+              <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
+                style={{ ...mobileSecBtn,
+                  background: isFullscreen?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
+                  color: isFullscreen?"#a8e6b0":"rgba(242,237,224,.6)" }}>
+                {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
+                {isFullscreen ? "تصغير" : "ملء الشاشة"}
+              </button>
+
+              {/* خروج */}
+              <button onClick={handleExit}
+                style={{ ...mobileSecBtn, color:"rgba(245,128,128,.6)" }}>
+                <X size={14}/> خروج
               </button>
             </div>
           )}
-
-          <button onClick={() => { setShowSettings(s=>!s); resetCtrlTimer(); }}
-            style={{ background: showSettings?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
-              border: `1px solid ${showSettings?"rgba(168,230,176,.35)":"transparent"}`,
-              color: showSettings?"#a8e6b0":"rgba(242,237,224,.4)",
-              borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
-            <Settings size={13}/> إعدادات
-            <span style={{ width:6, height:6, borderRadius:"50%",
-              background:VOICES.find(v=>v.id===voice)?.dot??"#f2ede0",
-              display:"inline-block", marginRight:2 }}/>
-          </button>
-
-          <button onClick={() => { const n=!isMuted; setIsMuted(n); isMutedRef.current=n; if(n) clearQueue(); }}
-            style={{ background:"rgba(255,255,255,.06)", border:"none",
-              color: isMuted?"rgba(255,255,255,.2)":"rgba(242,237,224,.45)",
-              borderRadius:8, padding:"7px 9px", cursor:"pointer" }}>
-            {isMuted ? <VolumeX size={15}/> : <Volume2 size={15}/>}
-          </button>
-
-          <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
-            title={isFullscreen ? "خروج من ملء الشاشة (F)" : "عرض ملء الشاشة (F)"}
-            style={{ background: isFullscreen ? "rgba(168,230,176,.12)" : "rgba(255,255,255,.06)",
-              border: `1px solid ${isFullscreen ? "rgba(168,230,176,.35)" : "transparent"}`,
-              color: isFullscreen ? "#a8e6b0" : "rgba(242,237,224,.45)",
-              borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:5, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-            {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
-            <span>{isFullscreen ? "تصغير" : "ملء الشاشة"}</span>
-          </button>
-
-          {/* Broadcast button */}
-          <button
-            onClick={() => broadcastCode ? setShowBroadcastModal(true) : startBroadcast()}
-            disabled={broadcastLoading}
-            style={{ background: broadcastCode
-                ? "rgba(168,230,176,.15)"
-                : "rgba(255,255,255,.06)",
-              border: `1px solid ${broadcastCode
-                ? "rgba(168,230,176,.5)"
-                : "transparent"}`,
-              color: broadcastCode ? "#a8e6b0" : "rgba(242,237,224,.45)",
-              borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:5,
-              fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
-            {broadcastLoading
-              ? <Loader2 size={13} style={{ animation:"spin 1s linear infinite" }}/>
-              : <Radio size={13}/>}
-            {broadcastCode ? "بث مباشر" : "شارك مع الطلاب"}
-            {broadcastCode && (
-              <span style={{ width:7, height:7, borderRadius:"50%",
-                background:"#a8e6b0", display:"inline-block",
-                animation:"tapPulse 1.8s infinite", marginRight:2 }}/>
-            )}
-          </button>
-
-          <button
-            onClick={() => { clearQueue(); navigate(`/teacher/smart-board/edit/${params?.id}`); }}
-            style={{ background:"rgba(255,255,255,.04)", border:"none",
-              color:"rgba(242,237,224,.35)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
-            <Edit2 size={13}/> تعديل
-          </button>
-
-          <button onClick={handleExit}
-            style={{ background:"rgba(255,255,255,.04)", border:"none",
-              color:"rgba(242,237,224,.28)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
-              display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
-            <X size={13}/> خروج
-          </button>
         </div>
-      </div>
+      ) : (
+        /* ════ DESKTOP controls ════ */
+        <div style={{ flexShrink:0, height:50,
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          padding:"0 26px",
+          opacity: showCtrl ? 1:0, transition:"opacity .5s",
+          pointerEvents: showCtrl ? "all":"none" }}>
+
+          {/* Left: nav + playback */}
+          <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+            <button onClick={goPrev} disabled={stepIdx===0}
+              style={{ background:"rgba(255,255,255,.06)", border:"none",
+                color: stepIdx===0?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
+                borderRadius:8, padding:"7px 12px", cursor:stepIdx===0?"not-allowed":"pointer",
+                display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+              <ChevronRight size={13}/> السابق
+            </button>
+
+            <button onClick={() => {
+              if (manualModeRef.current && waitingTapRef.current) manualAdvance();
+              else togglePause();
+            }}
+              style={{ background: isPaused?"rgba(168,230,176,.15)":"rgba(255,255,255,.08)",
+                border: `1px solid ${isPaused?"rgba(168,230,176,.4)":"rgba(255,255,255,.08)"}`,
+                color: isPaused?"#a8e6b0":"rgba(242,237,224,.8)",
+                borderRadius:8, padding:"8px 20px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:7,
+                fontFamily:"'Tajawal',sans-serif", fontSize:14, fontWeight:600 }}>
+              {isPaused ? <><Play size={15}/> متابعة</> : <><Pause size={15}/> إيقاف</>}
+            </button>
+
+            <button onClick={goNext} disabled={isDone && stepIdx >= phasesRef.current.length-1}
+              style={{ background:"rgba(255,255,255,.06)", border:"none",
+                color:(isDone&&stepIdx>=phasesRef.current.length-1)?"rgba(255,255,255,.2)":"rgba(242,237,224,.7)",
+                borderRadius:8, padding:"7px 12px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+              التالي <ChevronLeft size={13}/>
+            </button>
+
+            <button onClick={restartStep} title="إعادة (R)"
+              style={{ background:"rgba(255,255,255,.05)", border:"none",
+                color:"rgba(242,237,224,.35)", borderRadius:8, padding:"8px 9px", cursor:"pointer" }}>
+              <RotateCcw size={13}/>
+            </button>
+          </div>
+
+          {/* Center: progress */}
+          <div style={{ flex:1, maxWidth:300, margin:"0 20px" }}>
+            <div style={{ height:3, background:"rgba(255,255,255,.08)", borderRadius:2, overflow:"hidden" }}>
+              <div style={{ height:"100%", background:"rgba(168,230,176,.5)", width:`${progress}%`,
+                transition:"width .6s ease", borderRadius:2 }}/>
+            </div>
+          </div>
+
+          {/* Right: tools */}
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <button onClick={() => setIsDrawMode(m=>!m)}
+              style={{ background: isDrawMode?"rgba(245,215,110,.12)":"rgba(255,255,255,.06)",
+                border: `1px solid ${isDrawMode?"rgba(245,215,110,.4)":"transparent"}`,
+                color: isDrawMode?"#f5d76e":"rgba(242,237,224,.4)",
+                borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
+              <Pencil size={13}/> رسم
+            </button>
+
+            {isDrawMode && (
+              <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(0,0,0,.5)",
+                borderRadius:8, padding:"4px 9px", border:"1px solid rgba(255,255,255,.08)" }}>
+                {DRAW_COLORS.map(c => (
+                  <button key={c} onClick={() => { setDrawColor(c); setDrawTool("pen"); }}
+                    style={{ width:16, height:16, borderRadius:"50%", background:c, padding:0, cursor:"pointer",
+                      border: drawColor===c&&drawTool==="pen"?"2px solid white":"2px solid transparent" }}/>
+                ))}
+                <button onClick={() => setDrawTool("eraser")}
+                  style={{ background: drawTool==="eraser"?"rgba(255,255,255,.15)":"transparent",
+                    border:"none", color:"rgba(242,237,224,.6)", borderRadius:5, padding:"3px 6px", cursor:"pointer" }}>
+                  <Eraser size={13}/>
+                </button>
+                <button onClick={clearDrawing}
+                  style={{ background:"transparent", border:"none", color:"rgba(245,128,128,.7)",
+                    borderRadius:5, padding:"3px 5px", cursor:"pointer" }}>
+                  <Trash2 size={12}/>
+                </button>
+              </div>
+            )}
+
+            <button onClick={() => { setShowSettings(s=>!s); resetCtrlTimer(); }}
+              style={{ background: showSettings?"rgba(168,230,176,.12)":"rgba(255,255,255,.06)",
+                border: `1px solid ${showSettings?"rgba(168,230,176,.35)":"transparent"}`,
+                color: showSettings?"#a8e6b0":"rgba(242,237,224,.4)",
+                borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5, fontSize:13, fontFamily:"'Tajawal',sans-serif" }}>
+              <Settings size={13}/> إعدادات
+              <span style={{ width:6, height:6, borderRadius:"50%",
+                background:VOICES.find(v=>v.id===voice)?.dot??"#f2ede0",
+                display:"inline-block", marginRight:2 }}/>
+            </button>
+
+            <button onClick={() => { const n=!isMuted; setIsMuted(n); isMutedRef.current=n; if(n) clearQueue(); }}
+              style={{ background:"rgba(255,255,255,.06)", border:"none",
+                color: isMuted?"rgba(255,255,255,.2)":"rgba(242,237,224,.45)",
+                borderRadius:8, padding:"7px 9px", cursor:"pointer" }}>
+              {isMuted ? <VolumeX size={15}/> : <Volume2 size={15}/>}
+            </button>
+
+            <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
+              title={isFullscreen ? "خروج من ملء الشاشة (F)" : "عرض ملء الشاشة (F)"}
+              style={{ background: isFullscreen ? "rgba(168,230,176,.12)" : "rgba(255,255,255,.06)",
+                border: `1px solid ${isFullscreen ? "rgba(168,230,176,.35)" : "transparent"}`,
+                color: isFullscreen ? "#a8e6b0" : "rgba(242,237,224,.45)",
+                borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+              {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
+              <span>{isFullscreen ? "تصغير" : "ملء الشاشة"}</span>
+            </button>
+
+            <button
+              onClick={() => broadcastCode ? setShowBroadcastModal(true) : startBroadcast()}
+              disabled={broadcastLoading}
+              style={{ background: broadcastCode?"rgba(168,230,176,.15)":"rgba(255,255,255,.06)",
+                border: `1px solid ${broadcastCode?"rgba(168,230,176,.5)":"transparent"}`,
+                color: broadcastCode ? "#a8e6b0" : "rgba(242,237,224,.45)",
+                borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:5,
+                fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+              {broadcastLoading
+                ? <Loader2 size={13} style={{ animation:"spin 1s linear infinite" }}/>
+                : <Radio size={13}/>}
+              {broadcastCode ? "بث مباشر" : "شارك مع الطلاب"}
+              {broadcastCode && (
+                <span style={{ width:7, height:7, borderRadius:"50%",
+                  background:"#a8e6b0", display:"inline-block",
+                  animation:"tapPulse 1.8s infinite", marginRight:2 }}/>
+              )}
+            </button>
+
+            <button
+              onClick={() => { clearQueue(); navigate(`/teacher/smart-board/edit/${params?.id}`); }}
+              style={{ background:"rgba(255,255,255,.04)", border:"none",
+                color:"rgba(242,237,224,.35)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
+              <Edit2 size={13}/> تعديل
+            </button>
+
+            <button onClick={handleExit}
+              style={{ background:"rgba(255,255,255,.04)", border:"none",
+                color:"rgba(242,237,224,.28)", borderRadius:8, padding:"7px 10px", cursor:"pointer",
+                display:"flex", alignItems:"center", gap:4, fontFamily:"'Tajawal',sans-serif", fontSize:12 }}>
+              <X size={13}/> خروج
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
