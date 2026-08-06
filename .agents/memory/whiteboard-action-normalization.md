@@ -7,4 +7,4 @@ The rule: any AI-generated boardActions list must be normalized server-side befo
 
 **Why:** GPT models copy the prompt's shorthand notation (`showLocation: { name, ... }`) literally, emitting wrapped objects. Actions without `type` fall through every presenter handler silently → blank board while the voice plays. Prompts should show full literal JSON examples (`{ "type": "...", ... }`), not shorthand.
 
-**How to apply:** when adding new board action types or new AI endpoints that emit board actions, extend the KNOWN_TYPES normalization in the whiteboard ask route and keep prompt examples as complete flat JSON objects with an explicit warning against the wrapped form.
+**How to apply:** when adding new board action types or new AI endpoints that emit board actions, extend the server-side normalization in the whiteboard ask route and keep prompt examples as complete flat JSON objects with an explicit warning against the wrapped form.

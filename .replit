@@ -35,7 +35,7 @@ isValidation = true
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pnpm --filter @workspace/api-server exec vitest run src/__tests__/email-escaping.test.ts"
+args = "pnpm --filter @workspace/api-server exec vitest run src/__tests__/"
 
 [agent]
 stack = "PNPM_WORKSPACE"
