@@ -24,6 +24,20 @@ import {
   GraduationCap,
   Send,
   X,
+  Monitor,
+  Video,
+  BookOpen,
+  Brain,
+  FileText,
+  Headphones,
+  Database,
+  Library,
+  MessageCircle,
+  Target,
+  Medal,
+  AlertTriangle,
+  TrendingUp,
+  Wand2,
 } from "lucide-react";
 import { WameethPreviewCard } from "@/components/teacher/WameethPreviewCard";
 import { toast } from "@/components/ui/sonner";
@@ -283,6 +297,29 @@ export default function DashboardOverview({
       .slice(0, 4);
   }, [assignments]);
 
+  /* Assignments that need the teacher's attention:
+     active but with zero submissions, or deadline within 3 days */
+  const attentionItems = useMemo(() => {
+    const now = Date.now();
+    return [...(assignments || [])]
+      .filter((a) => {
+        const dl = a.deadline ? new Date(a.deadline).getTime() : null;
+        const isActive = !dl || dl >= now;
+        if (!isActive) return false;
+        const daysLeft = dl ? Math.ceil((dl - now) / 86400000) : null;
+        return (
+          (a.submissionCount === 0 && a.questionCount > 0) ||
+          (daysLeft !== null && daysLeft <= 3)
+        );
+      })
+      .sort((a, b) => {
+        const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+        const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+        return da - db;
+      })
+      .slice(0, 3);
+  }, [assignments]);
+
   const { data: topStudents = [] } = useQuery<TopStudent[]>({
     queryKey: ["dashboard-overview", "top-students"],
     enabled: !!user && !!assignments && assignments.length > 0,
@@ -425,6 +462,25 @@ export default function DashboardOverview({
           )}
         </AnimatePresence>
 
+        {/* ══════════ QUICK CREATE STUDIO — every creation tool, one tap away ══════════ */}
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+        >
+          <SectionHead
+            icon={<Wand2 style={{ width: 15, height: 15, color: C.green }} />}
+            title={isAr ? "استوديو الإنشاء" : "Creation studio"}
+            badge={isAr ? "٨ أدوات" : "8 tools"}
+            isAr={isAr}
+          />
+          <QuickCreateStudio
+            isAr={isAr}
+            isMobile={isMobile}
+            setLocation={setLocation}
+          />
+        </motion.section>
+
         {/* ══════════ MAIN GRID — content + insight rail ══════════ */}
         <div
           style={{
@@ -474,6 +530,30 @@ export default function DashboardOverview({
                   onStart={() => setLocation("/game/wameeth/create")}
                 />
               </div>
+            </motion.section>
+
+            {/* Games arcade — live game shortcuts */}
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.11 }}
+            >
+              <SectionHead
+                icon={
+                  <Gamepad2
+                    style={{ width: 15, height: 15, color: C.green }}
+                  />
+                }
+                title={isAr ? "ألعاب حصاد المباشرة" : "Hasaad live games"}
+                linkLabel={isAr ? "عرض الكل" : "View all"}
+                onLink={() => setActiveTab("competitive")}
+                isAr={isAr}
+              />
+              <GamesArcade
+                isAr={isAr}
+                isMobile={isMobile}
+                onOpen={() => setActiveTab("competitive")}
+              />
             </motion.section>
 
             {/* Recent assignments — open by default */}
@@ -606,6 +686,72 @@ export default function DashboardOverview({
               minWidth: 0,
             }}
           >
+            {/* Classroom pulse — smart insights */}
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.14 }}
+            >
+              <SectionHead
+                icon={
+                  <TrendingUp
+                    style={{ width: 15, height: 15, color: C.green }}
+                  />
+                }
+                title={isAr ? "نبض الأداء" : "Classroom pulse"}
+                linkLabel={isAr ? "التفاصيل" : "Details"}
+                onLink={() => setActiveTab("stats")}
+                isAr={isAr}
+              />
+              <PulsePanel
+                isAr={isAr}
+                stats={stats}
+                assignments={assignments || []}
+                onDayClick={() => setActiveTab("assignments")}
+              />
+            </motion.section>
+
+            {/* Needs your attention */}
+            {attentionItems.length > 0 && (
+              <motion.section
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.16 }}
+              >
+                <SectionHead
+                  icon={
+                    <AlertTriangle
+                      style={{ width: 15, height: 15, color: "#D97706" }}
+                    />
+                  }
+                  title={isAr ? "يحتاج انتباهك" : "Needs your attention"}
+                  badge={`${attentionItems.length}`}
+                  isAr={isAr}
+                />
+                <div
+                  style={{
+                    background: C.card,
+                    border: "1px solid rgba(245,158,11,0.25)",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    boxShadow: "0 2px 10px rgba(180,120,10,0.06)",
+                  }}
+                >
+                  {attentionItems.map((a, idx) => (
+                    <AttentionRow
+                      key={a.id}
+                      assignment={a}
+                      isAr={isAr}
+                      isLast={idx === attentionItems.length - 1}
+                      copied={copiedId === a.id}
+                      onCopy={() => copyLink(a)}
+                      onOpen={() => setLocation(`/teacher/assignment/${a.id}`)}
+                    />
+                  ))}
+                </div>
+              </motion.section>
+            )}
+
             {/* Upcoming deadlines */}
             <motion.section
               initial={{ opacity: 0, y: 10 }}
@@ -733,6 +879,22 @@ export default function DashboardOverview({
                 isAr={isAr}
               />
               <ActivityFeed isAr={isAr} assignments={assignments || []} />
+            </motion.section>
+
+            {/* Quick links */}
+            <motion.section
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.28 }}
+            >
+              <SectionHead
+                icon={
+                  <Zap style={{ width: 15, height: 15, color: C.gold }} />
+                }
+                title={isAr ? "وصول سريع" : "Quick access"}
+                isAr={isAr}
+              />
+              <QuickLinks isAr={isAr} setLocation={setLocation} />
             </motion.section>
 
             {/* Daily tip */}
@@ -2452,6 +2614,801 @@ function UpcomingRow({
       >
         {daysLeft} {isAr ? "أيام" : "days"}
       </span>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   QUICK CREATE STUDIO — 8 real creation tools
+   ════════════════════════════════════════════════════════════ */
+function QuickCreateStudio({
+  isAr,
+  isMobile,
+  setLocation,
+}: {
+  isAr: boolean;
+  isMobile: boolean;
+  setLocation: (path: string) => void;
+}) {
+  const tools: {
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+    href: string;
+    tint: string;
+    tintBg: string;
+  }[] = [
+    {
+      icon: <Plus style={{ width: 18, height: 18 }} />,
+      title: isAr ? "نشاط جديد" : "New activity",
+      desc: isAr ? "واجب أو اختبار" : "Assignment or quiz",
+      href: "/teacher/new",
+      tint: "#1E4D35",
+      tintBg: "rgba(30,77,53,0.09)",
+    },
+    {
+      icon: <Monitor style={{ width: 18, height: 18 }} />,
+      title: isAr ? "عرض تفاعلي" : "Presentation",
+      desc: isAr ? "شرائح وأنشطة حية" : "Live slides & polls",
+      href: "/teacher/presentations/new",
+      tint: "#2563EB",
+      tintBg: "rgba(37,99,235,0.09)",
+    },
+    {
+      icon: <Video style={{ width: 18, height: 18 }} />,
+      title: isAr ? "درس فيديو" : "Video lesson",
+      desc: isAr ? "فيديو بأسئلة تفاعلية" : "Video with questions",
+      href: "/teacher/video-lesson/new",
+      tint: "#DC2626",
+      tintBg: "rgba(220,38,38,0.08)",
+    },
+    {
+      icon: <BookOpen style={{ width: 18, height: 18 }} />,
+      title: isAr ? "خطة درس" : "Lesson plan",
+      desc: isAr ? "توليد ذكي جاهز" : "AI-assisted plan",
+      href: "/teacher/lesson-plans/create",
+      tint: "#C9920A",
+      tintBg: "rgba(201,146,10,0.1)",
+    },
+    {
+      icon: <Brain style={{ width: 18, height: 18 }} />,
+      title: isAr ? "خريطة ذهنية" : "Mind map",
+      desc: isAr ? "لخّص درسك بصرياً" : "Visualize a topic",
+      href: "/teacher/mindmap/create",
+      tint: "#7C3AED",
+      tintBg: "rgba(124,58,237,0.08)",
+    },
+    {
+      icon: <FileText style={{ width: 18, height: 18 }} />,
+      title: isAr ? "ورقة عمل" : "Worksheet",
+      desc: isAr ? "جاهزة للطباعة" : "Print-ready sheet",
+      href: "/teacher/worksheets/create",
+      tint: "#0891B2",
+      tintBg: "rgba(8,145,178,0.08)",
+    },
+    {
+      icon: <Headphones style={{ width: 18, height: 18 }} />,
+      title: isAr ? "نشاط استماع" : "Listening",
+      desc: isAr ? "إملاء وفهم مسموع" : "Dictation & audio",
+      href: "/teacher/new/dictation",
+      tint: "#059669",
+      tintBg: "rgba(5,150,105,0.08)",
+    },
+    {
+      icon: <Pencil style={{ width: 18, height: 18 }} />,
+      title: isAr ? "السبورة الذكية" : "Smart board",
+      desc: isAr ? "اشرح وارسم مباشرة" : "Teach & draw live",
+      href: "/teacher/smart-board",
+      tint: "#EA580C",
+      tintBg: "rgba(234,88,12,0.08)",
+    },
+  ];
+
+  return (
+    <div
+      style={
+        isMobile
+          ? {
+              display: "grid",
+              gridAutoFlow: "column",
+              gridTemplateRows: "1fr 1fr",
+              gridAutoColumns: "42%",
+              gap: 9,
+              overflowX: "auto",
+              paddingBottom: 6,
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+            }
+          : {
+              display: "grid",
+              gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+              gap: 12,
+            }
+      }
+    >
+      {tools.map((tool, i) => (
+        <motion.button
+          key={tool.href}
+          onClick={() => setLocation(tool.href)}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.04 * i }}
+          whileHover={{ y: -3 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            borderRadius: 15,
+            padding: isMobile ? "12px 12px" : "14px 15px",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 8,
+            textAlign: isAr ? "right" : "left",
+            fontFamily: "inherit",
+            width: "100%",
+            minWidth: 0,
+            boxShadow: "0 2px 8px rgba(19,32,26,0.04)",
+            scrollSnapAlign: "start",
+            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = `${tool.tint}55`;
+            e.currentTarget.style.boxShadow = `0 8px 22px -8px ${tool.tint}40`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = C.border;
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(19,32,26,0.04)";
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 11,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: tool.tintBg,
+              color: tool.tint,
+              flexShrink: 0,
+            }}
+          >
+            {tool.icon}
+          </div>
+          <div style={{ minWidth: 0, width: "100%" }}>
+            <div
+              style={{
+                fontSize: isMobile ? 12 : 12.5,
+                fontWeight: 800,
+                color: C.text,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {tool.title}
+            </div>
+            <div
+              style={{
+                fontSize: isMobile ? 10 : 10.5,
+                color: C.muted,
+                marginTop: 2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {tool.desc}
+            </div>
+          </div>
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   GAMES ARCADE — live game shortcuts
+   ════════════════════════════════════════════════════════════ */
+function GamesArcade({
+  isAr,
+  isMobile,
+  onOpen,
+}: {
+  isAr: boolean;
+  isMobile: boolean;
+  onOpen: () => void;
+}) {
+  const games = [
+    { emoji: "⚡", name: isAr ? "وميض" : "Wameeth", grad: "linear-gradient(135deg,#3E3050,#241A33)" },
+    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race", grad: "linear-gradient(135deg,#123A5E,#0A2038)" },
+    { emoji: "💰", name: isAr ? "المليون" : "Million", grad: "linear-gradient(135deg,#5E4A12,#33280A)" },
+    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel", grad: "linear-gradient(135deg,#5E1230,#33081A)" },
+    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War", grad: "linear-gradient(135deg,#12503E,#082B20)" },
+    { emoji: "🔥", name: isAr ? "الكرسي الساخن" : "Hot Seat", grad: "linear-gradient(135deg,#5E2E12,#331808)" },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        ...(isMobile
+          ? {
+              gridAutoFlow: "column",
+              gridAutoColumns: "31%",
+              overflowX: "auto",
+              paddingBottom: 6,
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+            }
+          : { gridTemplateColumns: "repeat(6, minmax(0,1fr))" }),
+        gap: isMobile ? 9 : 11,
+      }}
+    >
+      {games.map((g, i) => (
+        <motion.button
+          key={g.name}
+          onClick={onOpen}
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.22, delay: 0.05 * i }}
+          whileHover={{ y: -4, scale: 1.03 }}
+          whileTap={{ scale: 0.96 }}
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            background: g.grad,
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 15,
+            padding: "14px 8px 11px",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 7,
+            fontFamily: "inherit",
+            minWidth: 0,
+            boxShadow: "0 8px 20px -10px rgba(0,0,0,0.45)",
+            scrollSnapAlign: "start",
+          }}
+          title={g.name}
+        >
+          {/* glow behind emoji */}
+          <span
+            style={{
+              position: "absolute",
+              top: 4,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.22), transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          <span
+            style={{
+              position: "relative",
+              fontSize: 26,
+              lineHeight: 1,
+              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.4))",
+            }}
+          >
+            {g.emoji}
+          </span>
+          <span
+            style={{
+              position: "relative",
+              fontSize: 10.5,
+              fontWeight: 800,
+              color: "rgba(255,255,255,0.92)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+            }}
+          >
+            {g.name}
+          </span>
+        </motion.button>
+      ))}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   PULSE PANEL — smart classroom insights
+   ════════════════════════════════════════════════════════════ */
+function PulsePanel({
+  isAr,
+  stats,
+  assignments,
+  onDayClick,
+}: {
+  isAr: boolean;
+  stats: {
+    total: number;
+    submissions: number;
+    active: number;
+    classes: number;
+    totalStudents: number;
+    avgRate: number;
+  };
+  assignments: Assignment[];
+  onDayClick: () => void;
+}) {
+  const rate = stats.avgRate;
+  const R = 26;
+  const CIRC = 2 * Math.PI * R;
+
+  /* deadlines per day for the next 7 days */
+  const week = useMemo(() => {
+    const days: { label: string; date: number; count: number; isToday: boolean }[] = [];
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start.getTime() + i * 86400000);
+      const dayEnd = d.getTime() + 86400000;
+      const count = assignments.filter((a) => {
+        if (!a.deadline) return false;
+        const t = new Date(a.deadline).getTime();
+        return t >= d.getTime() && t < dayEnd;
+      }).length;
+      days.push({
+        label: d.toLocaleDateString(isAr ? "ar" : "en-US", { weekday: "narrow" }),
+        date: d.getDate(),
+        count,
+        isToday: i === 0,
+      });
+    }
+    return days;
+  }, [assignments, isAr]);
+
+  const topAssignment = useMemo(() => {
+    const sorted = [...assignments].sort(
+      (a, b) => (b.submissionCount || 0) - (a.submissionCount || 0),
+    );
+    return sorted[0] && sorted[0].submissionCount > 0 ? sorted[0] : null;
+  }, [assignments]);
+
+  const rateColor =
+    rate >= 70 ? "#059669" : rate >= 40 ? C.goldBright : "#DC2626";
+
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        padding: "16px 16px 14px",
+        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+      }}
+    >
+      {/* rate donut + summary */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
+          <svg viewBox="0 0 64 64" style={{ width: 64, height: 64 }}>
+            <circle
+              cx="32"
+              cy="32"
+              r={R}
+              fill="none"
+              stroke="rgba(0,0,0,0.06)"
+              strokeWidth="6"
+            />
+            <motion.circle
+              cx="32"
+              cy="32"
+              r={R}
+              fill="none"
+              stroke={rateColor}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={CIRC}
+              initial={{ strokeDashoffset: CIRC }}
+              animate={{ strokeDashoffset: CIRC * (1 - rate / 100) }}
+              transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+              transform="rotate(-90 32 32)"
+            />
+          </svg>
+          <span
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 14,
+              fontWeight: 900,
+              color: C.text,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {rate}%
+          </span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: C.text }}>
+            {isAr ? "معدل التسليم العام" : "Overall submission rate"}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: C.muted,
+              marginTop: 3,
+              lineHeight: 1.5,
+            }}
+          >
+            {isAr
+              ? `${stats.submissions} تسليماً عبر ${stats.total} نشاطاً`
+              : `${stats.submissions} submissions across ${stats.total} activities`}
+          </div>
+        </div>
+      </div>
+
+      {/* smart insight line */}
+      {topAssignment && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 11px",
+            background: "rgba(30,77,53,0.05)",
+            border: "1px solid rgba(30,77,53,0.1)",
+            borderRadius: 11,
+            fontSize: 11.5,
+            color: C.text2,
+            lineHeight: 1.5,
+          }}
+        >
+          <span style={{ fontSize: 14, flexShrink: 0 }}>🔥</span>
+          <span style={{ minWidth: 0 }}>
+            {isAr ? "الأكثر تفاعلاً: " : "Most engaging: "}
+            <strong style={{ fontWeight: 800, color: C.text }}>
+              {topAssignment.title}
+            </strong>{" "}
+            ({topAssignment.submissionCount} {isAr ? "تسليم" : "subs"})
+          </span>
+        </div>
+      )}
+
+      {/* 7-day deadline strip */}
+      <div>
+        <div
+          style={{
+            fontSize: 10.5,
+            fontWeight: 800,
+            color: C.muted,
+            marginBottom: 7,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {isAr ? "مواعيد الأسبوع" : "This week"}
+        </div>
+        <div style={{ display: "flex", gap: 5 }}>
+          {week.map((d, i) => (
+            <button
+              key={i}
+              onClick={onDayClick}
+              title={
+                d.count > 0
+                  ? `${d.count} ${isAr ? "موعد تسليم" : "deadline(s)"}`
+                  : undefined
+              }
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 3,
+                padding: "7px 0 6px",
+                borderRadius: 10,
+                border: d.isToday
+                  ? `1.5px solid ${C.green}`
+                  : `1px solid ${d.count > 0 ? "rgba(201,146,10,0.35)" : C.border}`,
+                background: d.isToday
+                  ? "rgba(30,77,53,0.07)"
+                  : d.count > 0
+                    ? "rgba(232,168,14,0.07)"
+                    : "transparent",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                minWidth: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  color: d.isToday ? C.green : C.subtle,
+                }}
+              >
+                {d.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 900,
+                  color: d.isToday ? C.green : C.text2,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {d.date}
+              </span>
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: d.count > 0 ? C.goldBright : "transparent",
+                }}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   ATTENTION ROW — assignments that need follow-up
+   ════════════════════════════════════════════════════════════ */
+function AttentionRow({
+  assignment: a,
+  isAr,
+  isLast,
+  copied,
+  onCopy,
+  onOpen,
+}: {
+  assignment: Assignment;
+  isAr: boolean;
+  isLast: boolean;
+  copied: boolean;
+  onCopy: () => void;
+  onOpen: () => void;
+}) {
+  const dl = a.deadline ? new Date(a.deadline).getTime() : null;
+  const daysLeft = dl ? Math.ceil((dl - Date.now()) / 86400000) : null;
+  const noSubs = a.submissionCount === 0;
+  const reason = noSubs
+    ? isAr
+      ? "لا توجد تسليمات بعد"
+      : "No submissions yet"
+    : isAr
+      ? `يُغلق خلال ${daysLeft} ${daysLeft === 1 ? "يوم" : "أيام"}`
+      : `Closes in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "11px 13px",
+        borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+        cursor: "pointer",
+      }}
+      onClick={onOpen}
+    >
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          background: noSubs ? "rgba(220,38,38,0.08)" : "rgba(245,158,11,0.1)",
+          color: noSubs ? "#DC2626" : "#B45309",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {noSubs ? (
+          <Send style={{ width: 14, height: 14, transform: isAr ? "scaleX(-1)" : "none" }} />
+        ) : (
+          <Calendar style={{ width: 14, height: 14 }} />
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 800,
+            color: C.text,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {a.title}
+        </div>
+        <div
+          style={{
+            fontSize: 10.5,
+            color: noSubs ? "#DC2626" : "#B45309",
+            fontWeight: 700,
+            marginTop: 2,
+          }}
+        >
+          {reason}
+        </div>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onCopy();
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          height: 28,
+          paddingInline: 10,
+          borderRadius: 8,
+          border: `1px solid ${copied ? "rgba(30,77,53,0.3)" : C.borderMid}`,
+          background: copied ? "rgba(30,77,53,0.06)" : "transparent",
+          cursor: "pointer",
+          color: copied ? C.green : C.muted,
+          fontSize: 10.5,
+          fontWeight: 800,
+          fontFamily: "inherit",
+          flexShrink: 0,
+          whiteSpace: "nowrap",
+        }}
+        title={isAr ? "انسخ الرابط وذكّر طلابك" : "Copy link to remind students"}
+      >
+        {copied ? (
+          <Check style={{ width: 11, height: 11 }} />
+        ) : (
+          <Copy style={{ width: 11, height: 11 }} />
+        )}
+        {isAr ? "ذكّرهم" : "Remind"}
+      </button>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   QUICK LINKS — real destinations, one tap
+   ════════════════════════════════════════════════════════════ */
+function QuickLinks({
+  isAr,
+  setLocation,
+}: {
+  isAr: boolean;
+  setLocation: (path: string) => void;
+}) {
+  const links: {
+    icon: React.ReactNode;
+    label: string;
+    href: string;
+    tint: string;
+  }[] = [
+    {
+      icon: <Database style={{ width: 14, height: 14 }} />,
+      label: isAr ? "بنك الأسئلة" : "Question bank",
+      href: "/teacher/question-bank",
+      tint: "#2563EB",
+    },
+    {
+      icon: <Library style={{ width: 14, height: 14 }} />,
+      label: isAr ? "مكتبة المحتوى" : "Content library",
+      href: "/teacher/library",
+      tint: "#7C3AED",
+    },
+    {
+      icon: <Target style={{ width: 14, height: 14 }} />,
+      label: isAr ? "التحديات الفردية" : "Solo challenges",
+      href: "/teacher/solo-challenges",
+      tint: "#DC2626",
+    },
+    {
+      icon: <MessageCircle style={{ width: 14, height: 14 }} />,
+      label: isAr ? "رسائل أولياء الأمور" : "Parent messages",
+      href: "/teacher/parent-messages",
+      tint: "#059669",
+    },
+    {
+      icon: <Medal style={{ width: 14, height: 14 }} />,
+      label: isAr ? "إنجازاتي" : "My achievements",
+      href: "/teacher/achievements",
+      tint: "#C9920A",
+    },
+    {
+      icon: <Users style={{ width: 14, height: 14 }} />,
+      label: isAr ? "صفوفي وطلابي" : "Classes & students",
+      href: "/teacher/students",
+      tint: "#0891B2",
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+      }}
+    >
+      {links.map((link, i) => (
+        <button
+          key={link.href}
+          onClick={() => setLocation(link.href)}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 13px",
+            background: "transparent",
+            border: "none",
+            borderBottom:
+              i === links.length - 1 ? "none" : `1px solid ${C.border}`,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            textAlign: isAr ? "right" : "left",
+            transition: "background 0.13s ease",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(30,77,53,0.035)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          <span
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 9,
+              background: `${link.tint}14`,
+              color: link.tint,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {link.icon}
+          </span>
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12,
+              fontWeight: 800,
+              color: C.text,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {link.label}
+          </span>
+          {isAr ? (
+            <ChevronLeft
+              style={{ width: 13, height: 13, color: C.subtle, flexShrink: 0 }}
+            />
+          ) : (
+            <ChevronRight
+              style={{ width: 13, height: 13, color: C.subtle, flexShrink: 0 }}
+            />
+          )}
+        </button>
+      ))}
     </div>
   );
 }
