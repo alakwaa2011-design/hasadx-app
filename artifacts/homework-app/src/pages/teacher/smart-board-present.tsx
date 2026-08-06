@@ -448,6 +448,15 @@ function BoardImage({ item, scale = 1 }: { item: BoardItem; scale?: number }) {
 // ─── Chalk SVG filter ─────────────────────────────────────────────────────────
 
 /** Return text up to the last complete word within `chars` characters */
+/** Extract the text that should be spoken when a board action is committed.
+ *  Returns "" for visual-only actions (charts, arrows, images, math LaTeX). */
+function getReadableText(action: BoardAction): string {
+  const readable = ["bullet", "writeText", "writeTitle", "highlight"];
+  if (readable.includes(action.type)) return action.content?.trim() ?? "";
+  // writeMath has LaTeX — unreadable; skip TTS for it
+  return "";
+}
+
 function wordSlice(text: string, chars: number): string {
   if (!text) return "";
   if (chars >= text.length) return text;
@@ -484,8 +493,8 @@ export default function SmartBoardPresent() {
   // Board sections (accumulate, scroll off when full)
   const [sections,    setSections]    = useState<BoardSection[]>([]);
   const [typingState, setTypingState] = useState<{ key:string; chars:number }|null>(null);
-  // Voice caption: the spoken voiceText typed in sync with audio progress
-  const [captionState, setCaptionState] = useState<{ phaseIdx:number; chars:number }|null>(null);
+  // Voice caption: tracks which committed item is currently being read aloud
+  const [captionState, setCaptionState] = useState<{ itemKey:string; chars:number }|null>(null);
   const [stepTitle,   setStepTitle]   = useState("");
   const [stepIdx,     setStepIdx]     = useState(0);
   const [isDone,      setIsDone]      = useState(false);
@@ -550,8 +559,8 @@ export default function SmartBoardPresent() {
     stepIdx:0, actionIdx:0, delay:0,
     paused:false, done:false, keyCounter:0,
     currentSectionId: "",
-    waitingForAudio: false,         // block until voice finishes (phase end)
-    voiceCaption: null as null | { text:string; phaseIdx:number; startMs:number },
+    waitingForAudio: false,         // block until voice finishes (item or phase end)
+    voiceCaption: null as null | { text:string; itemKey:string; startMs:number },
     typing: null as null | {
       key:string; type:string; text:string; color:string;
       label?:string; description?:string; chars:number;
@@ -670,12 +679,9 @@ export default function SmartBoardPresent() {
     const firstId = `s${anim.current.keyCounter++}`;
     anim.current.currentSectionId = firstId;
     setSections([{ id:firstId, phaseIdx:0, title:phasesRef.current[0].title, items:[] }]);
-    // Enqueue voice then start writing after a short delay so items appear WITH the voice
-    enqueue(phasesRef.current[0]?.voiceText ?? "");
-    anim.current.delay = 12; // ~720ms — lets TTS start loading before items appear
-    // Start voice caption for phase 0
-    const vt0 = phasesRef.current[0]?.voiceText ?? "";
-    if (vt0.trim()) anim.current.voiceCaption = { text: vt0, phaseIdx: 0, startMs: Date.now() };
+    // Items speak for themselves — no phase-level TTS upfront
+    anim.current.delay = 4; // brief lead-in before first item
+    anim.current.voiceCaption = null;
 
     const interval = setInterval(() => {
       const a      = anim.current;
@@ -698,20 +704,28 @@ export default function SmartBoardPresent() {
         }
         const chars = Math.floor(ratio * vc.text.length);
         setCaptionState(prev =>
-          prev?.phaseIdx === vc.phaseIdx && prev.chars === chars ? prev
-            : { phaseIdx: vc.phaseIdx, chars }
+          prev?.itemKey === vc.itemKey && prev.chars === chars ? prev
+            : { itemKey: vc.itemKey, chars }
         );
       }
 
       if (a.paused || a.done || waitingTapRef.current) return;
 
-      // ── Audio gate: wait for voice to finish before next phase ──
+      // ── Audio gate: wait for voice to finish before next item / phase ──
       if (a.waitingForAudio) {
         const audioActive = isPlayingRef.current || audioQueueRef.current.length > 0;
         if (audioActive) return;
-        // Voice just finished — small breath before next item
+        // Voice just finished — clear caption, then continue
         a.waitingForAudio = false;
-        a.delay = 5; // ~300ms pause after voice ends
+        a.voiceCaption = null;
+        setCaptionState(null);
+        if (manualModeRef.current) {
+          // In manual mode, require a tap after each item's audio finishes
+          setWaitingTap(true);
+          waitingTapRef.current = true;
+          return;
+        }
+        a.delay = 5; // ~300ms breath before next item
       }
 
       if (a.delay > 0) { a.delay--; return; }
@@ -731,14 +745,24 @@ export default function SmartBoardPresent() {
             s.id === sid ? { ...s, items:[...s.items, committed] } : s
           ));
           setTypingState(null);
-          // ── NEW: NO individual item TTS — voice comes from phase voiceText only
-          // Items flow continuously; voice narrates the full explanation in parallel
+          // ── Per-item TTS: read the committed item's text aloud, then gate ──
+          // Use t.type/t.text (already captured) — 'phase' isn't in scope here
+          const readableText = getReadableText({ type: t.type, content: t.text });
           a.typing = null;
           a.actionIdx++;
-          a.delay = pace.between;   // short breather, then next item
-          if (manualModeRef.current) {
-            setWaitingTap(true);
-            waitingTapRef.current = true;
+          if (readableText && !isMutedRef.current) {
+            const captionKey = committed.key;
+            a.voiceCaption = { text: readableText, itemKey: captionKey, startMs: Date.now() };
+            enqueue(readableText);
+            a.waitingForAudio = true;
+            // Manual mode tap happens AFTER audio ends (in waitingForAudio block)
+          } else {
+            // No TTS (math, visual, muted) — move to next item with a short pause
+            a.delay = pace.between;
+            if (manualModeRef.current) {
+              setWaitingTap(true);
+              waitingTapRef.current = true;
+            }
           }
         }
         return;
@@ -769,13 +793,9 @@ export default function SmartBoardPresent() {
             ...prev,
             { id:newId, phaseIdx:a.stepIdx, title:phases[a.stepIdx].title, items:[] },
           ]);
-          // Enqueue the next phase voice, then items flow after a short pause
-          enqueue(phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title);
-          a.delay = pace.between * 3;
-          // Start voice caption for next phase
-          const vtNext = phases[a.stepIdx].voiceText ?? "";
-          if (vtNext.trim()) a.voiceCaption = { text: vtNext, phaseIdx: a.stepIdx, startMs: Date.now() };
-          else a.voiceCaption = null;
+          // No phase-level TTS — each item speaks for itself
+          a.voiceCaption = null;
+          a.delay = pace.between * 2; // brief pause between phases
         } else {
           a.done=true; setIsDone(true);
         }
@@ -914,10 +934,7 @@ export default function SmartBoardPresent() {
     setTypingState(null); setCaptionState(null); setIsDone(false); setIsPaused(false);
     setWaitingTap(false); waitingTapRef.current = false;
     clearQueue();
-    const vtR = phases[idx]?.voiceText ?? "";
-    if (vtR.trim()) anim.current.voiceCaption = { text: vtR, phaseIdx: idx, startMs: Date.now() };
-    else anim.current.voiceCaption = null;
-    enqueue(vtR);
+    anim.current.voiceCaption = null;
   }
 
   function jumpToStep(idx: number) {
@@ -937,10 +954,7 @@ export default function SmartBoardPresent() {
     setIsDone(false); setIsPaused(false);
     setWaitingTap(false); waitingTapRef.current = false;
     clearQueue();
-    const vtJ = phases[idx]?.voiceText ?? "";
-    if (vtJ.trim()) anim.current.voiceCaption = { text: vtJ, phaseIdx: idx, startMs: Date.now() };
-    else anim.current.voiceCaption = null;
-    enqueue(vtJ);
+    anim.current.voiceCaption = null;
     resetCtrlTimer();
   }
 
@@ -1445,45 +1459,26 @@ export default function SmartBoardPresent() {
                         )}
                       </div>
 
-                      {/* ── Voice caption: spoken words appear in sync with audio ── */}
-                      {(() => {
-                        const phaseVoice = phasesRef.current[section.phaseIdx]?.voiceText ?? "";
-                        if (!phaseVoice.trim()) return null;
-                        const hasCaption = captionState?.phaseIdx === section.phaseIdx;
-                        // Active section: show only what's been spoken so far (0 if not started yet)
-                        // Inactive (old) section: show full text permanently
-                        const chars = hasCaption ? captionState!.chars : (isActive ? 0 : phaseVoice.length);
-                        const shown = wordSlice(phaseVoice, chars);
-                        const stillTyping = isActive && hasCaption && chars < phaseVoice.length;
+                      {/* Committed items — each reads aloud after it's typed */}
+                      {section.items.map(item => {
+                        const isReading = captionState?.itemKey === item.key;
+                        const readProgress = isReading
+                          ? Math.min(captionState!.chars / Math.max(item.content.length, 1), 1)
+                          : 0;
                         return (
-                          <div style={{
-                            fontFamily: "'Tajawal', sans-serif",
-                            fontSize: Math.round(21 * fontSize),
-                            color: "rgba(242,237,224,.93)",
-                            lineHeight: 1.85,
-                            marginBottom: 14,
-                            direction: "rtl",
-                            filter: "url(#chalk-rough)",
-                            textShadow: "0 0 10px rgba(242,237,224,.1)",
-                            minHeight: "1.5em",
-                          }}>
-                            {shown}
-                            {stillTyping && (
-                              <span style={{
-                                display: "inline-block", width: 2, height: "0.85em",
-                                background: "rgba(242,237,224,.75)",
-                                marginInlineStart: 3, verticalAlign: "middle",
-                                animation: "tapPulse 0.85s infinite",
-                              }} />
+                          <div key={item.key}>
+                            <BoardLine item={item} scale={fontSize}/>
+                            {/* Slim audio-progress bar under the item being read */}
+                            {isReading && (
+                              <div style={{ height:2, borderRadius:1, overflow:"hidden",
+                                background:"rgba(168,230,176,.15)", margin:"2px 0 5px" }}>
+                                <div style={{ height:"100%", background:"rgba(168,230,176,.7)",
+                                  width:`${readProgress*100}%`, transition:"width .1s linear" }}/>
+                              </div>
                             )}
                           </div>
                         );
-                      })()}
-
-                      {/* Committed items */}
-                      {section.items.map(item => (
-                        <BoardLine key={item.key} item={item} scale={fontSize}/>
-                      ))}
+                      })}
 
                       {/* Typing item (only in active section) */}
                       {isActive && typingState && anim.current.typing && (
