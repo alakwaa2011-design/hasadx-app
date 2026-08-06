@@ -471,7 +471,6 @@ export default function DashboardOverview({
           <SectionHead
             icon={<Wand2 style={{ width: 15, height: 15, color: C.green }} />}
             title={isAr ? "استوديو الإنشاء" : "Creation studio"}
-            badge={isAr ? "٨ أدوات" : "8 tools"}
             isAr={isAr}
           />
           <QuickCreateStudio
@@ -511,7 +510,9 @@ export default function DashboardOverview({
                     style={{ width: 15, height: 15, color: C.gold }}
                   />
                 }
-                title={isAr ? "تجارب مميزة" : "Featured experiences"}
+                title={isAr ? "الألعاب والتجارب المباشرة" : "Live games & experiences"}
+                linkLabel={isAr ? "عرض الكل" : "View all"}
+                onLink={() => setActiveTab("competitive")}
                 isAr={isAr}
               />
               <div
@@ -526,34 +527,15 @@ export default function DashboardOverview({
                   isMobile={isMobile}
                   onClick={() => setLocation("/game/arena")}
                 />
+                <GamesArcade
+                  isAr={isAr}
+                  isMobile={isMobile}
+                  onOpen={() => setActiveTab("competitive")}
+                />
                 <WameethPreviewCard
                   onStart={() => setLocation("/game/wameeth/create")}
                 />
               </div>
-            </motion.section>
-
-            {/* Games arcade — live game shortcuts */}
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.11 }}
-            >
-              <SectionHead
-                icon={
-                  <Gamepad2
-                    style={{ width: 15, height: 15, color: C.green }}
-                  />
-                }
-                title={isAr ? "ألعاب حصاد المباشرة" : "Hasaad live games"}
-                linkLabel={isAr ? "عرض الكل" : "View all"}
-                onLink={() => setActiveTab("competitive")}
-                isAr={isAr}
-              />
-              <GamesArcade
-                isAr={isAr}
-                isMobile={isMobile}
-                onOpen={() => setActiveTab("competitive")}
-              />
             </motion.section>
 
             {/* Recent assignments — open by default */}
@@ -813,72 +795,19 @@ export default function DashboardOverview({
               </div>
             </motion.section>
 
-            {/* Top 5 students */}
+            {/* Highlights — top students + activity in one tabbed card */}
             <motion.section
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.22 }}
             >
-              <SectionHead
-                icon={<Crown style={{ width: 15, height: 15, color: C.gold }} />}
-                title={isAr ? "أفضل ٥ طلاب" : "Top 5 students"}
-                badge={isAr ? "آخر ٧ أيام" : "last 7 days"}
-                linkLabel={isAr ? "عرض الكل" : "View all"}
-                onLink={() => setActiveTab("stats")}
+              <HighlightsCard
                 isAr={isAr}
+                topStudents={topStudents}
+                assignments={assignments || []}
+                onStudentsLink={() => setActiveTab("stats")}
+                onActivityLink={() => setActiveTab("assignments")}
               />
-              <div
-                style={{
-                  background: C.card,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
-                }}
-              >
-                {topStudents.length === 0 ? (
-                  <RailEmpty
-                    icon={<Crown style={{ width: 26, height: 26 }} />}
-                    text={
-                      isAr
-                        ? "لا يوجد ترتيب بعد — انتظر تسليمات الطلاب"
-                        : "No ranking yet — waiting for submissions"
-                    }
-                  />
-                ) : (
-                  topStudents
-                    .slice(0, 5)
-                    .map((s, idx, arr) => (
-                      <TopStudentRow
-                        key={`${s.id}-${idx}`}
-                        student={s}
-                        rank={idx + 1}
-                        isAr={isAr}
-                        isLast={idx === arr.length - 1}
-                      />
-                    ))
-                )}
-              </div>
-            </motion.section>
-
-            {/* Recent activity feed */}
-            <motion.section
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.26 }}
-            >
-              <SectionHead
-                icon={
-                  <Activity
-                    style={{ width: 15, height: 15, color: C.green }}
-                  />
-                }
-                title={isAr ? "آخر الأنشطة" : "Recent activity"}
-                linkLabel={isAr ? "عرض الكل" : "View all"}
-                onLink={() => setActiveTab("assignments")}
-                isAr={isAr}
-              />
-              <ActivityFeed isAr={isAr} assignments={assignments || []} />
             </motion.section>
 
             {/* Quick links */}
@@ -1785,14 +1714,14 @@ function ArenaBanner({
         width: "100%",
         position: "relative",
         overflow: "hidden",
-        borderRadius: 20,
-        padding: isMobile ? "20px 18px" : "24px 28px",
-        border: "1px solid rgba(245,200,66,0.3)",
+        borderRadius: 18,
+        padding: isMobile ? "16px 16px" : "18px 24px",
+        border: "1px solid rgba(245,200,66,0.28)",
         background: `linear-gradient(120deg, ${C.greenDeep} 0%, ${C.green} 58%, #2A6247 100%)`,
-        boxShadow: "0 18px 44px -16px rgba(15,61,40,0.5)",
+        boxShadow: "0 14px 36px -16px rgba(15,61,40,0.45)",
         display: "flex",
         alignItems: "center",
-        gap: isMobile ? 14 : 24,
+        gap: isMobile ? 12 : 22,
         cursor: "pointer",
         textAlign: isAr ? "right" : "left",
         fontFamily: "inherit",
@@ -1841,43 +1770,52 @@ function ArenaBanner({
 
       {/* Text */}
       <div style={{ position: "relative", zIndex: 2, flex: 1, minWidth: 0 }}>
-        <span
+        <div
           style={{
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: 6,
-            fontSize: 10.5,
-            fontWeight: 900,
-            padding: "4px 11px",
-            borderRadius: 999,
-            background: "rgba(245,200,66,0.16)",
-            color: C.goldSoft,
-            border: "1px solid rgba(245,200,66,0.3)",
-            marginBottom: 10,
-            letterSpacing: "0.04em",
+            gap: 8,
+            marginBottom: 5,
+            flexWrap: "wrap",
           }}
         >
-          <Zap style={{ width: 11, height: 11, fill: "currentColor" }} />
-          {isAr ? "مميز" : "FEATURED"}
-        </span>
-        <h2
-          style={{
-            margin: "0 0 6px",
-            color: "#fff",
-            fontSize: isMobile ? 22 : 28,
-            fontWeight: 900,
-            lineHeight: 1.15,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          {isAr ? "تحدي حصاد" : "Hasaad Challenge"}
-        </h2>
+          <h2
+            style={{
+              margin: 0,
+              color: "#fff",
+              fontSize: isMobile ? 19 : 22,
+              fontWeight: 900,
+              lineHeight: 1.2,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {isAr ? "تحدي حصاد" : "Hasaad Challenge"}
+          </h2>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 9.5,
+              fontWeight: 900,
+              padding: "3px 9px",
+              borderRadius: 999,
+              background: "rgba(245,200,66,0.16)",
+              color: C.goldSoft,
+              border: "1px solid rgba(245,200,66,0.3)",
+              letterSpacing: "0.04em",
+            }}
+          >
+            <Zap style={{ width: 10, height: 10, fill: "currentColor" }} />
+            {isAr ? "مميز" : "FEATURED"}
+          </span>
+        </div>
         <p
           style={{
             margin: 0,
-            color: "rgba(255,255,255,0.7)",
-            fontSize: isMobile ? 12 : 13.5,
-            lineHeight: 1.65,
+            color: "rgba(255,255,255,0.68)",
+            fontSize: isMobile ? 11.5 : 12.5,
+            lineHeight: 1.6,
             fontWeight: 500,
             maxWidth: 460,
           }}
@@ -1886,52 +1824,51 @@ function ArenaBanner({
             ? "مسابقة جماعية مباشرة أمام الجمهور — مثالية للحفلات والملتقيات المدرسية."
             : "A live audience competition made for school events and gatherings."}
         </p>
-        <div
-          style={{
-            marginTop: 14,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            padding: isMobile ? "9px 18px" : "10px 22px",
-            borderRadius: 12,
-            background: `linear-gradient(135deg, ${C.goldSoft}, ${C.goldBright})`,
-            color: C.greenDeep,
-            fontSize: isMobile ? 12.5 : 13.5,
-            fontWeight: 900,
-            boxShadow: "0 8px 22px rgba(232,168,14,0.4)",
-          }}
-        >
-          <Play
-            style={{ width: 13, height: 13, fill: "currentColor" }}
-          />
-          {isAr ? "ابدأ المسابقة الآن" : "Start now"}
-        </div>
       </div>
 
-      {/* Trophy */}
+      {/* Trophy + CTA */}
       <div
         style={{
           position: "relative",
           zIndex: 2,
           flexShrink: 0,
-          width: isMobile ? 82 : 130,
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          gap: isMobile ? 10 : 18,
         }}
       >
-        <span
+        <div
           style={{
-            fontSize: isMobile ? 58 : 88,
-            lineHeight: 1,
-            filter:
-              "drop-shadow(0 14px 16px rgba(0,0,0,0.35)) drop-shadow(0 0 24px rgba(232,168,14,0.35))",
-            animation: "dashFloat 4s ease-in-out infinite",
-            display: "block",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: isMobile ? "8px 14px" : "9px 18px",
+            borderRadius: 11,
+            background: `linear-gradient(135deg, ${C.goldSoft}, ${C.goldBright})`,
+            color: C.greenDeep,
+            fontSize: isMobile ? 11.5 : 12.5,
+            fontWeight: 900,
+            boxShadow: "0 6px 18px rgba(232,168,14,0.35)",
+            whiteSpace: "nowrap",
           }}
         >
-          🏆
-        </span>
+          <Play style={{ width: 12, height: 12, fill: "currentColor" }} />
+          {isAr ? "ابدأ الآن" : "Start now"}
+        </div>
+        {!isMobile && (
+          <span
+            style={{
+              fontSize: 52,
+              lineHeight: 1,
+              filter:
+                "drop-shadow(0 10px 12px rgba(0,0,0,0.35)) drop-shadow(0 0 18px rgba(232,168,14,0.3))",
+              animation: "dashFloat 4s ease-in-out infinite",
+              display: "block",
+            }}
+          >
+            🏆
+          </span>
+        )}
       </div>
     </motion.button>
   );
@@ -2633,74 +2570,47 @@ function QuickCreateStudio({
   const tools: {
     icon: React.ReactNode;
     title: string;
-    desc: string;
     href: string;
-    tint: string;
-    tintBg: string;
   }[] = [
     {
-      icon: <Plus style={{ width: 18, height: 18 }} />,
+      icon: <Plus style={{ width: 16, height: 16 }} />,
       title: isAr ? "نشاط جديد" : "New activity",
-      desc: isAr ? "واجب أو اختبار" : "Assignment or quiz",
       href: "/teacher/new",
-      tint: "#1E4D35",
-      tintBg: "rgba(30,77,53,0.09)",
     },
     {
-      icon: <Monitor style={{ width: 18, height: 18 }} />,
+      icon: <Monitor style={{ width: 16, height: 16 }} />,
       title: isAr ? "عرض تفاعلي" : "Presentation",
-      desc: isAr ? "شرائح وأنشطة حية" : "Live slides & polls",
       href: "/teacher/presentations/new",
-      tint: "#2563EB",
-      tintBg: "rgba(37,99,235,0.09)",
     },
     {
-      icon: <Video style={{ width: 18, height: 18 }} />,
+      icon: <Video style={{ width: 16, height: 16 }} />,
       title: isAr ? "درس فيديو" : "Video lesson",
-      desc: isAr ? "فيديو بأسئلة تفاعلية" : "Video with questions",
       href: "/teacher/video-lesson/new",
-      tint: "#DC2626",
-      tintBg: "rgba(220,38,38,0.08)",
     },
     {
-      icon: <BookOpen style={{ width: 18, height: 18 }} />,
+      icon: <BookOpen style={{ width: 16, height: 16 }} />,
       title: isAr ? "خطة درس" : "Lesson plan",
-      desc: isAr ? "توليد ذكي جاهز" : "AI-assisted plan",
       href: "/teacher/lesson-plans/create",
-      tint: "#C9920A",
-      tintBg: "rgba(201,146,10,0.1)",
     },
     {
-      icon: <Brain style={{ width: 18, height: 18 }} />,
+      icon: <Brain style={{ width: 16, height: 16 }} />,
       title: isAr ? "خريطة ذهنية" : "Mind map",
-      desc: isAr ? "لخّص درسك بصرياً" : "Visualize a topic",
       href: "/teacher/mindmap/create",
-      tint: "#7C3AED",
-      tintBg: "rgba(124,58,237,0.08)",
     },
     {
-      icon: <FileText style={{ width: 18, height: 18 }} />,
+      icon: <FileText style={{ width: 16, height: 16 }} />,
       title: isAr ? "ورقة عمل" : "Worksheet",
-      desc: isAr ? "جاهزة للطباعة" : "Print-ready sheet",
       href: "/teacher/worksheets/create",
-      tint: "#0891B2",
-      tintBg: "rgba(8,145,178,0.08)",
     },
     {
-      icon: <Headphones style={{ width: 18, height: 18 }} />,
+      icon: <Headphones style={{ width: 16, height: 16 }} />,
       title: isAr ? "نشاط استماع" : "Listening",
-      desc: isAr ? "إملاء وفهم مسموع" : "Dictation & audio",
       href: "/teacher/new/dictation",
-      tint: "#059669",
-      tintBg: "rgba(5,150,105,0.08)",
     },
     {
-      icon: <Pencil style={{ width: 18, height: 18 }} />,
+      icon: <Pencil style={{ width: 16, height: 16 }} />,
       title: isAr ? "السبورة الذكية" : "Smart board",
-      desc: isAr ? "اشرح وارسم مباشرة" : "Teach & draw live",
       href: "/teacher/smart-board",
-      tint: "#EA580C",
-      tintBg: "rgba(234,88,12,0.08)",
     },
   ];
 
@@ -2711,9 +2621,8 @@ function QuickCreateStudio({
           ? {
               display: "grid",
               gridAutoFlow: "column",
-              gridTemplateRows: "1fr 1fr",
-              gridAutoColumns: "42%",
-              gap: 9,
+              gridAutoColumns: "38%",
+              gap: 8,
               overflowX: "auto",
               paddingBottom: 6,
               scrollSnapType: "x mandatory",
@@ -2722,7 +2631,7 @@ function QuickCreateStudio({
           : {
               display: "grid",
               gridTemplateColumns: "repeat(4, minmax(0,1fr))",
-              gap: 12,
+              gap: 10,
             }
       }
     >
@@ -2730,79 +2639,68 @@ function QuickCreateStudio({
         <motion.button
           key={tool.href}
           onClick={() => setLocation(tool.href)}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, delay: 0.04 * i }}
-          whileHover={{ y: -3 }}
+          transition={{ duration: 0.22, delay: 0.03 * i }}
           whileTap={{ scale: 0.97 }}
           style={{
             background: C.card,
             border: `1px solid ${C.border}`,
-            borderRadius: 15,
-            padding: isMobile ? "12px 12px" : "14px 15px",
+            borderRadius: 13,
+            padding: isMobile ? "9px 11px" : "10px 13px",
             cursor: "pointer",
             display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: 8,
+            alignItems: "center",
+            gap: 9,
             textAlign: isAr ? "right" : "left",
             fontFamily: "inherit",
             width: "100%",
             minWidth: 0,
-            boxShadow: "0 2px 8px rgba(19,32,26,0.04)",
+            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
             scrollSnapAlign: "start",
-            transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            transition:
+              "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = `${tool.tint}55`;
-            e.currentTarget.style.boxShadow = `0 8px 22px -8px ${tool.tint}40`;
+            e.currentTarget.style.borderColor = "rgba(201,146,10,0.4)";
+            e.currentTarget.style.background = "#FFFDF6";
+            e.currentTarget.style.boxShadow =
+              "0 6px 16px -6px rgba(201,146,10,0.25)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = C.border;
-            e.currentTarget.style.boxShadow = "0 2px 8px rgba(19,32,26,0.04)";
+            e.currentTarget.style.background = C.card;
+            e.currentTarget.style.boxShadow = "0 1px 4px rgba(19,32,26,0.03)";
           }}
         >
-          <div
+          <span
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 11,
+              width: 30,
+              height: 30,
+              borderRadius: 9,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background: tool.tintBg,
-              color: tool.tint,
+              background: C.greenPale,
+              color: C.green,
               flexShrink: 0,
             }}
           >
             {tool.icon}
-          </div>
-          <div style={{ minWidth: 0, width: "100%" }}>
-            <div
-              style={{
-                fontSize: isMobile ? 12 : 12.5,
-                fontWeight: 800,
-                color: C.text,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {tool.title}
-            </div>
-            <div
-              style={{
-                fontSize: isMobile ? 10 : 10.5,
-                color: C.muted,
-                marginTop: 2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {tool.desc}
-            </div>
-          </div>
+          </span>
+          <span
+            style={{
+              fontSize: isMobile ? 11.5 : 12.5,
+              fontWeight: 800,
+              color: C.text,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              minWidth: 0,
+            }}
+          >
+            {tool.title}
+          </span>
         </motion.button>
       ))}
     </div>
@@ -2822,12 +2720,12 @@ function GamesArcade({
   onOpen: () => void;
 }) {
   const games = [
-    { emoji: "⚡", name: isAr ? "وميض" : "Wameeth", grad: "linear-gradient(135deg,#3E3050,#241A33)" },
-    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race", grad: "linear-gradient(135deg,#123A5E,#0A2038)" },
-    { emoji: "💰", name: isAr ? "المليون" : "Million", grad: "linear-gradient(135deg,#5E4A12,#33280A)" },
-    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel", grad: "linear-gradient(135deg,#5E1230,#33081A)" },
-    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War", grad: "linear-gradient(135deg,#12503E,#082B20)" },
-    { emoji: "🔥", name: isAr ? "الكرسي الساخن" : "Hot Seat", grad: "linear-gradient(135deg,#5E2E12,#331808)" },
+    { emoji: "⚡", name: isAr ? "وميض" : "Wameeth" },
+    { emoji: "🚀", name: isAr ? "سباق الصواريخ" : "Rocket Race" },
+    { emoji: "💰", name: isAr ? "المليون" : "Million" },
+    { emoji: "🎡", name: isAr ? "عجلة الحظ" : "Lucky Wheel" },
+    { emoji: "🪢", name: isAr ? "شد الحبل" : "Tug of War" },
+    { emoji: "🔥", name: isAr ? "الكرسي الساخن" : "Hot Seat" },
   ];
 
   return (
@@ -2837,75 +2735,75 @@ function GamesArcade({
         ...(isMobile
           ? {
               gridAutoFlow: "column",
-              gridAutoColumns: "31%",
+              gridAutoColumns: "30%",
               overflowX: "auto",
               paddingBottom: 6,
               scrollSnapType: "x mandatory",
               WebkitOverflowScrolling: "touch",
             }
           : { gridTemplateColumns: "repeat(6, minmax(0,1fr))" }),
-        gap: isMobile ? 9 : 11,
+        gap: isMobile ? 8 : 10,
       }}
     >
       {games.map((g, i) => (
         <motion.button
           key={g.name}
           onClick={onOpen}
-          initial={{ opacity: 0, scale: 0.94 }}
+          initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.22, delay: 0.05 * i }}
-          whileHover={{ y: -4, scale: 1.03 }}
+          transition={{ duration: 0.2, delay: 0.04 * i }}
           whileTap={{ scale: 0.96 }}
           style={{
-            position: "relative",
-            overflow: "hidden",
-            background: g.grad,
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 15,
-            padding: "14px 8px 11px",
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            borderRadius: 13,
+            padding: "11px 6px 9px",
             cursor: "pointer",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 7,
+            gap: 6,
             fontFamily: "inherit",
             minWidth: 0,
-            boxShadow: "0 8px 20px -10px rgba(0,0,0,0.45)",
+            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
             scrollSnapAlign: "start",
+            transition:
+              "border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "rgba(30,77,53,0.35)";
+            e.currentTarget.style.boxShadow =
+              "0 8px 18px -8px rgba(30,77,53,0.3)";
+            e.currentTarget.style.transform = "translateY(-3px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = C.border;
+            e.currentTarget.style.boxShadow = "0 1px 4px rgba(19,32,26,0.03)";
+            e.currentTarget.style.transform = "translateY(0)";
           }}
           title={g.name}
         >
-          {/* glow behind emoji */}
           <span
             style={{
-              position: "absolute",
-              top: 4,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
+              width: 38,
+              height: 38,
+              borderRadius: 11,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               background:
-                "radial-gradient(circle, rgba(255,255,255,0.22), transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
-          <span
-            style={{
-              position: "relative",
-              fontSize: 26,
+                "linear-gradient(145deg, rgba(30,77,53,0.08), rgba(232,168,14,0.07))",
+              fontSize: 20,
               lineHeight: 1,
-              filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.4))",
             }}
           >
             {g.emoji}
           </span>
           <span
             style={{
-              position: "relative",
               fontSize: 10.5,
               fontWeight: 800,
-              color: "rgba(255,255,255,0.92)",
+              color: C.text2,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -3280,6 +3178,158 @@ function AttentionRow({
 }
 
 /* ════════════════════════════════════════════════════════════
+   HIGHLIGHTS CARD — top students + activity, one tabbed card
+   ════════════════════════════════════════════════════════════ */
+function HighlightsCard({
+  isAr,
+  topStudents,
+  assignments,
+  onStudentsLink,
+  onActivityLink,
+}: {
+  isAr: boolean;
+  topStudents: TopStudent[];
+  assignments: Assignment[];
+  onStudentsLink: () => void;
+  onActivityLink: () => void;
+}) {
+  const [tab, setTab] = useState<"students" | "activity">("students");
+
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+      }}
+    >
+      {/* segmented header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "10px 12px",
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            gap: 4,
+            background: "rgba(0,0,0,0.04)",
+            borderRadius: 10,
+            padding: 3,
+          }}
+        >
+          {(
+            [
+              {
+                id: "students" as const,
+                icon: <Crown style={{ width: 12, height: 12 }} />,
+                label: isAr ? "أفضل الطلاب" : "Top students",
+              },
+              {
+                id: "activity" as const,
+                icon: <Activity style={{ width: 12, height: 12 }} />,
+                label: isAr ? "آخر الأنشطة" : "Activity",
+              },
+            ]
+          ).map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  padding: "6px 8px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: active ? C.card : "transparent",
+                  color: active ? C.green : C.muted,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  boxShadow: active ? "0 1px 4px rgba(19,32,26,0.08)" : "none",
+                  transition: "all 0.15s ease",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={tab === "students" ? onStudentsLink : onActivityLink}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            fontSize: 10.5,
+            fontWeight: 800,
+            color: C.green,
+            cursor: "pointer",
+            padding: "4px 6px",
+            borderRadius: 7,
+            border: "none",
+            background: "transparent",
+            fontFamily: "inherit",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          {isAr ? "الكل" : "All"}
+          {isAr ? (
+            <ChevronLeft style={{ width: 11, height: 11 }} />
+          ) : (
+            <ChevronRight style={{ width: 11, height: 11 }} />
+          )}
+        </button>
+      </div>
+
+      {/* content */}
+      {tab === "students" ? (
+        topStudents.length === 0 ? (
+          <RailEmpty
+            icon={<Crown style={{ width: 26, height: 26 }} />}
+            text={
+              isAr
+                ? "لا يوجد ترتيب بعد — انتظر تسليمات الطلاب"
+                : "No ranking yet — waiting for submissions"
+            }
+          />
+        ) : (
+          topStudents
+            .slice(0, 5)
+            .map((s, idx, arr) => (
+              <TopStudentRow
+                key={`${s.id}-${idx}`}
+                student={s}
+                rank={idx + 1}
+                isAr={isAr}
+                isLast={idx === arr.length - 1}
+              />
+            ))
+        )
+      ) : (
+        <ActivityFeed isAr={isAr} assignments={assignments} bare />
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
    QUICK LINKS — real destinations, one tap
    ════════════════════════════════════════════════════════════ */
 function QuickLinks({
@@ -3293,89 +3343,83 @@ function QuickLinks({
     icon: React.ReactNode;
     label: string;
     href: string;
-    tint: string;
   }[] = [
     {
       icon: <Database style={{ width: 14, height: 14 }} />,
       label: isAr ? "بنك الأسئلة" : "Question bank",
       href: "/teacher/question-bank",
-      tint: "#2563EB",
     },
     {
       icon: <Library style={{ width: 14, height: 14 }} />,
       label: isAr ? "مكتبة المحتوى" : "Content library",
       href: "/teacher/library",
-      tint: "#7C3AED",
     },
     {
       icon: <Target style={{ width: 14, height: 14 }} />,
       label: isAr ? "التحديات الفردية" : "Solo challenges",
       href: "/teacher/solo-challenges",
-      tint: "#DC2626",
     },
     {
       icon: <MessageCircle style={{ width: 14, height: 14 }} />,
-      label: isAr ? "رسائل أولياء الأمور" : "Parent messages",
+      label: isAr ? "رسائل الأهالي" : "Parent messages",
       href: "/teacher/parent-messages",
-      tint: "#059669",
     },
     {
       icon: <Medal style={{ width: 14, height: 14 }} />,
-      label: isAr ? "إنجازاتي" : "My achievements",
+      label: isAr ? "إنجازاتي" : "Achievements",
       href: "/teacher/achievements",
-      tint: "#C9920A",
     },
     {
       icon: <Users style={{ width: 14, height: 14 }} />,
-      label: isAr ? "صفوفي وطلابي" : "Classes & students",
+      label: isAr ? "صفوفي وطلابي" : "My classes",
       href: "/teacher/students",
-      tint: "#0891B2",
     },
   ];
 
   return (
     <div
       style={{
-        background: C.card,
-        border: `1px solid ${C.border}`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+        display: "grid",
+        gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+        gap: 8,
       }}
     >
-      {links.map((link, i) => (
+      {links.map((link) => (
         <button
           key={link.href}
           onClick={() => setLocation(link.href)}
           style={{
-            width: "100%",
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            padding: "10px 13px",
-            background: "transparent",
-            border: "none",
-            borderBottom:
-              i === links.length - 1 ? "none" : `1px solid ${C.border}`,
+            gap: 8,
+            padding: "9px 11px",
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            borderRadius: 12,
             cursor: "pointer",
             fontFamily: "inherit",
             textAlign: isAr ? "right" : "left",
-            transition: "background 0.13s ease",
+            minWidth: 0,
+            boxShadow: "0 1px 4px rgba(19,32,26,0.03)",
+            transition:
+              "border-color 0.13s ease, background 0.13s ease, box-shadow 0.13s ease",
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(30,77,53,0.035)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#FFFDF6";
+            e.currentTarget.style.borderColor = "rgba(201,146,10,0.35)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = C.card;
+            e.currentTarget.style.borderColor = C.border;
+          }}
         >
           <span
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 9,
-              background: `${link.tint}14`,
-              color: link.tint,
+              width: 26,
+              height: 26,
+              borderRadius: 8,
+              background: C.greenPale,
+              color: C.green,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -3388,7 +3432,7 @@ function QuickLinks({
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 800,
               color: C.text,
               overflow: "hidden",
@@ -3398,15 +3442,6 @@ function QuickLinks({
           >
             {link.label}
           </span>
-          {isAr ? (
-            <ChevronLeft
-              style={{ width: 13, height: 13, color: C.subtle, flexShrink: 0 }}
-            />
-          ) : (
-            <ChevronRight
-              style={{ width: 13, height: 13, color: C.subtle, flexShrink: 0 }}
-            />
-          )}
         </button>
       ))}
     </div>
@@ -3419,9 +3454,11 @@ function QuickLinks({
 function ActivityFeed({
   isAr,
   assignments,
+  bare,
 }: {
   isAr: boolean;
   assignments: Assignment[];
+  bare?: boolean;
 }) {
   const COLORS = ["#10B981", "#E8A80E", "#3B82F6", "#F59E0B", "#8B5CF6"];
 
@@ -3439,16 +3476,19 @@ function ActivityFeed({
       }));
   }, [assignments, isAr]);
 
+  const wrapperStyle: React.CSSProperties = bare
+    ? {}
+    : {
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        overflow: "hidden",
+        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
+      };
+
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 16,
-          boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
-        }}
-      >
+      <div style={wrapperStyle}>
         <RailEmpty
           icon={<Activity style={{ width: 26, height: 26 }} />}
           text={isAr ? "لا توجد نشاطات بعد" : "No activity yet"}
@@ -3458,15 +3498,7 @@ function ActivityFeed({
   }
 
   return (
-    <div
-      style={{
-        background: C.card,
-        border: `1px solid ${C.border}`,
-        borderRadius: 16,
-        overflow: "hidden",
-        boxShadow: "0 2px 10px rgba(19,32,26,0.04)",
-      }}
-    >
+    <div style={wrapperStyle}>
       {items.map((item, i) => (
         <div
           key={i}
