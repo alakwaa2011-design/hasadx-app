@@ -104,6 +104,7 @@ export default function SmartBoardAsk() {
       <style>{`
         @keyframes boardGlow { 0%,100% { box-shadow: 0 0 28px ${GLOW}; } 50% { box-shadow: 0 0 48px ${GLOW}, 0 0 80px rgba(124,58,237,.15); } }
         @keyframes floatIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { from { transform:rotate(0); } to { transform:rotate(360deg); } }
         .sb-card { animation: floatIn .45s ease both; }
         .sb-chip:hover { transform: translateY(-2px); }
         .sb-submit:not(:disabled):hover { opacity:.92; transform:translateY(-1px); }

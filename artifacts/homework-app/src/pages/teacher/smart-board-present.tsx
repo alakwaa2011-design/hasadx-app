@@ -9,7 +9,7 @@ import {
   Pause, Play, ChevronRight, ChevronLeft, X,
   Pencil, Eraser, Trash2, Volume2, VolumeX, Loader2,
   Settings, RotateCcw, ZoomIn, ZoomOut, Hand, Edit2,
-  Maximize2, Minimize2,
+  Maximize2, Minimize2, Radio, Copy, Check,
 } from "lucide-react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -500,6 +500,16 @@ export default function SmartBoardPresent() {
   const [showCtrl,     setShowCtrl]     = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Broadcast (share with students)
+  const [broadcastCode,        setBroadcastCode]        = useState<string|null>(null);
+  const [broadcastSecret,      setBroadcastSecret]      = useState<string|null>(null);
+  const [broadcastLoading,     setBroadcastLoading]     = useState(false);
+  const [showBroadcastModal,   setShowBroadcastModal]   = useState(false);
+  const [broadcastCopied,      setBroadcastCopied]      = useState(false);
+  const broadcastCodeRef    = useRef<string|null>(null);
+  const broadcastSecretRef  = useRef<string|null>(null);
+  const broadcastFlushTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   // Settings
   const [voice,      setVoice]      = useState<VoiceId>("shimmer");
@@ -1017,7 +1027,73 @@ export default function SmartBoardPresent() {
     window.addEventListener("mousemove",onMove); window.addEventListener("mouseup",onUp);
   }
 
-  function handleExit() { clearQueue(); navigate("/teacher/smart-board"); }
+  // ── Broadcast helpers ─────────────────────────────────────────────────────────
+
+  async function startBroadcast() {
+    setBroadcastLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/whiteboard/broadcast`, {
+        method: "POST", credentials: "include",
+      });
+      if (!r.ok) throw new Error("failed");
+      const d = await r.json() as { code: string; writeSecret: string };
+      broadcastCodeRef.current   = d.code;
+      broadcastSecretRef.current = d.writeSecret;
+      setBroadcastCode(d.code);
+      setBroadcastSecret(d.writeSecret);
+      setShowBroadcastModal(true);
+    } catch {
+      /* silently ignore — button stays clickable */
+    } finally {
+      setBroadcastLoading(false);
+    }
+  }
+
+  async function stopBroadcast() {
+    const code = broadcastCodeRef.current;
+    broadcastCodeRef.current   = null;
+    broadcastSecretRef.current = null;
+    setBroadcastCode(null);
+    setBroadcastSecret(null);
+    setShowBroadcastModal(false);
+    if (code) {
+      fetch(`${API_BASE}/api/whiteboard/broadcast/${code}`, {
+        method: "DELETE", credentials: "include",
+      }).catch(() => {});
+    }
+  }
+
+  function pushBoardState(currentSections: BoardSection[]) {
+    const code   = broadcastCodeRef.current;
+    const secret = broadcastSecretRef.current;
+    if (!code || !secret) return;
+    // Debounce rapid section updates
+    if (broadcastFlushTimer.current) clearTimeout(broadcastFlushTimer.current);
+    broadcastFlushTimer.current = setTimeout(() => {
+      fetch(`${API_BASE}/api/whiteboard/broadcast/${code}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          writeSecret: secret,
+          title: planRef.current?.title ?? "",
+          stepTitle: phasesRef.current[anim.current.stepIdx]?.title ?? "",
+          sections: currentSections,
+        }),
+      }).catch(() => {});
+    }, 200);
+  }
+
+  // Push state to students on every board update
+  useEffect(() => {
+    if (broadcastCode) pushBoardState(sections);
+  }, [sections, broadcastCode]); // eslint-disable-line
+
+  function handleExit() {
+    if (broadcastCode) stopBroadcast();
+    clearQueue();
+    navigate("/teacher/smart-board");
+  }
 
   // ── Loading / error ───────────────────────────────────────────────────────────
 
@@ -1098,6 +1174,70 @@ export default function SmartBoardPresent() {
       {/* ── Board area ── */}
       <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center",
         padding:"14px 14px 4px", position:"relative" }}>
+
+        {/* Broadcast modal */}
+        {showBroadcastModal && broadcastCode && (
+          <div style={{ position:"fixed", inset:0, zIndex:100,
+            background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center",
+            backdropFilter:"blur(4px)" }}
+            onClick={e => { if (e.target===e.currentTarget) setShowBroadcastModal(false); }}>
+            <div style={{ background:"#111a12", border:"1px solid rgba(168,230,176,.25)",
+              borderRadius:18, padding:"32px 36px", maxWidth:400, width:"calc(100% - 40px)",
+              fontFamily:"'Tajawal',sans-serif", direction:"rtl",
+              boxShadow:"0 20px 60px rgba(0,0,0,.8)" }}>
+
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <Radio size={20} color="#a8e6b0"/>
+                  <span style={{ color:"#a8e6b0", fontSize:18, fontWeight:700 }}>البث المباشر</span>
+                </div>
+                <button onClick={() => setShowBroadcastModal(false)}
+                  style={{ background:"none", border:"none", color:"rgba(255,255,255,.3)",
+                    cursor:"pointer", padding:4, borderRadius:6 }}>
+                  <X size={16}/>
+                </button>
+              </div>
+
+              <p style={{ color:"rgba(242,237,224,.6)", fontSize:14, marginBottom:20, lineHeight:1.7 }}>
+                اطلب من الطلاب فتح <strong style={{ color:"#a8e6b0" }}>hasad.app</strong> والضغط على "شاهد السبورة"، ثم إدخال الرمز:
+              </p>
+
+              {/* Big code display */}
+              <div style={{ background:"rgba(168,230,176,.06)", border:"2px solid rgba(168,230,176,.3)",
+                borderRadius:12, padding:"18px 24px", textAlign:"center", marginBottom:20,
+                position:"relative" }}>
+                <div style={{ color:"#a8e6b0", fontSize:46, fontWeight:900, letterSpacing:10,
+                  fontFamily:"'Courier New',monospace", lineHeight:1.1 }}>
+                  {broadcastCode}
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(broadcastCode).catch(() => {});
+                    setBroadcastCopied(true);
+                    setTimeout(() => setBroadcastCopied(false), 2000);
+                  }}
+                  style={{ position:"absolute", top:10, left:10, background:"rgba(168,230,176,.1)",
+                    border:"1px solid rgba(168,230,176,.3)", color:"#a8e6b0",
+                    borderRadius:8, padding:"5px 8px", cursor:"pointer",
+                    display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
+                  {broadcastCopied ? <><Check size={12}/> تم</> : <><Copy size={12}/> نسخ</>}
+                </button>
+              </div>
+
+              <p style={{ color:"rgba(242,237,224,.4)", fontSize:12, textAlign:"center", marginBottom:20 }}>
+                السبورة تتحدّث على شاشات الطلاب بشكل تلقائي ✦
+              </p>
+
+              <button onClick={stopBroadcast}
+                style={{ width:"100%", background:"rgba(245,128,128,.1)",
+                  border:"1px solid rgba(245,128,128,.35)", borderRadius:10,
+                  color:"#f58080", padding:"12px", cursor:"pointer",
+                  fontFamily:"'Tajawal',sans-serif", fontSize:15, fontWeight:700 }}>
+                إيقاف البث
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Settings panel */}
         {showSettings && (
@@ -1534,6 +1674,31 @@ export default function SmartBoardPresent() {
               display:"flex", alignItems:"center", gap:5, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
             {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
             <span>{isFullscreen ? "تصغير" : "ملء الشاشة"}</span>
+          </button>
+
+          {/* Broadcast button */}
+          <button
+            onClick={() => broadcastCode ? setShowBroadcastModal(true) : startBroadcast()}
+            disabled={broadcastLoading}
+            style={{ background: broadcastCode
+                ? "rgba(168,230,176,.15)"
+                : "rgba(255,255,255,.06)",
+              border: `1px solid ${broadcastCode
+                ? "rgba(168,230,176,.5)"
+                : "transparent"}`,
+              color: broadcastCode ? "#a8e6b0" : "rgba(242,237,224,.45)",
+              borderRadius:8, padding:"7px 10px", cursor:"pointer",
+              display:"flex", alignItems:"center", gap:5,
+              fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+            {broadcastLoading
+              ? <Loader2 size={13} style={{ animation:"spin 1s linear infinite" }}/>
+              : <Radio size={13}/>}
+            {broadcastCode ? "بث مباشر" : "شارك مع الطلاب"}
+            {broadcastCode && (
+              <span style={{ width:7, height:7, borderRadius:"50%",
+                background:"#a8e6b0", display:"inline-block",
+                animation:"tapPulse 1.8s infinite", marginRight:2 }}/>
+            )}
           </button>
 
           <button

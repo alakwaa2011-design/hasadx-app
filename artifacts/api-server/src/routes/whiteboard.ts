@@ -683,6 +683,88 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
   }
 });
 
+// ── Whiteboard broadcast sessions (in-memory, poll-based) ─────────────────────
+// Pattern mirrors arena-session.ts — short-lived, teacher-owned, no DB.
+
+interface BroadcastSession {
+  writeSecret: string;
+  title: string;
+  stepTitle: string;
+  sections: unknown[];   // BoardSection[] as JSON
+  updatedAt: number;
+}
+
+const broadcastSessions = new Map<string, BroadcastSession>();
+const BROADCAST_TTL_MS = 4 * 60 * 60 * 1000; // 4 h
+
+function evictBroadcasts() {
+  const now = Date.now();
+  for (const [code, s] of broadcastSessions) {
+    if (now - s.updatedAt > BROADCAST_TTL_MS) broadcastSessions.delete(code);
+  }
+}
+
+function randomCode(len = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+// POST /api/whiteboard/broadcast — teacher creates a session
+router.post("/whiteboard/broadcast", requireTeacher, (req, res) => {
+  evictBroadcasts();
+  let code: string;
+  do { code = randomCode(); } while (broadcastSessions.has(code));
+  const writeSecret = randomCode(16);
+  broadcastSessions.set(code, {
+    writeSecret,
+    title: "",
+    stepTitle: "",
+    sections: [],
+    updatedAt: Date.now(),
+  });
+  res.json({ code, writeSecret });
+});
+
+// PUT /api/whiteboard/broadcast/:code — teacher pushes board state
+router.put("/whiteboard/broadcast/:code", requireTeacher, (req, res) => {
+  const code = req.params.code?.toUpperCase().slice(0, 12);
+  if (!code) { res.status(400).json({ error: "Missing code" }); return; }
+  const existing = broadcastSessions.get(code);
+  if (!existing) { res.status(404).json({ error: "Session not found or expired" }); return; }
+
+  const { writeSecret, title, stepTitle, sections } = req.body as Partial<BroadcastSession>;
+  if (writeSecret !== existing.writeSecret) { res.status(403).json({ error: "Wrong write secret" }); return; }
+
+  existing.title = String(title ?? existing.title).slice(0, 200);
+  existing.stepTitle = String(stepTitle ?? existing.stepTitle).slice(0, 200);
+  existing.sections = Array.isArray(sections) ? sections : existing.sections;
+  existing.updatedAt = Date.now();
+  res.json({ ok: true });
+});
+
+// GET /api/whiteboard/broadcast/:code — student polls board state (no auth)
+router.get("/whiteboard/broadcast/:code", (req, res) => {
+  evictBroadcasts();
+  const code = req.params.code?.toUpperCase().slice(0, 12);
+  if (!code) { res.status(400).json({ error: "Missing code" }); return; }
+  const session = broadcastSessions.get(code);
+  if (!session) { res.status(404).json({ error: "Session not found or expired" }); return; }
+  session.updatedAt = Date.now();
+  const { writeSecret: _omit, ...pub } = session;
+  res.json(pub);
+});
+
+// DELETE /api/whiteboard/broadcast/:code — teacher ends session
+router.delete("/whiteboard/broadcast/:code", requireTeacher, (req, res) => {
+  const code = req.params.code?.toUpperCase().slice(0, 12);
+  if (!code) { res.status(400).json({ error: "Missing code" }); return; }
+  broadcastSessions.delete(code);
+  res.json({ ok: true });
+});
+
+
 // ── DELETE /api/whiteboard/lessons/:id ───────────────────────────────────────
 // ── GET /api/whiteboard/geocode — proxy to Nominatim (cached + throttled) ────
 const geocodeCache = new Map<string, { lat: number; lng: number; displayName: string } | null>();

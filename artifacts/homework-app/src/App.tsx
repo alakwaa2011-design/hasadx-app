@@ -144,6 +144,8 @@ const ScrambleCreate = lazy(() => import("@/pages/game/scramble-create"));
 const ScrambleMonitor = lazy(() => import("@/pages/game/scramble-monitor"));
 const VideoLive = lazy(() => import("@/pages/teacher/video-live"));
 const StudentVideoLive = lazy(() => import("@/pages/student/video-live"));
+
+const SmartBoardView = lazy(() => import("@/pages/student/smart-board-view"));
 const StudentAuth = lazy(() => import("@/pages/student-auth"));
 const StudentDashboard = lazy(() => import("@/pages/student/dashboard"));
 const StroopSetup = lazy(() => import("@/pages/game/stroop-setup"));
@@ -407,6 +409,8 @@ function Router() {
         <Route path="/solve/:id" component={StudentSolve} />
         <Route path="/video/:id" component={StudentVideoLesson} />
         <Route path="/watch/:roomCode" component={StudentVideoLive} />
+        <Route path="/board" component={SmartBoardView} />
+        <Route path="/board/:code" component={SmartBoardView} />
         
         {/* Game Routes */}
         <Route path="/game/wameeth" component={WameethRedirect} />
