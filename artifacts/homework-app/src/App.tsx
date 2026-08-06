@@ -87,11 +87,12 @@ const CreateVideoLesson = lazy(() => import("@/pages/teacher/create-video-lesson
 const VideoLessonDetail = lazy(() => import("@/pages/teacher/video-lesson-detail"));
 const StudentVideoLesson = lazy(() => import("@/pages/student/video-lesson"));
 const AdaptiveSolve = lazy(() => import("@/pages/student/adaptive-solve"));
-const SmartBoardAsk  = lazy(() => import("@/pages/teacher/smart-board-ask"));
-const SmartBoard     = lazy(() => import("@/pages/teacher/smart-board"));
-const SmartBoardNew  = lazy(() => import("@/pages/teacher/smart-board-new"));
-const SmartBoardEdit = lazy(() => import("@/pages/teacher/smart-board-edit"));
+const SmartBoardAsk     = lazy(() => import("@/pages/teacher/smart-board-ask"));
+const SmartBoard        = lazy(() => import("@/pages/teacher/smart-board"));
+const SmartBoardNew     = lazy(() => import("@/pages/teacher/smart-board-new"));
+const SmartBoardEdit    = lazy(() => import("@/pages/teacher/smart-board-edit"));
 const SmartBoardPresent = lazy(() => import("@/pages/teacher/smart-board-present"));
+const SmartBoardHistory = lazy(() => import("@/pages/teacher/smart-board-history"));
 const PublicGamesPage = lazy(() => import("@/pages/public-games"));
 const GuestCreatePage = lazy(() => import("@/pages/guest-create"));
 const SoloPlayPage = lazy(() => import("@/pages/solo-play"));
