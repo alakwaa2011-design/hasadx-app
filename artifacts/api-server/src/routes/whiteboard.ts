@@ -287,16 +287,30 @@ router.post("/whiteboard/lessons", requireTeacher, async (req, res) => {
 });
 
 // ── GET /api/whiteboard/lessons ───────────────────────────────────────────────
+// ?type=ask  → Q&A history only
+// ?type=lesson (or omitted) → full lessons only
 router.get("/whiteboard/lessons", requireTeacher, async (req, res) => {
   try {
     const teacherId = req.session.teacherId as number;
-    const result = await db.execute(sql`
-      SELECT id, question AS topic, subject, grade_level, level, language, created_at
-      FROM whiteboard_sessions
-      WHERE teacher_id = ${teacherId}
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
+    const type = (req.query.type as string | undefined) ?? "lesson";
+    let result;
+    if (type === "ask") {
+      result = await db.execute(sql`
+        SELECT id, question AS topic, subject, grade_level, level, language, created_at
+        FROM whiteboard_sessions
+        WHERE teacher_id = ${teacherId} AND level = 'ask'
+        ORDER BY created_at DESC
+        LIMIT 100
+      `);
+    } else {
+      result = await db.execute(sql`
+        SELECT id, question AS topic, subject, grade_level, level, language, created_at
+        FROM whiteboard_sessions
+        WHERE teacher_id = ${teacherId} AND (level IS NULL OR level != 'ask')
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+    }
     res.json({ lessons: result.rows ?? result });
   } catch (err) {
     req.log.error({ err }, "whiteboard list lessons failed");
@@ -646,7 +660,23 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضي�
       keyPoints: [],
     };
 
-    res.json(plan);
+    // Auto-save to whiteboard_sessions (level='ask' marks Q&A entries)
+    let savedId: number | null = null;
+    try {
+      const teacherId = req.session.teacherId as number;
+      const saveResult = await db.execute(sql`
+        INSERT INTO whiteboard_sessions
+          (teacher_id, question, plan, language, level)
+        VALUES
+          (${teacherId}, ${question.trim() || "سؤال"}, ${JSON.stringify(plan)}::jsonb, 'ar', 'ask')
+        RETURNING id
+      `);
+      savedId = (saveResult.rows ?? saveResult as any)[0]?.id ?? null;
+    } catch (saveErr) {
+      req.log.warn({ saveErr }, "whiteboard ask auto-save failed (non-fatal)");
+    }
+
+    res.json({ ...plan, savedId });
   } catch (err) {
     req.log.error({ err }, "whiteboard ask failed");
     res.status(500).json({ error: "تعذّر توليد الإجابة" });

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
-import { Camera, ImagePlus, Keyboard, Zap, Loader2, X, BookOpen, ArrowLeft } from "lucide-react";
+import { Camera, ImagePlus, Keyboard, Zap, Loader2, X, BookOpen, ArrowLeft, History } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -287,19 +287,33 @@ export default function SmartBoardAsk() {
             <Zap size={13} color={ACCENT} />
             جرّب سؤالاً:
           </span>
-          <button onClick={() => navigate("/teacher/smart-board/lessons")}
-            style={{
-              background: "transparent", border: `1px solid var(--border)`, borderRadius: 8,
-              color: "var(--muted-foreground)", cursor: "pointer", padding: "5px 12px",
-              fontFamily: "'Tajawal',sans-serif", fontSize: 12,
-              display: "flex", alignItems: "center", gap: 5, transition: "color .15s",
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = "var(--foreground)"}
-            onMouseLeave={e => e.currentTarget.style.color = "var(--muted-foreground)"}>
-            <BookOpen size={13} />
-            الدروس المحفوظة
-            <ArrowLeft size={11} />
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => navigate("/teacher/smart-board/history")}
+              style={{
+                background: "transparent", border: `1px solid var(--border)`, borderRadius: 8,
+                color: "var(--muted-foreground)", cursor: "pointer", padding: "5px 12px",
+                fontFamily: "'Tajawal',sans-serif", fontSize: 12,
+                display: "flex", alignItems: "center", gap: 5, transition: "color .15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--foreground)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--muted-foreground)"}>
+              <History size={13} />
+              السجل
+            </button>
+            <button onClick={() => navigate("/teacher/smart-board/lessons")}
+              style={{
+                background: "transparent", border: `1px solid var(--border)`, borderRadius: 8,
+                color: "var(--muted-foreground)", cursor: "pointer", padding: "5px 12px",
+                fontFamily: "'Tajawal',sans-serif", fontSize: 12,
+                display: "flex", alignItems: "center", gap: 5, transition: "color .15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.color = "var(--foreground)"}
+              onMouseLeave={e => e.currentTarget.style.color = "var(--muted-foreground)"}>
+              <BookOpen size={13} />
+              الدروس المحفوظة
+              <ArrowLeft size={11} />
+            </button>
+          </div>
         </div>
 
         {/* ── Suggested questions ── */}

@@ -392,6 +392,7 @@ function Router() {
         
         {/* Teacher Smart Board */}
         <Route path="/teacher/smart-board" component={SmartBoardAsk} />
+        <Route path="/teacher/smart-board/history" component={SmartBoardHistory} />
         <Route path="/teacher/smart-board/lessons" component={SmartBoard} />
         <Route path="/teacher/smart-board/new" component={SmartBoardNew} />
         <Route path="/teacher/smart-board/edit/:id" component={SmartBoardEdit} />
