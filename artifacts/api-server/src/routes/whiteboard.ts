@@ -386,59 +386,197 @@ router.post("/whiteboard/ask", requireTeacher, async (req, res) => {
       res.status(400).json({ error: "سؤال مطلوب" }); return;
     }
 
-    const systemPrompt = `أنت معلم علمي محترف تشرح على السبورة الذكية أمام طلابك.
-دورك: تُوصِل المعلومة بأسلوب علمي بسيط ومشوّق — كما يفعل أفضل معلمي العالم.
+    const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
+      "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"];
 
-━━━ قواعد voiceText ━━━
-• ابدأ مباشرةً بالشرح — لا تبدأ بأي كلمة من هذه القائمة المحظورة:
-  "صحيح، تماماً، بالتأكيد، بالطبع، ممتاز، رائع، أحسنت، حسناً، طبعاً، يسعدني، سأشرح لك، سؤال رائع، سؤال ممتاز"
-• ابدأ بالحقيقة العلمية أو القانون أو الظاهرة مباشرة.
-  أمثلة جيدة للبداية:
-  ✓ "قانون نيوتن الثاني يقول إن القوة تساوي الكتلة مضروبة في التسارع..."
-  ✓ "الرياض تقع في قلب الجزيرة العربية على هضبة نجد..."
-  ✓ "لنحل هذه المعادلة خطوة بخطوة..."
-  ✓ "الخلية الشمسية تحوّل ضوء الشمس إلى كهرباء عبر ظاهرة..."
-• جملة أو جملتان فقط — علمية، واضحة، مشوّقة.
-• إذا كانت مسألة رياضية: اشرح الخطوات بصوت ("نُحرّك الـ5 للطرف الآخر فتصبح سالبة...")
+    const normalizeActions = (raw: any): any[] => {
+      if (!Array.isArray(raw)) return [];
+      const out: any[] = [];
+      for (const a of raw) {
+        // Plain string → bullet
+        if (typeof a === "string" && a.trim()) {
+          out.push({ type: "bullet", content: a.trim(), color: "white" }); continue;
+        }
+        if (!a || typeof a !== "object") continue;
+        // Correct format: {type, content, ...}
+        if (typeof a.type === "string" && KNOWN_TYPES.includes(a.type)) { out.push(a); continue; }
+        // Wrong format: {action, element, description} — remap to correct types
+        if (typeof a.action === "string" && !a.type) {
+          const act = a.action.toLowerCase();
+          const content: string = a.element ?? a.description ?? a.content ?? "";
+          const desc: string = a.description ?? "";
+          const color: string = a.color ?? "white";
+          if (act === "highlight")       out.push({ type: "highlight", content: content || desc, color: "yellow" });
+          else if (act === "draw" || act === "draw_image" || act === "show_image")
+                                          out.push({ type: "showImage", imageQuery: content, description: desc, color: "blue" });
+          else if (act === "list" || act === "bullet" || act === "enumerate")
+                                          out.push({ type: "bullet", content: desc || content, color });
+          else if (act === "compare" || act === "chart")
+                                          out.push({ type: "showChart", description: content, data: [], color: "blue" });
+          else if (act === "connect" || act === "arrow")
+                                          out.push({ type: "drawConnector", from: content, to: desc, color: "orange" });
+          else if (act === "write" || act === "text")
+                                          out.push({ type: "writeText", content: desc || content, color });
+          else                            out.push({ type: "bullet", content: desc || content, color });
+          continue;
+        }
+        // Wrapped form: {"showLocation": {...}} or {"bullet": "text"}
+        const keys = Object.keys(a);
+        if (keys.length === 1 && KNOWN_TYPES.includes(keys[0])) {
+          const inner = a[keys[0]];
+          if (typeof inner === "object" && inner !== null) out.push({ type: keys[0], ...inner });
+          else if (typeof inner === "string") out.push({ type: keys[0], content: inner });
+        }
+      }
+      return out.filter((a) => {
+        if (a.type === "showLocation") return typeof a.name === "string" && a.name.trim();
+        if (a.type === "showChart") {
+          if (!Array.isArray(a.data) || a.data.length === 0) return false;
+          a.data = a.data
+            .filter((d: any) => d && typeof d.label === "string" && Number.isFinite(Number(d.value)))
+            .map((d: any) => ({ label: d.label, value: Number(d.value) }))
+            .slice(0, 10);
+          return a.data.length > 0;
+        }
+        if (a.type === "drawConnector") return typeof a.from === "string" && typeof a.to === "string";
+        if (a.type === "showImage") return typeof a.imageQuery === "string" && a.imageQuery.trim();
+        return true;
+      });
+    };
 
-━━━ أعد JSON نقياً فقط ━━━
+    const systemPrompt = `أنت معلم خبير محترف — مرجعك أفضل معلمي العالم. دورك أن تُقدّم إجابة تعليمية شاملة ومُفصَّلة على السبورة الذكية، موزّعة على مراحل واضحة كما يفعل أي معلم ناجح في الفصل.
+
+━━━ بنية الإجابة المطلوبة ━━━
+أعد JSON نقياً بهذا الهيكل بالضبط:
 {
-  "voiceText": "...",
-  "boardActions": [...]
+  "steps": [
+    {
+      "id": "1",
+      "title": "عنوان المرحلة (3-5 كلمات)",
+      "voiceText": "شرح صوتي للمرحلة — فقرة كاملة بالعربية المنطوقة",
+      "boardActions": [ ... ]
+    },
+    ...المزيد من الخطوات
+  ]
 }
 
-━━━ أنواع boardActions — كل عنصر كائن مسطّح يبدأ بحقل "type" إلزامياً ━━━
-أمثلة حرفية للصيغة الصحيحة (انسخ البنية بالضبط):
-{ "type": "bullet", "content": "نقطة مختصرة 3-6 كلمات", "color": "white" }
-{ "type": "highlight", "content": "القانون الأهم", "color": "yellow" }
-{ "type": "writeText", "content": "جملة توضيحية قصيرة", "color": "white" }
-{ "type": "writeMath", "content": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", "color": "green" }
-{ "type": "drawConnector", "from": "الحرارة", "to": "التمدد", "label": "تسبب", "color": "orange" }
-{ "type": "drawArrow", "label": "الخطوة التالية", "color": "white" }
-{ "type": "drawCircle", "label": "مصطلح أساسي", "color": "pink" }
-{ "type": "showChart", "description": "مقارنة السرعات", "data": [{"label":"الضوء","value":300000},{"label":"الصوت","value":0.343}], "color": "blue" }
-{ "type": "showImage", "imageQuery": "Cairo Egypt", "description": "وصف بالعربية", "color": "blue" }
-{ "type": "showLocation", "name": "القاهرة", "country": "مصر", "description": "عاصمة مصر", "color": "blue" }
-⚠️ خطأ شائع ممنوع: {"showLocation": {...}} — يجب أن يكون "type" حقلاً داخل الكائن نفسه.
+━━━ عدد الخطوات حسب نوع السؤال ━━━
+• سؤال بسيط (تعريف، موقع، حقيقة): 2-3 خطوات
+• سؤال متوسط (شرح ظاهرة، قانون فيزيائي، قصيدة): 3-4 خطوات  
+• سؤال معقد (مقارنة، حل معادلة، تحليل تاريخي، فرق بين مفهومين): 4-6 خطوات
 
-━━━ اختيار الألوان ━━━
-yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مواقع وصور | orange=خطوات | white=نص عام | pink=ملاحظات | red=تحذيرات | purple=مصطلحات متقدمة
+━━━ قواعد voiceText ━━━
+• فقرة كاملة لكل خطوة — 2 إلى 5 جمل مترابطة، تشرح بعمق وتربط الأفكار ببعضها.
+• ابدأ مباشرةً بالمعلومة — لا مقدمات، لا "سنتعلم اليوم"، لا "سؤال رائع".
+• كلمات افتتاح محظورة: "صحيح، تماماً، بالتأكيد، بالطبع، بالضبط، معك حق، ممتاز، حسناً، دعنا، تفضّل"
+• لا تختم بـ: "أنا هنا للمساعدة، إذا احتجت سؤالاً، أتمنى أن أكون أفدتك"
+• للرياضيات: اشرح الخطوات بكلام عربي منطوق — لا رموز LaTeX في voiceText إطلاقاً.
+  ✓ "المميز يساوي ب تربيع ناقص أربعة أ جيم"  
+  ✗ "\\Delta = b^2 - 4ac"
 
-━━━ قواعد ذهبية ━━━
-1. كل إجابة تحتوي عنصراً بصرياً واحداً على الأقل (drawConnector أو showChart أو showLocation أو showImage)
-2. للرياضيات: writeMath إلزامي + bullet للخطوات
-3. للجغرافيا: showLocation إلزامي
-4. للمقارنات الكمية: showChart إلزامي
-5. للعلوم (أحياء/فيزياء/كيمياء): showImage أو drawConnector`;
+━━━ قواعد boardActions الصارمة ━━━
+كل عنصر كائن JSON يبدأ بـ "type". لا نصوص مجردة إطلاقاً (ممنوع: "نص عادي" بدون كائن).
+لكل خطوة: 3-6 عناصر بصرية تدعم وتُعمّق المعلومة الصوتية.
+
+⛔ الأخطاء الشائعة المحظورة — لا ترتكبها:
+• ممنوع: { "action": "highlight", "element": "..." }     →  الصواب: { "type": "highlight", "content": "..." }
+• ممنوع: { "action": "draw", "element": "DNA" }          →  الصواب: { "type": "showImage", "imageQuery": "DNA double helix", "description": "...", "color": "blue" }
+• ممنوع: { "action": "list", "element": "..." }          →  الصواب: { "type": "bullet", "content": "...", "color": "white" }
+• ممنوع: "نص مجرد بدون كائن"                            →  الصواب: { "type": "bullet", "content": "النص هنا", "color": "white" }
+• ممنوع: أي كائن لا يحتوي حقل "type"
+
+✅ الأنواع الصحيحة — كل عنصر يبدأ بحقل "type":
+{ "type": "writeMath",     "content": "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", "color": "green" }
+{ "type": "bullet",        "content": "نقطة مختصرة 3-8 كلمات", "color": "white" }
+{ "type": "highlight",     "content": "مصطلح أو قانون مهم", "color": "yellow" }
+{ "type": "writeText",     "content": "جملة توضيحية كاملة", "color": "white" }
+{ "type": "drawConnector", "from": "المفهوم الأول", "to": "المفهوم الثاني", "label": "العلاقة", "color": "orange" }
+{ "type": "drawArrow",     "label": "التسلسل أو الاتجاه", "color": "white" }
+{ "type": "drawCircle",    "label": "مصطلح محوري", "color": "pink" }
+{ "type": "showChart",     "description": "عنوان المقارنة", "data": [{"label":"أ","value":10},{"label":"ب","value":20}], "color": "blue" }
+{ "type": "showImage",     "imageQuery": "English Wikipedia search term", "description": "وصف عربي", "color": "blue" }
+{ "type": "showLocation",  "name": "اسم المكان", "country": "الدولة", "description": "وصف جغرافي", "color": "blue" }
+
+━━━ مثال مرجعي كامل — مقارنة DNA و RNA (انسخ هذه البنية بالضبط) ━━━
+{
+  "steps": [
+    {
+      "id": "1", "title": "ما هو الـ DNA؟",
+      "voiceText": "الـ DNA هو الحمض النووي الريبوزي منقوص الأكسجين، وهو خارطة الحياة كاملة. يتكون من شريطين ملتفّين على شكل حلزون مزدوج، ويحمل التعليمات الكاملة لبناء كل بروتين في جسمك.",
+      "boardActions": [
+        { "type": "showImage",  "imageQuery": "DNA double helix structure", "description": "الحلزون المزدوج للـ DNA", "color": "blue" },
+        { "type": "highlight",  "content": "حلزون مزدوج الشريط",  "color": "yellow" },
+        { "type": "bullet",     "content": "سكر الديوكسيريبوز",    "color": "white" },
+        { "type": "bullet",     "content": "قواعد: A T G C",        "color": "white" },
+        { "type": "bullet",     "content": "موقعه: نواة الخلية",   "color": "white" }
+      ]
+    },
+    {
+      "id": "2", "title": "ما هو الـ RNA؟",
+      "voiceText": "الـ RNA هو الحمض النووي الريبوزي، ويعمل كرسول ينقل التعليمات من الـ DNA إلى مصنع البروتين. يختلف في أنه شريط واحد فقط، وأكثر نشاطاً وأقل استقراراً.",
+      "boardActions": [
+        { "type": "showImage",  "imageQuery": "RNA single strand molecule", "description": "شريط الـ RNA المفرد", "color": "blue" },
+        { "type": "highlight",  "content": "شريط مفرد — رسول نشط", "color": "pink" },
+        { "type": "bullet",     "content": "سكر الريبوز",           "color": "white" },
+        { "type": "bullet",     "content": "قواعد: A U G C",        "color": "white" },
+        { "type": "bullet",     "content": "موقعه: النواة والسيتوبلازم", "color": "white" }
+      ]
+    },
+    {
+      "id": "3", "title": "الفروق الجوهرية",
+      "voiceText": "الفرق الأول في البنية: DNA حلزون مزدوج بينما RNA شريط مفرد. الثاني في السكر: ديوكسيريبوز مقابل ريبوز. والثالث: DNA يستخدم ثايمين بينما RNA يستبدله بيوراسيل.",
+      "boardActions": [
+        { "type": "showChart",      "description": "مقارنة DNA و RNA", "data": [{"label":"أشرطة DNA","value":2},{"label":"أشرطة RNA","value":1}], "color": "blue" },
+        { "type": "drawConnector",  "from": "DNA — ثايمين (T)", "to": "RNA — يوراسيل (U)", "label": "يُستبدل بـ", "color": "orange" },
+        { "type": "highlight",      "content": "الاستقرار (DNA) مقابل النشاط (RNA)", "color": "yellow" }
+      ]
+    }
+  ]
+}
+
+━━━ استراتيجية التنويع البصري حسب نوع السؤال ━━━
+
+🔢 رياضيات — كل خطوة في معادلة منفصلة:
+خطوة 1: المعادلة الأصلية [writeMath] + تعريف المجاهيل [highlight]
+خطوة 2: الصيغة المستخدمة [writeMath] + حساب المميز [writeMath]
+خطوة 3: تطبيق الصيغة [writeMath] + [drawArrow] + النتيجة [writeMath] + [highlight]
+
+⚗️ مقارنة بين مفهومين (DNA/RNA، نبات/حيوان، إلخ):
+خطوة 1: [showImage] للأول + [bullet×3] لخصائصه
+خطوة 2: [showImage] للثاني + [bullet×3] لخصائصه  
+خطوة 3: [showChart] للمقارنة الكمية + [drawConnector] للعلاقة + [highlight] للفرق الجوهري
+خطوة 4: [writeText] للتطبيق أو الأهمية + [bullet×2] لأمثلة
+
+🌍 جغرافيا:
+خطوة 1: [showLocation] + [highlight] للاسم والموقع
+خطوة 2: [bullet×4] للحقائق الجغرافية والسكانية
+خطوة 3: [showChart] للمقارنة مع الجيران + [writeText] للأهمية الاستراتيجية
+
+🔬 علوم وأحياء وفيزياء:
+خطوة 1: [showImage] + [writeText] للتعريف
+خطوة 2: [drawConnector×2] للآليات + [bullet×3] للخصائص
+خطوة 3: [writeMath] للقانون (إن وجد) + [showChart] للأرقام + [highlight] للتطبيق
+
+🏛️ تاريخ وشخصيات:
+خطوة 1: [showImage] + [highlight] للاسم والحقبة
+خطوة 2: [drawConnector] (السبب→الحدث→النتيجة) + [bullet×3]
+خطوة 3: [writeText] للتأثير والإرث + [highlight] للدرس المستفاد
+
+📖 لغة وأدب:
+خطوة 1: [highlight] للمصطلح + [writeText] للتعريف الدقيق
+خطوة 2: [drawConnector] للفرق + [bullet×3] للسمات + [drawCircle] للمفهوم المحوري
+خطوة 3: [writeText] للمثال التطبيقي + [bullet×2] للأمثلة الإضافية
+
+━━━ ألوان السبورة ━━━
+yellow=قوانين وتعريفات | green=أمثلة ونتائج رياضية | blue=مواقع وصور | orange=خطوات وعلاقات | white=نص عام | pink=ملاحظات وتنبيهات | red=أخطاء شائعة | purple=مصطلحات متقدمة`;
 
     let rawJson: string;
 
     if (imageBase64) {
-      // Vision model — GPT-4o
       const r = await openai.chat.completions.create({
         model: "gpt-4o",
-        max_tokens: 3000,
-        temperature: 0.3,
+        max_tokens: 5000,
+        temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -446,18 +584,17 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
             role: "user",
             content: [
               { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" } as any },
-              { type: "text", text: question.trim() ? `اشرح وحل: ${question}` : "اقرأ المسألة في الصورة وحلّها على السبورة" },
+              { type: "text", text: question.trim() ? `اشرح وحل: ${question}` : "اقرأ المسألة في الصورة وحلّها على السبورة بالتفصيل" },
             ] as any,
           },
         ],
       });
       rawJson = r.choices[0]?.message?.content ?? "{}";
     } else {
-      // Text only — GPT-4o-mini
       const r = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        max_tokens: 3000,
-        temperature: 0.3,
+        model: "gpt-4o",
+        max_tokens: 5000,
+        temperature: 0.4,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: systemPrompt },
@@ -474,57 +611,37 @@ yellow=قوانين وتعريفات | green=أمثلة ونتائج | blue=مو
       return;
     }
 
-    // ── Normalize boardActions — models sometimes emit {"showLocation": {...}}
-    //    instead of {"type":"showLocation", ...}. Unwrap and flatten those.
-    const KNOWN_TYPES = ["bullet","highlight","writeText","writeTitle","writeMath","drawArrow",
-      "drawCircle","drawConnector","showChart","showImage","showLocation","showDiagram","clearBoard","erase"];
-    const normalizeActions = (raw: any): any[] => {
-      if (!Array.isArray(raw)) return [];
-      const out: any[] = [];
-      for (const a of raw) {
-        if (!a || typeof a !== "object") continue;
-        if (typeof a.type === "string" && KNOWN_TYPES.includes(a.type)) { out.push(a); continue; }
-        // Wrapped form: { "showLocation": { name: ... } } or { "bullet": "text" }
-        const keys = Object.keys(a);
-        if (keys.length === 1 && KNOWN_TYPES.includes(keys[0])) {
-          const inner = a[keys[0]];
-          if (typeof inner === "object" && inner !== null) out.push({ type: keys[0], ...inner });
-          else if (typeof inner === "string") out.push({ type: keys[0], content: inner });
-        }
+    // Support both multi-step {steps:[...]} and legacy {voiceText, boardActions}
+    let steps: Array<{ id: string; title: string; voiceText: string; boardActions: any[] }>;
+    if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
+      steps = parsed.steps.map((s: any, i: number) => ({
+        id: String(s.id ?? i + 1),
+        title: s.title ?? `الخطوة ${i + 1}`,
+        voiceText: s.voiceText ?? "",
+        boardActions: normalizeActions(s.boardActions),
+      })).filter((s: any) => s.voiceText.trim() || s.boardActions.length > 0);
+    } else {
+      // Legacy fallback
+      let actions = normalizeActions(parsed.boardActions);
+      if (actions.length === 0 && (parsed.voiceText ?? "").trim()) {
+        actions = [{ type: "writeText", content: parsed.voiceText.trim(), color: "white" }];
       }
-      // Field-level validation so malformed items can't crash the renderer
-      return out.filter((a) => {
-        if (a.type === "showLocation") return typeof a.name === "string" && a.name.trim();
-        if (a.type === "showChart") {
-          if (!Array.isArray(a.data) || a.data.length === 0) return false;
-          a.data = a.data
-            .filter((d: any) => d && typeof d.label === "string" && Number.isFinite(Number(d.value)))
-            .map((d: any) => ({ label: d.label, value: Number(d.value) }))
-            .slice(0, 10);
-          return a.data.length > 0;
-        }
-        if (a.type === "drawConnector") return typeof a.from === "string" && typeof a.to === "string";
-        if (a.type === "showImage") return typeof a.imageQuery === "string" && a.imageQuery.trim();
-        return true;
-      });
-    };
-    let actions = normalizeActions(parsed.boardActions);
-    // Never leave the board blank — fall back to writing the voice text
-    if (actions.length === 0 && (parsed.voiceText ?? "").trim()) {
-      actions = [{ type: "writeText", content: parsed.voiceText.trim(), color: "white" }];
+      steps = [{ id: "1", title: "الإجابة", voiceText: parsed.voiceText ?? "", boardActions: actions }];
     }
 
-    // Wrap in minimal lesson-plan structure the presenter already understands
+    // Ensure no step has a completely blank board
+    steps = steps.map(s => {
+      if (s.boardActions.length === 0 && s.voiceText.trim()) {
+        return { ...s, boardActions: [{ type: "writeText", content: s.voiceText.trim().slice(0, 120), color: "white" }] };
+      }
+      return s;
+    });
+
     const plan = {
       title: question.trim() || "سؤال",
       topic: question.trim() || "سؤال",
       intro:   { voiceText: "", boardActions: [] },
-      steps:   [{
-        id: "1",
-        title: "الإجابة",
-        voiceText: parsed.voiceText ?? "",
-        boardActions: actions,
-      }],
+      steps,
       summary: { voiceText: "", boardActions: [] },
       keyPoints: [],
     };

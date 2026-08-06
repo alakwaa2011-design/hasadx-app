@@ -447,6 +447,15 @@ function BoardImage({ item, scale = 1 }: { item: BoardItem; scale?: number }) {
 
 // ─── Chalk SVG filter ─────────────────────────────────────────────────────────
 
+/** Return text up to the last complete word within `chars` characters */
+function wordSlice(text: string, chars: number): string {
+  if (!text) return "";
+  if (chars >= text.length) return text;
+  const sub = text.slice(0, chars);
+  const lastBreak = Math.max(sub.lastIndexOf(" "), sub.lastIndexOf("\n"));
+  return lastBreak > 0 ? sub.slice(0, lastBreak + 1) : sub;
+}
+
 function ChalkDefs() {
   return (
     <svg width="0" height="0" style={{ position:"absolute", overflow:"hidden" }}>
@@ -475,6 +484,8 @@ export default function SmartBoardPresent() {
   // Board sections (accumulate, scroll off when full)
   const [sections,    setSections]    = useState<BoardSection[]>([]);
   const [typingState, setTypingState] = useState<{ key:string; chars:number }|null>(null);
+  // Voice caption: the spoken voiceText typed in sync with audio progress
+  const [captionState, setCaptionState] = useState<{ phaseIdx:number; chars:number }|null>(null);
   const [stepTitle,   setStepTitle]   = useState("");
   const [stepIdx,     setStepIdx]     = useState(0);
   const [isDone,      setIsDone]      = useState(false);
@@ -523,6 +534,7 @@ export default function SmartBoardPresent() {
     paused:false, done:false, keyCounter:0,
     currentSectionId: "",
     waitingForAudio: false,         // block until voice finishes (phase end)
+    voiceCaption: null as null | { text:string; phaseIdx:number; startMs:number },
     typing: null as null | {
       key:string; type:string; text:string; color:string;
       label?:string; description?:string; chars:number;
@@ -553,6 +565,8 @@ export default function SmartBoardPresent() {
       const au   = new Audio(URL.createObjectURL(blob));
       au.playbackRate = rate;
       audioRef.current = au;
+      // Reset caption startMs here (blob ready) so elapsed-time fallback is accurate
+      if (anim.current.voiceCaption) anim.current.voiceCaption.startMs = Date.now();
       au.onended = () => { isPlayingRef.current=false; playFromQueue(); };
       au.onerror = () => { isPlayingRef.current=false; playFromQueue(); };
       au.play().catch(() => { isPlayingRef.current=false; playFromQueue(); });
@@ -646,11 +660,36 @@ export default function SmartBoardPresent() {
     // Enqueue voice then start writing after a short delay so items appear WITH the voice
     enqueue(phasesRef.current[0]?.voiceText ?? "");
     anim.current.delay = 12; // ~720ms — lets TTS start loading before items appear
+    // Start voice caption for phase 0
+    const vt0 = phasesRef.current[0]?.voiceText ?? "";
+    if (vt0.trim()) anim.current.voiceCaption = { text: vt0, phaseIdx: 0, startMs: Date.now() };
 
     const interval = setInterval(() => {
       const a      = anim.current;
       const phases = phasesRef.current;
       const pace   = paceRef.current;
+
+      // ── Voice caption update — runs ALWAYS, even during pauses/waits ──────────
+      // Must be before any early return so caption stays in sync with audio
+      const vc = a.voiceCaption;
+      if (vc && vc.text && isPlayingRef.current) {
+        const au = audioRef.current;
+        let ratio = 0;
+        if (au && !isNaN(au.duration) && au.duration > 0) {
+          // Best case: real audio progress
+          ratio = Math.min(au.currentTime / au.duration, 1);
+        } else if (vc.startMs > 0) {
+          // Fallback: elapsed time since blob became ready (~14 chars/sec Arabic)
+          const charsPerMs = (14 * pace.rate) / 1000;
+          ratio = Math.min((Date.now() - vc.startMs) * charsPerMs / Math.max(vc.text.length, 1), 0.97);
+        }
+        const chars = Math.floor(ratio * vc.text.length);
+        setCaptionState(prev =>
+          prev?.phaseIdx === vc.phaseIdx && prev.chars === chars ? prev
+            : { phaseIdx: vc.phaseIdx, chars }
+        );
+      }
+
       if (a.paused || a.done || waitingTapRef.current) return;
 
       // ── Audio gate: wait for voice to finish before next phase ──
@@ -720,6 +759,10 @@ export default function SmartBoardPresent() {
           // Enqueue the next phase voice, then items flow after a short pause
           enqueue(phases[a.stepIdx].voiceText ?? phases[a.stepIdx].title);
           a.delay = pace.between * 3;
+          // Start voice caption for next phase
+          const vtNext = phases[a.stepIdx].voiceText ?? "";
+          if (vtNext.trim()) a.voiceCaption = { text: vtNext, phaseIdx: a.stepIdx, startMs: Date.now() };
+          else a.voiceCaption = null;
         } else {
           a.done=true; setIsDone(true);
         }
@@ -855,10 +898,13 @@ export default function SmartBoardPresent() {
       const rest = prev.filter(s => s.id !== prev[prev.length-1]?.id);
       return [...rest, { id:freshId, phaseIdx:idx, title:phases[idx].title, items:[] }];
     });
-    setTypingState(null); setIsDone(false); setIsPaused(false);
+    setTypingState(null); setCaptionState(null); setIsDone(false); setIsPaused(false);
     setWaitingTap(false); waitingTapRef.current = false;
     clearQueue();
-    enqueue(phases[idx]?.voiceText ?? "");
+    const vtR = phases[idx]?.voiceText ?? "";
+    if (vtR.trim()) anim.current.voiceCaption = { text: vtR, phaseIdx: idx, startMs: Date.now() };
+    else anim.current.voiceCaption = null;
+    enqueue(vtR);
   }
 
   function jumpToStep(idx: number) {
@@ -873,12 +919,15 @@ export default function SmartBoardPresent() {
     anim.current.done      = false;
     anim.current.paused    = false;
     setSections([{ id:freshId, phaseIdx:idx, title:phases[idx].title, items:[] }]);
-    setTypingState(null);
+    setTypingState(null); setCaptionState(null);
     setStepIdx(idx); setStepTitle(phases[idx]?.title ?? "");
     setIsDone(false); setIsPaused(false);
     setWaitingTap(false); waitingTapRef.current = false;
     clearQueue();
-    enqueue(phases[idx]?.voiceText ?? "");
+    const vtJ = phases[idx]?.voiceText ?? "";
+    if (vtJ.trim()) anim.current.voiceCaption = { text: vtJ, phaseIdx: idx, startMs: Date.now() };
+    else anim.current.voiceCaption = null;
+    enqueue(vtJ);
     resetCtrlTimer();
   }
 
@@ -1245,6 +1294,41 @@ export default function SmartBoardPresent() {
                             animation:"tapPulse 1.8s infinite" }}/>
                         )}
                       </div>
+
+                      {/* ── Voice caption: spoken words appear in sync with audio ── */}
+                      {(() => {
+                        const phaseVoice = phasesRef.current[section.phaseIdx]?.voiceText ?? "";
+                        if (!phaseVoice.trim()) return null;
+                        const hasCaption = captionState?.phaseIdx === section.phaseIdx;
+                        // Active section: show only what's been spoken so far (0 if not started yet)
+                        // Inactive (old) section: show full text permanently
+                        const chars = hasCaption ? captionState!.chars : (isActive ? 0 : phaseVoice.length);
+                        const shown = wordSlice(phaseVoice, chars);
+                        const stillTyping = isActive && hasCaption && chars < phaseVoice.length;
+                        return (
+                          <div style={{
+                            fontFamily: "'Tajawal', sans-serif",
+                            fontSize: Math.round(21 * fontSize),
+                            color: "rgba(242,237,224,.93)",
+                            lineHeight: 1.85,
+                            marginBottom: 14,
+                            direction: "rtl",
+                            filter: "url(#chalk-rough)",
+                            textShadow: "0 0 10px rgba(242,237,224,.1)",
+                            minHeight: "1.5em",
+                          }}>
+                            {shown}
+                            {stillTyping && (
+                              <span style={{
+                                display: "inline-block", width: 2, height: "0.85em",
+                                background: "rgba(242,237,224,.75)",
+                                marginInlineStart: 3, verticalAlign: "middle",
+                                animation: "tapPulse 0.85s infinite",
+                              }} />
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Committed items */}
                       {section.items.map(item => (
