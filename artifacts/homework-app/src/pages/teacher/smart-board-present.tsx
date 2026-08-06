@@ -9,6 +9,7 @@ import {
   Pause, Play, ChevronRight, ChevronLeft, X,
   Pencil, Eraser, Trash2, Volume2, VolumeX, Loader2,
   Settings, RotateCcw, ZoomIn, ZoomOut, Hand, Edit2,
+  Maximize2, Minimize2,
 } from "lucide-react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -418,6 +419,7 @@ export default function SmartBoardPresent() {
   const [isMuted,      setIsMuted]      = useState(false);
   const [showCtrl,     setShowCtrl]     = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Settings
   const [voice,      setVoice]      = useState<VoiceId>("shimmer");
@@ -795,14 +797,33 @@ export default function SmartBoardPresent() {
   const goNext = () => jumpToStep(anim.current.stepIdx + 1);
   const goPrev = () => jumpToStep(anim.current.stepIdx - 1);
 
+  // ── Fullscreen ────────────────────────────────────────────────────────────────
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }
+
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   // ── Controls auto-hide ────────────────────────────────────────────────────────
 
   function resetCtrlTimer() {
     setShowCtrl(true);
     if (ctrlTimerRef.current) clearTimeout(ctrlTimerRef.current);
+    const delay = document.fullscreenElement ? 2000 : 5000;
     ctrlTimerRef.current = setTimeout(() => {
       if (!isDrawMode && !showSettings) setShowCtrl(false);
-    }, 5000);
+    }, delay);
   }
   useEffect(() => {
     resetCtrlTimer();
@@ -823,7 +844,8 @@ export default function SmartBoardPresent() {
       if (e.key === "ArrowLeft"  || e.key === "ArrowUp")   { e.preventDefault(); goPrev(); }
       if (e.key === "d" || e.key === "D") setIsDrawMode(m => !m);
       if (e.key === "r" || e.key === "R") restartStep();
-      if (e.key === "Escape") handleExit();
+      if (e.key === "f" || e.key === "F") toggleFullscreen();
+      if (e.key === "Escape" && !document.fullscreenElement) handleExit();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1329,6 +1351,17 @@ export default function SmartBoardPresent() {
               color: isMuted?"rgba(255,255,255,.2)":"rgba(242,237,224,.45)",
               borderRadius:8, padding:"7px 9px", cursor:"pointer" }}>
             {isMuted ? <VolumeX size={15}/> : <Volume2 size={15}/>}
+          </button>
+
+          <button onClick={() => { toggleFullscreen(); resetCtrlTimer(); }}
+            title={isFullscreen ? "خروج من ملء الشاشة (F)" : "عرض ملء الشاشة (F)"}
+            style={{ background: isFullscreen ? "rgba(168,230,176,.12)" : "rgba(255,255,255,.06)",
+              border: `1px solid ${isFullscreen ? "rgba(168,230,176,.35)" : "transparent"}`,
+              color: isFullscreen ? "#a8e6b0" : "rgba(242,237,224,.45)",
+              borderRadius:8, padding:"7px 10px", cursor:"pointer",
+              display:"flex", alignItems:"center", gap:5, fontFamily:"'Tajawal',sans-serif", fontSize:13 }}>
+            {isFullscreen ? <Minimize2 size={14}/> : <Maximize2 size={14}/>}
+            <span>{isFullscreen ? "تصغير" : "ملء الشاشة"}</span>
           </button>
 
           <button
